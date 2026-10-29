@@ -8,6 +8,7 @@ import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { Store } from '../src/hub/store.ts';
 import { messengerFactory } from '../src/remote/messenger.ts';
 import { DiscordOutbox } from '../src/remote/discord-outbox.ts';
+import { remoteApprovalHarness } from './fakes/remote-approval-harness.ts';
 import { discordAsk } from '../src/remote/discord-cards.ts';
 import type { InboxAsk } from '../src/protocol.ts';
 import { remoteRedactor } from '../src/remote/redact.ts';
@@ -19,29 +20,30 @@ import { FakeClock } from './fake-clock.ts';
 import { DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 
-async function fixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn) {
+async function fixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string) {
   const clock = new FakeClock();
-  const exchange = await discordExchangeOwner(t, { clock, ...(onCallback ? { onCallback } : {}) }).start();
+  const exchange = await discordExchangeOwner(t, { clock, ...(origin ? { publicOrigin: origin } : {}), ...(onCallback ? { onCallback } : {}) }).start();
   const { root } = await exchange.project();
   const tgOwner = both ? fakeTelegramFixture(t, { clock }) : undefined;
   const tg = await tgOwner?.start();
-  const config = defaultConfig('Commands fixture'); config.remote.discord.enabled = true; config.remote.telegram.enabled = both;
+  const config = defaultConfig('Commands fixture'); config.remote.discord.enabled = true; config.remote.telegram.enabled = both; config.plan.approval = 'human'; if (origin) config.web.origin = origin;
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const script = scripted ? remoteApprovalHarness(t, root, clock, scripted) : undefined;
   const store = new Store(join(root, '.cland/hub.db')); exchange.afterDrain(() => store.close());
   const state = store.remotes.forMessenger('discord');
   state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
   const telegram = store.remotes.forMessenger('telegram');
   if (both) telegram.setPairing(pairing);
   const env = { CLAND_DISCORD_API_ROOT: exchange.fake.url, ...(tg ? { CLAND_TELEGRAM_API_ROOT: tg.url } : {}) };
-  const factory = messengerFactory(env, remoteRedactor(), clock, { state: store.remotes, projectName: () => projectName, ...(log ? { log } : {}) });
+  const factory = messengerFactory(env, remoteRedactor(), clock, { state: store.remotes, projectName: () => projectName, webOrigin: () => origin ?? '', ...(log ? { log } : {}) });
   const frames: Array<{ frame: Record<string, unknown>; ingress?: import('../src/remote/gateway.ts').RemoteIngress }> = [];
   const held: Array<() => void> = [];
   let remote: import('../src/remote/gateway.ts').Remote;
   let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
   exchange.stop(() => hub?.stop());
   const startHub = () => exchange.run(async () => {
-    hub = await projectHub(t, root, env, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, ...(both ? { 'telegram.token': TELEGRAM_TEST_TOKEN } : {}) }, gatewayMessenger: (...args) => {
+    hub = await projectHub(t, root, env, { clock, ...(script ? { adapters: [script.factory] } : {}), syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, ...(both ? { 'telegram.token': TELEGRAM_TEST_TOKEN } : {}) }, gatewayMessenger: (...args) => {
       const made = factory(...args); if (made.id !== 'discord') return made;
       remote = made; const start = remote.start.bind(remote);
       remote.start = (send, ...rest) => start((frame, ingress, bytes) => {
@@ -63,7 +65,7 @@ async function fixture(t: TestContext, holdType?: string, projectName = 'Cards f
       { what: 'native private command callback', timeoutMs: 1500 });
     return (await exchange.fake.control('state')).interactions.find(row => row.id === id)!;
   });
-  return { ...exchange, tg, telegram, hub: hub!, restart: async () => { await hub!.stop(); await clock.advance(5000); await startHub(); return hub!; }, clock, state, coord, command, frames, telegramMute: () => store.remotes.forMessenger('telegram').get('mute'), releaseFrames: () => { holdType = undefined; for (const send of held.splice(0)) send(); } };
+  return { ...exchange, script, store, tg, telegram, hub: hub!, restart: async () => { await hub!.stop(); await clock.advance(5000); await startHub(); return hub!; }, clock, state, coord, command, frames, telegramMute: () => store.remotes.forMessenger('telegram').get('mute'), releaseFrames: () => { holdType = undefined; for (const send of held.splice(0)) send(); } };
 }
 
 // Own the rejecting observer before setup can yield; failed setup cancels and
@@ -587,5 +589,136 @@ test('Discord loser waits for held initial acknowledgement acceptance before fol
   assert.deepEqual(trace, ['ready', 'accepted', 'followup']);
   assert.deepEqual(row.callbacks, [{ type: 6 }]);
   assert.match(JSON.stringify(row.followups), /Already answered/);
+  await f.hub.stop();
+});
+
+for (const harness of ['codex', 'opencode'] as const) test(`Discord ${harness} approval truncates native command and commits before styled outcome callback`, async t => {
+  let savedBeforeCallback = false;
+  const f = await fixture(t, undefined, 'Approvals', (_id, type) => {
+    if (type === 7) savedBeforeCallback = f.store.inboxOutcome('approval', record.id)?.via === 'discord';
+  }, false, undefined, harness);
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'subscribe' });
+  assert.equal((await ui.request({ type: 'session.launch', name: 'approval-worker', harness, role: 'implementer' })).ok, true);
+  await until(f.script!.ready, { what: 'scripted native approval subscription', timeoutMs: 1500 });
+  const raised = ui.waitFor(frame => frame.type === 'approval' && (frame.approval as import('../src/protocol.ts').InboxApproval).answerIn === 'hub', 1500);
+  f.script!.raise('x'.repeat(5000));
+  const record = (await raised).approval as import('../src/protocol.ts').InboxApproval;
+  await f.clock.advance(250);
+  await until(() => f.state.messagesForApproval(record.id).length === 1, { what: 'durable Discord approval mapping', timeoutMs: 1500 });
+  const card = (await f.fake.control('state')).messages.find(m => m.id === f.state.messagesForApproval(record.id)[0]!.messageId)!;
+  assert.match(card.content, new RegExp(`approval-worker.*${harness}`));
+  assert.ok([...card.content].length <= 2000);
+  assert.match(card.content, /```[\s\S]*x+[\s\S]*```/);
+  assert.match(card.content, /full command in the workbench/);
+  assert.deepEqual(card.components!.flatMap(row => row.components).map(b => [b.label, b.style]), [['Approve once', 3], ['Always allow', 1], ['Deny', 4]]);
+  const { id } = await f.fake.control('interact', { message_id: card.id, custom_id: `approval:${record.id}:once` });
+  await until(async () => !!(await f.fake.control('state')).interactions.find(row => row.id === id)?.callbacks.length, { what: 'approval native callback', timeoutMs: 1500 });
+  assert.equal(savedBeforeCallback, true);
+  const native = await f.fake.control('state');
+  assert.equal((native.interactions.find(row => row.id === id)!.callbacks[0] as { type: number }).type, 7);
+  assert.match(native.messages.find(m => m.id === card.id)!.content, /Approved once · human via Discord · \d\d:\d\d/);
+  assert.deepEqual(native.messages.find(m => m.id === card.id)!.components, []);
+  await until(() => f.script!.commands.length === 1, { what: 'scripted harness receives native approval', timeoutMs: 1500 });
+  assert.equal(f.script!.commands[0]!.outcome, 'ran');
+  await f.hub.stop();
+});
+
+for (const longTitle of [false, true]) for (const origin of [undefined, 'https://workbench.invalid']) test(`Discord notices and referenced replies with origin ${origin ?? 'unset'}${longTitle ? ' and long plan title' : ''}`, async t => {
+  const f = await fixture(t, undefined, 'Notices', undefined, false, undefined, undefined, origin);
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  const request = async <T>(frame: { type: string } & Record<string, unknown>) => {
+    const result = await ui.request(frame); assert.equal(result.ok, true, result.error); return result.value as T;
+  };
+  const epic = (await request<{ item: { id: string } }>({ type: 'task.create', kind: 'epic', title: 'Notice epic' + (longTitle ? '🪐'.repeat(2500) : '') })).item.id;
+  const topic = (await request<{ topic: { id: string } }>({ type: 'topic.create', title: 'Notice topic', item: epic })).topic.id;
+  await request({ type: 'visibility.set', surface: 'topics', target: topic, mode: 'pin' });
+  const task = (await request<{ item: { id: string } }>({ type: 'task.create', size: 'S', title: 'Planned work', parent: epic })).item.id;
+  const mappedNotice = async (source: string) => {
+    await f.clock.advance(250);
+    await until(async () => (await f.fake.control('state')).messages.some(m => f.state.message(ids.channel, m.id)?.message === source), { what: 'durable notice mapping', timeoutMs: 1500 });
+    return (await f.fake.control('state')).messages.find(m => f.state.message(ids.channel, m.id)?.message === source)!;
+  };
+  await request({ type: 'task.plan', item: epic, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'Build', lanes: [[task]], qa: { scope: 'none', when: 'after-stage' } }] }) });
+  const plan = await mappedNotice(epic);
+  assert.match(plan.content, /^📥.*Plan/);
+  assert.ok([...plan.content].length <= 2000);
+  assert.match(plan.content, /Plans are approved in the workbench\./);
+  if (longTitle) assert.match(plan.content, /…/);
+  assert.equal(plan.content.includes('https://'), !!origin);
+  if (origin) assert.ok(plan.content.includes(origin));
+  assert.ok(!plan.content.includes('web.link'));
+  const sentNotice = async (text: string, fields: Record<string, unknown> = {}) => {
+    assert.equal((await f.coord.call<{ ok: boolean }>('send', { topic, text, ...fields })).ok, true);
+    const source = (await request<{ messages: import('../src/protocol.ts').TopicMessage[] }>({ type: 'topic.history', topic })).messages.at(-1)!.id;
+    return { source, card: await mappedNotice(source) };
+  };
+  const review = await sentNotice('Review this plan', { kind: 'request', request: 'review', subject: epic });
+  assert.match(review.card.content, /^📥.*review/);
+  const message = await sentNotice('Read this item report');
+  assert.match(message.card.content, /^📥.*coord/);
+  await request({ type: 'session.launch', name: 'claude-worker', harness: 'claude-code', role: 'implementer' });
+  f.hub.fakes['claude-code']!.waitingForApproval('claude-worker', 'touch reviewed');
+  const approval = (await request<import('../src/protocol.ts').Inbox>({ type: 'inbox.list' })).approvals.find(row => row.session === 'claude-worker')!;
+  const tui = await mappedNotice(approval.id);
+  assert.match(tui.content, /^📥.*claude-worker/);
+  assert.match(tui.content, /Answer in its terminal/);
+  for (const card of [plan, review.card, message.card, tui]) assert.equal(card.components?.length ?? 0, 0);
+  let next = 90071992547449990n;
+  const reply = async (card: { id: string }, text: string, topic: string) => {
+    const id = String(next++);
+    await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { id, type: 19, channel_id: ids.channel, author: { id: ids.human }, content: text, message_reference: { message_id: card.id } } });
+    await until(() => !!f.state.get(`discord.inbound:${id}`), { what: `saved notice reply ${text}`, timeoutMs: 1500 });
+    return (await request<{ messages: import('../src/protocol.ts').TopicMessage[] }>({ type: 'topic.history', topic })).messages.at(-1)!;
+  };
+  const reviewReply = await reply(review.card, 'Review reply', topic);
+  assert.equal(reviewReply.text, 'Review reply'); assert.equal(reviewReply.replyTo, review.source); assert.equal(reviewReply.via, 'discord');
+  await f.clock.advance(5000);
+  const planReply = await reply(plan, 'Plan reply', 'general');
+  assert.equal(planReply.text, `re plan ${epic}: Plan reply`);
+  await f.hub.stop();
+});
+
+// Existing fake lifecycle seam supplements the native scripted producer cases above.
+test('Discord approval inbox copies reject cross-kind keys and fold a workbench answer everywhere', async t => {
+  const f = await fixture(t);
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'subscribe' });
+  await ui.request({ type: 'session.launch', name: 'approval-worker', harness: 'codex', role: 'implementer' });
+  const raised = ui.waitFor(frame => frame.type === 'approval' && (frame.approval as import('../src/protocol.ts').InboxApproval).answerIn === 'hub', 1500);
+  f.hub.fakes.codex!.raiseApproval('approval-worker', { id: 'copies', kind: 'command', subject: { command: 'echo copies' }, choices: ['once', 'deny'] });
+  const record = (await raised).approval as import('../src/protocol.ts').InboxApproval;
+  await f.clock.advance(250);
+  await until(() => f.state.messagesForApproval(record.id).length === 1, { what: 'mapped approval', timeoutMs: 1500 });
+  const original = f.state.messagesForApproval(record.id)[0]!.messageId;
+  const ask = await openCard(f);
+  const refused = async (message: string, custom_id: string, user?: string) => {
+    const { id } = await f.fake.control('interact', { message_id: message, custom_id, ...(user ? { user } : {}) });
+    await until(async () => !!(await f.fake.control('state')).interactions.find(row => row.id === id)?.callbacks.length, { what: 'private approval refusal', timeoutMs: 1500 });
+    const callback = (await f.fake.control('state')).interactions.find(row => row.id === id)!.callbacks[0] as { type: number; data: { flags: number; content: string } };
+    assert.equal(callback.type, 4); assert.equal(callback.data.flags & 64, 64);
+  };
+  const frames = f.frames.filter(row => ['approval.answer', 'topic.answer'].includes(String(row.frame.type))).length;
+  await refused(original, `ask:${record.id}:1`);
+  await refused(ask.message, `approval:${record.id}:once`);
+  await refused(original, `approval:${record.id}:always`);
+  await refused(original, `approval:${record.id}:once`, 'member');
+  assert.equal(f.frames.filter(row => ['approval.answer', 'topic.answer'].includes(String(row.frame.type))).length, frames);
+  await f.command('inbox');
+  await until(() => f.state.messagesForApproval(record.id).length === 2, { what: 'inbox approval copy mapped', timeoutMs: 1500 });
+  await f.clock.advance(5000);
+  const result = await ui.request({ type: 'approval.answer', approval: record.id, choice: 'deny' });
+  assert.equal(result.ok, true, result.error);
+  await until(() => f.state.messagesForApproval(record.id).every(copy => f.state.outbox().some(job => job.kind === 'edit' && job.target === copy.messageId && job.state === 'sent')), { what: 'all approval copies durably edited', timeoutMs: 1500 });
+  const native = await f.fake.control('state');
+  for (const copy of f.state.messagesForApproval(record.id)) {
+    const message = native.messages.find(row => row.id === copy.messageId)!;
+    assert.match(message.content, /Denied · human via Neovim/); assert.deepEqual(message.components, []);
+  }
+  const beforeStale = f.frames.filter(row => row.frame.type === 'approval.answer').length;
+  await refused(original, `approval:${record.id}:once`);
+  assert.equal(f.frames.filter(row => row.frame.type === 'approval.answer').length, beforeStale);
+  const outcome = f.store.inboxOutcome('approval', record.id)!;
+  assert.ok('choice' in outcome); assert.equal(outcome.choice, 'deny');
   await f.hub.stop();
 });

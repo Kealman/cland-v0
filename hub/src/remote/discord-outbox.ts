@@ -1,5 +1,5 @@
-import type { AskCard, InboxAsk } from '../protocol.ts';
-import { closedCardLine } from './cards.ts';
+import type { ApprovalOutcome, AskCard, InboxAsk } from '../protocol.ts';
+import { approvalOutcomeLine, closedCardLine } from './cards.ts';
 import { Outbox, type DeliveryResult } from './outbox.ts';
 import type { RemoteStore, OutboxJob, RemoteMessage } from './state.ts';
 import { DiscordError, type DiscordApi, type DiscordMessage, type DiscordActionRow } from './discord-api.ts';
@@ -7,6 +7,7 @@ import type { Clock } from '../hub/clock.ts';
 
 type Intent = { discord: true; channel: string; user: string; silent?: boolean; content: string; edit?: string; components?: DiscordActionRow[]; reaction?: { message: string; emoji: string }; mapping: Omit<RemoteMessage, 'messageId'> };
 const intent = (job: OutboxJob) => job.payload as Intent;
+const cardKey = (job: OutboxJob) => intent(job).mapping?.approval ? `approval:${intent(job).mapping.approval}` : intent(job).mapping?.ask;
 const nonce = (job: OutboxJob) => job.id.replaceAll('-', '').slice(0, 25);
 /** Per-channel owners over the neutral durable queue. Native receipts contain ids only. */
 export class DiscordOutbox {
@@ -23,6 +24,10 @@ export class DiscordOutbox {
     await lane.drain();
   }
   #closedLine(ask: string): string | undefined {
+    if (ask.startsWith('approval:')) {
+      const outcome = this.#store.get(`discord.card-closure:${ask}`);
+      return outcome ? [...approvalOutcomeLine(JSON.parse(outcome))].slice(0, 2000).join('') : undefined;
+    }
     const closure = this.#store.get(`discord.card-closure:${ask}`), model = this.#store.get(`discord.card-model:${ask}`);
     if (!closure || !model) return;
     const line = closedCardLine(JSON.parse(closure) as AskCard, (JSON.parse(model) as InboxAsk).from);
@@ -31,7 +36,7 @@ export class DiscordOutbox {
   #fold(ask: string): void {
     const line = this.#closedLine(ask);
     if (line === undefined) return;
-    for (const copy of this.#store.messagesForAsk(ask)) {
+    for (const copy of (ask.startsWith('approval:') ? this.#store.messagesForApproval(ask.slice(9)) : this.#store.messagesForAsk(ask))) {
       const source = `discord.outcome:${ask}`;
       if (this.#store.outbox().some(job => job.kind === 'edit' && job.target === copy.messageId && job.source === source
         && intent(job).content === line && ['queued', 'sent'].includes(job.state))) continue;
@@ -44,15 +49,29 @@ export class DiscordOutbox {
     this.#fold(ask);
     await Promise.all([...this.#lanes.values()].map(lane => lane.drain()));
   }
-  async card(channel: string, content: string, components: DiscordActionRow[], ask: string, topic: string, resend?: string): Promise<void> {
+  async closeApproval(id: string, outcome: ApprovalOutcome): Promise<void> {
+    this.#store.set(`discord.card-closure:approval:${id}`, JSON.stringify(outcome));
+    this.#fold(`approval:${id}`);
+    await Promise.all([...this.#lanes.values()].map(lane => lane.drain()));
+  }
+  async card(channel: string, content: string, components: DiscordActionRow[], ask: string, topic: string, resend?: string, approval = false): Promise<void> {
     this.#signal.throwIfAborted();
-    const lane = this.#lane(channel), source = `${resend ? `${resend}:` : ''}discord.card:${channel}:${ask}`;
+    const lane = this.#lane(channel), source = `${resend ? `${resend}:` : ''}discord.card:${channel}:${approval ? 'approval:' : ''}${ask}`;
     // An explicit inbox invocation probes restored delivery like a new send.
     // Durable attempt proof and the original nonce deadline still fence retries.
     if (resend) lane.setAvailable(true);
     if (!this.#store.outbox().some(job => job.source === source)) lane.enqueue({ kind: 'card', source,
       payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components,
-        mapping: { chatId: channel, topic, message: ask, ask, approval: null } } });
+        mapping: { chatId: channel, topic, message: ask, ask: approval ? null : ask, approval: approval ? ask : null } } });
+    await lane.drain();
+  }
+  async notice(channel: string, content: string, source: string, topic: string, message: string, resend?: string): Promise<void> {
+    const lane = this.#lane(channel);
+    const key = `${resend ? `${resend}:` : ''}${source}`;
+    if (resend) lane.setAvailable(true);
+    if (!this.#store.outbox().some(job => job.source === key)) lane.enqueue({ kind: 'card', source: key,
+      payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components: [],
+        mapping: { chatId: channel, topic, message, ask: null, approval: null } } });
     await lane.drain();
   }
   async send(channel: string, content: string, source: string, silent = false, message = source): Promise<void> {
@@ -98,7 +117,7 @@ export class DiscordOutbox {
     if (!lane) {
       lane = new Outbox(this.#store, {
         send: job => this.#deliver(job),
-        settled: (job, result) => { if (result.status === 'sent' && job.kind === 'card' && intent(job).mapping?.ask) this.#fold(intent(job).mapping.ask!); },
+        settled: (job, result) => { if (result.status === 'sent' && job.kind === 'card' && cardKey(job)) this.#fold(cardKey(job)!); },
         prove: async job => {
           if (intent(job).reaction || intent(job).edit) return { status: 'never-left' }; // Reactions and replacement edits are idempotent.
           const id = this.#store.get(`discord.outbox.receipt:${job.id}`);
@@ -112,7 +131,7 @@ export class DiscordOutbox {
           return { status: 'never-left' };
         },
       }, { clock: this.#clock, compare: (a, b) => Number(a.kind === 'general') - Number(b.kind === 'general'), accepts: job => intent(job)?.discord === true && intent(job).channel === channel,
-        sourceOpen: job => job.kind !== 'card' || !intent(job).mapping?.ask || (!this.#store.get(`discord.card-closure:${intent(job).mapping.ask}`)
+        sourceOpen: job => job.kind !== 'card' || !cardKey(job) || (!this.#store.get(`discord.card-closure:${cardKey(job)}`)
           || this.#store.get(`discord.card-reconcile:${job.id}`) === '1'
           || this.#store.attempts(job.id).some(attempt => attempt.outcome !== 'never-left')),
         admit: job => { const pair = this.#store.pairing(); return pair?.chatId === channel && pair.userId === intent(job).user; } });
@@ -146,7 +165,7 @@ export class DiscordOutbox {
     // Recheck at I/O: a restart after prove or queue work must not renew the window.
     if (!this.#withinNonceWindow(job)) return { status: 'unknown' };
     const input = intent(job);
-    const closed = job.kind === 'card' && input.mapping?.ask ? this.#closedLine(input.mapping.ask) : undefined;
+    const closed = job.kind === 'card' && cardKey(job) ? this.#closedLine(cardKey(job)!) : undefined;
     let message: DiscordMessage;
     try { message = await this.#api.createMessage(input.channel, { content: closed ?? input.content, ...(closed !== undefined ? { components: [] } : input.components ? { components: input.components } : {}), nonce: nonce(job), flags: 4 | (input.silent ? 4096 : 0) }, { signal: this.#signal, nonceDeadline: Date.parse(this.#store.attempts(job.id)[0]!.at) + 120_000 }); }
     catch (error) {
@@ -163,7 +182,7 @@ export class DiscordOutbox {
     for (const job of this.#store.outbox()) if (intent(job)?.discord) this.#lane(intent(job).channel);
     // A crash can commit the native mapping before settled queues its owed edit.
     // Reconstruct that obligation before any lane can drain General.
-    for (const job of this.#store.outbox()) if (intent(job)?.discord && job.kind === 'card' && intent(job).mapping?.ask) this.#fold(intent(job).mapping.ask!);
+    for (const job of this.#store.outbox()) if (intent(job)?.discord && job.kind === 'card' && cardKey(job)) this.#fold(cardKey(job)!);
     // Startup has completed its authenticated application check; retry persisted work.
     for (const lane of this.#lanes.values()) lane.setAvailable(true);
     await Promise.all([...this.#lanes.values()].map(lane => lane.drain()));

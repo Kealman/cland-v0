@@ -105,3 +105,28 @@ Removing the acknowledgement join must produce ready → followup → accepted.
 No elapsed delay selects the boundary. Initial acknowledgement settlement is
 joined with a caught transport error before follow-up I/O; a lost response still
 permits the owed refusal. The trace carries no identity, token or message text.
+
+Approval and notice coverage (T-1411) keeps production frames and fake native
+Discord I/O. The generated Codex/OpenCode approval cases use
+`fakes/remote-approval-harness.ts` and observe each scripted command receipt.
+A 5000-character command must fit the native 2000-code-point budget with the
+workbench marker, correct session/harness and offered Success/Primary/Danger
+choices. The native callback observer checks the durable approval outcome's
+Discord provenance before acceptance. A second case rejects cross-kind,
+unoffered and foreign keys, resends via `/cland inbox`, and requires settled
+REST edits on every copy after a Neovim answer and private stale refusal.
+Existing direct outbox tests retain historical ask payload compatibility.
+
+Notice cases run with and without a fictional HTTPS `.invalid` public origin;
+the fake preserves only that exact declared origin, still scrubbing credential
+URLs (including paths/queries on the same origin). Plans, review requests,
+item messages and Claude Code terminal approvals have durable native mappings
+and no components. Request replies retain their topic and replyTo; plan replies
+reach General with the plan reference. Advance five seconds between native
+reply bursts for learned bucket pacing; this is setup, not a latency claim.
+No real browser or platform is used.
+
+Long-plan-title controls repeat the notice/reply cases with 2500 supplementary
+Unicode characters. Both configured-origin and unset-origin cases retain the
+complete workbench instruction; the configured origin remains intact, with a
+visible ellipsis in the variable title and at most 2000 native code points.

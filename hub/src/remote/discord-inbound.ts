@@ -31,7 +31,8 @@ export class DiscordInbound {
       try {
         const reference = m.type === 19 ? (m.message_reference as { message_id?: string } | undefined)?.message_id : undefined;
         const reply = reference && m.referenced_message !== null ? this.#store.message(channel, reference) : null;
-        this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general', ...(reply?.message ? { replyTo: reply.message } : {}), kind: 'message', text: content }, { chatId: channel, messageId });
+        const noticeReference = reply?.message ? this.#store.get(`discord.notice-reference:${reply.message}`) : null;
+        this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general', ...(reply?.message && !noticeReference ? { replyTo: reply.message } : {}), kind: 'message', text: noticeReference ? `${noticeReference} ${content}` : content }, { chatId: channel, messageId });
         await completion.promise;
         this.#store.transaction(() => {
           const previous = this.#store.get('discord.lastMessageId');

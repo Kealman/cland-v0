@@ -1,5 +1,5 @@
 import type { LogFn } from '../log.ts';
-import type { AskCard, HubFrame, Inbox, InboxAsk, TopicMessage } from '../protocol.ts';
+import type { InboxApproval, AskCard, HubFrame, Inbox, InboxAsk, TopicMessage } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { DiscordOutbox } from './discord-outbox.ts';
 import type { DiscordActionRow } from './discord-api.ts';
@@ -7,7 +7,7 @@ import type { RemoteSend } from './gateway.ts';
 import type { DiscordApi } from './discord-api.ts';
 import type { DiscordDispatch } from './discord-socket.ts';
 import type { Clock } from '../hub/clock.ts';
-import { askCard, inboxPublication, outcomeLine } from './cards.ts';
+import { approvalCard, approvalOutcomeLine, askCard, inboxPublication, outcomeLine } from './cards.ts';
 
 export function discordAsk(ask: InboxAsk): { content: string; components: DiscordActionRow[] } {
   const card = askCard(ask);
@@ -35,15 +35,29 @@ export function discordAsk(ask: InboxAsk): { content: string; components: Discor
   return { content: prefix + question + list, components };
 }
 
+export function discordApproval(approval: InboxApproval): { content: string; components: DiscordActionRow[] } {
+  const card = approvalCard(approval);
+  const prefix = `**${[...card.title].slice(0, 150).join('')}**\n\n\`\`\`\n`;
+  const suffix = '\n```\n… (full command in the workbench)';
+  // Keep an embedded fence from escaping the preview's code block.
+  const question = card.question.replaceAll('```', '`\u200b``');
+  const content = prefix + [...question].slice(0, 2000 - [...prefix + suffix].length).join('') + suffix;
+  return { content, components: [{ type: 1, components: card.buttons.map(button => ({
+    type: 2, style: button.style === 'success' ? 3 : button.style === 'danger' ? 4 : 1,
+    label: button.label, custom_id: `approval:${approval.id}:${'choice' in button.action ? button.action.choice : ''}`,
+  })) }] };
+}
+
 export class DiscordCards {
   #send: RemoteSend | undefined; #next = 0;
   readonly #requests = new Map<string, ReturnType<typeof Promise.withResolvers<unknown>>>();
   readonly #work = new Set<Promise<void>>();
   readonly #log: LogFn | undefined;
+  readonly #webOrigin: (() => string) | undefined;
   readonly #api: DiscordApi; readonly #clock: Clock; readonly #signal: AbortSignal;
   readonly #store: RemoteStore; readonly #outbox: DiscordOutbox;
-  constructor(store: RemoteStore, outbox: DiscordOutbox, api: DiscordApi, clock: Clock, signal: AbortSignal, log?: LogFn) {
-    this.#log = log; this.#store = store; this.#outbox = outbox; this.#api = api; this.#clock = clock; this.#signal = signal;
+  constructor(store: RemoteStore, outbox: DiscordOutbox, api: DiscordApi, clock: Clock, signal: AbortSignal, log?: LogFn, webOrigin?: () => string) {
+    this.#webOrigin = webOrigin; this.#log = log; this.#store = store; this.#outbox = outbox; this.#api = api; this.#clock = clock; this.#signal = signal;
   }
   start(send: RemoteSend): void { this.#send = send; }
   async #request<T>(type: string, fields: Record<string, unknown>, interaction?: string): Promise<T> {
@@ -68,6 +82,7 @@ export class DiscordCards {
     const reply = (text: string) => this.#api.callback(d.id!, d.token!, text, { signal: this.#signal });
     const pair = this.#store.pairing();
     if (!pair || pair.guildId !== d.guild_id || pair.chatId !== d.channel_id || pair.userId !== d.member?.user?.id) { await reply("This card is for the project's owner"); return; }
+    if (d.data?.custom_id?.startsWith('approval:')) { await this.#approvalPress(d, reply); return; }
     const match = /^(?:ask|modal):(.+):(other|decline|[1-9])$/.exec(d.data?.custom_id ?? '');
     const mapping = d.message?.id && this.#store.message(pair.chatId, d.message.id);
     if (!match || !mapping || mapping.ask !== match[1]) { await reply('This button is not available'); return; }
@@ -126,6 +141,42 @@ export class DiscordCards {
       else await this.#api.update(d.id, d.token, content, { signal: this.#signal });
     } finally { this.#clock.clearTimeout(timer); this.#signal.removeEventListener('abort', cancel); await deferred?.catch(() => {}); }
   }
+  async #approvalPress(d: { type?: number; id?: string; token?: string; application_id?: string; message?: { id?: string }; data?: { custom_id?: string } }, reply: (text: string) => Promise<unknown>): Promise<void> {
+    const pair = this.#store.pairing()!;
+    const match = /^approval:(.+):(once|always|deny)$/.exec(d.data?.custom_id ?? '');
+    const mapping = d.message?.id && this.#store.message(pair.chatId, d.message.id);
+    const raw = match && this.#store.get(`discord.approval-model:${match[1]}`);
+    const model = raw ? JSON.parse(raw) as InboxApproval : null;
+    if (d.type !== 3 || !match || !mapping || mapping.approval !== match[1] || !model || !model.choices.includes(match[2] as import('../protocol.ts').ApprovalChoice)) { await reply('This button is not available'); return; }
+    const id = match[1]!;
+    const closed = () => this.#store.get(`discord.card-closure:approval:${id}`);
+    if (closed()) { await reply('Already answered'); await this.#outbox.closeApproval(id, JSON.parse(closed()!)); return; }
+    let deferred: Promise<unknown> | undefined;
+    const timer = this.#clock.setTimeout(() => { if (!this.#signal.aborted) { deferred = this.#api.update(d.id!, d.token!, null, { signal: this.#signal }); void deferred.catch(() => {}); } }, 2000);
+    timer.unref();
+    const cancel = () => this.#clock.clearTimeout(timer);
+    this.#signal.addEventListener('abort', cancel, { once: true });
+    try {
+      let result: { approval: InboxApproval };
+      try { result = await this.#request('approval.answer', { approval: id, choice: match[2] }, d.id); }
+      catch {
+        cancel();
+        if (this.#signal.aborted) return;
+        const inbox = await this.#request<Inbox>('inbox.list', {});
+        const text = inbox.approvals.some(row => row.id === id) ? 'Could not answer. Try again.' : 'Already answered';
+        if (deferred) { await deferred.catch(() => {}); if (d.application_id) await this.#api.followup(d.application_id, d.token!, text, { signal: this.#signal }); }
+        else await reply(text);
+        if (closed()) await this.#outbox.closeApproval(id, JSON.parse(closed()!));
+        return;
+      }
+      this.#store.set(`discord.press:${d.id}`, 'answered');
+      cancel();
+      const outcome = result.approval.outcome!;
+      const content = [...approvalOutcomeLine(outcome)].slice(0, 2000).join('');
+      if (deferred) await Promise.all([deferred.catch(() => {}), this.#outbox.closeApproval(id, outcome)]);
+      else await this.#api.update(d.id!, d.token!, content, { signal: this.#signal });
+    } finally { cancel(); this.#signal.removeEventListener('abort', cancel); await deferred?.catch(() => {}); }
+  }
   async #outcome(id: string, card: Pick<AskCard, 'state' | 'outcome'>): Promise<void> {
     await this.#outbox.closeCard(id, card);
   }
@@ -135,8 +186,10 @@ export class DiscordCards {
     if (this.#signal.aborted) return;
     if (frame.type === 'result') { const p = this.#requests.get(frame.id); if (frame.ok) p?.resolve(frame.value); else p?.reject(new Error('Discord card refused')); }
     if (frame.type === 'ask' && frame.card.state !== 'open') await this.#outcome(frame.ask, frame.card);
+    if (frame.type === 'approval' && frame.approval.state === 'closed' && frame.approval.outcome) await this.#outbox.closeApproval(frame.approval.id, frame.approval.outcome);
     if (frame.type !== 'inbox') return;
     await Promise.all((frame.inbox.departures ?? []).flatMap(row => {
+      if (row.kind === 'approval' && row.outcome && 'choice' in row.outcome) return [this.#outbox.closeApproval(row.id, row.outcome)];
       if (row.kind !== 'ask' || !['answered', 'declined', 'withdrawn', 'cancelled'].includes(row.reason)) return [];
       return [this.#outcome(row.id, { state: row.reason === 'declined' ? 'answered' : row.reason as AskCard['state'],
         ...(row.outcome && 'status' in row.outcome ? { outcome: row.outcome } : {}) })];
@@ -145,8 +198,25 @@ export class DiscordCards {
   }
   async publishInbox(inbox: Inbox, resend?: string): Promise<number> {
     const pair = this.#store.pairing(); if (!pair) return 0;
-    const rows = inboxPublication(inbox).filter(row => row.kind === 'ask');
+    const rows = inboxPublication(inbox, this.#webOrigin?.());
     await Promise.all(rows.map(row => {
+      if (row.kind === 'notice') {
+        const notice = row.notice;
+        if (notice.reference) this.#store.set(`discord.notice-reference:${notice.id}`, notice.reference);
+        const tail = `\n\n${notice.card.question}${notice.card.link ? `\n${notice.card.link}` : ''}`;
+        // Plan instructions and the public origin are fixed content: only its
+        // variable title may consume the remaining native message budget.
+        const titleBudget = 2000 - [...tail].length;
+        const title = notice.kind === 'plan' && [...notice.card.title].length > titleBudget
+          ? [...notice.card.title].slice(0, Math.max(0, titleBudget - 1)).join('') + '…' : notice.card.title;
+        const content = [...`${title}${tail}`].slice(0, 2000).join('');
+        return this.#outbox.notice(pair.chatId, content, `discord.notice:${notice.kind}:${notice.id}:${notice.since}`, notice.topic, notice.id, resend);
+      }
+      if (row.kind === 'approval') {
+        this.#store.set(`discord.approval-model:${row.id}`, JSON.stringify(row.approval));
+        const rendered = discordApproval(row.approval);
+        return this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.approval.topic ?? 'general', resend, true);
+      }
       this.#store.set(`discord.card-model:${row.id}`, JSON.stringify(row.ask));
       const rendered = discordAsk(row.ask);
       return this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.ask.topic.id, resend).then(async () => {

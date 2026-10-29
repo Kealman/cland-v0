@@ -15,7 +15,7 @@ import { registerCommands, DiscordCommands } from './discord-commands.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 import { DiscordApi, DiscordError } from './discord-api.ts';
 import { DiscordSocket, discordGatewayUrl, type DiscordDispatch } from './discord-socket.ts';
-export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; handlers?: Array<(frame: DiscordDispatch) => void> };
+export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; handlers?: Array<(frame: DiscordDispatch) => void> };
 
 /** Native credentials and dispatch data stay behind the gateway's frame port. */
 export class DiscordRemote implements Remote {
@@ -41,7 +41,7 @@ export class DiscordRemote implements Remote {
     this.#clock = clock;
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected, (inbox, key) => this.#cards?.publishInbox(inbox, key) ?? Promise.resolve(0));
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
-    this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal, options.log) : undefined;
+    this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal, options.log, options.webOrigin) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
     this.#detachApi = api.onError((error, channel) => {
       if (['POST /channels/:channel/messages', 'PATCH /channels/:channel/messages/:message'].includes(error.route))

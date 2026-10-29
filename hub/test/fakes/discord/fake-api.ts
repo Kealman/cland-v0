@@ -6,7 +6,7 @@ import type { Socket } from 'node:net';
 import { onCleanup } from '../../process-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { realClock, type Clock } from '../../../src/hub/clock.ts';
-import { remoteRedactor } from '../../../src/remote/redact.ts';
+import { redactValue, remoteRedactor } from '../../../src/remote/redact.ts';
 import { DISCORD_USER_AGENT } from '../../../src/remote/discord-api.ts';
 import type { DiscordActionRow, DiscordApplication, DiscordSessionStartLimit, DiscordMessage } from '../../../src/remote/discord-api.ts';
 
@@ -26,7 +26,7 @@ function reply(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
-type FakeOptions = { onCallback?: (id: string, type: number) => void | Promise<void>; clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
+type FakeOptions = { publicOrigin?: string; onCallback?: (id: string, type: number) => void | Promise<void>; clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
 export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const serving = Promise.withResolvers<void>();
@@ -38,7 +38,16 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   void serving.promise.catch(() => {});
   const events = new EventEmitter();
   const clock = options.clock ?? realClock;
-  const redact = remoteRedactor([DISCORD_TEST_TOKEN]);
+  const secrets = remoteRedactor([DISCORD_TEST_TOKEN]);
+  if (options.publicOrigin) {
+    const origin = new URL(options.publicOrigin);
+    if (origin.protocol !== 'https:' || !origin.hostname.endsWith('.invalid') || origin.origin !== options.publicOrigin)
+      throw new Error('fake public origin must be an HTTPS .invalid origin without credentials, path, query or fragment');
+  }
+  const scrub = secrets.text;
+  const captureText = (text: string) => !options.publicOrigin ? scrub(text) : text.split(/(\b[a-z][a-z0-9+.-]*:\/\/\S+)/gi)
+    .map(part => part === options.publicOrigin ? part : scrub(part)).join('');
+  const redact = Object.assign(secrets, { text: captureText, value: <T>(value: T): T => redactValue(value, captureText) });
   const state: DiscordState = { reactions: [], interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
 
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },

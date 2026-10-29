@@ -6834,9 +6834,9 @@ credentials and IDs above 2^53. Its control API supports `configure`, `say`,
 `fault`, `release` and `state`. See the
 [Discord REST test notes](../docs/agents/tests/hub-test-discord-api.test.ts.md).
 
-### Discord ask cards
+### Discord cards and notices
 
-With Discord enabled and paired, inbox publications enqueue open asks as durable
+With Discord enabled and paired, inbox publications enqueue open asks, hub approvals and needs-you notices as durable
 card jobs ahead of queued General messages, oldest first. General mute does not
 mute cards. A legacy card has a bold title, its question and at most three action
 rows: options five per row, then Other answer… (when free answers are allowed)
@@ -6859,10 +6859,28 @@ Known closed Discord asks receive an ephemeral “Already answered” without an
 answer frame, and their durable outcome edits repair every mapped copy. Foreign
 clicks and modal submissions receive “This card is for the project's owner”
 privately before any hub frame; unissued and cross-ask custom ids are refused.
-`/cland inbox` re-sends open ask cards oldest first with an interaction-scoped key
+`/cland inbox` re-sends open ask and approval cards plus notices oldest first with an interaction-scoped key
 separate from live publication, returning the count privately or “Nothing needs
-you”. Earlier copies remain usable and all copies close together. Approval card
-publication is handled by the approval-card integration.
+you”. Earlier copies remain usable and all copies close together.
+
+Codex and OpenCode approvals use the shared approval model: session and harness,
+a fenced command/files preview within 2000 code points, and “full command in the
+workbench”. Offered choices are Approve once (Success), Always allow (Primary)
+and Deny (Danger), with `approval:<id>:<choice>` ids checked against the stored
+model and native approval mapping. `approval.answer` commits with Discord
+provenance before its type-7 callback; pending work defers at two seconds.
+Closed, withdrawn and harness-answered approvals edit every mapped copy through
+the same durable queue and original nonce reconciliation window as asks.
+Ask and approval ids cannot substitute for each other.
+
+Plans, review/QA/handover requests, item-topic messages and Claude Code approvals
+are 📥 notices without components. Plans carry only the configured `[web] origin`
+when set, never a credential link; plan approval stays in the workbench. Long
+plan titles are clipped with an ellipsis while preserving the instruction and
+configured origin within the native content budget.
+Request and item-message replies use the stored topic and message reference.
+Plan and terminal-approval replies go to General prefixed with their plan or
+session reference. General mute leaves notices and approvals enabled.
 
 Ask state changes and inbox departures enqueue REST edits for every mapped
 Discord copy, removing all components. This includes Telegram, Neovim and web
