@@ -3,7 +3,7 @@ id: T-1372
 kind: task
 title: Discord's stopped causes reach doctor, and Discord shows in both workbenches
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-1175
 branch: t/T-1372-discord-s-stopped-causes-reach-doctor
 created: 2026-10-27T05:46:51.767Z
-updated: 2026-10-29T11:01:32.991Z
+updated: 2026-10-29T11:18:39.936Z
 ---
 
 ## Summary
@@ -37,12 +37,16 @@ Spec §3.11, §3.8 (close codes) and §3.2. E-1312's fatal closes record 01's st
 
 - [x] C1. A 4004 and a 4014 close on the fake Discord gateway each give doctor's line with its fix (a new token; the Message Content toggle), and the fake records no request during the doctor run (test).
   - done: impl-1372 · 2026-10-29T10:43:59.387Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
 - [x] C2. A fake Discord outage turns the Discord Remotes row red in headless Neovim and headless Chromium within one second, and recovery clears it (test).
   - done: impl-1372 · 2026-10-29T10:43:59.609Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
 - [x] C3. A message, a voice message and a card approval from the fake Discord read "via Discord" (the voice message with its 🎤 mark) in both workbenches, and a waiting `/cland pair` code shows as a pairing row in both inboxes (test).
   - done: impl-1372 · 2026-10-29T10:44:01.764Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
 - [x] C4. The docs page's doctor causes name 4004 and 4014 with their fixes, and the page passes the docs check (test).
   - done: impl-1372 · 2026-10-29T10:44:01.993Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
 
 ---
 
@@ -81,3 +85,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full replacement source2 clear, sole parent656cb7fcf/treeac5897cfa; full13-file source1 carried and all3 correction diffs/shared owner inspected. M1 pre-registers pacingOwner acquisition/hubs/Store/observations and fake close before startup; same dispose gates rootremoval, joins latehubs before Store close. Readiness/approval receipt abort-aware/caught/exactid; omitted/aborted setup controls retain actual acquiredhubstopped/nativeclosed0handlers0connections0pending/closedStore/rootabsent facts. Original native4004/4014 doctornoREST/plainJSONfix/identity,1s actualNvim/Web outage/ACKrecovery/textvoiceapprovalpair and docs assertions unchanged; no product/bound/guard/default change. A-13654 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13654-t-1372-full-source-review-2-clear.md). A-13653 localdoctor16/Nvim4/Web3/typecheck not remote/Linux/load proof; no Reviewer execution/runtime criterion verification. Proceed unchanged-head configured mode-free run then original generated criterion/timing/scopedload/changedT3/Web evidence review and actual duration treatment if needed. No devmerge; frozen guidance Coordinator-owned; no per-item QA or Reviewerfullrun request.
+
+### rev-26 · 2026-10-29T11:02:25.310Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1372-evidence-1
+commit: 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
+scope: evidence
+findings: [{"severity":"medium","text":"M2: original configured run fails existing resumable-history case4.310186616s, actual 'resumed checkpoint old copy edited: not within4000ms'(A-13658:19267). Shared-defect candidate awaiting Coordinator disposition; changedT3/Web unexecuted. No blind retry/bound change/unsanctioned merge.","file":"hub/test/discord-cards.test.ts","line":1072}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence1 not clear at unchanged sourceclear86a5a30b0/A-13654. Originalf7a19278/A-13658 autoexit1; independently3457ordinarypass/1fail plus65scopedloadpass, no unfinished started identity. T0/T1green,T2incomplete/red, changedNvimT3/Web/T4unrun, so C2/C3 required UI evidence absent; no runtime criteria verified or product criterion failure inferred. Actual doctor4004=.268491428s/4014=.193349589s, setupomitted=.179883626s/aborted=.141262164s, docsbase=.000596748s with scopedloadpasses; preserve positive partial receipts without claiming overallpass. A-13659 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13659-t-1372-evidence-review-1-not-clear.md). Linuxx64 c8nyc1, hosttypecheck382b10dc reused, no browser/T3runtimeproof; unrelatedbudgets/lint report-only. Source clear retained separately; lead reported to Coordinator and holds changes/retries. Any directed changedhead needs fresh source review. No Reviewer workload execution.
+
+### impl-1372 · 2026-10-29T11:02:39.689Z
+
+Coordinator authorizes one unchanged-head mode-free flaky rerun at 86a5a30b0. First red receipt A-13658 / f7a19278-20cc-429d-a29e-a93cecac215c: Discord resumable stop finishes frozen history before replay input and replacement cards; 'resumed checkpoint old copy edited: not within 4000 ms'. Coordinator diagnosed existing dev test frozen-clock reaction-lane dependency and filed T-1439 (regression of T-1413); if same identity fails second run, stop for shared fix. Source2 remains clear; evidence1 not clear/incomplete.
+
+### rev-26 · 2026-10-29T11:18:39.709Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1372-evidence-2
+commit: 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Original-record evidence2 clear for current86a5a30b0/source2 only. Independently confirmed Coordinator1dbaf36a authorized single samehead retry759d7507/A-13662 exit0; priorfailedA-13658/A-13659/T-1439 remains separate, previoushistoryidentity now.237324093s is not a shared-fix claim. Independent4128ordinary+65scopedloadpasses, no fail/cancel/skip/unfinishedidentity. T0/allT1/allT2/changedNvimT3/Web complete. C1native4004=.234310845s/4014=.184182459s plainJSONfix/identity/noREST with5loadeach; C2/C3Nvim=.392346121s(child.274514122),Web1.737448207s actualnative1sred/ACKrecovery/textvoiceapprovalpair; C4docsguard.000504897s+5load/full9docs cases. Setupomitted/aborted.125867317/.086910510s+5load; no new>=3sallowance. A-13663 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13663-t-1372-evidence-review-2-clear-at-current-head.md). Linuxx64 c8lon1, CHS156.0.8078.4/v1248,Nvim.12.5,hosttypecheck382b10dc reused. ChangedT3two top-level/four generatedinclchildren once,addedwall1.938s excludesmachinewait;Web0newreps,remainingT3/T4unrun,budgetsreport-only. C1–C4verified here; no Reviewer execution. Coordinator d25de8d8 sequencingstillrequires T1371landingnotice→authorizedmerge/docsresolution→delta review/newmodefree, plus theirfull-all beforeenqueue. No ready/enqueue request; currentgreen cannot cover futurehead.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

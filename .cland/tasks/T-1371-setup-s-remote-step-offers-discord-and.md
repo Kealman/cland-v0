@@ -3,7 +3,7 @@ id: T-1371
 kind: task
 title: Setup's remote step offers Discord and checks the application
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1176
 branch: t/T-1371-setup-s-remote-step-offers-discord-and
 created: 2026-10-27T05:46:51.472Z
-updated: 2026-10-29T10:50:35.563Z
+updated: 2026-10-29T11:09:04.242Z
 ---
 
 ## Summary
@@ -39,14 +39,19 @@ Pairing reuses 06's logic: the human runs `/cland pair` in the channel, and setu
 
 - [x] C1. With a scripted prompter and the fake Discord, setup offers Discord after Telegram, shows the guidance and an invite link with `permissions=117824` for the fake application's id, reads a made-up token through the hidden question, stores it and enables `remote.discord` (test).
   - done: impl-1371 · 2026-10-29T10:44:28.690Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1371-final1 · 2026-10-29T11:09:03.822Z · commit 26b6ea07abccb85167d34b3aa7dae3ebbadf2bcd
 - [x] C2. With Public Bot on, the Message Content flag off, or an Interactions Endpoint URL set on the fake application, setup names each setting to change and does not enable the remote until a re-check passes (test).
   - done: impl-1371 · 2026-10-29T10:44:29.054Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1371-final1 · 2026-10-29T11:09:03.822Z · commit 26b6ea07abccb85167d34b3aa7dae3ebbadf2bcd
 - [x] C3. After `/cland pair` on the fake gateway, setup shows "Pair Discord user <id> (<Name>)? code …" and pairs it on yes (test).
   - done: impl-1371 · 2026-10-29T10:44:29.287Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1371-final1 · 2026-10-29T11:09:03.822Z · commit 26b6ea07abccb85167d34b3aa7dae3ebbadf2bcd
 - [x] C4. A declined Discord offer prints `skip`, a configured and paired one `ok`, and without a terminal an untouched Discord prints `skip` and a half-configured one `open`, each with the Discord commands (test).
   - done: impl-1371 · 2026-10-29T10:44:29.656Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1371-final1 · 2026-10-29T11:09:03.822Z · commit 26b6ea07abccb85167d34b3aa7dae3ebbadf2bcd
 - [x] C5. The docs page's Discord steps and the tour's Discord line pass the docs and onboarding command checks (test).
   - done: impl-1371 · 2026-10-29T10:44:30.571Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1371-final1 · 2026-10-29T11:09:03.822Z · commit 26b6ea07abccb85167d34b3aa7dae3ebbadf2bcd
 
 ## Comments
 
@@ -87,3 +92,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13657 source2 clear; M1–M3 resolved, Standards0/Spec0. Frozen SETUP_USAGE literal matches source with guard sources unchanged; pre-owned pacingOwner acquisition/late hub stop and setup observations plus internal abort signal/native REST/readiness cancellation; omitted/aborted/held-read controls retain root through native close and joined settlement; custom login/OpenCode handlers explicitly decline Discord, positive row assertion retains login/profile checks. Same base340d6ddaa, no merge; original application/invite/token/pairing/docs assertions preserved. Local reported component7/7, flow20/20/help1+5/typecheck remain macOS only. C1–C5 await runtime evidence. Mode-free verify may proceed at unchanged head; no full task run/per-item QA requested.
+
+### rev-31 · 2026-10-29T11:09:03.822Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1371-final1
+commit: 26b6ea07abccb85167d34b3aa7dae3ebbadf2bcd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13661 final evidence clear; C1–C5 verified. Independent original A-13660/18183671 typed audit:4133 ordinary passes+110 separately scoped load passes, no nonpass/duplicates;14new identities each base+5/5 (70task samples), worst0.744884356s. Application repair/decline/native pairing, nonterminal/repeated decline, lifetime cancellation, docs/tour and existing help/login/setup consumers pass. T0/allT1/fallbackallT2/changedT3setup once/Web complete; remainingT3/T4 absent. Existing T3scenario14.450083080s, selected-phase addedwall15.554s excludes machine wait; emitted21.676/E-1313 recommendation is not a committed allowance/enforced pass. Linuxc-8nyc1 Node24.21/Nvim0.12.5 pinnedHeadlessShell156/v1248; task2/Web4, reused hosttypecheck, report-onlylint/timing/Web warnings retained. Known earlier local REST incident remains T-1438, not relabelled. Ready may follow conflict check; Coordinator gates/enqueue separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
