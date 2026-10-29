@@ -2,8 +2,8 @@
 id: T-1447
 kind: task
 title: "Remotes: an agent's reply to the human's message arrives unthreaded on Telegram and Discord"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1201
 branch: t/T-1447-remotes-an-agent-s-reply-to-the-human-s
 created: 2026-10-29T17:00:36.038Z
-updated: 2026-10-29T17:32:49.330Z
+updated: 2026-10-29T18:06:35.972Z
+closed: 2026-10-29T18:06:35.972Z
 ---
 
 ## Summary
@@ -29,10 +30,13 @@ When a General message has `replyTo` pointing at a message mapped to a native me
 
 - [x] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
   - done: impl-1447 · 2026-10-29T17:30:49.464Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1447-final · 2026-10-29T17:55:47.059Z · commit db6760bb4dfe356fb7b1a23f4296bbdd4ad1f34e
 - [x] C2. The same holds on Discord, with `message_reference` on the fake REST.
   - done: impl-1447 · 2026-10-29T17:30:50.540Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1447-final · 2026-10-29T17:55:47.059Z · commit db6760bb4dfe356fb7b1a23f4296bbdd4ad1f34e
 - [x] C3. A reply target unmapped on a remote, or deleted, still delivers once as a plain message.
   - done: impl-1447 · 2026-10-29T17:30:51.562Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1447-final · 2026-10-29T17:55:47.059Z · commit db6760bb4dfe356fb7b1a23f4296bbdd4ad1f34e
 
 ## Comments
 
@@ -67,3 +71,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13871: full source clear, M1/M2 resolved. Explicit mapped reply wins for reused artifacts; explicit unmapped suppresses default artifact thread while absent marker preserves old behavior/no-reupload. Four native cases retain request/cardinality controls; pacingOwner drains dynamic hub before Store, with missed/aborted startup controls. T-1448 caption omission remains separate per Coordinator. Local macOS receipts only; C1–C3 runtime verification pending exact-head configured evidence. No Reviewer execution.
+
+### rev-34 · 2026-10-29T17:55:47.059Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1447-final
+commit: db6760bb4dfe356fb7b1a23f4296bbdd4ad1f34e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13891: Original A-13885 independently parsed4166ordinary passes plus30task/75unrelated site load passes. Four native reply/reused-artifact/fallback cases and two ownership controls each ordinary+5/5load,all<3s. C1–C3 verified; host tree reuse,T-1448 separation,report-only and noT3/T4 limits retained.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-29T18:06:35.972Z
+
+Merged 25e9fb51d17b3dc7b8029de10e6ce36d78a0164c onto dev.

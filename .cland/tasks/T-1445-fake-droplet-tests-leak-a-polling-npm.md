@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T17:23:42.374Z
+updated: 2026-10-29T18:00:09.109Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Every fake-droplet run's remote command exits or is killed when its test or fixt
 
 - [x] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
   - done: impl-1445 · 2026-10-29T17:11:54.756Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1445-final · 2026-10-29T17:55:41.127Z · commit dbbb66a6c86f9053a2f92aaf600c9a79bf2f1e48
 - [x] C2. The finish poller exits by itself after a bounded time even if nobody writes `finish`.
   - done: impl-1445 · 2026-10-29T16:24:22.166Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1445-final · 2026-10-29T17:55:41.127Z · commit dbbb66a6c86f9053a2f92aaf600c9a79bf2f1e48
 
 ## Comments
 
@@ -103,3 +105,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13852: full source clear, M1–M3 resolved. Separate real native setup/serving/drain/disposal bounds preserve retained teardown and early release/cancel; injected fake time only controls caller-expiry assertions. Prior positive census/native failure/abort and poller exit124 retained. C1/C2 runtime verification pending exact-head configured evidence; other-file local runs remain source1 attribution. No Reviewer execution.
+
+### rev-34 · 2026-10-29T17:55:41.127Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-final
+commit: dbbb66a6c86f9053a2f92aaf600c9a79bf2f1e48
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13889: Original A-13877:4195 ordinary passes; all five changed T3 files/36 top-level identities pass once, including all11 new native controls and five positive census records. C1/C2 verified. Host tree reuse and report-only allowance/T3 warnings retained; remainingT3/T4 absent.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-34 · 2026-10-29T18:00:09.109Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-source5
+commit: c7a660cc5e8421ab30406ed8f88d043e5c3a28ed
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13904: authorized dev merge plus unchanged T3 comment/import relocation clear. Exact task helper/provider/process code retained; only header placement changes after merge. Local zero-refusal lint receipt is claimant evidence; failed host-only batch retained. Prior Linux/final proof covers dbbb66a only; C1/C2 runtime refresh pending new-head mode-free result. No Reviewer execution.

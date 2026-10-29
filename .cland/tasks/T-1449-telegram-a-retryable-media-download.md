@@ -5,15 +5,16 @@ title: "Telegram: a retryable media download shows 'could not be stored; retryin
 state: open
 status: in progress
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
+topic: topic-1203
 branch: t/T-1449-telegram-a-retryable-media-download
 created: 2026-10-29T17:47:47.016Z
-updated: 2026-10-29T17:53:26.306Z
+updated: 2026-10-29T17:59:06.224Z
 ---
 
 ## Summary
@@ -26,6 +27,23 @@ Don't alarm the human about a transient failure that recovers: send the "could n
 
 ## Acceptance criteria
 
-- [ ] C1. On the fake Bot API, a first `getFile` or download failure followed by success sends no failure line to the chat and stores the artifact once; the test fails before the fix.
-- [ ] C2. Exhausted retries still send one clear failure line naming the file.
-- [ ] C3. The hub log records the retryable error's class and code without token-bearing URLs.
+- [x] C1. On the fake Bot API, a first `getFile` or download failure followed by success sends no failure line to the chat and stores the artifact once; the test fails before the fix.
+  - done: impl-1449 · 2026-10-29T17:58:13.957Z
+- [x] C2. Exhausted retries still send one clear failure line naming the file.
+  - done: impl-1449 · 2026-10-29T17:58:14.075Z
+- [x] C3. The hub log records the retryable error's class and code without token-bearing URLs.
+  - done: impl-1449 · 2026-10-29T17:58:15.583Z
+
+## Comments
+
+### impl-1449 · 2026-10-29T17:54:18.828Z
+
+Consumer search before retry-policy change: MediaQueue's process callback is used by TelegramRemote and DiscordRemote; no callback/wire/schema changes planned. Telegram #media catch and per-chat FIFO own this path; native API getFile/download retain their existing TelegramError shape. Consumers inspected: telegram-inbound/voice/albums, cards/polling restart/notices fixtures and guides, fake Bot API faults, telegram media README/spec sections, gateway upload recovery; no client/probe/skill examples consume transient media warning text (rg across hub, web, nvim, docs, .agents). Preserve queue input and legacy receipt shapes. Plan: persist per-file transient attempt count in Telegram state, maximum three attempts (two retries), log only static class/numeric code, terminal filename warning. No Discord change.
+
+### impl-1449 · 2026-10-29T17:58:13.865Z
+
+Local evidence and original red outputs summarized in A-13896 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13896-t-1449-implementation-and-local-evidence.md). One initial uncommitted full-file run: 43/44, aborted-setup clock.pending 1 !== 0. Unreproduced: identity alone 5/5 green each baseline/changed; full-file 3/3 green each baseline(41)/changed(44). Coordinator permits continuation; if same identity fails mode-free verification, stop/report shared-defect. Typecheck passed. Implementation committed a269a4f0e; awaiting T-1447 landing for pre-source-review dev merge.
+
+### impl-1449 · 2026-10-29T17:59:06.224Z
+
+Consumer inventory correction: production MediaQueue constructor is TelegramRemote only (plus the inbound test's queue handoff control); Discord media has its own implementation and is unaffected. Earlier note named DiscordRemote as a direct callback consumer incorrectly. rg confirms new telegram.media-failures state is adapter-private and read only by the generated test timing observer.

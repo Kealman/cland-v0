@@ -2,8 +2,8 @@
 id: T-1420
 kind: task
 title: suite cleanup test misses its 'waiting for a verified worker identity' log line once under load
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1198
 branch: t/T-1420-suite-cleanup-test-misses-its-waiting
 created: 2026-10-28T09:24:24.815Z
-updated: 2026-10-29T17:31:36.841Z
+updated: 2026-10-29T18:06:20.460Z
+closed: 2026-10-29T18:06:20.460Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Find why the cleanup's log line can be missing when the assertion reads it under
 
 - [x] C1. The cause is attributed from the failing output (A-13169) and the code: the case stopped the hub before the worker PID receipt, shown by a deterministic held-admission regression red at 7687a520; the unchanged case did not reproduce 5/5 under load (A-13833).
   - done: impl-1420 · 2026-10-29T17:05:12.812Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1420-final · 2026-10-29T17:55:43.854Z · commit 0b85c061324bacb4053f8bcf2c14c273dab62643
 - [x] C2. The cleanup identity and the new regression pass 10/10 under two owned busy CPU workers in one leased local probe at the reviewed head, with raw receipts.
   - done: impl-1420 · 2026-10-29T17:31:36.841Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1420-final · 2026-10-29T17:55:43.854Z · commit 0b85c061324bacb4053f8bcf2c14c273dab62643
 
 ## Comments
 
@@ -67,3 +70,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13867: unchanged branch source1 remains clear; concrete A-13866 C2 driver closes D1/D2 with acquisition-settlement release gating and non-throwing native/raw capture callbacks. Pre-owned bounded children/groups/workers, independent cleanup/releases and retained incomplete ownership inspected. Authorized ten runs per exact identity/two busy workers/shared leases may proceed. Runtime C1/C2 unverified until original local and configured evidence; historical failure remains unreproduced.
+
+### rev-34 · 2026-10-29T17:55:43.854Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1420-final
+commit: 0b85c061324bacb4053f8bcf2c14c273dab62643
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13890: A-13870 exact reviewed driver/head/tree: both identities10/10,27native child closes/drains,40 advancing CPU receipts,both terminated worker joins and lease releases complete. A-13881 exact-head4179ordinary passes,changedT3file19/19; historical failure remains unreproduced under accepted attribution. C1/C2 verified; report-only and remainingT3/T4 limits retained.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1420 · 2026-10-29T17:55:54.840Z
+
+Ready report sent to Coordinator after final clear rev-34-20261029-1420-final/C1+C2 verified (A-13890). Head 0b85c061324bacb4053f8bcf2c14c273dab62643 unchanged. Fresh fetch origin/dev 1220e1aea5edcf7d755a58e4459481367442060c and merge-tree --write-tree exit0, tree99b018ed196e43894b5d8ced9780205e692b7ae2; clean worktree. Mode-free58bd6e79/A-13881 passed4179 ordinary tests; local C2 original-record A-13870 both identities10/10. Coordinator owns enqueue/merge.
+
+### coord · 2026-10-29T18:06:20.460Z
+
+Merged 8ca1de2a630137b12f4d3c07cbcbce8127a6e10a onto dev.
