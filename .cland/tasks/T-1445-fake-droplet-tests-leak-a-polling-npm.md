@@ -3,7 +3,7 @@ id: T-1445
 kind: task
 title: Fake-droplet tests leak a polling 'npm test' and node pair whenever a run ends without writing the finish file
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T16:58:32.539Z
+updated: 2026-10-29T16:59:58.945Z
 ---
 
 ## Summary
@@ -27,8 +27,8 @@ Every fake-droplet run's remote command exits or is killed when its test or fixt
 
 ## Acceptance criteria
 
-- [x] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
-  - done: impl-1445 · 2026-10-29T16:58:15.406Z
+- [ ] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
+  - failed: rev-34 [reviewer] · 2026-10-29T16:59:58.945Z · note Setup observation expiry still skips memoized disposal; missing held-create receipt can block cleanup release.
 - [x] C2. The finish poller exits by itself after a bounded time even if nobody writes `finish`.
   - done: impl-1445 · 2026-10-29T16:24:22.166Z
 
@@ -60,3 +60,18 @@ Criteria: C1 failed (Provider handler work can resume after close/census/root re
 ### impl-1445 · 2026-10-29T16:54:07.972Z
 
 Review correction inventory (M2): fake provider admission/close is a test-only shared contract. Consumers already inventoried (executor/suite/daemon/startup fixtures); calls during active lifetime unchanged. After close, direct provider and filesystem mutator calls will reject a fixed closed error. Both direct provider transport and HTTP body/handler continuations must be tracked through actual settlement, even when the caller's deadline race ends first; close fences synchronously, drains boundedly and retains root on incomplete drainage. Scripted mode shares the fence/drain but keeps OS scans disabled. M1 index correction is working-tree green.
+
+### rev-34 · 2026-10-29T16:59:58.945Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-source2
+commit: 889ba2832d01fb0d50bf5850ea43086963cea937
+scope: full
+findings: [{"severity":"medium","text":"M3 remains at the actual setup-deadline boundary: pollingOwner.close awaits a bounded scope.wait(setup) before its cleanup loop, so expiry permanently rejects memoized closing and skips all process/provider/native disposal even if setup later settles. The held-create controls also register release as a caseDeadlines after hook, but caseDeadlines waits pending entered receipt work before hooks; a missing receipt can prevent release/close indefinitely. Keep disposal as an owned continuation through actual setup settlement, bound observation separately, and prove a genuinely held/missing and aborted admission receipt rather than throwing after completed setup.","file":"hub/test/executor-safety.test.ts","line":177}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13829: M1 index and M2 admission/handler-drainage correction closed by source inspection. Sole remaining M3 is actual setup timeout/omitted-receipt disposal continuation, including new held-create control ownership. Preserve all existing assertions and add actual held/late-settlement controls; fresh source review before verification. Local macOS attribution only; no Reviewer execution or configured Linux claim.
+
+Criteria: C1 failed (Setup observation expiry still skips memoized disposal; missing held-create receipt can block cleanup release.).

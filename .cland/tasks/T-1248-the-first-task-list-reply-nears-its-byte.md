@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
+topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T16:59:35.913Z
+updated: 2026-10-29T17:00:35.256Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 
 - [ ] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
 - [ ] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
+
+## Comments
+
+### impl-1248 · 2026-10-29T17:00:35.256Z
+
+Rule 20 inventory before changes: production task.list owners hub/src/tracker/{requests,tracker}.ts; independently restated request shared/wire/index.ts; tool schema hub/src/spoke/task-tools.ts; CLI hub/src/cli/task.ts; Telegram/Discord release readers; Neovim init.lua startup and closed pages; Web connection.ts uses snapshot domain items plus explicit by-id/closed requests. Tests in hub/test (tracker-summary/component/hierarchy, startup-replies-fixture/scale, connection-snapshot, task-card, request guards and authority); nvim stub-hub.ts, recorded protocol fixtures, startup-budget-support, explorer/shell/plan components and native shell/scenarios; web tree/board/plan/item tests. QA briefs and shipped onboarding/implement/qa examples request legacy lists/counts. Plan: additive opt-in paged:true for open summary requests, byte-bounded pages and numeric cursor; retain every legacy reply unchanged. Neovim startup opts in and accumulates pages before applying buffered events; Web snapshot path, CLI/tool full lists, remote readers, persisted records and historical QA/recorded examples unaffected. Startup probes migrate to paged traversal. Full path inventory available in forthcoming artifact.
