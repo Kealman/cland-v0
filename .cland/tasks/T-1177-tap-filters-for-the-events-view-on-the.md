@@ -2,8 +2,8 @@
 id: T-1177
 kind: task
 title: Tap filters for the Events view on the phone
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1184
 branch: t/T-1177-tap-filters-for-the-events-view-on-the
 created: 2026-10-23T07:00:15.868Z
-updated: 2026-10-29T16:03:53.704Z
+updated: 2026-10-29T16:31:32.702Z
+closed: 2026-10-29T16:31:32.702Z
 ---
 
 ## Summary
@@ -29,6 +30,7 @@ At phone width the Events view offers its filters as tappable chips or a sheet w
 
 - [x] C1. At 390x844 with touch, tapping a filter shows only that category's events and the choice survives a reload (Web test).
   - done: impl-1177 · 2026-10-29T15:58:53.733Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1177-final1 · 2026-10-29T16:20:42.711Z · commit 81c7245d94d12fb78dca2c338b29151c352bed3a
 
 ## Comments
 
@@ -61,3 +63,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13744 source2 delta clear; M1 resolved, Standards0/Spec0. Exact rendered-ID oracles pre-armed before taps and used after reload, all nonempty/semantic controls and final equality/pressed/44px assertions retained. Existing finite until bound; UI/CSS/key/storage/wire unchanged from source1. Independently verified Coordinator Agents5cbfcf63 all-lane shared-merge direction; merge0ba34423 brings tracker+README d36aec5a only, no other implementation. Local reported12/12/843ms/typecheck remain macOS, configured evidence absent. C1 runtime-unverified; mode-free verify may proceed unchanged then original-record final review. No full task run/per-item QA.
+
+### rev-31 · 2026-10-29T16:20:42.711Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1177-final1
+commit: 81c7245d94d12fb78dca2c338b29151c352bed3a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, C1 verified. Original A-13782/2454d875 names exact source2 head, terminal0, 4151 ordinary pass+50 separate load passes; T0/T1/fallback allT2/Web complete, T3/T4 absent. Exact phone case pass2.396549880s at21585, all12 Events cases/file pass. Source retains390x844 touch/taps/exact-ID nonempty oracles/reload/pressed/44px assertions. Web0 new files/0 required repetitions; no phone load-pass claim. Linux c8nyc1 Node24.21/nvim0.12.5 CHS156.0.8078.4/v1248; configured2/Web4. Host gate92aa099a reused; report-only warnings retained. Full audit A-13784; no Reviewer execution.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-29T16:31:32.702Z
+
+Merged c7279f62e60b55abe8c20329c0816537325b08a0 onto dev.

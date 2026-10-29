@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1182
 branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T16:15:27.968Z
+updated: 2026-10-29T16:20:51.134Z
 ---
 
 ## Summary
@@ -59,3 +59,16 @@ finding_counts: {"high":0,"medium":4,"low":0}
 Full source not clear: M1 sorted manifest/index, M2 bounded pre-owned hub acquisition, M3 destination native media proof, M4 actual answer cardinality. Additive planned Telegram outage behavior is source-consistent, with legacy compatibility and restart/fatal controls retained. C1/C2 proof incomplete; C3/C4/C6 unverified and C5 load/Linux pending. Consolidate corrections, preserve assertions and request fresh pushed-head review before probe/verify.
 
 Criteria: C1 failed (Scenario counts the original ask row rather than exactly one stored modal answer.), C2 failed (Cross-remote assertions prove rendered text but omit destination native file/upload bytes and identity.).
+
+### rev-34 · 2026-10-29T16:18:51.418Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1442-source2
+commit: 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
+scope: full
+findings: [{"severity":"medium","text":"M5: Proposed load driver A-13768 starts setup commands before its try/finally, bounds child work only by sending SIGTERM, leaves CPU startup/join without independent bounds, and skips later cleanup/releases if an earlier step fails. Pre-own setup/test child and worker lifetimes with bounded native close/drain, continue every cleanup attempt and retain individual lease release receipts before the authorized C5 probe."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+M1–M4 closed in branch source: manifest/index, bounded shared acquisition controls, destination native file proof and actual answer cardinality. No additional production finding. Sole remaining M5 is proposed C5 driver A-13768 native child/worker/lease ownership and bounds. Publish corrected driver and request same-head clearance before probe/verify; no further branch edit requested. All runtime criteria remain unverified and C5 load/Linux pending.

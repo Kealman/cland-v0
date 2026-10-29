@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1193
 branch: t/T-1421-copied-live-tracker-test-fixtures-slow
 created: 2026-10-28T10:09:57.493Z
-updated: 2026-10-29T16:14:28.564Z
+updated: 2026-10-29T16:18:01.816Z
 ---
 
 ## Summary
@@ -24,9 +24,10 @@ The copied live-tracker fixtures read the whole project tracker, now about 1,420
 ## Acceptance criteria
 
 - [x] C1. The copied-tracker fixtures read a bounded snapshot (a fixed item count or a pinned copy) whose size does not grow with the live tracker, and each test keeps the behaviour it checks.
-  - done: impl-1421 · 2026-10-29T16:12:05.373Z
+  - done: impl-1421 · 2026-10-29T16:17:20.443Z
 - [x] C2. The T-1419 allowances for web/test/items.test.ts are removed or reduced to the new measured timing at 1.5x.
   - done: impl-1421 · 2026-10-29T16:12:05.474Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1421-source2 · 2026-10-29T16:18:01.816Z · commit c312b89616e889fb778456d60315b67be6f5da56
 
 ## Notes
 
@@ -37,3 +38,33 @@ Follow-up of T-1419 (shared defect, 2026-10-28). Allowances owned by E-1311 expi
 ### impl-1421 · 2026-10-29T16:08:24.502Z
 
 C1 red observed on dev baseline: `AssertionError: default differential uses at most 64 pinned tracker items` at original full-copy boundary (1443 inputs). Baselines macOS arm64: Lua 21.633s/22.387s file; nvim closed-pages 19.678s/20.323s file; startup copied-live 7.293s/13.174s file (including unchanged thousand-row case 5.300s). Plan: fixed 24-item JSON corpus (21 shape-selected originals with ancestor closure + 3 explicit missing-shape rows), shared copier; retain identical all-live Lua oracle as separate T4 file. No hub/src or wire contract changes. Full-copy startup probe remains explicit/manual.
+
+### rev-31 · 2026-10-29T16:17:05.483Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261029-1421-source1
+commit: 8e904fdde7436948bd360b95f8f6e2da5397cc09
+scope: full
+findings: [{"severity":"medium","text":"M1: scale guide and companion hub-status-component guide still describe complete live-copy T3/current removed allowance, contradicting the pinned fixture and deleted allowance. Replace superseded descriptions or label them historical, explicitly separating generated scale, pinned startup, full-live T4 Lua and manual probe (rule16).","file":"docs/agents/tests/hub-test-startup-replies-scale.test.ts.md","line":37}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source1 not clear, Standards 1 medium / Spec 0 implementation findings. Consolidated audit A-13779: four default consumers bounded; exact original Lua driver/frame/assertions retained at T4; seeded paging/Web/startup/generated-scale assertions unchanged. Obsolete T-1419 caps removed; Linux measurements must precede any replacement per Coordinator. No Reviewer execution; local summaries not configured evidence.
+
+Criteria: C1 failed (Current startup-fixture guidance contradicts the implemented bounded corpus and retained full-copy boundaries; resolve M1 before verification.).
+
+### rev-31 · 2026-10-29T16:18:01.816Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1421-source2
+commit: c312b89616e889fb778456d60315b67be6f5da56
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source2 clear; M1 resolved in two-guide-only correction, prior full source audit unchanged. A-13780. Standards/Spec 0 remaining findings. C2 source-established by removal of obsolete T-1419 88/105s caps; C1 final runtime verification awaits same-head original configured named receipts including changed T3/T4. Linux-first sizing per Coordinator remains required before adding replacements; any subsequent head needs source review. No Reviewer execution.
+
+Criteria: C2 verified.
