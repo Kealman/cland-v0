@@ -66,3 +66,42 @@ The new owner must reconstruct the owed edit before draining General. Assertions
 retain the original native id, one card copy, removed buttons, outcome, durable
 edit settlement, native PATCH-before-General-POST order and a no-I/O second resume.
 This models the persistence checkpoint; it does not claim OS process-crash timing.
+
+
+Private-refusal and inbox cases (T-1410) assert an answered-elsewhere click's
+exact ephemeral Already answered callback with no topic.answer frame, settled
+button removal, foreign clicks and modal submissions with no frame or native
+card change, and unissued/cross-ask ids. The inbox case checks empty output,
+oldest-first durable mappings, fresh keys on repeated commands and closure of
+every mapped copy. Advance the fake clock by five seconds between bursts to
+respect the fake's learned channel bucket; this is pacing setup, not a timing
+measurement. No wire or persisted payload shape is changed.
+
+The losing-answer cases hold topic.answer while a workbench wins. Before
+deferral they require the private callback; after the exact two-second type-6
+acknowledgement they require an ephemeral follow-up. Both retain the winner's
+settled outcome with no buttons. A deferred update alone is not refusal evidence.
+
+The accepted-type6/lost-response loser still owes an ephemeral follow-up;
+assert its native receipt independently of defer transport success. Held
+inbox.list controls revoke or replace the admitted pairing before releasing
+the frame and require command settlement with no newly enqueued card. The
+command rechecks its captured numeric guild/channel/user before publication;
+outbox admission continues to guard later native I/O.
+
+The restored-delivery control seeds the durable unavailable checkpoint with a
+healthy fake REST endpoint, then requires /cland inbox's mapped native resend.
+Only explicit resends probe availability; original attempt receipts, source
+closure and nonce deadlines still apply. This models the persisted checkpoint,
+not the preceding outage's network timing.
+
+The initial-ack ordering control holds type6 before fake acceptance through an
+async onCallback barrier. The content-free remote log event
+`discord-card-refusal-ready` is emitted after the losing inbox result is consumed.
+Only that owned receipt releases the native hold; the final trace must be
+ready → accepted → followup, alongside the native refusal receipt. The
+`discord-card-refusal-followup` event marks invocation immediately before I/O.
+Removing the acknowledgement join must produce ready → followup → accepted.
+No elapsed delay selects the boundary. Initial acknowledgement settlement is
+joined with a caught transport error before follow-up I/O; a lost response still
+permits the owed refusal. The trace carries no identity, token or message text.

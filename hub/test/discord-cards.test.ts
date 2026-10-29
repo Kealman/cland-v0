@@ -19,7 +19,7 @@ import { FakeClock } from './fake-clock.ts';
 import { DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 
-async function fixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void, both = false) {
+async function fixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn) {
   const clock = new FakeClock();
   const exchange = await discordExchangeOwner(t, { clock, ...(onCallback ? { onCallback } : {}) }).start();
   const { root } = await exchange.project();
@@ -34,7 +34,7 @@ async function fixture(t: TestContext, holdType?: string, projectName = 'Cards f
   const telegram = store.remotes.forMessenger('telegram');
   if (both) telegram.setPairing(pairing);
   const env = { CLAND_DISCORD_API_ROOT: exchange.fake.url, ...(tg ? { CLAND_TELEGRAM_API_ROOT: tg.url } : {}) };
-  const factory = messengerFactory(env, remoteRedactor(), clock, { state: store.remotes, projectName: () => projectName });
+  const factory = messengerFactory(env, remoteRedactor(), clock, { state: store.remotes, projectName: () => projectName, ...(log ? { log } : {}) });
   const frames: Array<{ frame: Record<string, unknown>; ingress?: import('../src/remote/gateway.ts').RemoteIngress }> = [];
   const held: Array<() => void> = [];
   let remote: import('../src/remote/gateway.ts').Remote;
@@ -201,17 +201,23 @@ for (const deferred of [false, true]) test(`Discord stop drains held card answer
 test('Discord refuses foreign and forged card clicks', async t => {
   const f = await fixture(t);
   const card = await openCard(f);
-  for (const [custom, user, expected] of [
-    [`ask:${card.ask}:1`, 'member', 'not paired'],
+  const other = await openCard(f);
+  const before = (await f.fake.control('state')).messages;
+  const frames = f.frames.length;
+  for (const [custom, user, expected, modal] of [
+    [`ask:${card.ask}:1`, 'member', "This card is for the project's owner"],
+    [`modal:${card.ask}:decline`, 'member', "This card is for the project's owner", true],
+    [`ask:${other.ask}:1`, 'human', 'not available'],
     ['ask:unissued:1', 'human', 'not available'],
     [`ask:${card.ask}:9`, 'human', 'not available'],
-  ]) {
-    const { id } = await f.fake.control('interact', { message_id: card.message, custom_id: custom, user });
+  ] as const) {
+    const { id } = await f.fake.control('interact', { message_id: card.message, custom_id: custom, user, ...(modal ? { modal_text: 'Foreign answer' } : {}) });
     await until(async () => !!(await f.fake.control('state')).interactions.find(r => r.id === id)?.callbacks.length, { what: 'private refused click', timeoutMs: 1500 });
     const callback = (await f.fake.control('state')).interactions.find(r => r.id === id)!.callbacks[0] as { type: number; data: { content: string; flags: number } };
     assert.equal(callback.type, 4); assert.equal(callback.data.flags, 64); assert.ok(callback.data.content.includes(expected!));
   }
-  assert.equal(f.frames.filter(r => r.frame.type === 'topic.answer').length, 0);
+  assert.equal(f.frames.length, frames, 'refusals send no hub frames');
+  assert.deepEqual((await f.fake.control('state')).messages, before);
   await f.hub.stop();
 });
 
@@ -453,4 +459,133 @@ test('Discord reopen folds a closed card interrupted after mapping before pendin
   assert.ok(state.outbox().some(j => j.kind === 'edit' && j.target === original.id && j.state === 'sent'));
   await f.run(() => resumed.resume());
   assert.equal((await f.fake.control('state')).requests.length, native.requests.length, 'reconciliation is idempotent');
+});
+
+
+test('Discord stale click refuses privately without an answer frame and repairs buttons', async t => {
+  const f = await fixture(t);
+  const card = await openCard(f);
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'topic.answer', ask: card.ask, option: 2 });
+  await until(() => !!f.state.get(`discord.card-closure:${card.ask}`), { what: 'durable external closure', timeoutMs: 1500 });
+  const before = f.frames.filter(r => r.frame.type === 'topic.answer').length;
+  const { id } = await f.fake.control('interact', { message_id: card.message, custom_id: `ask:${card.ask}:1` });
+  await until(async () => !!(await f.fake.control('state')).interactions.find(r => r.id === id)?.callbacks.length, { what: 'stale private acknowledgement', timeoutMs: 1500 });
+  const native = await f.fake.control('state');
+  assert.deepEqual(native.interactions.find(r => r.id === id)!.callbacks, [{ type: 4, data: { content: 'Already answered', flags: 64, allowed_mentions: { parse: [] } } }]);
+  assert.equal(f.frames.filter(r => r.frame.type === 'topic.answer').length, before);
+  await until(() => f.state.outbox().some(j => j.kind === 'edit' && j.target === card.message && j.state === 'sent'), { what: 'stale buttons retired', timeoutMs: 1500 });
+  assert.deepEqual((await f.fake.control('state')).messages.find(m => m.id === card.message)!.components, []);
+  await f.hub.stop();
+});
+
+test('Discord inbox re-sends open asks oldest first with separate keys and keeps every copy live', async t => {
+  const f = await fixture(t);
+  const empty = await f.command('inbox');
+  assert.match(JSON.stringify(empty.callbacks), /Nothing needs you/);
+  const first = await openCard(f);
+  await f.clock.advance(1);
+  const second = await openCard(f);
+  const reply = await f.command('inbox');
+  assert.match(JSON.stringify(reply.callbacks), /2 open cards/);
+  await until(() => f.state.messagesForAsk(first.ask).length === 2 && f.state.messagesForAsk(second.ask).length === 2, { what: 'durable inbox resend mappings', timeoutMs: 1500 });
+  const copies = (await f.fake.control('state')).messages;
+  assert.deepEqual(copies.map(m => f.state.message(ids.channel, m.id)?.ask), [first.ask, second.ask, first.ask, second.ask]);
+  await f.clock.advance(5000);
+  const repeated = await f.command('inbox');
+  assert.match(JSON.stringify(repeated.callbacks), /2 open cards/);
+  await until(() => f.state.messagesForAsk(first.ask).length === 3, { what: 'fresh resend per command', timeoutMs: 1500 });
+  await f.clock.advance(5000);
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'topic.answer', ask: first.ask, option: 1 });
+  await f.clock.advance(250);
+  await until(() => f.state.outbox().filter(j => j.kind === 'edit' && j.state === 'sent').length >= 3, { what: 'every first-ask copy closes', timeoutMs: 1500 });
+  for (const copy of f.state.messagesForAsk(first.ask)) assert.deepEqual((await f.fake.control('state')).messages.find(m => m.id === copy.messageId)!.components, []);
+  const next = await f.command('inbox');
+  assert.match(JSON.stringify(next.callbacks), /1 open card/);
+  assert.equal(f.state.messagesForAsk(first.ask).length, 3);
+  await f.hub.stop();
+});
+
+for (const mode of ['immediate', 'deferred', 'lost-defer'] as const) test(`Discord losing click is refused privately ${mode}`, async t => {
+  const slow = mode !== 'immediate';
+  const f = await fixture(t, 'topic.answer');
+  const card = await openCard(f);
+  const { id } = await f.fake.control('interact', { message_id: card.message, custom_id: `ask:${card.ask}:1`, lose_callback_response: mode === 'lost-defer' });
+  await until(() => f.frames.some(r => r.frame.type === 'topic.answer'), { what: 'held losing answer', timeoutMs: 1500 });
+  if (slow) {
+    await f.clock.advance(2000);
+    await until(async () => !!(await f.fake.control('state')).interactions.find(r => r.id === id)?.callbacks.length, { what: 'loser deferred acknowledgement', timeoutMs: 1500 });
+  }
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'topic.answer', ask: card.ask, option: 2 });
+  f.releaseFrames();
+  await until(async () => {
+    const row = (await f.fake.control('state')).interactions.find(r => r.id === id)!;
+    return JSON.stringify(slow ? row.followups : row.callbacks).includes('Already answered');
+  }, { what: 'private losing answer refusal', timeoutMs: 1500 });
+  const row = (await f.fake.control('state')).interactions.find(r => r.id === id)!;
+  const payload = (slow ? row.followups[0] : (row.callbacks[0] as { data: object }).data) as { flags: number };
+  assert.equal(payload.flags, 64);
+  await until(() => f.state.outbox().some(j => j.kind === 'edit' && j.target === card.message && j.state === 'sent'), { what: 'winner outcome settles', timeoutMs: 1500 });
+  assert.deepEqual((await f.fake.control('state')).messages.find(m => m.id === card.message)!.components, []);
+  await f.hub.stop();
+});
+
+for (const replace of [false, true]) test(`Discord inbox held read loses authority on ${replace ? 'replacement' : 'unpair'}`, async t => {
+  const f = await fixture(t, 'inbox.list');
+  await openCard(f);
+  const before = f.state.outbox().filter(j => j.kind === 'card').length;
+  const { id } = await f.fake.control('interact', { command: 'inbox' });
+  await until(() => f.frames.some(r => r.frame.type === 'inbox.list'), { what: 'captured inbox read before pairing change', timeoutMs: 1500 });
+  f.state.setPairing(replace ? { userId: ids.member, chatId: ids.channel, guildId: ids.guild, name: 'Replacement' } : null);
+  f.releaseFrames();
+  await until(async () => !!(await f.fake.control('state')).interactions.find(r => r.id === id)?.callbacks.length, { what: 'obsolete command settlement', timeoutMs: 1500 });
+  assert.equal(f.state.outbox().filter(j => j.kind === 'card').length, before, 'obsolete command enqueues no publication');
+  assert.equal((await f.fake.control('state')).messages.length, 1);
+  await f.hub.stop();
+});
+
+test('Discord explicit inbox probes restored delivery from durable unavailable state', async t => {
+  const f = await fixture(t);
+  const card = await openCard(f);
+  // Model the persisted outage checkpoint; native REST is now healthy.
+  f.state.set('outbox.unavailable', '1');
+  const response = await f.command('inbox');
+  assert.match(JSON.stringify(response.callbacks), /1 open card/);
+  await until(() => f.state.messagesForAsk(card.ask).length === 2, { what: 'restored native resend settlement', timeoutMs: 1500 });
+  assert.equal(f.state.get('outbox.unavailable'), null);
+  assert.equal((await f.fake.control('state')).messages.length, 2);
+  await f.hub.stop();
+});
+
+
+test('Discord loser waits for held initial acknowledgement acceptance before followup', async t => {
+  const gate = Promise.withResolvers<void>();
+  let arrived = false;
+  const trace: string[] = [];
+  let ready = false;
+  t.after(() => gate.resolve());
+  const f = await fixture(t, 'topic.answer', 'Held callback', async (_id, type) => {
+    if (type === 6) { arrived = true; await gate.promise; trace.push('accepted'); }
+  }, false, entry => {
+    if (entry.event === 'discord-card-refusal-ready') { trace.push('ready'); ready = true; }
+    if (entry.event === 'discord-card-refusal-followup') trace.push('followup');
+  });
+  const card = await openCard(f);
+  const { id } = await f.fake.control('interact', { message_id: card.message, custom_id: `ask:${card.ask}:1` });
+  await until(() => f.frames.some(r => r.frame.type === 'topic.answer'), { what: 'held answer before initial acknowledgement', timeoutMs: 1500 });
+  await f.clock.advance(2000);
+  await until(() => arrived, { what: 'native initial callback arrival', timeoutMs: 1500 });
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'topic.answer', ask: card.ask, option: 2 });
+  f.releaseFrames();
+  await until(() => ready, { what: 'consumed losing result at initial-ack join', timeoutMs: 1500 });
+  gate.resolve();
+  await until(async () => (await f.fake.control('state')).interactions.find(r => r.id === id)!.followups.length === 1, { what: 'private refusal after accepted initial acknowledgement', timeoutMs: 1500 });
+  const row = (await f.fake.control('state')).interactions.find(r => r.id === id)!;
+  assert.deepEqual(trace, ['ready', 'accepted', 'followup']);
+  assert.deepEqual(row.callbacks, [{ type: 6 }]);
+  assert.match(JSON.stringify(row.followups), /Already answered/);
+  await f.hub.stop();
 });

@@ -1,4 +1,4 @@
-import type { HubFrame, HubStatus } from '../protocol.ts';
+import type { HubFrame, HubStatus, Inbox } from '../protocol.ts';
 import type { RemoteSend, RemoteIngress } from './gateway.ts';
 import { statusReply, helpReply, type PhoneReply } from './replies.ts';
 import type { DiscordApi } from './discord-api.ts';
@@ -74,11 +74,11 @@ function renderReply(reply: PhoneReply): string[] {
 
 function discordHelp(project: string): string[] {
   return renderReply(helpReply(project, { groups: [
-    { label: 'Follow', lines: ['General messages arrive here.', 'Asks and approvals arrive as cards; use their buttons.', '/cland inbox re-sends open cards and notices.'] },
+    { label: 'Follow', lines: ['General messages arrive here.', 'Asks and approvals arrive as cards; use their buttons.', '/cland inbox re-sends open ask cards oldest first. Earlier copies keep working.'] },
     { label: 'Send', lines: ['Write to the Coordinator or reply to a mirrored message.', 'Use /cland decision or /cland question with a text field.', 'Plans are approved in the workbench.'] },
     { label: 'Commands', lines: [
       '• /cland pair: Pair this channel', '• /cland status: Hub, sessions and queues',
-      '• /cland inbox: Re-send open cards and notices', '• /cland mute: Mute General here',
+      '• /cland inbox: Re-send open ask cards', '• /cland mute: Mute General here',
       '• /cland unmute: Resume General here', '• /cland decision <text>: Send a decision',
       '• /cland question <text>: Ask a question', '• /cland help: Commands and trust',
     ] },
@@ -95,9 +95,10 @@ export class DiscordCommands {
   #send: RemoteSend | undefined; #next = 0;
   readonly #requests = new Map<string, ReturnType<typeof Promise.withResolvers<unknown>>>();
   readonly #connected: () => boolean;
+  readonly #publishInbox: ((inbox: Inbox, key: string) => Promise<number>) | undefined;
   #pair: ((identity: Pairing) => string | null) | undefined;
-  constructor(api: DiscordApi, clock: Clock, store: RemoteStore | undefined, name: () => string, signal: AbortSignal, connected: () => boolean = () => false) {
-    this.#api = api; this.#clock = clock; this.#store = store; this.#name = name; this.#signal = signal; this.#connected = connected;
+  constructor(api: DiscordApi, clock: Clock, store: RemoteStore | undefined, name: () => string, signal: AbortSignal, connected: () => boolean = () => false, publishInbox?: (inbox: Inbox, key: string) => Promise<number>) {
+    this.#api = api; this.#clock = clock; this.#store = store; this.#name = name; this.#signal = signal; this.#connected = connected; this.#publishInbox = publishInbox;
   }
   start(pair?: (identity: Pairing) => string | null, send?: RemoteSend): void { this.#pair = pair; this.#send = send; }
   receive(frame: HubFrame): void {
@@ -182,6 +183,14 @@ export class DiscordCommands {
           if (typeof text !== 'string' || !text.trim()) return 'Provide a text field.';
           await this.#request('topic.send', { topic: 'general', kind: command, text }, { chatId: identity.chatId, messageId: d.id! });
           return 'Sent';
+        }
+        if (command === 'inbox' && this.#publishInbox) {
+          const inbox = await this.#request<Inbox>('inbox.list');
+          const current = this.#store?.pairing();
+          if (!current || current.guildId !== identity.guildId || current.chatId !== identity.chatId || current.userId !== identity.userId)
+            return 'This channel or user is not paired with this project.';
+          const count = await this.#publishInbox(inbox, `discord.inbox:${d.id}`);
+          return count ? `${count} open card${count === 1 ? '' : 's'}` : 'Nothing needs you';
         }
         if (command === 'mute' || command === 'unmute')
           return this.#store?.applyMute(`discord.mute:${d.id}`, command === 'mute') ?? null;

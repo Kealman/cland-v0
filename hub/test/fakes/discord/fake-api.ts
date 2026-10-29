@@ -26,7 +26,7 @@ function reply(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
-type FakeOptions = { onCallback?: (id: string, type: number) => void; clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
+type FakeOptions = { onCallback?: (id: string, type: number) => void | Promise<void>; clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
 export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const serving = Promise.withResolvers<void>();
@@ -104,7 +104,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       if (callback) {
         if (clock.now().getTime() - record.at >= 3000) return reply(res, 404, { code: 10062 });
         if (record.callbacks.length) return reply(res, 400, { code: 40060 });
-        options.onCallback?.(record.id, Number(body.type));
+        await options.onCallback?.(record.id, Number(body.type));
         record.callbackTimes.push(clock.now().getTime());
         record.callbacks.push(redact.value(body));
         if (record.loseCallbackResponse) { req.socket.destroy(); return; }

@@ -39,9 +39,9 @@ export class DiscordRemote implements Remote {
   #application: string | undefined; #running: Promise<void> | undefined; #failure: string | undefined;
   constructor(api: DiscordApi, token: string, clock: Clock, options: DiscordRemoteOptions = {}) {
     this.#clock = clock;
-    this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected);
+    this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected, (inbox, key) => this.#cards?.publishInbox(inbox, key) ?? Promise.resolve(0));
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
-    this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal) : undefined;
+    this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal, options.log) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
     this.#detachApi = api.onError((error, channel) => {
       if (['POST /channels/:channel/messages', 'PATCH /channels/:channel/messages/:message'].includes(error.route))

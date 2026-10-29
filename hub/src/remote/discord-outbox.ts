@@ -44,9 +44,12 @@ export class DiscordOutbox {
     this.#fold(ask);
     await Promise.all([...this.#lanes.values()].map(lane => lane.drain()));
   }
-  async card(channel: string, content: string, components: DiscordActionRow[], ask: string, topic: string): Promise<void> {
+  async card(channel: string, content: string, components: DiscordActionRow[], ask: string, topic: string, resend?: string): Promise<void> {
     this.#signal.throwIfAborted();
-    const lane = this.#lane(channel), source = `discord.card:${channel}:${ask}`;
+    const lane = this.#lane(channel), source = `${resend ? `${resend}:` : ''}discord.card:${channel}:${ask}`;
+    // An explicit inbox invocation probes restored delivery like a new send.
+    // Durable attempt proof and the original nonce deadline still fence retries.
+    if (resend) lane.setAvailable(true);
     if (!this.#store.outbox().some(job => job.source === source)) lane.enqueue({ kind: 'card', source,
       payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components,
         mapping: { chatId: channel, topic, message: ask, ask, approval: null } } });

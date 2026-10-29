@@ -1,4 +1,5 @@
-import type { AskCard, HubFrame, InboxAsk, TopicMessage } from '../protocol.ts';
+import type { LogFn } from '../log.ts';
+import type { AskCard, HubFrame, Inbox, InboxAsk, TopicMessage } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { DiscordOutbox } from './discord-outbox.ts';
 import type { DiscordActionRow } from './discord-api.ts';
@@ -38,10 +39,11 @@ export class DiscordCards {
   #send: RemoteSend | undefined; #next = 0;
   readonly #requests = new Map<string, ReturnType<typeof Promise.withResolvers<unknown>>>();
   readonly #work = new Set<Promise<void>>();
+  readonly #log: LogFn | undefined;
   readonly #api: DiscordApi; readonly #clock: Clock; readonly #signal: AbortSignal;
   readonly #store: RemoteStore; readonly #outbox: DiscordOutbox;
-  constructor(store: RemoteStore, outbox: DiscordOutbox, api: DiscordApi, clock: Clock, signal: AbortSignal) {
-    this.#store = store; this.#outbox = outbox; this.#api = api; this.#clock = clock; this.#signal = signal;
+  constructor(store: RemoteStore, outbox: DiscordOutbox, api: DiscordApi, clock: Clock, signal: AbortSignal, log?: LogFn) {
+    this.#log = log; this.#store = store; this.#outbox = outbox; this.#api = api; this.#clock = clock; this.#signal = signal;
   }
   start(send: RemoteSend): void { this.#send = send; }
   async #request<T>(type: string, fields: Record<string, unknown>, interaction?: string): Promise<T> {
@@ -61,17 +63,19 @@ export class DiscordCards {
     this.#work.add(work); void work.finally(() => this.#work.delete(work));
   }
   async #press(raw: unknown): Promise<void> {
-    const d = raw as { type?: number; id?: string; token?: string; guild_id?: string; channel_id?: string; member?: { user?: { id?: string } }; message?: { id?: string }; data?: { custom_id?: string; components?: Array<{ component?: { custom_id?: string; value?: string } }> } };
+    const d = raw as { type?: number; id?: string; token?: string; application_id?: string; guild_id?: string; channel_id?: string; member?: { user?: { id?: string } }; message?: { id?: string }; data?: { custom_id?: string; components?: Array<{ component?: { custom_id?: string; value?: string } }> } };
     if (![3, 5].includes(d.type ?? 0) || typeof d.id !== 'string' || typeof d.token !== 'string') return;
     const reply = (text: string) => this.#api.callback(d.id!, d.token!, text, { signal: this.#signal });
     const pair = this.#store.pairing();
-    if (!pair || pair.guildId !== d.guild_id || pair.chatId !== d.channel_id || pair.userId !== d.member?.user?.id) { await reply('This channel or user is not paired with this project.'); return; }
+    if (!pair || pair.guildId !== d.guild_id || pair.chatId !== d.channel_id || pair.userId !== d.member?.user?.id) { await reply("This card is for the project's owner"); return; }
     const match = /^(?:ask|modal):(.+):(other|decline|[1-9])$/.exec(d.data?.custom_id ?? '');
     const mapping = d.message?.id && this.#store.message(pair.chatId, d.message.id);
     if (!match || !mapping || mapping.ask !== match[1]) { await reply('This button is not available'); return; }
     const model = this.#store.get(`discord.card-model:${mapping.ask}`);
     const ask = model ? JSON.parse(model) as InboxAsk : null;
     if (!ask || (match[2] === 'other' && !ask.free) || (/^[1-9]$/.test(match[2]!) && Number(match[2]) > ask.options.length)) { await reply('This button is not available'); return; }
+    const closure = this.#store.get(`discord.card-closure:${mapping.ask}`);
+    if (closure) { await reply('Already answered'); await this.#outcome(mapping.ask!, JSON.parse(closure)); return; }
     const modal = d.type === 5;
     if (modal !== d.data!.custom_id!.startsWith('modal:') || (modal && !['other', 'decline'].includes(match[2]!))) { await reply('This button is not available'); return; }
     const text = d.data?.components?.find(row => row.component?.custom_id === 'answer')?.component?.value;
@@ -94,9 +98,21 @@ export class DiscordCards {
       try { result = await this.#request('topic.answer', { ask: mapping.ask, ...(modal ? match[2] === 'decline' ? { declined: true, reason: text } : { text } : { option: Number(match[2]) }) }, d.id); }
       catch {
         this.#clock.clearTimeout(timer);
-        if (!this.#signal.aborted && !deferred) {
+        if (!this.#signal.aborted) {
           const inbox = await this.#request<import('../protocol.ts').Inbox>('inbox.list', {});
-          await reply(inbox.asks.some(row => row.id === mapping.ask) ? 'Could not answer. Try again.' : 'Already answered');
+          const text = inbox.asks.some(row => row.id === mapping.ask) ? 'Could not answer. Try again.' : 'Already answered';
+          if (deferred) {
+            this.#log?.({ event: 'discord-card-refusal-ready' });
+            // Join initial acknowledgement before follow-up I/O, but a lost
+            // response does not cancel the private refusal still owed.
+            await deferred.catch(() => {});
+            if (d.application_id && /^\d+$/.test(d.application_id)) {
+              this.#log?.({ event: 'discord-card-refusal-followup' });
+              await this.#api.followup(d.application_id, d.token, text, { signal: this.#signal });
+            }
+          } else await reply(text);
+          const closure = this.#store.get(`discord.card-closure:${mapping.ask}`);
+          if (closure) await this.#outcome(mapping.ask!, JSON.parse(closure));
         }
         return;
       }
@@ -125,15 +141,19 @@ export class DiscordCards {
       return [this.#outcome(row.id, { state: row.reason === 'declined' ? 'answered' : row.reason as AskCard['state'],
         ...(row.outcome && 'status' in row.outcome ? { outcome: row.outcome } : {}) })];
     }));
-    const pair = this.#store.pairing(); if (!pair) return;
-    await Promise.all(inboxPublication(frame.inbox).flatMap(row => {
-      if (row.kind !== 'ask') return [];
+    await this.publishInbox(frame.inbox);
+  }
+  async publishInbox(inbox: Inbox, resend?: string): Promise<number> {
+    const pair = this.#store.pairing(); if (!pair) return 0;
+    const rows = inboxPublication(inbox).filter(row => row.kind === 'ask');
+    await Promise.all(rows.map(row => {
       this.#store.set(`discord.card-model:${row.id}`, JSON.stringify(row.ask));
       const rendered = discordAsk(row.ask);
-      return [this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.ask.topic.id).then(async () => {
+      return this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.ask.topic.id, resend).then(async () => {
         const closure = this.#store.get(`discord.card-closure:${row.id}`);
         if (closure) await this.#outcome(row.id, JSON.parse(closure));
-      })];
+      });
     }));
+    return rows.length;
   }
 }

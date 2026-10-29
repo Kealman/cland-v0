@@ -6855,6 +6855,15 @@ and Decline… open a type-9 modal with the question, a required paragraph field
 submissions use the same topic.answer gate, storing the text or decline reason
 before the type-7 outcome update (type 6 after two seconds).
 
+Known closed Discord asks receive an ephemeral “Already answered” without an
+answer frame, and their durable outcome edits repair every mapped copy. Foreign
+clicks and modal submissions receive “This card is for the project's owner”
+privately before any hub frame; unissued and cross-ask custom ids are refused.
+`/cland inbox` re-sends open ask cards oldest first with an interaction-scoped key
+separate from live publication, returning the count privately or “Nothing needs
+you”. Earlier copies remain usable and all copies close together. Approval card
+publication is handled by the approval-card integration.
+
 Ask state changes and inbox departures enqueue REST edits for every mapped
 Discord copy, removing all components. This includes Telegram, Neovim and web
 answers, withdrawal and topic/item cancellation. Identical edits coalesce per
