@@ -336,3 +336,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/startup-cleanup.test.ts`](../../../hub/test/startup-cleanup.test.ts) | [Notes](hub-test-startup-cleanup.test.ts.md) |
 | [`hub/test/verification-tree.test.ts`](../../../hub/test/verification-tree.test.ts) | [Notes](hub-test-verification-tree.test.ts.md) |
 | [`hub/test/epic-close.test.ts`](../../../hub/test/epic-close.test.ts) | [Notes](hub-test-epic-close.test.ts.md) |
+| [`hub/test/scenarios/remotes.test.ts`](../../../hub/test/scenarios/remotes.test.ts) | [Notes](hub-test-scenarios-remotes.test.ts.md) |
+| [`hub/test/telegram-graceful-restart.test.ts`](../../../hub/test/telegram-graceful-restart.test.ts) | [Notes](hub-test-telegram-graceful-restart.test.ts.md) |

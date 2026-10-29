@@ -3023,7 +3023,11 @@ outage. An interrupted recovery keeps its outage record. Unknown replacement
 sends stay fenced and are recorded incomplete, keeping the old usable copy;
 an unknown old-copy edit/fallback is also recorded incomplete. Neither is
 retransmitted under a fresh key, and a successful poll lets other cards and
-input progress. A plain restart under 150 seconds sends no replacement card.
+input progress. A graceful stop persists a planned recovery boundary. On restart, retained input
+gets its written/recovery times and the same 150-second card rule applies.
+Planned stops emit no failure outage or recovery notice and expose no failure
+reason or outage timestamp in the Remotes row; a real transport failure still
+uses the ordinary outage path. A restart under 150 seconds sends no replacement card.
 The [card guide](../docs/agents/tests/hub-test-telegram-cards.test.ts.md) names
 the frame/fake outage, boundary and restart controls. These internal recovery
 steps add no command, setting, frame field or role permission.

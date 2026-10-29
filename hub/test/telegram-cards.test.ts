@@ -289,7 +289,7 @@ test('Telegram plain component restart under 150 seconds sends no extra card or 
   const f = await fixture(t);
   const old = await f.ask('Restart card');
   await f.stop(); f.ui.close(); await f.coord.close();
-  assert.equal(f.state.get('telegram.outage'), null);
+  assert.equal(JSON.parse(f.state.get('telegram.outage')!).planned, true);
   await f.clock.advance(60_000);
   const next = f.newRemote();
   const polling = f.fake.waitForPoll();

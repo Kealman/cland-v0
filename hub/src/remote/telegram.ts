@@ -54,7 +54,7 @@ export class TelegramRemote implements Remote {
   #inbound: TelegramInbound | undefined;
   #cards: TelegramCards | undefined;
   #prompts: TelegramPrompts | undefined;
-  #offline: { since: string; reason: string; announced: boolean } | undefined;
+  #offline: { since: string; reason: string; announced: boolean; planned?: boolean } | undefined;
   readonly #listeners = new Set<() => void>();
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
   #changed(): void { for (const listener of this.#listeners) listener(); }
@@ -83,7 +83,10 @@ export class TelegramRemote implements Remote {
     this.#outbox.holdCards(true);
     this.#recoveredAt = undefined;
     this.#clock.clearTimeout(this.#offlineTimer);
-    if (this.#offline) { this.#armOffline(); return; }
+    if (this.#offline) {
+      if (this.#offline.planned) { this.#offline.planned = false; this.#offline.reason = reason; this.#saveOutage(); }
+      this.#armOffline(); return;
+    }
     this.#offline = { since: this.#clock.now().toISOString(), reason, announced: false };
     this.#saveOutage();
     this.#changed();
@@ -95,7 +98,7 @@ export class TelegramRemote implements Remote {
   }
 
   #armOffline(): void {
-    if (!this.#offline || this.#offline.announced) return;
+    if (!this.#offline || this.#offline.announced || this.#offline.planned) return;
     this.#offlineTimer = this.#clock.setTimeout(() => {
       if (this.#stopped || !this.#offline) return;
       this.#offline.announced = true;
@@ -580,10 +583,15 @@ export class TelegramRemote implements Remote {
     const last = Math.max(Date.parse(this.#lastInbound ?? ''), Date.parse(this.#lastOutbound ?? '') || 0);
     return { connected: !this.#stopped && !this.#offline && Number.isFinite(last) && this.#clock.now().getTime() - last <= 65_000,
       lastInbound: this.#lastInbound, lastOutbound: this.#lastOutbound, botLink: this.#botLink,
-      offlineSince: this.#offline?.since ?? null, lastError: this.#offline?.reason ?? null };
+      offlineSince: this.#offline?.planned ? null : this.#offline?.since ?? null, lastError: this.#offline?.planned ? null : this.#offline?.reason ?? null };
   }
 
   stop(): Promise<void> {
+    if (this.#stopping) return this.#stopping;
+    if (!this.#offline && !this.#fatalError && !this.#stopped) {
+      this.#offline = { since: this.#clock.now().toISOString(), reason: 'hub stopped', announced: false, planned: true };
+      this.#saveOutage();
+    }
     this.#stopped = true;
     this.#clock.clearTimeout(this.#offlineTimer);
     this.#abort.abort();

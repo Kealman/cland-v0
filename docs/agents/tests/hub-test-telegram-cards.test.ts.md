@@ -356,3 +356,7 @@ T-1424 retains the exact confirmed-prompt feedback receipt assertion, including
 its captured numeric pairing identity. Answers share the text reaction authority
 boundary; do not omit that field merely to preserve the old test expectation.
 The same restart case still proves one recovered 👀 and no duplicate answer.
+
+Graceful component stop now retains a planned outage receipt; the short restart
+control still asserts no extra native card or chat line. Historical untagged
+network-outage records retain their prior recovery behavior.

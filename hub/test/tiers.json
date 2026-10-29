@@ -394,6 +394,10 @@
       "tier": "T3",
       "scenario": "release"
     },
+    "hub/test/scenarios/remotes.test.ts": {
+      "tier": "T3",
+      "scenario": "remotes"
+    },
     "hub/test/scenarios/setup.test.ts": {
       "tier": "T3",
       "scenario": "setup"
@@ -568,6 +572,7 @@
     "hub/test/telegram-catchup.test.ts": "T2",
     "hub/test/telegram-commands.test.ts": "T2",
     "hub/test/telegram-gap.test.ts": "T1",
+    "hub/test/telegram-graceful-restart.test.ts": "T2",
     "hub/test/telegram-inbound.test.ts": "T2",
     "hub/test/telegram-liveness.test.ts": "T2",
     "hub/test/telegram-marks-setup.test.ts": "T2",
