@@ -135,3 +135,19 @@ test('silent admission ends as a typed infrastructure timeout with a load-scaled
     assert.equal(clock.pending, 0);
   }
 });
+
+// The runtime is an injected process fact; no extra Node binary or subprocess.
+test('admission warns once with running and required Node versions, including standalone bypass', async t => {
+  const root = await tempProject(t);
+  for (const nodeVersion of ['v25.6.1', 'v24.12.9', 'v24.13.0-rc.1']) {
+    const warnings: string[] = [];
+    const options = { nodeVersion, warn: (message: string) => warnings.push(message) };
+    await assertTestAdmission(root, { CLAND_TEST_IGNORE_COVER: '1' }, options);
+    assert.deepEqual(warnings, [`test admission: unsupported Node ${nodeVersion}; required >=24.13.0 <25`]);
+  }
+  for (const nodeVersion of ['v24.13.0', 'v24.21.0', 'v24.99.0']) {
+    const warnings: string[] = [];
+    await assertTestAdmission(root, { CLAND_TEST_IGNORE_COVER: '1' }, { nodeVersion, warn: message => warnings.push(message) });
+    assert.deepEqual(warnings, [], 'supported runtimes stay quiet');
+  }
+});

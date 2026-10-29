@@ -13,3 +13,8 @@ the current client still fails closed. Silent/busy hub deadlines retain their
 separate fake-clock tests. No package worker, real harness, browser or full-suite
 lease is needed. Run this file alone with
 `node --test hub/test/test-admission.test.ts`, subject to live cover-quiet admission.
+
+The Node-version regression injects the process version and warning sink at the
+public admission seam, checking exactly one complete warning for unsupported
+major, patch and prerelease versions, even on a standalone cover exemption;
+supported boundary and later 24.x versions stay quiet.

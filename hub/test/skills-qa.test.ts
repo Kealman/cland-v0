@@ -5,6 +5,8 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { provisionSkills } from '../src/init/skills.ts';
+import { Report } from '../src/init/files.ts';
 import { constants } from 'node:fs';
 import { access, chmod, mkdir, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join, resolve } from 'node:path';
@@ -70,7 +72,7 @@ test('QA recorder records real-browser notes with screenshot evidence without la
 /** Run the shipped recorder from a disposable checkout with sealed child environments. */
 async function record(hubFile: string, env: Record<string, string>, ...args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   const root = dirname(dirname(hubFile));
-  return new Promise((resolve, reject) => clandCliLaunch(() => execFile('/bin/sh', [RECORD, ...args], {
+  return new Promise((resolve, reject) => clandCliLaunch(() => execFile('/bin/sh', [env.FAKE_RECORDER ?? RECORD, ...args], {
     cwd: root, encoding: 'utf8', timeout: 120_000,
     env: fixtureEnvironment(root, process.env, { TMPDIR: root, CLAND: HEADLESS, CLAND_HUB_FILE: hubFile, CLAND_SESSION_NAME: 'qa-1', ...env }),
   }, (error, stdout, stderr) => {
@@ -88,6 +90,55 @@ async function demoRecord(t: TestContext, result: Record<string, unknown>, captu
   const line = JSON.parse(await readFile(join(root, '.cland/qa/runs.jsonl'), 'utf8')) as RunLine;
   assert.deepEqual(JSON.parse(recorded.stdout), line, 'the durable receipt matches stdout');
   return { root, envelope, recorded, line };
+}
+
+test('QA recorder refuses unsupported Node for run and note before recording PASS', { skip: skipRun }, async t => {
+  const root = await tempProject(t);
+  const bin = join(root, 'bin');
+  await mkdir(bin);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(bin, 'node'), '#!/bin/sh\necho v25.6.1\n');
+  await chmod(join(bin, 'node'), 0o755);
+  for (const mode of ['run', 'note']) {
+    const result = await record(join(root, '.cland/hub.json'), { PATH: `${bin}:${process.env.PATH ?? ''}` },
+      mode, 'T-1379', 'node-check', 'NODE-001', ...(mode === 'note' ? ['hub-api', 'manual check', 'PASS'] : []));
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /v25\.6\.1/);
+    assert.match(result.stderr, />=24\.13\.0 <25/);
+    assert.deepEqual(await appended(root), [], 'refusal writes no PASS receipt');
+  }
+});
+
+for (const manifest of ['missing', 'no-engines', 'conflicting']) {
+  test(`copied QA recorder uses shipped cland engines with ${manifest} project manifest`, { skip: skipRun }, async t => {
+    const root = await tempProject(t);
+    await mkdir(join(root, '.cland'), { recursive: true });
+    if (manifest !== 'missing') await writeFile(join(root, 'package.json'), JSON.stringify(
+      manifest === 'conflicting' ? { engines: { node: '>=25 <26' } } : { name: 'host-project' }));
+    provisionSkills(new Report(root), root);
+    const recorder = join(root, '.agents/skills/qa/qa-record.sh');
+    const shipped = JSON.parse(await readFile(join(REPO, 'package.json'), 'utf8')).engines.node;
+    assert.equal(JSON.parse(await readFile(join(root, '.agents/skills/qa/node-engines.json'), 'utf8')).node, shipped,
+      'provisioned engine contract stays aligned with the shipped root package');
+    for (const mode of ['run', 'note']) {
+      const result = await record(join(root, '.cland/hub.json'), { FAKE_RECORDER: recorder }, mode, 'T-1379', 'copied',
+        'SHELL-001', ...(mode === 'note' ? ['hub-api', 'manual check', 'PASS'] : []));
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(JSON.parse(result.stdout).result, 'PASS');
+    }
+    assert.equal((await appended(root)).length, 2);
+    const bin = join(root, 'bin');
+    await mkdir(bin);
+    await writeFile(join(bin, 'node'), '#!/bin/sh\necho v25.6.1\n');
+    await chmod(join(bin, 'node'), 0o755);
+    for (const mode of ['run', 'note']) {
+      const result = await record(join(root, '.cland/hub.json'), { FAKE_RECORDER: recorder, PATH: `${bin}:${process.env.PATH ?? ''}` },
+        mode, 'T-1379', 'copied', 'NODE-001', ...(mode === 'note' ? ['hub-api', 'manual check', 'PASS'] : []));
+      assert.equal(result.code, 2);
+      assert.ok(result.stderr.includes(`v25.6.1; required ${shipped}`), result.stderr);
+    }
+    assert.equal((await appended(root)).length, 2, 'unsupported attempts append no receipts');
+  });
 }
 
 test('demo recorder withholds PASS for missing independently declared facts and step errors', { skip: skipRun }, async t => {

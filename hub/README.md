@@ -6227,6 +6227,17 @@ for a skip without an authored reason the record says so. The ordinary Node
 reporter still owns the test counts: these detail lines do not match the hub's
 `# skipped N` / `ℹ skipped N` count diagnostics and cannot double their totals.
 
+Targeted test admission warns once per admission when the running Node is
+outside the root package's `engines.node`, even without a project hub or with a
+cover exemption. It names both versions; it does not block the targeted test.
+The QA recorder's `run` and `note` instead refuse with exit 2 before executing
+or writing receipts. They use `node-engines.json` shipped beside the recorder
+through skill provisioning and release packaging, with a parity regression
+against cland's root engines; an arbitrary host project's manifest is ignored. `recover` keeps historical receipts unchanged. Select a
+supported Node on PATH for local commands and their children; with nvm, source
+its `nvm.sh`, run `nvm use 24`, then confirm `node --version` meets the full
+root engine range. Hub verification retains its pinned runtime.
+
 #### Running the suite on Linux
 
 Use Ubuntu 24.04 with `git`, `curl`, `ca-certificates`, `build-essential`,

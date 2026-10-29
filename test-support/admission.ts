@@ -6,7 +6,33 @@ import { realClock, type Clock } from '../shared/clock.ts';
 import { availableParallelism, loadavg } from 'node:os';
 import { AdmissionTimeout } from './admission-outcome.ts';
 
-export async function assertTestAdmission(cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env, options: { clock?: Clock; load?: number; parallelism?: number } = {}): Promise<void> {
+import { readFileSync } from 'node:fs';
+
+const requiredNode: string = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).engines.node;
+function supportedNode(running: string): boolean {
+  const parsed = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(running);
+  if (!parsed) return false;
+  const value = (parts: string[]) => Number(parts[0]) * 1_000_000 + Number(parts[1] ?? 0) * 1000 + Number(parts[2] ?? 0);
+  const actual = value(parsed.slice(1));
+  // Numeric comparator conjunction, matching the root package's engine bounds.
+  return requiredNode.trim().split(/\s+/).every(bound => {
+    const match = /^(>=|<=|<|>|=)(\d+(?:\.\d+){0,2})$/.exec(bound);
+    if (!match) return false;
+    const target = value(match[2]!.split('.'));
+    switch (match[1]) {
+      case '>=': return actual >= target;
+      case '<=': return actual <= target;
+      case '>': return actual > target;
+      case '<': return actual < target;
+      case '=': return actual === target;
+      default: return false;
+    }
+  });
+}
+
+export async function assertTestAdmission(cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env, options: { clock?: Clock; load?: number; parallelism?: number; nodeVersion?: string; warn?: (message: string) => void } = {}): Promise<void> {
+  const running = options.nodeVersion ?? process.version;
+  if (!supportedNode(running)) (options.warn ?? console.warn)(`test admission: unsupported Node ${running}; required ${requiredNode}`);
   if (env.CLAND_TEST_IGNORE_COVER === '1') return;
   const discovery = readDiscovery(hubDiscovery(cwd, env));
   if (!discovery) return;

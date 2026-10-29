@@ -22,6 +22,8 @@
 # Exit code: 0 PASS, 1 FAIL, 2 INCONCLUSIVE or BLOCKED; 64 a bad argument; 70 the line could not be serialized (nothing
 # is appended; the outcome and the captures' directory are on stderr); recover: 71 the evidence directory cannot be made
 # (nothing appended), 73 some lines were not recovered (the rest were; stderr names each loss). recover never deletes a source.
+# run/note refuse unsupported or unavailable PATH Node with exit 2 before execution or recording;
+# the diagnostic names the running version and shipped cland engines. recover preserves historical receipts.
 # CLAND is the path of the cland executable (default: cland).
 # With QA_DEMO_EPIC, QA_EXPECTED_FACTS optionally names a local JSON array of required result.facts keys.
 # Missing/null facts, recorded step errors and nonzero PASS exits are BLOCKED (2).
@@ -39,6 +41,39 @@ case $item in [A-Z]-[0-9]*) case ${item#*-} in *[!0-9]*) die "the item is a kind
 safe_id() { case $2 in ''|[!A-Za-z0-9]*|*[!A-Za-z0-9._-]*) die "$1 must be one safe path component (letters, digits, . _ -, starting with a letter or digit), not '$2'";; esac; }
 safe_id run "$run"
 [ "$mode" = recover ] || safe_id case "$case_id"
+
+# Provisioning and release packaging carry this contract with the skill.
+# Its parity regression keeps it aligned with cland's root package engines.
+# The engine contract is a conjunction of numeric comparator bounds; unknown
+# syntax and prerelease runtimes fail closed instead of creating passing evidence.
+if [ "$mode" = run ] || [ "$mode" = note ]; then
+  required=$(jq -er '.node' "$(dirname "$0")/node-engines.json") || die "cannot read shipped cland Node engines"
+  running=$(node --version 2>/dev/null) || running=unavailable
+  if ! awk -v running="$running" -v required="$required" '
+    function version(v, a, n) {
+      n=split(v,a,"."); return a[1]*1000000 + a[2]*1000 + a[3]
+    }
+    BEGIN {
+      sub(/^v/, "", running)
+      if (running !~ /^[0-9]+[.][0-9]+[.][0-9]+$/) exit 1
+      actual=version(running)
+      count=split(required, bounds, " ")
+      for (i=1; i<=count; i++) {
+        bound=bounds[i]; op=bound; sub(/[0-9].*$/, "", op)
+        sub(/^[<>=]+/, "", bound)
+        if (bound !~ /^[0-9]+([.][0-9]+)?([.][0-9]+)?$/) exit 1
+        target=version(bound)
+        if (op==">=" && actual>=target || op=="<" && actual<target ||
+            op==">" && actual>target || op=="<=" && actual<=target ||
+            op=="=" && actual==target) continue
+        exit 1
+      }
+      if (!count) exit 1
+    }' </dev/null; then
+    echo "qa-record: unsupported Node $running; required $required; nothing run or recorded" >&2
+    exit 2
+  fi
+fi
 
 # the project's .cland: where the hub is, or where Git's common directory says the main worktree is
 if [ -n "${CLAND_HUB_FILE:-}" ]; then

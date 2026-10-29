@@ -627,6 +627,18 @@ Shell CLI calls claiming a session require its own credential: the adapter's `CL
 
 Automatic run reports and verify/executor-prepare defaults go to Agents, addressed to the Coordinator; log chips follow the report topic. Item workers keep explicit `--report <item-topic>` and Reviewer/claimant recipients. General retains Coordinator exit/vacancy recovery notices for the human.
 
+Before local tests or typechecking in cland, check `node --version` against
+cland's root `package.json` engine range. For provisioned QA skills, use
+`.agents/skills/qa/node-engines.json`, shipped from that same contract; the host
+project's manifest is not cland's runtime authority. With nvm, source `"$NVM_DIR/nvm.sh"` (or
+`"$HOME/.nvm/nvm.sh"` when NVM_DIR is unset), then `nvm use 24`; confirm the
+selected version meets the full range, including its minimum patch. Otherwise
+prepend an installed supported Node's `bin` directory to PATH for the command;
+an absolute `node` alone does not select the runtime for its child commands.
+Targeted admission prints one warning per admission on unsupported Node,
+including standalone runs; treat that evidence as unsupported and rerun on the
+supported version. This warning does not replace cover-quiet admission.
+
 Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers and add Web after T1 for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 For README/docs edits, run `node hub/test/lint-closed-item-wording.ts` against the

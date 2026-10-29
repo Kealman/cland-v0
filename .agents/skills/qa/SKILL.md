@@ -5,6 +5,17 @@ description: Write an item or stage QA brief, request QA as the lead, or run the
 
 A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. Headless-grid cases are Lua files, `qa/cases/<ID>.lua`, run with `cland --headless --qa`; other surfaces use the brief’s commands or computer-use steps and `qa-record.sh note`. Every case ends as one line of `.cland/qa/runs.jsonl`; the run ends as one verdict on the item.
 
+Before running or recording QA, check `node --version` against cland's shipped `node-engines.json` beside this skill's recorder. This file
+travels with `cland init`/`update` and release packaging; the host project's
+`package.json` does not define cland's runtime contract. With nvm, source `"${NVM_DIR:-$HOME/.nvm}/nvm.sh"`,
+run `nvm use 24`, and confirm the full range including its minimum patch.
+Alternatively prepend an installed supported Node's `bin` directory to PATH
+for the command and its children. `qa-record.sh run` and `note` refuse an
+unsupported or unavailable Node with exit 2, naming the running version and
+required range, before running or appending anything. Rerun the check on the
+supported runtime before recording evidence; `recover` preserves historical
+receipts without applying today's runtime check.
+
 `BRIEF.md` in this folder is the template. `qa-record.sh` in this folder runs a case or records a manual check and writes the `runs.jsonl` line; run it from the item's worktree, always as `sh .agents/skills/qa/qa-record.sh …` (`cland init` copies the file without its executable bit).
 
 ## If you are the Coordinator
