@@ -153,7 +153,7 @@ export class DevT3Search {
       file.result = 'already-fixed'; file.reason = `already fixed on dev at ${receipt.head}`;
     } else if (changed === false) {
       file.result = 'flake';
-      file.reason = `unconfirmed flake: red run ${input.run} at ${input.head}; green run ${receipt.run} at ${receipt.head}; no non-tracker changes after red head`;
+      file.reason = `not reproduced (intermittent): red run ${input.run} at ${input.head}; green run ${receipt.run} at ${receipt.head}; only tracker, docs, QA briefs or duration-baseline changes after red head`;
     } else {
       file.result = 'inconclusive'; file.reason = 'non-tracker change history unavailable';
     }
@@ -165,11 +165,13 @@ export class DevT3Search {
 
 
 /** Inspect commits, not an endpoint diff: a code edit followed by a revert counts.
+ * Tracker, docs, QA briefs and duration baselines supply no source-fix evidence.
  * Missing ancestry or Git evidence must never imply that a failure was fixed. */
 export async function nonTrackerChanges(git: (args: string[]) => Promise<string | null>, red: string, tip: string): Promise<boolean | null> {
   try {
     if ((await git(['merge-base', red, tip]))?.trim() !== red) return null;
     const paths = await git(['log', '--format=', '--name-only', '-z', '--full-history', '-m', '--no-renames', `${red}..${tip}`, '--', '.', ':(exclude).cland/tasks']);
-    return paths === null ? null : paths.trim().length > 0;
+    return paths === null ? null : paths.split('\0').map(path => path.trim()).some(path =>
+      path.length > 0 && !path.startsWith('docs/') && !path.startsWith('qa/briefs/') && path !== 'hub/test/durations.json');
   } catch { return null; }
 }

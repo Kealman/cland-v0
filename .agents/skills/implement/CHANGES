@@ -299,3 +299,5 @@ Discord cards, modals, approvals and inbox; Telegram voice answers; setup speech
 Discord resume, replay and history catch-up, one stage-close docs commit (T-1412, T-1413)
 Discord files and voice in both directions, one stage-close docs commit (T-1414, T-1415)
 Discord setup step, doctor stop causes and workbench rows, one stage-close docs commit (T-1371, T-1372)
+
+T-1336: distinguish metadata-only green dev tips as not reproduced (intermittent), retaining both receipts.

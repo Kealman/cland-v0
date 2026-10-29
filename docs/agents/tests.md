@@ -321,9 +321,11 @@ A red periodic result starts a separate durable culprit search for T2 and T3
 failures alike, retaining the `DevT3Result` interface above. Each failing file
 first probes the current local dev tip before any historical search. A complete
 executed pass reports `already fixed on dev at <commit>` and files no Bug only
-with red-head ancestry and a non-tracker change in the intervening commits
-(outside `.cland/tasks/`, including edits later reverted). A tracker-only green
-tip is an unconfirmed flake naming both red and green runs; missing history is
+with red-head ancestry and a source change in the intervening commits
+(outside `.cland/tasks/`, `docs/`, `qa/briefs/` and `hub/test/durations.json`,
+including edits later reverted). A metadata-only green tip reports
+`not reproduced (intermittent)`, naming both red and green runs with their log
+receipts in the Coordinator notice; missing history is
 inconclusive. An executed pass at the original red head remains a flake. A red tip receipt allows
 the file to rerun at the red head (reusing that probe when dev is still there), then at the pinned
 last green head (a failure is pre-existing), then bisects the intervening landed

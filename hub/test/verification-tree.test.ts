@@ -171,6 +171,14 @@ test('periodic green-tip history distinguishes tracker commits from non-tracker 
   await writeFile(join(root, '.cland/tasks/item.md'), 'tracker');
   const tracker = await commit();
   assert.equal(await nonTrackerChanges(git, red, tracker), false);
+  await mkdir(join(root, 'docs'), { recursive: true });
+  await mkdir(join(root, 'qa/briefs'), { recursive: true });
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  for (const path of ['docs/guide.md', 'qa/briefs/T-1336.md', 'hub/test/durations.json']) {
+    await writeFile(join(root, path), 'baseline or documentation');
+    const metadata = await commit();
+    assert.equal(await nonTrackerChanges(git, red, metadata), false, `${path} does not establish a fix`);
+  }
   await writeFile(join(root, 'source'), 'edited');
   const code = await commit();
   assert.equal(await nonTrackerChanges(git, red, code), true);

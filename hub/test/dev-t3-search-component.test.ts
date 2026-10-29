@@ -42,6 +42,7 @@ test('budget-only periodic red names over-budget identities without starting cul
 });
 
 for (const [scenario, description] of [
+  ['metadata tip', 'reports docs brief and duration-only green tips as not reproduced (intermittent)'],
   ['tracker tip', 'reports a tracker-only green tip as an unconfirmed flake with both runs'],
   ['tip fixed', 'skips history and files no Bug for an already fixed dev tip'],
   ['tip red', 'files a Bug with the current dev tip failing receipt'],
@@ -59,7 +60,7 @@ for (const [scenario, description] of [
   ['green boundary flips', 'reports green boundary flips as inconclusive without filing'],
   ['red boundary flips', 'reports red boundary flips as inconclusive without filing'],
 ] as const) test(`red periodic run ${description}`, async t => {
-  const trackerTip = scenario === 'tracker tip';
+  const trackerTip = scenario === 'tracker tip' || scenario === 'metadata tip';
   const flake = scenario === 'flake' || trackerTip, web = scenario === 'Web culprit', historical = scenario === 'historical manifest', introduced = scenario === 'introduced file';
   const platform = scenario.includes('platform skips');
   const unstableSkips = platform && scenario !== 'stable platform skips';
@@ -78,7 +79,7 @@ for (const [scenario, description] of [
   const fixed = scenario === 'tip fixed' || scenario === 'tip moves';
   const checked: string[] = [], removed: string[] = [];
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"\nshards=1\nlifetime="15m"\nrun_timeout="5m"',
-    git: async args => args[0] === 'merge-base' ? redHead : args[0] === 'log' && args.includes('--name-only') ? trackerTip ? '' : 'hub/src/example.ts\0' : args[0] === 'rev-parse' && args.includes('refs/heads/dev') ? devTip : args[0] === 'log' && args.includes('--first-parent')
+    git: async args => args[0] === 'merge-base' ? redHead : args[0] === 'log' && args.includes('--name-only') ? trackerTip ? scenario === 'metadata tip' ? 'docs/guide.md\0qa/briefs/T-1336.md\0hub/test/durations.json\0' : '' : 'hub/src/example.ts\0' : args[0] === 'rev-parse' && args.includes('refs/heads/dev') ? devTip : args[0] === 'log' && args.includes('--first-parent')
       ? ranged ? `${firstMerge}\0Merge green\n${culprit}\0Merge regression\n${redHead}\0Merge later` : `${redHead}\0Merge regression` : null,
     devT3Repository: {
       contains: async head => !introduced || head !== baseline && head !== firstMerge,
@@ -144,7 +145,7 @@ for (const [scenario, description] of [
   assert.notEqual(red.id, green.id); await finish(red, 1, failed + budget);
   assert.deepEqual((await jobs()).find(job => job.id === red.id)!.cover, { status: 'red', cause: 'test-failure',
     tests: [`${file}::regression`, 'hub/test/slow.test.ts::slow'] });
-  type SearchMessage = { detail: { input: { run: string; head: string; previousGreenHead: string; failingFiles: string[]; budgetIdentities?: string[] }; bugs: { item: string; merge: string }[]; files: { result: string; culprit?: { head: string }; receipts: { run: string | null; path: string | null; head: string; result: string; platformSkips?: { name: string; reason: string }[]; platform?: { os: string; arch: string } }[] }[] }; to: string[]; text: string };
+  type SearchMessage = { detail: { input: { run: string; head: string; path: string; previousGreenHead: string; failingFiles: string[]; budgetIdentities?: string[] }; bugs: { item: string; merge: string }[]; files: { result: string; culprit?: { head: string }; receipts: { run: string | null; path: string | null; head: string; result: string; platformSkips?: { name: string; reason: string }[]; platform?: { os: string; arch: string } }[] }[] }; to: string[]; text: string };
   const visits = new Map<string, number>();
   let search: SearchMessage | undefined;
   for (let i = 0; i < 24 && !search; i++) {
@@ -232,7 +233,10 @@ for (const [scenario, description] of [
   }
   if (fixed) assert.match(search.text, new RegExp(`already fixed on dev at ${tipHead}`));
   if (trackerTip) {
-    assert.match(search.text, /unconfirmed flake/);
+    assert.match(search.text, /not reproduced \(intermittent\)/);
+    assert.doesNotMatch(search.text, /already.fixed/);
+    assert.ok(search.text.includes(search.detail.input.path));
+    assert.ok(search.text.includes(search.detail.files[0]!.receipts[0]!.path!));
     assert.ok(search.text.includes(red.id));
     assert.ok(search.text.includes(search.detail.files[0]!.receipts[0]!.run!));
   }

@@ -58,5 +58,11 @@ keeps the pinned owner open through the real default probe repository checkout.
 
 T-1422 injects explicit ancestry and commit-path facts through the production
 Git seam. The tracker-only green-tip case observes the completed Agents search
-notice, asserts both run ids and unconfirmed flake, and checks that no Bug was
+notice, asserts both run ids and the intermittent classification, and checks that no Bug was
 filed. Existing code-changed green-tip and moved-tip cases retain already-fixed.
+
+T-1336 extends tracker-only protection to `docs/`, `qa/briefs/` and
+`hub/test/durations.json`. Retain the `flake` result and previous checkpoint shape,
+with `not reproduced (intermittent)` in the human report and both run/log receipts.
+Native Git tests cover each metadata path, source changes and reverted source;
+the production-frame component case checks the Coordinator notice and no Bug.

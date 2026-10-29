@@ -244,7 +244,7 @@ test('tracker-only green tip is an unconfirmed flake naming the red and green ru
   assert.equal(reports.length, 1);
   const file = reports[0]!.files[0]!;
   assert.equal(file.result, 'flake');
-  assert.match(file.reason!, /unconfirmed flake/);
+  assert.match(file.reason!, /not reproduced \(intermittent\)/);
   assert.match(file.reason!, /red-run/);
   assert.match(file.reason!, /green-tip-run/);
   assert.equal(file.culprit, undefined);
