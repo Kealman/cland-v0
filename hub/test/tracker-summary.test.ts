@@ -2,6 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import fs, { type FSWatcher } from 'node:fs';
+import { EventEmitter } from 'node:events';
+import { syncBuiltinESMExports } from 'node:module';
 import files, { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -454,13 +457,25 @@ test('card transport facts stay compact and defer closed facts to by-id pages', 
   assert.equal(Object.hasOwn(page.verify!, 'artifact'), false);
 });
 
-// The native watcher stays open and error-free; deliberately lose only its notifications.
+// Keep production watchFolder and its safety timer; own the filesystem event source.
 test('a healthy watcher with dropped events still indexes hand edits, additions and removals', async t => {
   const root = await tempProject(t), dir = join(root, '.cland/tasks');
   await mkdir(dir, { recursive: true });
   const file = join(dir, 'T-1-original.md'), removed = join(dir, 'T-2-removed.md');
   await writeFile(file, '---\nid: T-1\ntitle: Original\n---\n');
   await writeFile(removed, '---\nid: T-2\ntitle: Removed\n---\n');
+  let notify!: (event: string, name: string) => void;
+  let closed = false;
+  const watcher = Object.assign(new EventEmitter(), {
+    close: () => { closed = true; }, unref() {},
+  });
+  t.mock.method(fs, 'watch', (watched: string, callback: typeof notify) => {
+    assert.equal(watched, dir);
+    notify = callback;
+    return watcher as unknown as FSWatcher;
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
   let dropped = 0;
   const records: Array<Record<string, unknown>> = [];
   t.mock.timers.enable({ apis: ['setInterval'] });
@@ -470,15 +485,25 @@ test('a healthy watcher with dropped events still indexes hand edits, additions 
       changed: () => { dropped++; }, poll: handlers.poll,
     }, options),
   });
-  t.after(async () => { await tracker.stop(); t.mock.timers.reset(); });
+  t.after(async () => { await tracker.stop(); assert.equal(closed, true); t.mock.timers.reset(); });
   await tracker.start();
   const before = records.length;
   const started = performance.now();
   await writeFile(file, '---\nid: T-1\ntitle: Hand edited\n---\n');
   await writeFile(join(dir, 'T-3-added.md'), '---\nid: T-3\ntitle: Added\n---\n');
   await rm(removed);
-  await until(() => dropped > 0, { what: 'native notifications deliberately dropped', timeoutMs: 5000 });
-  t.mock.timers.tick(SAFETY_POLL_MS);
+  notify('change', 'T-1-original.md');
+  notify('rename', 'T-3-added.md');
+  notify('rename', 'T-2-removed.md');
+  assert.equal(dropped, 3, 'all fixture notifications reached the drop boundary');
+  assert.equal(closed, false, 'the healthy watcher remains open');
+  assert.equal(tracker.summary('T-1')?.title, 'Original');
+  assert.equal(tracker.summary('T-2')?.title, 'Removed');
+  assert.equal(tracker.summary('T-3'), null);
+  assert.equal(records.slice(before).some(r => r.event === 'task-reindexed' || r.event === 'task-removed'), false);
+  t.mock.timers.tick(SAFETY_POLL_MS - 1);
+  assert.equal(tracker.summary('T-1')?.title, 'Original', 'no rescan before the healthy-watch interval');
+  t.mock.timers.tick(1);
   await until(() => records.slice(before).some(r => r.event === 'task-reindexed' && r.file === 'T-1-original.md') &&
     records.slice(before).some(r => r.event === 'task-reindexed' && r.file === 'T-3-added.md') &&
     records.slice(before).some(r => r.event === 'task-removed' && r.file === 'T-2-removed.md'),
@@ -489,12 +514,15 @@ test('a healthy watcher with dropped events still indexes hand edits, additions 
   const renamed = join(dir, 'T-1-renamed.md');
   const renameReceipt = records.length;
   await files.rename(file, renamed);
+  notify('rename', 'T-1-renamed.md');
+  assert.equal(dropped, 4);
+  assert.equal(records.slice(renameReceipt).some(r => r.event === 'task-reindexed'), false);
   t.mock.timers.tick(SAFETY_POLL_MS);
   await until(() => records.slice(renameReceipt).some(r => r.event === 'task-reindexed' && r.file === 'T-1-renamed.md'),
     { what: 'renamed path is reindexed by safety poll', timeoutMs: 10000 });
   assert.equal(tracker.view('T-1').file, 'T-1-renamed.md');
   assert.equal(records.some(r => r.event === 'task-watch-error'), false);
-  t.diagnostic(`dropped native callbacks ${dropped}; mocked safety interval ${SAFETY_POLL_MS} ms; durable re-index/removal receipts after ${(performance.now() - started).toFixed(1)} ms`);
+  t.diagnostic(`dropped fixture callbacks ${dropped}; mocked safety interval ${SAFETY_POLL_MS} ms; durable re-index/removal receipts after ${(performance.now() - started).toFixed(1)} ms`);
 });
 
 test('safety polls read only changed files and retain the startup stamp', async t => {

@@ -35,12 +35,18 @@ No elapsed wall time supplies evidence for the debounce contract.
 The native watcher receipt is covered separately in
 [`tracker.test.ts`](hub-test-tracker.test.ts.md).
 
-The healthy-watcher loss regression keeps the real native watcher open but drops
-its change callbacks at the injected Tracker watcher seam. After observing a
-dropped callback it advances the mocked interval by the production safety period,
-waits for the exact edit/add/remove/rename log receipts, and checks the final views.
-Only interval time is mocked; native I/O remains real. Tracker stop precedes timer
-reset and fixture cleanup. The initial synchronous stamp and async checks use per-path maps, avoiding a
+The healthy-watcher loss regression (T-1431) keeps production `watchFolder` and
+its safety timer, replacing only `fs.watch` with a fixture-owned, error-free event
+source. It synchronously emits edit/add/remove/rename callbacks, drops them at the
+Tracker watcher seam, and checks the index stays stale until the healthy safety
+interval. There is no FSEvents delivery wait. It advances the mocked interval by
+the production safety period, waits for the exact edit/add/remove/rename log receipts, and checks the final views.
+Only interval time and the event source are mocked; file I/O remains real.
+Tracker stop closes the event source before timer reset and fixture cleanup.
+Builtin export synchronization is restored after the test. Native watcher
+integration remains covered separately in `tracker.test.ts`.
+
+The initial synchronous stamp and async checks use per-path maps, avoiding a
 spurious full first scan. The safety-poll test counts body reads, proves an
 unchanged path stays unread after a peer changes, and pins mtime, size and inode
 on a same-size external write to prove ctime detection. It retains explicit
