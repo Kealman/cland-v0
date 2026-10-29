@@ -3,7 +3,7 @@ id: T-1445
 kind: task
 title: Fake-droplet tests leak a polling 'npm test' and node pair whenever a run ends without writing the finish file
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T18:00:09.109Z
+updated: 2026-10-29T18:20:33.567Z
 ---
 
 ## Summary
@@ -30,9 +30,11 @@ Every fake-droplet run's remote command exits or is killed when its test or fixt
 - [x] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
   - done: impl-1445 · 2026-10-29T17:11:54.756Z
   - verified: rev-34 [reviewer] · run rev-34-20261029-1445-final · 2026-10-29T17:55:41.127Z · commit dbbb66a6c86f9053a2f92aaf600c9a79bf2f1e48
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1445-final2 · 2026-10-29T18:20:33.114Z · commit c7a660cc5e8421ab30406ed8f88d043e5c3a28ed
 - [x] C2. The finish poller exits by itself after a bounded time even if nobody writes `finish`.
   - done: impl-1445 · 2026-10-29T16:24:22.166Z
   - verified: rev-34 [reviewer] · run rev-34-20261029-1445-final · 2026-10-29T17:55:41.127Z · commit dbbb66a6c86f9053a2f92aaf600c9a79bf2f1e48
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1445-final2 · 2026-10-29T18:20:33.114Z · commit c7a660cc5e8421ab30406ed8f88d043e5c3a28ed
 
 ## Comments
 
@@ -133,3 +135,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13904: authorized dev merge plus unchanged T3 comment/import relocation clear. Exact task helper/provider/process code retained; only header placement changes after merge. Local zero-refusal lint receipt is claimant evidence; failed host-only batch retained. Prior Linux/final proof covers dbbb66a only; C1/C2 runtime refresh pending new-head mode-free result. No Reviewer execution.
+
+### rev-34 · 2026-10-29T18:20:33.114Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-final2
+commit: c7a660cc5e8421ab30406ed8f88d043e5c3a28ed
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13932: fresh A-13924 exact-head 4227 ordinary passes, five changed T3 files/36 identities and all11 native controls plus five positive census diagnostics. C1/C2 refreshed. Host zero refusals/tree-checked reuse confirmed; 75 unrelated site repetitions separate, no task T3 load. Prior-head/failed host-only batch retained; proposed allowances, report-only/incomplete timing and remaining T3/T4 limits preserved. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified.

@@ -3,18 +3,18 @@ id: T-1450
 kind: task
 title: Discord fixture's cold tempProject acquisition exceeds the 2 s exchange operation budget once on macOS
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - qa-found
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1444
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1450-discord-fixture-s-cold-tempproject
 created: 2026-10-29T18:19:08.852Z
-updated: 2026-10-29T18:19:08.852Z
+updated: 2026-10-29T18:21:08.001Z
 ---
 
 ## Summary
