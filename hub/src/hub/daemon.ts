@@ -201,7 +201,9 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
   const lintWarmer = options.lintWarmer ?? new TestLintWarmer(root, env, log);
   let devTip: string | null = null;
-  const tracker = new Tracker({ onDevTip: head => { devTip = head; if (!starting) lintWarmer.request(head); }, clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
+  let tracker: Tracker;
+  try {
+    tracker = new Tracker({ onDevTip: head => { devTip = head; if (!starting) lintWarmer.request(head); }, clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -216,6 +218,14 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
       setImmediate(() => { void stop().catch(error => fatalLog({ event: 'stop-failed', error: String(error) })); });
     }
   }, planHistory: startupHistory, ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  } catch (error) {
+    // Tracker construction opens SQLite before the normal startup cleanup owns it.
+    // Join pending journal opens/appends before releasing the lock or rejecting.
+    try { await closeLogs(); }
+    catch (cleanup) { throw new AggregateError([error, cleanup], 'hub tracker startup failed', { cause: error }); }
+    finally { lock.release(); }
+    throw error;
+  }
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; remoteWorkbench?.changed(); }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
     const secrets = resolveRemoteSecrets();
