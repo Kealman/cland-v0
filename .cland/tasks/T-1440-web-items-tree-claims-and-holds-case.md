@@ -2,8 +2,8 @@
 id: T-1440
 kind: task
 title: web Items tree claims-and-holds case times out on task.edit at 5 s once in a loaded task run
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1423
 topic: topic-1179
 branch: t/T-1440-web-items-tree-claims-and-holds-case
 created: 2026-10-29T12:24:33.567Z
-updated: 2026-10-29T13:54:54.780Z
+updated: 2026-10-29T15:07:22.687Z
+closed: 2026-10-29T15:07:22.687Z
 ---
 
 ## Summary
@@ -145,3 +146,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence3 clear,C1/C2verified. A-13718 carries independentA-13713Linuxaudit4144ordinary+45scopedloadpass,T0allT1/fallbackallT2/Webcomplete,zero failure/cancel/skip/unfinished,T3T4unrun,budgetsreport-only. Newidentity.040188533s/dropped-event.051019696s,18tracker/8Webpass. IndependentlyreadCoordinator48daa801exactbar; A-13717rawcurrenthead/treeunchangedsealedclone,5nativechildexit+close0,requiredparent/CLI/claims5passeseach(categoryalso5),2workerstarts/448positiveprogress/10throughchildrecords/2terminateexitjoins,2matchingleaseacquires+ownownerabsentreleases,outerclose0. M4complete,C1verifiedseparatefromLinux. C2originalA-13705/06/03 measuredwatchpoll1.4–1.9s/3queuedvsbrowser.1–.2ms andcorrected23.1–36.3mssamplemax; historicalLinux5snotfullyattributedorlocallyreproduced,Coordinatoracceptslimiteddiagnosis. Priorbaselinefirsttwoincomplete/A-13714transcription/A-13716failedsampler/refusedadmissionretainedexplicit. Source4unchanged, no Reviewerworkloads. Freshconflictcheck/readythenCoordinatorfullallfortracker.ts remainsseparatebeforeenqueue; noextrarunrequested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T15:07:22.687Z
+
+Merged d94c4866dc62c2ba7dce48896dcb7beaccc740c1 onto dev.
