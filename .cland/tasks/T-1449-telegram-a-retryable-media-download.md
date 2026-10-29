@@ -3,7 +3,7 @@ id: T-1449
 kind: task
 title: "Telegram: a retryable media download shows 'could not be stored; retrying' even when the retry succeeds"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1444
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1449-telegram-a-retryable-media-download
 created: 2026-10-29T17:47:47.016Z
-updated: 2026-10-29T17:53:15.386Z
+updated: 2026-10-29T17:53:26.306Z
 ---
 
 ## Summary

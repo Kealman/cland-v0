@@ -2,8 +2,8 @@
 id: T-1446
 kind: task
 title: "Telegram: approving a pairing from the CLI sends no confirmation to the phone"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1196
 branch: t/T-1446-telegram-approving-a-pairing-from-the
 created: 2026-10-29T16:50:28.430Z
-updated: 2026-10-29T17:47:08.517Z
+updated: 2026-10-29T17:53:40.928Z
+closed: 2026-10-29T17:53:40.928Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13883 original A-13879 audited at source2 head (corrects A13880 identity wording only). C1 existing unchanged CLI native/durable exactconfirmation case passes1.038084552s/no CLIload; redbeforefix localquoted A13826 distinct from Linuxproof. C2 four live/setup/restart/429 ordering variants base0.199–0.338s, each5/5load/max0.679332006s, exact5native+5sent rows; pairing7/7,mute6/6,workbench5/5/helpguardsgreen. Full4164ordinary+95load pass/no nonpass or unfinished; T0/T1/T2/Web complete, T3/T4 unrun; hostgate8707f4d1 reused, budget/lintreportonly. Source findingsresolved/no newfindings/Reviewerworkloads. C1/C2 verified; no livephone/full-all claim, Coordinator separate gates retained.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T17:53:40.928Z
+
+Merged 7de8ff7cff57f2fcc16456382ab7dcf8f6020b5d onto dev.
