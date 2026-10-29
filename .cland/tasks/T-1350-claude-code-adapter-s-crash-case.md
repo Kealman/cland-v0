@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1191
 branch: t/T-1350-claude-code-adapter-s-crash-case
 created: 2026-10-26T22:36:48.083Z
-updated: 2026-10-29T16:16:03.019Z
+updated: 2026-10-29T16:37:09.216Z
 ---
 
 ## Summary
@@ -61,3 +61,7 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source/revised proof plan clear. M1 guide/index corrected, crash source/assertions unchanged. M2 driver A-13763 now pre-owns acquisitions/children/workers/leases, bounds observation separately from native close/drain and retains incomplete/cleanup receipts. No probe executed yet; C1 remains unverified. Only Coordinator-authorized five-run leased sealed-clone CPU probe plus exact-head mode-free run may proceed; original sequential capture remains transcript-only, not invented native logs.
+
+### impl-1350 · 2026-10-29T16:37:09.216Z
+
+Evidence at unchanged reviewed19e24ad44/tree709975bc: mode-free run029ff519 exit0, A-13801 original log,4156pass/0fail/cancel/skip. T0 host check complete; allT1/fallback allT2/Web and changedT3 file6/6 complete; otherT3/T4 not run. Required crash identity native finish pass5.291864244s (report-only5s overrun; existing identity, no new test allowance). Linux x64 c-8 sfo2 droplet Node24.21.0/Nvim0.12.5/Chrome Headless Shell156.0.8078.4 v1248; lifetime978s/$0.0679. CPU-load original A-13778 separate local darwin arm64 Node24.21.0/no browser, reviewed sealed clone,5/5 exit0 native summaries, both counters advanced each run, child/group cleanup settled,2worker joins/3lease releases.10 earlier sequential passes and red remain explicitly terminal-transcribed A-13751, no original logs invented. Duration/lint gates report only; full-all/stage or Linux load repetitions not claimed.

@@ -3,7 +3,7 @@ id: T-1380
 kind: task
 title: durations refresh adds site/test identities that no tier owns, and periodic dev T3 then skips
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1368
 topic: topic-1186
 branch: t/T-1380-durations-refresh-adds-site-test
 created: 2026-10-27T23:10:18.366Z
-updated: 2026-10-29T16:13:32.219Z
+updated: 2026-10-29T16:37:56.918Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ Either the refresh adds only identities the tier manifest owns (and says what it
 
 - [x] C1. A refresh over a log that contains site/test identities adds no key the tier manifest does not own and prints the skipped identities (test).
   - done: impl-1380 · 2026-10-29T16:03:56.324Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1380-evidence-2 · 2026-10-29T16:37:56.749Z · commit 8baea2eb5bab7af435b3003b8ada8cb70e648320
 - [x] C2. `npm run test:tiers` passes after a refresh over the c675faa3 cover logs A-12925 and A-12929 (test against fixture copies).
   - done: impl-1380 · 2026-10-29T16:03:56.935Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1380-evidence-2 · 2026-10-29T16:37:56.749Z · commit 8baea2eb5bab7af435b3003b8ada8cb70e648320
 
 ## Comments
 
@@ -90,3 +92,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13771: complete one-file correction inspected. Standards: unnecessary machine-resource import removed, immediately registered filesystem cleanup matches existing file, no child/concurrent writer ownership lost. Classifier/tiers/tests/assertions unchanged. Spec: full prior source audit and M1/M2 corrections retained; no additional findings. No Reviewer workloads or configured C1/C2 verification inferred from local receipts. Original configured execution/timing/load review pending at this frozen head.
+
+### rev-26 · 2026-10-29T16:37:56.749Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1380-evidence-2
+commit: 8baea2eb5bab7af435b3003b8ada8cb70e648320
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13803 original A-13802 independently audited. Standards source3 retained/no findings. C1 full/add-only ownership cases pass0.012902501/0.002710312s and5/5load each; explicit skipped test/file receipts and owned-only keys retained. C2 native shipped-refresh/npm tier admission plus injected-key exact refusal passes1.473941211s using original-compared A12925/A12929 excerpts. ChangedT3 all23identities once/no repetitions, selected added wall5.998s excludes machine wait; no new>=3s case. Full4175ordinary+60load pass/no nonpass or unfinished; T0/T1/T2/changedT3/Web complete, remainingT3/T4 excluded. Budget/lint/ratchet growth report-only retained. Prior admission-only redA13769 separate. No Reviewer workloads; C1/C2 verified at frozenhead.
+
+Criteria: C1 verified, C2 verified.
