@@ -8,12 +8,13 @@ import { favourite } from './steps/favourite.ts';
 import { trust } from './steps/trust.ts';
 import { hub } from './steps/hub.ts';
 import { remotes } from './steps/remotes.ts';
+import { discord } from './steps/discord.ts';
 import { speech } from './steps/speech.ts';
 import { aide } from './steps/aide.ts';
 import type { SetupLine, SetupOptions, SetupStep, SetupVerdict } from './types.ts';
 
 // Workbench hand-over follows this report.
-const STEPS: readonly SetupStep[] = [project, harnesses, logins, accounts, favourite, trust, hub, remotes, speech, aide];
+const STEPS: readonly SetupStep[] = [project, harnesses, logins, accounts, favourite, trust, hub, remotes, discord, speech, aide];
 export type SetupReport = {
   root: string;
   version: string;
@@ -29,6 +30,7 @@ export async function setup(options: SetupOptions): Promise<{ report: SetupRepor
   let cancelled = false;
   try {
     for (const step of STEPS) {
+      options.signal?.throwIfAborted();
       const result = await step(options);
       lines.push(...result);
       if (step === project && result.some(line => line.verdict === 'fail')) break;

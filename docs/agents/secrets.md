@@ -37,7 +37,7 @@ decline is `skip`, accepted input is `done`, and nonterminal missing keys are
 `open` with the secret command. Command/off providers ask nothing. Reload a
 running hub to apply the key.
 
-`cland setup` offers Telegram after the hub and before the Aide. Its hidden
+`cland setup` offers Telegram then Discord after the hub and before the Aide. Its hidden
 question shares `readSecret` and `prepareSecretWrite` with the secret CLI; validate
 the Telegram format before storing. A decline is not persisted. `--yes` does not
 accept this offer, and `--json` uses nonterminal detection only. An untouched
@@ -45,6 +45,10 @@ remote is `skip`, partial configuration is `open`, and a configured paired remot
 is `ok`. Without a running hub, `--no-aide` can store and enable locally through
 the shared config writer, leaving reload and pairing open. With a running hub,
 setup uses the unchanged config-set/reload/status frames, carrying no value.
+Discord reads the application after private storage, requires Public Bot off,
+Message Content enabled and Interactions Endpoint URL empty before enabling,
+and offers a re-check for corrections. The native REST client retains all token
+I/O; the invite contains only the application id and permissions 117824.
 See [setup's frame receipts](tests/hub-test-setup-remote-component.test.ts.md)
 and [scripted setup checks](tests/hub-test-setup-remotes.test.ts.md).
 

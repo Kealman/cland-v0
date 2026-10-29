@@ -55,11 +55,11 @@ Then run setup in that same project folder:
 cland setup
 ```
 
-Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub, offers Telegram remote setup and the speech key, then starts the Aide.
+Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub, offers Telegram then Discord remote setup and the speech key, then starts the Aide.
 
 It checks these steps in order: the initialised project; installed Claude Code,
 Codex and OpenCode; logins for harnesses used by roles; separate signed-in account
-profiles; your Favourite harness; folder trust; the project hub; optional Telegram remote setup; and `aide-1`.
+profiles; your Favourite harness; folder trust; the project hub; optional Telegram and Discord remote setup; and `aide-1`.
 Each report line starts with `ok` (already ready), `done` (changed and rechecked),
 `skip`, `open` (needs action) or `fail`, with a fix when needed. Rerunning setup
 reuses the running hub and Aide and asks only about unfinished choices. A declined
@@ -81,7 +81,7 @@ receive trust too. OpenCode has no folder trust gate.
 | Flag | Effect |
 | --- | --- |
 | `--json` | Print one structured report; narration goes to stderr. Uses nonterminal policy. |
-| `--yes` | Allow harmless setup writes; installers still require `--install`, and logins and a new Aide require a terminal. Does not accept machine-wide accounts or Telegram setup. |
+| `--yes` | Allow harmless setup writes; installers still require `--install`, and logins and a new Aide require a terminal. Does not accept machine-wide accounts or messenger setup. |
 | `--install claude-code\|codex\|opencode` | Explicitly run that harness's installer, including after a decline. |
 | `--harness claude-code\|codex\|opencode` | Choose the Favourite from installed harnesses. |
 | `--no-accounts` | Skip the machine-wide accounts step. |
@@ -3159,6 +3159,25 @@ default-No offer even with `--yes`: decline is `skip`; acceptance uses the share
 secret CLI preflight and hidden reader, stores privately and prints `done`.
 `command` and empty providers print one `ok` line and ask nothing. Setup makes no
 provider call. Apply a stored key to a running hub with `cland hub reload`.
+
+### Discord in setup
+
+Setup offers Discord after Telegram, before speech and the Aide, default No even
+with `--yes`. Create one application/bot per project: Install Link None, Public
+Bot off, Message Content Intent on, Interactions Endpoint URL empty. The token
+uses the shared hidden prompt/preflight/private writer as `discord.token`.
+Setup reads the application with the native REST client and prints an invite
+with its numeric id, `scope=bot&permissions=117824`. Each invalid setting is
+named; enabling waits for a successful re-check. Declining that re-check leaves
+setup open. Platform access requires network and a resolved token; tests use
+an explicit loopback fake root.
+
+The existing config-set/reload frames enable it, then setup waits at most ten
+seconds for a connected status (native READY plus recent heartbeat ACK). It
+pauses for `/cland pair` in the server channel and confirms the local inbox's
+numeric identity/code through the shared pairing helper. A paired rerun is
+`ok`, a decline `skip`; nonterminal untouched is `skip` and partial is `open`,
+with Discord secret/config/reload/approval commands. No token enters a frame.
 
 ### Telegram in setup
 

@@ -29,3 +29,9 @@ checks data-use narration before hidden input, private persistence and a present
 rerun, default-No decline under `--yes`, and nonterminal missing-key commands.
 Command/off providers ask nothing. Existing Telegram cases select off speech to
 isolate their prompts. No paid call or real credential is involved.
+
+Discord adds a default-No offer after Telegram and before speech. Existing
+scripted runner consumers must explicitly decline it where they focus on another
+step. The nonterminal Discord matrix covers token/enabled combinations without
+writes, while repeated declines retain the Discord secret/config/reload commands.
+The prior Telegram remote.status shape remains the compatibility control.

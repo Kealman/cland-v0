@@ -22,6 +22,8 @@ export type SetupMachine = {
  */
 export type SetupOptions = {
   root: string;
+  /** Optional owner lifetime for embedded setup; native Discord I/O joins on abort. */
+  signal?: AbortSignal;
   /** The absolute spelling passed to the CLI, retained for Codex remote attach trust. */
   rootSpelling?: string;
   env: NodeJS.ProcessEnv;

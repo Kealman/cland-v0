@@ -1,6 +1,6 @@
 ---
 title: Remote control
-description: Pair a private Telegram chat with your project, follow General and answer away from the workbench.
+description: Pair a Telegram chat or Discord server channel with your project, follow General and answer away from the workbench.
 ---
 
 A Telegram remote is your private chat with the project's bot. General goes both ways, and the inbox sends cards and notices from every topic. The hub connects out to Telegram: you need network access from the hub, but no tunnel, public address or open inbound port.
@@ -13,7 +13,7 @@ Start with an [initialised project and a running hub](/docs/quickstart/). Run th
 
 ### Through setup
 
-Run `cland setup`. After the hub step, before the Aide, setup offers Telegram with a default of No, including when you pass `--yes`. It tells you how to create the bot, reads its token without echoing, enables it, and waits while you open the bot and press **Start**. Check the displayed name and numeric id before saying Yes to the pairing.
+Run `cland setup`. After the hub step, before the Aide, setup offers Telegram, then Discord, with a default of No, including when you pass `--yes`. It tells you how to create the bot, reads its token without echoing, enables it, and waits while you open the bot and press **Start**. Check the displayed name and numeric id before saying Yes to the pairing.
 
 A paired rerun reports `ok`. Declining reports `skip` and is offered again next time. Without a terminal, an untouched remote reports `skip` with its setup commands; a partially configured or unpaired remote reports `open` with what remains. Setup never approves an identity without your confirmation.
 
@@ -45,6 +45,33 @@ cland remote status
 ```
 
 Status now names the paired human and id. In an already paired chat, `/start` names the project instead of issuing a code.
+
+## Create and pair Discord
+
+Each project uses its own Discord application and bot, in a text channel of your own server. The paired guild, channel and user ids identify you; other members can read the channel but cannot act as you.
+
+1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications). Set **Install Link** to **None**, turn **Public Bot** off, enable **Message Content Intent**, and leave **Interactions Endpoint URL** empty.
+2. Run `cland setup` in your terminal. After Telegram, accept the Discord offer and paste the bot token into its hidden prompt. Setup stores `discord.token` privately, reads the application settings and names each correction. Confirm a re-check after changing them; setup enables Discord only after the checks pass.
+3. Open the invite printed for your application: `https://discord.com/oauth2/authorize?client_id=<application-id>&scope=bot&permissions=117824`. Add it to your server. Setup waits up to ten seconds for the gateway connection; if it stays open, check `cland remote status` and rerun setup.
+4. In the server text channel you want to pair, run `/cland pair`. Press Enter in setup, compare “Pair Discord user <id> (<Name>)? code …” with your identity, and say Yes. Its private code lasts 15 minutes. A paired rerun reports `ok`; a declined offer reports `skip`.
+
+To configure it by hand instead, use these commands in your own terminal. Paste the token only at the hidden prompt, then open the bot invite from status and run `/cland pair` in Discord.
+
+```sh
+cland secret set discord.token
+cland config set remote.discord.enabled true
+cland hub reload
+cland remote status
+```
+
+Approve the waiting code from Neovim or replace `<code>` in your terminal:
+
+```sh
+cland remote approve discord <code>
+cland remote status
+```
+
+Discord uses `/cland status`, `/cland inbox`, `/cland mute`, `/cland unmute`, `/cland decision`, `/cland question` and `/cland help`. General and cards go to the paired channel. Free answers and declines open a modal. Pairing approval stays local, and a new approved channel replaces the previous binding.
 
 ## In the chat
 

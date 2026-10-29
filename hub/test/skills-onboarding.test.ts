@@ -321,3 +321,9 @@ test('remote tour explains voice notes and the hidden speech key command', async
   assert.match(tour, /voice note/i);
   assert.deepEqual(commandProblems(tour), []);
 });
+
+test('remote tour includes Discord setup and local approval with shipped commands', async () => {
+  const tour = await readFile(new URL('TOUR.md', SKILL), 'utf8');
+  for (const text of ['Discord', '/cland pair', 'discord.token', 'Public Bot', 'Message Content', 'Interactions Endpoint URL']) assert.ok(tour.includes(text), `tour includes ${text}`);
+  assert.deepEqual(commandProblems(tour), []);
+});

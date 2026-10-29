@@ -23,7 +23,7 @@ offer a choice; an empty list offers one extra wait. No leaves the binding alone
 and prints the selected row's approve command. Nonterminal setup never approves:
 an enabled, unpaired remote reports `open` with the available bot link and command;
 a connected, paired rerun reports `ok`. The wait/choose/confirm helper is keyed
-by messenger so another platform can supply its own pairing gesture. See the
+by messenger; Discord pauses for `/cland pair` in the server channel and confirms its numeric identity/code through the same local approval frame. See the
 [setup pairing regression](tests/hub-test-setup-pairing-component.test.ts.md).
 
 Approval callers resolve `InboxBoard.pairingCodes.get(id)` at the grant boundary,

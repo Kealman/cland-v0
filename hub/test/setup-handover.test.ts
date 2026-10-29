@@ -19,7 +19,7 @@ function fixture() {
   const options: HandoverOptions = {
     root: '/project', env: { PATH: '/tools', CLAND_LAUNCHER: '/tools/workbench' },
     interactive: true, aideRunning: true, cland: { command: 'cland', note: null },
-    prompter: scriptedPrompter([]), say: s => output.push(s),
+    prompter: scriptedPrompter([ { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]), say: s => output.push(s),
     run: async (...args) => { calls.push(args); return 0; },
     hub: { attach: async name => { calls.push(['attach', name]); return 'claude attach conversation'; } },
   };
@@ -170,7 +170,7 @@ test('setup CLI hands over after the summary on each run, including --attach', a
     const calls: unknown[] = [];
     const io = {
       machine, hub, stdinTTY: true, stdoutTTY: true, write: (s: string) => { output += s; },
-      prompter: scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, ...(args.includes('--attach') && !args.includes('--no-aide') ? [{ kind: 'pause' as const, question: /Press Enter/ }] : [])]),
+      prompter: scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }, ...(args.includes('--attach') && !args.includes('--no-aide') ? [{ kind: 'pause' as const, question: /Press Enter/ }] : [])]),
       run: async (...input: Parameters<NonNullable<HandoverOptions['run']>>) => {
         assert.match(output, /\d+ ok, \d+ done, \d+ skip, 0 open, 0 fail\n/);
         calls.push(input);

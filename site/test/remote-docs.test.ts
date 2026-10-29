@@ -39,7 +39,7 @@ function vocabularyErrors(text: string): string[] {
   for (const match of text.matchAll(/\b(?:remote|speech|artifacts)\.[a-z][\w.]*/g)) {
     if (!secretNames.includes(match[0]) && !configNames.includes(match[0])) errors.push(`config: ${match[0]}`);
   }
-  for (const match of text.matchAll(/(?<![\w.])(?:telegram|discord)\.[a-z_]+|\bspeech\.(?:[a-z_]+_key)/g)) {
+  for (const match of text.matchAll(/(?<![\w./])(?:telegram|discord)\.[a-z_]+|\bspeech\.(?:[a-z_]+_key)/g)) {
     if (!secretNames.includes(match[0])) errors.push(`secret: ${match[0]}`);
   }
   return errors;
@@ -52,7 +52,7 @@ test('remote documentation guard rejects unknown commands, config keys and secre
     ['command: cland remote pair telegram CODE', 'config: remote.telegram.enable', 'secret: telegram.key']);
   assert.deepEqual(vocabularyErrors('`speech.engine` `artifacts.max_upload_bytes`'),
     ['config: speech.engine', 'config: artifacts.max_upload_bytes']);
-  assert.deepEqual(vocabularyErrors('`cland secret set telegram.token` `cland config set remote.telegram.enabled true`'), []);
+  assert.deepEqual(vocabularyErrors('`cland secret set telegram.token` `cland config set remote.telegram.enabled true` https://discord.com/developers/applications'), []);
 });
 
 test('remote guide and web Remotes section use shipped commands, config keys and secret names', () => {
@@ -125,4 +125,9 @@ test('remote guide explains the setup speech offer and nonterminal command', () 
   assert.match(setup, /cland secret set speech.elevenlabs_key/);
   assert.match(setup, /ElevenLabs/);
   assert.match(setup, /hidden/);
+});
+
+test('Discord setup guide names application checks, invite permissions and local pairing commands', () => {
+  const guide = source(guidePath);
+  for (const text of ['Install Link', 'None', 'Public Bot', 'Message Content', 'Interactions Endpoint URL', 'permissions=117824', '/cland pair', 'cland secret set discord.token', 'cland config set remote.discord.enabled true', 'cland remote approve discord <code>']) assert.ok(guide.includes(text), `guide includes ${text}`);
 });

@@ -13,7 +13,7 @@ const ENABLE = 'cland config set remote.telegram.enabled true';
 const RELOAD = 'cland hub reload';
 const APPROVE = 'cland remote approve telegram <code>';
 
-/** Further messenger and speech offers join this step before the Aide takes the terminal. */
+/** Telegram precedes the Discord and speech offers before the Aide takes the terminal. */
 export const remotes: SetupStep = async ({ root, env, machine, hub: injected, interactive, prompter, narrate }) => {
   const name = 'remote telegram';
   let fix = [TOKEN, ENABLE, RELOAD].join('; ');

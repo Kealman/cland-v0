@@ -79,8 +79,7 @@ test('a terminal Telegram offer stores a hidden token and enables it without sta
   const said: string[] = [];
   const script = scriptedPrompter([
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
-    { kind: 'secret', question: 'Telegram token:', answer: token },
-  ]);
+    { kind: 'secret', question: 'Telegram token:', answer: token }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   const result = await setup({ ...f.options, interactive: true, yes: true, narrate: text => said.push(text), prompter: {
     ...script,
     confirm: async (question, def) => { assert.equal(def, false); return script.confirm(question, def); },
@@ -91,7 +90,7 @@ test('a terminal Telegram offer stores a hidden token and enables it without sta
     },
   } });
   const lines = result.report.steps;
-  assert.deepEqual(lines.slice(-4).map(row => row.name), ['hub', 'remote telegram', 'speech', 'aide']);
+  assert.deepEqual(lines.slice(-5).map(row => row.name), ['hub', 'remote telegram', 'remote discord', 'speech', 'aide']);
   const line = lines.find(row => row.name === 'remote telegram')!;
   assert.equal(line.verdict, 'open');
   assert.match(line.fix!, /cland hub reload/);
@@ -111,8 +110,7 @@ test('malformed Telegram input names the expected format and retries only the hi
   const script = scriptedPrompter([
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
     { kind: 'secret', question: 'Telegram token:', answer: bad },
-    { kind: 'secret', question: 'Telegram token:', answer: good },
-  ]);
+    { kind: 'secret', question: 'Telegram token:', answer: good }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   const result = await setup({ ...f.options, interactive: true, yes: true, prompter: script, narrate: text => { said += text; } });
   assert.equal(script.left().length, 0, 'all scripted questions were consumed');
   assert.ok(/\^\[1-9\].*24,.*80 characters/.test(said), 'invalid input names the Telegram format and length bound');
@@ -125,7 +123,7 @@ test('declining Telegram writes nothing and the next terminal run offers it agai
   const f = fixture(t);
   const before = readFileSync(f.config, 'utf8');
   for (let run = 0; run < 2; run++) {
-    const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
+    const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
     const result = await setup({ ...f.options, interactive: true, yes: true, prompter: script });
     assert.equal(result.report.steps.find(row => row.name === 'remote telegram')?.verdict, 'skip');
     assert.equal(script.left().length, 0);
@@ -159,11 +157,11 @@ for (const present of [false, true]) for (const enabled of [false, true]) {
 test('secret destination preflight refuses unsafe ignore rules before requesting a token', async t => {
   const f = fixture(t);
   writeFileSync(join(f.root, '.cland/.gitignore'), '!secrets.toml\n');
-  const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: true }]);
+  const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: true }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   const before = readFileSync(f.config, 'utf8');
   const result = await setup({ ...f.options, interactive: true, yes: true, prompter: script });
   assert.equal(result.report.steps.find(row => row.name === 'remote telegram')?.verdict, 'fail');
-  assert.deepEqual(script.asked, ['Set up Telegram remote now?']);
+  assert.deepEqual(script.asked, ['Set up Telegram remote now?', 'Set up Discord remote now?']);
   assert.equal(existsSync(join(f.root, '.cland/secrets.toml')), false);
   assert.equal(readFileSync(f.config, 'utf8'), before);
 });
@@ -198,8 +196,7 @@ for (const retry of [false, true]) test(`no Telegram code offers exactly one ext
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
     { kind: 'pause', question: /press Start, then Enter/ },
     { kind: 'confirm', question: 'No waiting code. Wait once more?', answer: retry },
-    ...(retry ? [{ kind: 'pause' as const, question: /press Start, then Enter/ }] : []),
-  ]);
+    ...(retry ? [{ kind: 'pause' as const, question: /press Start, then Enter/ }] : []), { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   const result = await setup({ ...f.options, interactive: true, yes: true, prompter: script, hub: f.client });
   assert.equal(script.left().length, 0);
   assert.equal(reads, retry ? 2 : 1);
@@ -216,8 +213,7 @@ test('several waiting codes offer their row texts, filter the messenger and conf
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: true },
     { kind: 'pause', question: /press Start, then Enter/ },
     { kind: 'choose', question: 'Which pairing code?', answer: 'JKLMNPQR' },
-    { kind: 'confirm', question: 'Pair telegram user? code JKLMNPQR', answer: true },
-  ]);
+    { kind: 'confirm', question: 'Pair telegram user? code JKLMNPQR', answer: true }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   const result = await setup({ ...f.options, interactive: true, yes: true, hub: f.client, prompter: {
     ...script, choose: async <T extends string>(question: string, choices: readonly Choice<T>[], def: T): Promise<T> => {
       assert.deepEqual(choices, ['ABCDEFGH', 'JKLMNPQR'].map(code => ({ value: code, label: waitingPairing(code).text })));
@@ -239,7 +235,7 @@ test('setup offers speech data use before hidden input, stores privately and rec
   let said = '';
   const script = scriptedPrompter([
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: false },
-    { kind: 'confirm', question: 'Set up ElevenLabs transcription now?', answer: true },
+    { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }, { kind: 'confirm', question: 'Set up ElevenLabs transcription now?', answer: true },
     { kind: 'secret', question: 'ElevenLabs key:', answer: key },
   ]);
   const result = await setup({ ...f.options, interactive: true, yes: true, narrate: text => { said += text; }, prompter: {
@@ -268,9 +264,9 @@ for (const provider of ['command', '', 'elevenlabs'] as const) test(`speech prov
   assert.equal(row?.detail, SPEECH_DATA_USE[provider]);
   assert.equal(row?.fix, provider === 'elevenlabs' ? 'cland secret set speech.elevenlabs_key' : undefined);
   if (provider !== 'elevenlabs') {
-    const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
+    const script = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
     const terminal = await setup({ ...f.options, interactive: true, yes: true, prompter: script });
-    assert.equal(script.asked.length, 1, 'only the messenger was offered');
+    assert.equal(script.asked.length, 2, 'only the messengers were offered');
     assert.equal(terminal.report.steps.find(row => row.name === 'speech')?.verdict, 'ok');
   }
 });
@@ -280,7 +276,7 @@ test('declining speech defaults to No even with yes and writes nothing', async t
   writeFileSync(f.config, renderConfig(defaultConfig('Remote setup')));
   const script = scriptedPrompter([
     { kind: 'confirm', question: 'Set up Telegram remote now?', answer: false },
-    { kind: 'confirm', question: 'Set up ElevenLabs transcription now?', answer: false },
+    { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }, { kind: 'confirm', question: 'Set up ElevenLabs transcription now?', answer: false },
   ]);
   const result = await setup({ ...f.options, interactive: true, yes: true, prompter: {
     ...script, confirm: async (q, def) => { assert.equal(def, false); return script.confirm(q, def); },
@@ -288,4 +284,45 @@ test('declining speech defaults to No even with yes and writes nothing', async t
   assert.equal(script.left().length, 0);
   assert.equal(result.report.steps.find(row => row.name === 'speech')?.verdict, 'skip');
   assert.equal(existsSync(join(f.root, '.cland/secrets.toml')), false);
+});
+
+test('untouched nonterminal Discord is skip with Discord setup commands', async t => {
+  const f = fixture(t);
+  const result = await setup(f.options);
+  const line = result.report.steps.find(row => row.name === 'remote discord');
+  assert.equal(line?.verdict, 'skip');
+  assert.equal(line.fix, 'cland secret set discord.token; cland config set remote.discord.enabled true; cland hub reload');
+});
+
+for (const present of [false, true]) for (const enabled of [false, true]) test(`nonterminal Discord token=${present} enabled=${enabled} reports missing commands without writes`, async t => {
+  const f = fixture(t);
+  const config = defaultConfig('Remote setup'); config.speech.provider = ''; config.remote.discord.enabled = enabled;
+  writeFileSync(f.config, renderConfig(config));
+  if (present) writeFileSync(join(f.root, '.cland/secrets.toml'), '[discord]\ntoken="made_up_discord_setup_token"\n', { mode: 0o600 });
+  const before = readFileSync(f.config, 'utf8');
+  const result = await setup(f.options);
+  const line = result.report.steps.find(row => row.name === 'remote discord')!;
+  assert.equal(line.verdict, !present && !enabled ? 'skip' : 'open');
+  assert.equal(line.fix!.includes('cland secret set discord.token'), !present);
+  assert.equal(line.fix!.includes('cland config set remote.discord.enabled true'), !enabled);
+  assert.match(line.fix!, /cland hub reload/);
+  assert.equal(readFileSync(f.config, 'utf8'), before);
+});
+
+test('declining Discord prints skip with commands and is offered again without writes', async t => {
+  const f = fixture(t);
+  const before = readFileSync(f.config, 'utf8');
+  for (let run = 0; run < 2; run++) {
+    const script = scriptedPrompter([
+      { kind: 'confirm', question: 'Set up Telegram remote now?', answer: false },
+      { kind: 'confirm', question: 'Set up Discord remote now?', answer: false },
+    ]);
+    const result = await setup({ ...f.options, interactive: true, yes: true, prompter: script });
+    const line = result.report.steps.find(row => row.name === 'remote discord')!;
+    assert.equal(script.left().length, 0);
+    assert.equal(line.verdict, 'skip');
+    assert.match(line.fix!, /cland secret set discord.token/);
+    assert.equal(readFileSync(f.config, 'utf8'), before);
+    assert.equal(existsSync(join(f.root, '.cland/secrets.toml')), false);
+  }
 });

@@ -17,3 +17,27 @@ Keep the remote-status wire fields unchanged, including optional-client
 compatibility. Stop the owned hub and await its log/output drainage before
 scanning report, narration and journal data for synthetic input, and before the
 fixture removes its root. Assertions use value-free diagnostics for secrets.
+
+Discord setup uses the production runner, native Discord factory, frame port and
+owned REST/websocket fake. Build the effective setup environment with the fake
+API root in fixtureEnvironment's third argument, and assert its exact loopback
+value before any synthetic token I/O. Set a scratch verification lock path before
+starting projectHub, preserving the managed config marker. The exchange owner
+registers hub shutdown before setup and owns the root until native drainage.
+Use a short fake heartbeat interval; setup waits for connected status after
+reload, rather than mistaking config completion for READY/ACK.
+
+The generated `Discord setup checks application before enabling and pairs through
+native /cland pair (repair=false|true|decline)` cases cover hidden storage, the
+application-id invite, all three settings, successful repair and refusal to
+re-check, native private pairing and a paired nonterminal rerun. Observe the
+private callback before reading/approving the inbox code. Scan output and drained
+hub logs for the synthetic token. No frame or role authority changes.
+
+Discord acquisition uses the shared pacingOwner before projectHub starts, so a
+missing/aborted serving receipt retains and stops late hubs. Embedded setup's
+optional signal passes through the runner and native application read/readiness
+wait; owner disposal aborts and joins the operation before root removal. Keep
+the omitted/aborted receipt controls and the held application-read cancellation
+case: assert hub.stopped, native gateway close, zero native connections/handlers/
+observers/holds, then remove the still-retained root and observe ENOENT.

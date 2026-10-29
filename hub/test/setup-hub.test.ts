@@ -111,7 +111,7 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   const { options, client, calls, root } = fixture(t);
   options.env.HOME = root;
   options.yes = true;
-  options.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
+  options.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   writeFileSync(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));
   mkdirSync(join(root, '.codex'));
   writeFileSync(join(root, '.codex/config.toml'), `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`);
@@ -122,12 +122,12 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   ] });
   const first = await setup({ ...options, harness: 'codex' });
   assert.equal(first.code, 0, JSON.stringify(first.report.steps));
-  assert.deepEqual(first.report.steps.slice(-4).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['speech', 'ok'], ['aide', 'done']]);
+  assert.deepEqual(first.report.steps.slice(-5).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['aide', 'done']]);
   assert.deepEqual(calls, ['start', { name: 'aide-1', role: 'aide', harness: 'codex', brief: "Run the onboarding skill; project: empty; harnesses: claude-code, codex; human's harness: codex" }]);
   client.running = async () => ({ pid: 42 });
   client.session = async () => ({ status: 'running' });
   calls.length = 0;
-  options.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }]);
+  options.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: false }, { kind: 'confirm', question: 'Set up Discord remote now?', answer: false }]);
   const second = await setup(options);
   assert.equal(second.code, 0);
   assert.deepEqual(second.report.steps.filter(s => s.name === 'hub' || s.name === 'aide').map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
