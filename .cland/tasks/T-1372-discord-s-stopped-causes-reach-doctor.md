@@ -2,8 +2,8 @@
 id: T-1372
 kind: task
 title: Discord's stopped causes reach doctor, and Discord shows in both workbenches
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -20,7 +20,8 @@ blocked_by:
 topic: topic-1175
 branch: t/T-1372-discord-s-stopped-causes-reach-doctor
 created: 2026-10-27T05:46:51.767Z
-updated: 2026-10-29T12:50:00.502Z
+updated: 2026-10-29T14:25:18.097Z
+closed: 2026-10-29T14:25:18.097Z
 ---
 
 ## Summary
@@ -38,15 +39,19 @@ Spec §3.11, §3.8 (close codes) and §3.2. E-1312's fatal closes record 01's st
 - [x] C1. A 4004 and a 4014 close on the fake Discord gateway each give doctor's line with its fix (a new token; the Message Content toggle), and the fake records no request during the doctor run (test).
   - done: impl-1372 · 2026-10-29T10:43:59.387Z
   - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-4 · 2026-10-29T13:24:35.163Z · commit dc26dfb64fa4f13916492025337c8a5014bbdf8f
 - [x] C2. A fake Discord outage turns the Discord Remotes row red in headless Neovim and headless Chromium within one second, and recovery clears it (test).
   - done: impl-1372 · 2026-10-29T10:43:59.609Z
   - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-4 · 2026-10-29T13:24:35.163Z · commit dc26dfb64fa4f13916492025337c8a5014bbdf8f
 - [x] C3. A message, a voice message and a card approval from the fake Discord read "via Discord" (the voice message with its 🎤 mark) in both workbenches, and a waiting `/cland pair` code shows as a pairing row in both inboxes (test).
   - done: impl-1372 · 2026-10-29T10:44:01.764Z
   - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-4 · 2026-10-29T13:24:35.163Z · commit dc26dfb64fa4f13916492025337c8a5014bbdf8f
 - [x] C4. The docs page's doctor causes name 4004 and 4014 with their fixes, and the page passes the docs check (test).
   - done: impl-1372 · 2026-10-29T10:44:01.993Z
   - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-2 · 2026-10-29T11:18:39.709Z · commit 86a5a30b08b85c9f6c4e175ae0100da29a5ec168
+  - verified: rev-26 [reviewer] · run rev-20261029-1372-evidence-4 · 2026-10-29T13:24:35.163Z · commit dc26dfb64fa4f13916492025337c8a5014bbdf8f
 
 ---
 
@@ -156,3 +161,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized shared-fix merge delta clear, Standards/Spec no findings. A-13692 pins parents/tree; all six imported blobs exactlydev25a27b7d, shared cards test/guide also exactly cleared T-1439a1a27df1/A-13677/finalA-13688. T-1439 done/merged independently confirmed. No T-1372 product/fixtures/UI/docs changed; prior13-path contribution retained. Coordinator1dbc7a5c authority independently read. C1–C4stale/newheadruntimepending; failedA-13682/A-13684 and earliergreen remain separate. Proceed unchangedheadconfiguredmodefree then original-record finalreview; Coordinatorfullverifyall for doctor/remotes.ts and remote/discord.ts separate beforeenqueue. No Reviewer workloads.
+
+### rev-26 · 2026-10-29T13:07:27.011Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1372-source-5
+commit: dc26dfb64fa4f13916492025337c8a5014bbdf8f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source5 authorizedT-1438merge delta clear, Standards/Spec nofindings; A-13698 pins parents/tree. Eightimportedblobs exactlydev,README devpluspriorT1372paragraph; taskproduct/nativefixture/UI/docs assertions unchanged. T1438done/merged rev31source2/final1 independentlyconfirmed. Tracedworkbench/doctor fake.url explicitextras through pacingOwner/projectHub/accountFixtureEnvironment and WebstartHub; newfailclosedrootguard preserves nativepaths, speechdisabledlocal sentinel/noI/O. Coordinatorafe6fc78 independentlyread; A-13696localguardchecks16/4/3 receiptclaims separate. Old9fa8fb04/A-13697greenonlyc7c74e943, notcurrenthead; C1–C4stale. Proceedunchangedheadconfiguredmodefree thenoriginal-record finalreview; Coordinatorfullallfor doctor/remotes.ts/remote/discord.ts separatebeforeenqueue. No Reviewerworkloads.
+
+### rev-26 · 2026-10-29T13:24:35.163Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1372-evidence-4
+commit: dc26dfb64fa4f13916492025337c8a5014bbdf8f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence4 clear; C1–C4 verified atsource5head. A-13709 independently4154ordinary+70scopedloadpasses, zerofail/cancel/skip/unfinishedidentity. T0/allT1/fallbackallT2/changedNeovimT3/Webcomplete. C1native4004=.183254804/4014=.141697223s+5load each/plainJSONfix/noREST/numericpairidentity. C2/C3nativeNvimparent.453622925/child.314852982s,Chromium2.077847819s retain actualunscaled1sred/nativeRESUMEACKrecovery and actualtext/voice/approval/pairrows. C4docsguard.000481169s+5load/full10docs+50load. Setupcontrols.095722925/.093574904s+5each. No new>=3sallowance. OldfailuresA-13658/A-13682 andpriorheadgreens retainedseparately; T1439identitynow.293552926s. Linuxc8nyc1/Node24.21/Nvim.12.5/CHS156v1248,hosttypecheckbe6745b1reused,changedT3once addedwall2.222sexcludesmachinewait,Web0newreps,remainingT3/T4unrun,budgetsreport-only. No Reviewerworkloads. Freshconflictcheck/readythenCoordinatorfullallfor doctor/remotes.ts/remote/discord.ts remainsseparatebeforeenqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-29T14:25:18.097Z
+
+Merged f7f27f85b44b5a7893b8e57f81f05ad8c27769f8 onto dev.
