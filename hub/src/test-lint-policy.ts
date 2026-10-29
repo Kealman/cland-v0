@@ -73,8 +73,21 @@ export async function checkTestLint(input: Snapshot & { manifest: TierManifest; 
     const facts = testLintFacts(file, await source(file), entry);
     const isNew = !base.manifest?.tests[file];
     if (isNew) findings.push(...facts.result.findings.filter(f => ['tier-import', 'tier-process', 't3-lifecycle'].includes(f.rule)));
-    for (const [category, calls] of categories(facts)) {
-      if (!category.startsWith('wall-clock') && facts.lifecycle) continue;
+    const counts = categories(facts);
+    const tier = typeof entry === 'string' ? entry : entry.tier;
+    let headerRefusal = false;
+    if (!isNew && (tier === 'T3' || tier === 'T4') && !facts.lifecycle) {
+      const oldEntry = base.manifest!.tests[file]!;
+      const lostLifecycle = base.source && testLintFacts(file, await base.source(file), oldEntry).lifecycle;
+      const processGrowth = [...counts].some(([category, calls]) =>
+        !category.startsWith('wall-clock') && calls.length > (allowance.files[file]?.[category] ?? 0));
+      if (lostLifecycle || processGrowth) {
+        findings.push({ file, line: 1, rule: 't3-lifecycle', message: `first comment block must name the process behaviour: ${tier}: <behaviour>` });
+        headerRefusal = true;
+      }
+    }
+    for (const [category, calls] of counts) {
+      if (!category.startsWith('wall-clock') && (facts.lifecycle || headerRefusal)) continue;
       const allowed = allowance.files[file]?.[category] ?? 0;
       for (const call of calls.slice(allowed)) findings.push({ ...call, rule: category, message: `${category} count ${calls.length} exceeds frozen allowance ${allowed}` });
     }

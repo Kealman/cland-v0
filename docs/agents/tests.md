@@ -623,6 +623,13 @@ Dry runs perform the same admission and return the same refusal lines.
 A test absent from the base `tiers.json` must obey its T1/T2 resource rules;
 a new T3 file needs `// T3: <process behaviour>` in its first comment block.
 A valid contract or scenario manifest entry supplies that lifecycle declaration.
+For existing T3/T4 files, admission also refuses a lifecycle declaration lost
+since the base, or missing when process-helper calls would exceed the frozen
+allowance. The refusal names the first comment block at line 1 with
+`[t3-lifecycle]`, rather than process-count consequences. T4 accepts a `T3:` or
+`T4:` header. Existing files that never had a declaration retain their result
+when their counts stay within the allowance; their census findings remain
+report-only. Wall-clock enforcement is independent of header refusals.
 
 `hub/test/lint-baseline.json` freezes counts by file and category:
 `wall-clock-wait`, `wall-clock-assertion`, `startDaemon`, `spawnSpoke`,

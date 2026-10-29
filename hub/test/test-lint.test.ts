@@ -592,13 +592,54 @@ test('numeric waits cannot grow and shrinking retires their allowance', async ()
   assert.equal((await checkTestLint({ manifest, source: async () => 'sleep(10);', baseline: shrunk, base: { manifest, baseline: shrunk } }))[0]?.rule, 'wall-clock-wait');
 });
 
+test('existing lifecycle files report a displaced header before process allowances', async () => {
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  for (const tier of ['T3', 'T4'] as const) {
+    const manifest = { version: 1 as const, tests: { [file]: tier } };
+    for (const startDaemon of [0, 3]) {
+      const baseline = { version: 1 as const, files: { [file]: { startDaemon } } };
+      const body = "import { startDaemon } from './harness.ts';\n" +
+        `// ${tier}: native crash and restart\nstartDaemon(); startDaemon(); startDaemon();`;
+      assert.deepEqual(await checkTestLint({ manifest, source: async () => body, baseline, base: { manifest, baseline, source: async () => `// ${tier}: native crash and restart\n` + body } }), [
+        { file, line: 1, rule: 't3-lifecycle', message: `first comment block must name the process behaviour: ${tier}: <behaviour>` },
+      ]);
+    }
+  }
+});
+
+test('losing a lifecycle declaration is refused even without process helper growth', async () => {
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  for (const tier of ['T3', 'T4'] as const) {
+    const manifest = { version: 1 as const, tests: { [file]: tier } };
+    const baseline = { version: 1 as const, files: {} };
+    assert.deepEqual(await checkTestLint({ manifest, baseline, source: async () => '// ordinary comment',
+      base: { manifest, baseline, source: async () => `// ${tier}: native crash and restart` } }), [
+      { file, line: 1, rule: 't3-lifecycle', message: `first comment block must name the process behaviour: ${tier}: <behaviour>` },
+    ]);
+  }
+});
+
+test('never-headed lifecycle debt and headed files keep their lint result', async () => {
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  for (const tier of ['T3', 'T4'] as const) {
+    const manifest = { version: 1 as const, tests: { [file]: tier } };
+    const baseline = { version: 1 as const, files: { [file]: { startDaemon: 1 } } };
+    for (const header of ['', `// ${tier}: native crash and restart\n`]) {
+      const source = async () => header + 'startDaemon();\nsleep(10);';
+      assert.deepEqual(await checkTestLint({ manifest, source, baseline, base: { manifest, baseline, source } }), [
+        { file, line: header ? 3 : 2, rule: 'wall-clock-wait', message: 'wall-clock-wait count 1 exceeds frozen allowance 0' },
+      ]);
+    }
+  }
+});
+
 test('process helper growth requires lifecycle evidence for each category', async () => {
   const { checkTestLint } = await import('../src/test-lint-policy.ts');
   const manifest = { version: 1 as const, tests: { [file]: 'T3' as const } };
   const baseline = { version: 1 as const, files: {} };
   for (const helper of ['startDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode']) {
     const source = async () => `import { ${helper} as run } from './harness.ts'; run(t, root);`;
-    assert.equal((await checkTestLint({ manifest, source, baseline, base: { manifest, baseline } }))[0]?.rule, helper);
+    assert.equal((await checkTestLint({ manifest, source, baseline, base: { manifest, baseline } }))[0]?.rule, 't3-lifecycle');
     assert.deepEqual(await checkTestLint({ manifest, source: async () => '// T3: native child shutdown and reaping\n' + await source(), baseline, base: { manifest, baseline } }), []);
   }
 });

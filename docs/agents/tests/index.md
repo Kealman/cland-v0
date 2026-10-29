@@ -4,6 +4,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | Test file | Guidance |
 | --- | --- |
+| [`hub/test/test-lint.test.ts`](../../../hub/test/test-lint.test.ts) | [Notes](hub-test-test-lint.test.ts.md) |
 | [`hub/test/tracker-component.test.ts`](../../../hub/test/tracker-component.test.ts) | [Notes](hub-test-tracker-component.test.ts.md) |
 | [`hub/test/remote-neutral.test.ts`](../../../hub/test/remote-neutral.test.ts) | [Notes](hub-test-remote-neutral.test.ts.md) |
 | [`hub/test/remote-docs.test.ts`](../../../hub/test/remote-docs.test.ts) | [Notes](hub-test-remote-docs.test.ts.md) |

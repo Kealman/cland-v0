@@ -4483,6 +4483,11 @@ node hub/bin/cland.ts --version
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
 At the repository root, `npm run check` runs typechecking and static/test lint.
+Test lint refuses an existing T3/T4 file that loses its lifecycle declaration
+from the base, or whose missing declaration would expose process-helper growth.
+It names the first comment block with `[t3-lifecycle]` before process allowances;
+never-headed files within their frozen allowance retain their current result.
+Contract/scenario declarations and wall-clock enforcement are unchanged.
 The test-lint census reports `skip-reason` for direct `node:test` skip options
 with literal `true`, comparisons, negations or blank strings. This finding is
 report-only; helper-returned skips are not resolved. Give platform conditions a
