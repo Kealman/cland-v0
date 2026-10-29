@@ -1,12 +1,12 @@
 // Safety at the cleanup boundary, with synthetic OS process tables and no real signals.
 import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const modulePath = fileURLToPath(new URL('./process-cleanup.ts', import.meta.url));
@@ -764,4 +764,91 @@ assert.equal(await exit, 143);
 assert.deepEqual(rows.map(row => row.pid), [420070, 420071]);
 assert.equal(fs.existsSync(dir), false);
 `), [{ pid: -420072, signal: 'SIGKILL' }, { pid: 420074, signal: 'SIGKILL' }]);
+});
+
+
+async function frameOwnershipChild(t: TestContext) {
+  const { spawn } = await import('node:child_process');
+  const fs = await import('node:fs/promises');
+  const { ownDirectory, onCleanup } = await import('./process-cleanup.ts');
+  const dir = await fs.mkdtemp(join(tmpdir(), 'cland-frame-ownership-'));
+  let stop = async () => {};
+  const remove = ownDirectory(t, dir, { beforeRemove: () => stop() });
+  const child = spawn(process.execPath, ['-e', "process.on('message', command => { if (command === 'ready') process.send(process.pid); });"], {
+    cwd: dir, detached: true, env: fixtureEnvironment(dir, process.env), stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  });
+  let nativeError: string | undefined;
+  child.on('error', error => { nativeError = error.message; });
+  // This observer never expires, including after a setup or disposal deadline.
+  const closed = new Promise<{ code: number | null; signal: NodeJS.Signals | null; rootPresent: boolean }>(resolve => {
+    child.once('close', (code, signal) => resolve({ code, signal, rootPresent: existsSync(dir) }));
+  });
+  const spawned = once(child, 'spawn');
+  const bounded = async <T>(work: Promise<T>, boundary: string): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([work, new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`incomplete ${boundary}: native error ${nativeError ?? 'none'}; exit ${child.exitCode}; signal ${child.signalCode}; root retained`)), 5000); // lint-allow-wall-clock: separate bounded native receipt wait; persistent observer survives timeout
+      })]);
+    } finally { clearTimeout(timer); }
+  };
+  const waitClosed = () => bounded(closed, 'native close');
+  stop = async () => { child.kill('SIGKILL'); await waitClosed(); };
+  onCleanup(t, stop);
+  const ready = async (signal?: AbortSignal, acknowledge = true) => {
+    const receipt = once(child, 'message', { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000) });
+    child.send(acknowledge ? 'ready' : 'hold');
+    return receipt;
+  };
+  return { child, dir, remove, ready, waitClosed, spawned: bounded(spawned, 'spawn') };
+}
+
+test('default FrameClient accounts a real child and cleanup reaps it before removing its root', async t => {
+  const fs = await import('node:fs/promises');
+  const { frameClient } = await import('./harness.ts');
+  const { recordedProcess, cleanupOwnedProcesses, captureProcess } = await import('./process-cleanup.ts');
+  const owner = await frameOwnershipChild(t);
+  await owner.spawned;
+  const [reportedPid] = await owner.ready();
+  const pid = owner.child.pid;
+  assert.ok(pid);
+  assert.equal(reportedPid, pid);
+  assert.equal(recordedProcess(pid), undefined, 'frame receipt is the first ownership registration');
+  let receive = (_chunk: string) => {};
+  const ui = frameClient(line => {
+    const request = JSON.parse(line);
+    receive(JSON.stringify({ type: 'result', id: request.id, ok: true, value: { process: { pid, cwd: owner.dir } } }) + '\n');
+  }, fn => { receive = fn; }, () => {}, owner.dir);
+  const result = await ui.request({ type: 'session.launch' });
+  assert.equal(result.ok, true);
+  const identity = recordedProcess(pid);
+  assert.ok(identity?.identity, 'default result observer captures native birth identity');
+  await cleanupOwnedProcesses([identity]);
+  const exit = await owner.waitClosed();
+  assert.equal(exit.signal, 'SIGKILL');
+  assert.equal(exit.rootPresent, true, 'root is retained through native close');
+  assert.equal(captureProcess(pid), null, 'native close and absent identity precede directory removal');
+  await owner.remove();
+  assert.equal(await fs.stat(owner.dir).catch(() => null), null);
+});
+
+for (const setup of ['omitted', 'aborted'] as const) test(`FrameClient native control cleanup joins close with ${setup} readiness`, async t => {
+  const fs = await import('node:fs/promises');
+  const { captureProcess } = await import('./process-cleanup.ts');
+  const owner = await frameOwnershipChild(t);
+  await owner.spawned;
+  if (setup === 'aborted') {
+    const abort = new AbortController();
+    const readiness = owner.ready(abort.signal, false);
+    const rejected = assert.rejects(readiness, { name: 'AbortError' });
+    abort.abort();
+    await rejected;
+  }
+  assert.ok(captureProcess(owner.child.pid), 'the unready native child is still live');
+  await owner.remove();
+  const exit = await owner.waitClosed();
+  assert.equal(exit.signal, 'SIGKILL');
+  assert.equal(exit.rootPresent, true, 'directory fence joins close before removal');
+  assert.equal(captureProcess(owner.child.pid), null);
+  assert.equal(await fs.stat(owner.dir).catch(() => null), null);
 });

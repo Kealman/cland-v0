@@ -58,3 +58,10 @@ private settings, reconnects the own spoke, observes the exact replacement PID
 receipt and proves an authenticated shell frame still succeeds. It covers
 Coordinator and Implementer roles, discovery/hook identities and held probes.
 The standalone scripted native edge uses scratch launch-file storage.
+
+The component's `connectUi` supplies a no-op process observer because its positive
+PIDs and birth stamps are invented. `scripted Claude frame results skip native
+process ownership probes` intercepts synchronous child launches and checks a
+positive PID in both launch and list replies before asserting zero probes after
+shutdown. Keep the opt-out local to this scripted fixture; FrameClient's default
+native accounting remains enabled for native fixtures.

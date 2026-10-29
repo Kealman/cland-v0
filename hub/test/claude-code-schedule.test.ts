@@ -197,7 +197,8 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
       const adapter = new ClaudeCodeAdapter(adapterHost, { clock, bin: 'fixture-claude', pollMs: 5000, ...(reexecGraceMs === null ? {} : { reexecGraceMs }), ...(pidAlive ? { pidAlive } : {}), processStarted, env: fixtureEnvironment(root, {}, { CLAUDE_CONFIG_DIR: directory, DISABLE_AUTOUPDATER: '0' }) });
       return adapter;
     }] });
-    const ui = await connectUi(t, hub.discovery);
+    // The scripted adapter reports invented PIDs; only native fixtures own OS processes.
+    const ui = await connectUi(t, hub.discovery, 'ui', () => {});
     await receipt(ui.request({ type: 'subscribe' }));
     return { hub, ui };
   };
@@ -221,6 +222,25 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
   }
   return { native, root, clock, directory, open, records, nextPoll, queryCompleted, get scheduleWrites() { return scheduleWrites; } };
 }
+
+test('scripted Claude frame results skip native process ownership probes', async t => {
+  const f = await component(t, () => true);
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const probes: string[] = [];
+  t.mock.method(cp, 'execFileSync', (command: string) => { probes.push(command); return ''; });
+  syncBuiltinESMExports();
+  const { hub, ui } = await f.open();
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  assert.equal((launched.value as { process: HarnessProcess }).process.pid, 91001);
+  const listed = await ui.request({ type: 'session.list' });
+  assert.equal(listed.ok, true, listed.error);
+  assert.equal((listed.value as { processes: HarnessProcess[] }).processes.find(p => p.name === 'coord')?.pid, 91001);
+  await hub.stop();
+  await hub.stopped;
+  assert.deepEqual(probes, [], 'synthetic launch/list PIDs require no child_process accounting');
+});
 
 test('hub-launched Claude disables auto-update in both the filtered CLI environment and supervised settings', async t => {
   const f = await component(t);

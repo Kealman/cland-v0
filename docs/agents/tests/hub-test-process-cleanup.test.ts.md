@@ -61,3 +61,14 @@ receipt or signal authority; preserve unrecorded branches too.
 Descendant liveness accepts only ESRCH as absent. The injected EIO and EPERM
 controls combine unreadable native birth with liveness failure after the group
 signal: both refuse settlement, with unexpected errors preserved as diagnostics.
+`default FrameClient accounts a real child and cleanup reaps it before removing
+its root` uses a sealed disposable root and an IPC-ready native child. Feed its
+PID through a correlated FrameClient result with the default observer, check the
+captured birth identity, then observe native close and absent identity before
+removing the root. The immediate native close observer never expires; readiness, spawn and each
+close wait have separate bounds. Both emergency cleanup and the directory
+beforeRemove fence join that same close receipt, retaining the root on an
+incomplete outcome with native exit/signal diagnostics. The shared owner also
+proves omitted and aborted readiness cleanup; each control observes a live child,
+then native close with the root present before removal. This guards the native default
+alongside the scripted Claude fixture's local observer opt-out.
