@@ -1,3 +1,5 @@
+import { pollerDeadline } from './fakes/finish-poller.ts';
+import { beforeDirectories, cleanupProcesses, fixtureProcessCensus } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -8,6 +10,7 @@ import { eventually } from './harness.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
 const barrier = `import { existsSync, writeFileSync, appendFileSync } from 'node:fs';
+${pollerDeadline()}
 writeFileSync('.cland/entered', '');
 while (!existsSync('.cland/finish')) await new Promise(r => setTimeout(r, 10));
 appendFileSync('executions', 'run\\n'); writeFileSync('.cland/completed', '');`;
@@ -16,6 +19,10 @@ for (const phase of ['queued', 'running'] as const) {
   for (const path of ['.cland/tasks/note.md', '.cland/RULES.md']) {
     test(`integrated ${phase} run covers a new head after committing ${path}`, async t => {
       const f = await fixture(t, 'node barrier.mjs');
+      beforeDirectories(t, async () => {
+        await cleanupProcesses(f.root, [], undefined, undefined, []);
+        assert.deepEqual(fixtureProcessCensus(f.root), [], 'local candidate left live writers');
+      });
       await writeFile(join(f.root, 'barrier.mjs'), barrier);
       const git = await cacheRepository(f);
       await git('checkout', 'dev');
@@ -54,6 +61,10 @@ for (const phase of ['queued', 'running'] as const) {
 
 test('integrated running run rejects a source commit after package completion', async t => {
   const f = await fixture(t, 'node barrier.mjs');
+  beforeDirectories(t, async () => {
+    await cleanupProcesses(f.root, [], undefined, undefined, []);
+    assert.deepEqual(fixtureProcessCensus(f.root), [], 'local candidate left live writers');
+  });
   await writeFile(join(f.root, 'barrier.mjs'), barrier);
   const git = await cacheRepository(f);
   await git('checkout', 'dev');

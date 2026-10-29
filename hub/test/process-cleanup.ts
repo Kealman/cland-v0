@@ -177,6 +177,14 @@ function cwdPaths(pids?: number[]): Map<number, string> {
   }
   return result;
 }
+/** Read-only census of live writers whose cwd remains inside a disposable root. */
+export function fixtureProcessCensus(root: string): ProcessIdentity[] {
+  root = realpathSync(root);
+  const rows = processes();
+  const cwd = cwdPaths(rows.map(row => row.pid));
+  return rows.filter(row => within(cwd.get(row.pid) ?? '', root));
+}
+
 function runMarkers(rows: ProcessRow[]): Map<number, string> {
   const result = new Map<number, string>();
   if (process.platform === 'linux') {

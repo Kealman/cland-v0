@@ -1,5 +1,6 @@
 // T3: real worker delivery and host-receipt reuse, SSH interruption, provider loss, cancellation,
 // watchdog reaping and hub-crash reconciliation require real process boundaries.
+import { pollerDeadline } from './fakes/finish-poller.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
@@ -92,7 +93,7 @@ test('host check failure creates no machine; remote typecheck stops tests and fa
   });
 });
 
-const longTest = `node -e "const fs=require('fs');console.log('INCREMENTAL 😀');const t=setInterval(()=>{if(fs.existsSync(process.env.HOME+'/finish')){console.log('FINAL 😀');clearInterval(t)}},50)"`;
+const longTest = `node -e "${pollerDeadline()}const fs=require('fs');console.log('INCREMENTAL 😀');const t=setInterval(()=>{if(fs.existsSync(process.env.HOME+'/finish')){console.log('FINAL 😀');clearInterval(t)}},50)"`;
 test('incremental byte logs survive SSH failure and hub restart and report once', async t => {
   const f = await fixture(t, { test: longTest });
   const job = await f.launch(); const remote = await f.remote(job.id);

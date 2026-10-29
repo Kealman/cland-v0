@@ -1,10 +1,16 @@
 // T3: proves cross-process spend-lock recovery, remote shell timeout, watchdog rearming
 // and cleanup after the hub process stops; component admission cases use scripted machines.
+import { ownProcess, onCleanup, cleanupOwnedProcesses, fixtureProcessCensus } from './process-cleanup.ts';
+import { FakeClock } from './fake-clock.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
+import type { TestContext } from 'node:test';
+import { pollerDeadline } from './fakes/finish-poller.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { execFile } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -15,7 +21,7 @@ import { leaseDir, writeLease, type DropletLease, type WatchdogReceipt } from '.
 import type { HubStatus } from '../src/protocol.ts';
 
 const exec = promisify(execFile);
-const longTest = `node -e "const fs=require('fs');console.log('RUNNING');const t=setInterval(()=>{if(fs.existsSync(process.env.HOME+'/finish'))clearInterval(t)},50)"`;
+const longTest = `node -e "${pollerDeadline()}const fs=require('fs');console.log('RUNNING');const t=setInterval(()=>{if(fs.existsSync(process.env.HOME+'/finish'))clearInterval(t)},50)"`;
 type Ledger = { entries: { run: string; reservation: number; cost: number | null }[] };
 const ledger = async (state: string): Promise<Ledger> => JSON.parse(await readFile(join(state, 'spend.json'), 'utf8'));
 async function lease(root: string): Promise<{ value: DropletLease; path: string }> {
@@ -156,4 +162,186 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   };
   await scan(join(f.root, '.cland')); await scan(f.api.stateRoot);
   assert.ok(!JSON.stringify(f.api.requests).includes('cland-test-remote-suite-token'));
+});
+
+// Register one acquisition/teardown owner before the first asynchronous setup step.
+function pollingOwner(t: TestContext, options: { clock?: import('../src/hub/clock.ts').Clock; timeoutMs?: number; releaseSetup?: () => void } = {}) {
+  onCleanup(t, () => { options.releaseSetup?.(); });
+  const native = caseDeadlines(t, { timeoutMs: remoteWaitMs(10_000) });
+  const scope = options.clock ? caseDeadlines(t, { clock: options.clock, timeoutMs: options.timeoutMs ?? 10 }) : native;
+  let api: Awaited<ReturnType<typeof fakeDigitalOcean>> | undefined;
+  let dispose: (() => Promise<void>) | undefined;
+  let closed: Promise<void> | undefined;
+  let captured: import('./process-cleanup.ts').ProcessIdentity[] = [];
+  let closing: Promise<void> | undefined;
+  let setup: Promise<unknown> | undefined;
+  const close = () => {
+    closing ??= (async () => {
+      // This continuation outlives any caller's bounded observation.
+      if (setup) await setup.then(() => {}, () => {});
+      const errors: unknown[] = [];
+      for (const [name, work] of [
+        ['captured process drainage', () => cleanupOwnedProcesses(captured)],
+        ['spawn group disposal', async () => { await dispose?.(); }],
+        ['provider close', async () => { await api?.close(); }],
+        ['native child close receipt', async () => { await closed; }],
+      ] as const) {
+        try { await native.wait(name, work); } catch (error) { errors.push(error); }
+      }
+      if (errors.length) throw new AggregateError(errors, 'polling fixture cleanup incomplete');
+    })();
+    return scope.wait('poller disposal receipt', () => native.wait('native disposal settlement', () => closing!));
+  };
+  scope.fixtures.after(close);
+  const start = (check?: () => Promise<void>) => {
+    const work = (async () => {
+      api = await fakeDigitalOcean('synthetic-cleanup-test');
+      const fake = api;
+      const cwd = join(fake.stateRoot, 'droplet-owned/home/runner/cland');
+      await import('node:fs/promises').then(fs => fs.mkdir(cwd, { recursive: true }));
+      await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { test: `node -e "${pollerDeadline()}const fs=require('fs');fs.writeFileSync('poller',String(process.pid));const timer=setInterval(()=>{if(fs.existsSync('fail'))process.exit(7);if(fs.existsSync(process.env.HOME+'/finish'))clearInterval(timer)},50)"` } }));
+      const child = spawn('npm', ['test'], { cwd, env: fixtureEnvironment(cwd, process.env), detached: true, stdio: 'ignore' });
+      let exitReceipt: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+      closed = new Promise<void>((resolve, reject) => {
+        child.once('close', (code, signal) => { exitReceipt = { code, signal }; resolve(); });
+        child.once('error', reject);
+      });
+      void closed.catch(() => {});
+      dispose = ownProcess(undefined, child.pid);
+      await eventually('polling child wrote its PID', async () => await readFile(join(cwd, 'poller'), 'utf8').catch(() => '') || undefined);
+      captured = fixtureProcessCensus(fake.stateRoot);
+      t.diagnostic(`before provider close: ${captured.map(row => row.pid).join(', ')}`);
+      assert.ok(captured.length >= 2, 'positive control: npm and poller are running');
+      await check?.();
+      return { api: fake, cwd, child, captured, exit: () => exitReceipt };
+    })();
+    setup = work;
+    return scope.wait('poller setup receipt', () => native.wait('native setup settlement', () => work));
+  };
+  return { start, close, api: () => api, nativeWait: native.wait, join: () => native.wait('native child close receipt', async () => { await closed; }) };
+}
+
+// Provider teardown must own descendants even when the remote shell has vanished.
+for (const ending of ['unfinished', 'failed', 'aborted'] as const) test(`fake provider close reaps npm test and its polling child (${ending})`, async t => {
+  const owner = pollingOwner(t);
+  const f = await owner.start();
+  try {
+    if (ending === 'failed') {
+      await writeFile(join(f.cwd, 'fail'), 'yes');
+      assert.equal((await eventually('native npm failure', f.exit)).code, 7, 'native npm failure receipt');
+    } else if (ending === 'aborted') {
+      f.child.kill('SIGTERM');
+      assert.equal((await eventually('native npm abort', f.exit)).signal, 'SIGTERM', 'native npm abort receipt');
+    }
+    await f.api.close();
+    await owner.join();
+    const remaining = f.captured.filter(row => { try { process.kill(row.pid, 0); return true; } catch { return false; } });
+    assert.deepEqual(remaining.map(row => row.pid), [], 'provider close left owned processes');
+  } finally { await owner.close(); }
+});
+
+test('finish poller exits 124 without a finish receipt', async t => {
+  const root = await tempProject(t);
+  const result = await exec(process.execPath, ['-e', `${pollerDeadline(50)}setInterval(()=>{},10)`], {
+    cwd: root, env: fixtureEnvironment(root, process.env), timeout: remoteWaitMs(5000),
+  }).then(() => ({ code: 0, stderr: '' }), error => ({ code: error.code, stderr: error.stderr }));
+  assert.equal(result.code, 124);
+  assert.match(result.stderr, /finish barrier expired/);
+});
+
+for (const transport of ['direct', 'http', 'direct-timeout', 'direct-omitted', 'http-aborted'] as const) test(`fake provider close drains held ${transport} creation and fences later admission`, async t => {
+  const { caseDeadlines } = await import('./case-deadlines.ts');
+  const { fakeDigitalOcean } = await import('./fakes/digitalocean/fake-api.ts');
+  const { DigitalOceanApi } = await import('../src/executor/droplet/api.ts');
+  const { stat } = await import('node:fs/promises');
+  let api: Awaited<ReturnType<typeof fakeDigitalOcean>> | undefined;
+  const entered = Promise.withResolvers<void>();
+  const nativeHeld = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  let creating: Promise<unknown> | undefined;
+  let acquisition: Promise<unknown> | undefined;
+  void entered.promise.catch(() => {});
+  const releaseAndCancel = () => { release.resolve(); entered.reject(new Error('held create observation cancelled')); nativeHeld.reject(new Error('native hold observation cancelled')); };
+  void nativeHeld.promise.catch(() => {});
+  let disposing: Promise<void> | undefined;
+  const closeFixture = () => {
+    releaseAndCancel();
+    disposing ??= (async () => { await Promise.allSettled([acquisition, creating]); await api?.close(); })();
+    return owner.wait('held-create fixture disposal', () => disposing!);
+  };
+  onCleanup(t, closeFixture);
+  const setupClock = new FakeClock();
+  const owner = caseDeadlines(t, { timeoutMs: remoteWaitMs(10_000) });
+  const observations = caseDeadlines(t, { clock: setupClock, timeoutMs: 10 });
+  owner.fixtures.after(closeFixture);
+  const clock = new FakeClock();
+  const acquiring = (async () => api = await fakeDigitalOcean('synthetic-close-test', { clock }))();
+  acquisition = acquiring;
+  api = await owner.wait('provider acquisition', () => acquiring);
+  const fake = api;
+  const missing = transport === 'direct-omitted' || transport === 'http-aborted';
+  fake.beforeCreate(async () => { nativeHeld.resolve(); if (!missing) entered.resolve(); await release.promise; });
+  const provider = !transport.startsWith('http') ? fake.provider : new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'synthetic-close-test', CLAND_DIGITALOCEAN_API: fake.url });
+  const input = { name: 'owned', tags: [], size: 'c-8', region: 'lon1', image: 'base', ssh_keys: [] };
+  creating = provider.create(input);
+  void creating.catch(() => {});
+  const observing = observations.wait('held create receipt', () => owner.wait('native serving receipt', () => entered.promise));
+  if (missing) {
+    const rejected = assert.rejects(observing, transport === 'direct-omitted' ? /deadline exceeded/ : /observation cancelled/);
+    await owner.wait('actual native held-create receipt', () => nativeHeld.promise);
+    if (transport === 'direct-omitted') await setupClock.advance(10);
+    // Release/cancel happens before waiting for the missing observer or native request.
+    const disposing = closeFixture();
+    await rejected;
+    await disposing;
+    await assert.rejects(stat(fake.stateRoot), { code: 'ENOENT' });
+    assert.equal(fake.machineDirs.size, 1, 'held native work drained after observer failure');
+    return;
+  }
+  await observing;
+  if (transport === 'direct-timeout') {
+    const failed = assert.rejects(creating, /transport/);
+    await clock.advance(15_000);
+    await failed;
+  }
+  const closing = fake.close();
+  void closing.catch(() => {});
+  assert.equal(fake.close(), closing, 'close shares the same drainage');
+  await assert.rejects(fake.provider.create(input), /closed/, 'admission is fenced synchronously');
+  assert.ok((await stat(fake.stateRoot)).isDirectory(), 'root survives until held work settles');
+  release.resolve();
+  await owner.wait('held create settled', () => Promise.allSettled([creating]));
+  await owner.wait('provider close receipt', () => closing);
+  assert.equal(fake.machineDirs.size, 1, 'the admitted create settled before removal');
+  await assert.rejects(stat(fake.stateRoot), { code: 'ENOENT' });
+  await assert.rejects(fake.provider.account(), /closed/);
+});
+
+for (const mode of ['omitted', 'aborted'] as const) test(`poller disposal resumes after ${mode} held setup outlives caller deadlines`, async t => {
+  const { stat } = await import('node:fs/promises');
+  const clock = new FakeClock();
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  void entered.promise.catch(() => {});
+  const owner = pollingOwner(t, { clock, timeoutMs: 10, releaseSetup: () => { release.resolve(); entered.reject(new Error('setup held observation cancelled')); } });
+  const starting = owner.start(async () => { entered.resolve(); await release.promise; });
+  const abort = Promise.withResolvers<never>();
+  const observing = mode === 'omitted' ? starting : Promise.race([starting, abort.promise]);
+  const missedSetup = assert.rejects(observing, mode === 'omitted' ? /poller setup receipt.*deadline exceeded/ : /setup observation aborted/);
+  try {
+    await owner.nativeWait('native setup held receipt', () => entered.promise);
+    if (mode === 'omitted') await clock.advance(10);
+    else abort.reject(new Error('setup observation aborted'));
+    await missedSetup;
+    const missedClose = assert.rejects(owner.close(), /deadline exceeded/);
+    await clock.advance(10);
+    await missedClose;
+    assert.ok((await stat(owner.api()!.stateRoot)).isDirectory(), 'held native setup retains its root');
+    release.resolve();
+    await owner.close();
+    await assert.rejects(stat(owner.api()!.stateRoot), { code: 'ENOENT' });
+  } finally {
+    release.resolve();
+    await owner.api()?.close();
+  }
 });

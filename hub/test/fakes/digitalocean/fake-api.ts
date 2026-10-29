@@ -1,3 +1,6 @@
+import assert from 'node:assert/strict';
+import { testWaitMs } from '../../until.ts';
+import { cleanupProcesses, fixtureProcessCensus } from '../../process-cleanup.ts';
 import { realClock, type Clock } from '../../../src/hub/clock.ts';
 import { pause } from '../../../src/executor/droplet/watchdog.ts';
 import { FakeClock } from '../../fake-clock.ts';
@@ -6,7 +9,7 @@ import { DigitalOceanApi, DigitalOceanError } from '../../../src/executor/drople
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
-import { cp, mkdir, mkdtemp, writeFile, rm, readFile, copyFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, writeFile, rm, readFile, copyFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
@@ -19,8 +22,17 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const waits = scripted && clock instanceof FakeClock ? remoteWaits(clock) : undefined;
   // Intentional provider delays yield ownership; native publication hooks do not.
   const wait = waits?.wait ?? ((ms: number) => pause(ms, clock));
-  const stateRoot = await mkdtemp(join(tmpdir(), 'cland-fake-do-'));
+  const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'cland-fake-do-')));
   const run = promisify(execFile);
+  let accepting = true;
+  const active = new Set<Promise<unknown>>();
+  const admit = <T>(work: () => Promise<T>): Promise<T> => {
+    if (!accepting) return Promise.reject(new DigitalOceanError(0, 'closed', 'fake provider is closed'));
+    const task = Promise.resolve().then(work);
+    active.add(task);
+    void task.then(() => active.delete(task), () => active.delete(task));
+    return task;
+  };
   const publicKeys = new Map<number, string>();
   let nextAddress = 10;
   const dropletAddresses = new Map<number, string>();
@@ -226,7 +238,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       let timer: ReturnType<Clock['setTimeout']> | undefined;
       try {
         const result = await Promise.race([
-          handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>),
+          admit(() => handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>)),
           new Promise<never>((_, reject) => { timer = clock.setTimeout(() => reject(new DigitalOceanError(0, remaining <= 15000 ? 'deadline' : 'transport', 'request failed or exceeded its time bound')), bound); }),
         ]);
         if (result.status >= 400) {
@@ -238,27 +250,49 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     };
     return waits ? waits.track(request) : request();
   });
-  const server = scripted ? null : createServer(async (req, res) => {
-    if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
-    let source = '';
-    for await (const chunk of req) source += String(chunk);
-    try {
+  const server = scripted ? null : createServer((req, res) => {
+    // Own body reads as well as handler continuations; connection close alone does not join them.
+    void admit(async () => {
+      if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
+      let source = '';
+      for await (const chunk of req) source += String(chunk);
       const result = await handle(req.method!, new URL(req.url!, 'http://fake'), source ? JSON.parse(source) : null);
       res.writeHead(result.status, { 'Content-Type': 'application/json' });
       res.end(result.value === undefined ? '' : JSON.stringify(result.value));
-    } catch { req.socket.destroy(); }
+    }).catch(() => req.socket.destroy());
   });
   if (server) await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server?.address();
   const url = address && typeof address !== 'string' ? `http://127.0.0.1:${address.port}/v2` : '';
-  return { provider, url, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot,
-    setMachineFaults: async (value: Partial<typeof machineFaults>) => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); },
+  let closing: Promise<void> | undefined;
+  return { provider, url, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot: (image: SnapshotImage, key: unknown) => admit(() => seedSnapshot(image, key)),
+    setMachineFaults: (value: Partial<typeof machineFaults>) => admit(async () => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); }),
     beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },
     beforeKeyList: (check: () => Promise<void>) => { beforeKeyList = check; },
     beforeSizes: (check: () => Promise<void>) => { beforeSizes = check; },
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
     beforeImport: (check: () => Promise<void>) => { beforeImport = check; },
     beforeSnapshotDelete: (check: (id: number) => Promise<void>) => { beforeSnapshotDelete = check; },
-    close: async () => { if (server) { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); } await rm(stateRoot, { recursive: true, force: true }); },
+    close: () => {
+      if (closing) return closing;
+      accepting = false;
+      closing = (async () => {
+        if (server) { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); }
+        const timeoutMs = testWaitMs(30_000);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            (async () => { while (active.size) await Promise.allSettled([...active]); })(),
+            new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`fake provider drainage exceeded ${timeoutMs} ms; ${active.size} operation(s) pending; root retained`)), timeoutMs); }),
+          ]);
+        } finally { clearTimeout(timer); }
+        if (!scripted) {
+          await cleanupProcesses(stateRoot, [], undefined, undefined, []);
+          assert.deepEqual(fixtureProcessCensus(stateRoot), [], 'fake provider left live machine writers');
+        }
+        await rm(stateRoot, { recursive: true, force: true });
+      })();
+      return closing;
+    },
   };
 }

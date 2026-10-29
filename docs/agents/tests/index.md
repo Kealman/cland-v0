@@ -328,6 +328,8 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`nvim/test/telegram-marks.test.ts`](../../../nvim/test/telegram-marks.test.ts) | [Notes](nvim-test-telegram-marks.test.ts.md) |
 | [`hub/test/telegram-marks-setup.test.ts`](../../../hub/test/telegram-marks-setup.test.ts) | [Notes](hub-test-telegram-marks-setup.test.ts.md) |
 | [`hub/test/fixture-endpoints.test.ts`](../../../hub/test/fixture-endpoints.test.ts) | [Notes](hub-test-fixture-endpoints.test.ts.md) |
+| [`hub/test/suite-candidate.test.ts`](../../../hub/test/suite-candidate.test.ts) | [Notes](hub-test-suite-candidate.test.ts.md) |
+| [`hub/test/suite-close-recovery.test.ts`](../../../hub/test/suite-close-recovery.test.ts) | [Notes](hub-test-suite-close-recovery.test.ts.md) |
 | [`hub/test/durations-refresh.test.ts`](../../../hub/test/durations-refresh.test.ts) | [Notes](hub-test-durations-refresh.test.ts.md) |
 | [`hub/test/claude-code-adapter.test.ts`](../../../hub/test/claude-code-adapter.test.ts) | [Notes](hub-test-claude-code-adapter.test.ts.md) |
 | [`hub/test/item-summary-lua-soak.test.ts`](../../../hub/test/item-summary-lua-soak.test.ts) | [Notes](hub-test-item-summary-lua-soak.test.ts.md) |

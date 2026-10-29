@@ -1,4 +1,5 @@
 // T3: provider loss, cancellation and hub restart reconcile two live remote shard processes.
+import { pollerDeadline } from './fakes/finish-poller.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile, readFile } from 'node:fs/promises';
@@ -8,7 +9,7 @@ import { remoteEventually as eventually } from './remote-fixture.ts';
 import { clandWithEnv, connectUi, killDaemon, nativeProjectHub as projectHub, startDaemon } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 
-const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const timer=setInterval(()=>{if(fs.existsSync('.cland/finish')){clearInterval(timer);console.log('# tests 1');console.log('# pass 1')}},25)"`;
+const barrier = `node -e "${pollerDeadline()}const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const timer=setInterval(()=>{if(fs.existsSync('.cland/finish')){clearInterval(timer);console.log('# tests 1');console.log('# pass 1')}},25)"`;
 
 for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded close handles ${action} with one result and confirmed cleanup`, async t => {
   const f = await integrated(t, '', 2, barrier, { hub: action === 'restart' ? startDaemon : projectHub });

@@ -1,6 +1,7 @@
 // T3: delivered remote workers exit before their receipts release provider capacity.
 // Real shell completion with failed spend settlement proves the process receipt
 // boundary; unconfirmed deletion policy lives in suite-accounting (T2).
+import { pollerDeadline } from './fakes/finish-poller.ts';
 import { sessionShell, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
@@ -13,7 +14,7 @@ import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 
 // Both kinds of executor stop at a file barrier in their own candidate checkout.
-const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const t=setInterval(()=>{if(fs.existsSync('.cland/finish'))clearInterval(t)},25)"`;
+const barrier = `node -e "${pollerDeadline()}const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const t=setInterval(()=>{if(fs.existsSync('.cland/finish'))clearInterval(t)},25)"`;
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 async function caller(t: TestContext, f: Fixture, name: string) {
   const cwd = join(f.root, '.cland', name);
