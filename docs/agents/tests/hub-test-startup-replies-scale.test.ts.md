@@ -24,7 +24,8 @@ guard the known save/recompute/read regressions; arbitrary CPU work or blocking
 I/O inside a counted unit is outside them. The separate copied-state CLI
 measurement retains its five-second end-to-end target.
 Every restored plan must retain its children. This Coordinator-approved T3 scale seam adds no
-native process; task verification defers it to periodic and integrated runs.
+native process. Changed-file task verification selects this T3 file; periodic
+and integrated runs also exercise it.
 T-1039 removes the C-325 duration allowance after the expanded file ran in
 2.768 seconds on local Darwin arm64; this is targeted local T3 evidence, not
 a new Linux or integrated receipt. A-8181's original 6.636-second Linux T2 result
@@ -35,22 +36,23 @@ still runs its check and demotes. `startup-ready-component.test.ts` observes bot
 filesystem boundaries and final frame statuses; `startup-replies-scale.test.ts`
 retains the original durable-scale fixture and measures first completed status.
 
-T-1204 adds the full copied-tracker reply-budget case at this existing T3 seam,
-per Coordinator decision 27508150. The complete checkout tracker is copied
-read-only into a sealed disposable project; no rows or bodies are trimmed.
-The original synthetic T2 case in `hub-status-component.test.ts` and this copied
-case call `startup-replies-fixture.ts` for identical eight framed UTF-8 reply
+The copied-tracker reply case uses the fixed 24-item shape corpus from
+`hub/test/fixtures/tracker-snapshot/items.json`, copied into the sealed disposable
+project. The synthetic T2 case in `hub-status-component.test.ts` and this pinned
+T3 case call `startup-replies-fixture.ts` for identical eight framed UTF-8 reply
 checks, first-item/per-reply/total caps, count checks and individual/aggregate
-oversize controls. Snapshot and independent Lua guards remain separate.
-The per-reply measurements and conditional growth runway are retained in the
-hub-status guide. Hitting any byte cap requires paging or trimming the reply,
-while keeping the cap unchanged.
+oversize controls. The first scale case above keeps all 1,004 generated item
+files and every work/byte assertion unchanged. Snapshot and Lua guards remain
+separate: the default Lua case uses this corpus, while the T4 Lua soak checks
+every live tracker body. The manual `nvim/test/startup-budget-probe.ts` retains
+its explicit full-copy source and five-second startup target.
 
-The unchanged copied workload first ran at `9a6d8a27` in T2: Linux x64 droplet
-c-8 lon1 run `0c97f1ae` (A-11122) passed its assertions and five load repetitions,
-but exited 1 on the enforced new-identity duration gate. Ordinary native time
-was 17.275973484 seconds, worst passing repetition 18.864933431 seconds.
-The relocated T3 identity has a 28.298-second allowance (1.5x that worst sample,
-rounded upward to milliseconds), owner E-1196, added 2026-10-24 and expiring
-2026-10-31. This is transferred workload evidence, not a claim that T3 or Web
-executed in the failed run; configured exact-head T3 evidence follows review.
+Historical full-copy receipt: before T-1421 bounded this case, the complete
+checkout tracker was copied here under T-1204 (Coordinator decision 27508150).
+At `9a6d8a27` the workload ran in T2: Linux x64 droplet c-8 lon1 run `0c97f1ae`
+(A-11122) passed its assertions and five load repetitions, but exited 1 on the
+enforced new-identity duration gate. Ordinary native time was 17.275973484
+seconds, worst passing repetition 18.864933431 seconds. That old workload and
+its old E-1196 allowance do not describe the pinned case; T-1421 removes the
+superseded copied-workload allowance. Use current Linux run receipts when
+sizing any replacement. Existing byte caps remain unchanged.

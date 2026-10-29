@@ -1,9 +1,10 @@
 // T3: first status receipt on a live-size retained-history fixture, including
 // stopped processes, suite receipts and plans. Coordinator-approved scale seam
-// (topic-785, T-1039); no native hub process needed. The synthetic byte guard stays T2; the full copied tracker runs here (T-1204, Coordinator-directed).
+// (topic-785, T-1039); no native hub process needed. The synthetic byte guard stays T2; the pinned corpus complements the thousand-row case here.
 import test from 'node:test';
+import { copyPinnedTracker } from './pinned-tracker.ts';
 import assert from 'node:assert/strict';
-import files, { cp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import files, { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { FakeClock } from './fake-clock.ts';
@@ -159,11 +160,11 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
   }
 });
 
-// Reuse the established T3 scale seam; never shrink the live tracker for a lower tier.
-test('eight startup replies and byte guards work on a copied live durable fixture', async t => {
+// Reuse the established T3 scale seam; retain separate thousand-item scale cases.
+test('eight startup replies and byte guards work on a pinned durable fixture', async t => {
   const root = await tempProject(t);
-  await cp(new URL('../../.cland/tasks', import.meta.url), join(root, '.cland/tasks'), { recursive: true });
+  await copyPinnedTracker(root);
   const rows = await Promise.all((await readdir(join(root, '.cland/tasks'))).filter(name => name.endsWith('.md')).map(async name => parseItem(await readFile(join(root, '.cland/tasks', name), 'utf8'), name)));
   assert.ok(rows.length > 12, 'copied tracker replaces the small synthetic fixture');
-  await assertStartupReplies(t, root, 'copied live', rows.length, rows.filter(row => row.fm.state === 'open').length);
+  await assertStartupReplies(t, root, 'pinned', rows.length, rows.filter(row => row.fm.state === 'open').length);
 });

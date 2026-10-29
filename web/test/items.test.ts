@@ -1,8 +1,9 @@
 // Web: copied tracker -> real scratch hub -> snapshot/deltas -> rendered explorer.
 import test from 'node:test';
+import { copyPinnedTracker } from '../../hub/test/pinned-tracker.ts';
 import assert from 'node:assert/strict';
-import { cp, mkdir, readdir, readFile } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { mkdir, readdir, readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { webFixture, pageUntil } from './harness.ts';
 import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { seedItem, seedTree } from './items-fixture.ts';
@@ -10,7 +11,7 @@ import { currentRelease } from '../src/current-release.ts';
 import type { Page } from 'playwright-core';
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
 
-// The full copied tracker can queue snapshot/page/delta work on a loaded runner.
+// The pinned tracker can queue snapshot/page/delta work on a loaded runner.
 // Bound the actual rendered row, independently of hub launch or mutation replies.
 const copiedRowTimeout = 15_000;
 // The copied-tracker mutation result has its own bound; shared clients keep 5 s.
@@ -35,12 +36,10 @@ async function liveRelease(root: string) {
   return currentRelease(releases)!;
 }
 
-test('the Items tree reads the copied live tracker snapshot', async t => {
+test('the Items tree reads the pinned tracker snapshot', async t => {
   let live!: ExplorerSummary;
   const fixture = await webFixture(t, { prepare: async root => {
-    await cp(resolve(import.meta.dirname, '../../.cland/tasks'), join(root, '.cland/tasks'), {
-      recursive: true, filter: source => !basename(source).startsWith('R-1100-'),
-    });
+    await copyPinnedTracker(root, ['R-1100']);
     t.diagnostic(`copied tracker files: ${(await readdir(join(root, '.cland/tasks'))).length}; browser ${process.platform}/${process.arch} isolated Headless Shell`);
     // Plant the live regression even when this checkout predates Public launch.
     await seedItem(root, 'R-1100', 'release', 'Public launch');

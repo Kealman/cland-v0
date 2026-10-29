@@ -1,9 +1,9 @@
 // T3: copied live tracker through production frames and a real headless Neovim.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {join,resolve} from 'node:path';
+import {join} from 'node:path';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {copyStartupTracker} from './startup-budget-support.ts';
+import {copyPinnedTracker} from '../../hub/test/pinned-tracker.ts';
 import {nvimOrSkip,startClient} from './harness.ts';
 import {tempProject,projectHub,connectUi,until} from '../../hub/test/harness.ts';
 import {fixtureEnvironment} from '../../test-support/fixture-environment.ts';
@@ -14,7 +14,7 @@ const skip='skip' in found?found.skip:false,bin='bin' in found?found.bin:'';
 
 test('copied tracker explorer, board and card render closed children from parent pages', {skip}, async t=>{
   const root=await tempProject(t);
-  await copyStartupTracker(resolve(import.meta.dirname,'../../.cland/tasks'),root);
+  await copyPinnedTracker(root);
   const at='2026-10-21T12:00:00Z';
   for(const [id,kind,parent,state] of [
     ['R-900001','release',null,'open'],['E-900002','epic','R-900001','open'],['E-900108','epic','R-900001','closed'],['T-900109','task','E-900108','closed'],

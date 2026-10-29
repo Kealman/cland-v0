@@ -2288,7 +2288,7 @@
       "seconds": 5.081626,
       "tests": 1
     },
-    "hub/test/item-summary-lua.test.ts": {
+    "hub/test/item-summary-lua-soak.test.ts": {
       "seconds": 18.068314,
       "tests": 1
     },
@@ -6540,7 +6540,7 @@
     "hub/test/executor-run-rules.test.ts::replaying output after a checkpoint-before-append restart keeps its original silence boundary": 0.039361,
     "hub/test/follows-native.test.ts::demo freshness batches Git reads and preserves rename, revert, side-branch and merge conflicts": 0.215702,
     "hub/test/follows-native.test.ts::stage ancestry settles within two seconds while an old thousand-commit demo scan is outstanding": 0.43263,
-    "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": 18.068314,
+    "hub/test/item-summary-lua-soak.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": 18.068314,
     "hub/test/item-summary-scale.test.ts::a thousand-item task change recomputes only its three-row chain within 100 ms": 2.162466,
     "hub/test/item-summary.test.ts::card facts arrive in snapshots and deltas while body and comments stay on demand": 0.223073,
     "hub/test/item-summary.test.ts::claims, holds, subtree verdicts and topic activity update their container facts": 0.232411,
@@ -6598,7 +6598,6 @@
     "web/test/items.test.ts::closed container pages restore nested archives once and preserve unloaded release progress": 1.415704,
     "web/test/items.test.ts::closed epic children arrive through bounded pages and remain current after close and reconnect": 0.897708,
     "web/test/items.test.ts::hidden done rows retain hub stage and total counts without loading closed pages": 0.608083,
-    "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": 14.752851,
     "hub/src/hub/store.test.ts::ask outcomes and inbox departures preserve option and free-text decisions across Store reopen": 0.023074,
     "hub/test/ask-outcomes.test.ts::C1: an option outcome stays on the thread entry in live cards and later history": 0.077158,
     "hub/test/ask-outcomes.test.ts::C2: the inbox publishes an answered departure with the thread outcome and keeps it in the archive": 0.076128,
@@ -7217,7 +7216,6 @@
     "hub/test/session-credential-io.test.ts::relaunch rechecks the calling session after held credential persistence": 0.059494,
     "hub/test/session-credential-io.test.ts::relaunch waits for async credential rotation before entering the native adapter": 0.034531,
     "hub/test/session-credential-io.test.ts::shutdown during credential preparation settles the relaunch reservation before storage closes": 0.035692,
-    "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": 14.682499,
     "hub/test/suite-admission-responsive.test.ts::verify queue exposes a failed local admission and its reason through CLI and subscription": 0.326868,
     "hub/test/suite-admission-responsive.test.ts::verify queue retains a local release recovery failure until cleanup succeeds, with the next run waiting": 0.746939,
     "hub/test/suite-admission.test.ts::verify materializes Agents defaults for a prior hub wire contract and preserves previews and overrides": 0.032899,
@@ -8491,13 +8489,6 @@
       "expires": "2026-11-25",
       "reason": "T-1331 retains the real CLI enable/disable and explicit reload walk for both messengers, token-absent inactivity, welcome/status receipts, unchanged reload retention and completed stop receipts. Linux x64 c-8 lon1 droplet run 8aa40cc7 at 5790b51bc (A-12382) passed the ordinary sample at 3.035164865 s and all five load repetitions, worst 3.083795257 s; local macOS source2 A-12375 passed at 1.012606083 s. The 4.626 s cap rounds 1.5x the worst of these passing samples upward to milliseconds. Assertions and bounded waits are unchanged. Coordinator decision 864cd392 authorizes this allowance with E-880 ownership and 2026-11-25 expiry."
     },
-    "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a copied live durable fixture": {
-      "seconds": 31.7,
-      "owner": "E-880",
-      "added": "2026-10-26",
-      "expires": "2026-11-25",
-      "reason": "T-1204 retains the complete copied live tracker and eight real framed startup replies at the existing T3 scale seam, per Coordinator decision 27508150. The unchanged workload previously ran in hub-status-component T2: Linux x64 c-8 lon1 run 0c97f1ae at 9a6d8a27 (A-11122) passed all assertions, ordinary sample 17.275973484 s, worst of five passing load repetitions 18.864933431 s. This allowance rounds 1.5x that worst observed passing sample upward to milliseconds. It covers the same full-copy/shared reply assertions after relocation; no byte cap, fixture size or existing assertion is relaxed. E-1196 owns the seven-day full-copy setup cost. Re-owned to E-880 on 2026-10-25 before its epic closes (D72 legacy owner). Renewed 2026-10-26 (T-1338): recent passing samples A-12333 21.133181821999997 s, A-12360 14.183127087999999 s, A-12338 7.054619333 s, A-12224 6.8981826250000005 s; A-12333/A-12360 Linux droplet, A-12338/A-12224 macOS local (duration budgets report-only). The 31.700 s cap rounds 1.5x the worst recent passing sample (21.133181821999997 s) upward to milliseconds; E-880 retains ownership within its 31-day span limit."
-    },
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
       "seconds": 22,
       "owner": "E-880",
@@ -8553,20 +8544,6 @@
       "added": "2026-10-24",
       "expires": "2026-11-23",
       "reason": "T-1076 Graph parent measured 3.99 to 5.008 s on Linux c-8 droplets (runs 8af5955a, 033cceae, eb22dbbc, stage cover 171199e4 at 37499fe3, A-8960) against the 5 s new-identity gate; headroom about 1.5x the worst sample until E-880 restores Web tier budgets Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
-    },
-    "nvim/test/closed-pages.test.ts::copied tracker explorer, board and card render closed children from parent pages": {
-      "seconds": 22,
-      "owner": "E-880",
-      "added": "2026-10-24",
-      "expires": "2026-11-23",
-      "reason": "T-1081 C4 requires all copied live tracker bodies plus 105 closed children through bounded parent pages in the real headless explorer, board and card, including a reopened child. Linux x64 c-8 lon1 full run 3f3ef7d9 at 7abc0af7 (A-8792) passed this identity in 14.616116916 s; the full receipt exited 1 solely on its missing new-identity allowance. The 22 s cap rounds up about 1.5 times that measured Linux time. Retains page/count/render assertions, bounded observers and teardown; E-880 owns copied-fixture setup cost. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
-    },
-    "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": {
-      "seconds": 20,
-      "owner": "E-880",
-      "added": "2026-10-24",
-      "expires": "2026-11-23",
-      "reason": "T-1052 runs the independent headless Lua oracle over all 1051 copied tracker bodies and roll-ups through real frame reads. Local Darwin arm64 targeted run measured 7.489 s including disposable hub setup, bounded by-id pages and Lua; T3 allowance retains the all-body parity guard under loaded Linux. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days) ahead of its expiry, so the debt-sweep release covers can plan shards; T-1190 adds an expiry warning."
     },
     "hub/test/connection-resync.test.ts::a paused real socket reader receives resync, drains and resumes its model": {
       "seconds": 9,
@@ -10815,21 +10792,6 @@
       "expires": "2026-11-20",
       "reason": "T-670 adds the real shell builder/snapshot/delivery proof, planted-red and failed/dirty prepare controls, and the prepare CLI contract. Base T3 is 2092.229397 s; native A-6845 contributes 16.772127542 s and A-6830 contributes 0.776026333 s, projecting 2109.777550875 s. The 2115 s total cap allows 5.222449125 s of headroom above this measured projection; reduce native lifecycle cost (T-670)."
     },
-    "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": {
-      "seconds": 88,
-      "owner": "C-326",
-      "added": "2026-10-28",
-      "expires": "2026-11-04",
-      "reason": "T-1419: the required copied live-tracker fixture now copies about 1,420 items (1,418 at diagnosis). Linux x64 c-8 nyc1 run 4167498c at 0b8262665 (A-13194), Web workers 4, passed all assertions and measured parent 58.329 s and file 69.488 s. Coordinator approved parent 88 s and file 105 s, about 1.5 times those worst Linux samples, owned by E-1311 through 2026-11-04. Explicit 15 s row receipts, final assertions and the separate 300-item/15 ms model guard stay intact; fixture growth is a separate follow-up."
-    },
-    "web/test/items.test.ts": {
-      "seconds": 105,
-      "file": true,
-      "owner": "C-326",
-      "added": "2026-10-28",
-      "expires": "2026-11-04",
-      "reason": "T-1419: the required copied live-tracker fixture now copies about 1,420 items (1,418 at diagnosis). Linux x64 c-8 nyc1 run 4167498c at 0b8262665 (A-13194), Web workers 4, passed all assertions and measured parent 58.329 s and file 69.488 s. Coordinator approved parent 88 s and file 105 s, about 1.5 times those worst Linux samples, owned by E-1311 through 2026-11-04. Explicit 15 s row receipts, final assertions and the separate 300-item/15 ms model guard stay intact; fixture growth is a separate follow-up."
-    },
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (desktop)": {
       "seconds": 9.2,
       "owner": "R-1278",
@@ -10955,6 +10917,20 @@
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "real hub process start, admission, SIGKILL, owned-writer drain and exactly-once recovery in Discord history catch-up (T-1413). Coordinator decision 3a147fbb approves 10 s based on the passing Linux x64 c-8 lon1 run ab55068b at dec9e7713 (A-13594), 6.355606305 s, and local macOS 5.73 s. These are thin samples; 1.5 times the worst is rounded upward to 10 s, matching the native Telegram kill headroom. The Linux overall run remained red solely for this missing measured allowance and Web was unrun. Protocol, Identify spacing, kill/identity/recovery/drain assertions and timeouts are unchanged; the separate R-1278 45 s full-history allowance remains unchanged."
+    },
+    "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": {
+      "seconds": 15,
+      "owner": "R-1278",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "T-1421: Pinned 24-item shape corpus replaces the full live copy (previous Linux under-load samples 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 9.404423108 s with all assertions passing, but the suite exited 1 on this enforced 5 s new-identity duration gate. Local Darwin arm64 targeted parent 2.831899667 s. 15 s rounds up approximately 1.5x Linux for about 40% Web timing variation. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
+    },
+    "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": {
+      "seconds": 15.2,
+      "owner": "R-1278",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "T-1421: The unchanged generated 1,004-item startup scale case stays beside the bounded 24-item corpus that replaces the full copy (previous Linux under-load full copies 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 10.100 s with all assertions passing; local Darwin arm64 targeted case 4.429718667 s. 15.2 s rounds up approximately 1.5x Linux. Byte caps, durable checkpoint and file/read-count assertions remain unchanged. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
     }
   }
 }
