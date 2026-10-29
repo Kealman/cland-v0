@@ -2,7 +2,8 @@
 id: E-1312
 kind: epic
 title: The Discord remote
-state: open
+state: closed
+criterion_seq: 10
 labels:
   - epic
   - v0.3
@@ -11,10 +12,11 @@ assignee: null
 parent: R-1278
 blocked_by:
   - E-1310
-topic: null
+topic: topic-1174
 branch: null
 created: 2026-10-25T14:11:59.875Z
-updated: 2026-10-28T05:05:34.064Z
+updated: 2026-10-29T10:37:51.532Z
+closed: 2026-10-29T10:37:51.532Z
 ---
 
 ## Goal
@@ -52,15 +54,25 @@ QA runs the demo below on `dev` against the fake Discord gateway and REST, the f
 In a scratch project with made-up tokens and Telegram already paired, QA enables Discord with the Message Content flag off on the fake and reads the stop and its explanation, turns the flag on, pairs with `/cland pair` and `cland remote approve discord <code>`, and has another member try `/cland status` and a press. It posts an agent's report with a table and a mention and a message over 2000 code points, writes as the human, replies to an agent's message, and runs every subcommand. It answers asks with a button, a modal and a decline, answers one from Telegram and reads the Discord copy, and floods twelve messages. It forces drops, a zombie connection, a 4004 and a low `remaining`, then restarts the hub for 30 seconds with a press in between and for three minutes with two messages typed meanwhile. Finally it sends a photo and a voice message from Discord and a photo from Telegram, and reads each remote and General.
 
 - [ ] C1. The hub checks the Message Content flag and the empty Interactions Endpoint URL at start, and a wrong one or a fatal close code stops only this remote with its cause and fix in General.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.682Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C2. The socket uses intents 33281 on API v10, detects a zombie connection and resumes, and gives a 4003 one fresh identify.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.682Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C3. Identifies are at least 5 seconds apart, resume comes first, back-off follows only identifies that never reached READY, the floor of remaining starts holds, and the human is warned at 500 in a day.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.682Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C4. `/cland` is one global command with its eight subcommands, written once and then only compared, answered ephemerally and laid out for a phone screen.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.682Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C5. `/cland pair` gives a private code for 15 minutes, approval binds the guild, channel and user ids, and other members' messages are ignored and their clicks refused privately.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.682Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C6. General is mirrored both ways in Discord's Markdown with an empty `allowed_mentions`, fence-safe splits at 2000 code points and the reactions, and inbound counts only from the paired channel and user.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.683Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C7. Cards take spec §3.5's Discord form, a click is answered within 3 seconds by one update to the outcome, modals take free answers and declines, and one gate holds across Discord, Telegram and the workbenches.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.683Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C8. REST follows its rate-limit headers with no 429 in a burst, never repeats a 401, 403 or 404, and a send retried with its enforced nonce posts once.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.683Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C9. A restart within the resume window re-sends only the cards pressed meanwhile, and a longer one reads history back to the last id, at most 500 messages, re-sends every open card and adds one gap line above 0.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.683Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 - [ ] C10. Attachments become the human's artifacts without the token, outbound files go once per remote within Discord's limits, a voice message becomes a 🎤 transcript, and every Discord id is TEXT in `hub.db`.
+  - verified: qa-677 [qa] · run qa-dod-2026-10-29-677-1312 · 2026-10-29T10:37:30.683Z · commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
 
 ## Constraints
 
@@ -148,3 +160,63 @@ Plan and decisions (coord, 2026-10-28 00:1xZ). Tickets T-1396–T-1415 from the 
 ### coord · 2026-10-28T05:05:34.064Z
 
 Decision (human, ask 62b8d32f, 2026-10-28 05:04Z): all three recommendations accepted. (1) Each artifact goes to a remote once ever; a later message re-attaching it replies to the earlier file with '▣ A-n … (sent above)'. (2) A voice note answering a card answers through its transcript and keeps no audio artifact; a note that cannot answer leaves the ask open and goes to General as an ordinary 🎤 message. (3) Discord attachments and voice stay in E-1312 as its last stage, blocked by E-1311. Held tickets T-1387, T-1390, T-1414, T-1415 are released. T-1378 (non-text Telegram updates stall the poller) joined 0.3 on the human's word (ask 82ff046e) and lands before T-1385, which builds on it.
+
+### hub · 2026-10-29T10:20:16.079Z
+
+demo 89dfff9b-d2f8-4f91-b7ca-e0dcb4a76e7f created: droplet cland-v0-89dfff9b, commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b, deadline 2026-10-29T11:33:22.097Z.
+
+### hub · 2026-10-29T10:31:55.340Z
+
+demo 89dfff9b-d2f8-4f91-b7ca-e0dcb4a76e7f destroyed: lifetime 797505 ms; cost $0.0554.
+
+### qa-677 · 2026-10-29T10:37:30.683Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-dod-2026-10-29-677-1312
+commit: 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| case | surface / executor | result | observation and evidence |
+| --- | --- | --- | --- |
+| M1 (C1) | hub-api / droplet + local source | PASS | 38 messenger + 12 doctor cases passed; General cause/fix traced through scoped stop, persistence callback, daemon General notice and shared wording. General text is source evidence. discord-messenger.test.ts, doctor-remotes.test.ts; source-checks.json |
+| M2 (C2) | hub-api / droplet + local source | PASS | Heartbeat, zombie, resume and one-fresh-4003 assertions passed. Source identifies intents 33281 and REST API v10. discord-messenger.test.ts; source-checks.json |
+| M3 (C3) | hub-api / droplet | PASS | Identify spacing, count persistence, equal-jitter delays, floor and 500th warning passed on the injected clock. discord-messenger.test.ts |
+| M4 (C4) | hub-api / droplet + local source | PASS | Global registration/restart comparison, private commands and bounded phone replies passed. Eight subcommands: pair, status, inbox, mute, unmute, decision, question, help. discord-pairing.test.ts, discord-commands.test.ts; source-checks.json |
+| M5 (C5) | hub-api / droplet | PASS | Pairing expiry, TEXT restart persistence, foreign click refusal and paired-only input assertions passed. discord-pairing.test.ts, discord-cards.test.ts, discord-messages.test.ts |
+| M6 (C6) | hub-api / droplet | PASS | Markdown, safe splits, mention suppression, durable mapping, replies and both reaction restart modes passed. discord-render.test.ts, discord-messages.test.ts, discord-api.test.ts |
+| M7 (C7) | hub-api / droplet + local source | PASS | Cards, modal outcomes, one gate and both workbench answer paths passed. Neovim ran (1/1, no skip). Card source matches spec §3.5 (five options/row, 34-character numbering threshold, at most three rows, modal paragraph 4000, defer 2 s). discord-cards.test.ts, gateway.test.ts, nvim/test/remote-via.test.ts; source-checks.json |
+| M8 (C7) | web-terminal / droplet | PASS | Web pairing 4 top-level + 1 nested test and Web remote-via 2 tests passed. Source, built and served stamp match; printed names retained in required-case-audit.json and logs. web/test/pairing.test.ts, web/test/remote-via.test.ts; web-stamp.log |
+| M9 (C8) | hub-api / droplet | PASS | Header pacing, callbacks bypass, capped/global 429 delays, terminal statuses and durable nonce retry assertions passed. discord-api.test.ts, discord-messages.test.ts |
+| M10 (C9) | hub-api / droplet + local source | PASS | All 8 T3 cases passed alone. Full-scale 500/620: 22.658880466 s < 45 s; native kill: 6.528050430 s < 10 s. Card resume/history cases passed; source limit 500. discord-cards.test.ts, telegram-polling-restart.test.ts; source-checks.json |
+| M11 (C10) | hub-api / droplet | PASS | Inbound media 14/14 and outbound artifacts 13/13 passed, including byte/file limits, once-per-remote, redirects, voice and lost multipart receipt. discord-inbound-media.test.ts, discord-artifacts.test.ts |
+| M12 (C4,C5,C6,C10) | hub-api / local macOS source | PASS | All required source lines present: platform identifier TEXT columns, invite permissions=117824, ephemeral flags 64, empty allowed_mentions, paired channel/user filter. source-checks.json |
+| M13 (C1–C10) | hub-api / local macOS record audit | PASS | All 20 children closed done, clear hub reviews + green same-reviewed-head receipts, Item/Reviewed-by landing trailers and cover ancestry. Five stages closed; corrected final cover pair green. C1-final.json; T-1396-landing-reconciliation.json; C2-cover-receipts.json; epic.json |
+
+qa clear E-1312. No high, medium or low findings. C1–C10 verified by qa-dod-2026-10-29-677-1312 at 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b.
+
+The 15 declared files ran sequentially on the demo: 250 top-level + 1 nested native test passed; 0 failed/cancelled/skipped/todo. A supplemental Web stamp probe passed (1). Web built first. Required generated names, source-file hashes, source excerpts and redacted native logs are retained. Reused results are counted once. Commands: Node v24.21.0 --test <file>, via cland demo exec E-1312; source/record audits used the clean detached pinned checkout on local macOS. No product edits or full suites ran in this QA demo.
+
+Runtime: Linux x64 droplet, Node v24.21.0, Neovim v0.12.5, Chrome Headless Shell 156.0.8078.4, Playwright revision 1248. Browser binary: /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell. The browser used a scratch user-data-dir; fixtures used sealed HOME/XDG/Git through the shared builder with provider/account filtering. Fake Discord, Telegram and speech only. Browser cleanup censuses ended at zero. Source, bundle and served page stamp all equal 4a468700a6e84eccb05877ab9f8a1e9f9b482457bfb93e3d94346fa0a9f610c2 (web-stamp.log).
+
+M10 ran alone on the exclusive demo executor, with no concurrent suite or targeted file. Before it, a 1-second /proc/stat sample showed 99.2518703% CPU idle, load averages 0.34/0.33/0.15. Full-scale history: 22.658880466 seconds against 45; native kill: 6.528050430 against 10. Native case durations exclude provisioning, transport, preceding cases, CPU sample and teardown outside the cases. Both allowances passed on the first run.
+
+Covers were read, not rerun: Linux d7f17125/A-13645 and macOS 781f8b3c/A-13643 at a9314b5a3b210f7721991ec4d86f56292d8e46d4, verification tree a1caa13d33a8f786624a08ad858c77901225e320. Their static gate and T1–T4 plus Web receipts are green; Linux's static gate was host npm run check, not a remote typecheck. Native summaries: Linux 5635 passes/9 skips and macOS 5643 passes/1 skip, 0 failures. All 250 scoped top-level identities passed on both, with no scoped skip. Native totals and separate load repetitions are retained in cover-summary.json. Duration budgets and Web repetition gate were report-only. T4 repetitions were explicitly excluded (14 base-only files); excluded repetitions are not passes. Linux cover machines were c-8 nyc1: lifetimes 1808.467 and 1586.727 seconds; costs $0.1255879861 and $0.110189375, total $0.2357773611. Admission-to-remote-finish durations were 1828.15 and 1612.15 seconds; these are not a summed wall time. macOS had no droplet cost.
+
+Every child has a clear hub review, a same-reviewed-head green verify and the reviewed delta landed on dev; branch and integration SHAs differ. All 20 children are closed done, all five stages closed, and the cover head contains all landings including T-1415. The strict patch audit initially flagged T-1396; every nonblank delta matches and only one CHANGES blank line was omitted at integration. T-1407 uses its later valid pre-landing receipt 20cd6379/A-13429. No waiver was required. The raw initial audit and reconciliation are retained.
+
+The Web pairing parser initially counted top-level lines only; its unchanged log and derived audit retain the nested cleanup PASS. Two public test-label fragments were masked by broad credential registration; original name hashes confirm their generated identities. These are capture/extraction corrections, not product failures or reruns.
+
+Source-only evidence is labelled: General stop notice cause/fix wiring, intents/API version, card layout, eight subcommands, history cap 500, TEXT schema, invite117824, ephemeral/mention fields and paired filter. General wording was not asserted by a runtime case. All brief-required source checks are present. Real platforms, real credentials, human-browser flow, E-1313 setup/rows and T-1433/T-1436 follow-ups remain out of scope.
+
+Freshness current:true. Demo lease 89dfff9b-d2f8-4f91-b7ca-e0dcb4a76e7f, deadline 2026-10-29T11:33:22.097Z, pinned commit 5a4477bd86842c0ab5edf5d8237b68a33baf8b2b. Confirmed released before verdict; final lifetime 797505 ms and cost $0.055382291666666666. Final accounting comes from demo-stop.json; earlier active status was an estimate.
+
+Evidence: A-13649, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13649-e-1312-dod-qa-clear-at-5a4477bd-evidence-and-receipts/report.md. All 13 recorder rows are in runs.jsonl. Publication scan passed across 67 declared files and 340 fixture-source dependencies with positive controls; no credential matches.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-29T10:37:51.532Z
+
+The Discord remote is complete. All five stages closed with green cover pairs; the last was d7f17125 (Linux, A-13645) and 781f8b3c (macOS, A-13643) at a9314b5a. QA DoD clear: qa-dod-2026-10-29-677-1312 at 5a4477bd, M1–M13 PASS, C1–C10 verified, no findings (A-13649, brief qa/briefs/E-1312.md). Follow-ups outside this epic: T-1436 (batched durable commits for history catch-up), T-1437 (test-lint message for a lost T3 header) and T-1433 (album transcripts). History allowances (45 s full-scale, 10 s native kill) are owned by R-1278.
