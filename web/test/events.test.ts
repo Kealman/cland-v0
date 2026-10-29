@@ -83,6 +83,47 @@ test('Events filters the subscription and pages in the hub, preserves filters on
   }, page => { page.on('websocket', socket => socket.on('framesent', event => sent.push(JSON.parse(String(event.payload))))); });
 });
 
+test('phone Events tap filters select hub categories and survive reload at 390×844 with touch', async t => {
+  const fixture = await eventsFixture(t, 12);
+  const tasks = (await fixture.ui.request({ type: 'events.list', filter: { kinds: ['task'] } })).value as EventsPage;
+  const warnings = (await fixture.ui.request({ type: 'events.list', filter: { warnings: true } })).value as EventsPage;
+  const all = (await fixture.ui.request({ type: 'events.list' })).value as EventsPage;
+  const subject = (await fixture.ui.request({ type: 'events.list', filter: { warnings: true, subject: { kind: 'item', id: 'T-1' } } })).value as EventsPage;
+  for (const result of [tasks, warnings, all, subject]) assert.ok(result.rows.length > 0, 'seeded filter oracle is nonempty');
+  assert.ok(tasks.rows.every(row => row.kind === 'task'));
+  assert.ok(warnings.rows.every(row => row.warning));
+  assert.ok(subject.rows.every(row => row.subject.id === 'T-1'));
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Events', exact: true }).tap();
+    await page.locator('[data-event-id]').first().waitFor();
+    const filters = page.getByRole('group', { name: 'Events filters', exact: true });
+    // A bounded rendered-control receipt makes the missing phone UI the red boundary.
+    await filters.waitFor({ timeout: 2000 });
+    const ids = () => page.locator('[data-event-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-event-id')));
+    const rendered = (result: EventsPage, what: string) => until(async () => JSON.stringify(await ids()) === JSON.stringify(result.rows.map(row => row.id)), { what });
+    for (const name of ['All kinds', 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat', 'rule', 'Warnings', 'Subject', 'Clear filters']) {
+      const button = filters.getByRole('button', { name, exact: true });
+      const box = await button.boundingBox();
+      assert.ok(box && box.width >= 44 && box.height >= 44, `${name} has a 44 px target`);
+    }
+    await Promise.all([rendered(tasks, 'task filter rows'), filters.getByRole('button', { name: 'task', exact: true }).tap()]);
+    assert.deepEqual(await ids(), tasks.rows.map(row => row.id));
+    assert.equal(await filters.getByRole('button', { name: 'task', exact: true }).getAttribute('aria-pressed'), 'true');
+    await page.reload();
+    await rendered(tasks, 'persisted task filter rows after reload');
+    assert.deepEqual(await ids(), tasks.rows.map(row => row.id));
+    assert.equal(await filters.getByRole('button', { name: 'task', exact: true }).getAttribute('aria-pressed'), 'true');
+    await Promise.all([rendered(all, 'clear filter rows'), filters.getByRole('button', { name: 'Clear filters', exact: true }).tap()]);
+    assert.deepEqual(await ids(), all.rows.map(row => row.id));
+    await Promise.all([rendered(warnings, 'warning filter rows'), filters.getByRole('button', { name: 'Warnings', exact: true }).tap()]);
+    assert.deepEqual(await ids(), warnings.rows.map(row => row.id));
+    await filters.getByRole('button', { name: 'Subject', exact: true }).tap();
+    await page.getByRole('dialog').waitFor();
+    await Promise.all([rendered(subject, 'subject filter rows'), page.getByRole('dialog').getByRole('option').filter({ hasText: 'Events task' }).tap()]);
+    assert.deepEqual(await ids(), subject.rows.map(row => row.id));
+  }, undefined, { phone: true });
+});
+
 test('Events dims bookkeeping, shows hub coalescing, folds a local day with za and opens an item with Enter', async t => {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
   const fixture = await webFixture(t, { clock, timezoneId: 'Europe/Belgrade', prepare: async root => {

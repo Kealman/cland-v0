@@ -15,3 +15,8 @@
 .events [data-fold-block] > header { border-bottom: 1px solid var(--separator); }
 .row[data-event-warning="true"] > span:first-of-type { color: var(--needs-human); }
 .empty, .events > p:first-child { color: var(--muted); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.filters button { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--text); font: inherit; }
+.filters button[aria-pressed="true"] { background: var(--selection); border-color: var(--link); }
+.filters button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }

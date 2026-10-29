@@ -646,6 +646,12 @@ row follows coalescing replacements while older loaded pages remain available.
 The footer states the loaded count; its control and `A` append 200 older rows.
 Live rows respect the initial cap and keep overflow at the next page boundary.
 
+Below 640 px, tappable chips offer All kinds, every category (including heartbeat
+and rule), Warnings, Subject and Clear filters. Each target is at least 44 px.
+Subject opens the same picker as `s`; the footer keeps the loaded matching-event
+count. These controls share the desktop filter and guarded browser preferences,
+so a selected category survives reload and widening to desktop.
+
 | Key in Events | Action |
 | --- | --- |
 | `j` / `k`, `↓` / `↑` | Next / previous event or day |

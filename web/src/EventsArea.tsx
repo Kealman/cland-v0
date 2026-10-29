@@ -5,11 +5,13 @@ import type { EventRow } from '../../shared/wire/index.ts';
 import { ItemNavigation } from './ItemText.tsx';
 import { Fold } from './Fold.tsx';
 import { EVENT_KINDS } from '../../shared/wire/index.ts';
+import { usePhone } from './phone.ts';
 import s from './EventsArea.module.css';
 
 const eventKinds = EVENT_KINDS;
 
 function EventsArea({ connection, controls, openSubject }: AreaContentProps) {
+  const phone = usePhone();
   const picker = useContext(ComposerPicker);
   const items = useContext(ItemNavigation);
   const open = (row: NonNullable<typeof connection.eventsView>['rows'][number]) => {
@@ -27,6 +29,10 @@ function EventsArea({ connection, controls, openSubject }: AreaContentProps) {
       if (document.activeElement === document.body) root.current?.querySelector<HTMLButtonElement>(`[data-event-id="${CSS.escape(id)}"]`)?.focus();
     }
   }, [connection.eventsAliases]);
+  const chooseSubject = () => picker({ kind: 'Subjects', choose: row => {
+    const kind = ({ Items: 'item', Sessions: 'session', Topics: 'topic', Artifacts: 'artifact' } as const)[row.area as 'Items' | 'Sessions' | 'Topics' | 'Artifacts'];
+    if (kind) connection.setEventsFilter?.({ ...connection.eventsFilter, subject: { kind, id: row.id } });
+  } });
   const activate = connection.activateEvents;
   useEffect(() => { activate?.(true); return () => activate?.(false); }, [activate]);
   useImperativeHandle(controls, () => ({ run(action) {
@@ -49,13 +55,7 @@ function EventsArea({ connection, controls, openSubject }: AreaContentProps) {
       rows[Math.max(0, Math.min(rows.length - 1, index + (action === 'events-next' ? 1 : -1)))]?.focus();
       return true;
     }
-    if (action === 'events-subject') {
-      picker({ kind: 'Subjects', choose: row => {
-        const kind = ({ Items: 'item', Sessions: 'session', Topics: 'topic', Artifacts: 'artifact' } as const)[row.area as 'Items' | 'Sessions' | 'Topics' | 'Artifacts'];
-        if (kind) connection.setEventsFilter?.({ ...connection.eventsFilter, subject: { kind, id: row.id } });
-      } });
-      return true;
-    }
+    if (action === 'events-subject') { chooseSubject(); return true; }
     const filter = connection.eventsFilter ?? {};
     if (action === 'events-warnings') connection.setEventsFilter?.({ ...filter, warnings: !filter.warnings });
     else if (action === 'events-clear') connection.setEventsFilter?.({});
@@ -76,6 +76,16 @@ function EventsArea({ connection, controls, openSubject }: AreaContentProps) {
   const lastLook = look && <p className={s.lastLook} data-events-last-look={look}>── △ Your last look · <time dateTime={look}>{new Date(look).toLocaleString('en-GB')}</time> · {page?.rows.filter(row => Date.parse(row.ts) > Date.parse(look)).length ?? 0} new above</p>;
   return <div ref={root} data-area-module="Events" data-area-surface="pane" className={s.events} data-key-context="events">
     <p data-events-filter>kind: {connection.eventsFilter?.kinds?.join(', ') || 'all'} · {connection.eventsFilter?.warnings ? 'warnings only' : 'all levels'} · subject: {connection.eventsFilter?.subject?.id ?? 'any'}</p>
+    {phone && <div role="group" aria-label="Events filters" className={s.filters}>
+      <button aria-pressed={!connection.eventsFilter?.kinds?.length} onClick={() => {
+        const { kinds: _kinds, ...rest } = connection.eventsFilter ?? {};
+        connection.setEventsFilter?.(rest);
+      }}>All kinds</button>
+      {eventKinds.map(kind => <button key={kind} aria-pressed={connection.eventsFilter?.kinds?.includes(kind) ?? false} onClick={() => connection.setEventsFilter?.({ ...connection.eventsFilter, kinds: [kind] })}>{kind}</button>)}
+      <button aria-pressed={connection.eventsFilter?.warnings ?? false} onClick={() => connection.setEventsFilter?.({ ...connection.eventsFilter, warnings: !connection.eventsFilter?.warnings })}>Warnings</button>
+      <button aria-pressed={!!connection.eventsFilter?.subject} onClick={chooseSubject}>Subject</button>
+      <button onClick={() => connection.setEventsFilter?.({})}>Clear filters</button>
+    </div>}
     {connection.eventsLoading && <span data-events-loading role="status">Loading events…</span>}
     <div role="list" aria-label="Events objects">
       {[...days].map(([day, rows]) => <Fold key={day} area="events" id={`day:${day}`} label={new Date(rows[0]!.ts).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (new Date(rows[0]!.ts).toDateString() === new Date().toDateString() ? ' · today' : '')} count={rows.length}>

@@ -18,3 +18,9 @@ after changing shared context routing. The launch native-control regression
 dispatches document Enter at focused Cancel, retains the unprevented receipt,
 then observes native cancellation and a public session list with zero launches. Batch independent
 serial setup before considering the dated E-417 Web-duration allowance policy.
+
+The phone tap-filter case uses the fixture's 390×844 touch context and native
+`tap()`: compare rendered identities with public `events.list` results for task,
+warnings, clear and subject filters, then retain task identity and pressed state
+through reload. Check every chip's 44 px geometry. This extends the existing
+filter seam without changing key routing, wire frames or browser storage format.
