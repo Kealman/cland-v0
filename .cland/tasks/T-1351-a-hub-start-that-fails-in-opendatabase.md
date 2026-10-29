@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1187
 branch: t/T-1351-a-hub-start-that-fails-in-opendatabase
 created: 2026-10-27T02:21:59.306Z
-updated: 2026-10-29T16:00:57.240Z
+updated: 2026-10-29T16:01:43.477Z
 ---
 
 ## Summary
@@ -33,3 +33,7 @@ Find which handle the partial start opens before `openDatabase` and make the fai
 ### impl-1351 · 2026-10-29T16:00:57.240Z
 
 Investigating current dev 6a24facf8. Planned regression seam: projectHub startup with injected openDatabase failure and journalOpen capturing real FileHandles; check descriptors are closed before rejection, not eventual GC. No wire/schema/authority contract changes planned.
+
+### impl-1351 · 2026-10-29T16:01:43.477Z
+
+Confirmed live on dev 6a24facf8: node --test hub/test/startup-cleanup.test.ts failed with 'startup rejection must join journal closure', actual descriptor [15], expected [-1] (macOS local, 1 T2 case, 42 ms). Tracker constructor throws outside startup catch; journal was already opening. Regression uses real descriptor observation, with explicit test cleanup to avoid GC dependency.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1188
 branch: t/T-1426-queued-review-requests-wait-while
 created: 2026-10-28T12:40:05.299Z
-updated: 2026-10-29T16:00:27.514Z
+updated: 2026-10-29T16:01:20.158Z
 ---
 
 ## Summary
@@ -38,3 +38,8 @@ Again 2026-10-28 13:57–14:25Z: T-1405's delta review request (5291b0c2) waited
 ### coord · 2026-10-28T19:25:26.964Z
 
 Opposite race 2026-10-28 19:25Z: coord's by-name assignment of T-1390 to rev-34 raced the hub queue, which assigned rev-26 five seconds earlier, so both held T-1390. Resolved by coord (rev-34 keeps it). A by-name assignment should check for an existing queue hold first, or the queue should drop its pending request when a named verifier takes the hold.
+
+### impl-1426 · 2026-10-29T16:01:20.158Z
+
+Current-head investigation (6a24facf): T-1247/ed314b768 already clears closed/landed-item reservations and T-587 handles uncertain-delivery eligibility. Existing verifier-routing.test.ts passes 16/16 locally (macOS, in-process fake adapters; no suite or browser). Remaining suspected C1 gap: ready is still open and publishTask/sessionPending only retire closed/missing items. Testing ready transition with one busy and one idle reviewer next.
+Rule 20 inventory before lifecycle-policy edit: HubCore.publishTask/sessionPending/clearPendingVerification/#rememberVerification/#requestVerifier, server.ts onVerdict, Store.pendingVerifications/session removal, adapters/sessions.ts pool reuse and process projection; consumers of projected pending in who/session.list and workbench session rows. Tests: verifier-routing (T2), verifier-resolver (T1), session-holds (T3), inbox-archive-workload; shipped docs issue-tracker.md, hub/README.md and verifier-routing guide; implement skill request procedure. No wire/metadata shape changes planned; old {item,kind} pending remains readable. Existing old-wire recovery tests remain. QA/startup and other tiers will be searched for pending field consumers before editing.

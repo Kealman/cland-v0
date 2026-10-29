@@ -5,7 +5,7 @@ title: "Both remotes in one hub: an integrated scenario on the fake platforms"
 state: open
 status: in progress
 size: M
-criterion_seq: 5
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1182
 branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T15:57:14.764Z
+updated: 2026-10-29T16:01:58.713Z
 ---
 
 ## Summary
@@ -32,3 +32,4 @@ A scenario test, for example `hub/test/scenarios/remotes.test.ts`, mapped T3 in 
 - [ ] C3. A hub restart under 90 seconds and one over 3 minutes are each caught up on both remotes: Discord resumes or reads history back, Telegram catches up, and open cards are re-sent per platform rules.
 - [ ] C4. Revoking the Telegram token on the fake stops only Telegram with its cause, while Discord keeps serving General both ways.
 - [ ] C5. The scenario passes 5/5 locally under two busy workers through the shared suite-lock leases with raw receipts, and once on Linux in the mode-free run; any allowance it needs is owned by R-1278 with a reason.
+- [ ] C6. A graceful hub stop persists Telegram's outage state, so a restart catches up: late messages carry their written time and open cards are re-sent per Telegram's rules.

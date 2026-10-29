@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1190
 branch: t/T-341-claude-code-relaunch-keeps-the-tool
 created: 2026-10-13T19:49:24.214Z
-updated: 2026-10-29T16:00:38.052Z
+updated: 2026-10-29T16:01:41.785Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ This belongs with T-143's finding that role tools are fixed at launch. The relau
 ## Workaround
 
 Use the CLI (`cland task create … --size`), or relaunch with `--fresh` when a tool's schema changed.
+
+## Comments
+
+### impl-341 · 2026-10-29T16:01:41.785Z
+
+Diagnosis at initial dev 6a24facf: hub/src/adapters/claude-code.ts #sessionFlags rewrites mcp.json before both launch and --resume; hub/src/spoke/spoke.ts tools/list returns current TOOLS. Existing fake at hub/test/fakes/claude-code/fake-claude.ts connects an MCP client but does not model native persisted ToolSearch/schema caching; a failing fake-cache test would assume the reported bug. Installed native CLI symlink names 2.1.311 (not executed). Official MCP docs document dynamic refresh (https://code.claude.com/docs/en/mcp#dynamic-tool-updates); upstream changelog includes cache invalidation and deferred-tool fixes, but none establishes this exact relaunch behaviour. Native reproduction is required before selecting a fix or claiming fixed elsewhere. Requested Coordinator decision on a sealed native-CLI loopback probe; no actual harness, account, token or platform used. Item currently has no criteria; proposed same-conversation schema update, identity/role/claim preservation and compatibility controls.

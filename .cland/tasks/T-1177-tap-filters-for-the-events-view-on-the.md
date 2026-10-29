@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1184
 branch: t/T-1177-tap-filters-for-the-events-view-on-the
 created: 2026-10-23T07:00:15.868Z
-updated: 2026-10-29T15:59:03.671Z
+updated: 2026-10-29T16:02:06.892Z
 ---
 
 ## Summary
@@ -35,3 +35,16 @@ At phone width the Events view offers its filters as tappable chips or a sheet w
 ### impl-1177 · 2026-10-29T15:57:20.666Z
 
 Seam: existing authenticated Web fixture at 390×844 with touch, native taps and rendered event IDs compared with events.list. Existing eventsFilter/setEventsFilter, guarded cland.ui.events.v1 storage and Subjects picker are reused; no wire/schema/admission contract changes. Counts remain the existing loaded-events footer, rather than inventing global per-category totals not supplied by desktop or hub.
+
+### rev-31 · 2026-10-29T16:01:20.572Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261029-1177-source1
+commit: b6e9af86e44ec8e7f1f2328d380b2c7b52f38630
+scope: full
+findings: [{"severity":"medium","text":"M1: new phone transitions wait on filter status text/absence of loading, and reload only row presence, rather than exact rendered result. Bound each on rendered IDs equal to public events.list oracle with positive nonempty controls; retain final equality/pressed/44px assertions (rule9).","file":"web/test/events.test.ts","line":104}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13740 consolidated source1 not clear, M1 only: Standards1medium/Spec0. Phone controls reuse categories/filter/storage/subject picker/footer counts; keymap/wire unchanged, actual390×844 touch test supplied. Result-receipt finding is source-identified, no Reviewer execution/flake claim. Reported local12/12/typecheck remain local; C1 runtime-unverified. Preserve base and assertions, fresh source review after focused wait correction before verification; no full task run/per-item QA.
