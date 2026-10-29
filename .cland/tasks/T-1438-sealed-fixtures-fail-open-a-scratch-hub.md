@@ -3,17 +3,18 @@ id: T-1438
 kind: task
 title: "Sealed fixtures fail open: a scratch hub with a remote enabled and no loopback API root reaches the real Discord/Telegram endpoint"
 state: open
-status: planned
+status: in progress
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1278
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1178
+branch: t/T-1438-sealed-fixtures-fail-open-a-scratch-hub
 created: 2026-10-29T10:42:10.083Z
-updated: 2026-10-29T11:52:26.467Z
+updated: 2026-10-29T12:02:31.808Z
 ---
 
 ## Summary
@@ -26,12 +27,36 @@ Make sealed fixtures fail closed for every remote and provider endpoint (Discord
 
 ## Acceptance criteria
 
-- [ ] C1. A fixture hub with Discord enabled and no `CLAND_DISCORD_API_ROOT` in `extra` makes no request to a non-loopback host and reports a plain fixture error.
-- [ ] C2. The same holds for Telegram and the ElevenLabs speech provider.
-- [ ] C3. Passing the override in `base` instead of `extra` is caught by the same guard.
+- [x] C1. A fixture hub with Discord enabled and no `CLAND_DISCORD_API_ROOT` in `extra` makes no request to a non-loopback host and reports a plain fixture error.
+  - done: impl-1438 · 2026-10-29T11:58:15.023Z
+- [x] C2. The same holds for Telegram and the ElevenLabs speech provider.
+  - done: impl-1438 · 2026-10-29T11:58:15.242Z
+- [x] C3. Passing the override in `base` instead of `extra` is caught by the same guard.
+  - done: impl-1438 · 2026-10-29T11:58:15.446Z
 
 ## Comments
 
 ### coord · 2026-10-29T10:42:29.591Z
 
 Exposure record (impl-1371, 2026-10-29 10:42Z): before the override fix, T-1371's runs made only REST application reads with a made-up token. Setup failed before enabling Discord, so no gateway websocket and no Identify was opened. No real token or account was involved.
+
+### impl-1438 · 2026-10-29T11:53:37.873Z
+
+Pre-change contract inventory (rule 20): fixtureEnvironment, runnerFixtureEnvironment and hub/test/fixture-environment.ts re-export are the shared test-only environment contract (154 TypeScript consumers across hub, nvim, web and test-support). Production endpoint readers: hub/src/remote/messenger.ts -> DiscordApi/TelegramApi; hub/src/speech/provider.ts -> ElevenLabsProvider; direct DiscordApi process.env fallback. Existing explicit-extra loopback callers remain unchanged. Non-remote fixtures receive inert missing-root sentinels but never instantiate those clients. Runner children reseal environments, so roots must still be supplied in extra at each launch. No public wire/schema, persisted reader, startup probe or previous-client shape changes. Full path inventory will accompany the implementation artifact. Proposed implementation: invalid, credential-free missing-root sentinels in fixtureEnvironment only; existing client URL validation refuses before I/O. Validate explicit extras as numeric loopback HTTP roots. Base-only roots stay stripped and hit the same refusal. Production defaults stay untouched.
+
+### impl-1438 · 2026-10-29T11:58:08.294Z
+
+Implementation evidence: new hub/test/fixture-endpoints.test.ts (T2) covers generated cases `sealed discord refuses missing and base-only API roots before external I/O`, same for telegram/elevenlabs, `sealed endpoint extras allow only explicit numeric loopback HTTP roots`, and `sealed hub refuses enabled discord/telegram without an extra root and keeps frames available`. Constructor controls failed before the guard; frame positive controls with missing-root default removed failed while fetch interception prevented external requests. Restored guard: all six pass locally, macOS arm64, no browser. Existing setup-remotes (17), setup-remote-component (1), setup-pairing-component (3), remote-cli (23), telegram-messenger (4), discord-messenger (38), telegram-api, discord-api (26), speech (13) passed one file at a time; typecheck passed. No Linux/full-suite receipt yet. Consumer inventory: A-13666, durable .cland/artifacts/A-13666-t-1438-fixture-endpoint-consumer-paths.txt. No hub/src changes. Fixture builder alone installs missing-root sentinels and validates explicit extras. Speech reserves loopback port zero because keyless default provider construction must remain usable. Matching README/test guidance updated; no CLI/help, public wire, role clause or SKILL.md changes needed.
+
+### rev-31 · 2026-10-29T12:02:31.808Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261029-1438-source1
+commit: d5595caaa49e30977990b156d1cb70ee78bd7dc2
+scope: full
+findings: [{"severity":"medium","text":"M1: per-test H1 is not exact test path; preserve test-docs guard, capture red, fix heading and retain green.","file":"docs/agents/tests/hub-test-fixture-endpoints.test.ts.md","line":1},{"severity":"medium","text":"M2: ElevenLabs negative control transcribes without pre-armed outbound-target containment/observation or owner signal/bound; sentinel regression can send externally and still satisfy transport-error regex. Guard target before native I/O, assert actual origin separately, safe mutation control and bounded joined operation.","file":"hub/test/fixture-endpoints.test.ts","line":26},{"severity":"medium","text":"M3: new hub frame cases acquire projectHub without pre-owned setup/late-hub stop/join barrier; general fallback registers after serving. Use established owner with omitted/aborted setup controls retaining root until stopped/writer receipts.","file":"hub/test/fixture-endpoints.test.ts","line":59}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+A-13672 consolidated source1 not clear, Standards3medium/Spec0; M1–M3 only. Test-only builder's missing-root sentinels/explicit-extra validation match intended approach; production defaults unchanged. Findings concern guard and contained/owned proof, not an observed live-provider call by Reviewer. Reported local macOS evidence and working corrections remain outside pinned head; C1–C3 runtime-unverified. Preserve current base and assertions; fresh pushed source review before verification. No Reviewer workload/full task run/per-item QA.

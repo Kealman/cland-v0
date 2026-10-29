@@ -2,8 +2,8 @@
 id: T-1371
 kind: task
 title: Setup's remote step offers Discord and checks the application
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1176
 branch: t/T-1371-setup-s-remote-step-offers-discord-and
 created: 2026-10-27T05:46:51.472Z
-updated: 2026-10-29T11:09:04.242Z
+updated: 2026-10-29T12:03:21.020Z
+closed: 2026-10-29T12:03:21.020Z
 ---
 
 ## Summary
@@ -107,3 +108,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13661 final evidence clear; C1–C5 verified. Independent original A-13660/18183671 typed audit:4133 ordinary passes+110 separately scoped load passes, no nonpass/duplicates;14new identities each base+5/5 (70task samples), worst0.744884356s. Application repair/decline/native pairing, nonterminal/repeated decline, lifetime cancellation, docs/tour and existing help/login/setup consumers pass. T0/allT1/fallbackallT2/changedT3setup once/Web complete; remainingT3/T4 absent. Existing T3scenario14.450083080s, selected-phase addedwall15.554s excludes machine wait; emitted21.676/E-1313 recommendation is not a committed allowance/enforced pass. Linuxc-8nyc1 Node24.21/Nvim0.12.5 pinnedHeadlessShell156/v1248; task2/Web4, reused hosttypecheck, report-onlylint/timing/Web warnings retained. Known earlier local REST incident remains T-1438, not relabelled. Ready may follow conflict check; Coordinator gates/enqueue separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-29T12:03:21.020Z
+
+Merged a4a934047e3954593eabc938a00352a8504c009a onto dev.
