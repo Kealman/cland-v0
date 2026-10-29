@@ -3,7 +3,7 @@ id: T-1446
 kind: task
 title: "Telegram: approving a pairing from the CLI sends no confirmation to the phone"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1444
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1446-telegram-approving-a-pairing-from-the
 created: 2026-10-29T16:50:28.430Z
-updated: 2026-10-29T16:54:30.112Z
+updated: 2026-10-29T16:54:47.318Z
 ---
 
 ## Summary
