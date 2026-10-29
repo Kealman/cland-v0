@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1176
 branch: t/T-1371-setup-s-remote-step-offers-discord-and
 created: 2026-10-27T05:46:51.472Z
-updated: 2026-10-29T10:38:36.826Z
+updated: 2026-10-29T10:39:03.597Z
 ---
 
 ## Summary
@@ -41,3 +41,9 @@ Pairing reuses 06's logic: the human runs `/cland pair` in the channel, and setu
 - [ ] C3. After `/cland pair` on the fake gateway, setup shows "Pair Discord user <id> (<Name>)? code …" and pairs it on yes (test).
 - [ ] C4. A declined Discord offer prints `skip`, a configured and paired one `ok`, and without a terminal an untouched Discord prints `skip` and a half-configured one `open`, each with the Discord commands (test).
 - [ ] C5. The docs page's Discord steps and the tour's Discord line pass the docs and onboarding command checks (test).
+
+## Comments
+
+### impl-1371 · 2026-10-29T10:39:03.597Z
+
+Consumer inventory before setup admission/offer change: hub/src/setup/runner.ts, steps/remotes.ts, pairing.ts, cli/setup.ts, cli/usage.ts; setup runner/CLI scripted consumers hub/test/setup-{remotes,remote-component,pairing-component,hub,cli,handover,flow}.test.ts, hub/test/scenarios/setup.test.ts and telegram-marks-setup.test.ts; terminal prompt consumers setup-terminal/prompter; docs hub/README.md, docs/agents/setup.md, site remote-control/web-and-phone pages, site/test/remote-docs.test.ts, hub/test/remote-docs*.test.ts; onboarding TOUR.md and hub/test/skills-onboarding.test.ts. Reuse existing REST application shape, remote.status, inbox.list and pairing.approve without wire changes; retain prior remote.status shape regression. New optional setup-only Discord API injection for fake REST; default uses existing DiscordApi with passed environment. Existing Telegram/speech scripts need the additional default-No Discord offer. No persisted-record/schema/frame changes.

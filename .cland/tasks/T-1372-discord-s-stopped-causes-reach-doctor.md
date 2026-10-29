@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-1175
 branch: t/T-1372-discord-s-stopped-causes-reach-doctor
 created: 2026-10-27T05:46:51.767Z
-updated: 2026-10-29T10:38:30.072Z
+updated: 2026-10-29T10:41:39.774Z
 ---
 
 ## Summary
@@ -40,3 +40,13 @@ Spec §3.11, §3.8 (close codes) and §3.2. E-1312's fatal closes record 01's st
 - [ ] C4. The docs page's doctor causes name 4004 and 4014 with their fixes, and the page passes the docs check (test).
 
 ---
+
+## Comments
+
+### impl-1372 · 2026-10-29T10:38:40.071Z
+
+Plan: use pre-agreed seams (production frames + fake Discord REST/gateway; headless Chromium and Neovim). Existing structured doctor causes and generic workbench rendering are present; inspect native-path coverage and add Discord regressions. No wire/schema/authority changes planned. Shared-contract consumer inventory will be recorded before any such change. Skill files frozen: propose workflow guidance in topic instead.
+
+### impl-1372 · 2026-10-29T10:41:39.774Z
+
+C2 red receipt: Neovim renders 'discord · offline' but never 'offline since'; native Discord status omits the existing optional offlineSince and outage lastError. Consumer inventory before filling those existing fields: hub/src/hub/daemon.ts (remote UI projection); web/src/sessions/RemotesLine.tsx; nvim/lua/cland/panels.lua (render facts/red, no migration); shared/wire/index.ts + hub/src/protocol.ts (already optional); Telegram producer unchanged. Tests: hub/test/remote-workbench.test.ts, web-area-state.test.ts, nvim/test/sessions.test.ts and protocol-frames fixture JSON (optional defaults unaffected), web/test/remotes.test.ts and nvim/test/remotes.test.ts (new native coverage); existing web previous-hub snapshot regression retained. Search included all tiers, shipped skills, qa, docs/agents and persisted consumers. No shape/removal/authority change, old omitted-field clients remain supported.
