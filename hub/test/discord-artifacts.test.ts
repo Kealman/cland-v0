@@ -87,6 +87,22 @@ async function artifacts(f: Awaited<ReturnType<typeof fixture>>, sizes: number[]
   f.state.set('mute', 'false'); return ids;
 }
 
+test('Discord repeated single artifact preserves the new short caption before one sent-above reference', async t => {
+  const f = await fixture(t);
+  const attached = await artifacts(f, [32]);
+  await f.coord.call('send', { topic: 'general', text: 'Original caption', artifacts: attached });
+  const first = await f.settled(1);
+  assert.equal(first.uploads.length, 1);
+  assert.equal(first.messages[0]!.content, 'coord · report\nOriginal caption');
+  await f.coord.call('send', { topic: 'general', text: 'A new short caption', artifacts: attached });
+  const after = await f.settled(2);
+  assert.equal(after.uploads.length, 1);
+  assert.equal(after.messages.length, 2);
+  assert.equal(after.messages[1]!.content, `coord · report\nA new short caption\n▣ ${attached[0]} File 0 (sent above)`);
+  assert.equal(after.messages[1]!.content.match(/\(sent above\)/g)?.length, 1);
+  await f.hub.stop();
+});
+
 test('Discord twelve artifacts totalling 30 MiB respect file count and request byte limits', async t => {
   const f = await fixture(t);
   const ids = await artifacts(f, Array(12).fill(2621440));

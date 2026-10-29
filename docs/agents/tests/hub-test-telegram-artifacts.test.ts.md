@@ -65,6 +65,11 @@ signal therefore never removes the setup bound. Preparation is bounded before
 fixture acquisition starts and rejects on earlier acquisition failure; late
 acquisition and stopped-hub receipts have separate bounds too.
 
+The repeated single-artifact caption regression retains the original upload's
+caption and checks the next General message's new text, exactly one sent-above
+reference and its native reply target, without another upload. Telegram already
+preserves this text; this is the compatibility control for the Discord fix.
+
 The omitted-exact-receipt case holds a real getMe request but makes the expected
 request predicate deliberately impossible. Its separate receipt clock expires
 before the hub setup clock advances. That error aborts acquisition, cancels and

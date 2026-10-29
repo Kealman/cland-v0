@@ -9,6 +9,9 @@ files totalling 30 MiB split within ten files/25 MiB per request, a 21 MiB path
 fallback, a real Telegram gateway artifact.upload publication fed to the Discord
 adapter, timeout reconciliation of an accepted multipart request, and contiguous
 started publications ahead of cards, and independent ten-file grouping.
+A repeated single-artifact case proves the new short caption precedes exactly
+one sent-above reference, with one native upload across both messages. It targets
+`hub/src/remote/discord-outbox.ts` through production General frames.
 A partial read-failure case restores the unread file and repeats its attachment;
 only actual native attachment receipts may say sent above. Fallback settlements
 retain the once fence but say not uploaded. Native upload receipts include byte counts

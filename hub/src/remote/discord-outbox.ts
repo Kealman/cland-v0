@@ -150,7 +150,10 @@ export class DiscordOutbox {
           const sameChannel = prior.channel === channel;
           const delivered = (JSON.parse(this.#store.get(`discord.outbox.delivered:${previous.id}`) ?? '[]') as string[]).includes(part.artifact);
           const sent = previous.state === 'sent' && delivered;
-          enqueue(`${header}\n▣ ${part.artifact} ${this.#files!.artifact(part.artifact)?.title ?? ''} (${sent ? sameChannel ? 'sent above' : 'sent above in the previous channel' : previous.state === 'sent' ? 'not uploaded' : 'delivery unconfirmed'})`, undefined, message.replyTo ? reply : sent && sameChannel ? id ?? undefined : undefined);
+          const reference = `▣ ${part.artifact} ${this.#files!.artifact(part.artifact)?.title ?? ''} (${sent ? sameChannel ? 'sent above' : 'sent above in the previous channel' : previous.state === 'sent' ? 'not uploaded' : 'delivery unconfirmed'})`;
+          // A single file's caption owns the text omitted from the text plan.
+          const text = part.caption === header ? reference : `${message.text}\n${reference}`;
+          for (const content of renderDiscord(header, text)) enqueue(content, undefined, message.replyTo ? reply : sent && sameChannel ? id ?? undefined : undefined);
           continue;
         }
         const artifact = this.#files!.artifact(part.artifact);

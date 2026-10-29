@@ -7195,7 +7195,9 @@ both as its caption. Telegram-origin files use `you (Telegram)`.
 Discord uses the shared artifact planner and descriptor-bound no-follow reader.
 The durable messenger ledger reserves artifact ids before I/O, across pairing
 changes. Later attachments reference the earlier file, replying only within the
-same channel. Only native attachment receipts count as uploaded; a partial or
+same channel. The later message keeps its own text before the reference line,
+including short text that would otherwise be the file's caption.
+Only native attachment receipts count as uploaded; a partial or
 text-only fallback is labelled not uploaded on a later attachment. Queued or
 unconfirmed sends retain their once fence. Complete
 publications commit before draining; started publications stay contiguous ahead
@@ -7231,7 +7233,8 @@ file paths live in those queue payloads.
 Each file goes once ever per messenger remote, across pairing replacements:
 a later attachment replies to its earlier native message with “sent above” in
 the same chat, or names the previous delivery without an old-chat reply id in
-a new chat. A queued or unknown upload
+a new chat. The reference keeps the later message's own text, including a short
+caption. A queued or unknown upload
 retains its fence after restart. An unattempted outage-missed job does not consume
 the artifact's delivery. File jobs use General's outage/gap policy and source id;
 a timeout records a missed job with an unknown attempt and never retries it.

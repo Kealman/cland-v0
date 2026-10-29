@@ -71,6 +71,28 @@ test('Telegram single 2 KB note uses header and text as a plain document caption
   assert.equal(Object.hasOwn(receipt.body.requests.find(r => r.method === 'sendDocument')!.params, 'caption_entities'), false);
 });
 
+test('Telegram repeated single artifact preserves the new short caption before one sent-above reference', async t => {
+  const { root, fake, settled, state } = await fixture(t);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  state.set('mute', 'true');
+  const path = join(root, 'note.txt');
+  await writeFile(path, 'note bytes');
+  const created = await coord.call<{ artifact: { id: string } }>('artifact.create', { topic: 'general', kind: 'file', title: 'Note', path });
+  state.set('mute', 'false');
+  const artifacts = [created.artifact.id];
+  assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Original caption', artifacts })).ok, true);
+  await settled(1);
+  assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'A new short caption', artifacts })).ok, true);
+  await settled(2);
+  const after = await telegramControl<{ uploads: { caption: string }[]; messages: { text?: string; message_id: number; reply_to_message?: { message_id: number } }[] }>(fake.url, 'state');
+  assert.equal(after.body.uploads.length, 1);
+  assert.equal(after.body.uploads[0]!.caption, 'coord · report\r\nOriginal caption');
+  assert.equal(after.body.messages.length, 2);
+  assert.equal(after.body.messages[1]!.text, `coord · report\nA new short caption\n▣ ${artifacts[0]} Note (sent above)`);
+  assert.equal(after.body.messages[1]!.text!.match(/\(sent above\)/g)?.length, 1);
+  assert.equal(after.body.messages[1]!.reply_to_message?.message_id, after.body.messages[0]!.message_id);
+});
+
 test('Telegram agent mixed artifacts are deduplicated across fields and later attachments reference the original', async t => {
   const { root, ui, fake, settled, state } = await fixture(t);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
