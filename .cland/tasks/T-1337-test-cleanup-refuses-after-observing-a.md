@@ -3,7 +3,7 @@ id: T-1337
 kind: task
 title: Test cleanup refuses after observing a native exit because it cannot confirm the exited process's descendants
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-543
 topic: null
 branch: null
 created: 2026-10-26T10:49:09.893Z
-updated: 2026-10-29T15:58:53.934Z
+updated: 2026-10-29T15:59:41.267Z
 ---
 
 ## Summary

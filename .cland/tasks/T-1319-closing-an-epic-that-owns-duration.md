@@ -3,7 +3,7 @@ id: T-1319
 kind: task
 title: Closing an epic that owns duration allowances strands them with a closed owner and turns the next full run red
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-26T01:52:55.592Z
-updated: 2026-10-29T15:59:05.213Z
+updated: 2026-10-29T15:59:36.762Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1162
 kind: task
 title: "Codex approvals: reconcile a record's outcome with the item's execution when a TUI answer races the hub's write"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T02:33:54.189Z
-updated: 2026-10-29T15:59:12.007Z
+updated: 2026-10-29T15:59:43.704Z
 ---
 
 ## Summary

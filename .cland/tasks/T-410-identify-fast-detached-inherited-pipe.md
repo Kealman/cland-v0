@@ -3,7 +3,7 @@ id: T-410
 kind: task
 title: Identify fast detached inherited-pipe writers after a stalled run so the hub can reap them
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T13:09:09.281Z
-updated: 2026-10-29T15:59:12.517Z
+updated: 2026-10-29T15:59:44.158Z
 ---
 
 ## Summary

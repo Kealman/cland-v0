@@ -3,7 +3,7 @@ id: T-1437
 kind: task
 title: "Test lint: an existing T3 file that loses its T3 header is refused with a misleading 'exceeds frozen allowance 0' message"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-29T04:26:29.075Z
-updated: 2026-10-29T15:59:09.890Z
+updated: 2026-10-29T15:59:42.907Z
 ---
 
 ## Summary

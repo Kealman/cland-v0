@@ -3,17 +3,17 @@ id: T-1320
 kind: task
 title: The hub ran out of its 4 GB heap during a release dry-run's web bundle build
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1185
+branch: t/T-1320-the-hub-ran-out-of-its-4-gb-heap-during
 created: 2026-10-26T02:27:30.262Z
-updated: 2026-10-29T15:58:53.239Z
+updated: 2026-10-29T16:00:08.554Z
 ---
 
 ## Summary

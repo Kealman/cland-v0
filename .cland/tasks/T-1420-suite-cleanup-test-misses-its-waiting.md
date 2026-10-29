@@ -3,7 +3,7 @@ id: T-1420
 kind: task
 title: suite cleanup test misses its 'waiting for a verified worker identity' log line once under load
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T09:24:24.815Z
-updated: 2026-10-29T15:58:59.177Z
+updated: 2026-10-29T15:59:37.177Z
 ---
 
 ## Summary

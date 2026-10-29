@@ -3,7 +3,7 @@ id: T-1436
 kind: task
 title: "Discord history catch-up commits each replayed input separately: about 55 ms per input on Linux"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-29T04:18:09.413Z
-updated: 2026-10-29T15:59:09.380Z
+updated: 2026-10-29T15:59:42.472Z
 ---
 
 ## Summary

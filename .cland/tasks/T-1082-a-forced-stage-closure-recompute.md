@@ -3,7 +3,7 @@ id: T-1082
 kind: task
 title: A forced stage-closure recompute resolves ancestry for every historical cover candidate
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-21T19:04:23.933Z
-updated: 2026-10-29T15:59:07.817Z
+updated: 2026-10-29T15:59:44.611Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1416
 kind: task
 title: nvim events view test misses its 10 s first-page wait once under a loaded task run
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T00:02:27.244Z
-updated: 2026-10-29T15:58:58.640Z
+updated: 2026-10-29T15:59:39.555Z
 ---
 
 ## Summary

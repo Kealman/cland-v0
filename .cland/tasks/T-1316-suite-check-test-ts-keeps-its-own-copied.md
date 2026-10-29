@@ -3,7 +3,7 @@ id: T-1316
 kind: task
 title: suite-check.test.ts keeps its own copied fixture environment instead of the shared builder
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T20:54:33.494Z
-updated: 2026-10-29T15:59:07.293Z
+updated: 2026-10-29T15:59:37.435Z
 ---
 
 ## Summary

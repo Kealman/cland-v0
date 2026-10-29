@@ -3,7 +3,7 @@ id: T-1428
 kind: task
 title: telegram-polling durable-handler wait fails once under a loaded macOS stage cover
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T14:23:52.818Z
-updated: 2026-10-29T15:59:01.489Z
+updated: 2026-10-29T15:59:39.950Z
 ---
 
 ## Summary

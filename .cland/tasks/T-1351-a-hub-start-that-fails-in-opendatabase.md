@@ -3,17 +3,17 @@ id: T-1351
 kind: task
 title: A hub start that fails in openDatabase leaks a FileHandle closed only on garbage collection
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1187
+branch: t/T-1351-a-hub-start-that-fails-in-opendatabase
 created: 2026-10-27T02:21:59.306Z
-updated: 2026-10-29T15:58:57.109Z
+updated: 2026-10-29T16:00:57.240Z
 ---
 
 ## Summary
@@ -27,3 +27,9 @@ Find which handle the partial start opens before `openDatabase` and make the fai
 ## Acceptance criteria
 
 - [ ] C1. A hub start that fails at `openDatabase` closes every FileHandle it opened before rejecting, and a regression fails on today's code with the DEP0137 warning or an open-handle check (test).
+
+## Comments
+
+### impl-1351 · 2026-10-29T16:00:57.240Z
+
+Investigating current dev 6a24facf8. Planned regression seam: projectHub startup with injected openDatabase failure and journalOpen capturing real FileHandles; check descriptors are closed before rejection, not eventual GC. No wire/schema/authority contract changes planned.

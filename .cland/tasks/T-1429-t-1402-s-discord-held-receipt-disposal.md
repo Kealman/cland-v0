@@ -3,7 +3,7 @@ id: T-1429
 kind: task
 title: T-1402's Discord held-receipt disposal test fails 1 of 5 load-gate repeats on a loaded macOS cover
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T14:23:53.218Z
-updated: 2026-10-29T15:59:02.233Z
+updated: 2026-10-29T15:59:40.213Z
 ---
 
 ## Summary

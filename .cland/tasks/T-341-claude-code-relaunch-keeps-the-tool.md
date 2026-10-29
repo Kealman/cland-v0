@@ -3,17 +3,17 @@ id: T-341
 kind: task
 title: Claude Code relaunch keeps the tool schemas cached at first launch
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1190
+branch: t/T-341-claude-code-relaunch-keeps-the-tool
 created: 2026-10-13T19:49:24.214Z
-updated: 2026-10-29T15:58:52.721Z
+updated: 2026-10-29T16:00:38.052Z
 ---
 
 ## Summary

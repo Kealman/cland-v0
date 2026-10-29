@@ -3,7 +3,7 @@ id: T-1248
 kind: task
 title: The first task.list reply nears its byte cap as the live tracker grows
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T15:59:06.768Z
+updated: 2026-10-29T15:59:41.659Z
 ---
 
 ## Summary

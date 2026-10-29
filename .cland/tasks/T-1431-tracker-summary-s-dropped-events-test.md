@@ -3,7 +3,7 @@ id: T-1431
 kind: task
 title: tracker-summary's dropped-events test waits only 5 s for macOS to deliver a native FSEvents callback and fails on a busy Mac
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T15:10:06.059Z
-updated: 2026-10-29T15:59:04.134Z
+updated: 2026-10-29T15:59:40.605Z
 ---
 
 ## Summary

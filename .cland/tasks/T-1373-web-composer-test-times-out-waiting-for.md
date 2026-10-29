@@ -3,7 +3,7 @@ id: T-1373
 kind: task
 title: Web composer test times out waiting for the General row after reload on a loaded Linux droplet
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-27T07:48:08.661Z
-updated: 2026-10-29T15:58:57.615Z
+updated: 2026-10-29T15:59:39.155Z
 ---
 
 ## Summary

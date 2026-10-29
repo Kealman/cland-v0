@@ -3,17 +3,17 @@ id: T-1430
 kind: task
 title: "web Inbox: reading a message with d can show the 'left Inbox' outcome when the removal delta beats the read reply"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1189
+branch: t/T-1430-web-inbox-reading-a-message-with-d-can
 created: 2026-10-28T14:41:32.173Z
-updated: 2026-10-29T15:59:03.600Z
+updated: 2026-10-29T16:00:30.511Z
 ---
 
 ## Summary

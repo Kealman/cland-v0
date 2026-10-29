@@ -3,7 +3,7 @@ id: T-1379
 kind: task
 title: Targeted local test runs and the QA recorder run on a Node outside the package engines without saying so
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-27T22:51:49.617Z
-updated: 2026-10-29T15:59:11.496Z
+updated: 2026-10-29T15:59:43.251Z
 ---
 
 ## Summary

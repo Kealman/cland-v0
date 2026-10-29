@@ -3,7 +3,7 @@ id: T-1421
 kind: task
 title: Copied live-tracker test fixtures slow down as the tracker grows
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T10:09:57.493Z
-updated: 2026-10-29T15:59:08.858Z
+updated: 2026-10-29T15:59:41.929Z
 ---
 
 ## Summary

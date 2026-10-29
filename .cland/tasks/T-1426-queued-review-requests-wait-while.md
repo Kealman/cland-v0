@@ -3,17 +3,17 @@ id: T-1426
 kind: task
 title: Queued review requests wait while reviewers sit idle with stale pending markers
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1188
+branch: t/T-1426-queued-review-requests-wait-while
 created: 2026-10-28T12:40:05.299Z
-updated: 2026-10-29T15:59:00.234Z
+updated: 2026-10-29T16:00:27.514Z
 ---
 
 ## Summary

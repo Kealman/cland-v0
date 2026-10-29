@@ -3,8 +3,9 @@ id: T-1443
 kind: task
 title: The remote docs describe 0.3.0 as built
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1181
 branch: t/T-1443-the-remote-docs-describe-0-3-0-as-built
 created: 2026-10-29T15:55:47.685Z
-updated: 2026-10-29T15:57:31.829Z
+updated: 2026-10-29T16:00:44.279Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ Read each page against the build: commands and flags against `--help`, config ke
 
 ## Acceptance criteria
 
-- [ ] C1. Every command, flag, config key and secret name on the three pages exists in the build, shown by the remote-docs tests, extended where a page names something new.
-- [ ] C2. The pages cover both remotes, attachments and voice, setup's remote step and doctor's remote lines as built.
+- [x] C1. Every command, flag, config key and secret name on the three pages exists in the build, shown by the remote-docs tests, extended where a page names something new.
+  - done: impl-1443 · 2026-10-29T16:00:35.224Z
+- [x] C2. The pages cover both remotes, attachments and voice, setup's remote step and doctor's remote lines as built.
+  - done: impl-1443 · 2026-10-29T16:00:35.624Z
 
 ## Comments
 

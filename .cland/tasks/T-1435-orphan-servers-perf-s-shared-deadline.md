@@ -3,7 +3,7 @@ id: T-1435
 kind: task
 title: orphan-servers-perf's shared-deadline case misses its expected rejection once in a full macOS cover
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-28T21:37:03.480Z
-updated: 2026-10-29T15:59:04.670Z
+updated: 2026-10-29T15:59:41.007Z
 ---
 
 ## Summary

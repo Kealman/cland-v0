@@ -3,7 +3,7 @@ id: T-1336
 kind: task
 title: The dev T3 culprit search reports an intermittent failure as already-fixed when no code changed
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-1244
 topic: null
 branch: null
 created: 2026-10-26T09:16:20.638Z
-updated: 2026-10-29T15:59:10.986Z
+updated: 2026-10-29T15:59:36.029Z
 ---
 
 ## Summary

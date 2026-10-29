@@ -3,7 +3,7 @@ id: T-1087
 kind: task
 title: FrameClient ownership accounting runs ps for the in-process fixture's synthetic pids
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-21T23:17:06.345Z
-updated: 2026-10-29T15:59:08.337Z
+updated: 2026-10-29T15:59:45.128Z
 ---
 
 ## Summary
