@@ -12,3 +12,9 @@ That is the parent's PID-reaping receipt, separate from an exited-state receipt.
 The deterministic after-ps Z/X and macOS SZOMB controls live in
 [process cleanup](hub-test-process-cleanup.test.ts.md) and
 [system processes](hub-test-system-processes.test.ts.md).
+
+Both native launch sites use `fixtureEnvironment` directly and are inspected by
+the T0 child-environment guard without exemptions. Keep temporary files under
+the owned `tmp` directory and provision the shared builder’s scratch HOME/XDG
+directories; do not restore a local environment allowlist. The ordinary Git
+fixture needs no deliberate `core.excludesFile` override.

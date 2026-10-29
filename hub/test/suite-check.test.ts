@@ -11,27 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { ownDirectory, ownProcess, beforeDirectories, onCleanup, cleanupProcesses } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
-import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
-
-function fixtureEnv(cwd: string): NodeJS.ProcessEnv {
-  // Allow only tool discovery from the worker; account/provider and Git overrides
-  // never enter the fixture. Apply the shared filter after every local overlay.
-  return withoutExecutorCredentials({
-    PATH: process.env.PATH,
-    HOME: join(cwd, 'home'),
-    XDG_CONFIG_HOME: join(cwd, 'config'),
-    XDG_DATA_HOME: join(cwd, 'data'),
-    XDG_STATE_HOME: join(cwd, 'state'),
-    XDG_CACHE_HOME: join(cwd, 'cache'),
-    TMPDIR: join(cwd, 'tmp'),
-    GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: join(cwd, 'gitconfig'),
-    GIT_CONFIG_SYSTEM: join(cwd, 'gitconfig'),
-    GIT_TERMINAL_PROMPT: '0',
-    npm_config_userconfig: join(cwd, 'npmrc'),
-    npm_config_globalconfig: join(cwd, 'npmrc-global'),
-  });
-}
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 async function bounded<T>(operation: Promise<T>, boundary: string, milliseconds: number): Promise<T> {
   const signal = AbortSignal.timeout(milliseconds);
@@ -45,8 +25,7 @@ async function bounded<T>(operation: Promise<T>, boundary: string, milliseconds:
 }
 
 function ownedCheck(t: import('node:test').TestContext, cwd: string, args: string[] | string, signal = t.signal) {
-  // cland-allow-child-env: fixtureEnv is sealed by construction: PATH only plus owned HOME/XDG/Git/npm paths and final credential filter
-  const child = spawn(typeof args === 'string' ? '/bin/sh' : 'npm', typeof args === 'string' ? ['-c', args] : args, { cwd, env: fixtureEnv(cwd), timeout: 10_000, signal, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(typeof args === 'string' ? '/bin/sh' : 'npm', typeof args === 'string' ? ['-c', args] : args, { cwd, env: fixtureEnvironment(cwd, process.env, { TMPDIR: join(cwd, 'tmp') }), timeout: 10_000, signal, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '', stderr = '', failure = '';
   child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
   child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
@@ -101,8 +80,7 @@ async function checkRoot(t: import('node:test').TestContext, prefix: string) {
     removed = true;
   };
   beforeDirectories(t, remove);
-  await Promise.all(['home', 'config', 'data', 'state', 'cache', 'tmp'].map(path => mkdir(join(cwd, path))));
-  await Promise.all(['gitconfig', 'npmrc', 'npmrc-global'].map(path => writeFile(join(cwd, path), '')));
+  await Promise.all(['home', 'config', 'opencode', 'state', 'cache', 'tmp'].map(path => mkdir(join(cwd, path))));
   return { cwd, remove, attach: (next: ReturnType<typeof ownedCheck>) => command = next };
 }
 
@@ -172,8 +150,7 @@ test('check runs the report lint once after typecheck and preserves a green exit
   await mkdir(join(cwd, '.cland'), { recursive: true });
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
   await writeFile(join(cwd, 'hub/test/lint-baseline.json'), JSON.stringify({ version: 1, files: { 'hub/test/a.test.ts': { 'wall-clock-wait': 1 } } }));
-  // cland-allow-child-env: fixtureEnv is sealed by construction: PATH only plus owned HOME/XDG/Git/npm paths and final credential filter
-  const git = (...args: string[]) => execFileSync('git', args, { cwd, env: fixtureEnv(cwd), stdio: 'pipe' });
+  const git = (...args: string[]) => execFileSync('git', args, { cwd, env: fixtureEnvironment(cwd, process.env, { TMPDIR: join(cwd, 'tmp') }), stdio: 'pipe' });
   git('init', '-qb', 'dev'); git('add', '.');
   git('-c', 'user.name=Lint fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Frozen lint baseline');
   const { check } = await verificationCommands(cwd, cwd);
