@@ -51,6 +51,8 @@ export function discordApproval(approval: InboxApproval, tail = ''): { content: 
 export class DiscordCards {
   #send: RemoteSend | undefined; #next = 0;
   #replayReady = false;
+  #history = true;
+  #latest: Inbox | undefined;
   readonly #requests = new Map<string, ReturnType<typeof Promise.withResolvers<unknown>>>();
   readonly #work = new Set<Promise<void>>();
   readonly #log: LogFn | undefined;
@@ -94,8 +96,30 @@ export class DiscordCards {
     // No token or provider payload is persisted. The id is also the stable resend key.
     this.#store.set(key, JSON.stringify({ channel: pair.chatId, user: pair.userId, kind: match[1], card: match[2], old: d.message!.id }));
   }
+  beginHistory(): void { this.#history = true; this.#replayReady = false; }
+  async finishHistory(key: string): Promise<void> {
+    if (!this.#store.entries('discord.card-model:').length && !this.#store.entries('discord.approval-model:').length) {
+      this.#history = false; this.#replayReady = true;
+      if (this.#latest) await this.publishInbox(this.#latest);
+      return;
+    }
+    const inbox = await this.#request<Inbox>('inbox.list', {});
+    const pair = this.#store.pairing();
+    if (pair) for (const row of [...inbox.asks.map(a => ({ id: a.id, kind: 'ask' })), ...inbox.approvals.map(a => ({ id: a.id, kind: 'approval' }))]) {
+      const copies = row.kind === 'ask' ? this.#store.messagesForAsk(row.id) : this.#store.messagesForApproval(row.id);
+      const olds = copies.filter(copy => copy.chatId === pair.chatId).map(copy => copy.messageId);
+      const intent = `discord.replay-press:${key}:${row.kind}:${row.id}`;
+      if (olds.length && !this.#store.get(intent)) this.#store.set(intent, JSON.stringify({ channel: pair.chatId, user: pair.userId, kind: row.kind, card: row.id, old: olds[0], olds }));
+    }
+    await this.#outbox.resume();
+    await this.#recoverReplay(inbox);
+    this.#history = false;
+    this.#replayReady = true;
+    await this.publishInbox(inbox);
+  }
   beginReplay(): void { this.#replayReady = false; }
   async finishReplay(): Promise<void> {
+    this.#history = false;
     this.#replayReady = true;
     if (!this.#store.entries('discord.replay-press:').some(row => row.value !== '1')) return;
     const inbox = await this.#request<Inbox>('inbox.list', {});
@@ -104,7 +128,7 @@ export class DiscordCards {
   async #recoverReplay(inbox: Inbox): Promise<void> {
     for (const { key, value } of this.#store.entries('discord.replay-press:')) {
       if (value === '1') continue;
-      const saved = JSON.parse(value) as { channel: string; user: string; kind: string; card: string; old: string };
+      const saved = JSON.parse(value) as { channel: string; user: string; kind: string; card: string; old: string; olds?: string[] };
       const pair = this.#store.pairing();
       if (pair?.chatId !== saved.channel || pair.userId !== saved.user) continue;
       const asks = saved.kind === 'ask' ? inbox.asks.filter(row => row.id === saved.card) : [];
@@ -113,7 +137,7 @@ export class DiscordCards {
         await this.publishInbox({ ...inbox, asks, approvals, plans: [], requests: [], messages: [] }, key, true);
         const job = this.#store.outbox().find(row => row.source === `${key}:discord.card:${saved.channel}:${saved.kind === 'approval' ? 'approval:' : ''}${saved.card}`);
         if (job?.state !== 'sent') continue;
-        await this.#outbox.edit(saved.channel, saved.old, '↓ Re-sent below', key);
+        for (const old of saved.olds ?? [saved.old]) await this.#outbox.edit(saved.channel, old, '↓ Re-sent below', key);
       }
       this.#store.set(key, '1');
     }
@@ -231,6 +255,7 @@ export class DiscordCards {
     if (frame.type === 'ask' && frame.card.state !== 'open') await this.#outcome(frame.ask, frame.card);
     if (frame.type === 'approval' && frame.approval.state === 'closed' && frame.approval.outcome) await this.#outbox.closeApproval(frame.approval.id, frame.approval.outcome);
     if (frame.type !== 'inbox') return;
+    this.#latest = frame.inbox;
     await Promise.all((frame.inbox.departures ?? []).flatMap(row => {
       if (row.kind === 'approval' && row.outcome && 'choice' in row.outcome) return [this.#outbox.closeApproval(row.id, row.outcome)];
       if (row.kind !== 'ask' || !['answered', 'declined', 'withdrawn', 'cancelled'].includes(row.reason)) return [];
@@ -241,7 +266,7 @@ export class DiscordCards {
     await this.publishInbox(frame.inbox);
   }
   async publishInbox(inbox: Inbox, resend?: string, replay = false): Promise<number> {
-    const pair = this.#store.pairing(); if (!pair) return 0;
+    const pair = this.#store.pairing(); if (!pair || (this.#history && !replay)) return 0;
     const rows = inboxPublication(inbox, this.#webOrigin?.());
     await Promise.all(rows.map(row => {
       if (row.kind === 'notice') {

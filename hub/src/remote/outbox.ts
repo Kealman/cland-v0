@@ -108,7 +108,7 @@ export class Outbox {
   async #drain(visited: Set<string>): Promise<void> {
     let backoff = 1000;
     while (!this.#stopped) {
-      const candidates = () => this.#store.outbox()
+      const candidates = () => this.#store.outbox(['queued', 'sending', 'uncertain'])
         .filter(job => this.#accepts(job) && !visited.has(job.id) && ['queued', 'sending', 'uncertain'].includes(job.state))
         .sort(this.#compare ?? (() => 0));
       if (this.#beforeNext && candidates().length) await this.#beforeNext();
@@ -134,7 +134,7 @@ export class Outbox {
       }
       if (this.#stopped) break;
       // A source check may yield while a queued edit is replaced; bind its latest intent.
-      job = this.#store.outbox().find(row => row.id === job.id)!;
+      job = this.#store.outbox(undefined, job.id)[0]!;
       if (!this.#admit(job)) {
         job.state = 'dropped'; job.updated = this.#clock.now().toISOString(); this.#store.putOutbox(job); continue;
       }

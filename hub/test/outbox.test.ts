@@ -472,9 +472,10 @@ test('an arrival after the final empty read joins the exposed owner and sends be
     let observed = false;
     // Observe the durable Store boundary without changing its returned snapshot.
     // Arm before drain; schedule arrival immediately after its final empty read.
-    remote.outbox = () => {
-      const rows = read();
-      if (!observed && rows.length === 1 && rows[0]?.state === 'sent') {
+    remote.outbox = (...args) => {
+      const rows = read(...args);
+      const [states, id] = args;
+      if (!observed && states && id === undefined && rows.length === 0 && read().some(job => job.id === first && job.state === 'sent')) {
         observed = true;
         queueMicrotask(() => {
           second = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'completion arrival' } });
@@ -538,9 +539,10 @@ test('the final-read arrival recheck retains the original unknown-proof fence', 
     let next: string | undefined;
     let joined: Promise<void> | undefined;
     let observed = false;
-    remote.outbox = () => {
-      const rows = read();
-      if (!observed && proofs === 1 && rows.length === 1 && rows[0]?.state === 'uncertain') {
+    remote.outbox = (...args) => {
+      const rows = read(...args);
+      const [states, exactId] = args;
+      if (!observed && states && exactId === undefined && proofs === 1 && rows.length === 1 && rows[0]?.state === 'uncertain') {
         observed = true;
         queueMicrotask(() => {
           next = outbox.enqueue({ kind: 'general', source: null, payload: { text: 'new after unknown proof' } });

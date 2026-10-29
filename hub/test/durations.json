@@ -10837,6 +10837,20 @@
       "added": "2026-10-26",
       "expires": "2026-11-25",
       "reason": "T-1201 lints all 85 committed qa/briefs against an independent compiler-source oracle; this real-repo corpus control was the agreed bar for its bounded lexer (review-loop cap, 2026-10-24). Samples: macOS/local stage cover 7a8445c1 (A-11552) 4.078 s; Linux c-8 lon1 item verify 8d8e04c9 (A-11526) 4.071 s; Linux c-8 lon1 stage cover e70d2393 shard-1 (A-11549) 12.466 s under shard load. The 18.7 s cap rounds 1.5x the worst sample upward. Assertions unchanged. Owned by E-880 (D72 legacy owner) so E-1196 can close. Renewed 2026-10-26 (T-1338): recent passing samples A-12333 10.929478443 s, A-12360 4.148720988 s, A-12338 5.0689815 s, A-12224 3.719521292 s; A-12333/A-12360 Linux droplet, A-12338/A-12224 macOS local (duration budgets report-only). The 16.395 s cap rounds 1.5x the worst recent passing sample (10.929478443 s) upward to milliseconds; E-880 retains ownership within its 31-day span limit."
+    },
+    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
+      "seconds": 45,
+      "owner": "R-1278",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "500 production-frame inputs with real loopback reaction receipts. T-1413: moved unchanged full-scale C2 from T2 to existing T3 per Coordinator decision 396ede14. Linux x64 c-8 lon1 run fa7e1e1f at 5ad59cec7 (A-13581) passed this exact workload at 27.622364890 s ordinarily and all five loaded samples, worst 29.716285979 s; the overall run remained red for M5 and duration treatment. 45 s rounds 1.5 times that worst passing Linux workload sample upward. R-1278 owns the seven-day allowance. T-1436 will shrink the cost by batching durable commits for each history page. The full-scale T3 completion wait is an absolute 45 s (loadFactor 1); T2 uses the same production-frame path with 25 inputs and injected cap20."
+    },
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": {
+      "seconds": 10,
+      "owner": "R-1278",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "real hub process start, admission, SIGKILL, owned-writer drain and exactly-once recovery in Discord history catch-up (T-1413). Coordinator decision 3a147fbb approves 10 s based on the passing Linux x64 c-8 lon1 run ab55068b at dec9e7713 (A-13594), 6.355606305 s, and local macOS 5.73 s. These are thin samples; 1.5 times the worst is rounded upward to 10 s, matching the native Telegram kill headroom. The Linux overall run remained red solely for this missing measured allowance and Web was unrun. Protocol, Identify spacing, kill/identity/recovery/drain assertions and timeouts are unchanged; the separate R-1278 45 s full-history allowance remains unchanged."
     }
   }
 }

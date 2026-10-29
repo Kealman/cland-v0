@@ -67,3 +67,41 @@ The restart clock continues at the persisted native reaction attempt time plus
 the one-second per-chat pacing interval. The default FakeClock epoch precedes
 that real daemon attempt and would pin recovery behind a future pacing deadline.
 This fixture excludes pacing latency; it preserves the stored attempt and fence.
+
+The Discord history SIGKILL case uses the same native process lifecycle tier.
+It seeds an exact TEXT cursor, starts a native daemon, retains its owned live
+birth, then stores two fake channel messages and invalidates the session with
+4003. The fresh Identify respects the five-second reservation. The existing
+committed-input hook accepts `discord-input-committed` and SIGKILLs after the
+first human commit and before returning its frame result. After positive native
+exit and captured-owner drainage, retain one original message, the frozen batch
+and the old cursor. Restart through projectHub with actual native process facts;
+require both ordered history messages once and the original first durable id.
+This proves one commit-to-adapter-receipt kill during catch-up; it claims no
+other SQLite instruction boundary. Only fake credentials and loopback endpoints
+are used. Report Linux duration for the native admission wait and restart.
+
+The Discord native fixture pre-owns acquisition, Store and exit/setup observations
+through the shared pacing lifetime and exchange disposer. The Store closes only
+after the captured native writers and restarted hub drain. Omitted and aborted
+setup controls lose a serving receipt after actual native acquisition, cancel an
+unmatched exit observer, and assert exact native exit, closed Store, zero owned
+observations/native work and closed fake. Acquisition and shutdown bounds remain
+separate; no observation is left running against a removed root.
+
+
+This existing T3 remote lifecycle file also owns the full-scale Discord C2
+620→500 production-frame case. It retains every durable history, overflow,
+nonce/silence and independent active-history request assertion from the original
+T2 case. Its completion wait is an absolute45 seconds (loadFactor1). The
+45-second case allowance is owned by R-1278 and expires2026-11-05, based on
+A-13581's original Linux passing workload (base27.622s; worst of five loaded
+passes29.716s), despite that run's separate M5 failure. T-1436 tracks batching
+per-page durable commits to shrink this cost; no reaction I/O is removed here.
+No file allowance is added while file budgets remain report-only.
+
+
+Native Discord acquisition has a separate10-second hang guard. It is not a speed
+assertion: A-13590 reached the old1-second guard before the native kill boundary
+on Linux. Omitted/aborted receipt controls explicitly retain1 second under their
+injected setup clock; kill, identity, recovery and shutdown bounds are unchanged.

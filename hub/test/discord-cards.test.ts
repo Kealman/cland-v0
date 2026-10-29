@@ -1,72 +1,21 @@
+import { discordCardsFixture as fixture, discordHistorySeed as historySeed } from './discord-cards-fixture.ts';
+import { DISCORD_HISTORY_LIMIT } from '../src/remote/discord-catchup.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 // T2: production frame port and sealed loopback Discord REST/ws.
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, inProcessSpoke, until, connectUi, cland } from './harness.ts';
-import { defaultConfig, renderConfig } from '../src/init/config.ts';
+import { inProcessSpoke, until, connectUi, cland } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
-import { messengerFactory } from '../src/remote/messenger.ts';
 import { DiscordOutbox } from '../src/remote/discord-outbox.ts';
-import { remoteApprovalHarness } from './fakes/remote-approval-harness.ts';
 import { discordAsk } from '../src/remote/discord-cards.ts';
 import type { InboxAsk } from '../src/protocol.ts';
-import { remoteRedactor } from '../src/remote/redact.ts';
-import { fakeTelegramFixture, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { driveTelegram } from './telegram-pacing-fixture.ts';
-import { control, pairing } from './telegram-polling-fixture.ts';
+import { control } from './telegram-polling-fixture.ts';
 import type { TgMessage } from '../src/remote/telegram-api.ts';
 import { FakeClock } from './fake-clock.ts';
-import { DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
+import { DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
-
-async function fixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string) {
-  const clock = new FakeClock();
-  const exchange = await discordExchangeOwner(t, { clock, ...(origin ? { publicOrigin: origin } : {}), ...(onCallback ? { onCallback } : {}) }).start();
-  const { root } = await exchange.project();
-  const tgOwner = both ? fakeTelegramFixture(t, { clock }) : undefined;
-  const tg = await tgOwner?.start();
-  const config = defaultConfig('Commands fixture'); config.verification.lockPath = join(root, 'suite.lock'); config.remote.discord.enabled = true; config.remote.telegram.enabled = both; config.plan.approval = 'human'; if (origin) config.web.origin = origin;
-  await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
-  const script = scripted ? remoteApprovalHarness(t, root, clock, scripted) : undefined;
-  const store = new Store(join(root, '.cland/hub.db')); exchange.afterDrain(() => store.close());
-  const state = store.remotes.forMessenger('discord');
-  state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
-  const telegram = store.remotes.forMessenger('telegram');
-  if (both) telegram.setPairing(pairing);
-  const env = { CLAND_DISCORD_API_ROOT: exchange.fake.url, ...(tg ? { CLAND_TELEGRAM_API_ROOT: tg.url } : {}) };
-  const factory = messengerFactory(env, remoteRedactor(), clock, { state: store.remotes, projectName: () => projectName, webOrigin: () => origin ?? '', ...(log ? { log } : {}) });
-  const frames: Array<{ frame: Record<string, unknown>; ingress?: import('../src/remote/gateway.ts').RemoteIngress }> = [];
-  const held: Array<() => void> = [];
-  let remote: import('../src/remote/gateway.ts').Remote;
-  let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
-  exchange.stop(() => hub?.stop());
-  const startHub = () => exchange.run(async () => {
-    hub = await projectHub(t, root, env, { clock, ...(script ? { adapters: [script.factory] } : {}), syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, ...(both ? { 'telegram.token': TELEGRAM_TEST_TOKEN } : {}) }, gatewayMessenger: (...args) => {
-      const made = factory(...args); if (made.id !== 'discord') return made;
-      remote = made; const start = remote.start.bind(remote);
-      remote.start = (send, ...rest) => start((frame, ingress, bytes) => {
-        frames.push({ frame, ...(ingress ? { ingress } : {}) });
-        if (frame.type === holdType) held.push(() => send(frame, ingress, bytes)); else send(frame, ingress, bytes);
-      }, ...rest);
-      return remote;
-    } });
-    if (exchange.signal.aborted) await hub.stop();
-  });
-  await startHub();
-  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  await until(async () => (await exchange.fake.control('state')).gateway.identifies === 1, { what: 'Discord READY', timeoutMs: 2000 });
-  await exchange.fake.control('dispatch', { op: 1, d: null });
-  await until(() => remote.status!().connected, { what: 'READY plus native heartbeat ACK', timeoutMs: 1500 });
-  const command = (name: string, text?: string) => exchange.run(async () => {
-    const { id } = await exchange.fake.control('interact', { command: name, ...(text === undefined ? {} : { text }) });
-    await until(async () => !!(await exchange.fake.control('state')).interactions.find(row => row.id === id)?.callbacks.length,
-      { what: 'native private command callback', timeoutMs: 1500 });
-    return (await exchange.fake.control('state')).interactions.find(row => row.id === id)!;
-  });
-  return { ...exchange, root, script, store, tg, telegram, hub: hub!, restart: async (delay = 5000, down?: () => Promise<void>) => { await hub!.stop(); await down?.(); await clock.advance(delay); await startHub(); return hub!; }, clock, state, coord, command, frames, telegramMute: () => store.remotes.forMessenger('telegram').get('mute'), discardFrames: () => { holdType = undefined; held.splice(0); }, releaseFrames: () => { holdType = undefined; for (const send of held.splice(0)) send(); } };
-}
 
 // Own the rejecting observer before setup can yield; failed setup cancels and
 // joins it before releasing native holds. Successful callers retain the hold.
@@ -957,4 +906,302 @@ test('Discord each live resume gates an owed resend before input without a new p
   const native = await f.fake.control('state');
   assert.equal(native.interactions.length, 0, 'no fresh interaction triggered recovery');
   assert.equal(native.messages.find(m => m.id === card.message)!.components?.length, 0);
+});
+
+
+async function settledReplacements(f: Awaited<ReturnType<typeof fixture>>, cards: Array<{ ask: string; message: string }>, what: string, timeoutMs: number): Promise<void> {
+  let paced: string | undefined;
+  await until(async () => {
+    const jobs = f.state.outbox();
+    if (cards.every(card => f.state.messagesForAsk(card.ask).length === 2
+      && jobs.some(job => job.kind === 'edit' && job.target === card.message && job.state === 'sent'
+        && (job.payload as { content?: string }).content === '↓ Re-sent below'))) return true;
+    // A mapped replacement does not finish its owner's queue. Late delivery
+    // feedback can still own that lane. Advance its native250ms bucket only
+    // after a newly observed durable reaction completion, once per receipt.
+    const receipt = jobs.filter(job => job.source?.startsWith('discord.reaction:') && job.state === 'sent').at(-1);
+    if (receipt && receipt.id !== paced) { paced = receipt.id; await f.clock.advance(250); }
+    return false;
+  }, { what, timeoutMs });
+}
+
+test('Discord fresh Identify catches history in order and resends every open card', async t => {
+  const f = await fixture(t);
+  await f.fake.control('configure', { interval: 1000000, sendLimit: 1000, sendWindow: 0 });
+  const card = await openCard(f);
+  const peer = await openCard(f);
+  const seed = await f.fake.control('say', { content: 'History cursor' });
+  await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: seed });
+  await until(() => f.state.get('discord.lastMessageId') === seed.id, { what: 'stored cursor', timeoutMs: 2000 });
+  const hub = await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    await f.fake.control('say', { content: 'Offline first' });
+    await f.fake.control('say', { content: 'Offline second' });
+  });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await settledReplacements(f, [card, peer], 'fresh Identify history and all-card recovery', 3000);
+  const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
+  assert.deepEqual(rows.filter(m => m.text.startsWith('Offline')).map(m => m.text.split('\n')[0]), ['Offline first', 'Offline second']);
+  assert.ok(rows.filter(m => m.text.startsWith('Offline')).every(m => m.text.includes('written on Discord at')));
+  await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'old-copy retirement', timeoutMs: 2000 });
+  await until(async () => (await f.fake.control('state')).messages.find(m => m.id === peer.message)?.content === '↓ Re-sent below', { what: 'peer old-copy retirement', timeoutMs: 2000 });
+  assert.equal((await f.fake.control('state')).messages.filter(m => m.content.includes('General messages missed')).length, 0);
+});
+
+test('Discord history cap forwards newest 20 of 25 in order with silent overflow and responsive hub', async t => {
+  assert.equal(DISCORD_HISTORY_LIMIT, 500);
+  const f = await fixture(t, undefined, undefined, undefined, false, undefined, undefined, undefined, 20);
+  const seed = await historySeed(f);
+  await f.fake.control('configure', { reactionWindow: 0 });
+  const started = performance.now();
+  const hub = await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    f.state.putOutbox({ id: 'cap-missed', kind: 'general', source: 'cap-missed', state: 'missed', created: f.clock.now().toISOString(), updated: f.clock.now().toISOString(), payload: { discord: true, channel: ids.channel, user: ids.human, content: 'Before outage', mapping: { chatId: ids.channel, topic: 'general', message: 'cap-missed', ask: null, approval: null } } });
+    await f.fake.control('say', { contents: Array.from({ length: 25 }, (_, n) => `Outage ${n}`) });
+  });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await until(() => f.frames.filter(r => r.frame.type === 'topic.send').length >= 3, { what: 'active history catch-up', timeoutMs: 3000 });
+  assert.ok(f.state.get('discord.history'));
+  const responsive = performance.now();
+  assert.equal((await within(ui.request({ type: 'topic.send', topic: 'general', kind: 'message', text: 'Responsive during history' }), 500)).ok, true);
+  t.diagnostic(`topic.send during catch-up: ${(performance.now() - responsive).toFixed(1)} ms`);
+  assert.ok(f.state.get('discord.history'), 'responsiveness measured before history completion');
+  await until(async () => {
+    return f.state.outbox().some(j => j.source?.startsWith('discord-gap-') && j.state === 'sent');
+  }, { what: '20 inputs and overflow settlement', timeoutMs: 15000 }).catch(error => { t.diagnostic(JSON.stringify({ inputCount: f.frames.filter(r => r.frame.type === 'topic.send').length, jobs: f.state.outbox().reduce((a, j) => { a[j.state] = (a[j.state] ?? 0) + 1; return a; }, {} as Record<string, number>) })); throw error; });
+  t.diagnostic(`restart and 20-input completion: ${(performance.now() - started).toFixed(1)} ms (${process.platform}/local; injected pacing excluded)`);
+  const durable: Array<{ text: string; seq: number }> = [];
+  let after = 0;
+  for (;;) {
+    const page = ((await ui.request({ type: 'topic.history', topic: 'general', after, limit: 200 })).value as { messages: Array<{ text: string; seq: number }> }).messages;
+    if (!page.length) break;
+    durable.push(...page); after = page.at(-1)!.seq;
+  }
+  const messages = durable.filter(m => m.text.startsWith('Outage')).map(m => m.text.split('\n')[0]);
+  assert.deepEqual(messages, Array.from({ length: 20 }, (_, i) => `Outage ${i + 5}`));
+  const native = await f.fake.control('state');
+  assert.equal(native.messages.filter(m => m.content === 'Older Discord messages were not passed on.').length, 1);
+  assert.ok((native.requests.find(r => r.method === 'POST' && r.body.content === 'Older Discord messages were not passed on.')!.body.flags as number) & 4096);
+  const overflow = native.messages.find(m => m.content === 'Older Discord messages were not passed on.')!;
+  const gap = native.messages.find(m => m.content.startsWith('1 General messages missed'))!;
+  assert.ok(gap);
+  assert.ok(BigInt(overflow.id) < BigInt(gap.id));
+  const gapRequest = native.requests.find(r => r.method === 'POST' && r.body.content === gap.content)!;
+  assert.ok((gapRequest.body.flags as number) & 4096);
+  assert.equal(f.state.outbox().find(j => j.id === 'cap-missed')!.state, 'reported');
+  assert.ok(BigInt(seed.id) > 2n ** 53n);
+  assert.equal(typeof f.state.get('discord.lastMessageId'), 'string');
+  assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
+});
+
+
+test('Discord interrupted history resumes its frozen batch without duplicate General input', async t => {
+  const f = await fixture(t);
+  await historySeed(f);
+  f.holdFrames('topic.send');
+  let offline: Array<{ id: string }> = [];
+  await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    offline = await f.fake.control('say', { contents: ['Checkpoint first', 'Checkpoint second'] });
+  });
+  await until(() => f.frames.some(r => String(r.frame.text).startsWith('Checkpoint first')), { what: 'held first catch-up input', timeoutMs: 2000 });
+  f.releaseOne();
+  await until(async () => { await f.clock.advance(250); return !!f.state.get(`discord.inbound:${offline[0]!.id}`) && f.frames.some(r => String(r.frame.text).startsWith('Checkpoint second')); }, { what: 'committed first and held second input', timeoutMs: 2000 });
+  assert.ok(f.state.get('discord.history'));
+  const hub = await f.restart(180000, async () => { f.discardFrames(); f.state.set('discord.session', null); });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await until(async () => { await f.clock.advance(250); return f.state.get('discord.history') === null; }, { what: 'frozen batch completed after interruption', timeoutMs: 3000 });
+  const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
+  assert.deepEqual(rows.filter(m => m.text.startsWith('Checkpoint')).map(m => m.text.split('\n')[0]), ['Checkpoint first', 'Checkpoint second']);
+  assert.equal(f.state.get('discord.lastMessageId'), offline[1]!.id);
+});
+
+
+test('Discord fresh recovery sends one silent source-counted gap before replacement cards', async t => {
+  const f = await fixture(t);
+  const card = await openCard(f);
+  await historySeed(f);
+  await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    for (const [id, source] of [['missed-a', 'source-a'], ['missed-a-part2', 'source-a'], ['missed-b', 'source-b']]) {
+      f.state.putOutbox({ id: id!, kind: 'general', source: source!, state: 'missed', created: '2026-10-16T12:00:00Z', updated: '2026-10-16T12:00:00Z', payload: { discord: true, channel: ids.channel, user: ids.human, content: 'Missed content', mapping: { chatId: ids.channel, topic: 'general', message: source, ask: null, approval: null } } });
+    }
+  });
+  await until(async () => { await f.clock.advance(250); return f.state.messagesForAsk(card.ask).length === 2; }, { what: 'gap then replacement mapping', timeoutMs: 3000 });
+  const native = await f.fake.control('state');
+  const gaps = native.messages.filter(m => m.content.includes('General messages missed'));
+  assert.equal(gaps.length, 1);
+  assert.match(gaps[0]!.content, /^2 General messages missed since \d\d:\d\d$/);
+  const post = native.requests.find(r => r.method === 'POST' && r.body.content === gaps[0]!.content)!;
+  assert.ok((post.body.flags as number) & 4096);
+  const replacement = f.state.messagesForAsk(card.ask)[1]!.messageId;
+  assert.ok(BigInt(gaps[0]!.id) < BigInt(replacement));
+  assert.equal(f.state.outbox().filter(j => j.state === 'reported').length, 3);
+});
+
+test('Discord history pages exactly to an above-2^53 TEXT cursor after restart', async t => {
+  const f = await fixture(t);
+  const seed = await historySeed(f);
+  assert.ok(BigInt(seed.id) > 2n ** 53n);
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(join(f.root, '.cland/hub.db'), { readOnly: true });
+  try {
+    const stored = db.prepare("select value, typeof(value) as storage from remote_state where messenger = 'discord' and key = 'discord.lastMessageId'").get()!;
+    assert.equal(stored.value, seed.id);
+    assert.equal(stored.storage, 'text');
+  } finally { db.close(); }
+  const hub = await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    await f.fake.control('say', { user: 'member', contents: Array.from({ length: 101 }, () => 'Ignored member history') });
+    await f.fake.control('say', { content: 'After exact cursor' });
+  });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await until(async () => { await f.clock.advance(250); return f.state.get('discord.history') === null && f.frames.some(r => String(r.frame.text).startsWith('After exact cursor')); }, { what: 'paged history completion', timeoutMs: 3000 });
+  const native = await f.fake.control('state');
+  const pages = native.requests.filter(r => r.method === 'GET' && r.path.includes('/messages?'));
+  assert.equal(pages.length, 2);
+  assert.match(pages[0]!.path, /limit=100/);
+  const before = new URL(pages[1]!.path, 'http://127.0.0.1').searchParams.get('before');
+  assert.equal(before, native.messages.filter(m => BigInt(m.id) > BigInt(seed.id)).slice(-100)[0]!.id);
+  const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
+  assert.equal(rows.filter(m => m.text === 'Cursor seed').length, 1);
+  assert.equal(rows.filter(m => m.text.startsWith('After exact cursor')).length, 1);
+  assert.equal(rows.filter(m => m.text.includes('Ignored member history')).length, 0);
+});
+
+test('Discord resumable stop finishes frozen history before replay input and replacement cards', async t => {
+  const f = await fixture(t);
+  await historySeed(f);
+  const card = await openCard(f);
+  f.holdFrames('topic.send');
+  await f.fake.control('say', { contents: ['Resume checkpoint first', 'Resume checkpoint second'] });
+  await f.fake.control('close', { code: 4003 });
+  await until(async () => (await f.fake.control('state')).gateway.closes.includes(4003), { what: 'session-invalidating native close', timeoutMs: 2000 });
+  await f.clock.advance(5000);
+  await until(() => f.frames.some(r => String(r.frame.text).startsWith('Resume checkpoint first')), { what: 'fresh Identify held history', timeoutMs: 2000 });
+  f.releaseOne();
+  await until(async () => { await f.clock.advance(250); return f.frames.some(r => String(r.frame.text).startsWith('Resume checkpoint second')); }, { what: 'second history input held', timeoutMs: 2000 });
+  assert.equal(f.state.messagesForAsk(card.ask).length, 1);
+  const hub = await f.restart(30000, async () => {
+    f.discardFrames();
+    const live = await f.fake.control('say', { content: 'Resume checkpoint live' });
+    await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: live });
+  });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await until(async () => { await f.clock.advance(250); return f.state.get('discord.history') === null && f.state.messagesForAsk(card.ask).length === 2; }, { what: 'resumed frozen history then card mapping', timeoutMs: 3000 });
+  const native = await f.fake.control('state');
+  assert.equal(native.gateway.identifies, 2);
+  assert.equal(native.gateway.resumes, 1);
+  assert.equal(native.gateway.validResume, true);
+  const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
+  assert.deepEqual(rows.filter(m => m.text.startsWith('Resume checkpoint')).map(m => m.text.split('\n')[0]), ['Resume checkpoint first', 'Resume checkpoint second', 'Resume checkpoint live']);
+  await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'resumed checkpoint old copy edited', timeoutMs: 2000 });
+});
+
+for (const warning of ['gap', 'overflow'] as const) for (const failure of ['refused', 'lost'] as const) test(`Discord ${warning} recovery retains its obligation after ${failure} native warning`, async t => {
+  const f = await fixture(t);
+  const card = await openCard(f);
+  await historySeed(f);
+  await f.fake.control('configure', { resumeWindow: 10000000 });
+  const seedWarning = async () => {
+    if (warning === 'overflow') f.state.set('discord.history', JSON.stringify({ channel: ids.channel, user: ids.human, returnedAt: f.clock.now().toISOString(), messages: [], overflow: true, key: 'discord.history-overflow:fixture' }));
+    else for (const id of ['missed-original-one', 'missed-original-two']) f.state.putOutbox({ id, kind: 'general', source: id, state: 'missed', created: f.clock.now().toISOString(), updated: f.clock.now().toISOString(), payload: { discord: true, channel: ids.channel, user: ids.human, content: id, mapping: { chatId: ids.channel, topic: 'general', message: id, ask: null, approval: null } } });
+    await f.fake.control('fault', { method: 'POST', ...(failure === 'lost' ? { response: 'holdStored' } : { status: 400 }) });
+  };
+  const matches = (source: string | null) => warning === 'overflow' ? source === 'discord.history-overflow:fixture' : !!source?.startsWith('discord-gap-');
+  const obligation = () => f.state.get(warning === 'overflow' ? 'discord.history' : 'discord.gap');
+  if (failure === 'lost') {
+    await holdRequest(f, () => f.restart(5000, seedWarning));
+    assert.ok(obligation());
+    assert.equal(f.state.messagesForAsk(card.ask).length, 1);
+    await f.restart(180000);
+    await until(() => f.state.status().disabled && f.state.outbox().some(j => matches(j.source) && j.state === 'missed' && f.state.attempts(j.id).some(a => a.outcome === 'unknown')), { what: 'unknown warning retained beyond nonce window', timeoutMs: 2000 });
+  } else {
+    await f.restart(5000, seedWarning);
+    await until(() => f.state.status()?.disabled === true, { what: 'incomplete warning stops recovery', timeoutMs: 2000 });
+  }
+  assert.ok(obligation(), 'original recovery obligation is not acknowledged');
+  assert.equal(f.state.messagesForAsk(card.ask).length, 1);
+  if (warning === 'gap') {
+    assert.equal(f.state.outbox().filter(j => j.id.startsWith('missed-original') && j.state === 'missed').length, 2);
+    assert.match(JSON.parse(obligation()!).text, /^2 General messages missed/);
+  } else assert.equal(JSON.parse(obligation()!).overflow, true);
+  const native = await f.fake.control('state');
+  const sent = native.messages.filter(m => warning === 'overflow' ? m.content === 'Older Discord messages were not passed on.' : m.content.startsWith('2 General messages missed'));
+  assert.equal(sent.length, failure === 'lost' ? 1 : 0);
+  const attempts = native.requests.filter(r => r.method === 'POST' && (warning === 'overflow' ? r.body.content === 'Older Discord messages were not passed on.' : String(r.body.content).startsWith('2 General messages missed')));
+  assert.equal(attempts.length, 1);
+  assert.ok((attempts[0]!.body.flags as number) & 4096);
+  assert.equal(attempts[0]!.body.enforce_nonce, true);
+});
+
+test('Discord live RESUMED joins held active history before replay input and replacement cards', async t => {
+  let resumed = false;
+  const f = await fixture(t, undefined, 'Live history recovery', undefined, false, entry => { if (entry.event === 'discord-replay-drain-waiting') resumed = true; });
+  await historySeed(f);
+  const card = await openCard(f);
+  f.holdFrames('topic.send');
+  await f.fake.control('say', { contents: ['Live batch first', 'Live batch second'] });
+  await f.fake.control('close', { code: 4003 });
+  await until(async () => (await f.fake.control('state')).gateway.closes.includes(4003), { what: 'native invalidation before held batch', timeoutMs: 2000 });
+  await f.clock.advance(5000);
+  await until(() => f.frames.some(r => String(r.frame.text).startsWith('Live batch first')), { what: 'held active history', timeoutMs: 2000 });
+  f.releaseOne();
+  await until(async () => { await f.clock.advance(250); return f.frames.some(r => String(r.frame.text).startsWith('Live batch second')); }, { what: 'held later active batch item', timeoutMs: 2000 });
+  await f.fake.control('drop', {});
+  const live = await f.fake.control('say', { content: 'Live batch replay' });
+  await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: live });
+  await until(async () => { await f.clock.advance(250); return resumed; }, { what: 'RESUMED enters history join', timeoutMs: 2000 });
+  assert.ok(f.state.get('discord.history'));
+  assert.equal(f.state.messagesForAsk(card.ask).length, 1);
+  assert.equal(f.frames.some(r => String(r.frame.text).startsWith('Live batch replay')), false);
+  f.releaseFrames();
+  await until(async () => { await f.clock.advance(250); return f.state.get('discord.history') === null && f.state.messagesForAsk(card.ask).length === 2; }, { what: 'active history and replay before cards', timeoutMs: 3000 });
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
+  assert.deepEqual(rows.filter(m => m.text.startsWith('Live batch')).map(m => m.text.split('\n')[0]), ['Live batch first', 'Live batch second', 'Live batch replay']);
+  await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'live recovery old-copy edit', timeoutMs: 2000 });
+});
+
+test('Discord retirement completion keeps pacing until late feedback and every old copy settle', async t => {
+  const f = await fixture(t, undefined, undefined, undefined, false, undefined, undefined, undefined, 500);
+  await f.fake.control('configure', { interval: 1000000, sendLimit: 1000, sendWindow: 0 });
+  const [first, peer] = [await openCard(f), await openCard(f)].sort((a, b) => a.ask < b.ask ? -1 : 1) as [Awaited<ReturnType<typeof openCard>>, Awaited<ReturnType<typeof openCard>>];
+  await f.coord.close();
+  await historySeed(f);
+  const edit = f.api.editMessage.bind(f.api);
+  let armed = false;
+  f.api.editMessage = async (...args) => {
+    if (!armed && args[1] === first.message) {
+      armed = true;
+      await f.fake.control('fault', { method: 'POST', response: 'holdStored' });
+    }
+    return edit(...args);
+  };
+  const held = f.run(signal => f.fake.waitForHold(signal));
+  await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    await f.fake.control('say', { contents: ['Retirement first', 'Retirement second'] });
+  });
+  await until(async () => { await f.clock.advance(250); return f.fake.receipts().held === 1; }, { what: 'accepted peer replacement before mapping', timeoutMs: 1500 });
+  await held;
+  assert.equal(f.state.messagesForAsk(first.ask).length, 2);
+  assert.equal(f.state.messagesForAsk(peer.ask).length, 1);
+  const coord = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  const delivered = coord.waitForEvent(e => e.params.content === 'Late retirement input');
+  void delivered.catch(() => {});
+  const live = await f.fake.control('say', { content: 'Late retirement input' });
+  await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: live });
+  await delivered;
+  await until(() => JSON.parse(f.state.get(`discord.inbound:${live.id}`) ?? '{}').delivered === true, { what: 'late feedback durable delivery', timeoutMs: 1500 });
+  await f.fake.control('release', {});
+  await until(async () => { await f.clock.advance(250); return f.state.messagesForAsk(peer.ask).length === 2; }, { what: 'peer replacement map before retirement', timeoutMs: 1500 });
+  await settledReplacements(f, [first, peer], 'late feedback then peer retirement', 2000).catch(error => { t.diagnostic(JSON.stringify({ pending: f.state.outbox().filter(j => !['sent', 'reported'].includes(j.state)).map(j => ({ kind: j.kind, state: j.state, source: j.source, target: j.target })).slice(-10), peer: peer.message })); throw error; });
+  const native = await f.fake.control('state');
+  for (const old of [first.message, peer.message]) {
+    assert.equal(native.messages.find(m => m.id === old)!.content, '↓ Re-sent below');
+    assert.equal(native.messages.find(m => m.id === old)!.components?.length, 0);
+  }
+  assert.equal(f.state.messagesForAsk(first.ask).length, 2);
+  assert.equal(f.state.messagesForAsk(peer.ask).length, 2);
 });

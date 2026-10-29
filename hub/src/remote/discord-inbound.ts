@@ -23,7 +23,8 @@ export class DiscordInbound {
     const messageId = m.id, content = m.content, channel = paired.chatId;
     this.#tail = this.#tail.catch(() => {}).then(async () => {
       this.#signal.throwIfAborted();
-      if (this.#store.pairing()?.chatId !== channel || this.#store.pairing()?.userId !== paired.userId || this.#store.get(`discord.inbound:${messageId}`)) return;
+      if (this.#store.pairing()?.chatId !== channel || this.#store.pairing()?.userId !== paired.userId) return;
+      if (this.#store.get(`discord.inbound:${messageId}`)) { this.#confirmCursor(messageId); return; }
       const id = `discord-in-${++this.#next}`;
       const completion = Promise.withResolvers<TopicMessage | null>(); this.#pending.set(id, { ...completion, receipt: { channel, user: paired.userId, message: messageId, hub: '', delivered: false } });
       const abort = () => completion.reject(new Error('Discord input cancelled'));
@@ -34,14 +35,17 @@ export class DiscordInbound {
         const noticeReference = reply?.message ? this.#store.get(`discord.notice-reference:${reply.message}`) : null;
         this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general', ...(reply?.message && !noticeReference ? { replyTo: reply.message } : {}), kind: 'message', text: noticeReference ? `${noticeReference} ${content}` : content }, { chatId: channel, messageId });
         await completion.promise;
-        this.#store.transaction(() => {
-          const previous = this.#store.get('discord.lastMessageId');
-          if (!previous || BigInt(messageId) > BigInt(previous)) this.#store.set('discord.lastMessageId', messageId);
-        });
+        this.#confirmCursor(messageId);
         await this.#flush(messageId);
       } finally { this.#pending.delete(id); this.#signal.removeEventListener('abort', abort); }
     });
     void this.#tail.catch(() => {}); // Native/result failures carry no arbitrary platform data into logs.
+  }
+  #confirmCursor(messageId: string): void {
+    this.#store.transaction(() => {
+      const previous = this.#store.get('discord.lastMessageId');
+      if (!previous || BigInt(messageId) > BigInt(previous)) this.#store.set('discord.lastMessageId', messageId);
+    });
   }
   receive(frame: HubFrame): void | Promise<void> {
     if (frame.type === 'delivery' && (frame.stage === 'delivered' || frame.stage === 'injected')) {

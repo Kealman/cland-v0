@@ -61,7 +61,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   let sessionStartLimit: DiscordSessionStartLimit = { total: 1000, remaining: 1000, reset_after: 86400000, max_concurrency: 1 };
   let nextId = 90071992547410000n;
   const buckets = new Map<string, { used: number; reset: number }>();
-  let sendLimit = 5, sendWindow = 5000;
+  let sendLimit = 5, sendWindow = 5000, reactionWindow = 250;
   const nonces = new Map<string, { at: number; message: DiscordMessage }>();
   const sockets = new Map<Socket, Promise<void>>();
   const handlers = new Set<Promise<void>>();
@@ -134,6 +134,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       gateway.configure(body);
       if (typeof body.sendLimit === 'number') sendLimit = body.sendLimit;
       if (typeof body.sendWindow === 'number') sendWindow = body.sendWindow;
+      if (typeof body.reactionWindow === 'number') reactionWindow = body.reactionWindow;
       if (Array.isArray(body.commands)) state.commands = body.commands;
       if (typeof body.gatewayUrl === 'string') gatewayUrl = body.gatewayUrl;
       application = { ...application, ...body.application as Partial<DiscordApplication>, id: DISCORD_IDS.application };
@@ -141,15 +142,19 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       return reply(res, 200, {});
     }
     if (path.pathname === '/control/say') {
+      const posted: DiscordMessage[] = [];
+      for (const content of Array.isArray(body.contents) ? body.contents : [body.content ?? '']) {
       const user = String(body.user ?? 'human');
       const author = user === 'human' ? { id: DISCORD_IDS.human, username: 'Fixture human' }
         : user === 'member' ? { id: DISCORD_IDS.member, username: 'Fixture member' }
         : { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true };
       const message: DiscordMessage = { id: String(nextId++), channel_id: String(body.channel_id ?? DISCORD_IDS.channel),
-        author, content: String(body.content ?? ''), timestamp: clock.now().toISOString(), type: 0,
+        author, content: String(content), timestamp: clock.now().toISOString(), type: 0,
         ...(user === 'webhook' ? { webhook_id: DISCORD_IDS.webhook } : {}) };
       state.messages.push(redact.value(message));
-      return reply(res, 200, redact.value(message));
+      posted.push(message);
+      }
+      return reply(res, 200, redact.value(Array.isArray(body.contents) ? posted : posted[0]));
     }
     if (req.headers.authorization !== `Bot ${DISCORD_TEST_TOKEN}`) return reply(res, 401, { code: 0, message: 'Unauthorized' });
     state.requests.push(redact.value({ method: req.method!, path: path.pathname + path.search, body, userAgentValid: req.headers['user-agent'] === DISCORD_USER_AGENT }));
@@ -157,7 +162,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     const reaction = path.pathname.includes('/reactions/');
     if (rateMatch && ((req.method === 'POST') || reaction)) {
       const key = `${reaction ? 'reaction' : 'message'}:${rateMatch[1]}`;
-      const now = clock.now().getTime(), window = reaction ? 250 : sendWindow, limit = reaction ? 1 : sendLimit;
+      const now = clock.now().getTime(), window = reaction ? reactionWindow : sendWindow, limit = reaction ? 1 : sendLimit;
       let bucket = buckets.get(key);
       if (!bucket || now >= bucket.reset) { bucket = { used: 0, reset: now + window }; buckets.set(key, bucket); }
       res.setHeader('X-RateLimit-Bucket', reaction ? 'reaction' : 'message');
@@ -167,7 +172,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       res.setHeader('X-RateLimit-Remaining', limit - bucket.used);
 
     }
-    const fault = faults.shift();
+    const fault = !faults[0]?.method || faults[0].method === req.method ? faults.shift() : undefined;
     if (fault) {
       if (typeof fault.bucket === 'string') res.setHeader('X-RateLimit-Bucket', fault.bucket);
       if (fault.response === 'redirect') { res.writeHead(302, { location: '/redirect-target' }); res.end(); return; }
@@ -301,6 +306,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   let url = '';
   async function control(operation: 'state'): Promise<DiscordState>;
   async function control(operation: 'interact', body: object): Promise<{ id: string }>;
+  async function control(operation: 'say', body: { contents: string[] }): Promise<DiscordMessage[]>;
   async function control(operation: 'say', body: object): Promise<DiscordMessage>;
   async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch' | 'close' | 'drop', body: object): Promise<Record<string, never>>;
   async function control(operation: string, body?: object): Promise<unknown> {

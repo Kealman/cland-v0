@@ -7135,3 +7135,27 @@ the artifact's delivery. File jobs use General's outage/gap policy and source id
 a timeout records a missed job with an unknown attempt and never retries it.
 Mute and Telegram-origin echo exclusion apply to attachments with their message.
 Existing remote authority and frame shapes are unchanged.
+
+#### Discord history after a fresh Identify
+
+With a paired channel and a stored `discord.lastMessageId`, READY compares the
+channel's `last_message_id` before paging history, newest first, 100 per page,
+using string snowflakes and `before`. It retains the newest 500 admissible
+paired-human messages and forwards them oldest first with written and return
+HH:MM annotations. A silent channel line reports omitted older messages.
+A bounded history batch is persisted before forwarding; interruption retries that
+batch through the existing native ingress deduplication boundary. Live text waits
+behind history, while interaction deadlines stay independent.
+
+Recovery then flushes the neutral, source-counted silent gap above zero, recovers
+owed cards and outcome edits, and replaces open ask and approval cards. Every
+previous mapped copy is marked “↓ Re-sent below” only after the new native map.
+Automatic publication waits behind recovery; previous single-message fake controls,
+remote frames and outbox payloads retain their shapes.
+
+A saved Discord history batch also drains when the next connection resumes, and
+a live resume joins an already active history owner before opening recovery.
+Gap and overflow warning completion requires the exact durable native `sent`
+settlement. Refused or unknown warnings retain their captured source count or
+batch and stop card recovery; accepted sends retain the original nonce fence
+across restart rather than gaining a new send window.

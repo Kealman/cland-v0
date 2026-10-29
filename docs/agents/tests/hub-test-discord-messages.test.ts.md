@@ -18,7 +18,8 @@ Its hub, production messenger and fake share FakeClock. After joining the old
 hub, advance downtime by 5000ms before starting its replacement. This ages both
 the persisted Identify history and prior REST pacing before startup recovery;
 waiting for an admission observer after startup can deadlock on that recovery.
-Observe the second native Identify before replay. Keep both durable cursors and
+Observe native RESUME for this same-window restart; a fresh Identify is used
+when the stored session cannot resume. Keep both durable cursors and
 the final two-message assertion. The dedicated spacing boundary remains in
 `discord-messenger.test.ts`; setup deadlines stay bounded at their original values.
 Native outbox crash receipts prove a send by the bot's observed nonce, otherwise
@@ -33,10 +34,13 @@ The held-send owner registers before fake setup, immediately catches and retains
 observations, setup operations and sends, and cancels/joins them before closing
 the Store. Omitted held publication and abort before fault setup use that same
 disposer. Preserve the durable attempt and independent SQLite reader assertions.
-Startup replay cancellation runs the native remote under Gateway: abort must
-close the held REST request, drain handlers and prevent late conversation
-acquisition or a sent mapping. Its cleanup has an independent I/O abort so a
-regression cannot wait for the production REST deadline.
+Startup replay cancellation runs the native remote under Gateway with a working
+owned production dispatcher conversation. Recovery now follows READY in run();
+assert exactly one conversation is acquired and closed, the native held request
+has one durable attempt, cancellation completes within 500 ms, and no sent
+mapping or native copy appears. Join held REST handlers/connections before Store
+closure. Its cleanup retains an independent I/O abort so a regression cannot
+wait for the production REST deadline.
 
 Recovery POSTs must take the neutral queue's new-attempt path. Hold that POST and
 read its second distinct attempt before release; then retain one native message

@@ -11,6 +11,9 @@ const cardKey = (job: OutboxJob) => intent(job).mapping?.approval ? `approval:${
 const nonce = (job: OutboxJob) => job.id.replaceAll('-', '').slice(0, 25);
 /** Per-channel owners over the neutral durable queue. Native receipts contain ids only. */
 export class DiscordOutbox {
+  #recovering = false;
+  authenticated(): void { this.#store.set('outbox.unavailable', null); }
+  holdRecovery(hold: boolean): void { this.#recovering = hold; }
   readonly #lanes = new Map<string, Outbox>();
   readonly #store: RemoteStore; readonly #api: DiscordApi; readonly #clock: Clock; readonly #signal: AbortSignal;
   constructor(api: DiscordApi, store: RemoteStore, clock: Clock, signal: AbortSignal) {
@@ -82,6 +85,11 @@ export class DiscordOutbox {
     this.#enqueue(lane, channel, content, source, silent, message);
     await lane.drain();
   }
+  async recoveryWarning(channel: string, content: string, source: string): Promise<void> {
+    await this.send(channel, content, source, true);
+    const job = this.#store.outbox().find(row => row.source === source && intent(row).channel === channel);
+    if (job?.state !== 'sent') throw new Error('Discord recovery warning delivery incomplete');
+  }
   async react(channel: string, message: string, emoji: '👌' | '👀', user: string): Promise<void> {
     this.#signal.throwIfAborted();
     const pair = this.#store.pairing();
@@ -130,7 +138,7 @@ export class DiscordOutbox {
           // Let the neutral queue persist a distinct attempt before the recovery POST.
           return { status: 'never-left' };
         },
-      }, { clock: this.#clock, compare: (a, b) => Number(a.kind === 'general') - Number(b.kind === 'general'), accepts: job => intent(job)?.discord === true && intent(job).channel === channel,
+      }, { clock: this.#clock, compare: (a, b) => Number(a.kind === 'general') - Number(b.kind === 'general'), accepts: job => intent(job)?.discord === true && intent(job).channel === channel && (!this.#recovering || (job.kind !== 'card' && job.kind !== 'edit')),
         sourceOpen: job => job.kind !== 'card' || !cardKey(job) || (!this.#store.get(`discord.card-closure:${cardKey(job)}`)
           || this.#store.get(`discord.card-reconcile:${job.id}`) === '1'
           || this.#store.attempts(job.id).some(attempt => attempt.outcome !== 'never-left')),

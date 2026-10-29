@@ -33,8 +33,12 @@ non-delivery proof, queued row and fresh attempt timestamp. The above-five-minut
 case resumes at 300,000 ms. Also retain the shorter reconciliation hint, source
 closure and a new arrival during the wait.
 
-Observe the final empty read through the owned Store seam without changing its
-snapshot. Enqueue in a microtask after that read; assert the arrival joins the
+Observe the final pending-state read through the owned Store seam without changing
+its snapshot. Forward every states/id query argument, including exact-id refreshes;
+only pending-selection reads may trigger the observer. The sent case confirms the
+first durable sent row independently when the pending snapshot becomes empty.
+The uncertain case observes its visited row after the one unknown proof. Enqueue
+in a microtask after that final selection read; assert the arrival joins the
 original exposed promise and both jobs are sent before it completes. The
 unknown-proof variant must retain one proof and one attempt across the completion
 recheck, leaving that row uncertain while sending the new job.

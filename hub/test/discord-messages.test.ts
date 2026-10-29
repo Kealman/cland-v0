@@ -168,10 +168,11 @@ test('Discord startup replay cancellation drains the held REST request before ga
   let gateway: InstanceType<typeof Gateway> | undefined;
   let starting: Promise<void> | undefined, stopping: Promise<void> | undefined, held: Promise<number> | undefined;
   let store: Store | undefined;
+  let service: Awaited<ReturnType<typeof projectHub>> | undefined;
   onCleanup(t, async () => {
     abort.abort();
     await gateway?.stop();
-    await Promise.allSettled([starting, stopping, held]); store?.close();
+    await Promise.allSettled([starting, stopping, held]); await service?.stop(); store?.close();
   });
   const root = await tempProject(t); const fake = await fakeDiscordFixture(t);
   store = new Store(join(root, 'hub.db')); const state = store.remotes.forMessenger('discord');
@@ -179,13 +180,19 @@ test('Discord startup replay cancellation drains the held REST request before ga
   const at = realClock.now().toISOString();
   state.putOutbox({ id: 'replayjob', kind: 'general', source: 'replayjob', state: 'queued', created: at, updated: at,
     payload: { discord: true, channel: ids.channel, user: ids.human, content: 'Replay', mapping: { chatId: ids.channel, topic: 'general', message: 'replayjob', ask: null, approval: null } } });
-  let applicationReady = false;
-  // Hold the replay, after the startup application/command exchanges, at the native REST seam.
+  let conversations = 0, closed = 0;
+  service = await projectHub(t, root);
+  // Replay now follows READY and needs a working production conversation.
+  // Hold its native REST request after that boundary, before any send receipt.
   const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
   const nativeCreate = api.createMessage.bind(api);
-  api.createMessage = async (...args) => { await fake.control('fault', { response: 'hold' }); return nativeCreate(args[0], args[1], { signal: AbortSignal.any([abort.signal, ...(args[2]?.signal ? [args[2].signal] : [])]) }); };
+  api.createMessage = async (...args) => { await fake.control('fault', { response: 'hold' }); return nativeCreate(args[0], args[1], { ...args[2], signal: AbortSignal.any([abort.signal, ...(args[2]?.signal ? [args[2].signal] : [])]) }); };
   const replayRemote = new DiscordRemote(api, DISCORD_TEST_TOKEN, realClock, { store: state, fake: true });
-  gateway = new Gateway({ open: () => { applicationReady = true; throw new Error('late conversation acquisition'); } }, [replayRemote]);
+  gateway = new Gateway({ open: (...args) => {
+    conversations++;
+    const conversation = service!.dispatcher.open(...args);
+    return { ...conversation, closed: () => { closed++; return conversation.closed(); } };
+  } }, [replayRemote]);
   held = fake.waitForHold(abort.signal); void held.catch(() => {});
   starting = gateway.start(); void starting.catch(() => {});
   await held;
@@ -194,7 +201,8 @@ test('Discord startup replay cancellation drains the held REST request before ga
   await within(stopping, 500, realClock, () => new Error('startup replay ignored cancellation'));
   await Promise.allSettled([starting]);
   await until(() => fake.receipts().held === 0 && fake.receipts().handlers === 0 && fake.receipts().connections === 0, { timeoutMs: 1000, what: 'native replay close and handler drainage' });
-  assert.equal(applicationReady, false); assert.equal(state.get('discord.outbox.receipt:replayjob'), null);
+  assert.equal(conversations, 1, 'one serviceable conversation owns post-READY recovery');
+  assert.equal(closed, 1, 'shutdown closes that exact conversation without late acquisition'); assert.equal(state.get('discord.outbox.receipt:replayjob'), null);
   assert.equal((await fake.control('state')).messages.length, 0); assert.notEqual(state.outbox()[0]!.state, 'sent');
 });
 

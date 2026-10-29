@@ -1772,7 +1772,8 @@ export class Dispatcher {
             const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, messageId, undefined, frame.kind, via);
             // Native crash fixture: the durable human effect exists, but the
             // adapter has not received a result or stored its feedback receipt.
-            if (messageId && via === 'telegram' && this.#options.env?.CLAND_TEST_CRASH_AT === 'telegram-input-committed') process.kill(process.pid, 'SIGKILL');
+            if (messageId && ((via === 'telegram' && this.#options.env?.CLAND_TEST_CRASH_AT === 'telegram-input-committed')
+              || (via === 'discord' && this.#options.env?.CLAND_TEST_CRASH_AT === 'discord-input-committed'))) process.kill(process.pid, 'SIGKILL');
             return answer({ message, outcomes });
           }
           case 'topic.rename':

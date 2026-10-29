@@ -257,8 +257,9 @@ export class RemoteStore {
       throw error;
     }
   }
-  outbox(): OutboxJob[] {
-    return this.#db.prepare('select * from remote_outbox where messenger = ? order by rowid').all(this.#id).map(row => ({
+  outbox(states?: string[], id?: string): OutboxJob[] {
+    const where = states ? ` and state in (${states.map(() => '?').join(',')})` : id ? ' and id = ?' : '';
+    return this.#db.prepare(`select * from remote_outbox where messenger = ?${where} order by rowid`).all(this.#id, ...(states ?? (id ? [id] : []))).map(row => ({
       ...(row.target === null ? {} : { target: String(row.target) }),
       id: String(row.id), kind: String(row.kind), source: nullable(row.source), state: String(row.state), payload: JSON.parse(String(row.payload)), created: String(row.created), updated: String(row.updated),
     }));

@@ -1,4 +1,5 @@
-import { discordLateText } from './discord-catchup.ts';
+import { flushGap } from './gap.ts';
+import { catchDiscordHistory, discordLateText } from './discord-catchup.ts';
 import { DiscordCards } from './discord-cards.ts';
 import { DiscordIdentifyBudget } from './discord-identify.ts';
 import { DiscordInbound } from './discord-inbound.ts';
@@ -16,7 +17,7 @@ import { registerCommands, DiscordCommands } from './discord-commands.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 import { DiscordApi, DiscordError } from './discord-api.ts';
 import { DiscordSocket, discordGatewayUrl, type DiscordDispatch } from './discord-socket.ts';
-export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; handlers?: Array<(frame: DiscordDispatch) => void> };
+export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; historyLimit?: number; handlers?: Array<(frame: DiscordDispatch) => void> };
 
 /** Native credentials and dispatch data stay behind the gateway's frame port. */
 export class DiscordRemote implements Remote {
@@ -28,6 +29,10 @@ export class DiscordRemote implements Remote {
   readonly #commands: DiscordCommands;
   readonly #outbox: DiscordOutbox | undefined;
   readonly #cards: DiscordCards | undefined;
+  #catching = false;
+  #freshRecovery = false;
+  #recovery: Promise<void> | undefined;
+  #history: Promise<void> = Promise.resolve();
   #inbound: DiscordInbound | undefined; #bot: string | undefined;
   #restFailedChannel: string | undefined;
   #detachExchange: (() => void) | undefined;
@@ -43,6 +48,7 @@ export class DiscordRemote implements Remote {
     this.#clock = clock;
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected, (inbox, key) => this.#cards?.publishInbox(inbox, key) ?? Promise.resolve(0));
     this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
+    this.#outbox?.holdRecovery(true);
     this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal, options.log, options.webOrigin) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
     this.#detachApi = api.onError((error, channel) => {
@@ -113,7 +119,7 @@ export class DiscordRemote implements Remote {
       if (application.interactions_endpoint_url) throw remoteStopError('discord', 'interactions-endpoint');
       this.#application = application.id;
       await registerCommands(this.#api, application.id, signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal);
-      await this.#outbox?.resume();
+      this.#outbox?.authenticated();
     } catch (error) {
       if (!this.#abort.signal.aborted && !signal?.aborted) await this.#failed(error, 'application check failed');
       await this.#outwardError(error);
@@ -136,6 +142,7 @@ export class DiscordRemote implements Remote {
       try {
         this.#connectionChanged();
         await this.#inbound?.recover();
+        if (this.#options.store?.get('discord.history')) this.#beginHistory();
         const gateway = await this.#api.getGatewayBot({ signal: this.#abort.signal });
         if (this.#abort.signal.aborted) return;
         const url = discordGatewayUrl(gateway.url, this.#options.fake ?? false);
@@ -147,13 +154,24 @@ export class DiscordRemote implements Remote {
           this.#commands.dispatch(frame);
           this.#cards?.dispatch(frame);
           for (const handler of this.#options.handlers ?? []) handler(frame);
-          if (frame.t === 'READY') this.#bot = (frame.d.user as { id?: string } | undefined)?.id;
+          if (frame.t === 'READY') {
+            this.#bot = (frame.d.user as { id?: string } | undefined)?.id;
+            if (!this.#catching) this.#beginHistory();
+            return this.#finishRecovery();
+          }
           if (frame.t === 'MESSAGE_CREATE' && this.#bot && (frame.d.author as { id?: string } | undefined)?.id === this.#bot) this.#outbox?.observe(frame.d as DiscordMessage);
-          else this.#inbound?.dispatch(frame.replayed && typeof frame.d.content === 'string' && frame.d.content.trim() ? { ...frame, d: { ...frame.d, content: discordLateText(frame.d.content, frame.d.timestamp, frame.returnedAt ?? this.#clock.now().toISOString()) } } : frame);
+          else if (frame.t === 'MESSAGE_CREATE') {
+            const input = () => {
+              this.#inbound?.dispatch(frame.replayed && typeof frame.d.content === 'string' && frame.d.content.trim()
+                ? { ...frame, d: { ...frame.d, content: discordLateText(frame.d.content, frame.d.timestamp, frame.returnedAt ?? this.#clock.now().toISOString()) } } : frame);
+              return this.#inbound?.idle();
+            };
+            return this.#catching ? this.#history.then(input) : input();
+          }
           const inbound = this.#inbound?.idle();
-          if (frame.t === 'READY' || frame.t === 'RESUMED') {
-            if (frame.t === 'RESUMED') this.#options.log?.({ event: 'discord-replay-drain-waiting' });
-            return Promise.resolve(inbound).then(() => this.#cards?.finishReplay());
+          if (frame.t === 'RESUMED') {
+            this.#options.log?.({ event: 'discord-replay-drain-waiting' });
+            return this.#finishRecovery();
           }
           return Promise.all([inbound, this.#cards?.idle()]).then(() => {});
         });
@@ -166,6 +184,41 @@ export class DiscordRemote implements Remote {
         throw new Error(this.#failure);
       }
     })();
+  }
+  #beginHistory(): void {
+    this.#outbox?.holdRecovery(true); this.#cards?.beginHistory();
+    this.#freshRecovery = true; this.#catching = true;
+    const store = this.#options.store;
+    this.#history = (store && this.#inbound && this.#outbox
+      ? catchDiscordHistory(this.#api, store, this.#inbound, this.#clock.now().toISOString(), this.#abort.signal,
+        key => this.#outbox!.recoveryWarning(store.pairing()!.chatId, 'Older Discord messages were not passed on.', key), this.#options.historyLimit)
+      : Promise.resolve()).then(() => { this.#catching = false; });
+    void this.#history.catch(() => {});
+  }
+  #finishRecovery(): Promise<void> {
+    return this.#recovery ??= this.#finishRecoveryWork().finally(() => { this.#recovery = undefined; });
+  }
+  async #finishRecoveryWork(): Promise<void> {
+    await this.#history;
+    // Queued native input attaches to the same history owner. Let those
+    // continuations install their FIFO work before taking its completion receipt.
+    await Promise.resolve();
+    await this.#inbound?.idle();
+    const store = this.#options.store;
+    if (!store || !this.#outbox) return;
+    await flushGap(store, this.#clock, { stateKey: 'discord.gap', matches: (job, pair) => {
+      const p = job.payload as { discord?: boolean; channel?: string; user?: string };
+      return p?.discord === true && p.channel === pair.chatId && p.user === pair.userId;
+    } }, (chat, text, key) => this.#outbox!.recoveryWarning(chat, text, key));
+    this.#outbox.holdRecovery(false);
+    if (this.#freshRecovery) {
+      let key = store.get('discord.history-recovery');
+      if (!key) { key = randomUUID(); store.set('discord.history-recovery', key); }
+      await this.#cards?.finishHistory(key);
+      store.set('discord.history-recovery', null);
+      this.#freshRecovery = false;
+    } else await this.#cards?.finishReplay();
+    await this.#outbox.resume();
   }
   async #failed(error: unknown, fallback: string): Promise<void> {
     const cause = remoteStopCause(error) ?? (error instanceof DiscordError && (error.status === 401 || error.code === 40001 || error.code === 50014) ? 'token' : undefined);

@@ -183,3 +183,61 @@ then resend completion; early feedback can also strand the old-copy edit. Preser
 the original bounds, no-early-resend assertion, exact General text, native resend
 mapping and old-copy content/components assertions. Native pacing time is fixture
 setup, not elapsed performance evidence.
+
+T-1413 fresh-Identify recovery uses the same production frame/fake seam. The
+fake's `say` control retains history without emitting live events; `contents`
+adds a batch in one owned request, retaining the previous single-message shape.
+The fake channel projects its newest retained id and pages newest-first with
+`before`. The cap fixtures set a zero reaction window to avoid simulating separate
+pacing waits; other cases retain the native 250 ms reaction bucket.
+
+The fresh history cases retain ordered late input, no zero-count gap, replacement
+mappings and old-copy edits. The interruption case stops a joined in-process hub
+with its second ingress held after the first commits; it proves the persisted
+batch checkpoint, rather than claiming an OS kill. The gap fixture seeds missed
+General jobs while the hub is down, including two parts of one source, and checks
+the silent source-counted native line precedes replacement cards.
+
+Source-review corrections cover a genuinely resumable stop during a fresh history
+batch, with no recovery-session deletion, and a live drop/RESUMED while its later
+input is held. Require the frozen batch before replayed text, replacement maps
+and old-copy edits; retain the original ordered inputs exactly once. Recovery
+joins the history owner rather than a snapshot of the current inbound tail.
+
+Gap and cap-warning controls inject a POST-only definite refusal or hold after
+native acceptance. The overflow control seeds the frozen warning checkpoint;
+the T3 620-message case separately proves full-scale selection and forwarding. Both keep
+the saved obligation until that exact durable job is sent. Stop/restart beyond
+the original nonce window must keep the original source count or frozen batch,
+admit no replacement card and make no second warning POST. Assert native silent
+flags, enforced nonce, one accepted copy in the lost-response case, and no
+accepted copy after definite refusal. A drained queue is not acknowledgement.
+
+
+The T2 cap control injects20 through the native adapter's optional historyLimit
+seam and runs25 real frame inputs; it checks ordered durable newest20, exact
+silent overflow settlement, then the source-counted silent gap and a separate
+bounded topic.send during active catch-up. The production constant is500,
+asserted once without the full T2 workload. The native fixture lives in
+`hub/test/discord-cards-fixture.ts` and is shared with the full-scale T3 case in
+`telegram-polling-restart.test.ts`; no test definitions are imported by it.
+Existing constructors/factories omit the optional seam and retain500.
+
+Full-all correction: a replacement mapping is earlier than old-copy retirement.
+Late delivered reactions can own the same lane after the final mapping; stopping
+FakeClock there strands their 250 ms bucket and the queued old-copy PATCH.
+The completion helper waits for both mappings and each exact old-target edit's
+`sent` receipt. It advances one 250 ms bucket per newly observed durable native
+reaction completion, without repeatedly advancing time through in-flight I/O.
+The original 3 s recovery and 2 s native-content bounds remain unchanged.
+
+The late-feedback control holds the second replacement after native acceptance,
+connects the Coordinator and observes a real delivered human message while that
+send is held. Card ids are sorted to match the persisted replay-intent order.
+After releasing the held send, retain exactly two mappings per ask, every old
+copy's native retirement text and empty components, and exact edit settlements.
+With the old map-only driver this reproduced the peer-edit timeout in all five
+local runs alongside two busy workers: reaction sending, later reactions queued,
+peer edit queued. With the receipt driver both the control and original identity
+passed five times under the same load. These local CPU-load samples do not claim
+a slow-disk or Linux pass; configured verification and full-all remain required.
