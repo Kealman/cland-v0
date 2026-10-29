@@ -16,3 +16,18 @@ retains the newer draft, and reload recovers uncertain text without a second sen
 Pending state is checked
 before release and the refusal receipt before restored-state assertions. No live
 hub, real harness or human browser participates.
+
+Topic selection waits up to 15 s for the exact rendered topic row, asserts its
+visibility, then uses the normal 3 s click budget. A restored composer is not a
+receipt that the reloaded socket has applied its topic list. The reload case
+holds both topic snapshots and `shell-topics` replies at the browser edge.
+After Topics navigation completes, it asserts General is still absent and starts
+the shared row-selection helper with a case-local 500 ms action budget. A second
+native General click must reject with Playwright's 500 ms timeout while the
+readiness selection stays pending. That rejection explicitly signals release
+of the held frames; there is no test-owned release timer. Removing readiness
+makes the selection settle early and fails the pending assertion. With readiness,
+the exact rendered row, draft, read cursor, disconnect and no-replay assertions
+pass. A body-local `finally` drains held sends, joins selection even on failure,
+and restores the 3 s action budget before context teardown. The bounded negative
+native click is a regression control, not application latency evidence.

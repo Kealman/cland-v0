@@ -17,7 +17,16 @@ async function composerFixture(t: Parameters<typeof webFixture>[0]) {
 
 async function thread(page: Page, id = 'general') {
   await page.getByRole('button', { name: 'Topics', exact: true }).click();
-  await page.locator(`[data-object-id="${id}"]`).click();
+  return selectTopic(page, id);
+}
+
+async function selectTopic(page: Page, id = 'general') {
+  const row = page.locator(`[data-object-id="${id}"]`);
+  // Reload restores the composer before the new socket's topic list arrives.
+  // Observe the rendered target separately from the ordinary action timeout.
+  await row.waitFor({ state: 'visible', timeout: 15_000 });
+  assert.equal(await row.isVisible(), true, 'topic list rendered the requested row');
+  await row.click();
   return page.getByRole('form', { name: 'Composer', exact: true });
 }
 
@@ -163,6 +172,8 @@ test('per-topic drafts survive reload and hub disconnection without replay and w
   assert.equal(made.ok, true, made.error);
   const topic = (made.value as { topic: { id: string } }).topic.id;
   const sent: Array<{ type: string; topic: string; upTo?: string }> = [];
+  let holdTopics = false;
+  const heldTopics: Array<() => void> = [];
   await fixture.pageCase(t, async page => {
     const form = await thread(page);
     const field = form.getByRole('textbox', { name: 'Message text' });
@@ -181,10 +192,34 @@ test('per-topic drafts survive reload and hub disconnection without replay and w
     await thread(page, topic);
     assert.equal(await field.inputValue(), '');
     await field.fill('Another kept draft');
-    await page.reload();
-    await page.getByRole('form', { name: 'Composer', exact: true }).waitFor();
-    assert.equal(await field.inputValue(), 'Another kept draft');
-    await thread(page);
+    let selection: ReturnType<typeof selectTopic> | undefined;
+    const releaseTopics = () => {
+      holdTopics = false;
+      for (const release of heldTopics.splice(0)) release();
+    };
+    try {
+      holdTopics = true;
+      await page.reload();
+      await page.getByRole('form', { name: 'Composer', exact: true }).waitFor();
+      assert.equal(await field.inputValue(), 'Another kept draft');
+      await until(() => heldTopics.length > 0, { what: 'reloaded topic list held at browser edge', timeoutMs: 3000 });
+      await page.getByRole('button', { name: 'Topics', exact: true }).click();
+      assert.equal(await page.locator('[data-object-id="general"]').count(), 0, 'General is withheld after Topics navigation');
+      // The native timeout is the release signal, with no test-owned timer.
+      page.setDefaultTimeout(500);
+      let selectionSettled = false;
+      selection = selectTopic(page);
+      void selection.then(() => { selectionSettled = true; }, () => { selectionSettled = true; });
+      await assert.rejects(page.locator('[data-object-id="general"]').click({ timeout: 500 }), /Timeout 500ms exceeded/);
+      assert.equal(selectionSettled, false, 'readiness selection stays pending beyond the direct action budget');
+      releaseTopics();
+      await selection;
+    } finally {
+      releaseTopics(); // Drain the synchronous route sends before pageCase closes.
+      await selection?.catch(() => {}); // Join even a failed selection before teardown.
+      page.setDefaultTimeout(3000);
+    }
+    assert.equal(heldTopics.length, 0, 'topic hold drained inside the page lifetime');
     assert.equal(await field.inputValue(), 'General kept draft');
     await fixture.restartHub();
     await pageUntil(page, () => document.querySelector('[aria-label="Hub connection"]')?.textContent === 'Offline', 'disconnected hub receipt');
@@ -203,6 +238,16 @@ test('per-topic drafts survive reload and hub disconnection without replay and w
     assert.equal(await field.inputValue(), 'Another kept draft');
   }, async page => {
     await pausePageClock(page, new Date('2026-10-23T12:00:00Z'));
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      server.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        const topics = frame.type === 'snapshot' && frame.domain === 'topics'
+          || frame.type === 'result' && frame.id === 'shell-topics';
+        if (holdTopics && topics) heldTopics.push(() => route.send(message));
+        else route.send(message);
+      });
+    });
     page.on('websocket', socket => socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'topic.send' || frame.type === 'topic.read') sent.push(frame); }));
   });
 });
