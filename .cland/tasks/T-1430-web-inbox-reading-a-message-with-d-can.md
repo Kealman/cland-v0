@@ -2,8 +2,8 @@
 id: T-1430
 kind: task
 title: "web Inbox: reading a message with d can show the 'left Inbox' outcome when the removal delta beats the read reply"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1189
 branch: t/T-1430-web-inbox-reading-a-message-with-d-can
 created: 2026-10-28T14:41:32.173Z
-updated: 2026-10-29T16:41:18.287Z
+updated: 2026-10-29T16:54:19.593Z
+closed: 2026-10-29T16:54:19.593Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear C1/C2. Original A-13807/819b5655 exacthead4152 ordinary+50 separate load passes, T0/T1/allT2/Web pass; T3/T4 absent. Inbox25/25 including reply-first1.298030649s/delta-first1.166882164s/originalreaddecline1.3242568s. Separate authorized A-13776 Darwinarm64 exacthead/tree: eachthreeidentities10/10, ten nativecode0/pass3/fail0/skip0 records, bothCPUcounterprogress everyround, two joins0,30browsercensusdrained,bothleasesreleased. A-13774 setupfailure retained; corrected attempt explicitly authorized5e1e82eb. LinuxCHS156/v1248/hostc8d5333e reused/report-onlywarnings distinct. A-13808 original-line/driver audit and limits; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T16:54:19.593Z
+
+Merged fe8156f083d5ee1533332182460323bec4d9325d onto dev.

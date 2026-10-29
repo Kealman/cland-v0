@@ -3,7 +3,7 @@ id: T-1442
 kind: task
 title: "Both remotes in one hub: an integrated scenario on the fake platforms"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1182
 branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T16:32:50.273Z
+updated: 2026-10-29T16:54:03.024Z
 ---
 
 ## Summary
@@ -29,15 +29,22 @@ A scenario test, for example `hub/test/scenarios/remotes.test.ts`, mapped T3 in 
 
 - [x] C1. An ask answered from a Discord modal is stored once and turns the Telegram card into its outcome; a hub-side inbox read shows the ask answered.
   - done: impl-1442 · 2026-10-29T16:15:27.313Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1442-final · 2026-10-29T16:54:00.477Z · commit 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
 - [x] C2. A photo and a voice note sent from each remote reach the other remote exactly once, marked "you (Telegram)" or "you (Discord)", with the 🎤 transcript.
   - done: impl-1442 · 2026-10-29T16:15:27.412Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1442-final · 2026-10-29T16:54:00.477Z · commit 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
 - [x] C3. A hub restart under 90 seconds and one over 3 minutes are each caught up on both remotes: Discord resumes or reads history back, Telegram catches up, and open cards are re-sent per platform rules.
   - done: impl-1442 · 2026-10-29T16:08:55.587Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1442-final · 2026-10-29T16:54:00.477Z · commit 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
 - [x] C4. Revoking the Telegram token on the fake stops only Telegram with its cause, while Discord keeps serving General both ways.
   - done: impl-1442 · 2026-10-29T16:08:57.519Z
-- [ ] C5. The scenario passes 5/5 locally under two busy workers through the shared suite-lock leases with raw receipts, and once on Linux in the mode-free run; any allowance it needs is owned by R-1278 with a reason.
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1442-final · 2026-10-29T16:54:00.477Z · commit 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
+- [x] C5. The scenario passes 5/5 locally under two busy workers through the shared suite-lock leases with raw receipts, and once on Linux in the mode-free run; any allowance it needs is owned by R-1278 with a reason.
+  - done: impl-1442 · 2026-10-29T16:52:42.023Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1442-final · 2026-10-29T16:54:00.477Z · commit 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
 - [x] C6. A graceful hub stop persists Telegram's outage state, so a restart catches up: late messages carry their written time and open cards are re-sent per Telegram's rules.
   - done: impl-1442 · 2026-10-29T16:08:57.620Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1442-final · 2026-10-29T16:54:00.477Z · commit 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
 
 ## Comments
 
@@ -85,3 +92,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Same-head full source/proof plan clear. M1–M4 remain closed; revised driver A-13783 closes M5 with pre-owned bounded native child/worker completion, sibling cleanup and individual lease releases after confirmed drainage, retaining incomplete ownership otherwise. No workload executed by Reviewer; all C1–C6 runtime verification pending. Authorized five-run leased CPU proof plus one exact-head Linux mode-free result required before final evidence audit; any allowance owned by R-1278.
+
+### rev-34 · 2026-10-29T16:54:00.477Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1442-final
+commit: 30a305a4a310ffa07d14ddc4fe42da8e0d3f624d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13821: original A-13819 independently parsed 4155 ordinary passes plus 20 task load/50 unrelated site load; changed T3 scenario passes 1.078330692 s, T0/T1/all fallback T2/Web complete. A-13800 five exact-head local leased/two-busy-worker runs all native pass with advancing counters, eight child joins, two worker exits0 and both lease releases fulfilled. C1–C6 verified with source3 assertions. Host receipt is tree-checked reuse, not Linux typecheck. Report-only timing/lint/growth warnings and retained-clone/native-object capture limits preserved. Remaining T3/T4 absent; Coordinator full verify-all gate remains before enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

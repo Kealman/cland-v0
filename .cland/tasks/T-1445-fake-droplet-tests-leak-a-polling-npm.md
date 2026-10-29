@@ -3,7 +3,7 @@ id: T-1445
 kind: task
 title: Fake-droplet tests leak a polling 'npm test' and node pair whenever a run ends without writing the finish file
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T16:48:52.003Z
+updated: 2026-10-29T16:54:07.972Z
 ---
 
 ## Summary
@@ -27,8 +27,8 @@ Every fake-droplet run's remote command exits or is killed when its test or fixt
 
 ## Acceptance criteria
 
-- [x] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
-  - done: impl-1445 · 2026-10-29T16:24:22.032Z
+- [ ] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
+  - failed: rev-34 [reviewer] · 2026-10-29T16:52:52.305Z · note Provider handler work can resume after close/census/root removal; new cleanup regressions also lack ownership across setup failure.
 - [x] C2. The finish poller exits by itself after a bounded time even if nobody writes `finish`.
   - done: impl-1445 · 2026-10-29T16:24:22.166Z
 
@@ -41,3 +41,22 @@ Scope/seams: fake provider close + native process census for owned disposable ma
 ### impl-1445 · 2026-10-29T16:20:12.359Z
 
 Red receipts (macOS local working tree): close census [82495,82521] remained after old provider close, assertion failed; C2 without deadline got null exit from 2s exec timeout instead of 124. Both owned processes drained in finally. Green executor-safety.test.ts: 8 tests, including shell/host timeout, failed-provider cleanup, cancel/stopped-hub watchdog, new provider close census and independent deadline. New case durations 992ms and 78ms on macOS. npm run typecheck passed. Shared helper fixes canonical stateRoot + close-owned process drainage/census; no production contracts changed. All fake-api callers retain old close signature; scripted close skips OS scans. Consumer inventory: executor-safety, suite-dry-run, executor-admission, executor-droplet, startup-ready-component, suite-unit-fixture, executor-prepare, daemon, droplet-fixture, executor-prepare-component, remote-fixture; their transport behaviour unchanged except guaranteed teardown.
+
+### rev-34 · 2026-10-29T16:52:52.305Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-source1
+commit: 6c8e363c627d534713737e41f02e63e37be302c1
+scope: full
+findings: [{"severity":"medium","text":"M1: New suite-candidate and suite-close-recovery guides are absent from the per-test index, so the unchanged test-docs membership guard fails. Add only their Notes rows; claimant reports working-tree red/green, not present at reviewed head.","file":"docs/agents/tests/index.md"},{"severity":"medium","text":"M2: close awaits HTTP connection shutdown but neither fences new direct-provider admission nor joins active async handle work. A beforeCreate continuation can outlive close and resume mkdir/boot work after the process census and root removal. Track and fence admitted operations, drain/cancel them with a separate cleanup bound before census/removal, and cover a held-create late-release/post-close-admission control.","file":"hub/test/fakes/digitalocean/fake-api.ts","line":265},{"severity":"medium","text":"M3: New ending regressions acquire fakeDigitalOcean, create files and spawn before their try/finally; setup failures leave the provider unowned. Sequential finally cleanup also skips later disposal/native join/provider close after an earlier failure, and closed has no independent join bound. Pre-own the acquisition and native work, continue sibling cleanup, and add omitted/aborted setup controls while retaining the positive census and native failure/abort assertions.","file":"hub/test/executor-safety.test.ts"}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+A-13820: consolidated M1–M3 at immutable head. Read-only full Standards/Spec review. Independent barrier deadline source design retained; C2 runtime remains unverified. Claimant working-tree M1 red/green is excluded until replacement committed head. No configured suite yet. Fresh source review required before verification.
+
+Criteria: C1 failed (Provider handler work can resume after close/census/root removal; new cleanup regressions also lack ownership across setup failure.).
+
+### impl-1445 · 2026-10-29T16:54:07.972Z
+
+Review correction inventory (M2): fake provider admission/close is a test-only shared contract. Consumers already inventoried (executor/suite/daemon/startup fixtures); calls during active lifetime unchanged. After close, direct provider and filesystem mutator calls will reject a fixed closed error. Both direct provider transport and HTTP body/handler continuations must be tracked through actual settlement, even when the caller's deadline race ends first; close fences synchronously, drains boundedly and retains root on incomplete drainage. Scripted mode shares the fence/drain but keeps OS scans disabled. M1 index correction is working-tree green.
