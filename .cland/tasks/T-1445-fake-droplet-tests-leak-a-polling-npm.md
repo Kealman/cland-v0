@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T17:23:18.455Z
+updated: 2026-10-29T17:23:42.374Z
 ---
 
 ## Summary
@@ -90,3 +90,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-13843: M1/M2 remain closed; source2 retained teardown and early cancellation cycle corrected. Sole remaining M3 is independent real elapsed-time bounds for native serving/drain in new controls, including direct entered wait and final disposal. Keep fake time for deterministic caller timeout assertions. No Reviewer execution or Linux runtime verification.
 
 Criteria: C1 failed (New held native setup/disposal controls can wait forever on receipts because their deadlines use manually advanced fake time.).
+
+### rev-34 · 2026-10-29T17:23:42.374Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-source4
+commit: dbbb66a6c86f9053a2f92aaf600c9a79bf2f1e48
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13852: full source clear, M1–M3 resolved. Separate real native setup/serving/drain/disposal bounds preserve retained teardown and early release/cancel; injected fake time only controls caller-expiry assertions. Prior positive census/native failure/abort and poller exit124 retained. C1/C2 runtime verification pending exact-head configured evidence; other-file local runs remain source1 attribution. No Reviewer execution.

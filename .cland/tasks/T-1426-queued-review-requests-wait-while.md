@@ -2,8 +2,8 @@
 id: T-1426
 kind: task
 title: Queued review requests wait while reviewers sit idle with stale pending markers
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1188
 branch: t/T-1426-queued-review-requests-wait-while
 created: 2026-10-28T12:40:05.299Z
-updated: 2026-10-29T16:26:27.514Z
+updated: 2026-10-29T17:28:41.084Z
+closed: 2026-10-29T17:28:41.084Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear C1/C2, source1 unchanged. Original A-13790/47351914 confirms4154 ordinary+15 load passes; three new routing identities each base+5/5, worst0.655744774s. All19 routing cases pass including verdict/hold/restart/close/landing/uncertain reservation controls. T0/T1/allT2/mappedT4/Web pass; T3 and remainingT4 absent. Mapped guard onepass1.565318342s, selected-phase2.634s excludes machine wait, no repeats. Linuxc8sfo2 Node24.21/nvim0.12.5 CHS156/v1248. Raw hostgateab5844a3 differs automatic summary860ee917; discrepancy retained, no remote repeat claimed. Report-only warnings retained. A-13793 full original-line audit; no Reviewer execution; Coordinator wider gate remains separate.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T17:28:41.084Z
+
+Merged 4a5641e5adc69fc2b0da9e99fdc0ac5e3b76e50c onto dev.

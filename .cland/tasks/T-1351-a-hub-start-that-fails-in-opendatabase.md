@@ -2,8 +2,8 @@
 id: T-1351
 kind: task
 title: A hub start that fails in openDatabase leaks a FileHandle closed only on garbage collection
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1187
 branch: t/T-1351-a-hub-start-that-fails-in-opendatabase
 created: 2026-10-27T02:21:59.306Z
-updated: 2026-10-29T16:45:27.466Z
+updated: 2026-10-29T17:28:56.223Z
+closed: 2026-10-29T17:28:56.223Z
 ---
 
 ## Summary
@@ -81,3 +82,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Exact-head final evidence clear: A-13786 independently confirms 4152 ordinary passes/511 files plus 10 task-owned load passes (both startup cases 5/5) and 50 unrelated site repetitions. Native descriptor-at-rejection, original error, lock/successor and omitted-observation cleanup assertions pass. C1 verified. Host T0/all T1/all fallback T2/Web complete; T3/T4 absent, journal-async not selected, report-only warnings retained. Host prepared-tree receipt reused with runtime source equality, not Linux typecheck. No findings.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-29T17:28:56.223Z
+
+Merged 5067e741080818d26567115326c9bd849707356f onto dev.

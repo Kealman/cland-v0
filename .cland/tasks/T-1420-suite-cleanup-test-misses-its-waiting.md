@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1198
 branch: t/T-1420-suite-cleanup-test-misses-its-waiting
 created: 2026-10-28T09:24:24.815Z
-updated: 2026-10-29T17:23:18.110Z
+updated: 2026-10-29T17:25:00.778Z
 ---
 
 ## Summary
@@ -40,3 +40,16 @@ Baseline at dev 7687a520214e92f975cf658318390dd53828c295/tree a10e9b133b62317450
 ### impl-1420 · 2026-10-29T17:03:44.453Z
 
 Coordinator decision 8b9f5408: proceed with deterministic setup regression despite baseline 5/5 without reproduction. Red on 7687a520 plus test-only extraction: held LocalExecutor.occupied keeps the real frame/CLI job queued; launch snapshot pid is null. 'suite worker setup waits for admission rather than the launch PID snapshot' failed: null !== 56740 (1370.619 ms), expected admitted worker PID. Shared test fixture launchWorker now awaits existing workerPid receipt; lifecycle cleanup case uses it before hub.stop and DB mutation. This proves the setup race, not that it caused the historical Linux error. No hub/src or shared production contract changes.
+
+### rev-34 · 2026-10-29T17:25:00.778Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1420-source1
+commit: 0b85c061324bacb4053f8bcf2c14c273dab62643
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13856: branch source clear. Additive launchWorker obtains/owns actual admitted PID before stop/mutation; held native admission regression and all original cleanup fences/assertions retained. Historical A-13169 failure not reproduced by A-13833 five-run baseline; controlled red/source gap is the approved attribution, not reconstructed historical timing. Runtime criteria unverified. Publish prepared C2 ten-run driver for source inspection before execution; baseline driver is historical, not successor lifetime clearance. Exact-head local proof then configured run/final evidence remains.

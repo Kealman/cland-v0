@@ -2,8 +2,8 @@
 id: T-1422
 kind: task
 title: Dev T3 search calls a flaky file already-fixed on a green tip reached only through tracker commits
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1192
 branch: t/T-1422-dev-t3-search-calls-a-flaky-file-already
 created: 2026-10-28T10:16:48.937Z
-updated: 2026-10-29T16:33:21.154Z
+updated: 2026-10-29T17:29:09.248Z
+closed: 2026-10-29T17:29:09.248Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ Criteria: C1 verified.
 ### impl-1422 · 2026-10-29T16:33:21.154Z
 
 Ready reported to Coordinator after source clear and final evidence clear at d310dba98ab8f2b3ea7e55b91e6d7a65d4c94e82; C1 verified by reviewer. Linux droplet run 649d7e7c-97dc-4b28-a796-d4aa7b54d444 / A-13796, named evidence A-13797 and reviewer A-13799. Fresh origin/dev 189d510062906c90a0b4b0edaec325be366306d4 merge-tree check conflict-free (81cbe71ffb38ec2cebb558229423b52f7881f98f). Reviewed source unchanged; waiting for Coordinator enqueue.
+
+### coord · 2026-10-29T17:29:09.248Z
+
+Merged 094b73ac4700f69d6e75ac720afaa322a4e6433e onto dev.

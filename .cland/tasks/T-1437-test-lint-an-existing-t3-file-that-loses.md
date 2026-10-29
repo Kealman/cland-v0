@@ -3,7 +3,7 @@ id: T-1437
 kind: task
 title: "Test lint: an existing T3 file that loses its T3 header is refused with a misleading 'exceeds frozen allowance 0' message"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1199
 branch: t/T-1437-test-lint-an-existing-t3-file-that-loses
 created: 2026-10-29T04:26:29.075Z
-updated: 2026-10-29T17:08:06.439Z
+updated: 2026-10-29T17:24:40.576Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ When a file mapped T3 (or T4) has no `T3:` header in its leading comment block, 
 
 - [x] C1. An existing T3 file whose header is preceded by an import is refused with the t3-lifecycle message naming the header, not a frozen-allowance count.
   - done: impl-1437 · 2026-10-29T17:03:06.772Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1437-evidence-1 · 2026-10-29T17:24:40.382Z · commit 886dfbf7845b985f5fd1f7ac64662b5c1c139add
 - [x] C2. An existing T3 file with its header keeps its current lint result unchanged.
   - done: impl-1437 · 2026-10-29T17:03:07.190Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1437-evidence-1 · 2026-10-29T17:24:40.382Z · commit 886dfbf7845b985f5fd1f7ac64662b5c1c139add
 
 ## Comments
 
@@ -54,3 +56,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13839 full6-file audit clear. Standards T1 source-as-data cases/guide/index/shared docs and Rule20 consumers checked, direct census/baseline/shape untouched; tracker-only merge provenance pinned. Spec matches Coordinator32269e67: detect base lifecycle loss or missing lifecycle exposing process-count growth, emit exact header cause and suppress only process consequences; wall-clock and headed/never-headed-within-allowance behavior retained, contract/scenario declaration valid. No findings. Local A13834 summary not configured evidence; C1/C2 runtime pending. Exact-head modefree then original named execution/load/census review; no Reviewer workload/full-all request.
+
+### rev-26 · 2026-10-29T17:24:40.382Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1437-evidence-1
+commit: 886dfbf7845b985f5fd1f7ac64662b5c1c139add
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13854 original A-13853 audited. Standards actual lint retains t3-lifecycle33/currentzero refusals, sourceA13839 intact. C1 displaced-header exactdiagnostic/no process-count case passes0.003996827s, losswithouthelpers0.022978414s; C2 headed/neverheaded unchanged control0.002516719s. Full38test-lint cases pass;3new×5load pass,max0.343681953s. Full4163ordinary+90load/no nonpass or unfinished; configuredT0/T1/T2/Web complete, explicit hostgateed8157f6 reused; T3/T4 unrun. Report-only budgets/lint retained/no enforcement pass claimed. Local summary provenance separate; no Reviewer workloads. C1/C2 verified frozenhead, QA none.
+
+Criteria: C1 verified, C2 verified.

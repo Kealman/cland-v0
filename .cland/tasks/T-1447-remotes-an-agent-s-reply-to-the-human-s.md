@@ -3,7 +3,7 @@ id: T-1447
 kind: task
 title: "Remotes: an agent's reply to the human's message arrives unthreaded on Telegram and Discord"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1201
 branch: t/T-1447-remotes-an-agent-s-reply-to-the-human-s
 created: 2026-10-29T17:00:36.038Z
-updated: 2026-10-29T17:08:25.920Z
+updated: 2026-10-29T17:27:25.700Z
 ---
 
 ## Summary
@@ -27,10 +27,10 @@ When a General message has `replyTo` pointing at a message mapped to a native me
 
 ## Acceptance criteria
 
-- [x] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
-  - done: impl-1447 · 2026-10-29T17:07:51.083Z
-- [x] C2. The same holds on Discord, with `message_reference` on the fake REST.
-  - done: impl-1447 · 2026-10-29T17:07:51.292Z
+- [ ] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
+  - failed: rev-34 [reviewer] · 2026-10-29T17:27:25.700Z · note Artifact-reference branch can discard explicit human native reply target on Telegram.
+- [ ] C2. The same holds on Discord, with `message_reference` on the fake REST.
+  - failed: rev-34 [reviewer] · 2026-10-29T17:27:25.700Z · note Reused-artifact reference can override explicit human reply target with prior upload on Discord.
 - [x] C3. A reply target unmapped on a remote, or deleted, still delivers once as a plain message.
   - done: impl-1447 · 2026-10-29T17:07:52.403Z
 
@@ -39,3 +39,18 @@ When a General message has `replyTo` pointing at a message mapped to a native me
 ### impl-1447 · 2026-10-29T17:03:22.688Z
 
 Consumer inventory before optional native-reply changes: General frame producers/readers retain existing Message.replyTo shape; telegram.ts receive plans rich/plain/file payloads consumed by TelegramOutbox and TelegramApi; discord.ts publication calls DiscordOutbox (sendGroup, publication, #enqueue, #deliver) then DiscordApi. RemoteStore native mappings include inbound and outbound records. Tests/QA/docs consumers found via replyTo/reply_parameters/message_reference searches: telegram-{inbound,notices,voice,api,artifacts}, discord-{messages,render,artifacts,inbound-media,cards}, gateway and old payload recovery tests; shipped skills and QA briefs use unchanged frames. Only optional reply fields on existing payloads will be used, with old payloads readable. No public reply/list/schema/authority changes.
+
+### rev-34 · 2026-10-29T17:27:25.700Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1447-source1
+commit: 9cf13f97df46d8644db082c6ce3539816c1794f6
+scope: full
+findings: [{"severity":"medium","text":"M1: Explicit General replyTo is overridden/dropped on reused-artifact reference paths. Telegram file() replies to the previous upload or omits reply metadata; Discord publication line153 similarly overrides the mapped human target with prior upload id. Preserve explicit mapped reply precedence and deleted-target plain fallback, retaining artifact dedup/no-reupload and default sent-above behavior without explicit reply. Add native repeated-artifact controls with a distinct human target.","file":"hub/src/remote/telegram-outbox.ts","line":73},{"severity":"medium","text":"M2: New paired tests register Store.close in onCleanup resource phase, whereas projectHub.stop is registered in beforeDirectories hub phase. If an assertion/setup step fails before explicit hub.stop, injected Store closes while hub/remotes are still live. Pre-own bounded dynamic hub acquisition/stop ahead of Store/fake/root disposal and cover missed/aborted setup; retain all native reply and exactly-once fallback assertions.","file":"hub/test/discord-messages.test.ts","line":584}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-13859: full source not clear, M1 explicit-reply precedence for reused artifact references and M2 new paired fixture disposal order on failure. Normal text cross-remote flags/maps and optional payload/nonce compatibility are source-consistent. Consolidate controls/corrections and request fresh pushed-head review before verification. Local macOS only; no Reviewer execution or runtime verification.
+
+Criteria: C1 failed (Artifact-reference branch can discard explicit human native reply target on Telegram.), C2 failed (Reused-artifact reference can override explicit human reply target with prior upload on Discord.).
