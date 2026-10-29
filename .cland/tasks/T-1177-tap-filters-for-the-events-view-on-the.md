@@ -3,8 +3,9 @@ id: T-1177
 kind: task
 title: Tap filters for the Events view on the phone
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1184
 branch: t/T-1177-tap-filters-for-the-events-view-on-the
 created: 2026-10-23T07:00:15.868Z
-updated: 2026-10-29T15:57:20.666Z
+updated: 2026-10-29T15:59:03.671Z
 ---
 
 ## Summary
@@ -26,7 +27,8 @@ At phone width the Events view offers its filters as tappable chips or a sheet w
 
 ## Acceptance criteria
 
-- [ ] C1. At 390x844 with touch, tapping a filter shows only that category's events and the choice survives a reload (Web test).
+- [x] C1. At 390x844 with touch, tapping a filter shows only that category's events and the choice survives a reload (Web test).
+  - done: impl-1177 · 2026-10-29T15:58:53.733Z
 
 ## Comments
 
