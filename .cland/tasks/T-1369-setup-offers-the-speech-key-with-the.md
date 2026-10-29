@@ -2,8 +2,8 @@
 id: T-1369
 kind: task
 title: Setup offers the speech key with the provider's data-use line
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1166
 branch: t/T-1369-setup-offers-the-speech-key-with-the
 created: 2026-10-27T05:46:51.082Z
-updated: 2026-10-28T22:56:21.254Z
+updated: 2026-10-29T00:11:54.023Z
+closed: 2026-10-29T00:11:54.023Z
 ---
 
 ## Summary
@@ -128,3 +129,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13508 configured final evidence clear; C1–C3 verified from original A-13504:4025 ordinary passes+70 separate load passes, seven new task identities each base+5/5, both favourite regressions/frozen help pass. T0/allT1/fallbackallT2/changedT3once/Web complete; remainingT3/T4 absent; actual Linux/CHS/host-tree/report-only limits retained. Existing scenario14.912s and advisory22.369s stanza need no allowance per Coordinator2b310cf4. Prior failed A-13494/A-13496 retained separately. Coordinator-required same-head full-all for six unchanged T3 consumers remains pending; this verdict does not satisfy it or permit enqueue before that gate. Head stays frozen.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-29T00:11:54.023Z
+
+Merged 4c11715d7960f02703eed738fd9bc411a9bdae66 onto dev.
