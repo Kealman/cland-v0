@@ -301,3 +301,5 @@ Discord files and voice in both directions, one stage-close docs commit (T-1414,
 Discord setup step, doctor stop causes and workbench rows, one stage-close docs commit (T-1371, T-1372)
 
 T-1336: distinguish metadata-only green dev tips as not reproduced (intermittent), retaining both receipts.
+
+- T-1337: document captured-descendant revalidation after native parent exit in fixture cleanup.

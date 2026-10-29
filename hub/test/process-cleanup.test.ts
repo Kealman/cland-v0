@@ -204,6 +204,57 @@ await assert.rejects(fs.stat(dir), { code: 'ENOENT' });
   });
 }
 
+for (const platform of ['linux', 'darwin']) {
+  for (const outcome of ['gone', 'replaced', 'live', 'unreadable', 'EIO', 'EPERM']) test(`${platform} exited parent confirms its captured descendant ${outcome} before cleanup`, () => {
+    assert.deepEqual(probe(`
+rows = [
+ { pid: 420543, parent: process.pid, group: 420543, started: start, command: 'parent' },
+ { pid: 420544, parent: 420543, group: 420543, started: start, command: 'child' }
+];
+const seed = captureProcess(420543);
+const kill = process.kill;
+process.kill = (pid, signal) => {
+ if (signal === undefined || signal === 0) return kill(pid, signal);
+ signals.push({ pid, signal });
+ rows[0].nativeState = 'Z';
+ if (${JSON.stringify(outcome)} === 'EIO' || ${JSON.stringify(outcome)} === 'EPERM') {
+  rows[1].micros = null; rows[1].ticks = 'invalid';
+  process.kill = (checkedPid, checkedSignal) => {
+   if (checkedPid === 420544 && (checkedSignal === undefined || checkedSignal === 0)) {
+    throw Object.assign(new Error('injected liveness ' + ${JSON.stringify(outcome)}), { code: ${JSON.stringify(outcome)} });
+   }
+   return kill(checkedPid, checkedSignal);
+  };
+ }
+ let reads = 0;
+ const finish = () => {
+  if (${JSON.stringify(outcome)} === 'gone') rows = rows.filter(r => r.pid !== 420544);
+  if (${JSON.stringify(outcome)} === 'replaced') { rows[1].ticks = 90002; rows[1].micros = 200002; }
+  if (${JSON.stringify(outcome)} === 'unreadable') { rows[1].micros = null; rows[1].ticks = 'invalid'; }
+ };
+ if (process.platform === 'linux') onStat = pid => { if (pid === 420544 && ++reads === 3) finish(); };
+ else {
+  const native = cp.execFileSync;
+  cp.execFileSync = (command, args, ...options) => {
+   if (command === '/usr/bin/perl' && ++reads === 3) finish();
+   return native(command, args, ...options);
+  };
+  syncBuiltinESMExports();
+ }
+ return true;
+};
+const cleanup = cleanupProcesses(undefined, [seed], undefined, 'owned-run', []);
+if (['live', 'unreadable', 'EIO', 'EPERM'].includes(${JSON.stringify(outcome)})) {
+ await assert.rejects(cleanup, /native process identity|injected liveness EIO/, 'surviving or unproven child keeps the fixture');
+ assert.ok(rows.some(r => r.pid === 420544));
+} else {
+ await cleanup;
+ assert.equal(rows.some(r => r.pid === 420544), ${JSON.stringify(outcome)} === 'replaced');
+}
+`, '', platform), [{ pid: -420543, signal: 'SIGKILL' }]);
+  });
+}
+
 test('cleanup refuses a remembered PID reused by a different process', () => {
   assert.deepEqual(probe(`
 rows = [

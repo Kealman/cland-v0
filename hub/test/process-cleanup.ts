@@ -8,7 +8,7 @@ import type { TestContext } from 'node:test';
 import { parseProcessTable, processTableArgs, retainProcessAncestry, type SystemProcess } from '../src/process-table.ts';
 
 export type ProcessIdentity = { pid: number; started: string; identity?: string | null; identityError?: string; group?: number };
-type ProcessRow = SystemProcess;
+type ProcessRow = SystemProcess & { nativeExited?: boolean };
 export const RUN_ID = process.env.TEST_SUITE_RUN_ID ??= randomUUID();
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 const recorded = new Map<number, ProcessIdentity>();
@@ -16,7 +16,12 @@ const observedThisTurn = new Map<number, ProcessIdentity>();
 const settled = new Set<ProcessIdentity>();
 function alive(pid: number): boolean {
   try { process.kill(pid, 0); return true; }
-  catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; }
+  catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ESRCH') return false;
+    if (code === 'EPERM') return true;
+    throw error;
+  }
 }
 
 function groupMembers(groups: number[]): number[] {
@@ -57,13 +62,34 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
   const after = processIdentities(selected, (pid, error) => errors.set(pid, `after ownership snapshot: ${error}`), pid => exited.add(pid));
   return retainProcessAncestry(parseProcessTable(output), exited).map(row => {
     const identity = before.get(row.pid) && before.get(row.pid) === after.get(row.pid) ? before.get(row.pid)! : null;
-    return { ...row, identity, ...(!identity ? { identityError: exited.has(row.pid) ? 'native exit observed; listed descendants are not confirmed gone' : errors.get(row.pid) ?? 'native birth unavailable or changed across ownership snapshot' } : {}) };
+    return { ...row, identity, ...(exited.has(row.pid) ? { nativeExited: true } : {}), ...(!identity ? { identityError: exited.has(row.pid) ? 'native exit observed; listed descendants are not confirmed gone' : errors.get(row.pid) ?? 'native birth unavailable or changed across ownership snapshot' } : {}) };
   });
 }
 function requireIdentities(expected: Iterable<ProcessIdentity>, current: ProcessRow[]): void {
-  for (const target of expected) {
+  const captured = new Map([...expected].map(target => [target.pid, target]));
+  for (const target of captured.values()) {
     if (target.pid === process.pid) continue; // the invoking worker can never be a cleanup target
     const row = current.find(row => row.pid === target.pid);
+    if (row?.nativeExited && target.identity) {
+      // ps may still list the exited parent's former branch. Recheck each
+      // descendant against its own captured birth; the parent's exit proves
+      // nothing about a child, and unreadable proof must preserve the fixture.
+      const branch = new Set([row.pid]);
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const member of current) if (branch.has(member.parent) && !branch.has(member.pid)) {
+          branch.add(member.pid); changed = true;
+        }
+      }
+      branch.delete(row.pid);
+      const exited = new Set<number>();
+      const identities = processIdentities([...branch], undefined, pid => exited.add(pid));
+      if ([...branch].every(pid => {
+        const original = captured.get(pid)?.identity;
+        const identity = identities.get(pid);
+        return exited.has(pid) || !alive(pid) || original != null && identity != null && original !== identity;
+      })) continue;
+    }
     if (row && (!target.identity || !row.identity) && alive(target.pid)) throw new Error(`native process identity unavailable for pid ${target.pid}; fixture preserved; captured: ${target.identityError ?? (target.identity ? 'known' : 'missing')}; current: ${row.identityError ?? (row.identity ? 'known' : 'missing')}`);
   }
 }

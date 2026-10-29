@@ -375,7 +375,9 @@ observation, persisting proof before signalling; same-second reuse before that
 first observation retains the previous risk. Mismatch/unreadable proof never
 grants a signal or exit receipt; preserve live writer roots. A final native Linux
 Z/X or Darwin SZOMB receipt establishes exit without signalling; keep uncertain
-listed descendant branches until captured or refused. Parent PID reaping is a separate boundary. Use the
+listed descendant branches until captured or refused. Parent PID reaping is a separate boundary. Test cleanup rechecks listed
+descendants of a natively exited parent against their own captured births;
+gone or changed births settle, while live or unreadable descendants retain the fixture. Use the
 parser/persistence, native listing and
 same-second signal seams in `docs/agents/tests/hub-test-process-identity.test.ts.md`
 and its linked T3 files. Inject processStarted, processIdentity and coherent

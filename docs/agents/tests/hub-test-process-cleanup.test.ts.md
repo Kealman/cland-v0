@@ -50,3 +50,14 @@ the exit after the authoritative ps row, with a reparented surviving writer.
 The fixture removal guard must refuse and keep the root and writer intact.
 After the branch is confirmed reaped, removal completes and the unchanged
 managed leader remains a positive signal control.
+
+After native parent exit during teardown, re-read every listed descendant against
+its own captured birth before settling the branch. The Linux/Darwin injected
+`exited parent confirms its captured descendant … before cleanup` matrix covers
+gone and same-second replacement receipts plus unchanged-live and unreadable
+refusals after the group signal. A parent exit alone grants no descendant exit
+receipt or signal authority; preserve unrecorded branches too.
+
+Descendant liveness accepts only ESRCH as absent. The injected EIO and EPERM
+controls combine unreadable native birth with liveness failure after the group
+signal: both refuse settlement, with unexpected errors preserved as diagnostics.
