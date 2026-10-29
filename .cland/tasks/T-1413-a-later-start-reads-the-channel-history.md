@@ -3,7 +3,7 @@ id: T-1413
 kind: task
 title: A later start reads the channel history back to the last id, re-sends every open card and adds the gap line
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:48.468Z
-updated: 2026-10-27T23:38:48.468Z
+updated: 2026-10-29T01:41:02.071Z
 ---
 
 ## Summary

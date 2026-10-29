@@ -3,7 +3,7 @@ id: T-1372
 kind: task
 title: Discord's stopped causes reach doctor, and Discord shows in both workbenches
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:46:51.767Z
-updated: 2026-10-27T05:46:51.767Z
+updated: 2026-10-29T01:41:02.475Z
 ---
 
 ## Summary

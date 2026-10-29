@@ -3,7 +3,7 @@ id: T-1412
 kind: task
 title: "A restart within the resume window resumes: messages typed meanwhile arrive late, and only the pressed cards are re-sent"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:48.333Z
-updated: 2026-10-27T23:38:48.333Z
+updated: 2026-10-29T01:41:01.919Z
 ---
 
 ## Summary

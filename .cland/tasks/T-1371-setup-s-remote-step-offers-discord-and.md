@@ -3,7 +3,7 @@ id: T-1371
 kind: task
 title: Setup's remote step offers Discord and checks the application
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T05:46:51.472Z
-updated: 2026-10-27T05:46:51.472Z
+updated: 2026-10-29T01:41:02.360Z
 ---
 
 ## Summary

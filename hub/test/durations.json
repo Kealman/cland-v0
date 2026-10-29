@@ -76,9 +76,11 @@
       "A-13364",
       "A-13372",
       "A-13471",
-      "A-13476"
+      "A-13476",
+      "A-13547",
+      "A-13551"
     ],
-    "commit": "adf3140ca2398e9dc3dc22bf532ef00dadcde44d"
+    "commit": "d9271f3faf350a7c661b03633b7cf46f48fd100f"
   },
   "budget": {
     "testSeconds": 5,
@@ -2971,6 +2973,22 @@
     "hub/test/telegram-voice.test.ts": {
       "seconds": 2.589888,
       "tests": 19
+    },
+    "hub/test/discord-cards.test.ts": {
+      "seconds": 9.307865,
+      "tests": 39
+    },
+    "hub/test/telegram-marks-setup.test.ts": {
+      "seconds": 0.398512,
+      "tests": 3
+    },
+    "nvim/test/telegram-marks.test.ts": {
+      "seconds": 0.852735,
+      "tests": 1
+    },
+    "web/test/telegram-marks.test.ts": {
+      "seconds": 2.003849,
+      "tests": 1
     }
   },
   "tests": {
@@ -8302,7 +8320,57 @@
     "hub/test/telegram-voice.test.ts::Telegram voice refuses declared size before getFile": 0.086407,
     "hub/test/telegram-voice.test.ts::Telegram voice retry retains the whole-note speech bounds": 0.107902,
     "hub/test/telegram-voice.test.ts::Telegram voice timeout retains the whole-note speech bounds": 0.178866,
-    "hub/test/telegram-voice.test.ts::Telegram voice unavailable retains the whole-note speech bounds": 0.122836
+    "hub/test/telegram-voice.test.ts::Telegram voice unavailable retains the whole-note speech bounds": 0.122836,
+    "hub/test/discord-cards.test.ts::Discord and Telegram race stores one answer": 0.221271,
+    "hub/test/discord-cards.test.ts::Discord and Telegram Telegram answer edits Discord": 0.245379,
+    "hub/test/discord-cards.test.ts::Discord approval inbox copies reject cross-kind keys and fold a workbench answer everywhere": 0.254051,
+    "hub/test/discord-cards.test.ts::Discord cancelled ask closes native card": 0.175263,
+    "hub/test/discord-cards.test.ts::Discord click stores Discord answer before one immediate outcome update": 0.224549,
+    "hub/test/discord-cards.test.ts::Discord coalesced asks arrive oldest first while General is muted": 0.172313,
+    "hub/test/discord-cards.test.ts::Discord codex approval truncates native command and commits before styled outcome callback": 0.191324,
+    "hub/test/discord-cards.test.ts::Discord decline modal stores text before updating its card": 0.19705,
+    "hub/test/discord-cards.test.ts::Discord drops a queued card closed before native sending": 0.167738,
+    "hub/test/discord-cards.test.ts::Discord explicit inbox probes restored delivery from durable unavailable state": 0.167724,
+    "hub/test/discord-cards.test.ts::Discord hold setup omitted owns its failure and drains": 1.137931,
+    "hub/test/discord-cards.test.ts::Discord hold setup pre-aborted owns its failure and drains": 0.167097,
+    "hub/test/discord-cards.test.ts::Discord inbox held read loses authority on replacement": 0.160302,
+    "hub/test/discord-cards.test.ts::Discord inbox held read loses authority on unpair": 0.188478,
+    "hub/test/discord-cards.test.ts::Discord inbox re-sends open asks oldest first with separate keys and keeps every copy live": 0.315971,
+    "hub/test/discord-cards.test.ts::Discord large ask preserves numbered options inside the native content limit": 0.178985,
+    "hub/test/discord-cards.test.ts::Discord long option gets numbered buttons and literal option list": 0.17826,
+    "hub/test/discord-cards.test.ts::Discord loser waits for held initial acknowledgement acceptance before followup": 0.179281,
+    "hub/test/discord-cards.test.ts::Discord losing click is refused privately deferred": 0.212656,
+    "hub/test/discord-cards.test.ts::Discord losing click is refused privately immediate": 0.16472,
+    "hub/test/discord-cards.test.ts::Discord losing click is refused privately lost-defer": 0.198555,
+    "hub/test/discord-cards.test.ts::Discord lost defer response still settles the committed outcome without a second callback": 0.207512,
+    "hub/test/discord-cards.test.ts::Discord nine-option ask has three bounded rows with text labels": 0.335828,
+    "hub/test/discord-cards.test.ts::Discord notices and referenced replies with origin https://workbench.invalid": 0.388133,
+    "hub/test/discord-cards.test.ts::Discord notices and referenced replies with origin https://workbench.invalid and long plan title": 0.305556,
+    "hub/test/discord-cards.test.ts::Discord notices and referenced replies with origin unset": 0.406776,
+    "hub/test/discord-cards.test.ts::Discord notices and referenced replies with origin unset and long plan title": 0.345045,
+    "hub/test/discord-cards.test.ts::Discord opencode approval truncates native command and commits before styled outcome callback": 0.182703,
+    "hub/test/discord-cards.test.ts::Discord other modal stores text before updating its card": 0.241807,
+    "hub/test/discord-cards.test.ts::Discord refuses foreign and forged card clicks": 0.180123,
+    "hub/test/discord-cards.test.ts::Discord reopen folds a closed card interrupted after mapping before pending General": 0.083116,
+    "hub/test/discord-cards.test.ts::Discord REST removes buttons after nvim answers": 0.136702,
+    "hub/test/discord-cards.test.ts::Discord REST removes buttons after web answers": 0.203157,
+    "hub/test/discord-cards.test.ts::Discord restart reconciles an accepted closed card with a lost POST response": 0.244107,
+    "hub/test/discord-cards.test.ts::Discord slow click defers at two seconds and durably edits outcome after hub result": 0.203285,
+    "hub/test/discord-cards.test.ts::Discord stale click refuses privately without an answer frame and repairs buttons": 0.218029,
+    "hub/test/discord-cards.test.ts::Discord stop drains held card answer after defer": 0.170814,
+    "hub/test/discord-cards.test.ts::Discord stop drains held card answer before defer": 0.170862,
+    "hub/test/discord-cards.test.ts::Discord withdrawn ask closes native card": 0.185412,
+    "hub/test/setup-remotes.test.ts::declining speech defaults to No even with yes and writes nothing": 0.003545,
+    "hub/test/setup-remotes.test.ts::setup offers speech data use before hidden input, stores privately and rechecks as ok": 0.010486,
+    "hub/test/setup-remotes.test.ts::speech provider=command nonterminal asks nothing and reports actionable state": 0.006334,
+    "hub/test/setup-remotes.test.ts::speech provider=elevenlabs nonterminal asks nothing and reports actionable state": 0.003623,
+    "hub/test/setup-remotes.test.ts::speech provider=off nonterminal asks nothing and reports actionable state": 0.006577,
+    "hub/test/skills-onboarding.test.ts::remote tour explains voice notes and the hidden speech key command": 0.00082,
+    "hub/test/telegram-marks-setup.test.ts::Telegram marks fixture drains aborted setup before removing its root": 0.143536,
+    "hub/test/telegram-marks-setup.test.ts::Telegram marks fixture drains omitted setup before removing its root": 0.225016,
+    "hub/test/telegram-marks-setup.test.ts::Telegram marks incomplete drain retains root and Store until actual settlement": 0.02996,
+    "nvim/test/telegram-marks.test.ts::native Telegram voice marks, audio, text and approval outcome render in Neovim": 0.852735,
+    "web/test/telegram-marks.test.ts::native Telegram voice marks, audio, text and approval outcome render in Chromium": 2.003849
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {

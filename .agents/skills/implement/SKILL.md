@@ -814,3 +814,28 @@ and observe its exact socket ordinal before injected-clock spacing checks, and k
 failed-only equal-jitter backoff separate from resumes. The existing
 identify-budget stop cause carries the UTC reset time; no role permission or
 public frame changes are needed.
+
+For Discord cards, modals, approvals and `/cland inbox`, use
+`docs/agents/tests/hub-test-discord-cards.test.ts.md`. Bind every custom id and
+modal submission to its mapped native message and user; that mapping is the only
+action authority, never button text or an id of another kind. Refuse stale or
+foreign interactions privately before any hub write. Commit the hub outcome
+(`topic.answer`, `approval.answer`) before the callback, defer at 2 s, and join
+callback work before the Store closes. A closed card or approval closes every copy;
+resend keys stay scoped to the interaction, apart from live publication. Validate
+approval-model and native-map keys, link plans only from the configured origin,
+and keep General reference prefixes and the previous command and outbox shapes.
+
+For Telegram voice admission and answers, use the telegram-voice fixtures in
+`docs/agents/tests/hub-test-telegram-voice.test.ts.md` and
+`docs/agents/tests/hub-test-telegram-voice-answers.test.ts.md`. Freeze the answer
+target before speech I/O, assert no native `getFile` after a durable refusal,
+keep MIME, name and caption, and keep the two-audio album regression. A matched
+answer keeps no audio; failed or unmatched notes upload to General.
+
+For setup speech keys, use the sealed runner and prompter fixtures, share
+`SPEECH_DATA_USE`, preflight before hidden input and resolve environment overrides
+before offering a key. For Telegram workbench marks, use
+`web/test/telegram-marks.test.ts` and `nvim/test/telegram-marks.test.ts` with their
+guides; keep the persisted prefix and wire shape and assert header marks and
+attached audio separately.
