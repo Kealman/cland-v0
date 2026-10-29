@@ -2,8 +2,8 @@
 id: T-1415
 kind: task
 title: Outbound artifacts reach Discord once per remote within its file limits
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1173
 branch: t/T-1415-outbound-artifacts-reach-discord-once
 created: 2026-10-27T23:38:48.861Z
-updated: 2026-10-29T07:58:04.324Z
+updated: 2026-10-29T09:45:35.866Z
+closed: 2026-10-29T09:45:35.866Z
 ---
 
 > Pending: whether Discord attachments and voice stay in this epic (blocked by E-1311) or move to a 0.3.x release awaits the human's answer to ask 62b8d32f; the Coordinator's recommendation keeps them here. Do not launch before it is answered.
@@ -41,15 +42,19 @@ Spec §3.6 (outbound artifacts); research rule 22.
 - [x] C1. An agent's message with an image and a PDF arrives in the channel once with both files and the header, and a send retried after a timeout posts nothing twice (test).
   - done: impl-1415 · 2026-10-29T07:36:23.637Z
   - verified: rev-31 [reviewer] · run rev-20261029-1415-final1 · 2026-10-29T07:58:04.172Z · commit 01edfde09bd0e7ce49e976bcd2555b9b2d301039
+  - verified: rev-31 [reviewer] · run rev-20261029-1415-final2 · 2026-10-29T08:59:11.411Z · commit 556c8740fa750e966bf2174d0d6253649aea41b0
 - [x] C2. Twelve artifacts totalling 30 MiB arrive in several messages of at most 10 files and 25 MiB each, every artifact exactly once (test).
   - done: impl-1415 · 2026-10-29T07:26:57.172Z
   - verified: rev-31 [reviewer] · run rev-20261029-1415-final1 · 2026-10-29T07:58:04.172Z · commit 01edfde09bd0e7ce49e976bcd2555b9b2d301039
+  - verified: rev-31 [reviewer] · run rev-20261029-1415-final2 · 2026-10-29T08:59:11.411Z · commit 556c8740fa750e966bf2174d0d6253649aea41b0
 - [x] C3. A 21 MiB artifact arrives as one line naming it and its path (test).
   - done: impl-1415 · 2026-10-29T07:26:57.270Z
   - verified: rev-31 [reviewer] · run rev-20261029-1415-final1 · 2026-10-29T07:58:04.172Z · commit 01edfde09bd0e7ce49e976bcd2555b9b2d301039
+  - verified: rev-31 [reviewer] · run rev-20261029-1415-final2 · 2026-10-29T08:59:11.411Z · commit 556c8740fa750e966bf2174d0d6253649aea41b0
 - [x] C4. A photo sent from Telegram reaches the channel exactly once, captioned "you (Telegram)" (test).
   - done: impl-1415 · 2026-10-29T07:26:57.501Z
   - verified: rev-31 [reviewer] · run rev-20261029-1415-final1 · 2026-10-29T07:58:04.172Z · commit 01edfde09bd0e7ce49e976bcd2555b9b2d301039
+  - verified: rev-31 [reviewer] · run rev-20261029-1415-final2 · 2026-10-29T08:59:11.411Z · commit 556c8740fa750e966bf2174d0d6253649aea41b0
 
 ## Notes
 
@@ -130,3 +135,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final original-record evidence clear; C1–C4 verified at unchanged source3 head. A-13631 records original A-13628/ac02a391 audit: 4104 ordinary passes plus 105 separate load passes; all 13 new Discord artifact identities base+5/5 (65 task load samples), worst 1.686801507s, no allowance needed. T0/all T1/fallback all hub+Neovim T2/Web complete; T3/T4 absent. Native fake multipart/nonce/reopen/limit/fallback and real gateway artifact.upload assertions support the criteria within their recorded seam boundaries; no live platform or OS-crash claim. Linux c-8 lon1 Node24.21/Nvim0.12.5, pinned Headless Shell156/v1248; task workers2/Web4, reused host typecheck and report-only budget/lint limitations retained. Coordinator sequencing holds ready until T-1414 lands; this verdict does not cover the future dev merge/resolved head, which requires fresh delta source and mode-free runtime evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-31 · 2026-10-29T08:43:31.123Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1415-delta1
+commit: 556c8740fa750e966bf2174d0d6253649aea41b0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13635 delta source clear, Standards0/Spec0. Coordinator-authorized merge of reviewed 01edfde09 and dev35108669 (T-1414 cd613880 plus tracker). Examined both-parent/combined diffs: multipart/nonce/mentions and inbound metadata/getMessage retained; media CDN/speech and outbound files both wired; fake preserves CDN plus multipart receipts/bytes. Outbox and artifact tests match prior source3 byte for byte, retaining M1–M4 corrections, unknown fence and batch priority. Docs/index/tiers retain both features. Confirmed T3 telegram-polling-restart→discord-cards-fixture→messengerFactory consumer. Reported203 local macOS passes/typecheck remain local, not Reviewer/Linux evidence. C1–C4 runtime marks await fresh merged-head configured evidence; previous A-13628/A-13631 remain historical. New mode-free verify may proceed unchanged; Coordinator owns required separate full-all before enqueue.
+
+### rev-31 · 2026-10-29T08:59:11.411Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1415-final2
+commit: 556c8740fa750e966bf2174d0d6253649aea41b0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13637 final merged-head evidence clear; C1–C4 verified. Independent original A-13636/ba79e138 typed audit: 4118 ordinary passes plus105 separate load passes, no nonpass/duplicates. All13 artifact identities each base+5/5 (65 task load samples), worst1.531372652s; incoming14 media cases and API/cards/messages/messenger/render/commands/pairing consumers all pass ordinarily. T0/allT1/fallbackallhub+NeovimT2/Web complete; T3/T4 absent. Linux c-8lon1 Node24.21/Nvim0.12.5, HeadlessShell156/v1248, taskworkers2/Web4. Reused host typecheck, report-only lint/durations, two missing baselines and original gateway/fake/snapshot seam limits retained. Prior01edfde09 evidence remains historical. Ready report may follow fresh conflict check; Coordinator owns separate full-all including T3 reachability before enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-29T09:45:35.866Z
+
+Merged c99702b1adb1f873d79c6afb76ce5735eca74acb onto dev.
