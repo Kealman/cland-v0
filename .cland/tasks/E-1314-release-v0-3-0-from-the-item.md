@@ -20,7 +20,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-25T14:12:00.243Z
-updated: 2026-10-25T14:12:34.436Z
+updated: 2026-10-29T15:55:53.276Z
 ---
 
 ## Goal
@@ -89,3 +89,17 @@ After the close, the Coordinator shows the dry run in an ask and runs `cland rel
 - Sandbox: `/Users/evgeniyivanov/Projects/cland/sandbox-remote` and its `HOW-TO-TRY.md`; the prototype `prototype/telegram-remote` at 33bf2b2e, never merged.
 - Skills: `release`, `retro`, `qa`.
 - GLOSSARY: Release, Verdict.
+
+## Plan
+
+```yaml
+stages:
+  - name: scenario, docs and bump
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1442
+      - - T-1443
+      - - T-1441
+```
