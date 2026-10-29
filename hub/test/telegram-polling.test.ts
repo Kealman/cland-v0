@@ -90,6 +90,13 @@ test('Telegram filters foreign identities unlisted kinds and bots before the han
 
 
 test('Telegram waits for durable handler completion and joins its writer on stop', async t => {
+  // Name native receipts: a shared executor timeout cannot identify the stalled boundary.
+  const receipt = async (name: string, work: Promise<void>) => {
+    const started = performance.now();
+    try {
+      await within(work, 1_000, undefined, () => new Error(`${name}: not within 1000 ms`));
+    } finally { t.diagnostic(`${name}: ${(performance.now() - started).toFixed(3)} ms`); }
+  };
   const root = await tempProject(t);
   const clock = new FakeClock();
   const fake = await fakeTelegram(t, { clock });
@@ -110,16 +117,16 @@ test('Telegram waits for durable handler completion and joins its writer on stop
   onCleanup(t, async () => { release.resolve(); await remote.stop(); store.close(); });
   await control(fake.url, 'say', { text: 'held writer' });
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote], clock });
-  await within(entered.promise, 1_000);
+  await receipt('handler entered', entered.promise);
   assert.equal(state.get('telegram.offset'), null);
   assert.equal(state.get('telegram.update:1'), null);
   let stopped = false;
   const stopping = hub.stop().then(() => { stopped = true; });
-  await within(aborted.promise, 1_000);
+  await receipt('handler cancellation observed', aborted.promise);
   assert.equal(stopped, false, 'stop cannot release storage with a handler writer outstanding');
   assert.equal(state.get('telegram.offset'), null);
   release.resolve();
-  await within(stopping, 1_000);
+  await receipt('hub stop completed after writer release', stopping);
   assert.equal(state.get('telegram.offset'), null, 'cancelled handling is left for replay');
   assert.equal(clock.pending, 0);
 });

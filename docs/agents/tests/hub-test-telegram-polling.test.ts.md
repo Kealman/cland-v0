@@ -22,7 +22,11 @@ work. The fake deliberately ignores allowed_updates for injected payloads.
 `Telegram waits for durable handler completion and joins its writer on stop`
 holds the exact handler, retains missing offset/dedupe, observes cancellation
 before releasing its writer, and keeps the final completed-stop and absent-offset
-assertions. Stop cannot substitute a detached promise for writer drainage.
+assertions. Stop cannot substitute a detached promise for writer drainage. Each of its three
+native waits names and times its own receipt (handler entry, cancellation observed,
+and completed hub stop after writer release), so a timeout identifies the boundary
+rather than reporting an unrelated executor deadline. These are host-scheduling
+bounds, separate from the injected poll clock.
 
 `Telegram retries offline with zero timeout and restarts a stalled poll using
 injected time` waits for the failure's scheduled-retry log, observes the actual
