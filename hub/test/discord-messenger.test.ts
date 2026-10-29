@@ -9,6 +9,7 @@ import { tempProject, projectHub, connectUi, cland, until } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { fakeDiscordFixture, DISCORD_TEST_TOKEN, DISCORD_IDS } from './fakes/discord/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
+import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { RemoteStatusRow } from '../src/protocol.ts';
 async function receipt<T>(read: () => Promise<T>, matches: (value: T) => boolean, what = 'exact Discord receipt'): Promise<T> {
   let value: T | undefined;
@@ -411,6 +412,47 @@ test('Discord missing edit on an acknowledged live remote leaves connection heal
   assert.deepEqual(notices, [], 'neither an outage nor a recovery follows a job-local missing edit');
   assert.equal((await history()).filter(m => /^Discord remote (offline since|recovered;)/.test(m.text)).length, 0);
   await fixture.close(); assert.equal(clock.pending, 0);
+});
+
+test('Discord hub fixture cold tempProject has a separate setup budget and timing receipt', async t => {
+  const acquisitionClock = new FakeClock();
+  const acquired = Promise.withResolvers<string>();
+  const release = Promise.withResolvers<void>();
+  const owner = discordHubFixtureOwner(t, { acquisitionClock, acquireProject: async signal => {
+    const root = await tempProject(t);
+    acquired.resolve(root); // Actual allocation receipt, before the held return.
+    await abortable(release.promise, signal);
+    return root;
+  } });
+  // Setup covers native fake startup plus the independent 15 s cold phase.
+  const setupReceipt = within(acquired.promise, 20000);
+  const starting = owner.start(); void starting.catch(() => {});
+  try {
+    await setupReceipt;
+    await acquisitionClock.advance(2050);
+    release.resolve();
+    const fixture = await starting;
+    const timing = owner.acquisitionReceipts[0]!;
+    assert.deepEqual(timing, { phase: 'tempProject acquisition', elapsedMs: 2050, outcome: 'complete' });
+    assert.equal((await fixture.ui.request({ type: 'hub.status' })).ok, true);
+  } finally {
+    release.resolve();
+    await owner.close();
+  }
+  assert.equal(owner.pending(), 0);
+  assert.equal(owner.dbClosed(), true);
+  assert.equal(acquisitionClock.pending, 0);
+});
+
+test('Discord hub fixture failed tempProject names phase and elapsed time', async t => {
+  const owner = discordHubFixtureOwner(t, { acquireProject: async () => { throw new Error('synthetic acquisition failure'); } });
+  await assert.rejects(owner.start(), /tempProject acquisition incomplete after [0-9.]+ ms/);
+  assert.equal(owner.acquisitionReceipts.length, 1);
+  assert.equal(owner.acquisitionReceipts[0]!.outcome, 'incomplete');
+  assert.ok(owner.acquisitionReceipts[0]!.elapsedMs >= 0);
+  await owner.close();
+  assert.equal(owner.pending(), 0);
+  assert.equal(owner.receipts().closed, true);
 });
 
 for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${mode} setup receipt disposes the acquisition owner`, async t => {

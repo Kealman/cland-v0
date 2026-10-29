@@ -141,3 +141,19 @@ checkpoint after joining the first owner, explicitly removing its resumable sess
 before the new hub starts. It retains the 4999/5000ms assertion and persisted two-entry
 ledger. Successful restart resume is covered by the card-file cases. Zombie replay
 asserts the exact late-input suffix with a supplied written timestamp.
+
+T-1450: `discordHubFixtureOwner` records and emits a `tempProject acquisition`
+receipt with monotonic `elapsedMs` (or injected-clock elapsed time) and
+`complete`/`incomplete` outcome. Cold
+account/project setup has its own 15 s bound; subsequent native operations keep
+`run`'s 2 s default. Acquisition errors name the phase and elapsed caller time
+(including any timeout drainage), with the original error retained as cause.
+The cold control pre-owns an abort-aware return gate, awaits the actual
+tempProject allocation receipt with a separate 20 s setup observer (covering
+fake startup plus the 15 s cold phase), then advances a
+complete acquisition Clock by 2050 ms before releasing the gate. Its timing
+receipt reports injected time, not wall time. It requires a working hub frame
+and drained owner. The per-call deadline Clock applies only to acquisition;
+ordinary native operations retain real-time bounds. The failed-acquisition
+control retains its named error, incomplete receipt and native closed receipt.
+Both use the existing owner, so pending acquisition remains joined on disposal.

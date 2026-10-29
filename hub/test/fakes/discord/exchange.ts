@@ -50,12 +50,12 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
   onCleanup(t, close);
   beforeDirectories(t, close);
   fixture = discordFixtureOwner(t, { ...options, signal: options.signal ? AbortSignal.any([abort.signal, options.signal]) : abort.signal });
-  const run = <T>(action: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+  const run = <T>(action: (signal: AbortSignal) => Promise<T>, budgetMs = 2000, deadlineClock?: Clock): Promise<T> => {
     const native = Promise.resolve().then(() => { abort.signal.throwIfAborted(); return action(abort.signal); });
     pending.add(native); void native.catch(() => {});
     void native.finally(() => pending.delete(native)).catch(() => {});
     const timeout = new Error('Discord exchange operation incomplete');
-    const bounded = within(native, 2000, undefined, () => timeout)
+    const bounded = within(native, budgetMs, deadlineClock, () => timeout)
       .catch(async error => { if (error === timeout) await close(); throw error; });
     void bounded.catch(() => {});
     return bounded;

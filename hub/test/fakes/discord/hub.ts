@@ -10,10 +10,12 @@ import { Store } from '../../../src/hub/store.ts';
 import { defaultConfig, renderConfig } from '../../../src/init/config.ts';
 import { DiscordRemote } from '../../../src/remote/discord.ts';
 import type { RemoteStatusRow } from '../../../src/protocol.ts';
+import type { Clock } from '../../../src/hub/clock.ts';
 
 /** Register native/hub joins before acquisition; close injected storage only after drainage. */
 export function discordHubFixtureOwner(t: TestContext, options: {
   clock?: FakeClock; injected?: boolean; interval?: number;
+  acquireProject?: (signal: AbortSignal) => Promise<string>; acquisitionTimeoutMs?: number; acquisitionClock?: Clock;
   log?: (entry: Record<string, unknown>) => void;
   configure?: Record<string, unknown>; prepare?: (state: RemoteStore) => void;
   fake?: Parameters<typeof discordExchangeOwner>[1];
@@ -26,12 +28,26 @@ export function discordHubFixtureOwner(t: TestContext, options: {
   let hubReady: ReturnType<typeof projectHub> | undefined;
   const notices: string[] = [];
   const logs: Record<string, unknown>[] = [];
+  const acquisitionReceipts: Array<{ phase: 'tempProject acquisition'; elapsedMs: number; outcome: 'complete' | 'incomplete' }> = [];
   const start = async () => {
     try {
       const native = await owner.start();
       native.stop(async () => { const hub = await hubReady; await hub?.stop(); if (hub) { await hub.stopped; disposal.push('hub-stopped'); } });
       native.afterDrain(() => { db?.close(); dbClosed = true; disposal.push('store-closed'); });
-      const root = await native.run(() => tempProject(t));
+      // Account-fixture cold setup is acquisition, not a native Discord operation.
+      const now = () => options.acquisitionClock?.now().getTime() ?? performance.now();
+      const started = now();
+      let root: string;
+      try {
+        root = await native.run(signal => options.acquireProject?.(signal) ?? tempProject(t), options.acquisitionTimeoutMs ?? 15000, options.acquisitionClock);
+        acquisitionReceipts.push({ phase: 'tempProject acquisition', elapsedMs: now() - started, outcome: 'complete' });
+        t.diagnostic(JSON.stringify(acquisitionReceipts.at(-1)));
+      } catch (cause) {
+        const elapsedMs = now() - started;
+        acquisitionReceipts.push({ phase: 'tempProject acquisition', elapsedMs, outcome: 'incomplete' });
+        t.diagnostic(JSON.stringify(acquisitionReceipts.at(-1)));
+        throw new Error(`tempProject acquisition incomplete after ${elapsedMs.toFixed(1)} ms`, { cause });
+      }
       if (options.configure) await native.run(() => native.fake.control('configure', options.configure!));
       if (options.interval) await native.run(() => native.fake.control('configure', { interval: options.interval }));
       const config = defaultConfig('Discord native fixture'); config.remote.discord.enabled = true;
@@ -56,5 +72,5 @@ export function discordHubFixtureOwner(t: TestContext, options: {
       return { ...native, root, hub, ui, clock, state, status, history, notices, logs, close: owner.close };
     } catch (error) { await owner.close(); throw error; }
   };
-  return { start, close: owner.close, listening: owner.listening, receipts: owner.receipts, pending: owner.pending, drainReceipts: owner.drainReceipts, disposal, dbClosed: () => dbClosed };
+  return { start, close: owner.close, listening: owner.listening, receipts: owner.receipts, pending: owner.pending, acquisitionReceipts, drainReceipts: owner.drainReceipts, disposal, dbClosed: () => dbClosed };
 }
