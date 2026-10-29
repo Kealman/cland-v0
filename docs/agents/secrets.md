@@ -100,7 +100,7 @@ See [registration and output receipts](tests/hub-test-gateway-secrets.test.ts.md
 including environment overrides; `cland secret list` reports the file only.
 `cland doctor` resolves the current file and the same environment overrides for
 token presence/fingerprint, reads enabled settings from config, and asks only
-the local running hub for connection and pairing. It makes no platform or paid
+the local running hub for connection and pairing. Discord pairing names the numeric user, channel and guild ids. It makes no platform or paid
 call; `cland remote test <messenger>` remains the explicit platform check.
 Doctor reports `ok` with "speech unused until a remote is set up" when no remote
 is enabled, or "transcription off" for an empty provider. With at least one remote

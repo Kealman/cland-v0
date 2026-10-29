@@ -594,6 +594,7 @@ An unchanged `cland hub reload` retains healthy configured clients. If a
 configured gateway has disabled a client, reload first joins its stop and
 recreates the enabled, credentialed clients even when configuration and secrets
 are unchanged. A configuration-disabled messenger remains stopped.
+Discord reports its current outage time and gateway/REST error through the existing optional connection facts; both workbenches render failure immediately and clear it after acknowledged recovery. Doctor reads local status only, including Discord user, channel and guild ids and structured 4004/new-token and 4014/Message Content fixes.
 Native Telegram membership kicks and HTTP 403 failures stop that remote and
 post one redacted hub notice in General with the cause and recovery instruction.
 `src/remote/notices.ts` owns that diagnostic boundary; it does not grant remote

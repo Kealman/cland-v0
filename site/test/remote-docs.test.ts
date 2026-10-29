@@ -127,6 +127,13 @@ test('remote guide explains the setup speech offer and nonterminal command', () 
   assert.match(setup, /hidden/);
 });
 
+test('doctor guide names Discord fatal codes and local-only recovery instructions', () => {
+  const guide = source(guidePath);
+  assert.match(guide, /4004.*new token.*cland secret set discord.token/);
+  assert.match(guide, /4014.*Message Content/);
+  assert.match(guide, /Doctor makes no (?:Telegram or Discord|platform) request/);
+});
+
 test('Discord setup guide names application checks, invite permissions and local pairing commands', () => {
   const guide = source(guidePath);
   for (const text of ['Install Link', 'None', 'Public Bot', 'Message Content', 'Interactions Endpoint URL', 'permissions=117824', '/cland pair', 'cland secret set discord.token', 'cland config set remote.discord.enabled true', 'cland remote approve discord <code>']) assert.ok(guide.includes(text), `guide includes ${text}`);

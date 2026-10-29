@@ -68,7 +68,7 @@ export async function checkRemotes(root: string, env: NodeJS.ProcessEnv): Promis
       ? warn(`${messenger} connection`, row.connection, 'cland hub reload; inspect cland remote status')
       : ok(`${messenger} connection`, row.connection));
     out.push(ok(`${messenger} pairing`, row.pairing
-      ? redact.text(`${row.pairing.name} (${row.pairing.userId}); chat ${row.pairing.chatId}`) : 'none'));
+      ? redact.text(`${row.pairing.name} (${row.pairing.userId}); ${messenger === 'discord' ? 'channel' : 'chat'} ${row.pairing.chatId}${messenger === 'discord' && row.pairing.guildId ? `; guild ${row.pairing.guildId}` : ''}`) : 'none'));
     if (row.connection === 'disabled') {
       const stopped = row.stopCause ? remoteStopDetails(messenger, row.stopCause) : undefined;
       out.push(warn(`${messenger} stopped`, stopped?.cause ?? redact.text(row.reason ?? 'cause unavailable'),

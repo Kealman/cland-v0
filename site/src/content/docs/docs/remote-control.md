@@ -183,14 +183,18 @@ cland hub reload
 
 Enter the replacement at the hidden prompt. Change an environment override at its source if you use one. Pairing and mute survive rotation because they are stored by numeric ids in the hub, separately from the token.
 
-### If Telegram stops
+### If a remote stops
 
-Run `cland doctor` for local token presence, enabled state, connection, pairing and a stopped cause with its fix. Doctor makes no Telegram request; a stopped remote is a `warn`. Use `cland remote test telegram` when you want a platform check.
+Run `cland doctor` for local token presence, enabled state, connection, pairing and a stopped cause with its fix. Doctor makes no Telegram or Discord request; a stopped remote is a `warn`. Use `cland remote test telegram` when you want a platform check.
 
 | Cause | Fix |
 | --- | --- |
 | Wrong or revoked token (401) | Obtain a new token, store it with `cland secret set telegram.token`, then run `cland hub reload`. |
+| Discord wrong or revoked token (4004) | Obtain a new token in the Discord application, store it with `cland secret set discord.token`, then run `cland hub reload`. |
+| Discord Message Content toggle disabled (4014) | Enable Message Content in the Discord application, then run `cland hub reload`. |
 | Bot blocked (403) | Unblock the bot in Telegram, then run `cland hub reload`. |
 | Another consumer of the token (lasting 409) | Stop your other token consumer, then run `cland hub reload`. cland waits up to 60 seconds for a conflict to clear and never kills another poller. |
 
 Reload retries a failed enabled remote even when its configuration is unchanged. A deliberately disabled remote stays stopped; enable it with `cland config set remote.telegram.enabled true` when you want it back.
+
+Doctor also names Discord startup refusals: clear the Interactions Endpoint URL, repair a refused gateway configuration, or wait until the UTC reset time for an exhausted Identify budget. Discord pairing output includes the numeric user, channel and guild ids. Doctor reads local presence and hub status only; use `cland remote test discord` for a platform check when Discord is enabled, a token resolves and network access is available.

@@ -168,3 +168,46 @@ for (const phone of [false, true]) test(`Sessions Remotes renders native outage 
     page.on('websocket', socket => socket.on('framereceived', event => frames.push(JSON.parse(String(event.payload)) as HubFrame)));
   }, { phone });
 });
+
+test('native Discord outage, recovery, pairing, voice and approval render in Chromium', async t => {
+  const { discordWorkbench } = await import('../../hub/test/discord-workbench-fixture.ts');
+  const native = await discordWorkbench(t);
+  const f = await webFixture(t, native);
+  await native.ready();
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const row = page.locator('[data-remote="discord"]');
+    await row.getByText(/connected/).waitFor();
+    const plain = await row.evaluate(n => getComputedStyle(n).color);
+    const offline = until(() => row.evaluate(n => /offline since/.test(n.textContent ?? '') && getComputedStyle(n).color === 'rgb(255, 123, 114)'), { what: 'Discord red row within one second', timeoutMs: 1000, loadFactor: 1 });
+    void offline.catch(() => {});
+    await native.fake.control('close', { code: 4000 });
+    await offline;
+    assert.equal(await row.evaluate(n => getComputedStyle(n).color), 'rgb(255, 123, 114)');
+    await native.clock.advance(1);
+    await until(async () => (await native.fake.control('state')).gateway.resumes === 1, { what: 'native resume', timeoutMs: 2000 });
+    await native.fake.control('dispatch', { op: 1, d: null });
+    await until(() => row.evaluate(n => /connected/.test(n.textContent ?? '') && getComputedStyle(n).color !== 'rgb(255, 123, 114)'), { what: 'Discord recovery row', timeoutMs: 1000, loadFactor: 1 });
+    assert.equal(await row.evaluate(n => getComputedStyle(n).color), plain);
+    const { messages, approval, pairing } = await native.exercise();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    const pair = page.locator(`[data-object-id="${pairing.id}"]`);
+    await pair.waitFor();
+    assert.match(await pair.innerText(), /Discord/);
+    assert.match(await pair.innerText(), /approve in the terminal or Neovim/);
+    await page.locator('[data-inbox-archive-toggle]').click();
+    const outcome = page.locator(`[data-inbox-archive-id="${approval}"]`);
+    await outcome.getByText(/via Discord/).waitFor();
+    assert.match(await outcome.innerText(), /once.*via Discord/is);
+    await page.getByRole('button', { name: 'Topics', exact: true }).click();
+    await page.locator('[data-object-id="general"]').click();
+    for (const message of messages) {
+      const block = page.locator(`[data-message-id="${message.id}"]`);
+      await block.getByText('via Discord', { exact: true }).waitFor();
+      if (message.artifacts?.length) {
+        assert.equal(await block.locator('header [data-voice-mark]').innerText(), '🎤 not transcribed');
+        assert.match(await block.innerText(), /recording.ogg/);
+      } else assert.match(await block.innerText(), /Native Discord text/);
+    }
+  });
+});

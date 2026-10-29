@@ -62,7 +62,7 @@ test('doctor reports each messenger enabled state, live connection and exact pai
   assert.equal(named(rows, 'telegram connection').detail, 'connected');
   assert.equal(named(rows, 'discord connection').detail, 'disconnected');
   for (const via of ['telegram', 'discord']) assert.equal(named(rows, `${via} pairing`).detail,
-    `${via} human (123456789012345678); chat 234567890123456789`);
+    `${via} human (123456789012345678); ${via === 'discord' ? 'channel' : 'chat'} 234567890123456789`);
 });
 
 test('doctor reports hub not running for both remotes without contacting a platform', async t => {
@@ -237,4 +237,53 @@ test('doctor keeps unused speech healthy without remotes and reports transcripti
     const plain = await doctor(root, tools.env);
     assert.ok(plain.stdout.includes(provider ? 'speech unused until a remote is set up' : 'transcription off'));
   }
+});
+
+for (const [code, cause, fix] of [[4004, 'wrong or revoked token (4004)', /new token/], [4014, 'Message Content toggle disabled (4014)', /enable Message Content/]] as const)
+test(`native Discord ${code} reaches doctor without platform I/O and includes numeric pairing identity`, async t => {
+  const { discordHubFixtureOwner } = await import('./fakes/discord/hub.ts');
+  const { DISCORD_IDS: ids } = await import('./fakes/discord/fake-api.ts');
+  const f = await discordHubFixtureOwner(t).start();
+  const tools = await toolchain(t);
+  await f.fake.control('close', { code });
+  await until(async () => (await f.status()).connection === 'disabled', { what: 'native fatal close settled', timeoutMs: 2000 });
+  const before = (await f.fake.control('state')).requests;
+  const plain = await doctor(f.root, tools.env);
+  const rows = checks((await doctor(f.root, tools.env, '--json')).stdout);
+  assert.equal(named(rows, 'discord stopped').detail, cause);
+  assert.match(named(rows, 'discord stopped').fix!, fix);
+  assert.ok(plain.stdout.includes(cause));
+  assert.match(plain.stdout, fix);
+  assert.equal(named(rows, 'discord pairing').detail, `Fixture human (${ids.human}); channel ${ids.channel}; guild ${ids.guild}`);
+  assert.deepEqual((await f.fake.control('state')).requests, before, 'doctor makes no Discord request');
+});
+
+for (const failure of ['omitted', 'aborted'] as const)
+test(`Discord workbench fixture drains ${failure} setup before Store and root removal`, async t => {
+  const { discordWorkbench } = await import('./discord-workbench-fixture.ts');
+  const { FakeClock } = await import('./fake-clock.ts');
+  const { access } = await import('node:fs/promises');
+  const f = await discordWorkbench(t);
+  const project = await f.project();
+  await f.prepare(project.root);
+  const setupClock = new FakeClock(), abort = new AbortController();
+  const starting = f.startHub(project.root, f.env, {}, { receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal });
+  const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /cancelled/);
+  const hub = await within(f.startup.serving, 2000);
+  await until(async () => (await f.fake.control('state')).gateway.identifies === 1, { what: 'native startup Identify', timeoutMs: 2000 });
+  if (failure === 'omitted') await setupClock.advance(1000);
+  else abort.abort(new Error('setup cancelled'));
+  await rejected;
+  await f.startup.dispose();
+  await hub.stopped;
+  assert.equal(f.exchange.receipts().closed, true);
+  assert.equal(f.exchange.receipts().connections, 0);
+  assert.equal(f.exchange.receipts().handlers, 0);
+  assert.equal(f.exchange.pending(), 0);
+  assert.equal(f.startup.observations(), 0);
+  assert.equal(f.clock.pending, 0);
+  assert.equal(setupClock.pending, 0);
+  assert.throws(() => f.store.remotes.forMessenger('discord').get('discord.session'), /closed|not open/i);
+  await project.remove();
+  await assert.rejects(access(project.root), { code: 'ENOENT' });
 });

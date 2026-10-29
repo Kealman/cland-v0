@@ -28,3 +28,5 @@ The cheaper client compatibility regression lives in
 a complete replacement containing changed mute/depth/pairing and both messenger
 rows, then the previous snapshot shape without `remotes`. It must clear stale
 facts, retain Sessions and send no management read.
+
+Discord uses discord-workbench-fixture with the production factory, sealed roots and exchange ownership. Pre-arm the one-second red-row receipt before native close 4000; advance one injected millisecond for resume only after offline renders, then require ACK and final healthy colour. Native text, off-provider voice (original recording), approval button and /cland pair feed the actual thread/archive/inbox. No real account or GUI participates; stop the hub and drain exchanges before Store/root cleanup.

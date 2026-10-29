@@ -246,7 +246,8 @@ export class DiscordRemote implements Remote {
   status(): RemoteConnection {
     return { connected: !this.#abort.signal.aborted && !this.#restFailed() && this.#socket.connected(), lastInbound: this.#socket.lastInbound,
       lastOutbound: this.#socket.lastOutbound, botLink: this.#application ? `https://discord.com/oauth2/authorize?client_id=${this.#application}&scope=bot&permissions=117824` : null,
-      lastError: this.#failure ?? null };
+      offlineSince: this.#offline?.since ?? null,
+      lastError: this.#failure ?? (this.#offline ? this.#restFailed() ? 'REST sends unavailable' : 'gateway connection unavailable' : null) };
   }
   async test(pairing: Pairing | null, text: string): Promise<void> {
     try {

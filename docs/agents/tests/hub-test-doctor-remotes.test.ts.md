@@ -33,3 +33,7 @@ with a write marker, proves that marker stays absent, and warns for missing and
 empty argv. Off mode omits provider-specific checks and reports ok "transcription off".
 Without an enabled remote either provider reports ok "speech unused until a
 remote is set up", with no key/command warning; repair tests stay unchanged. No paid service is used.
+
+Native Discord cases additionally close the loopback gateway with 4004 and 4014, wait for disabled local status, and compare fake REST request lists across both doctor output modes. Retain channel/guild/user identity and the literal recovery instructions; structured test-messenger cases remain legacy coverage.
+
+The shared Discord workbench fixture also has omitted/aborted setup controls here: inject the readiness deadline, retain the acquired hub through pacingOwner, and prove stopped hub, closed native server with zero handlers/connections, drained observations/timers, closed Store and only then absent root. No platform or browser is used for those lifecycle controls.
