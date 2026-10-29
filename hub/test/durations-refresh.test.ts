@@ -120,3 +120,25 @@ test('unobserved allowances retain their provenance without a timing baseline', 
   assert.deepEqual(result.allow, previous.allow);
   assert.deepEqual(result.source, { artifacts: ['A-1', 'A-2'], commit: 'latest' });
 });
+
+for (const addOnly of [false, true]) test(`refresh skips and reports identities outside tier ownership (addOnly=${addOnly})`, async t => {
+  const cwd = await mkdtemp(join(tmpdir(), 'duration-ownership-'));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  const owned = 'hub/test/wrapper.test.ts', imported = 'site/test/imported.test.ts';
+  await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [owned]: 'T1' } }));
+  const log = join(cwd, 'A-1-green.log');
+  await writeFile(log, 'Head fixture\n' + [
+    { file: owned, name: 'wrapper', seconds: 1 },
+    { file: imported, name: 'imported', seconds: 70 },
+  ].map(row => `suite timing ${JSON.stringify(row)}\n`).join('')
+    + `suite progress ${JSON.stringify({ event: 'finish', id: 'file:1', file: imported, nesting: 0, type: 'file', outcome: 'pass', at: 1, seconds: 70 })}\nFinished: exit 0\n`);
+  const output: string[] = [];
+  t.mock.method(console, 'log', (line: string) => output.push(line));
+  const manifest = await refreshDurations(cwd, [log], { addOnly });
+  assert.deepEqual(manifest.files, { [owned]: { seconds: 1, tests: 1 } });
+  assert.deepEqual(manifest.tests, { [`${owned}::wrapper`]: 1 });
+  assert.deepEqual(manifest.allow, {});
+  assert.ok(output.includes(`duration skipped (not tier-owned): ${imported}::imported`));
+  assert.ok(output.includes(`duration skipped (not tier-owned): ${imported}`));
+});

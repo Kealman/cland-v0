@@ -1,0 +1,8 @@
+Head c675faa34d7c1874d1aee14f2874814b11c276b5
+suite timing {"file":"site/test/remote-docs.test.ts","name":"remote documentation guard rejects unknown commands, config keys and secret names","seconds":0.001052625,"outcome":"pass"}
+suite timing {"file":"site/test/remote-docs.test.ts","name":"remote guide and web Remotes section use shipped commands, config keys and secret names","seconds":0.000696167,"outcome":"pass"}
+suite timing {"file":"site/test/remote-docs.test.ts","name":"Remote control is under Features and linked from the overview and web Remotes section","seconds":0.000892209,"outcome":"pass"}
+suite timing {"file":"site/test/remote-docs.test.ts","name":"remote guide distinguishes missed cards from outage replacements after 150 seconds","seconds":0.000118167,"outcome":"pass"}
+suite timing {"file":"site/test/remote-docs.test.ts","name":"CLI reference lists exactly the remote and secret subcommands in usage","seconds":0.0003805,"outcome":"pass"}
+suite timing {"file":"hub/test/remote-docs.test.ts","name":"site vocabulary extraction matches the runtime config and secret names","seconds":0.00046287499999999996,"outcome":"pass"}
+Finished: exit 0

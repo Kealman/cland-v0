@@ -1630,6 +1630,13 @@ identities and over-budget new tests). Review any new over-budget identity's
 allowance separately. Source artifact ids are retained and the source head is
 updated. Repeating the same refresh adds nothing.
 
+When a tier manifest exists, both refresh modes accept log identities only for
+files owned by that manifest and print `duration skipped (not tier-owned): <identity>`
+for each skipped file or test identity. Imported `site/test` cases therefore need
+no manual removal after stage close. Without a tier manifest, refresh keeps its
+legacy unfiltered behaviour. Existing entries are retained under the usual refresh
+rules; invalid existing duration keys still refuse shard planning.
+
 The full `node hub/test/durations.ts refresh <log>…` mode
 accepts several logs (newest last), takes per-test medians, sums file test-time,
 preserves reasons and retains baseline entries for files absent from every supplied

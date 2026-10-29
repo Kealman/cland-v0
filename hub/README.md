@@ -5884,6 +5884,13 @@ formatting and allowances. It creates no TODO allowances; review new
 over-budget identities separately. It retains source artifact ids and updates
 the source head. `refresh --help` describes the option.
 
+When a tier manifest exists, both refresh modes accept log identities only for
+files owned by that manifest and print `duration skipped (not tier-owned): <identity>`
+for each skipped file or test identity. Imported `site/test` cases therefore need
+no manual removal after stage close. Without a tier manifest, refresh keeps its
+legacy unfiltered behaviour. Existing entries are retained under the usual refresh
+rules; invalid existing duration keys still refuse shard planning.
+
 Full refresh (without `--add-only`) preserves reasons, updates timing fields and removes tests absent from
 the newest log. Only over-budget identities absent from both their previous
 baseline and `allow` get a new `TODO` exception; known slow entries only update

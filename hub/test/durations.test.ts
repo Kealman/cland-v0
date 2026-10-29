@@ -3,7 +3,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, symlink, copyFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -395,4 +395,40 @@ for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted 
   assert.equal(await readFile(join(candidate.cwd, 'reuse-receipt'), 'utf8'), 'preserve complete preparation');
   await assert.doesNotReject(lintHubShards(candidate.cwd), 'historical check must use the open owner at its pinned commit');
   await assert.rejects(lintHubShards(f.root), /closed owner E-677/, 'ordinary admission retains live owner validation');
+});
+
+test('cover-log remote-docs fixture refresh keeps npm test:tiers admitted', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const cwd = machine.root;
+  machine.env = fixtureEnvironment(cwd, machine.env);
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  // Run the shipped tier entry point with its real root resolution in the fixture.
+  await mkdir(join(cwd, 'hub/src'), { recursive: true });
+  await symlink(fileURLToPath(new URL('../src/suite-shards.ts', import.meta.url)), join(cwd, 'hub/src/suite-shards.ts'));
+  await copyFile(fileURLToPath(new URL('./lint-tiers.ts', import.meta.url)), join(cwd, 'hub/test/lint-tiers.ts'));
+  await writeFile(join(cwd, 'package.json'), JSON.stringify({ type: 'module', scripts: { 'test:tiers': 'node hub/test/lint-tiers.ts' } }));
+  const file = 'hub/test/remote-docs.test.ts';
+  await writeFile(join(cwd, file), "test('site vocabulary extraction matches the runtime config and secret names', () => {});\n");
+  await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T1' } }));
+  const logs: string[] = [];
+  for (const id of ['A-12925', 'A-12929']) {
+    const path = join(cwd, `${id}-remote-docs.log`);
+    await copyFile(fileURLToPath(new URL(`./fixtures/durations/${id}-remote-docs.log`, import.meta.url)), path);
+    logs.push(path);
+  }
+  const refreshed = await commandIn(machine, cwd, process.execPath, [generator, 'refresh', '--add-only', ...logs]);
+  assert.equal(refreshed.code, 0, refreshed.stderr);
+  assert.match(refreshed.stdout, /duration skipped \(not tier-owned\): site\/test\/remote-docs.test.ts::/);
+  const manifest = JSON.parse(await readFile(join(cwd, 'hub/test/durations.json'), 'utf8'));
+  assert.deepEqual(Object.keys(manifest.files), [file]);
+  assert.equal(Object.keys(manifest.tests).length, 1);
+  const admitted = await commandIn(machine, cwd, 'npm', ['run', 'test:tiers']);
+  assert.equal(admitted.code, 0, admitted.stderr);
+  assert.match(admitted.stdout, /hub free: 1 files/);
+  // The refresh filter must not weaken the planner's existing refusal.
+  manifest.files['site/test/remote-docs.test.ts'] = { seconds: 1, tests: 0 };
+  await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify(manifest));
+  const refused = await commandIn(machine, cwd, 'npm', ['run', 'test:tiers']);
+  assert.notEqual(refused.code, 0, refused.stdout);
+  assert.ok(refused.stderr.includes('duration key has no matching test identity: site/test/remote-docs.test.ts'), refused.stderr);
 });

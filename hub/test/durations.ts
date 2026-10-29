@@ -3,6 +3,7 @@ import { glob, readFile, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isMap, isNode, parseDocument } from 'yaml';
+import { readTierAssignments } from '../src/suite-shards.ts';
 import type { TestProgress } from '../src/suite-progress.ts';
 import { DURATION_MANIFEST, fileTimings, readDurationManifest, timingKey, type DurationManifest, type TestTiming } from '../src/suite-durations.ts';
 
@@ -108,6 +109,14 @@ function addOnlyText(text: string, manifest: DurationManifest, previous: Duratio
 export async function refreshDurations(cwd: string, logs: string[], options: { addOnly?: boolean } = {}): Promise<DurationManifest> {
   if (!logs.length) throw new Error(usage);
   const previous = await readDurationManifest(cwd);
+  const tiers = await readTierAssignments(cwd);
+  const skipped = new Set<string>();
+  const owned = (file: string, key: string): boolean => {
+    if (!tiers || tiers.has(file)) return true;
+    if (!skipped.has(key)) console.log(`duration skipped (not tier-owned): ${key}`);
+    skipped.add(key);
+    return false;
+  };
   const samples = new Map<string, { test: TestTiming; seconds: number[] }>();
   const artifacts: string[] = [];
   let commit = '';
@@ -128,10 +137,11 @@ export async function refreshDurations(cwd: string, logs: string[], options: { a
     for (const test of records) {
       if (!test.file || typeof test.name !== 'string' || !Number.isFinite(test.seconds) || test.seconds < 0) throw new Error(`invalid test timing in ${path}`);
       const key = timingKey(test);
+      if (!owned(test.file, key)) continue;
       const sample = run.get(key) ?? { test, seconds: [] };
       sample.seconds.push(test.seconds); run.set(key, sample);
     }
-    const observed = new Map<string, Set<string>>(executed.map(file => [file, new Set<string>()]));
+    const observed = new Map<string, Set<string>>(executed.filter(file => owned(file, file)).map(file => [file, new Set<string>()]));
     for (const [key, sample] of run) {
       const names = observed.get(sample.test.file) ?? new Set<string>();
       names.add(key); observed.set(sample.test.file, names);
@@ -183,7 +193,7 @@ export async function refreshDurations(cwd: string, logs: string[], options: { a
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (process.argv.includes('--help')) { console.log(usage + '\n--add-only adds missing test/file baselines, preserving existing entries and all allowances.'); process.exit(0); }
+  if (process.argv.includes('--help')) { console.log(usage + '\nWith a tier manifest, skips and prints log identities outside its owned files; without one, retains legacy unfiltered refresh.\n--add-only adds missing test/file baselines, preserving existing entries and all allowances.'); process.exit(0); }
   if (process.argv[2] !== 'refresh') throw new Error(usage);
   const args = process.argv.slice(3);
   if (args.some(arg => arg.startsWith('--') && arg !== '--add-only')) throw new Error(usage);
