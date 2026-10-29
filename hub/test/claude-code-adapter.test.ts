@@ -226,9 +226,17 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const launched = await launch(ui, 'impl-1', { role: 'implementer' });
   await presentAs(ui, 'impl-1', 'idle');
 
-  await killDaemon((await withDiscoveredPid(ui, launched)).pid);
-  await clock.advance(150); // OS exit is observed; expire the 50ms watcher tick plus injected 100ms grace.
-  const gone = await eventually('the process gone', async () => (await status(ui)).harnesses.find((x) => x.name === 'impl-1' && x.status === 'exited'));
+  const discovered = await withDiscoveredPid(ui, launched);
+  // Force the native exit to arrive after the first watcher/grace advance.
+  await clock.advance(150);
+  assert.equal((await status(ui)).harnesses.find(x => x.sessionId === launched.sessionId)?.status, 'running');
+  await killDaemon(discovered.pid);
+  const gone = await eventually('the process gone', async () => {
+    // Native exit and asynchronous discovery can settle after any earlier tick.
+    // Keep driving the 50ms watcher plus 100ms re-exec grace until its row is exited.
+    await clock.advance(150);
+    return (await status(ui)).harnesses.find((x) => x.name === 'impl-1' && x.status === 'exited');
+  });
   assert.equal(gone.state, 'unknown');
   assert.equal(gone.attach, null);
   const event = await ui.waitFor((f) => f.type === 'session.state' && f.session === 'impl-1' && f.state === 'unknown');
