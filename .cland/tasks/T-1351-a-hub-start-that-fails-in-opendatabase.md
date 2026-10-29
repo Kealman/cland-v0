@@ -3,7 +3,7 @@ id: T-1351
 kind: task
 title: A hub start that fails in openDatabase leaks a FileHandle closed only on garbage collection
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1187
 branch: t/T-1351-a-hub-start-that-fails-in-opendatabase
 created: 2026-10-27T02:21:59.306Z
-updated: 2026-10-29T16:07:12.896Z
+updated: 2026-10-29T16:45:27.466Z
 ---
 
 ## Summary
@@ -29,6 +29,7 @@ Find which handle the partial start opens before `openDatabase` and make the fai
 
 - [x] C1. A hub start that fails at `openDatabase` closes every FileHandle it opened before rejecting, and a regression fails on today's code with the DEP0137 warning or an open-handle check (test).
   - done: impl-1351 · 2026-10-29T16:06:20.324Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1351-final · 2026-10-29T16:45:25.108Z · commit 8f8ec970971ba68d6ee98543073013aec45d4637
 
 ## Comments
 
@@ -65,3 +66,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full corrected source clear. M1 exact guide H1 and M2 shared pre-owned all-settled handle cleanup/control are closed. Production unchanged; descriptor-at-rejection, lock removal and successor assertions retained. New omitted-observation control proves fallback handles close before root removal. C1 remains runtime-unverified; one exact-head mode-free verification may follow. No Reviewer test execution or new-head Linux proof; preserve original outputs for final evidence audit.
+
+### rev-34 · 2026-10-29T16:45:25.108Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1351-final
+commit: 8f8ec970971ba68d6ee98543073013aec45d4637
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Exact-head final evidence clear: A-13786 independently confirms 4152 ordinary passes/511 files plus 10 task-owned load passes (both startup cases 5/5) and 50 unrelated site repetitions. Native descriptor-at-rejection, original error, lock/successor and omitted-observation cleanup assertions pass. C1 verified. Host T0/all T1/all fallback T2/Web complete; T3/T4 absent, journal-async not selected, report-only warnings retained. Host prepared-tree receipt reused with runtime source equality, not Linux typecheck. No findings.
+
+Criteria: C1 verified.

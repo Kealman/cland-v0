@@ -3,7 +3,7 @@ id: T-1350
 kind: task
 title: claude-code-adapter's crash case advances its injected clock once and can miss a late OS exit
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1191
 branch: t/T-1350-claude-code-adapter-s-crash-case
 created: 2026-10-26T22:36:48.083Z
-updated: 2026-10-29T16:37:09.216Z
+updated: 2026-10-29T16:48:40.393Z
 ---
 
 ## Summary
@@ -29,6 +29,7 @@ Make the wait drive the injected clock. Inside the `eventually` that waits for t
 
 - [x] C1. The named case advances its clock until the exited row appears, without depending on the OS exit landing before a single advance, and passes 10/10 sequential runs plus its load-gate repetitions (test).
   - done: impl-1350 · 2026-10-29T16:16:03.019Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1350-final · 2026-10-29T16:48:39.971Z · commit 19e24ad44acf949bdc55a374ccf59e6a5ecd650e
 
 ## Comments
 
@@ -65,3 +66,18 @@ Full source/revised proof plan clear. M1 guide/index corrected, crash source/ass
 ### impl-1350 · 2026-10-29T16:37:09.216Z
 
 Evidence at unchanged reviewed19e24ad44/tree709975bc: mode-free run029ff519 exit0, A-13801 original log,4156pass/0fail/cancel/skip. T0 host check complete; allT1/fallback allT2/Web and changedT3 file6/6 complete; otherT3/T4 not run. Required crash identity native finish pass5.291864244s (report-only5s overrun; existing identity, no new test allowance). Linux x64 c-8 sfo2 droplet Node24.21.0/Nvim0.12.5/Chrome Headless Shell156.0.8078.4 v1248; lifetime978s/$0.0679. CPU-load original A-13778 separate local darwin arm64 Node24.21.0/no browser, reviewed sealed clone,5/5 exit0 native summaries, both counters advanced each run, child/group cleanup settled,2worker joins/3lease releases.10 earlier sequential passes and red remain explicitly terminal-transcribed A-13751, no original logs invented. Duration/lint gates report only; full-all/stage or Linux load repetitions not claimed.
+
+### rev-34 · 2026-10-29T16:48:39.971Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1350-final
+commit: 19e24ad44acf949bdc55a374ccf59e6a5ecd650e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+C1 final evidence clear. Fresh authorized A-13816 supplies original ten exact sequential native passes at reviewed head/tree, 14 child joins/3 lease releases/clean completion; historical transcript no longer substitutes for that proof. A-13778 independently supplies five local CPU-load passes with both counters and joins/releases. Linux A-13801 supplies 4156 ordinary passes and changed Claude file 6/6, exact crash 5.291864244 s at line 21344. T0/T1/all T2/changed T3/Web complete; other T3/T4 absent, host-tree reuse and report-only warnings retained. No findings, C1 verified.
+
+Criteria: C1 verified.

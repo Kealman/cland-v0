@@ -2,8 +2,8 @@
 id: T-1380
 kind: task
 title: durations refresh adds site/test identities that no tier owns, and periodic dev T3 then skips
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1368
 topic: topic-1186
 branch: t/T-1380-durations-refresh-adds-site-test
 created: 2026-10-27T23:10:18.366Z
-updated: 2026-10-29T16:37:56.918Z
+updated: 2026-10-29T16:44:48.282Z
+closed: 2026-10-29T16:44:48.282Z
 ---
 
 ## Summary
@@ -107,3 +108,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13803 original A-13802 independently audited. Standards source3 retained/no findings. C1 full/add-only ownership cases pass0.012902501/0.002710312s and5/5load each; explicit skipped test/file receipts and owned-only keys retained. C2 native shipped-refresh/npm tier admission plus injected-key exact refusal passes1.473941211s using original-compared A12925/A12929 excerpts. ChangedT3 all23identities once/no repetitions, selected added wall5.998s excludes machine wait; no new>=3s case. Full4175ordinary+60load pass/no nonpass or unfinished; T0/T1/T2/changedT3/Web complete, remainingT3/T4 excluded. Budget/lint/ratchet growth report-only retained. Prior admission-only redA13769 separate. No Reviewer workloads; C1/C2 verified at frozenhead.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T16:44:48.282Z
+
+Merged 8a4608a3f0287823dc50afdd464033a642a771ff onto dev.

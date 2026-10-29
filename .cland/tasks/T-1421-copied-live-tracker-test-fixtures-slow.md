@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1193
 branch: t/T-1421-copied-live-tracker-test-fixtures-slow
 created: 2026-10-28T10:09:57.493Z
-updated: 2026-10-29T16:18:01.816Z
+updated: 2026-10-29T16:44:04.418Z
 ---
 
 ## Summary
@@ -26,8 +26,7 @@ The copied live-tracker fixtures read the whole project tracker, now about 1,420
 - [x] C1. The copied-tracker fixtures read a bounded snapshot (a fixed item count or a pinned copy) whose size does not grow with the live tracker, and each test keeps the behaviour it checks.
   - done: impl-1421 · 2026-10-29T16:17:20.443Z
 - [x] C2. The T-1419 allowances for web/test/items.test.ts are removed or reduced to the new measured timing at 1.5x.
-  - done: impl-1421 · 2026-10-29T16:12:05.474Z
-  - verified: rev-31 [reviewer] · run rev-20261029-1421-source2 · 2026-10-29T16:18:01.816Z · commit c312b89616e889fb778456d60315b67be6f5da56
+  - done: impl-1421 · 2026-10-29T16:44:02.897Z
 
 ## Notes
 
@@ -68,3 +67,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source2 clear; M1 resolved in two-guide-only correction, prior full source audit unchanged. A-13780. Standards/Spec 0 remaining findings. C2 source-established by removal of obsolete T-1419 88/105s caps; C1 final runtime verification awaits same-head original configured named receipts including changed T3/T4. Linux-first sizing per Coordinator remains required before adding replacements; any subsequent head needs source review. No Reviewer execution.
 
 Criteria: C2 verified.
+
+### rev-31 · 2026-10-29T16:43:54.548Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261029-1421-evidence1
+commit: c312b89616e889fb778456d60315b67be6f5da56
+scope: evidence
+findings: [{"severity":"medium","text":"E1: original Web22976 enforces the new pinned parent duration9.404423108s>5s with no allowance; Web/suite exit1 despite4156 ordinary+5 load passing tests. Approved manifest correction requires fresh source review and changed-head verification; failed receipt cannot settle final evidence.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence1 not clear at c312b896, original b2015b9d/A-13809 retained failed. Native case/assertion passes are distinct from Web/suite1. T0/T1/allT2/changedT3/T4 succeeded; all8 Items cases pass, pinned measurements retained, no behavioral failure diagnosed. Full audit A-13810. Coordinator da798b54 approves15s Web/15.2s generated startup R-1278 and T4 allowance removal; source review of actual manifest successor precedes retry. No Reviewer execution.
+
+Criteria: C2 failed (Configured run failed enforced duration gate for renamed pinned Web parent; complete approved measured allowance correction and fresh passing evidence before final settlement.).
