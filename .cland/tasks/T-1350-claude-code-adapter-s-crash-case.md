@@ -3,7 +3,7 @@ id: T-1350
 kind: task
 title: claude-code-adapter's crash case advances its injected clock once and can miss a late OS exit
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1191
 branch: t/T-1350-claude-code-adapter-s-crash-case
 created: 2026-10-26T22:36:48.083Z
-updated: 2026-10-29T16:03:25.573Z
+updated: 2026-10-29T16:07:34.163Z
 ---
 
 ## Summary

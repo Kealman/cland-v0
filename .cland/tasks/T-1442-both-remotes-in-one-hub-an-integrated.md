@@ -3,7 +3,7 @@ id: T-1442
 kind: task
 title: "Both remotes in one hub: an integrated scenario on the fake platforms"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1182
 branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T16:02:48.938Z
+updated: 2026-10-29T16:08:57.620Z
 ---
 
 ## Summary
@@ -27,12 +27,17 @@ A scenario test, for example `hub/test/scenarios/remotes.test.ts`, mapped T3 in 
 
 ## Acceptance criteria
 
-- [ ] C1. An ask answered from a Discord modal is stored once and turns the Telegram card into its outcome; a hub-side inbox read shows the ask answered.
-- [ ] C2. A photo and a voice note sent from each remote reach the other remote exactly once, marked "you (Telegram)" or "you (Discord)", with the 🎤 transcript.
-- [ ] C3. A hub restart under 90 seconds and one over 3 minutes are each caught up on both remotes: Discord resumes or reads history back, Telegram catches up, and open cards are re-sent per platform rules.
-- [ ] C4. Revoking the Telegram token on the fake stops only Telegram with its cause, while Discord keeps serving General both ways.
+- [x] C1. An ask answered from a Discord modal is stored once and turns the Telegram card into its outcome; a hub-side inbox read shows the ask answered.
+  - done: impl-1442 · 2026-10-29T16:08:54.389Z
+- [x] C2. A photo and a voice note sent from each remote reach the other remote exactly once, marked "you (Telegram)" or "you (Discord)", with the 🎤 transcript.
+  - done: impl-1442 · 2026-10-29T16:08:55.163Z
+- [x] C3. A hub restart under 90 seconds and one over 3 minutes are each caught up on both remotes: Discord resumes or reads history back, Telegram catches up, and open cards are re-sent per platform rules.
+  - done: impl-1442 · 2026-10-29T16:08:55.587Z
+- [x] C4. Revoking the Telegram token on the fake stops only Telegram with its cause, while Discord keeps serving General both ways.
+  - done: impl-1442 · 2026-10-29T16:08:57.519Z
 - [ ] C5. The scenario passes 5/5 locally under two busy workers through the shared suite-lock leases with raw receipts, and once on Linux in the mode-free run; any allowance it needs is owned by R-1278 with a reason.
-- [ ] C6. A graceful hub stop persists Telegram's outage state, so a restart catches up: late messages carry their written time and open cards are re-sent per Telegram's rules.
+- [x] C6. A graceful hub stop persists Telegram's outage state, so a restart catches up: late messages carry their written time and open cards are re-sent per Telegram's rules.
+  - done: impl-1442 · 2026-10-29T16:08:57.620Z
 
 ## Comments
 

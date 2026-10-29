@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1181
 branch: t/T-1443-the-remote-docs-describe-0-3-0-as-built
 created: 2026-10-29T15:55:47.685Z
-updated: 2026-10-29T16:04:42.980Z
+updated: 2026-10-29T16:09:07.676Z
 ---
 
 ## Summary

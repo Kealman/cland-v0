@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1188
 branch: t/T-1426-queued-review-requests-wait-while
 created: 2026-10-28T12:40:05.299Z
-updated: 2026-10-29T16:04:11.386Z
+updated: 2026-10-29T16:06:35.682Z
 ---
 
 ## Summary
@@ -51,3 +51,16 @@ Rule 20 inventory before lifecycle-policy edit: HubCore.publishTask/sessionPendi
 
 Reproduced before fixes at production frame/fake seam: ready-transition assertion expected ['rev-idle'] but got ['reviewer']; legacy ready restart expected undefined but got {item:'T-1',kind:'review'} and queued destination stayed ['reviewer']; late ready request replaced live pending and its next read returned undefined. Added ready cleanup on publication, legacy read cleanup and delivery-admission guard without changing the {item,kind} format.
 Additional consumer search: nvim/lua/cland/panels.lua and nvim/test/shell-component.test.ts render pending.item/kind unchanged; qa/briefs/T-275.md exercises unchanged open pending work. No web/shared reader or startup-probe match for pending.item/kind. Those consumers are unaffected because only stale ready markers disappear. Existing T1/T2/T3 and archive consumers retain the same schema. Skill file remains frozen; proposed guidance sent to Coordinator. No command, role permission or CLI shape changes; help and role clause need no edits.
+
+### rev-31 · 2026-10-29T16:06:35.682Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1426-source1
+commit: 647c2bebf49da1e6eabdaba05afb803c9f51747e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13755 full source1 clear, Standards0/Spec0. Ready cleanup coherently extends publication/all durable reservations, legacy pending read pruning and late-delivery admission guard. Existing verdict/hold/closure/landing and uncertain-open reservation paths retained; no wire/metadata schema change. Frame regression asserts recorded ready-tick assignment/accepted pending to idle reviewer while another remains busy; legacy ready variants retain FIFO/visibility and stop first writer before DB seed. Matching docs/consumer inventory include unchanged Neovim pending readers and T3 session-holds/routing paths. A-13745 local19/19/new99/71/79ms plus exact-head typecheck remain macOS summary evidence, not Linux or full-tier. C1/C2 runtime-unverified. Proceed unchanged mode-free verify then original-record final review; no full task run/per-item QA.

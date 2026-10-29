@@ -5,6 +5,7 @@ title: "web Inbox: reading a message with d can show the 'left Inbox' outcome wh
 state: open
 status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1189
 branch: t/T-1430-web-inbox-reading-a-message-with-d-can
 created: 2026-10-28T14:41:32.173Z
-updated: 2026-10-29T16:04:11.947Z
+updated: 2026-10-29T16:06:53.485Z
 ---
 
 ## Summary
@@ -22,7 +23,8 @@ updated: 2026-10-29T16:04:11.947Z
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is attributed from receipts: the order of the read reply and the removal delta, and which one sets the outcome text.
+- [x] C1. The cause is attributed from receipts: the order of the read reply and the removal delta, and which one sets the outcome text.
+  - done: impl-1430 · 2026-10-29T16:05:21.579Z
 - [ ] C2. An own `d` read always shows the read outcome, whichever of the reply and the delta arrives first (a product fix if the label is wrong; a test fix only if "left Inbox" is the specified outcome), with 10/10 Web repetitions under load.
 
 ## Notes

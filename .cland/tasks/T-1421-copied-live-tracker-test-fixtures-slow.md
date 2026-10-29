@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
+topic: topic-1193
 branch: t/T-1421-copied-live-tracker-test-fixtures-slow
 created: 2026-10-28T10:09:57.493Z
-updated: 2026-10-29T16:04:50.285Z
+updated: 2026-10-29T16:08:24.502Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ The copied live-tracker fixtures read the whole project tracker, now about 1,420
 ## Notes
 
 Follow-up of T-1419 (shared defect, 2026-10-28). Allowances owned by E-1311 expire 2026-11-04.
+
+## Comments
+
+### impl-1421 · 2026-10-29T16:08:24.502Z
+
+C1 red observed on dev baseline: `AssertionError: default differential uses at most 64 pinned tracker items` at original full-copy boundary (1443 inputs). Baselines macOS arm64: Lua 21.633s/22.387s file; nvim closed-pages 19.678s/20.323s file; startup copied-live 7.293s/13.174s file (including unchanged thousand-row case 5.300s). Plan: fixed 24-item JSON corpus (21 shape-selected originals with ancestor closure + 3 explicit missing-shape rows), shared copier; retain identical all-live Lua oracle as separate T4 file. No hub/src or wire contract changes. Full-copy startup probe remains explicit/manual.
