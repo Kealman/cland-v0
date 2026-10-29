@@ -3,7 +3,7 @@ id: T-1248
 kind: task
 title: The first task.list reply nears its byte cap as the live tracker grows
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1444
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T15:59:41.659Z
+updated: 2026-10-29T16:59:35.913Z
 ---
 
 ## Summary

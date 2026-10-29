@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1197
 branch: t/T-1319-closing-an-epic-that-owns-duration
 created: 2026-10-26T01:52:55.592Z
-updated: 2026-10-29T16:58:33.635Z
+updated: 2026-10-29T16:59:24.355Z
 ---
 
 ## Summary
