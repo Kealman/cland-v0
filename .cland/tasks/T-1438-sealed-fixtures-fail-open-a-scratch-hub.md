@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-29T10:42:10.083Z
-updated: 2026-10-29T10:42:10.083Z
+updated: 2026-10-29T10:42:29.591Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ Make sealed fixtures fail closed for every remote and provider endpoint (Discord
 - [ ] C1. A fixture hub with Discord enabled and no `CLAND_DISCORD_API_ROOT` in `extra` makes no request to a non-loopback host and reports a plain fixture error.
 - [ ] C2. The same holds for Telegram and the ElevenLabs speech provider.
 - [ ] C3. Passing the override in `base` instead of `extra` is caught by the same guard.
+
+## Comments
+
+### coord · 2026-10-29T10:42:29.591Z
+
+Exposure record (impl-1371, 2026-10-29 10:42Z): before the override fix, T-1371's runs made only REST application reads with a made-up token. Setup failed before enabling Discord, so no gateway websocket and no Identify was opened. No real token or account was involved.
