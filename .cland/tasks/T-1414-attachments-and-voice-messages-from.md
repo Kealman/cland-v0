@@ -3,7 +3,7 @@ id: T-1414
 kind: task
 title: Attachments and voice messages from Discord become the human's artifacts and 🎤 transcripts
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:48.717Z
-updated: 2026-10-28T05:05:33.511Z
+updated: 2026-10-29T07:16:27.995Z
 ---
 
 > Pending: whether Discord attachments and voice stay in this epic (blocked by E-1311) or move to a 0.3.x release awaits the human's answer to ask 62b8d32f; the Coordinator's recommendation keeps them here. Do not launch before it is answered.

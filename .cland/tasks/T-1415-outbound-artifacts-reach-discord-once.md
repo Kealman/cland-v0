@@ -3,7 +3,7 @@ id: T-1415
 kind: task
 title: Outbound artifacts reach Discord once per remote within its file limits
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-27T23:38:48.861Z
-updated: 2026-10-28T05:05:33.665Z
+updated: 2026-10-29T07:16:28.109Z
 ---
 
 > Pending: whether Discord attachments and voice stay in this epic (blocked by E-1311) or move to a 0.3.x release awaits the human's answer to ask 62b8d32f; the Coordinator's recommendation keeps them here. Do not launch before it is answered.

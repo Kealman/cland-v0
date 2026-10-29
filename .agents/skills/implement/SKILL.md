@@ -839,3 +839,18 @@ before offering a key. For Telegram workbench marks, use
 `web/test/telegram-marks.test.ts` and `nvim/test/telegram-marks.test.ts` with their
 guides; keep the persisted prefix and wire shape and assert header marks and
 attached audio separately.
+
+For Discord resume, replay and fresh-Identify history catch-up, use the restart
+and history cases in `docs/agents/tests/hub-test-discord-cards.test.ts.md` and the
+native kill case in `docs/agents/tests/hub-test-telegram-polling-restart.test.ts.md`.
+Hub stops close 4000 and keep the durable session and handled sequence; a
+configuration disable closes 1000 and clears it through the optional
+`Remote.disable` hook. Persist a replay cursor or bounded history selection only
+after its dispatch effect has settled. Replayed messages keep their written and
+return times, commands are dropped and presses never answer. Gate live text and
+publication until history settles, then send the silent source-counted gap and
+re-send only mapped open cards, with stable keys and old copies retired after the
+sent receipt. Outbox reads select pending states or exact ids; never decode the
+whole ledger per input. Advance fake clocks by observed sent receipts, not by
+mapping counts, and keep an independent hub request bounded during catch-up.
+Keep the previous adapter, wire and outbox shapes.

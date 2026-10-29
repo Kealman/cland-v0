@@ -78,9 +78,11 @@
       "A-13471",
       "A-13476",
       "A-13547",
-      "A-13551"
+      "A-13551",
+      "A-13612",
+      "A-13610"
     ],
-    "commit": "d9271f3faf350a7c661b03633b7cf46f48fd100f"
+    "commit": "45348cf0137e5ce98ffe47cbfa1734b0a5a7a7bc"
   },
   "budget": {
     "testSeconds": 5,
@@ -8370,7 +8372,35 @@
     "hub/test/telegram-marks-setup.test.ts::Telegram marks fixture drains omitted setup before removing its root": 0.225016,
     "hub/test/telegram-marks-setup.test.ts::Telegram marks incomplete drain retains root and Store until actual settlement": 0.02996,
     "nvim/test/telegram-marks.test.ts::native Telegram voice marks, audio, text and approval outcome render in Neovim": 0.852735,
-    "web/test/telegram-marks.test.ts::native Telegram voice marks, audio, text and approval outcome render in Chromium": 2.003849
+    "web/test/telegram-marks.test.ts::native Telegram voice marks, audio, text and approval outcome render in Chromium": 2.003849,
+    "hub/test/discord-cards.test.ts::Discord config disable and reload closes normally and reenable identifies afresh": 0.912821,
+    "hub/test/discord-cards.test.ts::Discord each live resume gates an owed resend before input without a new press": 0.194424,
+    "hub/test/discord-cards.test.ts::Discord fatal close remains sessionless after full shutdown and identifies on restart": 0.207866,
+    "hub/test/discord-cards.test.ts::Discord fresh Identify catches history in order and resends every open card": 0.314699,
+    "hub/test/discord-cards.test.ts::Discord fresh recovery sends one silent source-counted gap before replacement cards": 0.232494,
+    "hub/test/discord-cards.test.ts::Discord gap recovery retains its obligation after lost native warning": 0.333689,
+    "hub/test/discord-cards.test.ts::Discord gap recovery retains its obligation after refused native warning": 0.294693,
+    "hub/test/discord-cards.test.ts::Discord history cap forwards newest 20 of 25 in order with silent overflow and responsive hub": 0.57735,
+    "hub/test/discord-cards.test.ts::Discord history pages exactly to an above-2^53 TEXT cursor after restart": 0.240916,
+    "hub/test/discord-cards.test.ts::Discord hub restart after thirty seconds resumes without Identify": 0.211337,
+    "hub/test/discord-cards.test.ts::Discord interrupted history resumes its frozen batch without duplicate General input": 0.290711,
+    "hub/test/discord-cards.test.ts::Discord interrupted input confirmation replays the uncommitted input after restart": 0.176253,
+    "hub/test/discord-cards.test.ts::Discord live resume labels input with the current recovery minute": 0.195488,
+    "hub/test/discord-cards.test.ts::Discord live RESUMED joins held active history before replay input and replacement cards": 0.278238,
+    "hub/test/discord-cards.test.ts::Discord overflow recovery retains its obligation after lost native warning": 0.264975,
+    "hub/test/discord-cards.test.ts::Discord overflow recovery retains its obligation after refused native warning": 0.266604,
+    "hub/test/discord-cards.test.ts::Discord refused stale-topic input keeps the remote live for the following valid input": 0.143082,
+    "hub/test/discord-cards.test.ts::Discord replay retains the complete numbered option list in a long card": 0.266127,
+    "hub/test/discord-cards.test.ts::Discord replay stores all buffered input before resending a pressed card": 0.25972,
+    "hub/test/discord-cards.test.ts::Discord replayed message reaches General once with written and return times": 0.256672,
+    "hub/test/discord-cards.test.ts::Discord resumable stop finishes frozen history before replay input and replacement cards": 0.327272,
+    "hub/test/discord-cards.test.ts::Discord resumed press resends only its card without answering or acknowledging": 0.281107,
+    "hub/test/discord-cards.test.ts::Discord resumed scripted approval press preserves the colon-bearing approval identity": 0.257518,
+    "hub/test/discord-cards.test.ts::Discord retirement completion keeps pacing until late feedback and every old copy settle": 0.349874,
+    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": 21.853731,
+    "hub/test/telegram-polling-restart.test.ts::Discord native history setup aborted drains its Store writers and observations": 1.748883,
+    "hub/test/telegram-polling-restart.test.ts::Discord native history setup omitted drains its Store writers and observations": 1.875491,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": 6.761701
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
