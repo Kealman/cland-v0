@@ -49,7 +49,13 @@ export async function fixture(t: import('node:test').TestContext, testScript: st
     ownProcess(t, pid);
     return pid;
   };
-  return { root, discovery, ui, env, topic, results, launch, workerPid, spoke };
+  // Lifecycle tests need a durable worker identity before stopping their hub or
+  // editing its saved job. A submission reply may still describe a queued job.
+  const launchWorker = async () => {
+    const job = await launch();
+    return { ...job, pid: await workerPid(job.id) };
+  };
+  return { root, discovery, ui, env, topic, results, launch, launchWorker, workerPid, spoke };
 }
 
 /** Candidate files only, for fixture contracts without a hub or subprocess. */

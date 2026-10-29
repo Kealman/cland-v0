@@ -1,5 +1,6 @@
 // T3: detached suite workers outlive their CLI and survive hub restart.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { LocalExecutor } from '../src/executor/local.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -238,9 +239,45 @@ test('a muted suite report follows its moved log after unmute and publishes once
   assert.equal((artifacts.value as { artifacts: Artifact[] }).artifacts.length, 1, 'only the destination folder is listed; no replacement log was created');
 });
 
+test('suite worker setup waits for admission rather than the launch PID snapshot', async t => {
+  // T3: hold the local executor slot before the real detached worker is admitted.
+  const f = await fixture(t, fileBarrierCommand);
+  onCleanup(t, () => writeFile(join(f.root, 'finish'), 'ready'));
+  const occupied = t.mock.method(LocalExecutor.prototype, 'occupied', async () => true);
+  // Observe the native CLI reply before opening admission. The setup under test
+  // must obtain a later PID receipt rather than retaining that reply's null PID.
+  const setup = f.launchWorker();
+  void setup.catch(() => {});
+  try {
+    const waiting = await eventually('queued suite before worker admission', async () => {
+      const status = await f.ui.request({ type: 'hub.status', history: true });
+      assert.equal(status.ok, true, status.error);
+      return (status.value as HubStatus).suites?.find(job => job.state === 'queued');
+    });
+    assert.equal(waiting.pid, null);
+    // A second submission joins the same queued job and proves its launch shape.
+    const snapshot = await f.launch();
+    assert.equal(snapshot.id, waiting.id);
+    assert.equal(snapshot.pid, null);
+    occupied.mock.restore();
+    const worker = await setup;
+    const pid = await f.workerPid(waiting.id);
+    assert.equal(worker.pid, pid, 'setup returns the admitted worker PID, not the queued launch snapshot');
+    assert.equal(pidAlive(pid), true);
+    await writeFile(join(f.root, 'finish'), 'ready');
+    const result = await eventually('held-admission worker result', async () => (await f.results())[0]);
+    assert.match(result.text, /auto exit 0/);
+  } finally {
+    occupied.mock.restore();
+    // Settle setup while its frame client and hub still exist, even on a failed
+    // assertion. The fixture owns the resulting worker before removing its root.
+    await setup.catch(() => {});
+  }
+});
+
 test('failure cleanup preserves a live worker whose recorded start identity is unavailable', async t => {
   const f = await fixture(t, fileBarrierCommand, undefined, undefined, undefined, undefined, undefined, startDaemon);
-  const job = await f.launch();
+  const job = await f.launchWorker();
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   const db = new DatabaseSync(join(f.root, '.cland', 'hub.db'));
   try {
