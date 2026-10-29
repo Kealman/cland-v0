@@ -172,6 +172,7 @@ export class DiscordInbound {
       const saved = (frame.value as { message: TopicMessage }).message;
       const receipt = { ...pending.receipt, hub: saved.id, delivered: saved.stage === 'delivered' || saved.stage === 'injected' };
       this.#store.set(`discord.inbound:${receipt.message}`, JSON.stringify(receipt));
+      this.#store.putMessage({ chatId: receipt.channel, messageId: receipt.message, topic: saved.topic, message: saved.id, ask: null, approval: null });
       pending.resolve(saved);
     }
     else if (this.#signal.aborted) pending.reject(new Error('Discord input cancelled'));

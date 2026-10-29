@@ -109,3 +109,32 @@ A same-window restart observes native RESUME and an unchanged Identify count.
 Standalone terminal-refusal cleanup joins the remote before closing its injected
 Store. Pairing-feedback controls own the coordinator delivery observer before
 native input, then retain durable delivered and native reaction assertions.
+
+T-1447 adds four production-frame cases, one per input/destination messenger pair:
+`General agent reply to human {telegram|discord} input threads natively on {telegram|discord}`.
+A native human input is stored and mirrored to the other remote before an agent's
+`send` with `reply_to`. Observe the durable sent receipt, then check Telegram's
+`reply_parameters` and Discord's `message_reference`. Delete the target in the
+fake while retaining its hub mapping, then remove that mapping for the unmapped
+control. Both fallbacks retain exactly one native plain message and one HTTP
+create. Fake deletion and native missing-target flags model platform behavior;
+no real bot, credentials or browser is used. Existing nonce/restart tests retain
+old payload coverage. The current chat restricts reverse lookup; split copies
+choose the first recorded native message.
+
+Source-review corrections extend each T-1447 messenger pair with a first file
+upload, a default sent-above reference and an explicit reply to the distinct
+human source with that same artifact. Native receipts assert the reply target
+and one upload. Both deleted and unmapped targets retain exactly-one plain
+text and reused-artifact controls. Discord's reused-artifact content omits the
+new caption, so observations select the exact durable source mapping and native
+nonce, rather than waiting for caption text. Explicit reply intent suppresses
+default sent-above threading even when the explicit target has no local mapping;
+the optional Telegram FileIntent marker is absent in historical payloads.
+
+The paired fixture uses pacingOwner before native acquisition: it owns dynamic
+hub startup, joins stop before Store disposal, and bounds the serving observer
+separately. `General reply paired fixture drains {omitted|aborted} startup before
+Store disposal` injects a missing serving receipt or aborts that observation,
+then asserts the acquired hub's stopped receipt, closed Store and drained fake
+clocks. No partial startup receipt is treated as successful acquisition.

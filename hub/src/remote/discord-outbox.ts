@@ -104,14 +104,14 @@ export class DiscordOutbox {
       payload: { discord: true, channel, user, reaction: { message, emoji } } });
     await lane.drain();
   }
-  async sendGroup(channel: string, parts: string[], source: string, silent: boolean): Promise<void> {
+  async sendGroup(channel: string, parts: string[], source: string, silent: boolean, reply?: string): Promise<void> {
     this.#signal.throwIfAborted();
     const lane = this.#lane(channel);
     // No native I/O or yielding until the entire rendered group is durable.
     this.#store.transaction(() => {
       lane.setAvailable(true);
       for (const [index, content] of parts.entries()) this.#enqueue(lane, channel, content,
-        parts.length === 1 ? source : `${source}:part:${index + 1}`, silent, source);
+        parts.length === 1 ? source : `${source}:part:${index + 1}`, silent, source, reply);
     });
     await lane.drain();
   }
@@ -124,7 +124,8 @@ export class DiscordOutbox {
   }
   /** Reserve each artifact in the messenger ledger before any native I/O. */
   async publication(channel: string, message: Message, header: string, silent: boolean): Promise<void> {
-    if (!this.#files || !message.artifact && !message.artifacts?.length) return this.sendGroup(channel, renderDiscord(header, message.text), message.id, silent);
+    const reply = message.replyTo ? this.#store.messageForSource(channel, message.replyTo)?.messageId : undefined;
+    if (!this.#files || !message.artifact && !message.artifacts?.length) return this.sendGroup(channel, renderDiscord(header, message.text), message.id, silent, reply);
     const lane = this.#lane(channel);
     if (this.#store.get(`discord.publication:${message.id}`)) { await lane.drain(); return; }
     const plan = artifactPlan(this.#files.root, message, header, { photo: 0, document: 20 * 1024 * 1024, caption: 2000, images: [] });
@@ -132,7 +133,7 @@ export class DiscordOutbox {
       lane.setAvailable(true);
       let index = 0;
       let group: string[] = [], bytes = 0, caption = header;
-      const enqueue = (content: string, files?: string[], reply?: string) => this.#enqueue(lane, channel, content, `${message.id}:artifact-part:${++index}`, silent, message.id, reply, files, message.id);
+      const enqueue = (content: string, files?: string[], target = reply) => this.#enqueue(lane, channel, content, `${message.id}:artifact-part:${++index}`, silent, message.id, target, files, message.id);
       const flush = () => { if (group.length) enqueue(caption, group); group = []; bytes = 0; };
       for (const part of plan) {
         if (part.type === 'text') {
@@ -149,7 +150,7 @@ export class DiscordOutbox {
           const sameChannel = prior.channel === channel;
           const delivered = (JSON.parse(this.#store.get(`discord.outbox.delivered:${previous.id}`) ?? '[]') as string[]).includes(part.artifact);
           const sent = previous.state === 'sent' && delivered;
-          enqueue(`${header}\n▣ ${part.artifact} ${this.#files!.artifact(part.artifact)?.title ?? ''} (${sent ? sameChannel ? 'sent above' : 'sent above in the previous channel' : previous.state === 'sent' ? 'not uploaded' : 'delivery unconfirmed'})`, undefined, sent && sameChannel ? id ?? undefined : undefined);
+          enqueue(`${header}\n▣ ${part.artifact} ${this.#files!.artifact(part.artifact)?.title ?? ''} (${sent ? sameChannel ? 'sent above' : 'sent above in the previous channel' : previous.state === 'sent' ? 'not uploaded' : 'delivery unconfirmed'})`, undefined, message.replyTo ? reply : sent && sameChannel ? id ?? undefined : undefined);
           continue;
         }
         const artifact = this.#files!.artifact(part.artifact);

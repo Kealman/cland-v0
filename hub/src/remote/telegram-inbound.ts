@@ -128,6 +128,7 @@ export class TelegramInbound {
       const receipt = old ? JSON.parse(old) as Receipt : pending.receipt;
       receipt.delivered ||= message.stage === 'delivered' || message.stage === 'injected';
       this.#store.set(key, JSON.stringify(receipt));
+      this.#store.putMessage({ chatId: receipt.chat, messageId: String(receipt.message), topic: message.topic, message: message.id, ask: null, approval: null });
       pending.resolve(message);
     }
   }

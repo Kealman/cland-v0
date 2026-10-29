@@ -167,6 +167,11 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       }
       return reply(res, 200, {});
     }
+    if (path.pathname === '/control/delete') {
+      const index = state.messages.findIndex(m => m.id === body.message_id);
+      if (index >= 0) state.messages.splice(index, 1);
+      return reply(res, 200, {});
+    }
     if (path.pathname === '/control/drop') { gateway.drop(); return reply(res, 200, {}); }
     if (path.pathname === '/control/close') { gateway.closeCode(Number(body.code)); return reply(res, 200, {}); }
     if (path.pathname === '/control/dispatch') { gateway.dispatch(body); return reply(res, 200, {}); }
@@ -278,7 +283,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       const key = `${DISCORD_IDS.bot}:${String(body.nonce)}`;
       const old = nonces.get(key);
       if (body.enforce_nonce && old && clock.now().getTime() - old.at < 300_000) return reply(res, 200, old.message);
-      const message: DiscordMessage = { id: String(nextId++), channel_id: channel,
+      const reference = body.message_reference as { message_id: string; fail_if_not_exists?: boolean } | undefined;
+      const target = reference && state.messages.find(m => m.id === reference.message_id && m.channel_id === channel);
+      if (reference && !target && reference.fail_if_not_exists !== false) return reply(res, 400, { code: 10008 });
+      const message: DiscordMessage = { ...(target ? { message_reference: { message_id: target.id } } : {}), id: String(nextId++), channel_id: channel,
         author: { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true }, content: String(body.content ?? ''),
         timestamp: clock.now().toISOString(), type: 0,
         ...(typeof body.flags === 'number' ? { flags: body.flags } : {}),
@@ -364,7 +372,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   async function control(operation: 'interact', body: object): Promise<{ id: string }>;
   async function control(operation: 'say', body: { contents: string[] }): Promise<DiscordMessage[]>;
   async function control(operation: 'say', body: object): Promise<DiscordMessage>;
-  async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch' | 'close' | 'drop', body: object): Promise<Record<string, never>>;
+  async function control(operation: 'configure' | 'fault' | 'release' | 'dispatch' | 'close' | 'drop' | 'delete', body: object): Promise<Record<string, never>>;
   async function control(operation: string, body?: object): Promise<unknown> {
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(), 2000);

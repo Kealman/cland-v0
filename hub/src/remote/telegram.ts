@@ -242,14 +242,15 @@ export class TelegramRemote implements Remote {
     if (message.fromKind !== 'hub' && this.#polling!.store.suppressMutedMessage(message.id)) return;
     return this.#track(async () => {
       const { header } = mirrored;
-      const options = { link_preview_options: { is_disabled: true }, disable_notification: mirrored.silent };
+      const reply = message.replyTo ? this.#polling!.store.messageForSource(pairing.chatId, message.replyTo) : null;
+      const options = { ...(reply ? { reply_parameters: { message_id: Number(reply.messageId), allow_sending_without_reply: true } } : {}), link_preview_options: { is_disabled: true }, disable_notification: mirrored.silent };
       const facts = { kind: 'general' as const, source: message.id, topic: 'general', missed: !!this.#offline };
       const plan = this.#polling?.files ? artifactPlan(this.#polling.files.root, message, header, telegramArtifactLimits) : [{ type: 'text' as const, text: message.text }];
       await this.#transient(async () => {
         // Planning and every enqueue are synchronous: no other publication enters the batch.
         const sends = this.#outbox.batch(() => plan.flatMap(part => {
           if (part.type !== 'text') return [this.#outbox.file(part.type === 'photo' ? 'sendPhoto' : 'sendDocument',
-            { chat_id: pairing.chatId, artifact: part.artifact, caption: part.caption, disable_notification: mirrored.silent }, facts)];
+            { chat_id: pairing.chatId, artifact: part.artifact, caption: part.caption, ...(message.replyTo ? { replyRequested: true } : {}), ...options }, facts)];
           const parts = plainParts(header, part.text).map(text => ({ chat_id: pairing.chatId, ...text, ...options }));
           return this.#format === 'rich' ? [this.#outbox.rich({ chat_id: pairing.chatId,
             rich_message: { markdown: `${header}\n${part.text}`, skip_entity_detection: true }, ...options }, parts, facts)]

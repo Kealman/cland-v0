@@ -189,11 +189,19 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         wake();
         return reply(res, 200, queued);
       }
+      if (req.method === 'POST' && req.url === '/control/delete') {
+        for (const rows of [messages, inboundMedia]) {
+          const index = rows.findIndex(m => String(m.message_id) === String(params.message_id));
+          if (index >= 0) rows.splice(index, 1);
+        }
+        return reply(res, 200, {});
+      }
       if (req.method === 'POST' && req.url === '/control/say') {
         const user = params.user === 'stranger' ? STRANGER : HUMAN;
         const message: TgMessage = { message_id: nextMessage++, date: 1_793_044_800,
           chat: { id: user.id, type: 'private' }, from: user, text: String(params.text ?? '') };
         const update: TgUpdate = { update_id: nextUpdate++, message };
+        inboundMedia.push(message);
         updates.push(redact.value(update));
         wake();
         return reply(res, 200, update);
@@ -350,7 +358,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           return reply(res, 400, { ok: false, error_code: 400, description: 'file or caption is too big' });
         const replyParameters = params.reply_parameters as TgReplyParameters | undefined;
         const target = replyParameters && [...messages, ...inboundMedia].find(message => message.message_id === replyParameters.message_id && String(message.chat.id) === String(params.chat_id));
-        if (replyParameters && !target) return reply(res, 400, { ok: false, error_code: 400, description: 'reply not found' });
+        if (replyParameters && !target && !replyParameters.allow_sending_without_reply) return reply(res, 400, { ok: false, error_code: 400, description: 'reply not found' });
         uploads.push(redact.value({ method, ...uploaded, caption: params.caption ?? '' }));
         const media = { file_id: `sent-${nextMessage}`, file_unique_id: `sent-${nextMessage}`, file_size: uploaded.size, file_name: uploaded.name, mime_type: uploaded.mime };
         const message: TgMessage = redact.value({ message_id: nextMessage++, date: 1_793_044_800, from: BOT, chat: { id: Number(params.chat_id), type: 'private' },
@@ -422,7 +430,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         const replyParameters = params.reply_parameters as TgReplyParameters | undefined;
         const repliedTo = replyParameters && [...messages, ...inboundMedia].find(message => message.message_id === replyParameters.message_id
           && String(message.chat.id) === String(params.chat_id));
-        if (replyParameters && !repliedTo) return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message to reply not found' });
+        if (replyParameters && !repliedTo && !replyParameters.allow_sending_without_reply) return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message to reply not found' });
         const message: TgMessage = redact.value({ message_id: nextMessage++, date: 1_793_044_800,
           chat: { id: Number(params.chat_id), type: 'private' }, from: BOT, text,
           ...(params.entities ? { entities: params.entities as TgEntity[] } : {}),

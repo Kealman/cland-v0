@@ -229,6 +229,11 @@ export class RemoteStore {
     const row = this.#db.prepare('select * from remote_messages where messenger = ? and chat_id = ? and message_id = ?').get(this.#id, chatId, messageId);
     return row ? { chatId: String(row.chat_id), messageId: String(row.message_id), topic: String(row.topic), message: nullable(row.message), ask: nullable(row.ask), approval: nullable(row.approval) } : null;
   }
+  /** Earliest native copy in the current chat, including input and split publications. */
+  messageForSource(chatId: string, source: string): RemoteMessage | null {
+    const row = this.#db.prepare('select message_id from remote_messages where messenger = ? and chat_id = ? and message = ? order by rowid limit 1').get(this.#id, chatId, source);
+    return row ? this.message(chatId, String(row.message_id)) : null;
+  }
   messagesForAsk(ask: string): RemoteMessage[] {
     return this.#db.prepare('select chat_id, message_id from remote_messages where messenger = ? and ask = ?')
       .all(this.#id, ask).map(row => this.message(String(row.chat_id), String(row.message_id))!);

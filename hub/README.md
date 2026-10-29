@@ -7135,7 +7135,7 @@ uses the neutral missed/gap classification). Discord promises only “the past f
 minutes”; this conservative local window is not a guaranteed platform TTL.
 
 Paired-user replies resolve `message_reference.message_id` through the durable
-native message map, retaining the topic and `replyTo`. Unknown references and explicit deleted-target markers become
+native message map, retaining the topic and `replyTo`. Outbound General replies resolve that source in the current paired chat, including the human’s own input and cross-remote copies. Telegram sends `reply_parameters` with `allow_sending_without_reply: true`; Discord sends `message_reference` with `fail_if_not_exists: false`. Unmapped or deleted targets deliver once as plain messages. An explicit General reply also takes precedence over a reused artifact’s default sent-above reference; the artifact remains uploaded only once. Unknown references and explicit deleted-target markers become
 plain General messages. Other members, bots and webhooks receive no feedback.
 After storage, `discord.inbound:<native-id>` records the native identity and hub
 message id. The outbox adds 👌 after that result and 👀 after delivered/injected;

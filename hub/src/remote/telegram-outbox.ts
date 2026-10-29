@@ -3,10 +3,10 @@ import type { Artifact } from '../protocol.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { Outbox, type DeliveryResult, type OutboxInput } from './outbox.ts';
 import { RemoteState, type OutboxJob, type RemoteMessage, type RemoteStore } from './state.ts';
-import { TelegramApi, TelegramError, type SendMessage, type SendRichMessage, type SetMessageReaction, type EditMessageText } from './telegram-api.ts';
+import { TelegramApi, TelegramError, type SendMessage, type SendRichMessage, type SetMessageReaction, type EditMessageText, type TgReplyParameters } from './telegram-api.ts';
 import type { Clock } from '../hub/clock.ts';
 
-type FileIntent = { chat_id: string | number; artifact: string; caption: string; disable_notification?: boolean };
+type FileIntent = { replyRequested?: boolean; reply_parameters?: TgReplyParameters; chat_id: string | number; artifact: string; caption: string; disable_notification?: boolean };
 type Payload = {
   key?: string; admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null;
   telegram: true; batch?: number; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction' | 'editMessageText' | 'sendPhoto' | 'sendDocument';
@@ -71,10 +71,10 @@ export class TelegramOutbox {
       const receipt = this.#store.get(`telegram.outbox.receipt:${previous.id}`);
       const result = receipt ? JSON.parse(receipt) as DeliveryResult : undefined;
       if (result?.status === 'sent' && result.message) return this.send({ chat_id: params.chat_id,
-        text: `${params.caption}\n▣ ${params.artifact} ${this.#files?.artifact(params.artifact)?.title ?? ''} ${result.message.chatId === String(params.chat_id) ? '(sent above)' : '(sent above in the previous chat)'}`, ...(result.message.chatId === String(params.chat_id) ? { reply_parameters: { message_id: Number(result.message.messageId) } } : {}) },
+        text: `${params.caption}\n▣ ${params.artifact} ${this.#files?.artifact(params.artifact)?.title ?? ''} ${result.message.chatId === String(params.chat_id) ? '(sent above)' : '(sent above in the previous chat)'}`, ...(params.reply_parameters ? { reply_parameters: params.reply_parameters } : !params.replyRequested && result.message.chatId === String(params.chat_id) ? { reply_parameters: { message_id: Number(result.message.messageId) } } : {}) },
         { ...facts, key: `${key}:reference:${params.chat_id}:${facts.source}` });
       // Keep the new message's text even when the original upload has no native id.
-      return this.send({ chat_id: params.chat_id, text: `${params.caption}\n▣ ${params.artifact} (delivery unconfirmed)` },
+      return this.send({ chat_id: params.chat_id, text: `${params.caption}\n▣ ${params.artifact} (delivery unconfirmed)`, ...(params.reply_parameters ? { reply_parameters: params.reply_parameters } : {}) },
         { ...facts, key: `${key}:reference:${params.chat_id}:${facts.source}` });
     }
     return this.#enqueue(method, params, { ...facts, key: `${key}:source:${facts.source}` });
@@ -260,11 +260,11 @@ export class TelegramOutbox {
         const artifact = this.#files?.artifact(params.artifact);
         const file = artifact && this.#files ? artifactFile(this.#files.root, artifact) : null;
         if (!file || file.size > (intent.method === 'sendPhoto' ? telegramArtifactLimits.photo : telegramArtifactLimits.document)) {
-          const sent = await this.#api.sendMessage({ chat_id: params.chat_id, text: `${params.caption}\n▣ ${params.artifact} · file unavailable` }, { signal: this.#signal });
+          const sent = await this.#api.sendMessage({ chat_id: params.chat_id, text: `${params.caption}\n▣ ${params.artifact} · file unavailable`, ...(params.reply_parameters ? { reply_parameters: params.reply_parameters } : {}) }, { signal: this.#signal });
           result = { status: 'sent', message: { ...intent.mapping, messageId: String(sent.message_id) } };
         } else {
           const body = await artifactBody(this.#files!.root, file.path, file.mime, intent.method === 'sendPhoto' ? telegramArtifactLimits.photo : telegramArtifactLimits.document, this.#signal);
-          const sent = await this.#api[intent.method]({ body, chat_id: params.chat_id, ...file, caption: params.caption, disable_notification: params.disable_notification ?? false }, { signal: this.#signal });
+          const sent = await this.#api[intent.method]({ body, chat_id: params.chat_id, ...file, caption: params.caption, disable_notification: params.disable_notification ?? false, ...(params.reply_parameters ? { reply_parameters: params.reply_parameters } : {}) }, { signal: this.#signal });
           result = { status: 'sent', message: { ...intent.mapping, messageId: String(sent.message_id) } };
         }
       } else {

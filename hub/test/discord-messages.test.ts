@@ -567,3 +567,162 @@ for (const replace of [false, true]) test(`Discord stops old-input feedback afte
   assert.equal(state.outbox().some(j => j.source?.endsWith(`${message}:👀`)), false, 'no eyes job for retired identity');
   assert.equal((await fake.control('state')).reactions.some(r => r.emoji === '👀'), false);
 });
+
+type PairedReplyFacts = { owner: ReturnType<typeof import('./telegram-pacing-fixture.ts').pacingOwner>; store: Store; clock: import('./fake-clock.ts').FakeClock };
+async function pairedReplyFixture(t: TestContext, startup: Parameters<PairedReplyFacts['owner']['start']>[3] = {}, prepared?: (facts: PairedReplyFacts) => void) {
+  const { fakeTelegram, TELEGRAM_TEST_TOKEN } = await import('./fakes/telegram/fake-api.ts');
+  const { control } = await import('./telegram-polling-fixture.ts');
+  const { FakeClock } = await import('./fake-clock.ts');
+  const { driveTelegram } = await import('./telegram-pacing-fixture.ts');
+  const clock = new FakeClock();
+  const { pacingOwner } = await import('./telegram-pacing-fixture.ts');
+  const owner = pacingOwner(t);
+  const root = await tempProject(t), discord = await fakeDiscordFixture(t, { clock }), telegram = await fakeTelegram(t, { clock });
+  await discord.control('configure', { sendLimit: 100 });
+  const config = defaultConfig('Reply fixture'); config.remote.discord.enabled = true; config.remote.telegram.enabled = true;
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  owner.close(() => discord.close(), { startupOnly: true });
+  owner.close(() => telegram.close(), { startupOnly: true });
+  const store = owner.store(join(root, '.cland/hub.db'));
+  const ds = store.remotes.forMessenger('discord'), ts = store.remotes.forMessenger('telegram');
+  ds.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
+  ts.setPairing({ userId: '101', chatId: '101', guildId: null, name: 'Fixture human' });
+  prepared?.({ owner, store, clock });
+  const hub = await owner.start(root, { CLAND_DISCORD_API_ROOT: discord.url, CLAND_TELEGRAM_API_ROOT: telegram.url },
+    clock, { ...startup, hubOptions: { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'telegram.token': TELEGRAM_TEST_TOKEN } } });
+  return { owner, root, clock, discord, telegram, ts, ds, hub, control, driveTelegram };
+}
+
+for (const origin of ['telegram', 'discord'] as const) for (const destination of ['telegram', 'discord'] as const) {
+  test(`General agent reply to human ${origin} input threads natively on ${destination}`, async t => {
+    const { root, clock, discord, telegram, ts, ds, hub, control, driveTelegram } = await pairedReplyFixture(t);
+    const ui = await connectUi(t, hub.discovery, 'nvim');
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+    await until(async () => (await discord.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'Discord connection setup' });
+    let source = '';
+    const mapped = until(async () => {
+      const history = await ui.request({ type: 'topic.history', topic: 'general' });
+      source = (history.value as { messages: import('../src/protocol.ts').TopicMessage[] }).messages.find(m => m.text === 'Human source')?.id ?? '';
+      return !!source && (origin === 'telegram' ? ds.messageForSource(ids.channel, source) !== null : ts.messageForSource('101', source) !== null);
+    }, { timeoutMs: 1500, what: 'human source and cross-remote mapping' });
+    void mapped.catch(() => {});
+    let original = '';
+    if (origin === 'telegram') {
+      const update = await control<{ message: { message_id: number } }>(telegram.url, 'say', { text: 'Human source' }); original = String(update.message.message_id);
+    }
+    else {
+      const native = await discord.control('say', { content: 'Human source' });
+      original = native.id;
+      await discord.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: native });
+    }
+    await driveTelegram(clock, ts, mapped);
+    const target = origin === destination ? { messageId: original } : destination === 'telegram' ? ts.messageForSource('101', source)! : ds.messageForSource(ids.channel, source)!;
+    const sent = until(() => (destination === 'telegram' ? ts : ds).outbox().some(j => j.state === 'sent' && JSON.stringify(j.payload).includes('Agent native reply')),
+      { timeoutMs: 4000, what: 'agent reply durable sent receipt' });
+    void sent.catch(() => {});
+    assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Agent native reply', reply_to: source })).ok, true);
+    await driveTelegram(clock, ts, sent);
+    if (destination === 'telegram') {
+      const native = await control<{ messages: import('../src/remote/telegram-api.ts').TgMessage[]; requests: Array<{ method: string; params: Record<string, unknown> }> }>(telegram.url, 'state');
+      const request = native.requests.find(r => JSON.stringify(r.params).includes('Agent native reply'))!;
+      assert.deepEqual(request.params.reply_parameters, { message_id: Number(target.messageId), allow_sending_without_reply: true });
+      assert.equal(native.messages.find(m => m.text?.includes('Agent native reply'))!.reply_to_message?.message_id, Number(target.messageId));
+    } else {
+      const request = (await discord.control('state')).requests.find(r => r.method === 'POST' && String(r.body.content).includes('Agent native reply'))!;
+      assert.deepEqual(request.body.message_reference, { message_id: target.messageId, fail_if_not_exists: false });
+      const copy = (await discord.control('state')).messages.find(m => m.content.includes('Agent native reply'))!;
+      assert.deepEqual((copy as unknown as { message_reference?: unknown }).message_reference, { message_id: target.messageId });
+    }
+    ts.set('mute', 'true'); ds.set('mute', 'true');
+    const path = join(root, 'reply-note.txt'); await writeFile(path, 'artifact bytes');
+    const created = await coord.call<{ ok: boolean; artifact: { id: string } }>('artifact.create', { topic: 'general', kind: 'file', title: 'Reply note', path });
+    assert.equal(created.ok, true);
+    ts.set('mute', 'false'); ds.set('mute', 'false');
+    const artifact = created.artifact.id;
+    let publication = '', defaultPublication = '';
+    const latestPublication = async () => {
+      const history = await ui.request({ type: 'topic.history', topic: 'general' });
+      return (history.value as { messages: import('../src/protocol.ts').TopicMessage[] }).messages.at(-1)!.id;
+    };
+    for (const text of ['First upload', 'Default artifact reference', 'Reused artifact reply']) {
+      publication = '';
+      const sent = until(() => !!publication && [ts, ds].every(state => state.outbox().some(j => j.state === 'sent' && (j.payload as { mapping?: { message: string } }).mapping?.message === publication)),
+        { timeoutMs: 4000, what: `${text} durable native settlement` });
+      void sent.catch(() => {});
+      assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text, artifacts: [artifact],
+        ...(text === 'Reused artifact reply' ? { reply_to: source } : {}) })).ok, true);
+      publication = await latestPublication();
+      if (text === 'Default artifact reference') defaultPublication = publication;
+      await driveTelegram(clock, ts, sent);
+    }
+    if (destination === 'telegram') {
+      const native = await control<{ uploads: unknown[]; messages: import('../src/remote/telegram-api.ts').TgMessage[] }>(telegram.url, 'state');
+      assert.equal(native.uploads.length, 1);
+      const defaultCopy = native.messages.find(m => String(m.message_id) === ts.messageForSource('101', defaultPublication)!.messageId)!;
+      assert.equal(defaultCopy.reply_to_message?.message_id, native.messages.find(m => m.document)!.message_id);
+      assert.equal(native.messages.find(m => m.text?.includes('Reused artifact reply'))!.reply_to_message?.message_id, Number(target.messageId));
+    } else {
+      const native = await discord.control('state');
+      assert.equal(native.uploads.length, 1);
+      const defaultCopy = native.messages.find(m => m.id === ds.messageForSource(ids.channel, defaultPublication)!.messageId)!;
+      assert.deepEqual((defaultCopy as unknown as { message_reference?: unknown }).message_reference, { message_id: native.uploads[0]!.message });
+      const copy = native.messages.find(m => m.id === ds.messageForSource(ids.channel, publication)!.messageId)!;
+      assert.deepEqual((copy as unknown as { message_reference?: unknown }).message_reference, { message_id: target.messageId });
+    }
+    // Retain the durable map while the native platform forgets its target.
+    if (destination === 'telegram') await control(telegram.url, 'delete', { message_id: target.messageId });
+    else await discord.control('delete', { message_id: target.messageId });
+    const state = destination === 'telegram' ? ts : ds;
+    for (const mode of ['deleted', 'unmapped']) for (const attached of [false, true]) {
+      if (mode === 'unmapped') state.putMessage({ chatId: destination === 'telegram' ? '101' : ids.channel, messageId: target.messageId,
+        message: null, topic: 'general', ask: null, approval: null });
+      const text = `Agent ${mode} ${attached ? 'artifact' : 'text'} reply`;
+      publication = '';
+      const sent = until(() => !!publication && state.outbox().some(j => j.state === 'sent' && (j.payload as { mapping?: { message: string } }).mapping?.message === publication),
+        { timeoutMs: 5000, what: `${mode} fallback durable sent receipt` });
+      void sent.catch(() => {});
+      assert.equal((await coord.call<{ ok: boolean }>('send', { topic: 'general', text, ...(attached ? { artifacts: [artifact] } : {}), reply_to: source })).ok, true);
+      publication = await latestPublication();
+      await driveTelegram(clock, ts, sent);
+      const jobs = state.outbox().filter(j => (j.payload as { mapping?: { message: string } }).mapping?.message === publication);
+      assert.equal(jobs.length, 1, 'one durable publication job for the fallback');
+      if (destination === 'telegram') {
+        const native = await control<{ messages: import('../src/remote/telegram-api.ts').TgMessage[]; requests: Array<{ params: Record<string, unknown> }> }>(telegram.url, 'state');
+        const copies = native.messages.filter(m => m.text?.includes(text));
+        assert.equal(copies.length, 1); assert.equal(copies[0]!.reply_to_message, undefined);
+        assert.equal(native.requests.filter(r => JSON.stringify(r.params).includes(text)).length, 1);
+      } else {
+        const native = await discord.control('state');
+        const copies = native.messages.filter(m => m.id === ds.messageForSource(ids.channel, publication)!.messageId);
+        assert.equal(copies.length, 1);
+        assert.equal((copies[0] as unknown as { message_reference?: unknown }).message_reference, undefined);
+        assert.equal(native.requests.filter(r => r.method === 'POST' && r.body.nonce === jobs[0]!.id.replaceAll('-', '').slice(0, 25)).length, 1);
+      }
+    }
+    await hub.stop();
+  });
+}
+
+for (const failure of ['omitted', 'aborted'] as const) test(`General reply paired fixture drains ${failure} startup before Store disposal`, async t => {
+  const { FakeClock } = await import('./fake-clock.ts');
+  const { within } = await import('../src/executor/droplet/deadline.ts');
+  const setupClock = new FakeClock(), cancellation = new AbortController();
+  const ready = Promise.withResolvers<PairedReplyFacts>();
+  const factsReceipt = within(ready.promise, 2000);
+  void factsReceipt.catch(() => {});
+  const starting = pairedReplyFixture(t, { clock: setupClock, signal: cancellation.signal, receipt: new Promise<void>(() => {}) }, ready.resolve);
+  void starting.catch(ready.reject);
+  const incomplete = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /aborted paired setup/);
+  const facts = await factsReceipt;
+  const acquired = await within(facts.owner.serving, 2000);
+  if (failure === 'omitted') await setupClock.advance(1000);
+  else cancellation.abort(new Error('aborted paired setup'));
+  await incomplete;
+  await within(facts.owner.dispose(), 2000);
+  await within(acquired.stopped, 2000);
+  assert.throws(() => facts.store.remotes.forMessenger('telegram').outbox(), /not open|closed/i);
+  assert.equal(facts.owner.observations(), 0);
+  assert.equal(facts.clock.pending, 0);
+  assert.equal(setupClock.pending, 0);
+});
