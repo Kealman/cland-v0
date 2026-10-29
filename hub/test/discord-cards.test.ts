@@ -1,6 +1,6 @@
 import { discordCardsFixture as fixture, discordHistorySeed as historySeed } from './discord-cards-fixture.ts';
 import { DISCORD_HISTORY_LIMIT } from '../src/remote/discord-catchup.ts';
-import { within } from '../src/executor/droplet/deadline.ts';
+import { abortable, within } from '../src/executor/droplet/deadline.ts';
 // T2: production frame port and sealed loopback Discord REST/ws.
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -33,6 +33,66 @@ async function holdRequest(f: Awaited<ReturnType<typeof fixture>>, produce: () =
     throw error;
   }
 }
+
+// The exchange owns the barrier before any producer/fault is acquired. Its
+// abort releases wrapped I/O; stop also joins it before Store/root disposal.
+function heldLateReaction(f: Awaited<ReturnType<typeof fixture>>) {
+  const gate = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const pending = new Set<Promise<unknown>>();
+  let target = '';
+  f.stop(async () => { gate.resolve(); await Promise.allSettled([...pending]); });
+  const react = f.api.addReaction.bind(f.api);
+  f.api.addReaction = (...args) => {
+    const work = f.run(async signal => {
+      const result = await react(...args);
+      if (args[1] === target) {
+        entered.resolve();
+        await abortable(gate.promise, signal);
+      }
+      return result;
+    });
+    pending.add(work);
+    void work.finally(() => pending.delete(work)).catch(() => {});
+    return work;
+  };
+  return { target: (id: string) => { target = id; }, release: () => gate.resolve(),
+    wait: (signal?: AbortSignal) => f.run(owner => {
+      signal?.throwIfAborted();
+      return within(abortable(entered.promise, AbortSignal.any([owner, ...(signal ? [signal] : [])])), 1000);
+    }),
+    pending: () => pending.size };
+}
+
+for (const aborted of [false, true]) test(`Discord late reaction setup ${aborted ? 'aborted' : 'omitted'} drains before Store disposal`, async t => {
+  const f = await fixture(t, undefined, undefined, undefined, false, undefined, undefined, undefined, 500);
+  const barrier = heldLateReaction(f);
+  let native: Promise<unknown> | undefined;
+  if (aborted) {
+    const message = await f.fake.control('say', { content: 'Controlled reaction setup' });
+    barrier.target(message.id);
+    native = f.api.addReaction(ids.channel, message.id, '👌');
+    void native.catch(() => {});
+    await barrier.wait();
+  }
+  const abort = new AbortController();
+  if (aborted) abort.abort(new Error('Late reaction setup intentionally aborted'));
+  await assert.rejects(barrier.wait(abort.signal), aborted ? /intentionally aborted/ : /deadline reached/);
+  let storeClosed = false;
+  const closeStore = f.store.close.bind(f.store);
+  f.store.close = () => {
+    assert.equal(barrier.pending(), 0);
+    assert.equal(f.pending(), 0);
+    const receipt = f.fake.receipts();
+    assert.equal(receipt.closed, true); assert.equal(receipt.connections, 0);
+    assert.equal(receipt.handlers, 0); assert.equal(receipt.observers, 0); assert.equal(receipt.held, 0);
+    assert.equal(f.clock.pending, 0);
+    closeStore(); storeClosed = true;
+  };
+  await f.close();
+  await native?.catch(() => {});
+  assert.equal(storeClosed, true);
+});
 
 test('Discord nine-option ask has three bounded rows with text labels', async t => {
   const f = await fixture(t);
@@ -711,6 +771,7 @@ test('Discord resumed press resends only its card without answering or acknowled
   let press = '';
   const hub = await f.restart(30000, async () => { press = (await f.fake.control('interact', { message_id: old, custom_id: `ask:${a.ask}:1` })).id; });
   await until(() => f.state.messagesForAsk(a.ask).length === 2, { what: 'pressed replay card resend mapping', timeoutMs: 2000 });
+  await settledReplacements(f, [{ ask: a.ask, message: old }], 'old copy edit receipt', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === old)?.content === '↓ Re-sent below', { what: 'old copy edit receipt', timeoutMs: 2000 });
   const native = await f.fake.control('state');
   assert.equal(native.messages.find(m => m.id === old)!.components?.length, 0);
@@ -756,6 +817,7 @@ test('Discord resumed scripted approval press preserves the colon-bearing approv
   let press = '';
   await f.restart(30000, async () => { press = (await f.fake.control('interact', { message_id: old, custom_id: `approval:${record.id}:once` })).id; });
   await until(() => f.state.messagesForApproval(record.id).length === 2, { what: 'replayed approval resend mapping', timeoutMs: 2000 });
+  await settledReplacements(f, [{ approval: record.id, message: old }], 'old approval native edit', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === old)?.content === '↓ Re-sent below', { what: 'old approval native edit', timeoutMs: 2000 });
   const native = await f.fake.control('state');
   assert.equal(native.messages.find(m => m.id === old)!.components?.length, 0);
@@ -778,6 +840,7 @@ test('Discord replay retains the complete numbered option list in a long card', 
   const old = f.state.messagesForAsk(ask.ask)[0]!.messageId;
   await f.restart(30000, async () => { await f.fake.control('interact', { message_id: old, custom_id: `ask:${ask.ask}:9` }); });
   await until(() => f.state.messagesForAsk(ask.ask).length === 2, { what: 'long numbered replay mapping', timeoutMs: 2000 });
+  await settledReplacements(f, [{ ask: ask.ask, message: old }], 'long numbered old copy removal', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === old)?.content === '↓ Re-sent below', { what: 'long numbered old copy removal', timeoutMs: 2000 });
   const native = await f.fake.control('state');
   const card = native.messages.at(-1)!;
@@ -861,6 +924,7 @@ test('Discord replay stores all buffered input before resending a pressed card',
   await until(() => f.state.outbox().some(job => job.source?.endsWith('900000000000000601:👌') && job.state === 'sent'), { what: 'durable stored reaction before replay feedback pacing', timeoutMs: 1500 });
   await f.clock.advance(250);
   await until(() => !!f.state.get('discord.inbound:900000000000000601') && f.state.messagesForAsk(card.ask).length === 2, { what: 'input then resend committed', timeoutMs: 2000 });
+  await settledReplacements(f, [card], 'ordered replay old copy edit', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'ordered replay old copy edit', timeoutMs: 2000 });
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> };
@@ -902,6 +966,7 @@ test('Discord each live resume gates an owed resend before input without a new p
   await until(() => f.state.outbox().some(job => job.source?.endsWith('900000000000000702:👌') && job.state === 'sent'), { what: 'durable stored reaction before next reaction bucket', timeoutMs: 1500 });
   await f.clock.advance(250);
   await until(() => !!f.state.get('discord.inbound:900000000000000702') && f.state.messagesForAsk(card.ask).length === 2, { what: 'input then owed resend completion', timeoutMs: 2000 });
+  await settledReplacements(f, [card], 'owed old copy native edit', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'owed old copy native edit', timeoutMs: 2000 });
   const native = await f.fake.control('state');
   assert.equal(native.interactions.length, 0, 'no fresh interaction triggered recovery');
@@ -909,11 +974,11 @@ test('Discord each live resume gates an owed resend before input without a new p
 });
 
 
-async function settledReplacements(f: Awaited<ReturnType<typeof fixture>>, cards: Array<{ ask: string; message: string }>, what: string, timeoutMs: number): Promise<void> {
+async function settledReplacements(f: Awaited<ReturnType<typeof fixture>>, cards: Array<({ ask: string } | { approval: string }) & { message: string }>, what: string, timeoutMs: number): Promise<void> {
   let paced: string | undefined;
   await until(async () => {
     const jobs = f.state.outbox();
-    if (cards.every(card => f.state.messagesForAsk(card.ask).length === 2
+    if (cards.every(card => ('ask' in card ? f.state.messagesForAsk(card.ask) : f.state.messagesForApproval(card.approval)).length === 2
       && jobs.some(job => job.kind === 'edit' && job.target === card.message && job.state === 'sent'
         && (job.payload as { content?: string }).content === '↓ Re-sent below'))) return true;
     // A mapped replacement does not finish its owner's queue. Late delivery
@@ -1070,7 +1135,7 @@ test('Discord history pages exactly to an above-2^53 TEXT cursor after restart',
 });
 
 test('Discord resumable stop finishes frozen history before replay input and replacement cards', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, undefined, undefined, undefined, false, undefined, undefined, undefined, 500);
   await historySeed(f);
   const card = await openCard(f);
   f.holdFrames('topic.send');
@@ -1082,19 +1147,40 @@ test('Discord resumable stop finishes frozen history before replay input and rep
   f.releaseOne();
   await until(async () => { await f.clock.advance(250); return f.frames.some(r => String(r.frame.text).startsWith('Resume checkpoint second')); }, { what: 'second history input held', timeoutMs: 2000 });
   assert.equal(f.state.messagesForAsk(card.ask).length, 1);
+  await f.coord.close();
+  // Own emergency release and join before acquiring the native fault/observer.
+  const reaction = heldLateReaction(f);
+  await f.fake.control('fault', { method: 'POST', response: 'holdStored' });
+  const held = f.run(signal => f.fake.waitForHold(signal));
   const hub = await f.restart(30000, async () => {
     f.discardFrames();
     const live = await f.fake.control('say', { content: 'Resume checkpoint live' });
     await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: live });
   });
+  await until(async () => { await f.clock.advance(250); return f.fake.receipts().held === 1; }, { what: 'checkpoint replacement held', timeoutMs: 1500 });
+  await held;
+  const coord = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  const delivered = coord.waitForEvent(e => e.params.content === 'Late checkpoint feedback');
+  void delivered.catch(() => {});
+  const late = await f.fake.control('say', { content: 'Late checkpoint feedback' });
+  const lateId = late.id;
+  reaction.target(lateId);
+  await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: late });
+  await delivered;
+  await until(() => JSON.parse(f.state.get(`discord.inbound:${lateId}`) ?? '{}').delivered === true, { what: 'late checkpoint delivered durably', timeoutMs: 1500 });
+  await f.fake.control('release', {});
   const ui = await connectUi(t, hub.discovery, 'nvim');
   await until(async () => { await f.clock.advance(250); return f.state.get('discord.history') === null && f.state.messagesForAsk(card.ask).length === 2; }, { what: 'resumed frozen history then card mapping', timeoutMs: 3000 });
+  await reaction.wait();
+  reaction.release();
   const native = await f.fake.control('state');
   assert.equal(native.gateway.identifies, 2);
   assert.equal(native.gateway.resumes, 1);
   assert.equal(native.gateway.validResume, true);
   const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
   assert.deepEqual(rows.filter(m => m.text.startsWith('Resume checkpoint')).map(m => m.text.split('\n')[0]), ['Resume checkpoint first', 'Resume checkpoint second', 'Resume checkpoint live']);
+
+  await settledReplacements(f, [card], 'resumed checkpoint old copy edited', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'resumed checkpoint old copy edited', timeoutMs: 2000 });
 });
 
@@ -1160,6 +1246,7 @@ test('Discord live RESUMED joins held active history before replay input and rep
   const ui = await connectUi(t, f.hub.discovery, 'nvim');
   const rows = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
   assert.deepEqual(rows.filter(m => m.text.startsWith('Live batch')).map(m => m.text.split('\n')[0]), ['Live batch first', 'Live batch second', 'Live batch replay']);
+  await settledReplacements(f, [card], 'live recovery old-copy edit', 2000);
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'live recovery old-copy edit', timeoutMs: 2000 });
 });
 

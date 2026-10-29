@@ -241,3 +241,28 @@ local runs alongside two busy workers: reaction sending, later reactions queued,
 peer edit queued. With the receipt driver both the control and original identity
 passed five times under the same load. These local CPU-load samples do not claim
 a slow-disk or Linux pass; configured verification and full-all remain required.
+
+T-1439 applies `settledReplacements` to every replay case that asserts an old-copy
+edit: resumed press, colon-bearing scripted approval, long numbered card, buffered-input ordering, owed live-resume
+resend, fresh Identify, resumable frozen-history stop, live RESUMED history join,
+and late-feedback retirement. Completion requires both the replacement mapping
+and the exact old-target retirement edit's durable `sent` receipt, pacing only
+newly observed sent reactions. Keep the native content/component assertions and
+the original wait bounds.
+
+The resumable frozen-history case holds the replacement POST after native
+acceptance, then observes a real Coordinator delivery and its durable inbound
+receipt. Its late reaction completes native I/O but holds the adapter result
+until the replacement mapping is visible. Releasing that result deliberately
+leaves the native 250 ms reaction lane owed at the old map-only stopping point.
+The receipt driver must finish retirement without widening the old-copy bound.
+This is controlled fixture pacing, not a wall-time performance measurement.
+
+The late-reaction barrier belongs to the shared exchange before fault acquisition:
+exchange abort cancels its wrapped native wait, and its stop hook releases and
+joins pending wrappers. Omitted and aborted setup controls use the same barrier;
+the aborted control has an actual native reaction held at the barrier. Both
+assert closed sockets, zero handlers/observers/holds, zero pending native work
+and fake timers before Store.close runs. Root disposal uses the exchange's same
+drained barrier. Approval replacements select messagesForApproval; ask replacements
+select messagesForAsk, retaining each original native edit assertion.
