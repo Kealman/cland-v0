@@ -333,3 +333,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/pinned-tracker.test.ts`](../../../hub/test/pinned-tracker.test.ts) | [Notes](hub-test-pinned-tracker.test.ts.md) |
 | [`nvim/test/closed-pages.test.ts`](../../../nvim/test/closed-pages.test.ts) | [Notes](nvim-test-closed-pages.test.ts.md) |
 | [`hub/test/startup-cleanup.test.ts`](../../../hub/test/startup-cleanup.test.ts) | [Notes](hub-test-startup-cleanup.test.ts.md) |
+| [`hub/test/verification-tree.test.ts`](../../../hub/test/verification-tree.test.ts) | [Notes](hub-test-verification-tree.test.ts.md) |

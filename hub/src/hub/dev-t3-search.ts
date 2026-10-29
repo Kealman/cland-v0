@@ -18,6 +18,7 @@ type Search = SearchReport & { reported?: boolean };
 export type SearchBoundary = {
   log?: LogFn;
   currentDev(): Promise<string>;
+  nonTrackerChanges?(red: string, tip: string): Promise<boolean | null>;
   probe(input: DevT3Result, head: string, file: string, repetition?: 'boundary'): Promise<ProbeReceipt | null>;
   report(report: SearchReport): Promise<void>;
   blocked?(input: DevT3Result, reason: string): void;
@@ -86,8 +87,7 @@ export class DevT3Search {
           file.tip = receipt;
           const result = executedResult(receipt);
           if (result === 'green') {
-            file.result = receipt.result === 'partial' ? 'inconclusive' : tip === input.head ? 'flake' : 'already-fixed';
-            file.reason = receipt.result === 'partial' ? 'current dev tip has platform exclusions; excluded tests not executed' : `already fixed on dev at ${tip}`;
+            await this.#classifyGreen(input, file, receipt);
             delete file.culprit;
           } else {
             if (file.result === 'already-fixed') {
@@ -137,11 +137,39 @@ export class DevT3Search {
       if (!file.result && file.phase === 'bisect' && file.high - file.low === 1) file.phase = 'confirm-green';
       save(); return;
     }
+    // Old checkpoints may already say fixed without repository evidence.
+    for (const file of search.files) if (file.result === 'already-fixed' && file.tip) {
+      await this.#classifyGreen(search.input, file, file.tip);
+    }
     // Idempotent boundary filing/reporting permits retry after a crash between it and this checkpoint.
     await this.boundary.report(search);
     search.reported = true; save();
   }
+  async #classifyGreen(input: DevT3Result, file: FileSearch, receipt: ProbeReceipt): Promise<void> {
+    const changed = receipt.head === input.head ? false : await this.boundary.nonTrackerChanges?.(input.head, receipt.head);
+    if (receipt.result === 'partial') {
+      file.result = 'inconclusive'; file.reason = 'current dev tip has platform exclusions; excluded tests not executed';
+    } else if (changed === true) {
+      file.result = 'already-fixed'; file.reason = `already fixed on dev at ${receipt.head}`;
+    } else if (changed === false) {
+      file.result = 'flake';
+      file.reason = `unconfirmed flake: red run ${input.run} at ${input.head}; green run ${receipt.run} at ${receipt.head}; no non-tracker changes after red head`;
+    } else {
+      file.result = 'inconclusive'; file.reason = 'non-tracker change history unavailable';
+    }
+  }
   async close(clock: Clock): Promise<void> {
     this.#closed = true; if (this.#timer) clock.clearInterval(this.#timer); await this.#work;
   }
+}
+
+
+/** Inspect commits, not an endpoint diff: a code edit followed by a revert counts.
+ * Missing ancestry or Git evidence must never imply that a failure was fixed. */
+export async function nonTrackerChanges(git: (args: string[]) => Promise<string | null>, red: string, tip: string): Promise<boolean | null> {
+  try {
+    if ((await git(['merge-base', red, tip]))?.trim() !== red) return null;
+    const paths = await git(['log', '--format=', '--name-only', '-z', '--full-history', '-m', '--no-renames', `${red}..${tip}`, '--', '.', ':(exclude).cland/tasks']);
+    return paths === null ? null : paths.trim().length > 0;
+  } catch { return null; }
 }

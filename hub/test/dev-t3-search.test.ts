@@ -167,6 +167,7 @@ test('search skips history and reports a file already fixed at current dev', asy
   const calls: string[] = [];
   const search = new DevT3Search(store, {
     currentDev: async () => 'fixed-tip',
+    nonTrackerChanges: async () => true,
     probe: async (_input, head, file) => {
       calls.push(head);
       return { head, file, run: 'tip-run', result: 'green', artifact: 'A-2', path: '/logs/tip' };
@@ -189,6 +190,7 @@ test('search revalidates an already fixed file when dev moves back to red before
   let tip = 'fixed-tip', sequence = 0;
   const search = new DevT3Search(store, {
     currentDev: async () => tip,
+    nonTrackerChanges: async () => true,
     probe: async (_input, head, file) => ({ head, file, run: `probe-${++sequence}`, result: head === 'fixed-tip' || head === 'baseline' ? 'green' : 'red', artifact: 'A-2', path: '/log' }),
     report: async report => { reports.push(report); },
   });
@@ -213,6 +215,7 @@ test('an older checkpoint without a tip receipt cannot file before current dev i
   let probes = 0;
   const search = new DevT3Search(store, {
     currentDev: async () => 'fixed-tip',
+    nonTrackerChanges: async () => true,
     probe: async (_input, head, file) => {
       probes++;
       return { head, file, run: 'tip-run', result: 'green', artifact: 'A-2', path: '/tip' };
@@ -224,4 +227,42 @@ test('an older checkpoint without a tip receipt cannot file before current dev i
   assert.equal(reports.length, 1);
   assert.equal(reports[0]!.files[0]!.result, 'already-fixed');
   assert.equal(reports[0]!.files[0]!.culprit, undefined);
+});
+
+
+test('tracker-only green tip is an unconfirmed flake naming the red and green runs', async t => {
+  const store = new Store(); t.after(() => store.close());
+  const reports: SearchReport[] = [];
+  const search = new DevT3Search(store, {
+    currentDev: async () => 'tracker-tip',
+    nonTrackerChanges: async () => false,
+    probe: async (_input, head, file) => ({ head, file, run: 'green-tip-run', result: 'green', artifact: 'A-2', path: '/tip' }),
+    report: async report => { reports.push(report); },
+  });
+  search.accept({ ...redResult(), failingFiles: ['hub/test/regression.test.ts'] });
+  await search.tick(); await search.tick();
+  assert.equal(reports.length, 1);
+  const file = reports[0]!.files[0]!;
+  assert.equal(file.result, 'flake');
+  assert.match(file.reason!, /unconfirmed flake/);
+  assert.match(file.reason!, /red-run/);
+  assert.match(file.reason!, /green-tip-run/);
+  assert.equal(file.culprit, undefined);
+});
+
+for (const history of [false, null, 'missing'] as const) test(`old already-fixed checkpoint requires fresh history evidence: ${history}`, async t => {
+  const store = new Store(); t.after(() => store.close());
+  const input = { ...redResult(), failingFiles: ['hub/test/regression.test.ts'] };
+  const tip: ProbeReceipt = { head: 'tracker-tip', file: input.failingFiles[0]!, run: 'green-tip-run', result: 'green', artifact: 'A-2', path: '/tip' };
+  store.setMeta('dev-t3-searches', JSON.stringify([{ input, files: [{ file: tip.file, low: -1, high: 7, phase: 'repeat', receipts: [tip], tip, result: 'already-fixed' }] }]));
+  const reports: SearchReport[] = [];
+  const search = new DevT3Search(store, {
+    currentDev: async () => tip.head,
+    ...(history === 'missing' ? {} : { nonTrackerChanges: async () => history }),
+    probe: async () => assert.fail('existing green receipt retained'),
+    report: async report => { reports.push(report); },
+  });
+  await search.tick();
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]!.files[0]!.result, history === false ? 'flake' : 'inconclusive');
 });

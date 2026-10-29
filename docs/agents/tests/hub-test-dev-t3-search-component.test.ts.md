@@ -55,3 +55,8 @@ current-red task.view includes the exact tip head, run id and artifact path.
 These are scripted Linux executor receipts, with no browser process. The native
 historical-owner contract is in durations.test.ts; it closes the live owner and
 keeps the pinned owner open through the real default probe repository checkout.
+
+T-1422 injects explicit ancestry and commit-path facts through the production
+Git seam. The tracker-only green-tip case observes the completed Agents search
+notice, asserts both run ids and unconfirmed flake, and checks that no Bug was
+filed. Existing code-changed green-tip and moved-tip cases retain already-fixed.

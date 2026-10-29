@@ -9,7 +9,7 @@ import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
 import { InvalidArgument, validateToolFrame } from '../tool-arguments.ts';
 import { defaultConfig } from '../init/config.ts';
-import { DevT3Search } from './dev-t3-search.ts';
+import { DevT3Search, nonTrackerChanges } from './dev-t3-search.ts';
 import { DevT3Probes } from './dev-t3-probe.ts';
 import { reportDevT3Search } from './dev-t3-report.ts';
 import { devT3Result } from './dev-t3-result.ts';
@@ -296,6 +296,7 @@ export class Dispatcher {
         if (!head) throw new Error('current dev tip unavailable');
         return head.trim();
       },
+      nonTrackerChanges: (red, tip) => nonTrackerChanges(options.git ?? gitIn(root!, options.env), red, tip),
       probe: (input, head, file, repetition) => devT3Probes.probe(input, head, file, repetition),
       report: report => reportDevT3Search(options.core, options.tracker!, report),
       blocked: (input, reason) => { options.core.noticeTo(AGENTS.id, { id: `dev-t3-search-blocked:${input.run}`, kind: 'report', to: ['coordinator'], text: options.core.boundedText(`Periodic dev T3 search ${input.run} blocked: ${reason}`), detail: { event: 'verification-dev-t3-search-blocked', run: input.run, reason } }); },

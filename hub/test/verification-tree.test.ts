@@ -155,3 +155,32 @@ test('candidate provenance keeps Git environments separate and never rewrites th
   assert.deepEqual(await readFile(indexPath), index, 'the caller-provided index is unchanged');
   assert.deepEqual(await readFile(join(root, '.git/index')), index, 'the repository index is unchanged');
 });
+
+test('periodic green-tip history distinguishes tracker commits from non-tracker edits and reverts', async t => {
+  const { nonTrackerChanges } = await import('../src/hub/dev-t3-search.ts');
+  const root = await tempProject(t);
+  const git = async (args: string[]) => (await promisify(execFile)('git', ['-c', 'gc.auto=0', ...args], { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+  await git(['init', '-qb', 'dev']);
+  await git(['config', 'user.name', 'Test']);
+  await git(['config', 'user.email', 'test@example.com']);
+  await git(['config', 'commit.gpgsign', 'false']);
+  const commit = async () => { await git(['add', '.']); await git(['commit', '-qm', 'Fixture']); return git(['rev-parse', 'HEAD']); };
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, 'source'), 'original');
+  const red = await commit();
+  await writeFile(join(root, '.cland/tasks/item.md'), 'tracker');
+  const tracker = await commit();
+  assert.equal(await nonTrackerChanges(git, red, tracker), false);
+  await writeFile(join(root, 'source'), 'edited');
+  const code = await commit();
+  assert.equal(await nonTrackerChanges(git, red, code), true);
+  await writeFile(join(root, 'source'), 'original');
+  const reverted = await commit();
+  assert.equal(await nonTrackerChanges(git, red, reverted), true, 'intervening code changes count despite identical endpoint source');
+  await writeFile(join(root, '.cland/RULES.md'), 'rule');
+  const rulebook = await commit();
+  assert.equal(await nonTrackerChanges(git, reverted, rulebook), true, 'rulebook is outside tracker items');
+  assert.equal(await nonTrackerChanges(git, rulebook, red), null, 'a rewritten dev without red ancestry supplies no fix evidence');
+  assert.equal(await nonTrackerChanges(async () => null, red, code), null);
+  assert.equal(await nonTrackerChanges(async () => { throw new Error('unavailable'); }, red, code), null);
+});

@@ -42,6 +42,7 @@ test('budget-only periodic red names over-budget identities without starting cul
 });
 
 for (const [scenario, description] of [
+  ['tracker tip', 'reports a tracker-only green tip as an unconfirmed flake with both runs'],
   ['tip fixed', 'skips history and files no Bug for an already fixed dev tip'],
   ['tip red', 'files a Bug with the current dev tip failing receipt'],
   ['tip moves', 'rechecks dev after history and suppresses a newly fixed regression'],
@@ -58,7 +59,8 @@ for (const [scenario, description] of [
   ['green boundary flips', 'reports green boundary flips as inconclusive without filing'],
   ['red boundary flips', 'reports red boundary flips as inconclusive without filing'],
 ] as const) test(`red periodic run ${description}`, async t => {
-  const flake = scenario === 'flake', web = scenario === 'Web culprit', historical = scenario === 'historical manifest', introduced = scenario === 'introduced file';
+  const trackerTip = scenario === 'tracker tip';
+  const flake = scenario === 'flake' || trackerTip, web = scenario === 'Web culprit', historical = scenario === 'historical manifest', introduced = scenario === 'introduced file';
   const platform = scenario.includes('platform skips');
   const unstableSkips = platform && scenario !== 'stable platform skips';
   const boundaryFlip = scenario.endsWith('boundary flips');
@@ -72,11 +74,11 @@ for (const [scenario, description] of [
   const firstMerge = 'c'.repeat(40), culprit = ranged ? 'f'.repeat(40) : 'b'.repeat(40);
   const baseline = 'a'.repeat(40), redHead = 'b'.repeat(40), baselineTree = 'd'.repeat(40), redTree = 'e'.repeat(40);
   const tipHead = '9'.repeat(40);
-  let devTip = scenario === 'tip fixed' || scenario === 'tip red' ? tipHead : redHead;
+  let devTip = trackerTip || scenario === 'tip fixed' || scenario === 'tip red' ? tipHead : redHead;
   const fixed = scenario === 'tip fixed' || scenario === 'tip moves';
   const checked: string[] = [], removed: string[] = [];
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"\nshards=1\nlifetime="15m"\nrun_timeout="5m"',
-    git: async args => args[0] === 'rev-parse' && args.includes('refs/heads/dev') ? devTip : args[0] === 'log' && args.includes('--first-parent')
+    git: async args => args[0] === 'merge-base' ? redHead : args[0] === 'log' && args.includes('--name-only') ? trackerTip ? '' : 'hub/src/example.ts\0' : args[0] === 'rev-parse' && args.includes('refs/heads/dev') ? devTip : args[0] === 'log' && args.includes('--first-parent')
       ? ranged ? `${firstMerge}\0Merge green\n${culprit}\0Merge regression\n${redHead}\0Merge later` : `${redHead}\0Merge regression` : null,
     devT3Repository: {
       contains: async head => !introduced || head !== baseline && head !== firstMerge,
@@ -229,7 +231,12 @@ for (const [scenario, description] of [
     assert.deepEqual(checked, [redHead, culprit, culprit], 'absent commits acquire no executor');
   }
   if (fixed) assert.match(search.text, new RegExp(`already fixed on dev at ${tipHead}`));
-  const expectedCheckouts = scenario === 'tip fixed' ? [tipHead] : scenario === 'tip moves' ? [redHead, baseline, baseline, redHead, tipHead] : scenario === 'tip red' ? [tipHead, redHead, baseline, baseline, redHead] : scenario === 'boundary platform skips' ? [redHead, baseline, baseline] : unstableSkips ? [redHead, baseline] : flake ? [redHead]
+  if (trackerTip) {
+    assert.match(search.text, /unconfirmed flake/);
+    assert.ok(search.text.includes(red.id));
+    assert.ok(search.text.includes(search.detail.files[0]!.receipts[0]!.run!));
+  }
+  const expectedCheckouts = trackerTip || scenario === 'tip fixed' ? [tipHead] : scenario === 'tip moves' ? [redHead, baseline, baseline, redHead, tipHead] : scenario === 'tip red' ? [tipHead, redHead, baseline, baseline, redHead] : scenario === 'boundary platform skips' ? [redHead, baseline, baseline] : unstableSkips ? [redHead, baseline] : flake ? [redHead]
     : introduced ? [redHead, culprit, culprit]
     : boundaryFlip ? [redHead, baseline, firstMerge, culprit, firstMerge, ...(scenario === 'red boundary flips' ? [culprit] : [])]
     : web ? [redHead, baseline, firstMerge, culprit, firstMerge, culprit]

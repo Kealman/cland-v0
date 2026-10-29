@@ -5651,8 +5651,12 @@ The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
 Red results first probe each failing file at current local dev. A passing file
-reports `already fixed on dev at <commit>` without filing a Bug; missing or
-partial-green tip evidence remains inconclusive. The search rechecks the dev ref
+reports `already fixed on dev at <commit>` without filing a Bug only when the
+red head is an ancestor and an intervening commit changes a path outside
+`.cland/tasks/`. A tracker-only green tip is an unconfirmed flake naming the red
+and green runs. The original red head passing again is also an unconfirmed
+flake. Missing history or partial-green tip evidence remains inconclusive.
+History checks commits, so a non-tracker edit followed by a revert still counts. The search rechecks the dev ref
 before reporting and probes a moved tip. Bugs retain the tip's red receipt.
 No stage/integrated receipt cache is reused. Historical probes use standalone
 detached repositories sharing objects, so their candidate checks read pinned
