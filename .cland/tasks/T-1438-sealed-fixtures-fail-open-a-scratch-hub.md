@@ -3,18 +3,17 @@ id: T-1438
 kind: task
 title: "Sealed fixtures fail open: a scratch hub with a remote enabled and no loopback API root reaches the real Discord/Telegram endpoint"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
-  - qa-found
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: R-1278
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-29T10:42:10.083Z
-updated: 2026-10-29T10:42:29.591Z
+updated: 2026-10-29T11:52:26.467Z
 ---
 
 ## Summary

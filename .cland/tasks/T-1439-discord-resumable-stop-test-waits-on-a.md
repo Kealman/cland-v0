@@ -3,7 +3,7 @@ id: T-1439
 kind: task
 title: Discord resumable-stop test waits on a frozen fake clock for the old-copy edit (sibling of T-1413's fixed case)
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: R-1278
 blocked_by: []
 regression_of: T-1413
 topic: null
-branch: null
+branch: t/T-1439-discord-resumable-stop-test-waits-on-a
 created: 2026-10-29T11:02:16.796Z
-updated: 2026-10-29T11:51:54.965Z
+updated: 2026-10-29T11:52:07.090Z
 ---
 
 ## Summary
