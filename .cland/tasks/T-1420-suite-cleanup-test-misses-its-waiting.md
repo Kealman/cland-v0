@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1198
 branch: t/T-1420-suite-cleanup-test-misses-its-waiting
 created: 2026-10-28T09:24:24.815Z
-updated: 2026-10-29T17:25:00.778Z
+updated: 2026-10-29T17:31:36.841Z
 ---
 
 ## Summary
@@ -29,7 +29,8 @@ Find why the cleanup's log line can be missing when the assertion reads it under
 
 - [x] C1. The cause is attributed from the failing output (A-13169) and the code: the case stopped the hub before the worker PID receipt, shown by a deterministic held-admission regression red at 7687a520; the unchanged case did not reproduce 5/5 under load (A-13833).
   - done: impl-1420 · 2026-10-29T17:05:12.812Z
-- [ ] C2. The cleanup identity and the new regression pass 10/10 under two owned busy CPU workers in one leased local probe at the reviewed head, with raw receipts.
+- [x] C2. The cleanup identity and the new regression pass 10/10 under two owned busy CPU workers in one leased local probe at the reviewed head, with raw receipts.
+  - done: impl-1420 · 2026-10-29T17:31:36.841Z
 
 ## Comments
 
@@ -53,3 +54,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13856: branch source clear. Additive launchWorker obtains/owns actual admitted PID before stop/mutation; held native admission regression and all original cleanup fences/assertions retained. Historical A-13169 failure not reproduced by A-13833 five-run baseline; controlled red/source gap is the approved attribution, not reconstructed historical timing. Runtime criteria unverified. Publish prepared C2 ten-run driver for source inspection before execution; baseline driver is historical, not successor lifetime clearance. Exact-head local proof then configured run/final evidence remains.
+
+### rev-34 · 2026-10-29T17:30:40.663Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1420-source2
+commit: 0b85c061324bacb4053f8bcf2c14c273dab62643
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13867: unchanged branch source1 remains clear; concrete A-13866 C2 driver closes D1/D2 with acquisition-settlement release gating and non-throwing native/raw capture callbacks. Pre-owned bounded children/groups/workers, independent cleanup/releases and retained incomplete ownership inspected. Authorized ten runs per exact identity/two busy workers/shared leases may proceed. Runtime C1/C2 unverified until original local and configured evidence; historical failure remains unreproduced.

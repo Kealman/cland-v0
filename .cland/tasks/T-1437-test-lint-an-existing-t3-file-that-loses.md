@@ -2,8 +2,8 @@
 id: T-1437
 kind: task
 title: "Test lint: an existing T3 file that loses its T3 header is refused with a misleading 'exceeds frozen allowance 0' message"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1199
 branch: t/T-1437-test-lint-an-existing-t3-file-that-loses
 created: 2026-10-29T04:26:29.075Z
-updated: 2026-10-29T17:24:40.576Z
+updated: 2026-10-29T17:34:18.201Z
+closed: 2026-10-29T17:34:18.201Z
 ---
 
 ## Summary
@@ -71,3 +72,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13854 original A-13853 audited. Standards actual lint retains t3-lifecycle33/currentzero refusals, sourceA13839 intact. C1 displaced-header exactdiagnostic/no process-count case passes0.003996827s, losswithouthelpers0.022978414s; C2 headed/neverheaded unchanged control0.002516719s. Full38test-lint cases pass;3new×5load pass,max0.343681953s. Full4163ordinary+90load/no nonpass or unfinished; configuredT0/T1/T2/Web complete, explicit hostgateed8157f6 reused; T3/T4 unrun. Report-only budgets/lint retained/no enforcement pass claimed. Local summary provenance separate; no Reviewer workloads. C1/C2 verified frozenhead, QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T17:34:18.201Z
+
+Merged fe6231e9ee39235d54ce8a93d3dff8c5fb2f6c9f onto dev.

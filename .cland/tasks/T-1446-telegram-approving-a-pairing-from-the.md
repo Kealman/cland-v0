@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1196
 branch: t/T-1446-telegram-approving-a-pairing-from-the
 created: 2026-10-29T16:50:28.430Z
-updated: 2026-10-29T17:29:30.933Z
+updated: 2026-10-29T17:30:51.042Z
 ---
 
 ## Summary
@@ -56,3 +56,16 @@ finding_counts: {"high":0,"medium":3,"low":0}
 A-13836 full10-file source audit complete M1–M3 only. Missing optional hook root cause identified; C1 route through committed pairing/durable outbox source-established but runtime unverified. C2 ordering invariant fails across receive and callback publication routes. Consumer inventory/docs/T2 placement checked; no wire/schema change, skill freeze respected. Lead working fixes outsidehead; fresh source before verify. Local A13826 summary not configured execution evidence; no Reviewer workloads.
 
 Criteria: C2 failed (Other card publications can overtake the plain confirmation job while its paced send is pending.).
+
+### rev-26 · 2026-10-29T17:30:51.042Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1446-source-2
+commit: 1ab83f4e1506fe20f04d0cef956e61ead83fe364
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13868 complete8-file correction and extendedoutbox consumers audited. M1 exact REMOTE_USAGE-only frozen insertion/guardsunchanged. M2 persisted queued/sending confirmation-key gate filters every card/edit path per chat before comparator, survives pacing/429/restart; unknown replay semantics retained. Live publication red reproduced in localsummary; four new ordered variants preserve exact5native/sent rows. M3 owner-observed abortable native reads/poll/close/welcome + joined current predicates and synchronous prehello frame ownership, workbench native observers owned. SourceA13836 carried forward/no further findings. C1/C2 done/runtime pending; localA13840 notconfigured proof. No Reviewer workloads/full-all request, QA none; frozenhead modefree then original-record review.

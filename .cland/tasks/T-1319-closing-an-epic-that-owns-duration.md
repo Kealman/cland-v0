@@ -2,8 +2,8 @@
 id: T-1319
 kind: task
 title: Closing an epic that owns duration allowances strands them with a closed owner and turns the next full run red
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1197
 branch: t/T-1319-closing-an-epic-that-owns-duration
 created: 2026-10-26T01:52:55.592Z
-updated: 2026-10-29T17:23:02.372Z
+updated: 2026-10-29T17:34:00.180Z
+closed: 2026-10-29T17:34:00.180Z
 ---
 
 ## Summary
@@ -77,3 +78,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13851 original A-13848 audited at source2 head. Standards nofindings; unchanged help/docs guards pass. C1 refusal/key/guidance/original-byte/re-own-success case passes0.152572344s; absentmanifest0.145390744s; omitted/aborted setup0.058939972/0.065529279s. All19epic-close ordinary and4new×5load pass; taskload max0.463625507s/no>=3s. Full4164ordinary+95load pass/no nonpass/unfinished, T0/T1/T2/Web complete; explicit hostgate d3cbbd8a reused, T3/T4 unrun. Budgets/lint reportonly retained; no integrated/full-all claim or Reviewer workload. C1 verified/QA none; Coordinator separate gates retained.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-29T17:34:00.180Z
+
+Merged 83a4e4478d5bd00ffdd792bceade9e7cba288523 onto dev.

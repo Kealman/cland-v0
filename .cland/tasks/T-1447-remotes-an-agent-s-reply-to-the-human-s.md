@@ -3,7 +3,7 @@ id: T-1447
 kind: task
 title: "Remotes: an agent's reply to the human's message arrives unthreaded on Telegram and Discord"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1201
 branch: t/T-1447-remotes-an-agent-s-reply-to-the-human-s
 created: 2026-10-29T17:00:36.038Z
-updated: 2026-10-29T17:27:25.700Z
+updated: 2026-10-29T17:32:49.330Z
 ---
 
 ## Summary
@@ -27,12 +27,12 @@ When a General message has `replyTo` pointing at a message mapped to a native me
 
 ## Acceptance criteria
 
-- [ ] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
-  - failed: rev-34 [reviewer] · 2026-10-29T17:27:25.700Z · note Artifact-reference branch can discard explicit human native reply target on Telegram.
-- [ ] C2. The same holds on Discord, with `message_reference` on the fake REST.
-  - failed: rev-34 [reviewer] · 2026-10-29T17:27:25.700Z · note Reused-artifact reference can override explicit human reply target with prior upload on Discord.
+- [x] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
+  - done: impl-1447 · 2026-10-29T17:30:49.464Z
+- [x] C2. The same holds on Discord, with `message_reference` on the fake REST.
+  - done: impl-1447 · 2026-10-29T17:30:50.540Z
 - [x] C3. A reply target unmapped on a remote, or deleted, still delivers once as a plain message.
-  - done: impl-1447 · 2026-10-29T17:07:52.403Z
+  - done: impl-1447 · 2026-10-29T17:30:51.562Z
 
 ## Comments
 
@@ -54,3 +54,16 @@ finding_counts: {"high":0,"medium":2,"low":0}
 A-13859: full source not clear, M1 explicit-reply precedence for reused artifact references and M2 new paired fixture disposal order on failure. Normal text cross-remote flags/maps and optional payload/nonce compatibility are source-consistent. Consolidate controls/corrections and request fresh pushed-head review before verification. Local macOS only; no Reviewer execution or runtime verification.
 
 Criteria: C1 failed (Artifact-reference branch can discard explicit human native reply target on Telegram.), C2 failed (Reused-artifact reference can override explicit human reply target with prior upload on Discord.).
+
+### rev-34 · 2026-10-29T17:32:49.330Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1447-source2
+commit: db6760bb4dfe356fb7b1a23f4296bbdd4ad1f34e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13871: full source clear, M1/M2 resolved. Explicit mapped reply wins for reused artifacts; explicit unmapped suppresses default artifact thread while absent marker preserves old behavior/no-reupload. Four native cases retain request/cardinality controls; pacingOwner drains dynamic hub before Store, with missed/aborted startup controls. T-1448 caption omission remains separate per Coordinator. Local macOS receipts only; C1–C3 runtime verification pending exact-head configured evidence. No Reviewer execution.
