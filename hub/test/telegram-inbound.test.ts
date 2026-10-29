@@ -637,10 +637,10 @@ test('Telegram recovers confirmed media once and keeps following text behind it'
   await clean(nextUi, next);
 });
 
-test('Telegram transient media retries once without blocking commands or duplicating a message', async t => {
-  const { fake, owner, clock, start, state, drive, clean } = await fixture(t);
-  const failure = owner.observe(signal => fake.waitForRequest('getFile', () => true, signal));
-  await control(fake.url, 'fault', { method: 'getFile', code: 500 });
+for (const method of ['getFile', 'download'] as const) test(`Telegram transient ${method} retries silently without blocking commands or duplicating a message`, async t => {
+  const { fake, owner, clock, start, state, logs, drive, clean } = await fixture(t);
+  const failure = owner.observe(signal => fake.waitForRequest(method, () => true, signal));
+  await control(fake.url, 'fault', { method, code: 500, echoToken: true });
   await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'retry.bin', content: Buffer.from('retry bytes').toString('base64') }] });
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
   await within(failure, testWaitMs(5_000));
@@ -652,6 +652,35 @@ test('Telegram transient media retries once without blocking commands or duplica
   await drive(until(async () => ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages.some(m => m.artifacts?.[0]?.title === 'retry.bin'), { what: 'retried artifact', timeoutMs: 2_000 }));
   assert.equal(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages.length, 1);
   await drive(until(() => state.get('media.identity:101:1') === 'completed', { what: 'media completion receipt', timeoutMs: 2_000 }));
+  assert.equal(state.entries('media.queue:').length, 0);
+  const outgoing = (await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages;
+  assert.deepEqual(outgoing.filter(m => m.text?.includes('could not be stored')), []);
+  assert.deepEqual(logs.filter(entry => entry.event === 'telegram-media-retry').map(({ event, errorClass, code }) => ({ event, errorClass, code })),
+    [{ event: 'telegram-media-retry', errorClass: 'TelegramError', code: 500 }]);
+  assert.equal(((await ui.request({ type: 'artifact.list' })).value as { artifacts: unknown[] }).artifacts.length, 1);
+  await clean(ui, hub);
+});
+
+for (const method of ['getFile', 'download'] as const) test(`Telegram exhausted ${method} retries report one named failure and release the queue`, async t => {
+  const { fake, owner, clock, start, state, drive, clean } = await fixture(t);
+  for (let i = 0; i < 3; i++) await control(fake.url, 'fault', { method, code: 500, echoToken: true });
+  const completed = owner.observe(async signal => {
+    await until(() => signal.aborted || state.get('media.identity:101:1') === 'completed', { what: 'exhausted media completion', timeoutMs: 2_000 });
+    signal.throwIfAborted();
+  });
+  await control(fake.url, 'media', { items: [{ kind: 'document', file_name: 'failed.bin', content: Buffer.from('not stored').toString('base64') }] });
+  await control(fake.url, 'say', { text: 'after failed file' });
+  const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
+  const ui = await connectUi(t, hub.discovery);
+  for (const count of ['1', '2']) {
+    await until(() => state.get('telegram.media-failures:101:1') === count, { what: 'persisted retry failure', timeoutMs: 2_000 });
+    await clock.advance(1_000);
+  }
+  await drive(completed);
+  await drive(until(() => state.get('media.identity:101:2') === 'completed', { what: 'following text completion', timeoutMs: 2_000 }));
+  assert.deepEqual((await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages.map(m => m.text), ['failed.bin could not be stored']);
+  assert.deepEqual(((await ui.request({ type: 'artifact.list' })).value as { artifacts: unknown[] }).artifacts, []);
+  assert.deepEqual(((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages.map(m => m.text), ['after failed file']);
   assert.equal(state.entries('media.queue:').length, 0);
   await clean(ui, hub);
 });

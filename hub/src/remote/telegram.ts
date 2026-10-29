@@ -515,18 +515,26 @@ export class TelegramRemote implements Remote {
         await refuse(`${file.name} is ${Math.ceil(file.size / (1024 * 1024))} MB: a bot can download at most ${limit} MB, so it was not stored`);
         continue;
       }
+      const failureKey = `telegram.media-failures:${item.chat}:${item.message}`;
+      const failures = Number(store.get(failureKey) ?? 0);
+      if (failures >= 3) {
+        await refuse(`${file.name} could not be stored`);
+        continue;
+      }
       try {
         const native = await this.#api.getFile({ file_id: file.fileId }, { signal: this.#abort.signal });
         if (!native.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
         const bytes = await this.#api.download(native.file_path, Math.floor(limit * 1024 * 1024), this.#abort.signal);
         if (!admitted()) return;
+        store.set(failureKey, null);
         files.push({ name: file.name, mime: file.mime }); payload.push(bytes);
       } catch (error) {
         if (this.#abort.signal.aborted || fatal(error)) throw error;
         if (!admitted()) return;
         if (error instanceof TelegramError && (error.code === 429 || error.code >= 500 || error.code === 0 && !/cap|invalid/.test(error.description))) {
-          await refuse(`${file.name} could not be stored; retrying`);
-          throw error;
+          this.#polling!.log?.({ event: 'telegram-media-retry', errorClass: 'TelegramError', code: error.code });
+          store.set(failureKey, String(failures + 1));
+          if (failures < 2) throw error;
         }
         await refuse(`${file.name} could not be stored`);
       }

@@ -8264,7 +8264,6 @@
     "hub/test/telegram-inbound.test.ts::Telegram recovers confirmed media once and keeps following text behind it": 0.176616,
     "hub/test/telegram-inbound.test.ts::Telegram refuses a declared 25 MB document without getFile and leaks no file URL or token": 0.102943,
     "hub/test/telegram-inbound.test.ts::Telegram three-photo album is one ordered captioned message before following text": 0.156197,
-    "hub/test/telegram-inbound.test.ts::Telegram transient media retries once without blocking commands or duplicating a message": 0.153109,
     "hub/test/telegram-inbound.test.ts::Telegram upload commit rejects pairing replace during native file preparation": 0.122153,
     "hub/test/telegram-inbound.test.ts::Telegram upload commit rejects pairing unpair during native file preparation": 0.154053,
     "hub/test/web-upload.test.ts::HTTP file handoff retains one owned allocation through the native writer": 0.099669,

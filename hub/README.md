@@ -2948,7 +2948,11 @@ pending media before upload and again at artifact commit. Fatal native media
 401/403/409 responses save the stopped state and retain work for hub reload.
 Declared sizes above the smaller of 20 MB and `[artifacts] max_upload_mb` receive
 one explanation without `getFile`; permanent failures receive one reply and leave
-the queue, transient failures retain it for retry. Token-bearing download URLs
+the queue. For photos/documents, retryable getFile/download failures are silent
+until three failures for that native input (two retries, one second apart). The
+failure count survives restart; exhaustion sends one filename reply and releases
+the queue. The hub logs only the retryable error class and numeric code.
+Token-bearing download URLs
 stay inside the client. Voice notes use the unsupported-input fallback here.
 
 The native registry is assembled after startup recovery and before polling begins;

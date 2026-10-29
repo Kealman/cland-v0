@@ -190,3 +190,11 @@ pairing, no settled target bits and exactly one native 👌 with no later 👀.
 Pairing is checked after each target exchange, not after the album loop.
 Lost-upload-result recovery also creates new receipts with numeric identity;
 existing legacy receipts keep their compatibility check.
+
+T-1449 generates successful and exhausted retry cases for both getFile and
+native download. Success retains one artifact, no failure line, command bypass
+and durable completion. Exhaustion retains three persisted failures, one named
+reply, no artifact and subsequent text in General. Advance the injected retry
+clock only after the persisted failure count, then wait for durable completion.
+The transient cases assert the log's static TelegramError class and numeric 500
+code; echoed synthetic token faults pass the existing positive-control sink scan.
