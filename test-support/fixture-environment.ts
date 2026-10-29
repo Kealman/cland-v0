@@ -31,6 +31,23 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
       || key.startsWith('GIT_') && !/^GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL|DATE)$/.test(key)) delete env[key];
     else if (env[key] === undefined) delete env[key];
   }
+  // Missing messenger roots trigger fixed client configuration errors; speech
+  // uses loopback port zero. Never leave undefined production defaults.
+  for (const key of ['CLAND_DISCORD_API_ROOT', 'CLAND_TELEGRAM_API_ROOT', 'CLAND_ELEVENLABS_API_ROOT']) {
+    // Speech is constructed even without a configured key. Its sentinel must
+    // permit construction, then fail locally if transcription is attempted.
+    const sentinel = key === 'CLAND_ELEVENLABS_API_ROOT' ? 'http://127.0.0.1:0' : 'fixture-loopback-root-required';
+    const value = env[key];
+    if (value === undefined) { env[key] = sentinel; continue; }
+    if (value === sentinel) continue; // A re-sealed child.
+    try {
+      const url = new URL(value);
+      if (/^http:\/\/(?:127\.0\.0\.1|\[::1\]):[0-9]+(?:\/|$)/.test(value)
+        && url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname)
+        && url.port && url.port !== '0' && !url.username && !url.password && !url.search && !url.hash) continue;
+    } catch { /* Never include caller input in the error. */ }
+    throw new Error(`fixture ${key} requires an explicit loopback HTTP API root`);
+  }
   return withoutExecutorCredentials({ ...env, HOME: join(root, 'home'), GIT_CONFIG_GLOBAL: join(root, 'home', '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
 }
 

@@ -326,3 +326,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`web/test/telegram-marks.test.ts`](../../../web/test/telegram-marks.test.ts) | [Notes](web-test-telegram-marks.test.ts.md) |
 | [`nvim/test/telegram-marks.test.ts`](../../../nvim/test/telegram-marks.test.ts) | [Notes](nvim-test-telegram-marks.test.ts.md) |
 | [`hub/test/telegram-marks-setup.test.ts`](../../../hub/test/telegram-marks-setup.test.ts) | [Notes](hub-test-telegram-marks-setup.test.ts.md) |
+| [`hub/test/fixture-endpoints.test.ts`](../../../hub/test/fixture-endpoints.test.ts) | [Notes](hub-test-fixture-endpoints.test.ts.md) |

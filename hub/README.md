@@ -7230,3 +7230,19 @@ A voice reply to a mapped ask submits the recognised text through `topic.answer`
 options-only asks accept a spoken option number or label (ignoring case and trailing punctuation). A successful answer keeps no recording, and a refused answer falls back to General. Replayed/history notes carry written/return metadata and do not answer old cards. Cancelled native work stays unconfirmed for resume.
 No new command, configuration key, dependency, frame or role permission is added.
 See the [inbound media test guide](../docs/agents/tests/hub-test-discord-inbound-media.test.ts.md).
+
+
+### Sealed fixture remote endpoints
+
+`test-support/fixture-environment.ts` supplies invalid missing-root sentinels for
+Discord and Telegram, whose client construction refuses before I/O. ElevenLabs
+uses loopback port zero: the default provider can construct without a key, but
+transcription fails locally with a sanitized speech transport error.
+A fixture that enables a remote or the cloud speech provider must supply its
+`CLAND_DISCORD_API_ROOT`, `CLAND_TELEGRAM_API_ROOT` or
+`CLAND_ELEVENLABS_API_ROOT` in the builder's third (`extra`) argument: an explicit
+HTTP URL on `127.0.0.1` or `[::1]` with a nonzero port (apart from the reserved speech refusal sentinel), without credentials,
+query or fragment. A root in `base` is stripped and takes the refusal path.
+Explicit external roots are refused without echoing the value. Production
+client defaults outside sealed fixtures remain unchanged. See
+[fixture tests](../docs/agents/tests/hub-test-fixture-endpoints.test.ts.md).

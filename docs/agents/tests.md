@@ -97,6 +97,16 @@ dynamic-import, CommonJS and promisified child-process functions are resolved
 through the compiler, including call/apply forwarding. Dynamic method lookups
 need an explicit exemption. Supply `env: fixtureEnvironment(disposableRoot, base, extras)` or
 `env: await accountFixtureEnvironment(extras)` after the final overlay.
+Discord, Telegram and ElevenLabs API roots must be explicit numeric-loopback HTTP
+URLs with a nonzero port (apart from the reserved speech refusal sentinel) in `extras`. Roots supplied only in `base` are stripped.
+Missing messenger roots become invalid refusal sentinels: client construction
+reports a fixed API-root configuration error. Missing ElevenLabs roots use
+loopback port zero, allowing the default keyless provider to construct and
+failing locally with a sanitized transport error on transcription. Neither
+path uses its public-host default. Explicit non-loopback roots are refused by
+the builder with a fixed fixture error. Re-sealing retains this protection.
+See [fixture endpoint coverage](tests/hub-test-fixture-endpoints.test.ts.md).
+
 Extras contain explicit owned inputs; passing `process.env` or its full spread as
 extras is refused because it can restore account paths. The guard checks the
 third argument of `fixtureEnvironment` and the first argument of
