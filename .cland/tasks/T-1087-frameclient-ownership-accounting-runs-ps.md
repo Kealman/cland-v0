@@ -2,8 +2,8 @@
 id: T-1087
 kind: task
 title: FrameClient ownership accounting runs ps for the in-process fixture's synthetic pids
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1216
 branch: t/T-1087-frameclient-ownership-accounting-runs-ps
 created: 2026-10-21T23:17:06.345Z
-updated: 2026-10-29T19:26:16.480Z
+updated: 2026-10-29T19:55:21.959Z
+closed: 2026-10-29T19:55:21.959Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ In the in-process Claude fixture, FrameClient's result-ownership accounting call
 
 - [x] C1. Synthetic process facts from the in-process fixture skip native ps/execFile accounting, and the T2 run reports no child_process warnings from FrameClient ownership accounting (test).
   - done: impl-1087 · 2026-10-29T19:11:11.535Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1087-final · 2026-10-29T19:48:05.311Z · commit 58262e40aa627be665470e085bf65283f245ce5a
 - [x] C2. Native fixtures that start real processes keep their ownership accounting and cleanup checks unchanged (test).
   - done: impl-1087 · 2026-10-29T19:25:26.807Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1087-final · 2026-10-29T19:48:05.312Z · commit 58262e40aa627be665470e085bf65283f245ce5a
 
 ## Comments
 
@@ -65,3 +68,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14039: M1 resolved by persistent native close/error observation, separate bounded waits, beforeRemove stop/close fence and same-owner omitted/aborted readiness controls. First FrameClient registration proof retained, scripted opt-out/native defaults unchanged. Local49/49/typecheck/tripwire attribution retained; runtime C1/C2 pending exact-head configured evidence.
+
+### rev-34 · 2026-10-29T19:48:05.312Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1087-final
+commit: 58262e40aa627be665470e085bf65283f245ce5a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record audit A-14070 of exact-head run bf21a8f4/A-14061: 4248 ordinary passes plus 80 load passes, no failures; T0/T1/all fallback T2/changed T3 cleanup 49 identities/Web completed. C1 scripted Claude identity passes ordinarily and 5/5 load, with no ownership warning for that fixture; separate FrameClient warning in test-admission remains outside scope. C2 all three default native ownership/omitted/aborted controls pass once, preserving source-backed native close/root fences. Remaining T3/T4 unrun; host check reused, not repeated remotely; report-only warnings and native-object capture limits retained. Standards and Spec clear within this evidence scope.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T19:55:21.959Z
+
+Merged c5f535802f8500328a49bd3db943c261773e1062 onto dev.

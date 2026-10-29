@@ -2,8 +2,8 @@
 id: T-1082
 kind: task
 title: A forced stage-closure recompute resolves ancestry for every historical cover candidate
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1215
 branch: t/T-1082-a-forced-stage-closure-recompute
 created: 2026-10-21T19:04:23.933Z
-updated: 2026-10-29T19:24:33.447Z
+updated: 2026-10-29T19:50:37.352Z
+closed: 2026-10-29T19:50:37.352Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ When a hub has to recompute stage closures without saved checkpoints, it resolve
 
 - [x] C1. A forced closure recompute on a copied live tracker resolves only the candidates that can still decide an open stage; the test asserts the ancestry work count (one deciding pair at 1,200 historical covers) and records the measured wall time as a diagnostic, not an assertion.
   - done: impl-1082 · 2026-10-29T19:11:34.950Z
+  - verified: rev-32 [reviewer] · run rev-20261029-1082-evidence1 · 2026-10-29T19:41:07.439Z · commit d1b200c921e4e81a9a71f4e1f979df3c31ca5b67
 - [x] C2. Closed stages keep their recorded closures, and no open stage's result changes, in a differential test against the current full recompute.
   - done: impl-1082 · 2026-10-29T19:11:35.177Z
+  - verified: rev-32 [reviewer] · run rev-20261029-1082-evidence1 · 2026-10-29T19:41:07.439Z · commit d1b200c921e4e81a9a71f4e1f979df3c31ca5b67
 
 ## Comments
 
@@ -63,3 +66,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14035 full successor source clear; Standards 0 / Spec 0 findings. Coordinator c0a671ad revised C1; sole correction removes the new speed assertion and aligns guide, retains exact one-pair and semantic/reopen/differential guards. Frozen allowance zero and production unchanged. Old admission refusal ran no tests. C1/C2 remain runtime-unverified pending same-head configured receipt. No Reviewer execution.
+
+### rev-32 · 2026-10-29T19:41:07.439Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261029-1082-evidence1
+commit: d1b200c921e4e81a9a71f4e1f979df3c31ca5b67
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14054 final same-head clear: original A-14048 parsed 4200 ordinary passes/85 separate load passes, no nonpasses or unmatched starts. Both new identities base + 5/5 explicit load finishes; one ancestry pair and 100.4 ms injected diagnostic, saved closure and 16-history differential assertions pass. C1/C2 verified under revised diagnostic-only timing criterion; native Git latency excluded. Host T0 distinct from Linux T1/all T2/Web, no T3/T4, lint/budgets report-only. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T19:50:37.352Z
+
+Merged e1b255d63584687753dd08a4687e11101e86d33a onto dev.

@@ -2,8 +2,8 @@
 id: T-1248
 kind: task
 title: The first task.list reply nears its byte cap as the live tracker grows
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T19:22:43.373Z
+updated: 2026-10-29T19:50:53.933Z
+closed: 2026-10-29T19:50:53.933Z
 ---
 
 ## Summary
@@ -26,9 +27,11 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 - [x] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
   - done: impl-1248 · 2026-10-29T17:08:20.011Z
   - verified: rev-34 [reviewer] · run rev-34-20261029-1248-final · 2026-10-29T19:16:31.095Z · commit 216d2eb7c014c74e6a2eaeaa30cddd40fdf39e3c
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1248-final2 · 2026-10-29T19:41:42.688Z · commit 0675f7221b72ebe9d7212485aa65ef3bf68d2959
 - [x] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
   - done: impl-1248 · 2026-10-29T18:50:48.197Z
   - verified: rev-34 [reviewer] · run rev-34-20261029-1248-final · 2026-10-29T19:16:31.095Z · commit 216d2eb7c014c74e6a2eaeaa30cddd40fdf39e3c
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1248-final2 · 2026-10-29T19:41:42.688Z · commit 0675f7221b72ebe9d7212485aa65ef3bf68d2959
 
 ## Comments
 
@@ -172,3 +175,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14031: Pure duration union independently verified; all dev values and exact own approved entries retained. Paging requests/wire/Lua unchanged; incoming close-only tracker check and pinned corpus compatible. Local merge checks remain macOS-only. Prior green/red receipts stay at original heads; fresh merged-head verify/final evidence required by Coordinator.
+
+### rev-34 · 2026-10-29T19:41:42.688Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-final2
+commit: 0675f7221b72ebe9d7212485aa65ef3bf68d2959
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14055: Fresh A-14051 confirms 4260 ordinary+40 task load passes, all eight new task identities 5/5, 5000/77 pages/121227 first bytes and scale54.015603610s<approved80s. Selected T4/Web pass; pinned/local/prior copied and native startup evidence separately attributed. C1/C2 refreshed; old reds/parent green remain historical, host/browser/report-only/unrun T3 limits retained. Coordinator full gate separate.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T19:50:53.933Z
+
+Merged bf06e697ec702181383e346f106944fd40d3c196 onto dev.

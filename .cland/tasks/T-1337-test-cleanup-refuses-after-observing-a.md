@@ -2,8 +2,8 @@
 id: T-1337
 kind: task
 title: Test cleanup refuses after observing a native exit because it cannot confirm the exited process's descendants
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ regression_of: T-543
 topic: topic-1213
 branch: t/T-1337-test-cleanup-refuses-after-observing-a
 created: 2026-10-26T10:49:09.893Z
-updated: 2026-10-29T19:22:00.678Z
+updated: 2026-10-29T19:45:31.315Z
+closed: 2026-10-29T19:45:31.315Z
 ---
 
 ## Summary
@@ -30,6 +31,7 @@ When cleanup observes a recorded process's native exit, confirm each listed desc
 
 - [x] C1. A recorded process that exits during teardown, with descendants that exited too, is cleaned without a refusal, while a descendant still alive under its captured identity is still reported, shown with injected process facts (test).
   - done: impl-1337 · 2026-10-29T19:14:55.684Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1337-final · 2026-10-29T19:38:31.498Z · commit b0c4066d0f9d1eaf268b54f45e51ce7706b1f6c4
 
 ## Comments
 
@@ -64,3 +66,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14030: M1 resolved by ESRCH-only absence/EPERM-live/unexpected-error propagation; Linux/Darwin injected EIO/EPERM refusal controls retain original positives/signals/identity safeguards. Standards/Spec clear. Local 58/58/typecheck are macOS claimant evidence, not configured/Linux proof. C1 runtime unverified pending exact-head verify.
+
+### rev-34 · 2026-10-29T19:38:31.498Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1337-final
+commit: b0c4066d0f9d1eaf268b54f45e51ce7706b1f6c4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14044: Original A-14042 confirms 4256 ordinary passes, changed T3 58/58 once, all12 new injected OS/outcome identities and original root/reuse controls pass. C1 verified. Linux executor versus injected Darwin facts distinguished; host reuse, report-only ratchet/duration/lint warnings and absent remaining T3/T4 retained. No historical full-run reproduction claim.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-29T19:45:31.315Z
+
+Merged a1f2fe09623999bbdff12223563b5eeae92a33fa onto dev.
