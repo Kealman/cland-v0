@@ -3,7 +3,7 @@ id: T-1372
 kind: task
 title: Discord's stopped causes reach doctor, and Discord shows in both workbenches
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 4
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-1175
 branch: t/T-1372-discord-s-stopped-causes-reach-doctor
 created: 2026-10-27T05:46:51.767Z
-updated: 2026-10-29T11:18:39.936Z
+updated: 2026-10-29T12:21:25.275Z
 ---
 
 ## Summary
@@ -117,3 +117,29 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Original-record evidence2 clear for current86a5a30b0/source2 only. Independently confirmed Coordinator1dbaf36a authorized single samehead retry759d7507/A-13662 exit0; priorfailedA-13658/A-13659/T-1439 remains separate, previoushistoryidentity now.237324093s is not a shared-fix claim. Independent4128ordinary+65scopedloadpasses, no fail/cancel/skip/unfinishedidentity. T0/allT1/allT2/changedNvimT3/Web complete. C1native4004=.234310845s/4014=.184182459s plainJSONfix/identity/noREST with5loadeach; C2/C3Nvim=.392346121s(child.274514122),Web1.737448207s actualnative1sred/ACKrecovery/textvoiceapprovalpair; C4docsguard.000504897s+5load/full9docs cases. Setupomitted/aborted.125867317/.086910510s+5load; no new>=3sallowance. A-13663 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13663-t-1372-evidence-review-2-clear-at-current-head.md). Linuxx64 c8lon1, CHS156.0.8078.4/v1248,Nvim.12.5,hosttypecheck382b10dc reused. ChangedT3two top-level/four generatedinclchildren once,addedwall1.938s excludesmachinewait;Web0newreps,remainingT3/T4unrun,budgetsreport-only. C1–C4verified here; no Reviewer execution. Coordinator d25de8d8 sequencingstillrequires T1371landingnotice→authorizedmerge/docsresolution→delta review/newmodefree, plus theirfull-all beforeenqueue. No ready/enqueue request; currentgreen cannot cover futurehead.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-26 · 2026-10-29T12:07:48.277Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1372-source-3
+commit: d900f4387b69bdeead3d3090b1213f67a2c5026b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear, Standards/Spec zero findings. A-13680 records exact parents/tree and both-parent shared-doc inspection: both appended site docs tests preserved; setup and doctor/outage/fatal-code guidance retained. Nine task-owned code/test/guide paths byte-identical to source2; 22 other changed paths exactly dev, inherited T-1371 already reviewed/landed. C1–C4 remain stale; prior A-13662 green is first-parent only. A-13676 local receipts do not replace new-head runtime evidence. Proceed unchanged-head configured mode-free then original-record final evidence review; Coordinator 3f464263 full verify all for doctor/remotes.ts and remote/discord.ts remains separate before enqueue. Prior A-13658/T-1439 retained. Reviewer ran no workloads.
+
+### rev-26 · 2026-10-29T12:21:25.275Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1372-evidence-3
+commit: d900f4387b69bdeead3d3090b1213f67a2c5026b
+scope: evidence
+findings: [{"severity":"medium","text":"M3 evidence blocker: original A-13682:19373 recurs at T-1439 shared identity, 'resumed checkpoint old copy edited: not within 4000 ms', 4.299845646s; changed Neovim T3/Web unexecuted. Await Coordinator shared-fix instruction, no blind retry.","file":"hub/test/discord-cards.test.ts","line":1072}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13684 records original mode-free85ef2244 exit1: independently3471 ordinarypass/1fail plus70 separate scopedloadpasses, no unfinished started test identity. T0/T1 green, T2 red; changed NeovimT3/Web/T4 unrun. Native doctor4004 .297009664/4014 .219573729s, setupomitted .160024865/aborted .139850381s and docs .00061638s each +5 scopedloadpasses retained as partial positives. C1–C4 not refreshed; C2/C3 runtime absent, no product criterion failure inferred. Source3 A-13680 remains clear separately. Linuxx64 c8nyc1/Node24.21/Nvim.12.5, reused hosttypecheck29931ca4, no browser runtime proof, budgets report-only. Lead stops for Coordinator/T-1439; prior firstparentgreen and failures separate. Any directed changedhead needs delta review, successor modefree/final review; Coordinatorfullall beforeenqueue remains. No Reviewer workload.

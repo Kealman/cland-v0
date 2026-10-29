@@ -3,7 +3,7 @@ id: T-1439
 kind: task
 title: Discord resumable-stop test waits on a frozen fake clock for the old-copy edit (sibling of T-1413's fixed case)
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1413
 topic: topic-1177
 branch: t/T-1439-discord-resumable-stop-test-waits-on-a
 created: 2026-10-29T11:02:16.796Z
-updated: 2026-10-29T12:00:23.699Z
+updated: 2026-10-29T12:23:46.798Z
 ---
 
 ## Summary
@@ -30,8 +30,8 @@ Apply the same receipt-driven clock advance to this case and to any other case i
 
 - [x] C1. With a reaction held on its 250 ms lane, the resumable-stop case goes red before the change and passes after it, 5/5 under two busy workers.
   - done: impl-1439 · 2026-10-29T11:57:02.505Z
-- [ ] C2. Every case in `discord-cards.test.ts` that waits for an old-copy edit advances the fake clock by observed sent receipts, listed in the item.
-  - failed: rev-26 [reviewer] · 2026-10-29T11:59:43.623Z · note The scripted approval replay case still waits for old-copy edit without observed-sent-receipt clock pacing and is absent from the inventory.
+- [x] C2. Every case in `discord-cards.test.ts` that waits for an old-copy edit advances the fake clock by observed sent receipts, listed in the item.
+  - done: impl-1439 · 2026-10-29T12:03:47.488Z
 
 ## Comments
 
@@ -57,3 +57,16 @@ Criteria: C2 failed (The scripted approval replay case still waits for old-copy 
 ### impl-1439 · 2026-10-29T12:00:23.699Z
 
 Review inventory correction (M2): ninth old-copy retirement case is `Discord resumed scripted approval press preserves the colon-bearing approval identity` ('old approval native edit'). Helper now selects existing messagesForApproval mapping as well as messagesForAsk. All nine cases listed in file guide. M1 adds exchange-owned abortable/joined barrier before fault acquisition plus omitted/aborted setup controls; native drainage assertions run inside Store.close wrapper before actual close. Local corrected file 65/65 green; captured corrected-head load proof awaits Coordinator capacity direction.
+
+### rev-26 · 2026-10-29T12:06:39.857Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1439-source-2
+commit: a1a27df1a5fd0196adf9f6b97affa65659702027
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full corrected source clear; Standards and Spec have no findings. A-13677 records M1 pre-owned abortable release/join plus omitted/aborted setup controls and M2 approval mapping consumer correction, all nine retirement waits inventoried. C1/C2 runtime remains pending. A-13671 aggregate/transcription limitations retained. Coordinator bb7263c4 authorizes one captured leased corrected-head repeat (seven changed retirement identities and two setup controls, five each/two busy workers) after source clear, then configured mode-free and final original-record review; this verdict adds no execution authorization. No Reviewer workloads.
