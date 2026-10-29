@@ -1,9 +1,10 @@
+import type { RemoteStore } from './state.ts';
 import { remoteStopError } from './notices.ts';
 import { WebSocket } from 'ws';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
 import { within } from '../executor/droplet/deadline.ts';
 type IdentifyAdmission = { before: () => Promise<void>; delay: () => number; reserve: () => void; ready: () => void; failed: () => void; scheduled?: (connection: number, delay: number) => void };
-export type DiscordDispatch = { op: number; t?: string; s?: number; d: Record<string, unknown> };
+export type DiscordDispatch = { op: number; t?: string; s?: number; d: Record<string, unknown>; replayed?: boolean; returnedAt?: string };
 
 /** Validate before constructing a socket: no redirects, credentials or foreign hosts. */
 export function discordGatewayUrl(value: string, fake: boolean): string {
@@ -23,6 +24,9 @@ export class DiscordSocket {
   readonly #random: () => number;
   readonly #changed: () => void;
   readonly #identify: IdentifyAdmission | undefined;
+  readonly #store: RemoteStore | undefined;
+  readonly #resumeStarted: (() => void) | undefined;
+  #replaying = false;
   #connection = 0;
   #identifyTimer: ClockTimer | undefined;
   #socket: WebSocket | undefined;
@@ -35,21 +39,32 @@ export class DiscordSocket {
   #ack: number | undefined;
   #ready = false;
   #stopping = false;
+  #stopped: Promise<void> | undefined;
   #freshIdentifyUsed = false;
   #sequence: number | null = null;
+  #committedSequence: number | null = null;
+  #dispatchTail: Promise<void> = Promise.resolve();
   #closed = Promise.withResolvers<void>();
   #completion = Promise.withResolvers<void>();
   session: { id: string; resumeUrl: string; botId: string } | undefined;
   lastInbound: string | null = null;
   lastOutbound: string | null = null;
-  constructor(clock: Clock, changed: () => void, random = Math.random, identify?: IdentifyAdmission) {
+  constructor(clock: Clock, changed: () => void, random = Math.random, identify?: IdentifyAdmission, store?: RemoteStore, resumeStarted?: () => void) {
+    this.#store = store; this.#resumeStarted = resumeStarted;
+    const saved = store?.get('discord.session');
+    if (saved) {
+      const record = JSON.parse(saved);
+      this.session = record.session; this.#sequence = record.sequence; this.#committedSequence = record.sequence;
+    }
     this.#clock = clock; this.#changed = changed; this.#random = random; this.#identify = identify;
   }
   connected(): boolean { return !this.#stopping && this.#ready && this.#ack !== undefined && this.#clock.now().getTime() - this.#ack <= this.#interval; }
-  run(url: string, token: string, dispatch: (frame: DiscordDispatch) => void): Promise<void> {
+  run(url: string, token: string, dispatch: (frame: DiscordDispatch) => void | Promise<void>): Promise<void> {
+    if (this.session) url = discordGatewayUrl(this.session.resumeUrl, url.startsWith('ws:'));
     const socket = this.#socket = new WebSocket(url, { perMessageDeflate: false, followRedirects: false, handshakeTimeout: 10_000, maxPayload: 4 * 1024 * 1024 });
     const connection = ++this.#connection;
     let identified = false, reachedReady = false;
+    let returnedAt: string | undefined;
     const fail = () => { if (!this.#stopping) socket.terminate(); };
     const send = (frame: unknown) => {
       if (socket.readyState !== WebSocket.OPEN || this.#stopping) return;
@@ -75,7 +90,7 @@ export class DiscordSocket {
         }
         this.#interval = interval;
         schedule(interval * this.#random());
-        if (this.session) send({ op: 6, d: { token, session_id: this.session.id, seq: this.#sequence } });
+        if (this.session) { this.#resumeStarted?.(); this.#replaying = true; returnedAt = this.#clock.now().toISOString(); send({ op: 6, d: { token, session_id: this.session.id, seq: this.#sequence } }); }
         else {
           const identify = async () => {
             if (socket !== this.#socket || socket.readyState !== WebSocket.OPEN || this.#stopping) return;
@@ -98,7 +113,7 @@ export class DiscordSocket {
       else if (frame.op === 11) { this.#ack = this.#clock.now().getTime(); this.#awaitingAck = false; }
       else if (frame.op === 7 || frame.op === 9) {
         if (frame.op === 9 && (frame.d as unknown) !== true) {
-          this.session = undefined; this.#sequence = null;
+          this.session = undefined; this.#sequence = null; this.#store?.set('discord.session', null); this.#replaying = false;
           this.#retryDelay = 1000 + this.#random() * 4000;
         }
         this.#ready = false; socket.terminate();
@@ -114,12 +129,22 @@ export class DiscordSocket {
           this.#identify?.ready(); reachedReady = true;
           this.session = { id: frame.d.session_id, resumeUrl: frame.d.resume_gateway_url, botId: user.id }; this.#ready = true;
         }
-        if (frame.t === 'RESUMED') { this.#ready = true; }
-        if (frame.t === 'INTERACTION_CREATE' && typeof frame.d.id === 'string') {
-          if (this.#seenInteractions.has(frame.d.id)) return;
+        if (frame.t === 'RESUMED') { this.#ready = true; this.#replaying = false; }
+        if (this.#replaying) { frame.replayed = true; if (returnedAt !== undefined) frame.returnedAt = returnedAt; }
+        if (frame.t === 'INTERACTION_CREATE' && typeof frame.d.id === 'string' && /^\d+$/.test(frame.d.id)) {
+          if (this.#seenInteractions.has(frame.d.id) || this.#store?.get(`discord.interaction:${frame.d.id}`)) return;
           this.#seenInteractions.add(frame.d.id);
         }
-        try { dispatch(frame); } catch { this.#completion.reject(new Error('Discord gateway dispatch failed')); }
+        let work: Promise<void>;
+        try { work = Promise.resolve(dispatch(frame)); }
+        catch { work = Promise.reject(new Error('Discord gateway dispatch failed')); }
+        void work.catch(() => {});
+        // Native deadlines remain independent; only confirmation waits in order.
+        this.#dispatchTail = this.#dispatchTail.then(() => work).then(() => {
+          if (Number.isSafeInteger(frame.s)) this.#committedSequence = frame.s!;
+          if (frame.t === 'INTERACTION_CREATE' && typeof frame.d.id === 'string' && /^\d+$/.test(frame.d.id)) this.#store?.set(`discord.interaction:${frame.d.id}`, '1');
+        });
+        void this.#dispatchTail.catch(() => { if (!this.#stopping) this.#completion.reject(new Error('Discord gateway dispatch failed')); });
       }
       this.#changed();
     });
@@ -133,7 +158,7 @@ export class DiscordSocket {
       } else {
         if (code === 1000 || code === 1001 || code === 4003 || code === 4007 || code === 4009) {
           if (code === 4003) this.#freshIdentifyUsed = true;
-          this.session = undefined; this.#sequence = null;
+          this.session = undefined; this.#sequence = null; this.#store?.set('discord.session', null); this.#replaying = false;
         }
         const delay = this.#retryDelay ?? 0;
         this.#retryDelay = undefined;
@@ -150,15 +175,21 @@ export class DiscordSocket {
     });
     return this.#completion.promise;
   }
-  async stop(code?: 1000): Promise<void> {
+  async stop(code: 1000 | 4000 = 4000): Promise<void> {
+    if (code === 1000) { this.session = undefined; this.#sequence = null; this.#committedSequence = null; this.#store?.set('discord.session', null); }
+    return this.#stopped ??= this.#stop(code);
+  }
+  async #stop(code: 1000 | 4000): Promise<void> {
     this.#stopping = true; this.#clock.clearTimeout(this.#timer); this.#clock.clearTimeout(this.#reconnect); this.#clock.clearTimeout(this.#identifyTimer);
     if (this.#socket && this.#socket.readyState !== WebSocket.CLOSED) {
-      if (code) this.#socket.close(code); else this.#socket.terminate();
+      this.#socket.close(code);
     }
     if (this.#socket) {
       try { await within(this.#closed.promise, 2000); }
       catch { this.#socket.terminate(); await within(this.#closed.promise, 2000); }
     }
+    await this.#dispatchTail.catch(() => {});
+    this.#store?.set('discord.session', code === 4000 && this.session ? JSON.stringify({ session: this.session, sequence: this.#committedSequence, stoppedAt: this.#clock.now().toISOString() }) : null);
     this.#completion.resolve(); this.#changed();
   }
 }

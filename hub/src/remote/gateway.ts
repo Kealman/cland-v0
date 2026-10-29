@@ -37,6 +37,8 @@ export type Remote = {
   pairingReplaced?: (previous: Pairing, text: string) => void | Promise<void>;
   /** Lifetime promise for the platform loop; stop must settle it and drain its writers. */
   run?: () => Promise<void>;
+  /** Mark configuration removal before stop; absent on older adapters. */
+  disable?: () => void;
   stop: () => void | Promise<void>;
 };
 

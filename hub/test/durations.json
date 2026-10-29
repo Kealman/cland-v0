@@ -8279,7 +8279,7 @@
     "hub/test/discord-messenger.test.ts::Discord Identify aborted admission setup drains observers and native writers": 0.070851,
     "hub/test/discord-messenger.test.ts::Discord Identify floor stops below 100 with reset time and no Identify": 0.072073,
     "hub/test/discord-messenger.test.ts::Discord Identify omitted admission setup drains observers and native writers": 0.074585,
-    "hub/test/discord-messenger.test.ts::Discord Identify spacing and rolling count survive hub restart": 0.115632,
+    "hub/test/discord-messenger.test.ts::Discord Identify spacing and rolling count survive a legacy sessionless hub restart": 0.115632,
     "hub/test/discord-messenger.test.ts::Discord rereads the start budget before a fresh Identify after READY": 0.086346,
     "hub/test/suite-close-component.test.ts::fallback submission setup drains an aborted retry observation": 0.405162,
     "hub/test/suite-close-component.test.ts::fallback submission setup drains an omitted retry observation": 0.390478,

@@ -24,7 +24,7 @@ memory and never enter frames, outbox payloads or exported receipts.
 
 Existing command interaction shapes and historical Discord outbox payloads remain
 valid. Restart tests must respect the persisted five-second Identify reservation;
-this file does not assert restart/catch-up.
+the restart cases below assert successful resume catch-up.
 
 `Discord lost defer response still settles the committed outcome without a second callback`
 uses `interact` with `lose_callback_response: true`: the fake accepts the initial
@@ -130,3 +130,56 @@ Long-plan-title controls repeat the notice/reply cases with 2500 supplementary
 Unicode characters. Both configured-origin and unset-origin cases retain the
 complete workbench instruction; the configured origin remains intact, with a
 visible ellipsis in the variable title and at most 2000 native code points.
+
+
+T-1412 restart cases use the production factory, persistent SQLite and the same
+loopback fake across fully joined hub lifetimes. A 30-second injected restart
+must close with 4000, send RESUME and spend no further Identify. Native buffered
+MESSAGE_CREATE reaches durable General once with the written and return HH:MM;
+the setup crosses a minute boundary. A buffered component press answers nothing,
+has zero callbacks and produces only its mapped card's second durable copy;
+the original native edit removes components and reads “↓ Re-sent below”.
+The unpressed peer stays single. CLI config disable plus reload must close with
+1000; re-enable plus reload spends a fresh Identify with zero resumes. Set the
+fixture-local verification lock before startup so the managed config survives
+harness isolation. Session, interaction and replay-intent keys are additive;
+previous wire and outbox fixture shapes remain unchanged. No browser is used.
+
+
+Source-review corrections retain seven additional native controls: real scripted
+colon-bearing approval IDs, long fenced approvals, full numbered Unicode option
+explanations, handled stale-topic refusal followed by valid input, interrupted
+held ingress confirmation, minute-crossing live resume, full replay-input drain
+before resend, and fatal close followed by full owner shutdown. The approval case
+combines the identity and long-content checks. Budget the warning before rendering
+variable content. A handled refusal has a durable inbound tombstone and keeps the
+hub/remote live; cancellation has no tombstone and replays after restart.
+
+For replay ordering, hold the exact later topic.send frame after buffering a press
+first. The content-free `discord-replay-drain-waiting` diagnostic marks RESUMED
+entering the input join; the test retains mapping count one and no inbound receipt
+before release, then asserts General content, second native mapping and old-copy
+edit. No live interaction callback waits on this replay join. The socket captures
+the return time per RESUME connection. Fatal 1000 disposal clears both persisted
+and in-memory session facts so subsequent stop cannot resurrect them.
+
+
+Every RESUME closes recovery admission before native RESUME I/O,
+independently of replay event kinds. The no-new-press control seeds one owed
+resend intent, holds buffered MESSAGE_CREATE, and triggers a separate inbox
+publication. Its peer card's durable mapping proves publication completed while
+the owed card remains single. After release, wait for the durable stored-reaction
+settlement before advancing the250ms reaction bucket; then retain input, resend,
+zero-new-interaction and old-copy edit assertions. The warning-rendering and
+sessionless-ledger case-name migration retains the owning exact duration key at
+0.115632; no timing totals or allowances change.
+
+M8/Linux load correction: the buffered-press ordering control closes its old
+coordinator and reconnects before releasing input, with the exact delivery observer
+already owned. Hold the native stored reaction until delivery is durably recorded,
+then release it, observe its durable sent settlement and advance the250ms reaction
+bucket. Without that advancement the same deterministic setup times out at input
+then resend completion; early feedback can also strand the old-copy edit. Preserve
+the original bounds, no-early-resend assertion, exact General text, native resend
+mapping and old-copy content/components assertions. Native pacing time is fixture
+setup, not elapsed performance evidence.

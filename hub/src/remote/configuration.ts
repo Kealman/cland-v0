@@ -17,6 +17,7 @@ export class ConfiguredGateway {
   readonly #create: (remotes: readonly Remote[]) => Gateway;
   readonly #speech: typeof speechProvider;
   #gateway: Gateway | undefined;
+  #remotes: readonly Remote[] = [];
   #loaded: { settings: RemoteSettings; secrets: Secrets } | undefined;
   #work: Promise<void> = Promise.resolve();
   #closing = false;
@@ -30,6 +31,7 @@ export class ConfiguredGateway {
     const work = this.#work.then(async () => {
       if (this.#closing) throw new Error('gateway is stopping');
       if (isDeepStrictEqual(candidate, this.#loaded) && !this.#gateway?.needsRestart()) return;
+      for (const remote of this.#remotes) if (!candidate.settings.remote[remote.via].enabled || !candidate.secrets[`${remote.via}.token`] || candidate.secrets[`${remote.via}.token`] !== this.#loaded?.secrets[`${remote.via}.token`]) remote.disable?.();
       await this.#gateway?.stop();
       if (this.#closing) throw new Error('gateway is stopping');
       this.#gateway = undefined;
@@ -41,6 +43,7 @@ export class ConfiguredGateway {
         try { remotes.push(this.#factory(via, token, structuredClone(candidate.settings), this.#speech(candidate.settings.speech, candidate.secrets))); }
         catch (error) { remotes.push({ id: via, via, start: () => { throw error; }, receive: () => {}, stop: () => {} }); }
       }
+      this.#remotes = remotes;
       if (remotes.length) {
         this.#gateway = this.#create(remotes);
         await this.#gateway.start();

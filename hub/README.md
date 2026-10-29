@@ -6913,14 +6913,32 @@ Hello schedules the first heartbeat at its interval multiplied by random jitter;
 subsequent heartbeats follow the interval, and opcode 1 sends immediately.
 `cland remote status` reports connected only after READY or RESUMED and an acknowledgement
 within the last interval, with successful inbound/outbound timestamps and the
-application's invite (`scope=bot&permissions=117824`). Session facts remain in
-memory. Discord pairing interactions use the native command router described below;
+application's invite (`scope=bot&permissions=117824`). On hub stop, Discord closes
+with 4000 and stores the session id, validated resume URL, bot id, handled sequence
+and stop time under `discord.session` in hub.db. The next enabled start attempts
+RESUME before Identify. Disabling Discord (or removing/replacing its token) through
+configuration and reload closes with 1000 and forgets the session.
+Optional adapter `disable()` marks configuration removal before the normal stop;
+older injected adapters can omit it. Discord pairing interactions use the native command router described below;
 message handlers use its optional native dispatch extension point.
 A missed heartbeat ACK terminates the transport (no 1000/1001 close frame).
 Drops, opcode 7 and resumable opcode 9 reconnect to the validated resume URL
 with session id and sequence. A successful resume spends no Identify. A working session resumes immediately; resume attempts spend no Identify budget. Opcode 9 false clears the session and waits a
 random 1–5 seconds before the next Identify admission check. Message ids are durably deduplicated;
-interaction ids are deduplicated in memory for this socket lifetime.
+interaction ids are also durably deduplicated. During RESUME replay, ordinary
+paired input carries its written time and the hub return time. Replayed commands
+are dropped. Component presses receive no callback and answer no ask; only their
+mapped open cards are re-sent with the lost-button warning, and the old copy is
+edited to “↓ Re-sent below” without components. Owed resends use durable intents
+and stable outbox keys; unpressed cards stay in place. No interaction token enters
+these records. Every RESUME start closes card recovery admission, including resumes with no new
+presses; RESUMED joins all replay input before card recovery; live callbacks
+retain independent deadlines. Each RESUME captures its own return time. Replay
+dispatches settle in order before their sequence is saved. A terminal inbound
+refusal is durably deduplicated without stopping Discord; cancelled input stays
+unconfirmed for replay. A terminal 1000 close clears in-memory session facts too,
+so a later owner stop cannot restore that session. Replay warnings consume fixed
+rendering budget before variable text, preserving fences and option explanations.
 Every Identify waits at least five seconds after the previous one, including
 across hub restarts. The Discord-scoped `discord.identify` record in `hub.db`
 retains rolling 24-hour timestamps, failed-attempt backoff and the warning time.

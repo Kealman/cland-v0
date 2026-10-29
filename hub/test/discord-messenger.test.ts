@@ -287,15 +287,16 @@ test('Discord zombie terminates resumably and buffered input reaches General onc
   await receipt(() => fake.control('state'), s => s.gateway.closes.length === 1);
   assert.equal((await status()).connection, 'disconnected');
   assert.equal((await fake.control('state')).gateway.closes[0], 1006);
-  const message = { op: 0, t: 'MESSAGE_CREATE', d: { id: '99000000000000001', channel_id: DISCORD_IDS.channel, author: { id: DISCORD_IDS.human }, type: 0, content: 'During the zombie' } };
+  const message = { op: 0, t: 'MESSAGE_CREATE', d: { id: '99000000000000001', channel_id: DISCORD_IDS.channel, author: { id: DISCORD_IDS.human }, type: 0, content: 'During the zombie', timestamp: clock.now().toISOString() } };
   await fake.control('dispatch', message);
   await fake.control('configure', { acknowledge: true });
   await clock.advance(1000); await receipt(() => fake.control('state'), s => s.gateway.resumes === 1);
-  await receipt(history, rows => rows.some(m => m.text === 'During the zombie'));
+  const late = 'During the zombie\n\n(written on Discord at 12:00; the hub was down until 12:00)';
+  await receipt(history, rows => rows.some(m => m.text === late));
   await fake.control('dispatch', message);
   await fake.control('dispatch', { ...message, d: { ...message.d, id: '99000000000000002', content: 'Replay drained' } });
   const rows = await receipt(history, rows => rows.some(m => m.text === 'Replay drained'));
-  assert.equal(rows.filter(m => m.text === 'During the zombie').length, 1);
+  assert.equal(rows.filter(m => m.text === late).length, 1);
   assert.equal((await fake.control('state')).gateway.identifies, 1);
   assert.equal((await fake.control('state')).gateway.validResume, true);
   await close(); assert.equal(clock.pending, 0);
@@ -463,7 +464,7 @@ test('Discord Identify floor stops below 100 with reset time and no Identify', a
   await hub.stop(); assert.equal(clock.pending, 0);
 });
 
-test('Discord Identify spacing and rolling count survive hub restart', async t => {
+test('Discord Identify spacing and rolling count survive a legacy sessionless hub restart', async t => {
   const { Store } = await import('../src/hub/store.ts');
   const root = await tempProject(t); const clock = new FakeClock(); const fake = await fakeDiscordFixture(t, { clock });
   await fake.control('configure', { interval: 1000000 });
@@ -476,6 +477,10 @@ test('Discord Identify spacing and rolling count survive hub restart', async t =
   await first.stop();
   const readBudget = () => { const db = new Store(join(root, '.cland/hub.db')); try { return JSON.parse(db.remotes.forMessenger('discord').get('discord.identify')!); } finally { db.close(); } };
   assert.deepEqual(readBudget().timestamps, [clock.now().getTime()]);
+  // Previous hub versions persisted the Identify ledger without a resumable session.
+  // Seed that historical checkpoint only after the original owner has joined.
+  const legacy = new Store(join(root, '.cland/hub.db'));
+  try { legacy.remotes.forMessenger('discord').set('discord.session', null); } finally { legacy.close(); }
   const scheduled = admission.observe(1); // New hub owns a new socket ordinal.
   const second = await start();
   assert.equal((await scheduled).delay, 5000);

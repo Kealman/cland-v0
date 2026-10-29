@@ -9,7 +9,7 @@ type Receipt = { channel: string; user: string; message: string; hub: string; de
 /** Serialize native ingress; only a successful hub result confirms the cursor. */
 export class DiscordInbound {
   readonly #store: RemoteStore; readonly #send: RemoteSend; readonly #signal: AbortSignal;
-  readonly #pending = new Map<string, { resolve: (message: TopicMessage) => void; reject: (error: Error) => void; receipt: Receipt }>();
+  readonly #pending = new Map<string, { resolve: (message: TopicMessage | null) => void; reject: (error: Error) => void; receipt: Receipt }>();
   readonly #outbox: DiscordOutbox | undefined; readonly #receipt: RemoteReceipt | undefined;
   #tail: Promise<void> = Promise.resolve(); #next = 0;
   constructor(store: RemoteStore, send: RemoteSend, signal: AbortSignal, outbox?: DiscordOutbox, receipt?: RemoteReceipt) { this.#store = store; this.#send = send; this.#signal = signal; this.#outbox = outbox; this.#receipt = receipt; }
@@ -25,7 +25,7 @@ export class DiscordInbound {
       this.#signal.throwIfAborted();
       if (this.#store.pairing()?.chatId !== channel || this.#store.pairing()?.userId !== paired.userId || this.#store.get(`discord.inbound:${messageId}`)) return;
       const id = `discord-in-${++this.#next}`;
-      const completion = Promise.withResolvers<TopicMessage>(); this.#pending.set(id, { ...completion, receipt: { channel, user: paired.userId, message: messageId, hub: '', delivered: false } });
+      const completion = Promise.withResolvers<TopicMessage | null>(); this.#pending.set(id, { ...completion, receipt: { channel, user: paired.userId, message: messageId, hub: '', delivered: false } });
       const abort = () => completion.reject(new Error('Discord input cancelled'));
       this.#signal.addEventListener('abort', abort, { once: true });
       try {
@@ -62,7 +62,12 @@ export class DiscordInbound {
       this.#store.set(`discord.inbound:${receipt.message}`, JSON.stringify(receipt));
       pending.resolve(saved);
     }
-    else pending.reject(new Error('Discord input refused'));
+    else if (this.#signal.aborted) pending.reject(new Error('Discord input cancelled'));
+    else {
+      // A terminal hub refusal is handled input, not a broken gateway exchange.
+      this.#store.set(`discord.inbound:${pending.receipt.message}`, '1');
+      pending.resolve(null);
+    }
   }
   async recover(): Promise<void> {
     for (const { key, value } of this.#store.entries('discord.inbound:')) {
@@ -87,5 +92,6 @@ export class DiscordInbound {
     if (pairing?.chatId !== receipt.channel || pairing.userId !== receipt.user) return;
     if (current.delivered) await this.#outbox?.react(receipt.channel, message, '👀', receipt.user);
   }
+  idle(): Promise<void> { return this.#tail; }
   async stop(): Promise<void> { await this.#tail.catch(() => {}); }
 }

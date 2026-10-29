@@ -99,3 +99,9 @@ record delivered while 👌 is in flight, then unpair or replace the user in the
 same channel before release; after native settlement and hub stop, assert no 👀
 job or native reaction for the retired identity. Reaction intents carry the
 receipt's captured user rather than adopting the current pairing.
+
+The cursor fixture holds only topic.send frames; inbox reads remain serviceable.
+A same-window restart observes native RESUME and an unchanged Identify count.
+Standalone terminal-refusal cleanup joins the remote before closing its injected
+Store. Pairing-feedback controls own the coordinator delivery observer before
+native input, then retain durable delivered and native reaction assertions.

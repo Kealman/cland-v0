@@ -159,6 +159,7 @@ export class DiscordCommands {
     }
   }
   dispatch(frame: DiscordDispatch): void {
+    if (frame.replayed) return;
     if (frame.t !== 'INTERACTION_CREATE' || this.#signal.aborted) return;
     const work = this.#handle(frame.d).catch(() => {}); // Native errors and token-bearing dispatch never cross the boundary.
     this.#work.add(work); void work.finally(() => this.#work.delete(work));

@@ -80,7 +80,7 @@ test('Discord cursor waits for the durable hub result and survives duplicate rep
   let release: (() => void) | undefined;
   const start = () => projectHub(t, root, env, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN }, gatewayMessenger: (...args) => {
     const remote = factory(...args); const native = remote.start.bind(remote);
-    remote.start = (send, ...rest) => native((frame, ingress) => { release = () => send(frame, ingress); }, ...rest);
+    remote.start = (send, ...rest) => native((frame, ingress) => { if (frame.type === 'topic.send') release = () => send(frame, ingress); else send(frame, ingress); }, ...rest);
     return remote;
   } });
   let hub = await start(); let ui = await connectUi(t, hub.discovery, 'nvim');
@@ -97,7 +97,8 @@ test('Discord cursor waits for the durable hub result and survives duplicate rep
   // Downtime ages both the persisted Identify budget and prior REST pacing.
   await clock.advance(5000);
   hub = await start(); ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(async () => (await fake.control('state')).gateway.identifies === 2, { timeoutMs: 1500, what: 'restart native Identify' });
+  await until(async () => (await fake.control('state')).gateway.resumes === 1, { timeoutMs: 1500, what: 'restart native RESUME' });
+  assert.equal((await fake.control('state')).gateway.identifies, 1);
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
   // A later valid input is the ordered completion barrier for the replay.
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { ...d, id: '90071992547430001' } });
@@ -300,11 +301,11 @@ test('Discord paired-channel refusal stops only the remote; missing edit leaves 
   const { DiscordApi } = await import('../src/remote/discord-api.ts'); const { DiscordRemote } = await import('../src/remote/discord.ts');
   const { realClock } = await import('../src/hub/clock.ts');
   const root = await tempProject(t), fake = await fakeDiscordFixture(t);
-  const store = new Store(join(root, 'hub.db')); onCleanup(t, () => store.close());
+  const store = new Store(join(root, 'hub.db'));
   const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
   const notices: string[] = []; const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
   const remote = new DiscordRemote(api, DISCORD_TEST_TOKEN, realClock, { store: state, fake: true, notice: cause => notices.push(cause) });
-  onCleanup(t, () => remote.stop());
+  onCleanup(t, async () => { await remote.stop(); store.close(); });
   await assert.rejects(api.editMessage(ids.channel, '99999999999999999', { content: 'gone' }));
   assert.equal(state.status().disabled, false); assert.equal(notices.length, 0);
   await fake.control('fault', { status: 403 }); await assert.rejects(api.getChannel(ids.channel));
@@ -495,7 +496,8 @@ for (const lostDelivery of [false, true]) test(`Discord stored and delivered rea
     await coord.close(); await hub.stop(); await clock.advance(5000); hub = await start();
   }
   await until(async () => (await fake.control('state')).reactions.some(r => r.message === d.id && r.emoji === '👀'), { timeoutMs: 1500, what: 'delivered reaction after restart' });
-  await until(async () => (await fake.control('state')).gateway.identifies === (lostDelivery ? 3 : 2), { timeoutMs: 1500, what: 'restart READY' });
+  await until(async () => (await fake.control('state')).gateway.resumes === (lostDelivery ? 2 : 1), { timeoutMs: 1500, what: 'restart RESUMED' });
+  assert.equal((await fake.control('state')).gateway.identifies, 1);
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
   // A later durable cursor is the ordered barrier for duplicate replay.
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { ...d, id: '90071992547450001', content: 'Barrier' } });
@@ -543,10 +545,12 @@ for (const replace of [false, true]) test(`Discord stops old-input feedback afte
   const held = fake.waitForHold(abort.signal); void held.catch(() => {});
   await fake.control('fault', { response: 'hold' });
   const message = '90071992547470000';
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  const delivered = coord.waitForEvent(e => e.params.content === 'Pairing race');
+  void delivered.catch(() => {});
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { id: message, type: 0, channel_id: ids.channel, author: { id: ids.human }, content: 'Pairing race' } });
   await held;
-  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  await coord.waitForEvent(e => e.params.content === 'Pairing race');
+  await delivered;
   await until(() => JSON.parse(state.get(`discord.inbound:${message}`)!).delivered, { timeoutMs: 1500, what: 'delivery recorded while stored reaction held' });
   state.setPairing(replace ? { userId: ids.member, chatId: ids.channel, guildId: ids.guild, name: 'Replacement' } : null);
   await fake.control('release', {});

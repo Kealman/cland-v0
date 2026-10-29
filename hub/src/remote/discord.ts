@@ -1,3 +1,4 @@
+import { discordLateText } from './discord-catchup.ts';
 import { DiscordCards } from './discord-cards.ts';
 import { DiscordIdentifyBudget } from './discord-identify.ts';
 import { DiscordInbound } from './discord-inbound.ts';
@@ -32,6 +33,7 @@ export class DiscordRemote implements Remote {
   #detachExchange: (() => void) | undefined;
   #detachApi: (() => void) | undefined;
   #fatal: Error | undefined;
+  #disabled = false;
   #terminal: Promise<void> | undefined;
   #detachStartup: (() => void) | undefined;
   readonly #socket: DiscordSocket; readonly #abort = new AbortController();
@@ -71,7 +73,8 @@ export class DiscordRemote implements Remote {
         throw new Error('Discord gateway sent invalid session start limit');
       if (limit.remaining < 100) throw remoteStopError('discord', 'identify-budget',
         `session starts reset at ${new Date(clock.now().getTime() + limit.reset_after).toISOString()}`);
-    } });
+    } }, options.store, () => this.#cards?.beginReplay());
+    this.#bot = this.#socket.session?.botId;
   }
   #connectionChanged(): void {
     if (this.#abort.signal.aborted) return;
@@ -146,7 +149,13 @@ export class DiscordRemote implements Remote {
           for (const handler of this.#options.handlers ?? []) handler(frame);
           if (frame.t === 'READY') this.#bot = (frame.d.user as { id?: string } | undefined)?.id;
           if (frame.t === 'MESSAGE_CREATE' && this.#bot && (frame.d.author as { id?: string } | undefined)?.id === this.#bot) this.#outbox?.observe(frame.d as DiscordMessage);
-          else this.#inbound?.dispatch(frame);
+          else this.#inbound?.dispatch(frame.replayed && typeof frame.d.content === 'string' && frame.d.content.trim() ? { ...frame, d: { ...frame.d, content: discordLateText(frame.d.content, frame.d.timestamp, frame.returnedAt ?? this.#clock.now().toISOString()) } } : frame);
+          const inbound = this.#inbound?.idle();
+          if (frame.t === 'READY' || frame.t === 'RESUMED') {
+            if (frame.t === 'RESUMED') this.#options.log?.({ event: 'discord-replay-drain-waiting' });
+            return Promise.resolve(inbound).then(() => this.#cards?.finishReplay());
+          }
+          return Promise.all([inbound, this.#cards?.idle()]).then(() => {});
         });
         if (this.#fatal) await this.#outwardError(this.#fatal);
       } catch (error) {
@@ -199,5 +208,6 @@ export class DiscordRemote implements Remote {
   async pairingReplaced(previous: Pairing, text: string): Promise<void> {
     await this.#api.createMessage(previous.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal }).catch(error => this.#outwardError(error));
   }
-  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#terminal; await this.#socket.stop(); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#cards?.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
+  disable(): void { this.#disabled = true; this.#options.store?.set('discord.session', null); }
+  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#terminal; await this.#socket.stop(this.#disabled ? 1000 : 4000); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#cards?.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
 }

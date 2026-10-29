@@ -125,3 +125,9 @@ joins on cancellation before directory cleanup, and removes its listener on all
 outcomes. Omitted and aborted publication controls require native close, no
 pending observer/listener/handler/writer, closed Store and zero scheduling timers.
 Do not use remote.status.lastInbound as an admission receipt.
+
+Restart consumer migration: the Identify-spacing case seeds the legacy ledger-only
+checkpoint after joining the first owner, explicitly removing its resumable session
+before the new hub starts. It retains the 4999/5000ms assertion and persisted two-entry
+ledger. Successful restart resume is covered by the card-file cases. Zombie replay
+asserts the exact late-input suffix with a supplied written timestamp.

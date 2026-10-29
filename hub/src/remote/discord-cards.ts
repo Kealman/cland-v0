@@ -9,7 +9,7 @@ import type { DiscordDispatch } from './discord-socket.ts';
 import type { Clock } from '../hub/clock.ts';
 import { approvalCard, approvalOutcomeLine, askCard, inboxPublication, outcomeLine } from './cards.ts';
 
-export function discordAsk(ask: InboxAsk): { content: string; components: DiscordActionRow[] } {
+export function discordAsk(ask: InboxAsk, suffix = ''): { content: string; components: DiscordActionRow[] } {
   const card = askCard(ask);
   const numbered = ask.options.some(label => [...label].length > 34);
   const options = card.buttons.filter(b => 'option' in b.action);
@@ -24,7 +24,7 @@ export function discordAsk(ask: InboxAsk): { content: string; components: Discor
   const title = [...card.title].slice(0, 100).join('');
   const list = numbered ? '\n\n' + ask.options.map((label, i) => `${i + 1}. ${label}`).join('\n') : '';
   const prefix = `**${title}**\n\n`, marker = '… (full question in the workbench)';
-  const budget = 2000 - [...prefix + list].length;
+  const budget = 2000 - [...prefix + list + suffix].length;
   let question = card.question;
   if ([...question].length > budget) {
     question = [...question].slice(0, Math.max(0, budget - [...marker].length)).join('');
@@ -32,13 +32,13 @@ export function discordAsk(ask: InboxAsk): { content: string; components: Discor
     if (word > 0) question = question.slice(0, word);
     question += marker;
   }
-  return { content: prefix + question + list, components };
+  return { content: prefix + question + list + suffix, components };
 }
 
-export function discordApproval(approval: InboxApproval): { content: string; components: DiscordActionRow[] } {
+export function discordApproval(approval: InboxApproval, tail = ''): { content: string; components: DiscordActionRow[] } {
   const card = approvalCard(approval);
   const prefix = `**${[...card.title].slice(0, 150).join('')}**\n\n\`\`\`\n`;
-  const suffix = '\n```\n… (full command in the workbench)';
+  const suffix = '\n```\n… (full command in the workbench)' + tail;
   // Keep an embedded fence from escaping the preview's code block.
   const question = card.question.replaceAll('```', '`\u200b``');
   const content = prefix + [...question].slice(0, 2000 - [...prefix + suffix].length).join('') + suffix;
@@ -50,6 +50,7 @@ export function discordApproval(approval: InboxApproval): { content: string; com
 
 export class DiscordCards {
   #send: RemoteSend | undefined; #next = 0;
+  #replayReady = false;
   readonly #requests = new Map<string, ReturnType<typeof Promise.withResolvers<unknown>>>();
   readonly #work = new Set<Promise<void>>();
   readonly #log: LogFn | undefined;
@@ -73,8 +74,49 @@ export class DiscordCards {
   }
   dispatch(frame: DiscordDispatch): void {
     if (frame.t !== 'INTERACTION_CREATE' || this.#signal.aborted) return;
-    const work = this.#press(frame.d).catch(() => {});
+    if (frame.replayed) this.#replayReady = false;
+    const work = (frame.replayed ? this.#replay(frame.d) : this.#press(frame.d)).catch(() => {});
     this.#work.add(work); void work.finally(() => this.#work.delete(work));
+  }
+  async #replay(raw: Record<string, unknown>): Promise<void> {
+    const d = raw as { type?: number; id?: string; guild_id?: string; channel_id?: string; member?: { user?: { id?: string } }; message?: { id?: string }; data?: { custom_id?: string } };
+    const pair = this.#store.pairing();
+    if (d.type !== 3 || !d.id || !pair || pair.guildId !== d.guild_id || pair.chatId !== d.channel_id || pair.userId !== d.member?.user?.id) return;
+    const mapping = d.message?.id && this.#store.message(pair.chatId, d.message.id);
+    const match = /^(ask|approval):(.+):([^:]+)$/.exec(d.data?.custom_id ?? '');
+    if (!mapping || !match || (match[1] === 'ask' ? mapping.ask : mapping.approval) !== match[2]) return;
+    const model = this.#store.get(match[1] === 'ask' ? `discord.card-model:${match[2]}` : `discord.approval-model:${match[2]}`);
+    if (!model) return;
+    const rendered = match[1] === 'ask' ? discordAsk(JSON.parse(model)) : discordApproval(JSON.parse(model));
+    if (!rendered.components.some(row => row.components.some(button => button.custom_id === d.data?.custom_id))) return;
+    const key = `discord.replay-press:${d.id}`;
+    if (this.#store.get(key) === '1') return;
+    // No token or provider payload is persisted. The id is also the stable resend key.
+    this.#store.set(key, JSON.stringify({ channel: pair.chatId, user: pair.userId, kind: match[1], card: match[2], old: d.message!.id }));
+  }
+  beginReplay(): void { this.#replayReady = false; }
+  async finishReplay(): Promise<void> {
+    this.#replayReady = true;
+    if (!this.#store.entries('discord.replay-press:').some(row => row.value !== '1')) return;
+    const inbox = await this.#request<Inbox>('inbox.list', {});
+    await this.#recoverReplay(inbox);
+  }
+  async #recoverReplay(inbox: Inbox): Promise<void> {
+    for (const { key, value } of this.#store.entries('discord.replay-press:')) {
+      if (value === '1') continue;
+      const saved = JSON.parse(value) as { channel: string; user: string; kind: string; card: string; old: string };
+      const pair = this.#store.pairing();
+      if (pair?.chatId !== saved.channel || pair.userId !== saved.user) continue;
+      const asks = saved.kind === 'ask' ? inbox.asks.filter(row => row.id === saved.card) : [];
+      const approvals = saved.kind === 'approval' ? inbox.approvals.filter(row => row.id === saved.card) : [];
+      if (asks.length || approvals.length) {
+        await this.publishInbox({ ...inbox, asks, approvals, plans: [], requests: [], messages: [] }, key, true);
+        const job = this.#store.outbox().find(row => row.source === `${key}:discord.card:${saved.channel}:${saved.kind === 'approval' ? 'approval:' : ''}${saved.card}`);
+        if (job?.state !== 'sent') continue;
+        await this.#outbox.edit(saved.channel, saved.old, '↓ Re-sent below', key);
+      }
+      this.#store.set(key, '1');
+    }
   }
   async #press(raw: unknown): Promise<void> {
     const d = raw as { type?: number; id?: string; token?: string; application_id?: string; guild_id?: string; channel_id?: string; member?: { user?: { id?: string } }; message?: { id?: string }; data?: { custom_id?: string; components?: Array<{ component?: { custom_id?: string; value?: string } }> } };
@@ -181,6 +223,7 @@ export class DiscordCards {
     await this.#outbox.closeCard(id, card);
   }
 
+  async idle(): Promise<void> { await Promise.all([...this.#work]); }
   async stop(): Promise<void> { await Promise.allSettled([...this.#work]); }
   async receive(frame: HubFrame): Promise<void> {
     if (this.#signal.aborted) return;
@@ -194,9 +237,10 @@ export class DiscordCards {
       return [this.#outcome(row.id, { state: row.reason === 'declined' ? 'answered' : row.reason as AskCard['state'],
         ...(row.outcome && 'status' in row.outcome ? { outcome: row.outcome } : {}) })];
     }));
+    if (this.#replayReady) await this.#recoverReplay(frame.inbox);
     await this.publishInbox(frame.inbox);
   }
-  async publishInbox(inbox: Inbox, resend?: string): Promise<number> {
+  async publishInbox(inbox: Inbox, resend?: string, replay = false): Promise<number> {
     const pair = this.#store.pairing(); if (!pair) return 0;
     const rows = inboxPublication(inbox, this.#webOrigin?.());
     await Promise.all(rows.map(row => {
@@ -214,11 +258,11 @@ export class DiscordCards {
       }
       if (row.kind === 'approval') {
         this.#store.set(`discord.approval-model:${row.id}`, JSON.stringify(row.approval));
-        const rendered = discordApproval(row.approval);
+        const rendered = discordApproval(row.approval, replay ? '\n\na button pressed then may have been lost; press again' : '');
         return this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.approval.topic ?? 'general', resend, true);
       }
       this.#store.set(`discord.card-model:${row.id}`, JSON.stringify(row.ask));
-      const rendered = discordAsk(row.ask);
+      const rendered = discordAsk(row.ask, replay ? '\n\na button pressed then may have been lost; press again' : '');
       return this.#outbox.card(pair.chatId, rendered.content, rendered.components, row.id, row.ask.topic.id, resend).then(async () => {
         const closure = this.#store.get(`discord.card-closure:${row.id}`);
         if (closure) await this.#outcome(row.id, JSON.parse(closure));
