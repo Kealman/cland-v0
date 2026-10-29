@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:40:57.049Z
-updated: 2026-10-29T21:22:31.016Z
+updated: 2026-10-29T22:35:28.276Z
 ---
 
 ## Goal
@@ -75,7 +75,7 @@ Deferred to 0.3.x (spec §4): Telegram groups and forum topics, Discord Componen
 Not verified:
 
 The live run (qa-live-2026-10-29-677-1314, A-13972) ran on this Mac with the human's sandbox bots, @cland_app_bot on Telegram and a Discord bot in the human's server. It ran against the sandbox project `sandbox-live03`, never this project's hub. It verified these:
-- Steps L0 to L7 passed at 189d5100: both remotes paired, with the numeric ids the human read, and the mirror ran both ways with its reactions. Asks were answered from cards: a Telegram option, a Discord "Other answer…" modal and a Telegram decline, each folding both copies. A real Codex approval was answered once from Discord, the step the prototypes had left untried there. A photo and a file from Telegram, a photo from Discord, and a voice note from each were stored once and crossed with their origin marks, and both transcripts were correct. The commands and mute worked on both remotes.
+- Steps L0 to L7 ran at 189d5100. L0, L1 and L4 to L7 passed. L2 failed: both remotes paired with the numeric ids the human read, but the Telegram phone got no confirmation (T-1446). L3 failed: the mirror ran both ways with its reactions, but replies were not native replies (T-1447). Both fixes landed on dev; their phone reruns are not verified (below). Asks were answered from cards: a Telegram option, a Discord "Other answer…" modal and a Telegram decline, each folding both copies. A real Codex approval was answered once from Discord, the step the prototypes had left untried there. A photo and a file from Telegram, a photo from Discord, and a voice note from each were stored once and crossed with their origin marks, and both transcripts were correct. The commands and mute worked on both remotes.
 - A hub-only restart (L9h) passed at 78d77a32: both remotes kept their pairings and reconnected. Telegram recorded its planned stop, and Discord resumed.
 - QA's locality audit found no real token reaching a droplet: 157 sandbox audit rows with no remote execution, and 90 captures scanned.
 
