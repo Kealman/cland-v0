@@ -2,8 +2,8 @@
 id: T-1413
 kind: task
 title: A later start reads the channel history back to the last id, re-sends every open card and adds the gap line
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1171
 branch: t/T-1413-a-later-start-reads-the-channel-history
 created: 2026-10-27T23:38:48.468Z
-updated: 2026-10-29T04:26:00.428Z
+updated: 2026-10-29T06:45:09.914Z
+closed: 2026-10-29T06:45:09.914Z
 ---
 
 ## Summary
@@ -39,14 +40,24 @@ Spec §3.8 (history catch-up), §3.9; research rule 32.
 
 - [x] C1. Two messages typed during a three-minute restart reach General once each, in order and marked late, and every open card is re-sent at the bottom with its old copy marked "↓ Re-sent below" (test).
   - done: impl-1413 · 2026-10-29T03:43:33.186Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-6 · 2026-10-29T05:19:25.081Z · commit 035939cd017886a202f13cd8091bdf0aaa4f31f5
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-7 · 2026-10-29T06:02:25.836Z · commit 65813325d9a02e8380cabfc894b69e4bc51e1408
 - [x] C2. 620 messages typed during an outage pass the newest 500 to General in order, with one line in the channel saying the older ones were not passed on (test).
   - done: impl-1413 · 2026-10-29T03:54:14.827Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-6 · 2026-10-29T05:19:25.081Z · commit 035939cd017886a202f13cd8091bdf0aaa4f31f5
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-7 · 2026-10-29T06:02:25.836Z · commit 65813325d9a02e8380cabfc894b69e4bc51e1408
 - [x] C3. A hub killed in the middle of the catch-up passes no message twice and loses none after the next start (test).
   - done: impl-1413 · 2026-10-29T03:54:14.920Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-6 · 2026-10-29T05:19:25.081Z · commit 035939cd017886a202f13cd8091bdf0aaa4f31f5
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-7 · 2026-10-29T06:02:25.836Z · commit 65813325d9a02e8380cabfc894b69e4bc51e1408
 - [x] C4. General messages missed during an outage give one silent "N General messages missed since HH:MM" line before the re-sent cards, and none when N is 0 (test).
   - done: impl-1413 · 2026-10-29T03:54:15.013Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-6 · 2026-10-29T05:19:25.081Z · commit 035939cd017886a202f13cd8091bdf0aaa4f31f5
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-7 · 2026-10-29T06:02:25.836Z · commit 65813325d9a02e8380cabfc894b69e4bc51e1408
 - [x] C5. A last message id above 2^53 survives the restart as identical TEXT in `hub.db` and pages back exactly to it (test).
   - done: impl-1413 · 2026-10-29T03:43:33.699Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-6 · 2026-10-29T05:19:25.082Z · commit 035939cd017886a202f13cd8091bdf0aaa4f31f5
+  - verified: rev-26 [reviewer] · run rev-20261029-1413-evidence-7 · 2026-10-29T06:02:25.836Z · commit 65813325d9a02e8380cabfc894b69e4bc51e1408
 
 ## Notes
 
@@ -158,3 +169,115 @@ findings: [{"severity":"medium","text":"M7: fixture import precedes T3 lifecycle
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Preflight evidence3 not clear at7888f505e. Hub verify-test-lint refused before execution (2db1713f): startDaemon lines38/124/237. Source inspection confirms leading-comment lifecycle rule in test-lint.ts318–329/policy77. No new run/platform/timing/load/changed-T3 evidence and no criteria failed or verified. A-13585 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13585-t-1413-preflight-evidence-review-3-not-clear.md). I missed moved header at source4. Correct header only, no frozen allowance increase; fresh exact-head review before resubmission. Prior failed runs and Coordinator full-all gate remain separate.
+
+### rev-26 · 2026-10-29T04:28:09.719Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-source-5
+commit: 5bc20a34040ccec4db7c48e77d348107bb11882b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Requested header-only delta clear; full source4/A-13584 carried forward. M7 resolved: meaningful T3 lifecycle comment is first source block before import, naming actual SIGKILL behaviors. Complete one-file diff leaves guard/baseline/tier map/production/assertions/timeouts unchanged. A-13586 unchanged-policy red→green retained, report-only134/61 debt unchanged. No dev merge or reviewer execution. C1–C5 runtime unverified; refused submission has no runtime proof, prior A-13577/A-13581 remain failed. Proceed unchanged-head configured mode-free verify then original timing/load/changed-T3 review; Coordinator's separate all gate remains.
+
+### rev-26 · 2026-10-29T04:46:25.142Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-evidence-4
+commit: 5bc20a34040ccec4db7c48e77d348107bb11882b
+scope: evidence
+findings: [{"severity":"medium","text":"M8: original native SIGKILL case fails before behavior at 1.292139748s with Discord native setup receipt deadline. One-second real native acquisition bound is a speed constraint; separate a justified acquisition hang guard from explicit fake-clock cancellation controls while retaining all kill/recovery/drain assertions.","file":"hub/test/telegram-polling-restart.test.ts","line":236}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13590/run6f3ebbe6 is failed evidence at 5bc20a340: T0/T1/T2 green; changed T3 7/8, native kill behavior unreached; Web/T4 unexecuted. Original finish census3802 ordinary pass/1 fail plus95 load passes. Full-scale620/500 passed once19.864305289s, active request6.5ms; R-1278/45s committed allowance retained, generated E-1312 stanza ignored. No runtime criteria verified or product criterion failure inferred from missing setup. Successor dec9e7713 reviewed separately; Coordinator6f3fff27 authorizes setup guard correction. Separate Coordinator full-all remains owed.
+
+### rev-26 · 2026-10-29T04:46:48.712Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-source-6
+commit: dec9e7713ad767c44a7e73161fb004565879e40d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Requested setup-guard delta clear; complete two-file diff reviewed, carrying full source4 A-13584/header delta A-13587. Coordinator6f3fff27 independently confirmed: native acquisition/receipt default10000ms hang guard; omitted/aborted fake-clock controls explicit1000ms. Pre-owned cancellation/join and all kill/identity/recovery/shutdown assertions/bounds retained. Only fixture option/default and owning guide changed; no production/lint/tier/duration/dev merge. R-1278/45s allowance unchanged. A-13593 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13593-t-1413-source-review-6-clear-setup-guard-delta.md). Prior failed A-13590 formally retained A-13592; local Darwin8/8/typecheck do not supply missing Linux kill evidence. C1–C5 runtime unverified. Proceed configured mode-free verify at unchanged dec9e7713, then original execution/timing/load review with actual Linux kill sample and changedT3/Web outcomes. Coordinator full-all remains separate; no reviewer workload execution.
+
+### rev-26 · 2026-10-29T05:00:02.859Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-evidence-5
+commit: dec9e7713ad767c44a7e73161fb004565879e40d
+scope: evidence
+findings: [{"severity":"medium","text":"M9: native SIGKILL behavior passes6.355606305s, but exact new identity has no measured duration allowance and enforced5s budget exits1 (A-13594:21401). Resolve with Coordinator using actual Linux timing and intentional native5s Identify spacing; preserve all behavior/cleanup/protocol assertions, fresh source review before resubmission.","file":"hub/test/telegram-polling-restart.test.ts","line":258}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13594/runab55068b atdec9e7713 overall exit1. Original deduplicated3803 ordinary pass plus95 separate load pass; changedT3 eight base passes including actual nativekill6.355606305s and full620/500 cap21.284224095s. T0/T1/T2 green; changedT3 exit1 duration enforcement; Web/T4 unrun. No new functional criterion failure or final runtime verification inferred. Source6 A-13593 stands; formal evidence A-13595 (see topic artifact). Fullcap45s/R-1278 allowance retained, generated31.927s/E-1312 suggestion ignored. Prior failures and Coordinatorfull-all separate; no reviewer execution.
+
+### rev-26 · 2026-10-29T05:01:10.577Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-source-7
+commit: 035939cd017886a202f13cd8091bdf0aaa4f31f5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Manifest-only delta clear: complete seven-line addition inspected, sole parentdec9e7713, tree409a7fec0. M9 resolved per independently read Coordinator3a147fbb: exact nativekill identity10s/R-1278/expiry2026-11-05, approved reason with original passing Linux6.355606305s/A-13594 and thin-sample rounding. R-1278 independently open. Existing45s fullcap allowance and all other entries unchanged; no test/protocol/assertion/bound/guard/baseline/product/dev merge. A-13597 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13597-t-1413-source-review-7-clear-native-kill-allowance-delta.md) carries prior source chain. Failed A-13594/A-13595 stays separate; no runtime verification or reviewer execution. Proceed configured mode-free run at unchanged035939cd0 reaching Web and changedT3, then original timing/load/criterion evidence review. Coordinatorfull-all remains separate.
+
+### rev-26 · 2026-10-29T05:19:25.082Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-evidence-6
+commit: 035939cd017886a202f13cd8091bdf0aaa4f31f5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear at unchanged035939cd0/source7. Original baa32c42/A-13598 exit0: independent4098 ordinary passes+95 separate load passes, no fail/cancel/skip or unfinished identity. T0/allT1/all fallbackT2/changedT3/Web completed. C1 ordered late/all-card arrows0.294440289s; C2 actual620→500 once19.712405337s/active request5.7ms; C3 actual nativekill6.376597094s plus durable checkpoint/originalid/no-loss/no-duplicate; C4 source-counted silent gap before replacements/N0none0.242040911s; C5 exact above2^53 TEXT/pagination0.302476891s. Cards62ordinary+55load (11new×5, max2.270611781s); changedT3 all8 once/no repetitions. Outbox26/messages24 migrated consumers pass. Native10s/fullcap45s R-1278 allowances fit; generated E-1312 suggestion ignored. A-13599 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13599-t-1413-final-evidence-review-6-clear.md) records exact criterion mapping/counts/provenance. Linuxx64 c8lon1, Node24.21/Nvim0.12.5, CHS156.0.8078.4/v1248 Web49/237; host typecheck reuseda6e6b0f0, not remotely repeated. Selected changedT3 wall33.329s excludes machine wait; budgets/lint/ratchet report-only. RemainingT3/T4 unrun; prior failed receipts retained. C1–C5 verified; no per-item QA. Separate Coordinator full-all still required before enqueue, not satisfied by this configured run. No reviewer workload execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-26 · 2026-10-29T05:45:24.167Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-source-8
+commit: 65813325d9a02e8380cabfc894b69e4bc51e1408
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Two-file retirement-receipt delta clear, sole parent035939cd0/tree8e259bbd8. Original full-all A-13601 peer-retirement failure independently confirmed; earlier mode-free A-13598 remains separate. C1 driver now waits both mappings plus exact old-target arrow-edit sent receipts and advances250ms once per newly observed durable reaction completion. Original3s/2s bounds/native assertions retained. New sorted replay-order native hold+real late-delivery control preserves exact retired text/empty components/two mappings; exchange-held observer pre-owned, spoke waiter bounded/closed, API edit forwards all args. No Store wrapper/product/protocol/allowance/guard/dev merge changes. A-13603 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13603-t-1413-source-review-8-clear-retirement-receipt-delta.md) carries full audit chain and labels A-13602 local evidence as implementer-reported, not Reviewer-reproduced Linux/full-all proof. C1–C5 new-head runtime verification pending. Proceed configured mode-free run at unchanged65813325d and original-record review of new case/load plus changedT3/Web; Coordinator must rerun full-all before enqueue. Prior ready report superseded, A-13601 retained failed. No reviewer workload execution.
+
+### rev-26 · 2026-10-29T06:02:25.836Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1413-evidence-7
+commit: 65813325d9a02e8380cabfc894b69e4bc51e1408
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record task evidence clear at unchanged65813325d/source8. Original1a1e4fa4/A-13604 exit0: independently4099 ordinary pass+100 separate load pass, no fail/cancel/skip or unfinished started identity. T0/allT1/allfallbackT2/changedT3/Web complete. C1 original0.281417956s+5load; new late-feedback retirement0.284366179s+5load(max0.652615139s) confirms exact old-target sent/native retirement after mappings. Cards63base/60load(12new×5), maxnewload0.930741777s. C2 actual620→500 once18.813711070s, active request5.6ms; C3 actualnativekill6.234109365s with durable checkpoint/exact recovery; C4 silent source-count gap0.205269118s/N0none; C5 exactabove2^53TEXT/paging0.238701794s. All8 changedT3 once/no repetitions; 10s/45sR-1278 allowances fit, generated E-1312 suggestion ignored. Outbox26/messages24 pass. A-13605 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-13605-t-1413-final-evidence-review-7-clear-at-65813325d.md) records criterion outcomes/scoped loads and provenance. Linuxx64 c8lon1, Node24.21/Nvim0.12.5, CHS156.0.8078.4/v1248 Web49/237; hosttypecheck9f917334 reused. SelectedT3addedwall31.487s excludesmachinewait, budgets/lint/ratchet report-only. RemainingT3/T4 unrun. C1–C5 verification refreshed at newhead; no reviewer execution. Failed CoordinatorallA-13601 stays separate; Coordinatorfull-all rerun still required before enqueue, not satisfied by task green.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-29T06:45:09.914Z
+
+Merged 4593aaee83c85cff88057bda38cf729cce33d91b onto dev.
