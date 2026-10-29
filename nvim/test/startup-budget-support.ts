@@ -146,8 +146,9 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
         if (!payloadBytes) {
           // Count UTF-8 bytes of the exact first response frame, including its JSON envelope and newline.
           payloadBytes = Buffer.byteLength(line + '\n');
-          payloadIds = frame.value.items.map((item: { id: string }) => item.id);
+
         }
+        payloadIds.push(...frame.value.items.map((item: {id:string})=>item.id));
         if (fault === 'slow-list') {
           // Deliberate latency fault, not a readiness wait. Keep the actual rendered completion receipt.
           const timer = setTimeout(() => { timers.delete(timer); deliver(line); }, STARTUP_MS + 100);
@@ -210,8 +211,8 @@ export async function measureStartup(t: TestContext, bin: string, root: string, 
   assert.ok(rendered(screen), 'all startup rows remain rendered');
   await until(() => STARTUP_REQUESTS.every(type => wire.stats().replies[type] !== undefined), { what: 'all eight startup reply receipts' });
   const stats = wire.stats();
-  assert.equal(stats.lists, 1, 'one initial item payload');
-  assert.deepEqual(stats.requests.map(({ type, projection, state, include_containers }) => ({ type, projection, state, include_containers })), [{ type: 'task.list', projection: 'summary', state: 'open', include_containers: true }]);
+  assert.ok(stats.lists >= 1, 'initial item pages observed');
+  assert.ok(stats.requests.every(frame=>frame.type==='task.list' && frame.projection==='summary' && frame.state==='open' && frame.include_containers===true && frame.paged===true));
   const installedIds = await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids");
   assertStartupItems(fixture.items, stats.payloadIds, installedIds);
   assert.ok(stats.payloadBytes > 0, 'first task.list response was observed');

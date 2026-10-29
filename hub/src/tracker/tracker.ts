@@ -273,6 +273,8 @@ export type TrackerFiles = Pick<typeof files, 'open' | 'rename' | 'unlink' | 'li
   stat: (path: string) => Promise<Stats>;
 };
 
+export const OPEN_ITEM_PAGE_BYTES = 120 * 1024;
+
 export class Tracker {
   readonly #env: NodeJS.ProcessEnv;
   readonly ladder: Ladder;
@@ -317,6 +319,8 @@ export class Tracker {
   readonly #pending = new Map<string, NodeJS.Timeout>();
   #rescanTimer: NodeJS.Timeout | null = null;
 
+  /** Injectable encoded-row budget for deterministic page-boundary tests. */
+  readonly #openPageBytes: number;
   /** Tests only: hold a completed temporary write until the test releases it. */
   readonly #writeGate: (() => Promise<void>) | undefined;
   /** Told when an item closes (the hub's close, an edit to `closed`, a hand edit): its topic closes too (spec 4.5). */
@@ -369,7 +373,8 @@ export class Tracker {
   readonly #verifyChanges = new Map<string, { item: string | null; branch: string }>();
   #verifyImmediate: NodeJS.Immediate | null = null;
 
-  constructor(options: { stageTree?: (head: string) => Promise<string | null>; onDevTip?: (head: string | null) => void; clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { openPageBytes?: number; stageTree?: (head: string) => Promise<string | null>; onDevTip?: (head: string | null) => void; clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.#openPageBytes = options.openPageBytes ?? OPEN_ITEM_PAGE_BYTES;
     this.#clock = options.clock ?? realClock;
     this.#parse = options.parse ?? parseItem;
     this.#watch = options.watch ?? watchFolder;
@@ -2269,6 +2274,36 @@ export class Tracker {
         blocked_by:i.blocked_by,open_blockers:i.open_blockers ?? [],claim:i.claim,holds:i.holds,criteria:i.criteria,
         verdicts:this.#compactVerdicts(i.verdicts,i.state !== 'closed'),
       };
+  }
+
+  /** Opt-in startup pages; reserve 8 KiB for the result envelope below 128 KiB. */
+  openItemPage(includeContainers = false, cursor?: string, limit = 100): {items:ExplorerSummary[];next:string|null;total:number} {
+    this.#ensureExplorer();
+    const candidates = this.#index.list(includeContainers ? {} : {state:'open'});
+    const retained = new Set<string>();
+    if (includeContainers) for (const row of candidates) if (row.state === 'open') {
+      let current: IndexedItem | undefined = row;
+      while (current && !retained.has(current.id)) {
+        retained.add(current.id);
+        current = current.parent ? this.#index.get(current.parent) ?? undefined : undefined;
+      }
+    }
+    const rows = candidates.filter(row => !includeContainers || retained.has(row.id))
+      .sort((a,b) => idNumber(a.id)! - idNumber(b.id)!);
+    const after = cursor ? idNumber(cursor)! : 0;
+    const pending = rows.filter(row => idNumber(row.id)! > after);
+    const items: ExplorerSummary[] = [];
+    let bytes = 0;
+    for (const row of pending) {
+      const item = this.#compactSummary(this.#projected(row.id));
+      const size = Buffer.byteLength(JSON.stringify(item)) + 1;
+      if (items.length >= limit || bytes + size > this.#openPageBytes) {
+        if (!items.length) throw new TrackerError(`${item.id}: summary exceeds the 128 KiB startup reply budget`);
+        break;
+      }
+      items.push(item); bytes += size;
+    }
+    return {items,next:items.length < pending.length ? items.at(-1)!.id : null,total:rows.length};
   }
 
   /** Numeric identity order survives sibling re-ranking and a cursor row's removal. */

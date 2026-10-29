@@ -11,6 +11,9 @@ local M = {}
 local hub = require('cland.hub')
 local state = require('cland.state')
 
+M.ITEMS_MAX_EVENTS = hub.SNAPSHOT_MAX_EVENTS
+M.ITEMS_MAX_BYTES = hub.SNAPSHOT_MAX_BYTES
+
 --- nvim/ (this file is nvim/lua/cland/init.lua) and the repository around it.
 local function dirs()
   local this = debug.getinfo(1, 'S').source:sub(2)
@@ -272,29 +275,54 @@ function M.load_closed_scope(scope)
 end
 
 local refresh_items = single_flight(function(done)
-  M.client:snapshot({ type = 'task.list', projection = 'summary', state = 'open', include_containers = true }, function(err, value, events)
-    if err then
-      state.S.items_note = 'items: ' .. tostring(err)
-    else
-      state.S.items_loaded = true
-      state.S.closed_items_loaded = false
-      state.S.closed_pages, state.S.closed_loads, closed_failed = {}, {}, {}
-      state.S.items, state.S.items_note = value and value.items or {}, nil
-      -- A legacy full-list producer can already have supplied an archive.
-      for _, it in ipairs(state.S.items) do
-        if it.kind == 'task' and it.state == 'closed' then state.S.closed_pages[closed_parent(it)] = true end
+  local rows, positions, replay, replay_bytes = {}, {}, {}, 0
+  local page
+  local function restart()
+    rows, positions, replay, replay_bytes = {}, {}, {}, 0
+    -- After the triggering event is applied, start a coherent replacement traversal.
+    vim.schedule(function() page() end)
+  end
+  page = function(cursor)
+    M.client:snapshot({ type = 'task.list', projection = 'summary', state = 'open', include_containers = true, paged = true, cursor = cursor }, function(err, value, events, metadata)
+      if metadata and metadata.invalidated then restart(); return end
+      if not err and (#replay + #(events or {}) > M.ITEMS_MAX_EVENTS
+          or replay_bytes + (metadata and metadata.bytes or 0) > M.ITEMS_MAX_BYTES) then
+        restart(); return
       end
-      state.S.sibling_orders = {}
-      for _, event in ipairs(events) do
-        if event.type == 'task' then require('cland.items').apply_event(event) end
+      replay_bytes = replay_bytes + (metadata and metadata.bytes or 0)
+      for _, event in ipairs(events or {}) do replay[#replay + 1] = event end
+      if not err then
+        for _, row in ipairs(value and value.items or {}) do
+          if not positions[row.id] then positions[row.id] = #rows + 1 end
+          rows[positions[row.id]] = row
+        end
+        if value and type(value.next) == 'string' then page(value.next); return end
       end
-    end
-    state.changed()
-    require('cland.plan').snapshot_ready('items', err)
-    done()
-    if closed_all then M.load_closed_items()
-    else for parent in pairs(closed_requested) do M.load_closed_items(parent) end end
-  end)
+      if err then
+        state.S.items_note = 'items: ' .. tostring(err)
+      else
+        state.S.items_loaded = true
+        state.S.closed_items_loaded = false
+        state.S.closed_pages, state.S.closed_loads, closed_failed = {}, {}, {}
+        state.S.items, state.S.items_note = rows, nil
+        -- A legacy full-list producer can already have supplied an archive.
+        for _, it in ipairs(state.S.items) do
+          if it.kind == 'task' and it.state == 'closed' then state.S.closed_pages[closed_parent(it)] = true end
+        end
+        state.S.sibling_orders = {}
+        for _, event in ipairs(replay) do
+          if event.type == 'task' then require('cland.items').apply_event(event) end
+        end
+      end
+      state.changed()
+      require('cland.plan').snapshot_ready('items', err)
+      done()
+      if closed_all then M.load_closed_items()
+      else for parent in pairs(closed_requested) do M.load_closed_items(parent) end end
+    end, { coherent_retry = true,
+      max_events = M.ITEMS_MAX_EVENTS - #replay, max_bytes = M.ITEMS_MAX_BYTES - replay_bytes })
+  end
+  page()
 end)
 
 function M.refresh()

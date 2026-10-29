@@ -16,3 +16,5 @@ ten times in fresh processes, in two lanes with owned CPU load, and retain each
 terminal test summary. Whole-file repetition covers the verdict and UI cases as
 well. Stop the load worker and join every child before releasing
 the granted local load slot. Linux evidence comes from same-head verification.
+
+Open summary paging uses production frames with `paged:true`: traverse multiple numeric cursors, retain all ids exactly once, and keep the legacy response without `next`.

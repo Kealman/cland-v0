@@ -492,6 +492,7 @@
     "hub/test/startup-ready-component.test.ts": "T2",
     "hub/test/startup-replies-scale.test.ts": "T3",
     "hub/test/startup-smoke.test.ts": "T3",
+    "hub/test/startup-task-pages-soak.test.ts": "T4",
     "hub/test/store-and-forward.test.ts": "T2",
     "hub/test/subscription-frame.test.ts": "T3",
     "hub/test/subscription-hygiene.test.ts": "T2",

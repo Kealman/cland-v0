@@ -24,7 +24,7 @@ export async function assertStartupReplies(t: TestContext, root: string, source:
   const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, hub.discovery);
   const requests = [{type:'hub.status'}, {type:'rule.list',all:true}, {type:'topic.history',topic:'general',limit:200}, {type:'artifact.list'},
-    {type:'task.list',projection:'summary',state:'open'}, {type:'events.list',limit:200}, {type:'session.list'}, {type:'account.list'}];
+    {type:'task.list',projection:'summary',state:'open',paged:true}, {type:'events.list',limit:200}, {type:'session.list'}, {type:'account.list'}];
   let total = 0;
   const replies: Record<string, number> = {};
   for (const request of requests) {
@@ -34,7 +34,28 @@ export async function assertStartupReplies(t: TestContext, root: string, source:
     assert.ok(bytes <= 256 * 1024, `${request.type}: ${bytes} bytes exceeds 256 kB`);
     total += bytes;
     replies[request.type] = bytes;
-    if (request.type === 'task.list') assert.equal((reply.value as {items:unknown[]}).items.length, open);
+    if (request.type === 'task.list') {
+      const ids: string[] = [];
+      let page = reply.value as {items:Array<{id:string}>;next:string|null;total:number};
+      if (source === '5000 open') {
+        assert.ok(page.items.length < 100, 'encoded byte budget binds before the row limit');
+        assert.ok(page.next, 'large tracker crosses pages');
+      }
+      let pages = 0;
+      for (;;) {
+        ids.push(...page.items.map(row=>row.id)); pages++;
+        assert.equal(page.total,open);
+        if (!page.next) break;
+        const next = await ui.request({...request,cursor:page.next});
+        assert.equal(next.ok,true,next.error);
+        assert.ok(Buffer.byteLength(JSON.stringify(next)+'\n')<=131072);
+        page = next.value as typeof page;
+        assert.ok(pages<=totalItems,'bounded traversal');
+      }
+      assert.equal(ids.length,open);
+      assert.equal(new Set(ids).size,open,'one row per identity across pages');
+      t.diagnostic(`${source}: ${pages} task.list pages; first ${bytes} framed bytes`);
+    }
     if (request.type === 'artifact.list') assert.equal((reply.value as {artifacts:unknown[]}).artifacts.length, 5);
   }
   assert.ok(total <= 1024 * 1024, `${total} total startup bytes exceeds 1 MB`);

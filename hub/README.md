@@ -4337,9 +4337,24 @@ the bounded by-id read below. Findings, bodies, comments, full criteria, plans, 
 and index bookkeeping are excluded; clients read those details through `task.view`. State and other existing
 filters combine normally. Unknown projections refuse. Omitting `projection` preserves
 the existing response, including the CLI's `cland task list --json`; the CLI adds no
-projection flag. Neovim requests `state:"open", include_containers:true` first: this
-returns the same item set as the connection snapshot: open rows and their ancestors.
-The flag accepts only an open summary request without other list filters.
+projection flag. Neovim requests `state:"open", include_containers:true, paged:true` first:
+this traverses the same item set as the connection snapshot: open rows and their ancestors.
+`paged:true` is additive and accepts only open summaries, optional
+`include_containers:true`, `cursor` and `limit` (1–100, default 100).
+It returns `{items, total, next}` in numeric identity order. Each page admits at most
+120 KiB of encoded UTF-8 rows, reserving space below the 128 KiB first-reply cap;
+a single oversized summary refuses explicitly. Repeat with `cursor:next` until
+`next:null`. Counts and row fields come from the complete index. Neovim accumulates
+all pages before installing the initial item set, then replays task events buffered
+throughout traversal. Retained replay plus the shared page journal have a
+2,048-event / 2 MiB encoded-event bound. A page keeps its oldest valid late answer
+and newest retry, with the existing retry backoff; both attempts share one capture
+of task events, so retries preserve earlier-row updates without duplicating retained
+events. Overflow discards all collected rows and replay, then restarts at the first
+page. Other snapshot consumers keep their
+per-read retry behaviour. A previous hub that omits `next` supplies one complete legacy
+reply. Without `paged`, the legacy list response and ordering remain unchanged.
+Web uses the existing items snapshot and CLI lists keep their full response.
 
 The items snapshot contains open rows and the complete ancestor chain of each
 open row, including a closed ancestor when legacy data puts open work below it.

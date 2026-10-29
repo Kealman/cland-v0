@@ -19,8 +19,7 @@ the test places Sessions left of the explorer; no GUI or harness starts.
 
 The hard limits are **3,000 ms**, **131,072 bytes (128 KiB)** for the first item reply, **262,144 bytes (256 KiB)** per startup reply and **1,048,576 bytes (1 MiB)** across the eight startup reads. A transparent
 socket relay counts UTF-8 bytes of the *first task.list response*, including the
-JSON result envelope and trailing newline. It also checks that exactly one
-open-summary request with `include_containers:true` returns precisely the open
+JSON result envelope and trailing newline. It also checks that open-summary pages with `include_containers:true, paged:true` return precisely the open
 items and their ancestor chain (including closed ancestors of open work), and that Neovim
 installs them all. `hub/test/startup-budget.test.ts` exercises these shared probe
 assertions at T1, including missing ancestors, fully closed subtrees, extra and duplicate wire or installed rows.
@@ -65,3 +64,5 @@ tracker. Its output reports total/open counts, connection-to-render milliseconds
 and first response bytes. Post the original output with head/tree, platform and
 executor attribution; a local receipt supplies no Linux, full-suite or loaded
 production-workbench claim.
+
+The relay counts bytes of the first page, collects identities from all startup pages, and checks final installed membership. Startup uses `paged:true` and numeric continuations; the first-reply and eight-first-reply budgets are unchanged. Continuation bytes do not count as the first reply. The render latency includes the whole traversal.

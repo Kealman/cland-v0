@@ -53,3 +53,5 @@ on a same-size external write to prove ctime detection. It retains explicit
 rescan coverage requiring every body read; queue-fenced views and exact index
 receipts settle the tests. Raw external writes model tracker updates from editors
 and Git merges without needing a Git process.
+
+The open startup paging test injects a 1,800-byte row budget through the Tracker constructor and traverses twelve multibyte-title rows through handleTaskRequest. It asserts UTF-8 byte boundaries, numeric identity order despite reversed rank, complete unique membership and literal default (122,880) and first-reply cap (131,072) values.

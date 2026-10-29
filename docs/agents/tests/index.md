@@ -332,6 +332,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-close-recovery.test.ts`](../../../hub/test/suite-close-recovery.test.ts) | [Notes](hub-test-suite-close-recovery.test.ts.md) |
 | [`hub/test/durations-refresh.test.ts`](../../../hub/test/durations-refresh.test.ts) | [Notes](hub-test-durations-refresh.test.ts.md) |
 | [`hub/test/claude-code-adapter.test.ts`](../../../hub/test/claude-code-adapter.test.ts) | [Notes](hub-test-claude-code-adapter.test.ts.md) |
+| [`hub/test/startup-task-pages-soak.test.ts`](../../../hub/test/startup-task-pages-soak.test.ts) | [Notes](hub-test-startup-task-pages-soak.test.ts.md) |
 | [`hub/test/item-summary-lua-soak.test.ts`](../../../hub/test/item-summary-lua-soak.test.ts) | [Notes](hub-test-item-summary-lua-soak.test.ts.md) |
 | [`hub/test/pinned-tracker.test.ts`](../../../hub/test/pinned-tracker.test.ts) | [Notes](hub-test-pinned-tracker.test.ts.md) |
 | [`nvim/test/closed-pages.test.ts`](../../../nvim/test/closed-pages.test.ts) | [Notes](nvim-test-closed-pages.test.ts.md) |

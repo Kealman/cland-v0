@@ -86,6 +86,8 @@ export type Scenario = {
   holdView?: boolean;
   /** Opt into the summary/filter contract; older recorded screen scenarios replay their full rows. */
   summaryLists?: boolean;
+  pagedLists?: boolean;
+  itemPageSize?: number;
   /** Rank results can be delivered without events to test that UI movement waits for the hub. */
   rankEvents?: 'manual';
   rankError?: string;
@@ -173,7 +175,7 @@ const write = (frame: unknown) => {
   if (remote && value.type === 'result') remoteReply = value as Frame;
   else rawWrite(value);
 };
-const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
+const snapshots: Array<{ type: string; cursor: unknown; release: (error?: string) => void }> = [];
 const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
 const initialReplay = new Set(['hub.status', 'task.list', 'role.list']);
 const snapshotDelayMs = Number(process.env.CLAND_STUB_SNAPSHOT_DELAY_MS ?? 0);
@@ -186,7 +188,7 @@ const ok = (id: unknown, value: unknown) => {
   if (type && (scenario.holdSnapshots?.includes(type) || scenario.holdClosedPages && type === 'task.list' && request?.parent !== undefined)) {
     const deferred = Promise.withResolvers<string | undefined>();
     const captured = structuredClone(frame);
-    snapshots.push({ type, release: deferred.resolve });
+    snapshots.push({ type, cursor: request?.cursor, release: deferred.resolve });
     for (let i = snapshotWaiters.length - 1; i >= 0; i--) {
       const waiter = snapshotWaiters[i];
       if (waiter?.type === type && snapshots.filter((s) => s.type === type).length >= waiter.count) { snapshotWaiters.splice(i, 1); waiter.resolve(); }
@@ -517,6 +519,13 @@ function answer(f: Frame) {
           });
         }
       }
+      if (f.paged && scenario.pagedLists) {
+        items = items.toSorted((a,b)=>Number(String(a.id).slice(2))-Number(String(b.id).slice(2)));
+        const total = items.length;
+        items = items.filter(i=>!f.cursor || Number(String(i.id).slice(2))>Number(String(f.cursor).slice(2)));
+        const rows = items.slice(0, Number(f.limit??scenario.itemPageSize??100));
+        return ok(f.id,{items:rows,next:rows.length<items.length?rows.at(-1)!.id:null,total});
+      }
       if (typeof f.parent === 'string') {
         items = items.filter(i => i.state === 'closed' && (i.parent ?? '') === f.parent)
           .sort((a,b)=>Number(String(a.id).slice(2))-Number(String(b.id).slice(2)));
@@ -616,7 +625,7 @@ if (controlPath) {
           if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map(frame => `${JSON.stringify(projected(frame))}\n`).join(''));
           if (cmd.set) Object.assign(scenario, cmd.set);
           if (Array.isArray(cmd.releaseSnapshots)) {
-            const selected = snapshots.filter(snapshot => cmd.releaseSnapshots instanceof Array && cmd.releaseSnapshots.includes(snapshot.type));
+            const selected = snapshots.filter(snapshot => cmd.releaseSnapshots instanceof Array && cmd.releaseSnapshots.includes(snapshot.type) && (!Object.hasOwn(cmd,'snapshotCursor') || (snapshot.cursor??null)===cmd.snapshotCursor));
             if (cmd.snapshotOrder !== 'oldest') selected.reverse();
             const limit = typeof cmd.snapshotLimit === 'number' ? cmd.snapshotLimit : selected.length;
             for (const snapshot of selected.slice(0, limit)) {

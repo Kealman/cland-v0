@@ -162,8 +162,14 @@ end
 --- retry only this missing read, with backoff, and let either answer finish it. Keep the original and
 --- newest attempts (at most two bounded journals); overflow retires an invalid journal before retrying.
 --- Errors/disconnects cancel every attempt and complete the caller once.
+--- Paged traversals may pass max_events/max_bytes (their remaining aggregate capacity)
+--- and coherent_retry. That mode shares one bounded event capture across retry
+--- attempts, retains the oldest valid late answer, and finishes with fourth-argument
+--- metadata {invalidated=true} on overflow. Successful metadata carries capture bytes.
+--- Callers without these options keep the ordinary per-read retry contract.
 function Client:snapshot(frame, cb, opts)
   local attempts, finished, timer = {}, false, nil
+  local capture = opts and opts.coherent_retry and { events = {}, bytes = 0 } or nil
   local delay = M.SNAPSHOT_TIMEOUT_MS
   local attempt
   local function stop_timer()
@@ -180,12 +186,12 @@ function Client:snapshot(frame, cb, opts)
       if candidate == journal then table.remove(attempts, i); break end
     end
   end
-  local function finish(err, value, events)
+  local function finish(err, value, events, metadata)
     if finished then return end
     finished = true
     stop_timer()
     while attempts[1] do release(attempts[1]) end
-    cb(err, value, events)
+    cb(err, value, events, metadata)
   end
   local scheduled = false
   local function restart()
@@ -202,16 +208,26 @@ function Client:snapshot(frame, cb, opts)
     if finished then return end
     -- Retain the oldest answer's opportunity to finish even after several retry deadlines.
     if #attempts == 2 then release(attempts[2]) end
-    local journal = { request = frame, events = {}, bytes = 0 }
+    local journal = { request = frame, events = {}, bytes = 0,
+      max_events = math.min(M.SNAPSHOT_MAX_EVENTS, opts and opts.max_events or M.SNAPSHOT_MAX_EVENTS),
+      max_bytes = math.min(M.SNAPSHOT_MAX_BYTES, opts and opts.max_bytes or M.SNAPSHOT_MAX_BYTES) }
+    journal.capture = capture
     attempts[#attempts + 1] = journal
     self.snapshots[journal] = true
     journal.restart = function()
       if not self.snapshots[journal] then return end
-      release(journal)
-      restart()
+      if opts and opts.coherent_retry then
+        finish(nil, nil, {}, { invalidated = true })
+      else
+        release(journal)
+        restart()
+      end
     end
     journal.id = self:request(frame, function(err, value)
-      if self.snapshots[journal] then finish(err, value, journal.events) end
+      if self.snapshots[journal] then
+        local recorded = capture or journal
+        finish(err, value, recorded.events, { bytes = recorded.bytes })
+      end
     end, opts)
     timer = vim.defer_fn(function()
       delay = math.min(delay * 2, M.SNAPSHOT_MAX_RETRY_MS)
@@ -436,14 +452,18 @@ function Client:_frame(frame, line)
       end
     end
   elseif t == 'remote.state' or t == 'marks' or t == 'rules.changed' or t == 'account' or t == 'event' or t == 'verification.queue' or t == 'visibility' or t == 'crew' or t == 'message' or t == 'artifact' or t == 'delivery' or t == 'topic' or t == 'session.state' or t == 'session.role' or t == 'role.vacant' or t == 'role.filled' or t == 'task' or t == 'ask' or t == 'approval' or t == 'inbox' or t == 'presence' or t == 'session.process' or t == 'sessions.pruned' or t == 'session.cleanup' or t == 'session.usage' then
+    local captured = {}
     for journal in pairs(self.snapshots) do
-      if relevant(journal.request, frame) then
+      local recorded = journal.capture or journal
+      if not captured[recorded] and relevant(journal.request, frame) then
+        captured[recorded] = true
         local bytes = line and #line or #vim.json.encode(frame)
-        if #journal.events >= M.SNAPSHOT_MAX_EVENTS or journal.bytes + bytes > M.SNAPSHOT_MAX_BYTES then
+        if #recorded.events >= math.min(M.SNAPSHOT_MAX_EVENTS, journal.max_events)
+            or recorded.bytes + bytes > math.min(M.SNAPSHOT_MAX_BYTES, journal.max_bytes) then
           journal.restart()
         else
-          journal.events[#journal.events + 1] = vim.deepcopy(frame)
-          journal.bytes = journal.bytes + bytes
+          recorded.events[#recorded.events + 1] = vim.deepcopy(frame)
+          recorded.bytes = recorded.bytes + bytes
         end
       end
     end

@@ -47,6 +47,16 @@ separate: the default Lua case uses this corpus, while the T4 Lua soak checks
 every live tracker body. The manual `nvim/test/startup-budget-probe.ts` retains
 its explicit full-copy source and five-second startup target.
 
+The unchanged copied workload first ran at `9a6d8a27` in T2: Linux x64 droplet
+c-8 lon1 run `0c97f1ae` (A-11122) passed its assertions and five load repetitions,
+but exited 1 on the enforced new-identity duration gate. Ordinary native time
+was 17.275973484 seconds, worst passing repetition 18.864933431 seconds.
+The relocated T3 identity has a 28.298-second allowance (1.5x that worst sample,
+rounded upward to milliseconds), owner E-1196, added 2026-10-24 and expiring
+2026-10-31. This is transferred workload evidence, not a claim that T3 or Web
+executed in the failed run; configured exact-head T3 evidence follows review.
+
+The copied-live guard now measures the opt-in open-summary first page and traverses every continuation, asserting complete unique membership. The separate T4 `startup-task-pages-soak.test.ts` 5,000-open-item tracker uses multibyte titles so the encoded 120 KiB row budget binds before 100 rows; every framed page remains below 128 KiB. Fixture setup and traversal are not startup latency measurements.
 Historical full-copy receipt: before T-1421 bounded this case, the complete
 checkout tracker was copied here under T-1204 (Coordinator decision 27508150).
 At `9a6d8a27` the workload ran in T2: Linux x64 droplet c-8 lon1 run `0c97f1ae`

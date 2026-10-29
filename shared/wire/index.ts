@@ -1176,7 +1176,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; include_containers?: boolean; parent?: string; cursor?: string; limit?: number; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; paged?: boolean; include_containers?: boolean; parent?: string; cursor?: string; limit?: number; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {

@@ -8471,7 +8471,8 @@
     "hub/test/setup-remotes.test.ts::untouched nonterminal Discord is skip with Discord setup commands": 0.006396,
     "hub/test/skills-onboarding.test.ts::remote tour includes Discord setup and local approval with shipped commands": 0.000916,
     "nvim/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Neovim": 0.443576,
-    "web/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Chromium": 1.315548
+    "web/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Chromium": 1.315548,
+    "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": 52.621985141
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
@@ -10930,6 +10931,13 @@
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "T-1421: The unchanged generated 1,004-item startup scale case stays beside the bounded 24-item corpus that replaces the full copy (previous Linux under-load full copies 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 10.100 s with all assertions passing; local Darwin arm64 targeted case 4.429718667 s. 15.2 s rounds up approximately 1.5x Linux. Byte caps, durable checkpoint and file/read-count assertions remain unchanged. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
+    },
+    "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": {
+      "seconds": 80,
+      "owner": "R-1278",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "T-1248: 5,000-row byte-bounded startup-page proof required by C1; A-13990 measured 52.622 s on Linux c-8 with 2 workers. The 12-row injected-byte T1 and 3-row frame T2 cases retain byte-boundary, ordered complete unique membership and legacy-shape assertions at small scale."
     }
   }
 }

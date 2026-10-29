@@ -473,3 +473,133 @@ test('explorer card replaces any right occupant on a narrow screen and restores 
     assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"),homes);
   }
 });
+
+
+test('startup accumulates open summary pages before installing the explorer', {skip}, async t => {
+  const items = [
+    {id:'R-1',kind:'release',title:'Paged release',state:'open',version:'0.3.0'},
+    ...Array.from({length:205},(_,n)=>({id:`T-${n+2}`,kind:'task',title:`Paged child ${n}`,state:'open',parent:'R-1'})),
+  ];
+  const {c,control} = await stub(t,{...fixture,summaryLists:true,pagedLists:true,items,holdSnapshots:['task.list']});
+  await control({waitSnapshot:'task.list'});
+  await control({releaseSnapshots:['task.list'],snapshotOrder:'oldest',snapshotLimit:1});
+  await control({waitSnapshot:'task.list'});
+  assert.equal(await c.lua("return require('cland.state').S.items_loaded"),false);
+  await control({emits:[{type:'task',id:'T-2',item:{...items[1],state:'closed'}}]});
+  await control({set:{holdSnapshots:[]},releaseSnapshots:['task.list']});
+  await eventually('all paged summaries installed',async()=>await c.lua<number>("return #require('cland.state').S.items")===205 || undefined);
+  const frames = (await control({requests:true})).requests.filter(r=>r.type==='task.list');
+  assert.deepEqual(frames.map(r=>Reflect.get(r,'cursor')??null),[null,'T-100','T-200']);
+  assert.ok(frames.every(r=>Reflect.get(r,'paged')===true));
+  const ids = await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids");
+  assert.deepEqual(ids.toSorted(),items.filter(row=>row.id!=='T-2').map(row=>row.id).toSorted());
+  await c.waitScreen(s=>s.includes('Paged release'),'paged explorer first paint');
+});
+
+
+for (const boundary of ['page events','page bytes','aggregate events','aggregate bytes']) {
+  test(`startup restarts the complete traversal after ${boundary} overflow`, {skip}, async t => {
+    const items = [
+      {id:'R-1',kind:'release',title:'Bounded traversal',state:'open',version:'0.3.0'},
+      ...Array.from({length:6},(_,n)=>({id:`T-${n+2}`,kind:'task',title:`Bounded child ${n}`,state:'open',parent:'R-1'})),
+    ];
+    const {c,control} = await stub(t,{...fixture,summaryLists:true,pagedLists:true,itemPageSize:2,items,holdSnapshots:['task.list']});
+    await control({waitSnapshot:'task.list'});
+    const aggregate = boundary.startsWith('aggregate');
+    await c.lua(`
+      local hub, cland = require('cland.hub'), require('cland')
+      hub.SNAPSHOT_TIMEOUT_MS = 30000
+      hub.SNAPSHOT_MAX_EVENTS = ${boundary==='page events'?1:10}
+      hub.SNAPSHOT_MAX_BYTES = ${boundary==='page bytes'?512:2097152}
+      cland.ITEMS_MAX_EVENTS = ${boundary==='aggregate events'?1:2048}
+      cland.ITEMS_MAX_BYTES = ${boundary==='aggregate bytes'?2000:2097152}
+    `);
+    const changed = {...items[1],title:'Fresh earlier-page row',body:'x'.repeat(boundary.endsWith('bytes')?1100:0)};
+    if (aggregate) await control({emits:[{type:'task',id:'T-2',item:changed}]});
+    await control({releaseSnapshots:['task.list'],snapshotOrder:'oldest',snapshotLimit:1});
+    await control({waitSnapshot:'task.list'});
+    const latest = {...changed,title:'Final earlier-page row'};
+    const replacement = items.map(row=>row.id==='T-2'?latest:row);
+    const events: Array<Record<string,unknown>> = [{type:'task',id:'T-2',item:latest}];
+    if (boundary==='page events') events.push({type:'task',id:'T-3',item:items[2]});
+    const nextRead = eventually('replacement item snapshot received',async()=>{
+      const frames = (await control({requests:true})).requests.filter(row=>row.type==='task.list');
+      return frames.length>=3?frames:undefined;
+    });
+    await control({set:{items:replacement},emits:events});
+    if (aggregate) await control({releaseSnapshots:['task.list'],snapshotOrder:'oldest',snapshotLimit:1});
+    const frames = await nextRead;
+    assert.equal(Reflect.get(frames[2]!,'cursor'),undefined,'invalid traversal restarts from its first page');
+    assert.equal(await c.lua("return require('cland.state').S.items_loaded"),false);
+    await control({set:{holdSnapshots:[]},releaseSnapshots:['task.list']});
+    await eventually('fresh traversal installed',async()=>await c.lua<boolean>("local s=require('cland.state'); return s.S.items_loaded and s.item('T-2').title=='Final earlier-page row'") || undefined);
+    const ids = await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids");
+    assert.deepEqual(ids.toSorted(),items.map(row=>row.id).toSorted());
+    assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"),0);
+    await c.waitScreen(s=>s.includes('Bounded traversal'),'complete bounded explorer');
+  });
+}
+
+
+test('late first and later pages complete after multiple retry rounds with bounded coherent journals', {skip}, async t => {
+  const items = [
+    {id:'R-1',kind:'release',title:'Late healthy pages',state:'open',version:'0.3.0'},
+    ...Array.from({length:4},(_,n)=>({id:`T-${n+2}`,kind:'task',title:`Late child ${n}`,state:'open',parent:'R-1'})),
+  ];
+  const {c,control} = await stub(t,{...fixture,summaryLists:true,pagedLists:true,itemPageSize:2,items});
+  const initial = (await control({requests:true})).requests.filter(row=>row.type==='task.list').length;
+  const marker={id:'T-6',kind:'task',title:'Installed final-page receipt',state:'open',parent:'R-1'};
+  const refreshed=[...items,marker];
+  await control({set:{holdSnapshots:['task.list'],items:refreshed}});
+  await c.lua("local h=require('cland.hub');h.SNAPSHOT_TIMEOUT_MS=50;h.SNAPSHOT_MAX_RETRY_MS=100;require('cland').refresh()");
+  const changed = {...items[1],title:'First page replay survives retries'};
+  await control({waitSnapshot:'task.list'});
+  await control({set:{items:refreshed.map(row=>row.id==='T-2'?changed:row)},emits:[{type:'task',id:'T-2',item:changed}]});
+  const first = await eventually('multiple first-page retry receipts',async()=>{
+    const frames=(await control({requests:true})).requests.filter(row=>row.type==='task.list').slice(initial);
+    return frames.length>=3?frames:undefined;
+  });
+  assert.ok(first.every(row=>Reflect.get(row,'cursor')===undefined),'retry keeps the same page');
+  assert.equal(await c.lua<boolean>("local id=...;return require('cland').client.pending[id]~=nil",Reflect.get(first[0]!,'id')),true,'original late answer remains eligible');
+  const bounds = (expectedEvents=1) => c.lua<boolean>(`
+    local c=require('cland').client;local count=0;local recordings={}
+    for j in pairs(c.snapshots) do
+      if j.request.type=='task.list' then
+        count=count+1;local recorded=j.capture or j;recordings[recorded]=true
+        assert(#recorded.events==${expectedEvents})
+        assert(recorded.bytes<=require('cland.hub').SNAPSHOT_MAX_BYTES)
+        assert(c.pending[j.id]~=nil)
+      end
+    end
+    return count<=2 and vim.tbl_count(recordings)==1
+  `);
+  assert.equal(await bounds(),true);
+  await control({releaseSnapshots:['task.list'],snapshotCursor:null,snapshotOrder:'oldest',snapshotLimit:1});
+  await eventually('later page receipt',async()=>{
+    const frames=(await control({requests:true})).requests.filter(row=>row.type==='task.list').slice(initial);
+    return frames.some(row=>Reflect.get(row,'cursor')==='T-2') || undefined;
+  });
+  const latest = {...changed,title:'Earlier row survives later page retries'};
+  await control({set:{items:refreshed.map(row=>row.id==='T-2'?latest:row)},emits:[{type:'task',id:'T-2',item:latest}]});
+  await eventually('multiple later-page retry receipts',async()=>{
+    const frames=(await control({requests:true})).requests.filter(row=>row.type==='task.list').slice(initial).filter(row=>Reflect.get(row,'cursor')==='T-2');
+    return frames.length>=3?frames:undefined;
+  });
+  await control({emits:[{type:'task',id:'T-2',item:latest}]});
+  assert.equal(await bounds(2),true,'one capture per input even with two active attempts');
+  // Release the original, late answer; it must remain valid across every retry.
+  await control({releaseSnapshots:['task.list'],snapshotCursor:'T-2',snapshotOrder:'oldest',snapshotLimit:1});
+  await eventually('final page held for completion-boundary control',async()=>{
+    const frames=(await control({requests:true})).requests.filter(row=>row.type==='task.list').slice(initial);
+    return frames.some(row=>Reflect.get(row,'cursor')==='T-4') || undefined;
+  });
+  assert.equal(await c.lua("return require('cland.state').item('T-6')~=nil"),false,'final-page marker has no live event');
+  const installed=eventually('late paged traversal installed',async()=>await c.lua<boolean>("local s=require('cland.state');return s.S.items_loaded and s.item('T-6')~=nil and s.item('T-2').title=='Earlier row survives later page retries'") || undefined);
+  await control({releaseSnapshots:['task.list'],snapshotCursor:'T-4',snapshotOrder:'oldest',snapshotLimit:1,set:{holdSnapshots:[]}});
+  await installed;
+  await control({releaseSnapshots:['task.list']});
+  const ids=await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids");
+  assert.deepEqual(ids.toSorted(),refreshed.map(row=>row.id).toSorted());
+  assert.equal(await c.lua("return vim.tbl_count(require('cland').client.snapshots)"),0);
+  await c.waitScreen(s=>s.includes('Late healthy pages'),'late healthy explorer installed');
+});

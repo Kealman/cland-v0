@@ -4,7 +4,7 @@ import { componentTask, componentTaskJson } from './component-task.ts';
 import { reindexedAfter, removedAfter } from './tracker-reindex.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
@@ -373,4 +373,28 @@ test('the task.* tools work through a spoke over MCP, acting as the spoke\'s ses
   assert.deepEqual((await json<{ items: Summary[] }>(root, 'list', '--state', 'closed')).items.map((i) => i.id), ['T-1']);
   const err = await spoke.client.callTool({ name: 'task.view', arguments: { id: 'T-5' } });
   assert.equal(err.isError, true);
+});
+
+test('open summary pages preserve legacy lists and bound framed bytes', async t => {
+  const root = await tempProject(t);
+  await mkdir(tasksDir(root), {recursive:true});
+  for (let n = 1; n <= 3; n++) await writeFile(join(tasksDir(root), `T-${n}-page.md`), `---\nid: T-${n}\ntitle: Page ${n}\nstate: open\n---\n`);
+  const hub = await projectHub(t, root);
+  const ui = await (await import('./harness.ts')).connectUi(t, hub.discovery);
+  const legacy = await ui.request({type:'task.list',projection:'summary',state:'open'});
+  assert.equal((legacy.value as {items:unknown[]}).items.length, 3);
+  assert.equal(Object.hasOwn(legacy.value as object, 'next'), false);
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const reply = await ui.request({type:'task.list',projection:'summary',state:'open',paged:true,limit:1,...(cursor ? {cursor} : {})});
+    assert.equal(reply.ok, true, reply.error);
+    const page = reply.value as {items:Array<{id:string}>;next:string|null;total:number};
+    assert.equal(page.items.length, 1);
+    assert.equal(page.total, 3);
+    assert.ok(Buffer.byteLength(JSON.stringify(reply)+'\n') < 131072);
+    ids.push(...page.items.map(row=>row.id));
+    cursor = page.next ?? undefined;
+  } while (cursor);
+  assert.deepEqual(ids, ['T-1','T-2','T-3']);
 });

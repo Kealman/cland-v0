@@ -570,3 +570,32 @@ test('safety polls read only changed files and retain the startup stamp', async 
   assert.equal(reads, 2, 'explicit rescans still read every body');
   await tracker.stop();
 });
+
+test('open startup pages split multibyte rows by encoded bytes and stable numeric identity', async t => {
+  const root = await tempProject(t);
+  const tracker = new Tracker({root,db:':memory:',clock:new FakeClock(),openPageBytes:1800,git:async()=>null,readBase:async()=>null});
+  try {
+    for (let n=1;n<=12;n++) await writeFile(join(root,`.cland/tasks/T-${n}-bytes.md`),`---\nid: T-${n}\ntitle: ${'🐈'.repeat(100)}\nstate: open\nrank: ${130-n}\n---\n`);
+    tracker.rescan();
+    const {OPEN_ITEM_PAGE_BYTES} = await import('../src/tracker/tracker.ts');
+    const {FIRST_PAYLOAD_BYTES} = await import('../../test-support/startup-budget.ts');
+
+    const ids:string[]=[];
+    let cursor:string|undefined;
+    let pages=0;
+    do {
+      const page = await handleTaskRequest(tracker,{type:'task.list',id:'bytes',projection:'summary',state:'open',paged:true,...(cursor?{cursor}:{})},{name:'human',id:'human',human:true,role:null}) as {items:Array<{id:string}>;next:string|null;total:number};
+      assert.equal(page.total,12);
+      const encoded = page.items.reduce((sum,row)=>sum+Buffer.byteLength(JSON.stringify(row))+1,0);
+      assert.ok(encoded<=1800);
+      assert.ok(page.items.length>0 && page.items.length<3,'UTF-8 boundary limits this page');
+      ids.push(...page.items.map(row=>row.id)); pages++;
+      cursor=page.next??undefined;
+      assert.ok(pages<=12);
+    } while(cursor);
+    assert.equal(OPEN_ITEM_PAGE_BYTES,122880);
+    assert.equal(FIRST_PAYLOAD_BYTES,131072);
+    assert.ok(pages>1);
+    assert.deepEqual(ids,Array.from({length:12},(_,n)=>`T-${n+1}`));
+  } finally { await tracker.stop(); }
+});
