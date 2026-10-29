@@ -135,7 +135,8 @@ use `docs/agents/tests/hub-test-remote-cli.test.ts.md`; retain lazy CLI imports,
 legacy optional callbacks and previous-hub refusal coverage.
 For public remote documentation, use `docs/agents/tests/hub-test-remote-docs.test.ts.md`
 and `docs/agents/tests/hub-test-remote-docs-pairing.test.ts.md`: keep site-only
-dependency isolation, vocabulary checks and executable pairing blocks in step.
+dependency isolation, vocabulary checks, executable pairing blocks and README's
+built-in Discord and dual-messenger media/history checks in step.
 For doctor's remote diagnostics, use
 `docs/agents/tests/hub-test-doctor-remotes.test.ts.md`: local secret resolution
 and Unix status frames only, with the shared General cause/fix table and optional
@@ -390,6 +391,9 @@ use the scripted close/drain regression and held real-query resource check in
 `docs/agents/tests/hub-test-scenarios-hook-bridge.test.ts.md`. Fence late resume
 and identity-probe results before restarting supervision; use the held-result
 matrix in `docs/agents/tests/hub-test-lifecycle-serialization.test.ts.md`.
+For Claude Code crash regressions, follow
+`docs/agents/tests/hub-test-claude-code-adapter.test.ts.md`: advance the injected
+clock inside the bounded exited-row wait; one advance is not an exit receipt.
 
 For Claude delivery confirmation, require the exact envelope-bearing turn-start;
 the legacy mod `injected` frame proves submission acceptance only. Use the
@@ -415,6 +419,9 @@ cleanup before the fixture closes its clients, cancel through the owning
 verifier and wait for its terminal receipt before removing roots. The deliberate
 phase-sweep leak is in `docs/agents/tests/hub-test-suite-runner.test.ts.md`;
 parent emergency ownership must not substitute for the sweep's cleanup receipt.
+For suite identity or lifecycle fixtures, take the worker from `launchWorker()`
+before `hub.stop` or a saved-job edit (`docs/agents/tests/hub-test-suite.test.ts.md`);
+`launch()` can return a queued snapshot with no PID.
 
 For Git object accumulation or stale `gc.log`, follow `docs/agents/git-maintenance.md`; prove grace, owned fixture drainage and held-close recovery through `docs/agents/tests/hub-test-git-maintenance.test.ts.md`, serving-first bounded stop/restart through `docs/agents/tests/hub-test-git-maintenance-startup.test.ts.md`, normal CLI exit beside a live handed-off collector through `docs/agents/tests/hub-test-git-maintenance-cli.test.ts.md`, and identity/refusal policy through `docs/agents/tests/hub-test-git-maintenance-recovery.test.ts.md`.
 
@@ -443,7 +450,7 @@ durable upgrade and terminal state without a second legacy adoption. Register
 held-writer disposal before launch, bound/abort setup separately, and drain the
 underlying checkpoint as well as inspect's bounded reply before root removal.
 
-Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
+Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits. A `[t3-lifecycle]` refusal at line 1 of an existing T3/T4 file means its lifecycle header was lost: restore that first comment block before reading process-helper allowances.
 
 Platform-conditional skips supply a nonblank prerequisite reason on the skipping
 branch and `false` on the running branch. The report-only `skip-reason` census
@@ -522,7 +529,7 @@ Human-send diagnostic failures are post-commit operator `publication-failed`
 records; separately prove the message and bytes remain stored with one publication
 and delivery. A logger throw is not a pre-commit refusal seam.
 
-For item clients, consume hub-computed summaries and roll-ups from snapshots and deltas. The first payload contains open rows and their ancestors. Fully closed containers and tasks load in bounded per-parent `task.list` summary pages; follow newly loaded containers and deduplicate retained ancestors by identity. Card-only dates/branch/relations/compact verification travel in snapshots and by-id pages; ordinary summary lists and parent pages omit these extras to protect the native first-payload budget. Closed card facts and a complete compact tree row are fetched in bounded by-id `task.list` summary pages; item links use the canonical id and parent to load and unfold missing ancestors without reading the body; fetch the body through `task.view` only when agents’ text or the criterion editor is opened; preserve the 1 MiB snapshot cap and Lua differential guard. See `hub/README.md` (summary projection) and `docs/agents/tests.md#connection-snapshots`.
+For item clients, consume hub-computed summaries and roll-ups from snapshots and deltas. The first payload contains open rows and their ancestors. Neovim reads them as `paged:true` open summary pages: accumulate every page and replay buffered task events only after the complete traversal; a reply without `next` is a complete legacy list. Fully closed containers and tasks load in bounded per-parent `task.list` summary pages; follow newly loaded containers and deduplicate retained ancestors by identity. Card-only dates/branch/relations/compact verification travel in snapshots and by-id pages; ordinary summary lists and parent pages omit these extras to protect the native first-payload budget. Closed card facts and a complete compact tree row are fetched in bounded by-id `task.list` summary pages; item links use the canonical id and parent to load and unfold missing ancestors without reading the body; fetch the body through `task.view` only when agents’ text or the criterion editor is opened; preserve the 1 MiB snapshot cap and Lua differential guard. See `hub/README.md` (summary projection) and `docs/agents/tests.md#connection-snapshots`.
 
 For web card criterion edits, use `task.criterion` with the authenticated human and no `as` field. Keep one-line text separate from the `Ck.` id label, preserve ids and drafts, disable offline writes and never replay mutations after reconnect. Legacy criteria with null ids stay read-only until Add or a CLI write returns persisted ids; explain this in a tooltip and never guess an id. `e` is scoped to the criteria block through the shared key map. Labels, body and other item fields stay read-only in Items. Use the three Web/CLI seams in `docs/agents/tests.md#web-phase`; no protocol or role permission expansion is needed.
 
@@ -552,7 +559,7 @@ For Web Events changes, use the sealed Events/public-frame seam in `docs/agents/
 
 For open-page browser notifications, use the pure rules/text seam and sealed Web Notification/visibility/focus stubs in `docs/agents/tests.md#web-phase`. Keep the Accounts Profile switches in the shared browser store unchanged, with no palette actions; test Finished off after reload and first-enable permission through stubbed Web controls. Request permission directly from an enabling gesture, seed snapshots without replay and use pre-transition task layers. Open the Inbox list explicitly in either pane and observe exact row-id focus, including from an open palette; hold browser animation time to prove row focus follows committed DOM rather than elapsed frames; retain receipt-based suppression; keep notifications stubbed. Phone worker changes use `docs/agents/tests.md#phone-notificationstestts`: opt-in worker contexts, real root registration, stubbed showNotification, worker click/no-fetch contract and T2 edge headers; real notifications stay in QA's demo.
 
-For Inbox drawer, reply, visit and archive changes, use the sealed Web/fake-sender seam in `docs/agents/tests.md#web-phase`. Select action rows explicitly; observe the exact departure before asserting leave/re-entry, including focus into another area while Inbox remains mounted. Keep drawer history reads separate from exact-id recovery reads, and retain the fake sender's reply receipt while split remains open. Retained approval detail identities resolve current native authorization and recovery state. Archive reads consume hub departures without replacing live rows or counts.
+For Inbox drawer, reply, visit and archive changes, use the sealed Web/fake-sender seam in `docs/agents/tests.md#web-phase`. Select action rows explicitly; observe the exact departure before asserting leave/re-entry, including focus into another area while Inbox remains mounted. Keep drawer history reads separate from exact-id recovery reads, and retain the fake sender's reply receipt while split remains open. Retained approval detail identities resolve current native authorization and recovery state. Archive reads consume hub departures without replacing live rows or counts. For read-outcome races, keep the controlled reply-first and departure-first orders in `docs/agents/tests/web-test-inbox.test.ts.md`.
 
 For approval records, use the sealed frame and recorded-client seams in `docs/agents/tests.md` (Approval record changes). Retain the existing inbox fields, the session-scoped native id, the 64 KiB subject allowlist and the explicit outcome; Claude Code's record stays TUI-only. For `approval.answer`, use the same doc's scripted fake adapter and authenticated web-cookie checks: only the human answers, Aides are refused, the first answer reserves `answering`, and delivery failure restores `pending` with a warning. Keep Deny intact and verify the native note or human message fallback; nothing answers by default. Neovim approval keys use the recorded-headless inbox seam in the same section: assert the outbound choice/note, live delta, attributed fold, race archive lookup and TUI-only no-send/attachment boundary.
 
@@ -584,7 +591,10 @@ For approval race/restart changes, keep the existing native/frame seams and run 
 
 For ask outcomes, a declined ask is a decision and never consent. Human `topic.answer {ask, declined: true, reason}` requires a non-empty reason, delivers `declined: <reason>` and leaves the topic open; return the unchanged decision down the lead chain with `ask.answer`. Use the public-frame and recorded-headless decline seams in `docs/agents/tests.md`; Neovim does not initiate declines in 0.2.0.
 
-For copied-tracker tests, derive live ids from the scratch copy; name the seeding
+For copied-tracker tests, copy the pinned shape corpus by default
+(`docs/agents/tests/hub-test-pinned-tracker.test.ts.md`); the full live-body Lua
+comparison stays at T4 and the 1,000-item scale guards stay generated. Derive
+live ids from the scratch copy; name the seeding
 owner beside seeded literal ids with `cland-allow-tracker-id`. Read the T0 guard
 scope in `docs/agents/tests.md` when adding copies or exceptions. Keep payload
 caps above measured copied-state bytes with growth headroom, alongside synthetic
@@ -673,7 +683,7 @@ In a hub session, mark every acceptance criterion done with `cland task criterio
 
 The `send` tool accepts `to` as one recipient string or an array of strings (`string | string[]`); for review, use `to: "reviewer"` or `to: ["reviewer"]`. Other shapes are validation errors; omitted `to` or `[]` addresses the human.
 
-In a hub session, set your claimed item to `review` and send `review request T-<n>` to `reviewer` in the item's topic with the committed branch/head and criteria. Inspect the send outcomes: `resolvedTo` names the selected Reviewer; a `queued` outcome waiting for the next free verifier means the hub will assign it automatically and send you an assignment or refusal notice. Wait for that notice instead of resending the same request. A refusal names the retry rule. When no verifier is live, report the staffing blocker to `lead T-<n>` so it can launch one; the queued request remains pending.
+In a hub session, set your claimed item to `review` and send `review request T-<n>` to `reviewer` in the item's topic with the committed branch/head and criteria. Inspect the send outcomes: `resolvedTo` names the selected Reviewer; a `queued` outcome waiting for the next free verifier means the hub will assign it automatically and send you an assignment or refusal notice. Wait for that notice instead of resending the same request. A refusal names the retry rule. When no verifier is live, report the staffing blocker to `lead T-<n>` so it can launch one; the queued request remains pending. For verifier routing or pending-marker changes, use `docs/agents/tests/hub-test-verifier-routing.test.ts.md`, including its ready-transition reservation and legacy `{item,kind}` restart recovery cases.
 
 Before requesting review, fetch and merge `origin/dev`, then commit and push the head to review. After a clear source verdict, run `cland verify` at the exact reviewed head and wait for its hub result. A fix or later merge that changes the head needs a new review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer settles the final verdict when the same-head result arrives; see `docs/agents/tests.md`.
 
@@ -873,6 +883,11 @@ sent receipt. Outbox reads select pending states or exact ids; never decode the
 whole ledger per input. Advance fake clocks by observed sent receipts, not by
 mapping counts, and keep an independent hub request bounded during catch-up.
 Keep the previous adapter, wire and outbox shapes.
+For both remotes in one hub, use `docs/agents/tests/hub-test-scenarios-remotes.test.ts.md`:
+a graceful stop persists a planned recovery boundary, keeps the 150-second card
+rule and emits no failure outage (`docs/agents/tests/hub-test-telegram-graceful-restart.test.ts.md`).
+Observe native close and Discord invalid-session persistence before advancing the
+fake clock across a restart.
 
 For Discord files and voice in either direction, use
 `docs/agents/tests/hub-test-discord-inbound-media.test.ts.md` and

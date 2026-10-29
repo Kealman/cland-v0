@@ -85,9 +85,10 @@
       "A-13643",
       "A-13725",
       "A-13729",
-      "A-14104"
+      "A-14104",
+      "A-14109"
     ],
-    "commit": "c4dfe02849eafccfa2bf125a3ffa8ba043152297"
+    "commit": "59ea5191e7d186d655f0a545186b871ab431db96"
   },
   "budget": {
     "testSeconds": 5,
@@ -3008,6 +3009,30 @@
     "hub/test/fixture-endpoints.test.ts": {
       "seconds": 0.826533,
       "tests": 10
+    },
+    "hub/test/item-summary-lua.test.ts": {
+      "seconds": 0.941968,
+      "tests": 1
+    },
+    "hub/test/pinned-tracker.test.ts": {
+      "seconds": 0.043951,
+      "tests": 1
+    },
+    "hub/test/scenarios/remotes.test.ts": {
+      "seconds": 1.432137,
+      "tests": 1
+    },
+    "hub/test/startup-cleanup.test.ts": {
+      "seconds": 0.199941,
+      "tests": 2
+    },
+    "hub/test/startup-task-pages-soak.test.ts": {
+      "seconds": 52.621985,
+      "tests": 1
+    },
+    "hub/test/telegram-graceful-restart.test.ts": {
+      "seconds": 1.833099,
+      "tests": 4
     }
   },
   "tests": {
@@ -8475,12 +8500,103 @@
     "hub/test/skills-onboarding.test.ts::remote tour includes Discord setup and local approval with shipped commands": 0.000916,
     "nvim/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Neovim": 0.443576,
     "web/test/remotes.test.ts::native Discord outage, recovery, pairing, voice and approval render in Chromium": 1.315548,
-    "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": 52.621985141
+    "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": 52.621985141,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run reports a tracker-only green tip as an unconfirmed flake with both runs": 0.478406,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run reports docs brief and duration-only green tips as not reproduced (intermittent)": 0.55947,
+    "hub/test/dev-t3-search.test.ts::old already-fixed checkpoint requires fresh history evidence: false": 0.013897,
+    "hub/test/dev-t3-search.test.ts::old already-fixed checkpoint requires fresh history evidence: missing": 0.01338,
+    "hub/test/dev-t3-search.test.ts::old already-fixed checkpoint requires fresh history evidence: null": 0.013614,
+    "hub/test/dev-t3-search.test.ts::tracker-only green tip is an unconfirmed flake naming the red and green runs": 0.014509,
+    "hub/test/discord-artifacts.test.ts::Discord repeated single artifact preserves the new short caption before one sent-above reference": 0.163151,
+    "hub/test/discord-messages.test.ts::General agent reply to human discord input threads natively on discord": 0.415797,
+    "hub/test/discord-messages.test.ts::General agent reply to human discord input threads natively on telegram": 0.42171,
+    "hub/test/discord-messages.test.ts::General agent reply to human telegram input threads natively on discord": 0.43197,
+    "hub/test/discord-messages.test.ts::General agent reply to human telegram input threads natively on telegram": 0.4464,
+    "hub/test/discord-messages.test.ts::General reply paired fixture drains aborted startup before Store disposal": 0.105623,
+    "hub/test/discord-messages.test.ts::General reply paired fixture drains omitted startup before Store disposal": 0.109631,
+    "hub/test/discord-messenger.test.ts::Discord hub fixture cold tempProject has a separate setup budget and timing receipt": 0.082951,
+    "hub/test/discord-messenger.test.ts::Discord hub fixture failed tempProject names phase and elapsed time": 0.001962,
+    "hub/test/durations-refresh.test.ts::refresh skips and reports identities outside tier ownership (addOnly=false)": 0.010543,
+    "hub/test/durations-refresh.test.ts::refresh skips and reports identities outside tier ownership (addOnly=true)": 0.002846,
+    "hub/test/durations.test.ts::cover-log remote-docs fixture refresh keeps npm test:tiers admitted": 2.198134,
+    "hub/test/epic-close.test.ts::duration close fixture drains aborted startup before root removal": 0.063838,
+    "hub/test/epic-close.test.ts::duration close fixture drains omitted startup before root removal": 0.063621,
+    "hub/test/epic-close.test.ts::epic close refuses every owned duration allowance until re-owned (in-process)": 0.164249,
+    "hub/test/epic-close.test.ts::epic closes normally without a project duration manifest (in-process)": 0.128754,
+    "hub/test/executor-safety.test.ts::fake provider close drains held direct creation and fences later admission": 0.117816,
+    "hub/test/executor-safety.test.ts::fake provider close drains held direct-omitted creation and fences later admission": 0.130737,
+    "hub/test/executor-safety.test.ts::fake provider close drains held direct-timeout creation and fences later admission": 0.120899,
+    "hub/test/executor-safety.test.ts::fake provider close drains held http creation and fences later admission": 0.118659,
+    "hub/test/executor-safety.test.ts::fake provider close drains held http-aborted creation and fences later admission": 0.133162,
+    "hub/test/executor-safety.test.ts::fake provider close reaps npm test and its polling child (aborted)": 0.718324,
+    "hub/test/executor-safety.test.ts::fake provider close reaps npm test and its polling child (failed)": 0.663778,
+    "hub/test/executor-safety.test.ts::fake provider close reaps npm test and its polling child (unfinished)": 0.660255,
+    "hub/test/executor-safety.test.ts::finish poller exits 124 without a finish receipt": 0.112293,
+    "hub/test/executor-safety.test.ts::poller disposal resumes after aborted held setup outlives caller deadlines": 0.757414,
+    "hub/test/executor-safety.test.ts::poller disposal resumes after omitted held setup outlives caller deadlines": 0.694053,
+    "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every pinned tracker body": 0.941968,
+    "hub/test/pinned-tracker.test.ts::pinned tracker retains representative shapes within a fixed count": 0.043951,
+    "hub/test/process-cleanup.test.ts::darwin exited parent confirms its captured descendant EIO before cleanup": 0.148898,
+    "hub/test/process-cleanup.test.ts::darwin exited parent confirms its captured descendant EPERM before cleanup": 0.162955,
+    "hub/test/process-cleanup.test.ts::darwin exited parent confirms its captured descendant gone before cleanup": 0.245813,
+    "hub/test/process-cleanup.test.ts::darwin exited parent confirms its captured descendant live before cleanup": 0.130842,
+    "hub/test/process-cleanup.test.ts::darwin exited parent confirms its captured descendant replaced before cleanup": 0.231646,
+    "hub/test/process-cleanup.test.ts::darwin exited parent confirms its captured descendant unreadable before cleanup": 0.135809,
+    "hub/test/process-cleanup.test.ts::linux exited parent confirms its captured descendant EIO before cleanup": 0.197661,
+    "hub/test/process-cleanup.test.ts::linux exited parent confirms its captured descendant EPERM before cleanup": 0.156213,
+    "hub/test/process-cleanup.test.ts::linux exited parent confirms its captured descendant gone before cleanup": 0.19951,
+    "hub/test/process-cleanup.test.ts::linux exited parent confirms its captured descendant live before cleanup": 0.146621,
+    "hub/test/process-cleanup.test.ts::linux exited parent confirms its captured descendant replaced before cleanup": 0.217008,
+    "hub/test/process-cleanup.test.ts::linux exited parent confirms its captured descendant unreadable before cleanup": 0.165479,
+    "hub/test/scenarios/remotes.test.ts::Both remotes share answers, media, restart catch-up and isolate revoked Telegram": 1.432137,
+    "hub/test/skills-qa.test.ts::copied QA recorder uses shipped cland engines with conflicting project manifest": 0.289396,
+    "hub/test/skills-qa.test.ts::copied QA recorder uses shipped cland engines with missing project manifest": 0.279962,
+    "hub/test/skills-qa.test.ts::copied QA recorder uses shipped cland engines with no-engines project manifest": 0.316517,
+    "hub/test/skills-qa.test.ts::QA recorder refuses unsupported Node for run and note before recording PASS": 0.034059,
+    "hub/test/stage-closure-component.test.ts::forced closure recompute on copied tracker skips historical covers and preserves recorded closure": 0.558697,
+    "hub/test/stage-closure-component.test.ts::open stage results match the full recompute across paired, rejected and incomplete history": 0.236721,
+    "hub/test/startup-cleanup.test.ts::abandoned journal observation closes acquired handles before fixture root removal": 0.002593,
+    "hub/test/startup-cleanup.test.ts::database open failure closes startup journal handles before rejecting": 0.197348,
+    "hub/test/startup-replies-scale.test.ts::eight startup replies and byte guards work on a pinned durable fixture": 0.480739,
+    "hub/test/suite.test.ts::suite worker setup waits for admission rather than the launch PID snapshot": 3.180866,
+    "hub/test/telegram-artifacts.test.ts::Telegram repeated single artifact preserves the new short caption before one sent-above reference": 0.232184,
+    "hub/test/telegram-graceful-restart.test.ts::Integrated remotes startup aborted receipt drains native owners": 0.032762,
+    "hub/test/telegram-graceful-restart.test.ts::Integrated remotes startup omitted receipt drains native owners": 1.0669,
+    "hub/test/telegram-graceful-restart.test.ts::Telegram planned stop catches input and cards after 240000 ms without failure notices": 0.272274,
+    "hub/test/telegram-graceful-restart.test.ts::Telegram planned stop catches input and cards after 30000 ms without failure notices": 0.461163,
+    "hub/test/telegram-inbound.test.ts::Telegram exhausted download retries report one named failure and release the queue": 0.158042,
+    "hub/test/telegram-inbound.test.ts::Telegram exhausted getFile retries report one named failure and release the queue": 0.139176,
+    "hub/test/telegram-inbound.test.ts::Telegram transient download retries silently without blocking commands or duplicating a message": 0.169438,
+    "hub/test/telegram-inbound.test.ts::Telegram transient getFile retries silently without blocking commands or duplicating a message": 0.122114,
+    "hub/test/telegram-pairing.test.ts::Telegram nvim approval confirms once before open cards in age order (429)": 0.229975,
+    "hub/test/telegram-pairing.test.ts::Telegram nvim approval confirms once before open cards in age order (live)": 0.301548,
+    "hub/test/telegram-pairing.test.ts::Telegram nvim approval confirms once before open cards in age order (restart)": 0.348011,
+    "hub/test/telegram-pairing.test.ts::Telegram setup approval confirms once before open cards in age order (live)": 0.234199,
+    "hub/test/test-admission.test.ts::admission warns once with running and required Node versions, including standalone bypass": 0.0022,
+    "hub/test/test-lint.test.ts::existing lifecycle files report a displaced header before process allowances": 0.004744,
+    "hub/test/test-lint.test.ts::losing a lifecycle declaration is refused even without process helper growth": 0.019328,
+    "hub/test/test-lint.test.ts::never-headed lifecycle debt and headed files keep their lint result": 0.003214,
+    "hub/test/tracker-component.test.ts::open summary pages preserve legacy lists and bound framed bytes": 0.101105,
+    "hub/test/tracker-summary.test.ts::open startup pages split multibyte rows by encoded bytes and stable numeric identity": 0.083458,
+    "hub/test/verification-tree.test.ts::periodic green-tip history distinguishes tracker commits from non-tracker edits and reverts": 0.243102,
+    "hub/test/verifier-routing.test.ts::legacy ready-item pending after restart cannot block the oldest queued review": 0.232763,
+    "hub/test/verifier-routing.test.ts::legacy ready-item pending after restart is absent from who and session rows": 0.187586,
+    "hub/test/verifier-routing.test.ts::ready clears an idle reviewer reservation and assigns queued work while another reviewer stays busy": 0.201155,
+    "nvim/test/explorer-component.test.ts::late first and later pages complete after multiple retry rounds with bounded coherent journals": 0.757354,
+    "nvim/test/explorer-component.test.ts::startup accumulates open summary pages before installing the explorer": 0.468286,
+    "nvim/test/explorer-component.test.ts::startup restarts the complete traversal after aggregate bytes overflow": 0.450601,
+    "nvim/test/explorer-component.test.ts::startup restarts the complete traversal after aggregate events overflow": 0.416451,
+    "nvim/test/explorer-component.test.ts::startup restarts the complete traversal after page bytes overflow": 0.400694,
+    "nvim/test/explorer-component.test.ts::startup restarts the complete traversal after page events overflow": 0.463573,
+    "web/test/events.test.ts::phone Events tap filters select hub categories and survive reload at 390×844 with touch": 2.758851,
+    "web/test/inbox.test.ts::own Inbox read outcome survives delta-first delivery": 1.587475,
+    "web/test/inbox.test.ts::own Inbox read outcome survives reply-first delivery": 1.48081,
+    "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": 10.410087
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
       "seconds": 4.98,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-28",
       "expires": "2026-11-04",
       "reason": "T-1391: real isolated Headless Shell plus authenticated HTTP upload, mixed artifact/file send and failed-send recovery. Linux x64 c-8 lon1 run a8b9d85e-30c7-454c-af67-3e1882bb0612 at d4bd66a4e (A-13154) passed this case in 3.210781057 s; corrected-head run 507e5264-c874-49a0-b376-b01eca9e863b at 7402e9c6c (A-13166) passed it in 3.319656720 s. The first run failed the phone row; the second failed shared Items defect T-1419 while the phone row passed. 4.98 s rounds 1.5 times the worst Linux sample upward. Coordinator approved E-1311 ownership and a seven-day expiry; assertions and timeouts are unchanged."
@@ -10804,21 +10920,21 @@
     },
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (desktop)": {
       "seconds": 9.2,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-27",
       "expires": "2026-11-03",
       "reason": "T-1364: real Headless Shell, sealed hub and both fake messengers prove read-only local pairing instructions with actual keys on rows and nested command fields. Linux x64 droplet run 1f987d26 at fa4a4856 (A-12630), Web workers 4, measured 6.076820519 s with all assertions passing; Coordinator requested 9.2 s, about 1.5x the sample, for approximately 40% Linux browser timing variance. Assertions and fixture isolation remain intact."
     },
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (phone)": {
       "seconds": 8.2,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-27",
       "expires": "2026-11-03",
       "reason": "T-1364: phone-width Headless Shell, sealed hub and both fake messengers prove read-only local pairing instructions with actual keys on rows and nested command fields. Linux x64 droplet run 1f987d26 at fa4a4856 (A-12630), Web workers 4, measured 5.462975472 s with all assertions passing; Coordinator requested 8.2 s, about 1.5x the sample, for approximately 40% Linux browser timing variance. Assertions and fixture isolation remain intact."
     },
     "web/test/pairing.test.ts::Neovim pairing card grants the fake messenger and both inboxes remove approved and expired codes": {
       "seconds": 4.7,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-27",
       "expires": "2026-11-03",
       "reason": "T-1364: the actual Neovim card and Headless Shell share a sealed fake-messenger hub to prove the local grant and expiry across both clients. Linux x64 droplet run 1f987d26 at fa4a4856 (A-12630), Web workers 4, measured 3.106363024 s with all assertions passing; 4.7 s rounds up 1.5x that sample and records the launch brief's >=3 s allowance boundary. The teardown correction reaps Neovim before closing the shared hub and asserts no autostarted hub survives."
@@ -10937,21 +11053,21 @@
     },
     "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": {
       "seconds": 15,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "T-1421: Pinned 24-item shape corpus replaces the full live copy (previous Linux under-load samples 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 9.404423108 s with all assertions passing, but the suite exited 1 on this enforced 5 s new-identity duration gate. Local Darwin arm64 targeted parent 2.831899667 s. 15 s rounds up approximately 1.5x Linux for about 40% Web timing variation. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
     },
     "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": {
       "seconds": 15.2,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "T-1421: The unchanged generated 1,004-item startup scale case stays beside the bounded 24-item corpus that replaces the full copy (previous Linux under-load full copies 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 10.100 s with all assertions passing; local Darwin arm64 targeted case 4.429718667 s. 15.2 s rounds up approximately 1.5x Linux. Byte caps, durable checkpoint and file/read-count assertions remain unchanged. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
     },
     "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": {
       "seconds": 80,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "T-1248: 5,000-row byte-bounded startup-page proof required by C1; A-13990 measured 52.622 s on Linux c-8 with 2 workers. The 12-row injected-byte T1 and 3-row frame T2 cases retain byte-boundary, ordered complete unique membership and legacy-shape assertions at small scale."
