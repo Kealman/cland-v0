@@ -7104,6 +7104,29 @@ Telegram uses the shared `you (Discord)` author label. Injected handlers and old
 frame shapes retain their current interfaces; no role permission changes apply.
 See the [Discord message test guide](../docs/agents/tests/hub-test-discord-messages.test.ts.md).
 
+### Discord outbound artifacts
+
+When Discord is enabled, has a token, is paired and can reach its API, eligible
+General messages deliver files up to 20 MiB each, at most ten per message and
+25 MiB per request (including multipart overhead). HTML and diagrams remain
+files. Larger files become lines naming the artifact and its project-relative
+path. Each group has the author/kind header; a single file with short text uses
+both as its caption. Telegram-origin files use `you (Telegram)`.
+
+Discord uses the shared artifact planner and descriptor-bound no-follow reader.
+The durable messenger ledger reserves artifact ids before I/O, across pairing
+changes. Later attachments reference the earlier file, replying only within the
+same channel. Only native attachment receipts count as uploaded; a partial or
+text-only fallback is labelled not uploaded on a later attachment. Queued or
+unconfirmed sends retain their once fence. Complete
+publications commit before draining; started publications stay contiguous ahead
+of new cards. File jobs contain ids and captions, never file bytes or absolute
+paths. Multipart requests retain empty `allowed_mentions`, suppressed embeds,
+and the original enforced nonce. A timed-out accepted send can reconcile inside
+the original two-minute nonce window; old unknown sends stay fenced. Existing
+JSON callers, persisted jobs and wire frames remain supported. See the
+[artifact test guide](../docs/agents/tests/hub-test-discord-artifacts.test.ts.md).
+
 ### Telegram outbound artifacts
 
 When Telegram is enabled, configured with a token and paired, General's eligible

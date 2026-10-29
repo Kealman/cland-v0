@@ -11,7 +11,8 @@ export type DiscordMessage = {
 };
 export type DiscordButton = { type: 2; style: number; label: string; custom_id?: string; url?: string };
 export type DiscordActionRow = { type: 1; components: DiscordButton[] };
-export type DiscordMessageInput = { message_reference?: { message_id: string; fail_if_not_exists: boolean }; content?: string; components?: DiscordActionRow[]; flags?: number };
+export type DiscordUpload = { name: string; body: Blob };
+export type DiscordMessageInput = { files?: DiscordUpload[]; message_reference?: { message_id: string; fail_if_not_exists: boolean }; content?: string; components?: DiscordActionRow[]; flags?: number };
 export const DISCORD_USER_AGENT = `DiscordBot (https://github.com/Kealman/cland-v0, ${VERSION})`;
 
 /** Sanitized facts only; native fetch exceptions and credential-bearing URLs stay private. */
@@ -196,10 +197,17 @@ export class DiscordApi {
     const signal = options?.signal ? AbortSignal.any([deadline.signal, options.signal]) : deadline.signal;
     try {
       let response: Response;
+      const { files, ...payload } = (body ?? {}) as Record<string, unknown> & { files?: DiscordUpload[] };
+      let multipart: FormData | undefined;
+      if (files?.length) {
+        multipart = new FormData();
+        multipart.set('payload_json', JSON.stringify({ ...payload, attachments: files.map((file, id) => ({ id, filename: file.name })) }));
+        files.forEach((file, id) => multipart!.set(`files[${id}]`, file.body, file.name));
+      }
       try {
         response = await fetch(this.#root + path, { method, redirect: 'error', signal,
-          headers: { authorization: `Bot ${this.#token}`, 'user-agent': DISCORD_USER_AGENT, 'content-type': 'application/json', connection: 'close' },
-          ...(body ? { body: JSON.stringify(body) } : {}) });
+          headers: { authorization: `Bot ${this.#token}`, 'user-agent': DISCORD_USER_AGENT, ...(multipart ? {} : { 'content-type': 'application/json' }), connection: 'close' },
+          ...(multipart ? { body: multipart } : body ? { body: JSON.stringify(body) } : {}) });
       } catch { throw new DiscordError(route, 0, 'request failed or exceeded its time bound'); }
       if (logical) {
         const bucket = response.headers.get('X-RateLimit-Bucket');

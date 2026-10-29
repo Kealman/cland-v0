@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { fakeGateway } from './gateway.ts';
 import { EventEmitter } from 'node:events';
 import { abortable, within } from '../../../src/executor/droplet/deadline.ts';
@@ -18,7 +19,7 @@ export const DISCORD_IDS = {
 } as const;
 type Ping = { users: string[]; roles: string[]; everyone: boolean };
 type Request = { method: string; path: string; body: Record<string, unknown>; userAgentValid: boolean };
-export type DiscordState = { reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; loseCallbackResponse?: boolean; callbackTimes: number[]; callbacks: object[]; edits: object[]; followups: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
+export type DiscordState = { uploads: Array<{ message: string; name: string; size: number; sha256: string }>;  reactions: Array<{ channel: string; message: string; user: string; emoji: string }>; interactions: Array<{ id: string; at: number; loseCallbackResponse?: boolean; callbackTimes: number[]; callbacks: object[]; edits: object[]; followups: object[] }>; commands: object[]; commandWrites: number; messages: DiscordMessage[]; requests: Request[]; pings: Ping[]; redirectsFollowed: number; rateLimits: number; gateway: { identifies: number; resumes: number; validResume: boolean; heartbeats: number; payloads: number; validIdentify: boolean; closes: number[] }; members: Array<{ user_id: string; guild_id: string; permissions: string }> };
 
 function reply(res: ServerResponse, status: number, body: unknown): void {
   if (!res.headersSent) res.writeHead(status, { 'content-type': 'application/json' });
@@ -48,7 +49,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const captureText = (text: string) => !options.publicOrigin ? scrub(text) : text.split(/(\b[a-z][a-z0-9+.-]*:\/\/\S+)/gi)
     .map(part => part === options.publicOrigin ? part : scrub(part)).join('');
   const redact = Object.assign(secrets, { text: captureText, value: <T>(value: T): T => redactValue(value, captureText) });
-  const state: DiscordState = { reactions: [], interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
+  const state: DiscordState = { uploads: [], reactions: [], interactions: [], commands: [], commandWrites: 0, messages: [], requests: [], pings: [], redirectsFollowed: 0, rateLimits: 0, gateway: { identifies: 0, resumes: 0, validResume: false, heartbeats: 0, payloads: 0, validIdentify: false, closes: [] },
 
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
@@ -87,7 +88,16 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(Buffer.from(chunk));
     if (lifetime.signal.aborted) return;
-    const body = JSON.parse(Buffer.concat(chunks).toString() || '{}') as Record<string, unknown>;
+    const raw = Buffer.concat(chunks);
+    const type = req.headers['content-type'] ?? '';
+    const uploads: Array<{ name: string; bytes: Buffer }> = [];
+    let body: Record<string, unknown>;
+    if (type.startsWith('multipart/form-data')) {
+      const form = await new Response(raw, { headers: { 'content-type': type } }).formData();
+      body = JSON.parse(String(form.get('payload_json')));
+      for (const [key, value] of form) if (key.startsWith('files[') && typeof value !== 'string') uploads.push({ name: value.name, bytes: Buffer.from(await value.arrayBuffer()) });
+      if (uploads.length > 10 || uploads.some(f => f.bytes.length > 20 * 1024 * 1024) || raw.length > 25 * 1024 * 1024) return reply(res, 400, { code: 50035 });
+    } else body = JSON.parse(raw.toString() || '{}') as Record<string, unknown>;
     const path = new URL(req.url!, 'http://127.0.0.1');
     if (path.pathname === '/control/cdn') {
       if (typeof body.id === 'string') cdn.set(body.id, body as { content: string; expired?: boolean; redirect?: string; hold?: boolean; refresh?: string });
@@ -273,7 +283,13 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
         timestamp: clock.now().toISOString(), type: 0,
         ...(typeof body.flags === 'number' ? { flags: body.flags } : {}),
         ...(Array.isArray(body.attachments) ? { attachments: body.attachments as NonNullable<DiscordMessage['attachments']> } : {}), nonce: String(body.nonce), ...(components ? { components } : {}) };
+      if (uploads.length) message.attachments = uploads.map((file, id) => {
+        const key = `upload-${message.id}-${id}`;
+        cdn.set(key, { content: file.bytes.toString('base64') });
+        return { id: String(id), filename: file.name, size: file.bytes.length, url: `${url}/cdn/${key}` };
+      });
       state.messages.push(redact.value(message));
+      for (const file of uploads) state.uploads.push({ message: message.id, name: redact.text(file.name), size: file.bytes.length, sha256: createHash('sha256').update(file.bytes).digest('hex') });
       nonces.set(key, { at: clock.now().getTime(), message });
       state.pings.push(pings(body));
       if (fault?.response === 'holdStored') {

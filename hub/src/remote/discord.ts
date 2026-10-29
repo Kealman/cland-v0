@@ -5,20 +5,19 @@ import { DiscordIdentifyBudget } from './discord-identify.ts';
 import type { DiscordMediaOptions } from './discord-inbound.ts';
 import { DiscordInbound } from './discord-inbound.ts';
 import type { DiscordMessage } from './discord-api.ts';
-import { renderDiscord } from './discord-render.ts';
 import { mirrorOut } from './mirror.ts';
 import { DiscordOutbox } from './discord-outbox.ts';
 import { randomUUID } from 'node:crypto';
 import type { Remote, RemoteSend, RemoteReceipt } from './gateway.ts';
 import type { Pairing, RemoteStore } from './state.ts';
-import type { HubFrame, RemoteConnection } from '../protocol.ts';
+import type { Artifact, HubFrame, RemoteConnection } from '../protocol.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
 import type { LogFn } from '../log.ts';
 import { registerCommands, DiscordCommands } from './discord-commands.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 import { DiscordApi, DiscordError } from './discord-api.ts';
 import { DiscordSocket, discordGatewayUrl, type DiscordDispatch } from './discord-socket.ts';
-export type DiscordRemoteOptions = { media?: Omit<DiscordMediaOptions, 'api' | 'clock'>; store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; historyLimit?: number; handlers?: Array<(frame: DiscordDispatch) => void> };
+export type DiscordRemoteOptions = { media?: Omit<DiscordMediaOptions, 'api' | 'clock'>; files?: { root: string; artifact: (id: string) => Artifact | null } | undefined; store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; historyLimit?: number; handlers?: Array<(frame: DiscordDispatch) => void> };
 
 /** Native credentials and dispatch data stay behind the gateway's frame port. */
 export class DiscordRemote implements Remote {
@@ -48,7 +47,7 @@ export class DiscordRemote implements Remote {
   constructor(api: DiscordApi, token: string, clock: Clock, options: DiscordRemoteOptions = {}) {
     this.#clock = clock;
     this.#commands = new DiscordCommands(api, clock, options.store, options.projectName ?? (() => 'cland'), this.#abort.signal, () => this.status().connected, (inbox, key) => this.#cards?.publishInbox(inbox, key) ?? Promise.resolve(0));
-    this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal) : undefined;
+    this.#outbox = options.store ? new DiscordOutbox(api, options.store, clock, this.#abort.signal, options.files) : undefined;
     this.#outbox?.holdRecovery(true);
     this.#cards = options.store && this.#outbox ? new DiscordCards(options.store, this.#outbox, api, clock, this.#abort.signal, options.log, options.webOrigin) : undefined;
     this.#api = api; this.#token = token; this.#options = options;
@@ -134,8 +133,7 @@ export class DiscordRemote implements Remote {
     const pairing = this.#options.store?.pairing();
     const mirrored = mirrorOut(frame.message, 'discord');
     if (mirrored && frame.message.fromKind !== 'hub' && this.#options.store?.suppressMutedMessage(frame.message.id)) return;
-    if (pairing && mirrored) return this.#outbox?.sendGroup(pairing.chatId,
-      renderDiscord(mirrored.header, mirrored.text), frame.message.id, mirrored.silent)
+    if (pairing && mirrored) return this.#outbox?.publication(pairing.chatId, frame.message, mirrored.header, mirrored.silent)
       .catch(error => this.#outwardError(error));
   }
   run(): Promise<void> {
