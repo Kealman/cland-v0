@@ -3,18 +3,18 @@ id: T-1440
 kind: task
 title: web Items tree claims-and-holds case times out on task.edit at 5 s once in a loaded task run
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: R-1278
 blocked_by: []
 regression_of: T-1423
 topic: null
 branch: null
 created: 2026-10-29T12:24:33.567Z
-updated: 2026-10-29T12:24:33.567Z
+updated: 2026-10-29T13:05:40.928Z
 ---
 
 ## Summary
