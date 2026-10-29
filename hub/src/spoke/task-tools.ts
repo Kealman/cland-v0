@@ -55,7 +55,7 @@ export const TASK_TOOLS = [
   },
   {
     name: 'task.close',
-    description: 'Close an item, optionally with a closing comment. Epics require a current clear QA verdict on dev and every criterion verified; open children still refuse. Its claim is released.',
+    description: 'Close an item, optionally with a closing comment. Epics require a current clear QA verdict on dev and every criterion verified; open children and owned duration allowances still refuse. Re-own named allow[key].owner entries in hub/test/durations.json to an open container, retaining dates. A missing manifest has no effect. Its claim is released.',
     inputSchema: { type: 'object', properties: { id: itemId, comment: str, override: { ...str, description: "Human shell only: skip epic QA evidence with an audited reason; sessions cannot override." } }, required: ['id'] },
   },
   {

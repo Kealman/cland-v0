@@ -1,7 +1,7 @@
 // T2: epic QA/close rules with injected Git graph and path facts, real frames and in-process MCP.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, mkdtemp, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, eventually, inProcessSpoke, projectHub, flushProjectLogs, tempProject } from './harness.ts';
 import { sessionCland as cland } from './session-credential-fixture.ts';
@@ -10,7 +10,11 @@ import { FakeClock } from './fake-clock.ts';
 import { planStageHub, PlanGit, writeBarrier } from './plan-stage-fixture.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { manualTips } from './freshness-harness.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { onCleanup, ownDirectory } from './process-cleanup.ts';
+import { tmpdir } from 'node:os';
+import { pacingOwner } from './telegram-pacing-fixture.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+import { dispatcherUi } from './harness.ts';
 
 const repositories = new Map<string, PlanGit>();
 const facts = (root: string) => repositories.get(root)!;
@@ -373,3 +377,105 @@ test('epic demo freshness retains intervening rename/revert conflicts and reject
   const offDev = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'off-dev-demo', commit: side });
   assert.equal(offDev.ok, false); assert.match(offDev.error ?? '', /not on dev/);
 });
+
+
+// New close cases pre-own acquisition and use socket-free production frames.
+async function durationFixture(t: TestContext) {
+  const owner = pacingOwner(t);
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-duration-close-')));
+  const remove = ownDirectory(t, root, { beforeRemove: owner.dispose });
+  const clock = new FakeClock();
+  const graph = new PlanGit();
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const start = (setup: { receipt?: Promise<void>; signal?: AbortSignal; clock?: FakeClock } = {}) => owner.start(root, {}, clock, {
+    ...setup, hubOptions: { git: graph.read, readBase: async () => 'dev',
+      scheduleTips: read => { void read(); return { poke: () => { void read(); }, stop() {} }; } },
+  });
+  const ready = async () => {
+    try {
+      const hub = await start();
+      const ui = await within(owner.observe(async signal => {
+        const ui = await dispatcherUi(t, hub.dispatcher, root);
+        owner.close(() => ui.close());
+        signal.throwIfAborted();
+        return ui;
+      }), 1_000);
+      const qa = await within(owner.observe(async signal => {
+        const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'duration-qa', sessionId: 'duration-qa-id', role: 'qa' });
+        owner.close(() => qa.close());
+        signal.throwIfAborted();
+        return qa;
+      }), 1_000);
+      const created = await ui.request({ type: 'task.create', title: 'Duration owner', kind: 'epic', body: '## Definition of done\n- [ ] C1. Demo' });
+      assert.equal(created.ok, true, created.error);
+      const item = (created.value as { item: ItemView }).item;
+      const verdict = async (run: string, result: string, verified: string) => {
+        const response = await qa.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'qa', result, run, verified });
+        assert.equal(response.ok, true, response.error);
+      };
+      return { root, ui, item, verdict };
+    } catch (error) { await owner.dispose(); throw error; }
+  };
+  return { root, owner, clock, remove, start, ready };
+}
+
+test('epic close refuses every owned duration allowance until re-owned (in-process)', async t => {
+  const { root, ui, item, verdict } = await (await durationFixture(t)).ready();
+  await verdict('duration-qa', 'clear', 'all');
+  const path = join(root, 'hub/test/durations.json');
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  const allowance = { seconds: 12, owner: item.id, added: '2026-10-29', expires: '2026-11-05', reason: 'Native lifecycle receipt' };
+  const allow = { 'hub/test/example.test.ts::slow': { ...allowance }, 'hub/test/example.test.ts': { ...allowance, file: true } };
+  await writeFile(path, JSON.stringify({ allow }));
+  const original = await readFile(join(root, item.path), 'utf8');
+  for (const request of [
+    { type: 'task.close', item: item.id },
+    { type: 'task.close', item: item.id, override: 'QA exception' },
+    { type: 'task.edit', item: item.id, state: 'closed' },
+  ]) {
+    const refused = await ui.request(request);
+    assert.equal(refused.ok, false);
+    assert.match(refused.error ?? '', /duration allowance/);
+    for (const key of Object.keys(allow)) assert.ok(refused.error?.includes(key), key);
+    assert.match(refused.error ?? '', /re-own.*owner.*open.*container/i);
+    assert.equal(await readFile(join(root, item.path), 'utf8'), original, 'refusal leaves tracker bytes unchanged');
+  }
+  const release = await ui.request({ type: 'task.create', title: 'Allowance owner', kind: 'release' });
+  const owner = (release.value as { item: ItemView }).item.id;
+  for (const entry of Object.values(allow)) entry.owner = owner;
+  await writeFile(path, JSON.stringify({ allow }));
+  const closed = await ui.request({ type: 'task.close', item: item.id });
+  assert.equal(closed.ok, true, closed.error);
+  assert.equal((closed.value as { item: ItemView }).item.state, 'closed');
+  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), { allow }, 'close does not rewrite allowances or dates');
+});
+
+test('epic closes normally without a project duration manifest (in-process)', async t => {
+  const { ui, item, verdict } = await (await durationFixture(t)).ready();
+  await verdict('no-manifest-qa', 'clear', 'all');
+  const closed = await ui.request({ type: 'task.close', item: item.id });
+  assert.equal(closed.ok, true, closed.error);
+  assert.equal((closed.value as { item: ItemView }).item.state, 'closed');
+});
+
+
+for (const failure of ['omitted', 'aborted'] as const) {
+  test(`duration close fixture drains ${failure} startup before root removal`, async t => {
+    const fixture = await durationFixture(t);
+    const setupClock = new FakeClock();
+    const controller = new AbortController();
+    const starting = fixture.start({ receipt: new Promise<void>(() => {}), signal: controller.signal, clock: setupClock });
+    const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
+    const hub = await within(fixture.owner.serving, 1_000);
+    if (failure === 'omitted') await setupClock.advance(1_000);
+    else controller.abort(new Error('setup cancelled'));
+    await rejected;
+    await fixture.owner.dispose();
+    await within(hub.stopped, 1_000);
+    assert.equal(fixture.owner.observations(), 0);
+    assert.equal(fixture.clock.pending, 0);
+    assert.equal(setupClock.pending, 0);
+    await fixture.remove();
+    await assert.rejects(stat(fixture.root), { code: 'ENOENT' });
+  });
+}

@@ -5875,6 +5875,16 @@ Renewals remain reviewed edits to `added` and `expires`: their span is at most
 31 days for `budget.legacyOwner` (default `E-677`), seven days for other owners.
 Keep the existing `seconds` and `reason` unchanged. There is no renewal command.
 
+Closing a planning container (an epic by default) rereads the project’s
+`hub/test/durations.json` when present and refuses if any `allow` entry names
+that item as `owner`. The refusal lists every test/file key. Re-own those
+`allow[key].owner` entries to an open release/category before retrying; retain
+`added`, `expires`, `seconds` and reasons. There is no re-own command: edit the
+manifest. `task edit --state closed` and imports closing an existing epic share
+the guard, and the human’s QA `--override` does not bypass it. Projects without
+the manifest close normally; an unreadable or malformed manifest refuses close.
+This does not change stale-owner lint or the expiry rules.
+
 At each stage close the Coordinator refreshes on `dev` from the latest green
 integrated full-run log artifact:
 

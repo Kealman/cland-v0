@@ -1594,7 +1594,10 @@ reasons, missing or closed owner items, invalid dates, excessive date spans,
 and expired allowances (expiry is midnight UTC). D72 allows at most 31 days
 between `added` and `expires` for dated allowances owned by `budget.legacyOwner`;
 all other owners keep the seven-day maximum. Ownership
-is checked in the live authoritative tracker, including linked worktrees.
+is checked in the live authoritative tracker, including linked worktrees. Planning-container
+close refuses while that project’s manifest still names it as an allowance owner;
+re-own the named entries to an open container before closing, retaining dates and reasons.
+The close guard does nothing when the manifest is absent; allowance lint stays unchanged.
 Both paths also refuse duration test/allow keys with no matching source test
 identity, and file baselines/allowances naming a missing test file. Literal and
 template titles are checked in their own file; computed titles remain uncertain.

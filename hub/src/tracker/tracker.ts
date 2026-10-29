@@ -1,3 +1,4 @@
+import { DURATION_MANIFEST } from '../suite-durations.ts';
 import { isCustomRole } from '../names.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { summary as bodySummary, outline, sentences } from './summary.ts';
@@ -2018,10 +2019,35 @@ export class Tracker {
       accepted = qa.commit;
     }
     if (verifyBuild && tip !== await this.#resolve('refs/heads/dev', 'the epic demo tip before closing')) throw new TrackerError('dev changed while checking demo freshness; retry');
+    await this.#checkDurationOwner(id, resumed);
     return resumed(() => {
       const live = this.#parseItem(text, file, this.ladder);
       if (serializeItem(live) !== source) throw new TrackerError(`${id}: epic evidence changed while closing; retry`);
       return { tip: accepted, view: this.#viewOf(id, file, live) };
+    });
+  }
+
+  /** The suite manifest is optional in user projects; only close admission reads it. */
+  async #checkDurationOwner(id: string, resumed: Resumed): Promise<void> {
+    let text: string;
+    try { text = await this.#files.readFile(join(this.#root, DURATION_MANIFEST), 'utf8'); }
+    catch (err) {
+      return resumed(() => {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+        throw new TrackerError(`${id}: cannot read ${DURATION_MANIFEST} before closing`);
+      });
+    }
+    resumed(() => {
+      let allow: Record<string, { owner?: unknown }>;
+      try {
+        const manifest = JSON.parse(text);
+        if (!manifest || typeof manifest.allow !== 'object' || manifest.allow === null || Array.isArray(manifest.allow)) throw new Error('invalid allowances');
+        allow = manifest.allow;
+      } catch {
+        throw new TrackerError(`${id}: cannot read allowances in ${DURATION_MANIFEST} before closing`);
+      }
+      const owned = Object.entries(allow).filter(([, entry]) => entry?.owner === id).map(([key]) => key).sort();
+      if (owned.length) throw new TrackerError(`${id}: cannot close while owning duration allowances: ${owned.join(', ')}; re-own each allow[key].owner in ${DURATION_MANIFEST} to an open container before retrying; retain added/expires and reasons`);
     });
   }
 
