@@ -2,8 +2,8 @@
 id: T-1443
 kind: task
 title: The remote docs describe 0.3.0 as built
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1181
 branch: t/T-1443-the-remote-docs-describe-0-3-0-as-built
 created: 2026-10-29T15:55:47.685Z
-updated: 2026-10-29T16:25:36.185Z
+updated: 2026-10-29T16:38:27.905Z
+closed: 2026-10-29T16:38:27.905Z
 ---
 
 ## Summary
@@ -80,3 +81,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13791 original A-13789 execution/timing/load independently audited. Standards source A-13749 retained/no findings. Spec C1/C2 verified by15named imported docs cases including5new, each5/5load; base max0.004440682s/load max0.008661332s. Full dedup4155ordinary+75load pass, no nonpass/unfinished. Host typecheck/build/static T0positive31.539s; configured T1/T2/Web pass, explicit hostgate55a6a05b reused. T3/T4 unrun, Web0newfiles/repetitions; report-only timing/lint not enforced passes. Prior A-13758/A-13761 transport failure retained separately. Frozenhead/QA none; no Reviewer workloads or release/publish action.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T16:38:27.905Z
+
+Merged 95133bfb086f5d96fc2bc5ed3edd9223f02e0a26 onto dev.
