@@ -56,7 +56,7 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
   const start = async () => {
     const fake = await run(() => fixture!.start());
     const client = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url, ...(options.clock ? { clock: options.clock } : {}), ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}) });
-    const optionAt: Record<string, number> = { getCurrentApplication: 0, getGatewayBot: 0, getChannel: 1, listMessages: 2,
+    const optionAt: Record<string, number> = { getCurrentApplication: 0, getGatewayBot: 0, getChannel: 1, getMessage: 2, listMessages: 2,
       createMessage: 2, editMessage: 3, addReaction: 3, callback: 3, update: 3, modal: 3, defer: 2, editOriginal: 3, followup: 3, listCommands: 1, putCommands: 2 };
     // Only the public client seam is wrapped; each operation is owned before it starts.
     const api = new Proxy(client, { get(target, key) {

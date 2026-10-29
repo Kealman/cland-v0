@@ -33,7 +33,7 @@ export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, i
       for (const m of page) {
         if (BigInt(m.id) <= BigInt(cursor)) { done = true; break; }
         if (m.channel_id === pair.chatId && m.author.id === pair.userId && !m.author.bot && m.webhook_id === undefined
-          && (m.type === 0 || m.type === 19) && m.content.trim()) messages.push(m);
+          && (m.type === 0 || m.type === 19) && (m.content.trim() || m.attachments?.length)) messages.push(m);
       }
       const next = page.at(-1)!.id;
       if (next === before || page.length < 100) break;
@@ -44,7 +44,7 @@ export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, i
   }
   for (const m of batch.messages) {
     signal.throwIfAborted();
-    inbound.dispatch({ op: 0, t: 'MESSAGE_CREATE', d: { ...m, content: discordLateText(m.content, m.timestamp, batch.returnedAt) } });
+    inbound.dispatch({ op: 0, t: 'MESSAGE_CREATE', replayed: true, returnedAt: batch.returnedAt, d: { ...m, content: m.attachments?.length ? m.content : discordLateText(m.content, m.timestamp, batch.returnedAt) } });
     await inbound.idle();
     await yieldIO();
   }

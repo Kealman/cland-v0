@@ -53,6 +53,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     members: [{ user_id: DISCORD_IDS.human, guild_id: DISCORD_IDS.guild, permissions: '8' },
       { user_id: DISCORD_IDS.member, guild_id: DISCORD_IDS.guild, permissions: '0' }] };
   const interactionTokens = new Map<string, { id: string; at: number; loseCallbackResponse?: boolean; callbackTimes: number[]; callbacks: object[]; edits: object[]; followups: object[] }>();
+  const nativeAttachments = new Map<string, DiscordMessage['attachments']>();
+  const cdn = new Map<string, { content: string; expired?: boolean; redirect?: string; hold?: boolean; refresh?: string }>();
+  const cdnClosed: string[] = [];
+  const cdnRequests: Array<{ id: string; authorization: boolean }> = [];
   const faults: Array<Record<string, unknown>> = [];
   const held = new Map<number, () => void>();
   let nextHold = 1;
@@ -72,6 +76,12 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       roles: parse.includes('roles') ? [...content.matchAll(/<@&(\d+)>/g)].map(m => m[1]!) : [],
       everyone: parse.includes('everyone') && /@everyone|@here/.test(content) };
   }
+  const nativeMessage = (message: DiscordMessage, refresh = false): DiscordMessage => ({ ...message,
+    ...(nativeAttachments.get(message.id) ? { attachments: nativeAttachments.get(message.id)!.map(file => {
+      const id = file.url.split('/cdn/')[1], fresh = id && cdn.get(id)?.refresh;
+      return refresh && fresh ? { ...file, url: file.url.slice(0, file.url.lastIndexOf('/') + 1) + fresh } : file;
+    }) } : {}),
+  });
   async function handle(req: IncomingMessage, res: ServerResponse) {
     if (lifetime.signal.aborted) { req.destroy(); res.destroy(); return; }
     const chunks: Buffer[] = [];
@@ -79,6 +89,26 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     if (lifetime.signal.aborted) return;
     const body = JSON.parse(Buffer.concat(chunks).toString() || '{}') as Record<string, unknown>;
     const path = new URL(req.url!, 'http://127.0.0.1');
+    if (path.pathname === '/control/cdn') {
+      if (typeof body.id === 'string') cdn.set(body.id, body as { content: string; expired?: boolean; redirect?: string; hold?: boolean; refresh?: string });
+      return reply(res, 200, { requests: cdnRequests, closed: cdnClosed });
+    }
+    if (path.pathname.startsWith('/cdn/')) {
+      const id = path.pathname.slice(5), file = cdn.get(id);
+      cdnRequests.push({ id, authorization: !!req.headers.authorization });
+      if (file?.hold) {
+        await new Promise<void>(resolve => {
+          const hold = nextHold++;
+          const release = () => { held.delete(hold); resolve(); };
+          held.set(hold, release); events.emit('held', hold);
+          res.once('close', () => { cdnClosed.push(id); release(); });
+        });
+        if (res.destroyed) return;
+      }
+      if (!file || file.expired) return reply(res, 403, {});
+      if (file.redirect) { res.writeHead(302, { location: file.redirect }); res.end(); return; }
+      res.end(Buffer.from(file.content, 'base64')); return;
+    }
     if (path.pathname === '/control/state') return reply(res, 200, redact.value(state));
     if (path.pathname === '/control/fault') { faults.push(body); return reply(res, 200, {}); }
     if (path.pathname === '/control/release') {
@@ -150,7 +180,10 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
         : { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true };
       const message: DiscordMessage = { id: String(nextId++), channel_id: String(body.channel_id ?? DISCORD_IDS.channel),
         author, content: String(content), timestamp: clock.now().toISOString(), type: 0,
+        ...(typeof body.flags === 'number' ? { flags: body.flags } : {}),
+        ...(Array.isArray(body.attachments) ? { attachments: body.attachments as NonNullable<DiscordMessage['attachments']> } : {}),
         ...(user === 'webhook' ? { webhook_id: DISCORD_IDS.webhook } : {}) };
+      nativeAttachments.set(message.id, message.attachments);
       state.messages.push(redact.value(message));
       posted.push(message);
       }
@@ -217,10 +250,14 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     const channel = match[1]!;
     if (![DISCORD_IDS.channel, DISCORD_IDS.secondChannel].some(id => id === channel)) return reply(res, 404, { code: 10003 });
     if (req.method === 'GET') {
+      if (match[2]) {
+        const message = state.messages.find(m => m.id === match[2] && m.channel_id === channel);
+        return reply(res, message ? 200 : 404, message ? nativeMessage(message, true) : { code: 10008 });
+      }
       const before = path.searchParams.get('before');
       const limit = Number(path.searchParams.get('limit') ?? 50);
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) return reply(res, 400, { code: 50035 });
-      return reply(res, 200, state.messages.filter(m => m.channel_id === channel && (!before || BigInt(m.id) < BigInt(before))).reverse().slice(0, limit));
+      return reply(res, 200, state.messages.filter(m => m.channel_id === channel && (!before || BigInt(m.id) < BigInt(before))).reverse().slice(0, limit).map(m => nativeMessage(m)));
     }
     const components = body.components as DiscordActionRow[] | undefined;
     if ((body.content !== undefined && [...String(body.content)].length > 2000)
@@ -233,7 +270,9 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       if (body.enforce_nonce && old && clock.now().getTime() - old.at < 300_000) return reply(res, 200, old.message);
       const message: DiscordMessage = { id: String(nextId++), channel_id: channel,
         author: { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true }, content: String(body.content ?? ''),
-        timestamp: clock.now().toISOString(), type: 0, nonce: String(body.nonce), ...(components ? { components } : {}) };
+        timestamp: clock.now().toISOString(), type: 0,
+        ...(typeof body.flags === 'number' ? { flags: body.flags } : {}),
+        ...(Array.isArray(body.attachments) ? { attachments: body.attachments as NonNullable<DiscordMessage['attachments']> } : {}), nonce: String(body.nonce), ...(components ? { components } : {}) };
       state.messages.push(redact.value(message));
       nonces.set(key, { at: clock.now().getTime(), message });
       state.pings.push(pings(body));
@@ -304,6 +343,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   })();
   onCleanup(t, close);
   let url = '';
+  async function control(operation: 'cdn', body?: object): Promise<{ requests: Array<{ id: string; authorization: boolean }>; closed: string[] }>;
   async function control(operation: 'state'): Promise<DiscordState>;
   async function control(operation: 'interact', body: object): Promise<{ id: string }>;
   async function control(operation: 'say', body: { contents: string[] }): Promise<DiscordMessage[]>;

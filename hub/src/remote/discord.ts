@@ -2,6 +2,7 @@ import { flushGap } from './gap.ts';
 import { catchDiscordHistory, discordLateText } from './discord-catchup.ts';
 import { DiscordCards } from './discord-cards.ts';
 import { DiscordIdentifyBudget } from './discord-identify.ts';
+import type { DiscordMediaOptions } from './discord-inbound.ts';
 import { DiscordInbound } from './discord-inbound.ts';
 import type { DiscordMessage } from './discord-api.ts';
 import { renderDiscord } from './discord-render.ts';
@@ -17,7 +18,7 @@ import { registerCommands, DiscordCommands } from './discord-commands.ts';
 import { remoteStopCause, remoteStopDetails, remoteStopError } from './notices.ts';
 import { DiscordApi, DiscordError } from './discord-api.ts';
 import { DiscordSocket, discordGatewayUrl, type DiscordDispatch } from './discord-socket.ts';
-export type DiscordRemoteOptions = { store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; historyLimit?: number; handlers?: Array<(frame: DiscordDispatch) => void> };
+export type DiscordRemoteOptions = { media?: Omit<DiscordMediaOptions, 'api' | 'clock'>; store?: RemoteStore; projectName?: () => string; webOrigin?: () => string; log?: LogFn; notice?: (cause: string, fix: string, transition?: boolean) => void; fake?: boolean; random?: () => number; historyLimit?: number; handlers?: Array<(frame: DiscordDispatch) => void> };
 
 /** Native credentials and dispatch data stay behind the gateway's frame port. */
 export class DiscordRemote implements Remote {
@@ -111,7 +112,7 @@ export class DiscordRemote implements Remote {
     this.#abort.signal.throwIfAborted();
     this.#commands.start(_pair, _send);
     this.#cards?.start(_send);
-    if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt);
+    if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt, { ...this.#options.media, api: this.#api, clock: this.#clock });
     try {
       const application = await this.#api.getCurrentApplication({ signal: signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal });
       if (!/^\d+$/.test(application.id)) throw new Error('invalid application id');
@@ -162,7 +163,7 @@ export class DiscordRemote implements Remote {
           if (frame.t === 'MESSAGE_CREATE' && this.#bot && (frame.d.author as { id?: string } | undefined)?.id === this.#bot) this.#outbox?.observe(frame.d as DiscordMessage);
           else if (frame.t === 'MESSAGE_CREATE') {
             const input = () => {
-              this.#inbound?.dispatch(frame.replayed && typeof frame.d.content === 'string' && frame.d.content.trim()
+              this.#inbound?.dispatch(frame.replayed && !(Array.isArray(frame.d.attachments) && frame.d.attachments.length) && typeof frame.d.content === 'string' && frame.d.content.trim()
                 ? { ...frame, d: { ...frame.d, content: discordLateText(frame.d.content, frame.d.timestamp, frame.returnedAt ?? this.#clock.now().toISOString()) } } : frame);
               return this.#inbound?.idle();
             };

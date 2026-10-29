@@ -10,6 +10,7 @@ export type SpeechRequest = { method: string; path: string; keyPresent: boolean;
 export async function fakeSpeech(t: TestContext, replies: SpeechReply[] = [],
   setup: { signal?: AbortSignal; timeoutMs?: number; listen?: (server: Server, signal: AbortSignal) => void } = {}) {
   const requests: SpeechRequest[] = [];
+  const closedRequests: number[] = [];
   const timers = new Set<NodeJS.Timeout>();
   const handlers = new Set<Promise<void>>();
   const server = createServer((req, res) => {
@@ -27,6 +28,8 @@ export async function fakeSpeech(t: TestContext, replies: SpeechReply[] = [],
           else row.file = { bytes: Buffer.from(await value.arrayBuffer()), mime: value.type, filename: value.name };
         }
         requests.push(row);
+        const ordinal = requests.length;
+        res.once('close', () => closedRequests.push(ordinal));
         const reply = replies[Math.min(requests.length - 1, replies.length - 1)] ?? {};
         const respond = () => {
           res.writeHead(reply.status ?? 200, { 'content-type': 'application/json', ...(reply.retryAfter ? { 'retry-after': reply.retryAfter } : {}), ...(reply.location ? { location: reply.location } : {}) });
@@ -35,6 +38,7 @@ export async function fakeSpeech(t: TestContext, replies: SpeechReply[] = [],
         if (reply.delayMs) {
           const timer = setTimeout(() => { timers.delete(timer); respond(); }, reply.delayMs);
           timers.add(timer);
+          res.once('close', () => { clearTimeout(timer); timers.delete(timer); });
         } else respond();
       } catch { if (!res.destroyed) { res.writeHead(400); res.end('{}'); } }
     }
@@ -57,7 +61,7 @@ export async function fakeSpeech(t: TestContext, replies: SpeechReply[] = [],
     await bounded(listening, setup.timeoutMs ?? 2_000, 'fake speech setup incomplete');
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('fake speech bind failed');
-    return { url: `http://127.0.0.1:${address.port}`, requests, ...exchange };
+    return { url: `http://127.0.0.1:${address.port}`, requests, closedRequests, ...exchange };
   } catch (error) {
     setupController.abort();
     await exchange.close();

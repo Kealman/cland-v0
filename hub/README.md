@@ -7099,7 +7099,7 @@ Only the paired channel and user may send ordinary text or replies (types 0 and
 Accepted input uses the gateway's existing chat/message ingress identity to
 store a human General message addressed to the Coordinator with `via: discord`.
 The cursor `discord.lastMessageId` advances after the successful hub result;
-message-id deduplication survives restart. Discord does not echo its input, and
+message-id deduplication survives restart. Discord does not echo ordinary text input, and
 Telegram uses the shared `you (Discord)` author label. Injected handlers and old
 frame shapes retain their current interfaces; no role permission changes apply.
 See the [Discord message test guide](../docs/agents/tests/hub-test-discord-messages.test.ts.md).
@@ -7159,3 +7159,32 @@ Gap and overflow warning completion requires the exact durable native `sent`
 settlement. Refused or unknown warnings retain their captured source count or
 batch and stop card recovery; accepted sends retain the original nonce fence
 across restart rather than gaining a new send window.
+
+
+### Discord inbound attachments and voice
+
+With Discord enabled, a resolved token, reachable API/gateway and a paired
+channel/user, ordinary messages and replies may carry attachments without text.
+The native downloader checks each declared size against `[artifacts] max_upload_mb`
+before I/O and bounds the response bytes. It accepts only HTTPS Discord CDN hosts
+(`cdn.discordapp.com`, `media.discordapp.net`), or the explicit fake API root's
+loopback `/cdn/` subtree. GET uses no Authorization header and refuses redirects.
+An expired URL (403/404) refreshes once through authenticated GET message before
+retrying the signed URL. Terminal download/limit refusals receive a channel line.
+All accepted files share one human `artifact.upload` message in General, with the
+original caption and `via: discord`; the existing per-remote artifact fence sends
+them to Telegram once under `you (Discord)` when Telegram is enabled and paired.
+
+Flag 8192 with one audio attachment is a voice note. `[speech] max_seconds` is
+checked before download. The shared speech seam receives original bytes,
+filename and content type (`audio/ogg` when absent), using the configured provider,
+key, language and whole-note deadline. The General message has the 🎤 transcript
+and audio attached. Missing/off/failed speech retains audio and a readable outcome.
+The channel receives the transcript, duration, download/transcription times and
+provider as a reply with `fail_if_not_exists: false`; long echoes split into bounded
+numbered parts. Echo intents persist before hub submission and recover from the
+durable ingress receipt, while native sends use the ordinary nonce/outbox fences.
+A voice reply to a mapped ask submits the recognised text through `topic.answer`;
+options-only asks accept a spoken option number or label (ignoring case and trailing punctuation). A successful answer keeps no recording, and a refused answer falls back to General. Replayed/history notes carry written/return metadata and do not answer old cards. Cancelled native work stays unconfirmed for resume.
+No new command, configuration key, dependency, frame or role permission is added.
+See the [inbound media test guide](../docs/agents/tests/hub-test-discord-inbound-media.test.ts.md).

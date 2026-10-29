@@ -22,6 +22,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/discord-cards.test.ts`](../../../hub/test/discord-cards.test.ts) | [Notes](hub-test-discord-cards.test.ts.md) |
 | [`hub/test/discord-commands.test.ts`](../../../hub/test/discord-commands.test.ts) | [Notes](hub-test-discord-commands.test.ts.md) |
 | [`hub/test/discord-render.test.ts`](../../../hub/test/discord-render.test.ts) | [Notes](hub-test-discord-render.test.ts.md) |
+| [`hub/test/discord-inbound-media.test.ts`](../../../hub/test/discord-inbound-media.test.ts) | [Notes](hub-test-discord-inbound-media.test.ts.md) |
 | [`hub/test/discord-messages.test.ts`](../../../hub/test/discord-messages.test.ts) | [Notes](hub-test-discord-messages.test.ts.md) |
 | [`hub/test/discord-messenger.test.ts`](../../../hub/test/discord-messenger.test.ts) | [Notes](hub-test-discord-messenger.test.ts.md) |
 | [`hub/test/telegram-api.test.ts`](../../../hub/test/telegram-api.test.ts) | [Notes](hub-test-telegram-api.test.ts.md) |

@@ -18,7 +18,7 @@ export function messengerFactory(env: NodeJS.ProcessEnv, redactor: RemoteRedacto
   return (via, token, settings, speech) => {
     if (via === 'discord') return new DiscordRemote(new DiscordApi(token, { redactor, clock,
       ...(env.CLAND_DISCORD_API_ROOT !== undefined ? { apiRoot: env.CLAND_DISCORD_API_ROOT } : {}),
-    }), token, clock, { fake: env.CLAND_DISCORD_API_ROOT !== undefined,
+    }), token, clock, { media: { redact: redactor, speech, speechSettings: settings.speech, maxUploadMb: persistence?.maxUploadMb, fakeRoot: env.CLAND_DISCORD_API_ROOT }, fake: env.CLAND_DISCORD_API_ROOT !== undefined,
       ...(persistence ? { store: persistence.state.forMessenger('discord'), projectName: persistence.projectName, webOrigin: persistence.webOrigin, log: entry => persistence.log?.(redactor.value(entry)), notice: persistence.discordNotice } : {}),
     });
     return new TelegramRemote(new TelegramApi(token, { redactor, clock,

@@ -5,11 +5,13 @@ import { redactValue, remoteRedactor, type RemoteRedactor } from './redact.ts';
 export type DiscordUser = { id: string; username: string; bot?: boolean };
 export type DiscordMessage = {
   id: string; channel_id: string; author: DiscordUser; content: string; timestamp: string;
+  attachments?: Array<{ id: string; filename: string; content_type?: string; size: number; url: string; duration_secs?: number }>;
+  flags?: number;
   type: number; webhook_id?: string; nonce?: string; components?: DiscordActionRow[];
 };
 export type DiscordButton = { type: 2; style: number; label: string; custom_id?: string; url?: string };
 export type DiscordActionRow = { type: 1; components: DiscordButton[] };
-export type DiscordMessageInput = { content?: string; components?: DiscordActionRow[]; flags?: number };
+export type DiscordMessageInput = { message_reference?: { message_id: string; fail_if_not_exists: boolean }; content?: string; components?: DiscordActionRow[]; flags?: number };
 export const DISCORD_USER_AGENT = `DiscordBot (https://github.com/Kealman/cland-v0, ${VERSION})`;
 
 /** Sanitized facts only; native fetch exceptions and credential-bearing URLs stay private. */
@@ -97,6 +99,9 @@ export class DiscordApi {
   }
   getChannel(channel: string, options?: DiscordRequestOptions): Promise<DiscordChannel> {
     return this.#request('GET', `/channels/${encodeURIComponent(channel)}`, 'GET /channels/:channel', undefined, options);
+  }
+  getMessage(channel: string, message: string, options?: DiscordRequestOptions): Promise<DiscordMessage> {
+    return this.#request('GET', `/channels/${encodeURIComponent(channel)}/messages/${encodeURIComponent(message)}`, 'GET /channels/:channel/messages/:message', undefined, options);
   }
   listMessages(channel: string, page: { before?: string; limit?: number } = {}, options?: DiscordRequestOptions): Promise<DiscordMessage[]> {
     const query = new URLSearchParams();
