@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
-import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
+import type { HarnessProcessView, Message, SendOutcome, TopicMessage } from '../src/protocol.ts';
 import { componentProject, human } from './merge-component-support.ts';
 
 test('landing finalization clears a disconnected verifier reservation durably before an item is reopened', async t => {
@@ -108,6 +108,13 @@ for (const ready of [false, true]) for (const queued of [false, true]) {
       assert.deepEqual(messages.find(m => m.text === text)?.to, ['rev-d']);
       assert.deepEqual(messages.find(m => m.text === laterText)?.to, ['reviewer']);
       await rev.waitForEvent(e => e.params.content === text);
+      // The local event precedes the hub's ack transaction and pending reservation.
+      await eventually('oldest queued review accepted by the hub', async () => {
+        const history = await ui.request({ type: 'topic.history', topic: 'agents' });
+        assert.equal(history.ok, true, history.error);
+        return (history.value as { messages: TopicMessage[] }).messages
+          .find(m => m.text === text)?.stage === 'delivered' || undefined;
+      });
     }
     const who = (await back.call<{ sessions: Array<{ name: string; pending?: { item: string; kind: string } }> }>('who')).sessions;
     assert.deepEqual(who.find(s => s.name === 'rev-d')?.pending, queued ? { item: next.id, kind: 'review' } : undefined);
