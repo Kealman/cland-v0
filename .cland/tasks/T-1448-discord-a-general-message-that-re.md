@@ -2,8 +2,8 @@
 id: T-1448
 kind: task
 title: "Discord: a General message that re-attaches an already-sent artifact loses its own text"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1202
 branch: t/T-1448-discord-a-general-message-that-re
 created: 2026-10-29T17:29:53.831Z
-updated: 2026-10-29T18:29:49.666Z
+updated: 2026-10-29T18:41:00.427Z
+closed: 2026-10-29T18:41:00.427Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13947: Original A-13941 independently confirms 4190 ordinary passes plus 10 item-owned/75 site load passes. Discord/Telegram caption-reference cases each ordinary+5/5 load, exact text/reference/no-reupload assertions retained. C1/C2 verified; host reuse, platform/browser limits, report-only diagnostics and unrun T3/T4 retained. Coordinator owns integration/enqueue.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T18:41:00.427Z
+
+Merged 93b2333ce7fad1514dff3f173ef74eab950abb44 onto dev.

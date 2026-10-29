@@ -2,8 +2,8 @@
 id: T-1435
 kind: task
 title: orphan-servers-perf's shared-deadline case misses its expected rejection once in a full macOS cover
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1207
 branch: t/T-1435-orphan-servers-perf-s-shared-deadline
 created: 2026-10-28T21:37:03.480Z
-updated: 2026-10-29T18:25:40.364Z
+updated: 2026-10-29T18:53:28.941Z
+closed: 2026-10-29T18:53:28.941Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ updated: 2026-10-29T18:25:40.364Z
 
 - [x] C1. The test proves the deadline independently of host speed: it holds the TERM-resistant server alive through the deadline by a mechanism the test owns, rather than relying on the sweep taking longer than 400 ms of wall time, with 10/10 under two workers plus CPU load on macOS.
   - done: impl-1435 · 2026-10-29T18:17:53.186Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1435-final · 2026-10-29T18:44:56.278Z · commit 0fe36e7c4b40ee06299a797be41452d60f34b667
 
 ## Notes
 
@@ -61,3 +63,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13939: Exact H1 and Notes index membership resolve sole M1. Native test/stress source unchanged from A-13937; no dev merge. Standards/Spec clear; runtime C1 remains unverified pending exact-head configured evidence.
+
+### rev-34 · 2026-10-29T18:44:56.278Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1435-final
+commit: 0fe36e7c4b40ee06299a797be41452d60f34b667
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13980: Original A-13977 confirms 4194 ordinary passes and both T4 native cases, one base/no repetitions. Deadline case 2.491502961 s; separate macOS 10/10 two-lane CPU proof/capture limits preserved, native test source identical across docs successor. C1 verified. Host reuse, report-only warnings and remaining unrun coverage retained. Coordinator owns integration/enqueue.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-29T18:53:28.941Z
+
+Merged 483f4177e657cebcff1b7142362ca633e148317c onto dev.

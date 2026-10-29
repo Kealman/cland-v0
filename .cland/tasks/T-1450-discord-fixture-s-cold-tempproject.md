@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1208
 branch: t/T-1450-discord-fixture-s-cold-tempproject
 created: 2026-10-29T18:19:08.852Z
-updated: 2026-10-29T18:33:14.303Z
+updated: 2026-10-29T18:54:23.988Z
 ---
 
 ## Summary
@@ -39,8 +39,10 @@ Test "Discord hub fixture aborted held receipt joins writers before Store close"
 
 - [x] C1. The fixture records a timing receipt for the tempProject acquisition phase, and a failure names that phase and its elapsed time.
   - done: impl-1450 · 2026-10-29T18:26:14.789Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1450-final · 2026-10-29T18:50:26.011Z · commit 0611e564dcbb8af18c3ade6a075e2140502896f5
 - [x] C2. The acquisition bound is sized from measured cold-start receipts on macOS (at least 10 fresh processes), or cold setup runs outside the 2 s exchange budget; the test passes 10/10 fresh-process repetitions under two workers plus CPU load on macOS.
   - done: impl-1450 · 2026-10-29T18:26:15.052Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1450-final · 2026-10-29T18:50:26.011Z · commit 0611e564dcbb8af18c3ade6a075e2140502896f5
 
 ## Comments
 
@@ -98,3 +100,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13954: M1/M2 resolved. Setup observer now independently covers cold acquisition; operation defaults and injected sensitivity/frame/drain assertions retained. Original A-13952 source hashes, exact TAP 10×3 passes and CPU/native joins audited. C1/C2 runtime remain unverified pending exact-head configured result; no Linux/browser claim.
+
+### rev-34 · 2026-10-29T18:50:26.011Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1450-final
+commit: 0611e564dcbb8af18c3ade6a075e2140502896f5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13994: Original A-13991 independently confirms 4194 ordinary passes plus new acquisition cases ordinary+5/5 each; original writer/Store control and phase diagnostics pass. Exact-source macOS ten-process CPU proof retained. C1/C2 verified. Pre-admission dirty probe refusal, host reuse, browser path limit, report-only warnings and unrun T3/T4 preserved. Coordinator owns integration/enqueue.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-34 · 2026-10-29T18:54:23.988Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1450-source4
+commit: bd4eda53d3ac3031f13a1cfae02a0e9f4e951a18
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14001: Authorized merge resolution preserves both acquisition/drain receipt properties. Acquisition path, run function and T-1450 regression bodies byte-identical to reviewed parent; incoming disposal joins/fences/assertions retained. Coordinator conditional stress carry satisfied, prior receipts remain earlier-head only. Runtime criteria await fresh merged-head verification/final audit.

@@ -2,8 +2,8 @@
 id: T-1431
 kind: task
 title: tracker-summary's dropped-events test waits only 5 s for macOS to deliver a native FSEvents callback and fails on a busy Mac
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1206
 branch: t/T-1431-tracker-summary-s-dropped-events-test
 created: 2026-10-28T15:10:06.059Z
-updated: 2026-10-29T18:34:59.225Z
+updated: 2026-10-29T18:48:28.680Z
+closed: 2026-10-29T18:48:28.680Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13958: Original A-13957 confirms 4192 ordinary passes; required watcher case .031951091 s and retained durable reconciliation assertions. Separate original macOS 10/10 two-lane CPU proof/capture limits preserved from A-13929. C1 verified. Host reuse, report-only warnings, existing identity/no task load repetitions, absent T3/T4 retained. Coordinator owns integration/enqueue.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-29T18:48:28.680Z
+
+Merged ff60b359f16e0181ae1b679e4e437065f0f0aaa6 onto dev.

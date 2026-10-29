@@ -3,17 +3,17 @@ id: T-1082
 kind: task
 title: A forced stage-closure recompute resolves ancestry for every historical cover candidate
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1215
+branch: t/T-1082-a-forced-stage-closure-recompute
 created: 2026-10-21T19:04:23.933Z
-updated: 2026-10-29T15:59:44.611Z
+updated: 2026-10-29T19:08:55.528Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ When a hub has to recompute stage closures without saved checkpoints, it resolve
 
 - [ ] C1. A forced closure recompute on a copied live tracker resolves only the candidates that can still decide an open stage, and completes in under 10 s, measured in the test.
 - [ ] C2. Closed stages keep their recorded closures, and no open stage's result changes, in a differential test against the current full recompute.
+
+## Comments
+
+### impl-1082 · 2026-10-29T19:08:55.528Z
+
+Seam agreed by Coordinator: Tracker plan/view component reads with injected Git facts, plus copied pinned live tracker. No shared contract/schema change: useVerify callback, StageCover, ItemView stages, saved StageClosure stay unchanged. Consumers searched: tracker #stageCurrent/#stagesOf/#stageCover, Suites.stageCovers, stage QA/closure/plan tests and startup-scale tests, web/nvim stage projections, shipped plan/QA guidance. Only evaluation order changes; final selection differential against prior eager algorithm and ancestry-call bound will be asserted.

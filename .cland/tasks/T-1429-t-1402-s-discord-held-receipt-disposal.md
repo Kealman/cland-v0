@@ -2,8 +2,8 @@
 id: T-1429
 kind: task
 title: T-1402's Discord held-receipt disposal test fails 1 of 5 load-gate repeats on a loaded macOS cover
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1205
 branch: t/T-1429-t-1402-s-discord-held-receipt-disposal
 created: 2026-10-28T14:23:53.218Z
-updated: 2026-10-29T18:36:51.006Z
+updated: 2026-10-29T18:48:42.967Z
+closed: 2026-10-29T18:48:42.967Z
 ---
 
 ## Summary
@@ -76,3 +77,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-13960 records original A-13959 parsed4192 ordinary/75 separate load passes, zero nonpasses/unmatched starts. Both exact held-receipt cases pass with all three complete phase diagnostics, and incomplete-drain Store/root retention controls pass. C1 verified jointly with original macOS A-13928 ten-target-pass/two-lane/CPU-progress proof; historical20.95 load not recreated at4.265625. Bounds unchanged; separate acquisition T-1450. Host check provenance separate from Linux T1/all-fallbackT2/Web; no T3/T4 coverage claim; lint/budgets report-only. No Reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-29T18:48:42.967Z
+
+Merged 1c1571347d5bef5858f561fb8c0534f28a69382e onto dev.

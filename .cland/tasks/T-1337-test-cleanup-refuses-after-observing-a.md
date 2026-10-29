@@ -3,18 +3,19 @@ id: T-1337
 kind: task
 title: Test cleanup refuses after observing a native exit because it cannot confirm the exited process's descendants
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
 regression_of: T-543
-topic: null
-branch: null
+topic: topic-1213
+branch: t/T-1337-test-cleanup-refuses-after-observing-a
 created: 2026-10-26T10:49:09.893Z
-updated: 2026-10-29T15:59:41.267Z
+updated: 2026-10-29T19:09:35.067Z
 ---
 
 ## Summary
@@ -27,4 +28,11 @@ When cleanup observes a recorded process's native exit, confirm each listed desc
 
 ## Acceptance criteria
 
-- [ ] C1. A recorded process that exits during teardown, with descendants that exited too, is cleaned without a refusal, while a descendant still alive under its captured identity is still reported, shown with injected process facts (test).
+- [x] C1. A recorded process that exits during teardown, with descendants that exited too, is cleaned without a refusal, while a descendant still alive under its captured identity is still reported, shown with injected process facts (test).
+  - done: impl-1337 · 2026-10-29T19:09:34.959Z
+
+## Comments
+
+### impl-1337 · 2026-10-29T19:08:12.623Z
+
+Scope/seam: existing synthetic OS boundary in hub/test/process-cleanup.test.ts, explicitly required by C1 (injected process facts). Consumer search: process-cleanup.ts is test-only; requireIdentities serves recorded and discovered cleanup and final signal waits. process table retention is also used by production system-processes.ts; leave that contract unchanged. Existing process-cleanup tests cover native exit, unreadable birth, replacement PID, group/ancestry ownership; preserve these and add final-wait captured-descendant controls. No wire/schema/credential or production permission change.

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T18:32:40.553Z
+updated: 2026-10-29T18:54:56.535Z
 ---
 
 ## Summary
@@ -26,7 +26,7 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 - [x] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
   - done: impl-1248 · 2026-10-29T17:08:20.011Z
 - [x] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
-  - done: impl-1248 · 2026-10-29T18:31:04.278Z
+  - done: impl-1248 · 2026-10-29T18:50:48.197Z
 
 ## Comments
 
@@ -116,3 +116,29 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13953: Test-only final-page marker/held-reply correction resolves source aspect of M4; production unchanged. Zero-journal/unique-id/retry bounds and prior controls retained. Decoded recording refresh confined to changed scenario. Old Linux A-13942 remains red; C1/C2 runtime not reverified until corrected-head configured evidence.
+
+### rev-34 · 2026-10-29T18:49:40.040Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-evidence2
+commit: 356d159e2f1615067867e0a039082c54879504dc
+scope: evidence
+findings: [{"severity":"medium","text":"M5: new 5000-row T4 identity passes behavior at 52.621985141 s but enforced task duration check refuses 52.622 > 5 s; T4/run exit1 and Web unrun. Await owning budget/policy settlement; fresh source review for any head change before retry.","file":"hub/test/startup-task-pages-soak.test.ts"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13993: A-13990 has 3870 ordinary+40 load passes; corrected late-page identity ordinary+5/5. Enforced T4 case duration refusal, distinct from report-only warnings, keeps final evidence not clear. No new behavioral criterion failure inferred; C1/C2 remain unverified pending completed green evidence. Coordinator policy question already pending; no Reviewer execution.
+
+### rev-34 · 2026-10-29T18:54:56.535Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-source5
+commit: 216d2eb7c014c74e6a2eaeaa30cddd40fdf39e3c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14002: Durations-only edit matches Coordinator 92e107c3 exactly: measured 52.621985141 s baseline, 80 s R-1278 allowance, Oct29/Nov05 dates and provenance/small-control reason. No source/assertion/other allowance changes. Old A-13990 remains red; runtime criteria await fresh exact-head configured verification.

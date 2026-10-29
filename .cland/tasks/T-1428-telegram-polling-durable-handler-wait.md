@@ -2,8 +2,8 @@
 id: T-1428
 kind: task
 title: telegram-polling durable-handler wait fails once under a loaded macOS stage cover
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1204
 branch: t/T-1428-telegram-polling-durable-handler-wait
 created: 2026-10-28T14:23:52.818Z
-updated: 2026-10-29T18:21:42.173Z
+updated: 2026-10-29T18:53:47.169Z
+closed: 2026-10-29T18:53:47.169Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ updated: 2026-10-29T18:21:42.173Z
 
 - [x] C1. The failure is attributed from receipts (which wait or bound expired under load), and the test either passes 10/10 under two workers plus CPU load on macOS or its bound is sized from measured receipts.
   - done: impl-1428 · 2026-10-29T18:20:17.747Z
+  - verified: rev-32 [reviewer] · run rev-20261029-1428-evidence1 · 2026-10-29T18:45:16.730Z · commit eb3da68be3149be1a77537764f25e5394bf8c1b8
 
 ## Notes
 
@@ -56,3 +58,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear, Standards 0/Spec 0 findings; A-13933. All three 1000ms native bounds and writer/offset/stop/timer assertions preserved; exact names and monotonic timings make recurrence attributable. Original A-13338 cannot identify which of three waits expired; Coordinator 3fc9b8fa explicitly accepts that limitation with supplemental ten-pass local stress evidence. A-13917/A-13930 are claimant-authored local summaries, not raw configured receipts; measured load4.47 did not recreate20.95. C1 remains unverified pending same-head configured result and final original-record settlement. No Reviewer execution.
+
+### rev-32 · 2026-10-29T18:45:16.730Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261029-1428-evidence1
+commit: eb3da68be3149be1a77537764f25e5394bf8c1b8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13981 final same-head clear: original A-13975 parsed4192 ordinary passes/75 separate load passes, no nonpass or unfinished record; exact durable-handler pass.090968037s with entry.037ms/cancel.507ms/stop3.066ms. C1 verified under Coordinator3fc9b8fa bounded historical attribution and accepted supplemental macOS10-pass summary; exact old boundary unrecoverable, measured4.47 did not recreate20.95. Keep local notes distinct from raw configured records. Host check separate from Linux T1/allT2/Web, T3/T4 absent, lint/budgets report-only. No Reviewer execution.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-29T18:53:47.169Z
+
+Merged d79ec0aefabea6880254aad0a31ec8a11834df7d onto dev.
