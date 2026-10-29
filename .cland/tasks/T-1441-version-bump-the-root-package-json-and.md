@@ -3,17 +3,17 @@ id: T-1441
 kind: task
 title: "Version bump: the root package.json and lockfile at 0.3.0"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1314
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1183
+branch: t/T-1441-version-bump-the-root-package-json-and
 created: 2026-10-29T15:55:47.281Z
-updated: 2026-10-29T15:55:47.281Z
+updated: 2026-10-29T15:56:31.915Z
 ---
 
 ## Summary

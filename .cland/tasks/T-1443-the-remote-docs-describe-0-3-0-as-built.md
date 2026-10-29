@@ -3,17 +3,17 @@ id: T-1443
 kind: task
 title: The remote docs describe 0.3.0 as built
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1314
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1181
+branch: t/T-1443-the-remote-docs-describe-0-3-0-as-built
 created: 2026-10-29T15:55:47.685Z
-updated: 2026-10-29T15:55:47.685Z
+updated: 2026-10-29T15:56:26.317Z
 ---
 
 ## Summary

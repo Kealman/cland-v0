@@ -3,17 +3,17 @@ id: T-1442
 kind: task
 title: "Both remotes in one hub: an integrated scenario on the fake platforms"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1314
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1182
+branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T15:55:47.418Z
+updated: 2026-10-29T15:56:27.436Z
 ---
 
 ## Summary

@@ -3,17 +3,17 @@ id: T-1177
 kind: task
 title: Tap filters for the Events view on the phone
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
 parent: R-1278
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-23T07:00:15.868Z
-updated: 2026-10-25T09:53:28.894Z
+updated: 2026-10-29T15:56:41.062Z
 ---
 
 ## Summary
