@@ -2,8 +2,8 @@
 id: T-1438
 kind: task
 title: "Sealed fixtures fail open: a scratch hub with a remote enabled and no loopback API root reaches the real Discord/Telegram endpoint"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1178
 branch: t/T-1438-sealed-fixtures-fail-open-a-scratch-hub
 created: 2026-10-29T10:42:10.083Z
-updated: 2026-10-29T12:20:59.683Z
+updated: 2026-10-29T13:04:58.651Z
+closed: 2026-10-29T13:04:58.651Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13683 final original-record evidence clear; C1–C3 verified. Original A-13681/1bebebc4 independently parsed4128ordinary+90separate load passes, no nonpass/duplicates;10new endpoint identities each base+5/5 (50task samples), worst0.206766098s. Missing/base-only Discord/Telegram refusals, fixed disabled/frame/no-fetch assertions, actual loopback ElevenLabs target/error, explicit-extra/resealing and four disposal controls pass. Existing environment/docs/setup/remote/speech consumers pass at this branch base. T0/allT1/fallbackallT2/Web complete; T3/T4 absent. Linuxc-8lon1 Node24.21/Nvim0.12.5 HeadlessShell156/v1248, task2/Web4; reused host typecheck and report-onlylint/durations/one missing baseline retained. No live-platform/changed-T1371/full-all claim. Ready may follow conflict provenance; Coordinator gates/enqueue separate.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-29T13:04:58.651Z
+
+Merged 8bcac0228554585815561257c4c403fbc208df29 onto dev.
