@@ -123,11 +123,13 @@ On a phone, notifications need HTTPS through your own tunnel. On iOS, install th
 
 ## Remotes
 
-A [Telegram remote](/docs/remote-control/) is a private chat with the project's bot: General goes both ways, with inbox cards and notices from every topic. It connects out from the hub without a web tunnel. Follow the Remote control guide to create the bot, store its token and pair it from your terminal or Neovim.
+A [remote](/docs/remote-control/) is your private Telegram chat with the project's bot or one text channel of your own Discord server. Both can be paired at once: General goes both ways, with inbox cards and notices from every topic. The hub connects out without a web tunnel. Run `cland setup` for the Telegram, Discord and optional speech-key offers, or follow the Remote control guide's terminal steps.
 
-The **Remotes** row in the web's **Sessions** area and Neovim's sessions panel shows connection state, who is paired, mute, outbox depth and the last error. A failed connection turns red immediately, before General's three-minute offline notice. `cland remote status` gives the terminal view; `cland doctor` checks local presence and stopped causes without contacting Telegram.
+Send photos, file attachments and voice notes from either remote. Files become artifacts; a voice transcript keeps the original audio, except when it successfully answers an ask. The other paired remote receives these once, marked **you (Telegram)** or **you (Discord)**. Messages and outcomes show their source in both workbenches, with 🎤 for voice.
 
-A waiting pairing code appears in the inbox's **asks and approvals** section, naming the Telegram user and numeric id. Check that identity before approving in Neovim's pairing card or with `cland remote approve telegram <code>` in your terminal. The web row says **approve in the terminal or Neovim** and offers no approve action. Approval grants that identity access to the remote.
+The **Remotes** row in the web's **Sessions** area and Neovim's sessions panel shows connection state, who is paired, mute, outbox depth and the last error for each enabled messenger. A failed connection turns red immediately, before General's three-minute offline notice. `cland remote status` gives the terminal view; `cland doctor` checks local presence and stopped causes without contacting either platform, and checks speech configuration without a paid call.
+
+A waiting pairing code appears in the inbox's **asks and approvals** section, naming the user and numeric id. For Telegram, press Start; for Discord, run `/cland pair` in the server text channel. Check that identity before approving in Neovim's pairing card or with `cland remote approve telegram <code>` or `cland remote approve discord <code>` in your terminal. The web row says **approve in the terminal or Neovim** and offers no approve action. Approval grants that identity access to the remote.
 
 ## What stays in the terminal
 

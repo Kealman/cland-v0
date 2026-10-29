@@ -31,3 +31,14 @@ source. No provider runtime dependency is imported into the site's prebuild.
 
 The source guard also requires the setup section to name the hidden ElevenLabs
 key offer and the nonterminal secret command.
+
+T-1443 extends the source seam to README's public secret/remote commands and
+setup sections, including optional `--json` and an invented-flag positive control.
+Both public remote pages name Discord media, voice, setup and local diagnostics;
+the full guide distinguishes Discord fresh-Identify history (newest 500, oldest
+first, replayed presses inert) from Telegram's 150-second card replacement rule.
+Keep the built-in Discord factory/callback assertions in README so injection-only
+wording cannot return. No platform calls or browser are involved in these guards.
+
+The chat guard keeps typed ask-card answers Telegram-only. Discord typed replies
+are topic messages; its buttons/modal and mapped voice replies answer asks.

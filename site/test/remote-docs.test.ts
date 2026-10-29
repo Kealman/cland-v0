@@ -30,7 +30,12 @@ const signatures = [...help.matchAll(/^ {2}(\S.*?)(?= {2,}|$)/gm)].map(match => 
 function vocabularyErrors(text: string): string[] {
   const errors: string[] = [];
   for (const command of commands(text)) {
-    const words = command.slice('cland '.length).split(/\s+/);
+    const tokens = command.slice('cland '.length).split(/\s+/).map(word => word.replace(/^\[|\]$/g, ''));
+    const usage = [CONFIG_USAGE, HUB_USAGE, REMOTE_USAGE, SECRET_USAGE, SETUP_USAGE, DOCTOR_USAGE]
+      .find(value => value.startsWith(`  ${tokens[0]} `)) ?? '';
+    const flags = tokens.filter(word => word.startsWith('--'));
+    for (const flag of flags) if (![...usage.matchAll(/--[a-z][a-z-]*/g)].some(match => match[0] === flag)) errors.push(`flag: ${flag}`);
+    const words = tokens.filter(word => !word.startsWith('--'));
     if (!signatures.some(signature => signature.length === words.length && signature.every((word, i) => {
       if (!word.startsWith('<')) return word === words[i];
       return !word.includes('|') || word.slice(1, -1).split('|').includes(words[i]!);
@@ -137,4 +142,61 @@ test('doctor guide names Discord fatal codes and local-only recovery instruction
 test('Discord setup guide names application checks, invite permissions and local pairing commands', () => {
   const guide = source(guidePath);
   for (const text of ['Install Link', 'None', 'Public Bot', 'Message Content', 'Interactions Endpoint URL', 'permissions=117824', '/cland pair', 'cland secret set discord.token', 'cland config set remote.discord.enabled true', 'cland remote approve discord <code>']) assert.ok(guide.includes(text), `guide includes ${text}`);
+});
+
+test('both public remote pages describe Discord media, voice and local diagnostics', () => {
+  const guide = source(guidePath);
+  const phone = remoteSection(source(phonePath));
+  for (const page of [guide, phone]) {
+    for (const fact of ['Telegram', 'Discord', 'voice', 'attachments', 'cland setup', 'cland doctor', 'cland remote approve discord <code>']) {
+      assert.ok(page.includes(fact), `remote page covers ${fact}`);
+    }
+  }
+  const media = guide.split('## Photos, files and voice')[1]!.split('## Mute, outages and catch-up')[0]!;
+  assert.match(media, /Discord[\s\S]*20 MiB[\s\S]*ten files[\s\S]*25 MiB/);
+  assert.match(media, /you \(Telegram\)/);
+  assert.match(media, /you \(Discord\)/);
+  assert.match(media, /Discord voice/);
+  const recovery = guide.split('## Mute, outages and catch-up')[1]!.split('## Status and maintenance')[0]!;
+  assert.match(recovery, /Discord[\s\S]*500[\s\S]*oldest first/);
+  assert.match(recovery, /replayed button presses never answer/);
+  assert.match(guide, /CLAND_DISCORD_TOKEN/);
+  for (const action of ['test', 'unpair']) assert.ok(commands(guide).includes(`cland remote ${action} discord`));
+});
+
+test('README remote commands describe the built-in Discord client and both setup offers', () => {
+  const readme = source('hub/README.md');
+  const remote = readme.split('## Remote commands')[1]!.split('### Remote state in the workbenches')[0]!;
+  assert.doesNotMatch(remote, /Discord's\s+callbacks require an injected platform client/);
+  assert.match(remote, /built-in Discord/);
+  const config = readme.split('The default platform factory')[1]!.split('A changed remote/speech')[0]!;
+  assert.doesNotMatch(config, /Discord[\s\S]*requires an injected factory/);
+  const setup = readme.split('### Telegram in setup')[1]!.split('## cland init and cland update')[0]!;
+  assert.match(setup, /Discord/);
+  assert.match(setup, /ElevenLabs/);
+});
+
+test('documentation vocabulary guard rejects an invented command flag', () => {
+  assert.deepEqual(vocabularyErrors('`cland remote status --invented`'), ['flag: --invented']);
+  assert.deepEqual(vocabularyErrors('`cland remote status [--json]`'), []);
+});
+
+test('README public remote commands, settings, secrets and flags use shipped vocabulary', () => {
+  const readme = source('hub/README.md');
+  const sections = [
+    readme.split('## Project secrets')[1]!.split('### Remote state in the workbenches')[0]!,
+    readme.split('### Telegram in setup')[1]!.split('## cland init and cland update')[0]!,
+  ];
+  for (const section of sections) {
+    // These are dispatcher frame types, not configuration keys.
+    const publicText = section.replace(/`remote\.(?:status|unpair|test)`/g, '');
+    assert.deepEqual(vocabularyErrors(publicText), []);
+  }
+});
+
+test('chat guide distinguishes Telegram typed ask answers from Discord topic replies', () => {
+  const chat = source(guidePath).split('## In the chat')[1]!.split('## Photos, files and voice')[0]!;
+  assert.match(chat, /On Telegram, a text reply to an open ask card answers that ask/);
+  assert.match(chat, /On Discord, typed replies send a message to the topic/);
+  assert.match(chat, /answer with the card's buttons or modal, or a voice reply/);
 });

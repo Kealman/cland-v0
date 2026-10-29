@@ -1455,10 +1455,10 @@ and `format = "rich"` (`rich` or `entities`), Discord `enabled = false`, and spe
 explicit reload or SIGHUP. Each reload resolves the project's secrets again;
 a messenger is active only when enabled with a resolved nonempty token.
 
-The default platform factory constructs Telegram's plain-fetch client. Explicit
-`gatewayMessenger` and legacy `gatewayRemotes` injection remain available; Discord
-requires an injected factory and otherwise reports its client as unavailable.
-Tests use `testMessenger` or the loopback fake Bot API with fabricated credentials.
+The default platform factory constructs Telegram's plain-fetch client and Discord's
+REST/gateway client. Explicit `gatewayMessenger` and legacy `gatewayRemotes`
+injection remain available. Tests use `testMessenger` or explicit loopback fake
+Telegram and Discord roots with fabricated credentials.
 A changed remote/speech
 snapshot or resolved secret drains the configured gateway and creates its enabled
 messengers again. An unchanged reload retains a healthy gateway; a gateway with
@@ -2377,11 +2377,10 @@ verification workers and fixture children use that filter. The speech command
 provider uses the same final filter; its native launcher is covered by
 `hub/test/speech-command.test.ts` with synthetic credentials and disposable scripts. The hub retains its own credentials for provider requests.
 
-`cland secret` edits and lists the file only; environment overrides are never
+Secret commands edit and list the file only; environment overrides are never
 copied into it, changed by unset, or included in list output.
 `cland secret list` prints one stored name and its 12-character SHA-256
-fingerprint prefix per line; an empty store prints nothing. `cland secret unset
-<name>` removes just that value. Set and unset print only the operation and name.
+fingerprint prefix per line; an empty store prints nothing. `cland secret unset <name>` removes just that value. Set and unset print only the operation and name.
 Input is a nonempty line of at most 4096 bytes, with no control characters;
 piped input loses only one final LF or CRLF. File reads are limited to 64 KiB.
 
@@ -2397,7 +2396,7 @@ file only; loading a messenger and applying rotation belong to its reload path.
 ## Remote commands
 
 The public [Remote control guide](../site/src/content/docs/docs/remote-control.md)
-covers the shipped Telegram setup, pairing, chat and recovery flow. Its marked
+covers the shipped Telegram and Discord setup, pairing, chat, media, voice and recovery flows. Its marked
 pairing blocks run unchanged against the fake Bot API in
 `hub/test/remote-docs-pairing.test.ts`; `hub/test/remote-docs.test.ts` runs the site's
 command/vocabulary, navigation and CLI-reference checks in the normal suite.
@@ -2428,15 +2427,16 @@ Public bot links are confined to Telegram usernames and Discord's bot invite;
 credential-bearing links are omitted. Status makes no platform call.
 
 Test calls the active adapter's optional `Remote.test(pairing, text)` to check its
-token and send the fixed line `cland remote test` once when paired. Without a
+token and send the fixed line “cland remote test” once when paired. Without a
 pairing it checks only the token. Disabled/unconfigured messengers or clients
 without test support refuse explicitly. Client failures are redacted and confined
 to that messenger. The gateway owns the callback through completion on shutdown.
 Telegram's built-in client checks `getMe` on startup and test, sends the test
 line when paired and sends replacement notices to the captured old chat. Its
 adapter supplies these callbacks, handles private `/start` pairing and polls
-updates through the registry below. Mirroring General requires its registered handler. Discord's
-callbacks require an injected platform client. Both are tested without real
+updates through the registry below. Mirroring General requires its registered handler. The built-in Discord
+client checks the application settings and sends a paired test line through REST;
+its gateway socket supplies inbound commands, text, cards and media. Both are tested without real
 platform credentials.
 
 For rotation, store the replacement with `cland secret set <messenger>.token`
@@ -3191,7 +3191,7 @@ offered again on the next terminal run.
 On yes, a missing token brings a few BotFather instructions: open `@BotFather`,
 send `/newbot`, choose the project's bot name and username, and paste its token
 at the hidden prompt. Setup uses the same raw, no-echo reader and private-file
-preflight as `cland secret set`; malformed input names the expected Telegram
+preflight as `cland secret set telegram.token`; malformed input names the expected Telegram
 format and repeats the hidden question. An existing resolved token is reused.
 Environment overrides still win over the file. Reports show only fingerprints.
 
@@ -3221,6 +3221,23 @@ reload and pairing `open`; it starts no hub. If a hub already runs, it can reloa
 that hub. Custom unmarked configs and unsafe secret paths are left for repair.
 Existing role clauses cover secret isolation and local setup; this adds no role
 permission or clause line.
+
+### Discord and speech in setup
+
+After Telegram, setup offers Discord with default No even under `--yes`. It
+reuses a resolved token or reads one through the hidden prompt. Before enabling,
+it checks Public Bot off, Message Content on and an empty Interactions Endpoint
+URL. It prints the application's invite (bot scope, permissions 117824), waits
+up to ten seconds for connection, then pauses for `/cland pair` in the intended
+server text channel. The human confirms the numeric identity locally; the
+private code expires in 15 minutes. Nonterminal untouched/partial setup remains
+`skip`/`open`, and approval never happens without confirmation.
+
+Speech follows both messengers: setup prints the provider's data-use line. With
+ElevenLabs selected and no resolved key, it offers hidden key input with default
+No, even under `--yes`. A present key is `ok`; a nonterminal missing key is `open`
+with `cland secret set speech.elevenlabs_key`. Command/off providers ask nothing.
+A stored key needs `cland hub reload` before a running hub uses it.
 
 ## cland init and cland update
 

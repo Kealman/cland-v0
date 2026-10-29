@@ -3,9 +3,9 @@ title: Remote control
 description: Pair a Telegram chat or Discord server channel with your project, follow General and answer away from the workbench.
 ---
 
-A Telegram remote is your private chat with the project's bot. General goes both ways, and the inbox sends cards and notices from every topic. The hub connects out to Telegram: you need network access from the hub, but no tunnel, public address or open inbound port.
+A remote is your private Telegram chat with the project's bot or one text channel of your own Discord server. Both can be paired at once. General goes both ways, and the inbox sends cards and notices from every topic. The hub connects out to the messenger: you need network access from the hub, but no tunnel, public address or open inbound port.
 
-Use one bot per project and one paired human. Pairing uses your numeric Telegram user and chat ids; a username is only a display name. Approving a new pairing replaces the old one. Other people's messages are ignored; their presses on mapped cards are refused privately.
+Use one bot per project and one paired human. Pairing uses your numeric user and chat ids (and guild id on Discord); a username is only a display name. Approving a new pairing replaces the old one. Other people's messages are ignored; their presses on mapped cards are refused privately.
 
 ## Create and pair the bot
 
@@ -75,7 +75,9 @@ Discord uses `/cland status`, `/cland inbox`, `/cland mute`, `/cland unmute`, `/
 
 ## In the chat
 
-Ordinary text goes to the Coordinator in General as your message, marked **via Telegram**. Mention a session or role to address it, or `@lead T-n` for an item's lead. Address an Aide by its session name. Telegram formatting is dropped on input.
+Ordinary text goes to the Coordinator in General as your message, marked **via Telegram** or **via Discord**. The other paired remote receives it as **you (Telegram)** or **you (Discord)**. Mention a session or role to address it, or `@lead T-n` for an item's lead. Address an Aide by its session name. Telegram formatting is dropped on input.
+
+The following commands are for Telegram; Discord uses the `/cland` commands listed above.
 
 | Command | What happens |
 | --- | --- |
@@ -90,11 +92,11 @@ Ordinary text goes to the Coordinator in General as your message, marked **via T
 
 Reply to a mirrored message to reply in its topic. A request or item-message notice routes your reply to its topic; a plan or harness-TUI notice sends it to General with a reference. Item threads and the Agents topic are not mirrored as streams.
 
-Ask cards and relayed Codex/OpenCode approval cards have buttons. A burst of new cards arrives oldest first. After `/inbox`, older copies keep working: answering any copy turns every copy into the outcome. The first answer from any workbench or remote wins. **Other answer…** and **Decline…** open a separate reply prompt; the next text or a reply to it supplies the answer or reason. A reply to an open ask card answers that ask. Closed cards say **Already answered**.
+Ask cards and relayed Codex/OpenCode approval cards have buttons. A burst of new cards arrives oldest first. After `/inbox`, older copies keep working: answering any copy turns every copy into the outcome. The first answer from any workbench or remote wins. On Discord, **Other answer…** and **Decline…** open a private modal. On Telegram they open a separate reply prompt; the next text or a reply to it supplies the answer or reason. On Telegram, a text reply to an open ask card answers that ask. On Discord, typed replies send a message to the topic; answer with the card's buttons or modal, or a voice reply. Closed cards say **Already answered**.
 
 Other needs-you rows arrive as 📥 notices. Approve plans in the workbench and answer Claude Code's own command approvals in its harness terminal. Remote access covers messages, answers, relayed approvals and status/inbox reads; local administration stays in the terminal or Neovim.
 
-General messages use Rich Messages by default, with plain text and entities as fallback. Set `remote.telegram.format` to `entities` if you prefer that rendering. Progress notes and hub notices arrive silently. 👌 confirms the hub stored your input; 👀 confirms the addressed session received it.
+On Telegram, General messages use Rich Messages by default, with plain text and entities as fallback. Set `remote.telegram.format` to `entities` if you prefer that rendering. Progress notes and hub notices arrive silently. 👌 confirms the hub stored your input; 👀 confirms the addressed session received it. Discord renders General as Markdown with mentions disabled and embeds suppressed; 👌 confirms stored input and 👀 confirms delivery to the session.
 
 ## Photos, files and voice
 
@@ -106,15 +108,21 @@ Telegram downloads are limited to 20 MB per file. The hub also enforces `[artifa
 
 Artifacts attached to mirrored General messages go to Telegram as photos for images up to 10 MB, or as documents for files up to 50 MB. HTML and diagrams go as documents. Larger files arrive as a line naming the artifact and its path. Each artifact goes once ever per remote; attaching it again replies to the earlier file with **▣ A-n … (sent above)**. File captions are plain text and include the message header; a single artifact with short message text includes that text in its caption too.
 
+Discord attachments also become artifacts on one General message with the original caption. Downloads use the original bytes and obey `artifacts.max_upload_mb`; oversized files receive a channel line. When both remotes are paired, attachments cross once, marked **you (Telegram)** or **you (Discord)**.
+
+Outbound Discord files are limited to 20 MiB each, ten files per message and 25 MiB per request including multipart overhead. Larger files arrive as artifact/path lines. HTML and diagrams stay files, and repeated artifacts refer to the earlier upload in that remote.
+
 ### Voice and transcripts
 
-Individual voice notes are sent for transcription. A voice note whose reported duration exceeds `speech.max_seconds` is refused before download and is not stored; the generated default is 600 seconds (10 minutes). Audio files and Telegram video notes are transcribed only when their reported duration is present and within that cap. Longer audio files and video notes, or ones without a reported duration, follow ordinary artifact upload without transcription, subject to the file-size limits. Videos, documents and audio albums are not transcribed. Telegram's 20 MB download cap also applies. Download and transcription share one 90-second deadline. Cloud attempts retry only rate-limited, unavailable and timeout failures, at most twice with backoff and Retry-After; the local command is not retried.
+Individual Telegram and Discord voice notes are sent for transcription. A voice note whose reported duration exceeds `speech.max_seconds` is refused before download and is not stored; the generated default is 600 seconds (10 minutes). Telegram audio files and video notes are transcribed only when their reported duration is present and within that cap. Longer Telegram audio files and video notes, or ones without a reported duration, follow ordinary artifact upload without transcription, subject to the file-size limits. Videos, documents and audio albums are not transcribed. Telegram's 20 MB download cap also applies. Download and transcription share one 90-second deadline. Cloud attempts retry only rate-limited, unavailable and timeout failures, at most twice with backoff and Retry-After; the local command is not retried.
 
-A successful note reaches General as your **🎤 transcript**, with the original audio attached as your artifact. The bot echoes the transcript into Telegram with the note's length, download and transcription times, and provider name. Correct a transcript by sending your next message; transcripts are never edited afterwards.
+A successful note reaches General as your **🎤 transcript**, with the original audio attached as your artifact. The bot echoes the transcript into the originating chat with the note's length, download and transcription times, and provider name. Correct a transcript by sending your next message; transcripts are never edited afterwards.
 
 With no key or transcription turned off, General receives **🎤 not transcribed** with the audio and the chat gets one line explaining how to enable it or that it is off. A provider failure still posts the audio with **🎤 not transcribed: &lt;reason&gt;** and one chat line. An empty transcript becomes **🎤 nothing recognised**, with the audio attached.
 
 A voice reply to an open ask card answers through its transcript and keeps no audio artifact on success. If the note cannot answer, the ask stays open and the note goes to General as an ordinary 🎤 message with its audio.
+
+Discord voice replies to mapped asks also submit the transcript as the answer. For an options-only ask, speak the option number or label. Replayed Discord voice notes go to General and never answer an old card.
 
 ### Choose transcription
 
@@ -152,13 +160,15 @@ Plain `cland remote status` ends with the locally configured provider's data-use
 
 Mute belongs to this remote and survives token rotation. The generated `remote.mute_default` setting is `false` and sets only a new pairing's initial state.
 
-The [Remotes row](/docs/web-and-phone/#remotes) turns red as soon as a remote fails. After three minutes offline, General gets one offline line, then one on recovery. A wrong token, blocked bot or lasting token-consumer conflict stops Telegram and reports its fix immediately; the hub keeps serving.
+These Telegram and Discord recovery paths keep the hub serving independently. The [Remotes row](/docs/web-and-phone/#remotes) turns red as soon as a remote fails. After three minutes offline, General gets one offline line, then one on recovery. A wrong token, blocked bot or lasting token-consumer conflict stops Telegram and reports its fix immediately; the hub keeps serving.
 
 On recovery, the hub handles the input Telegram kept first, marking late text with when it was written and when the hub returned. Late unthreaded text never answers an ask; an explicit reply targets only its own open card. Telegram retains messages for up to 24 hours and button presses for 150 seconds, so catch-up cannot recover everything.
 
+Discord first attempts to resume its gateway session. After a fresh Identify, it fetches up to the newest 500 admissible paired-human messages from channel history and forwards them oldest first, marking written and return times; a silent line reports omitted older messages. Replayed commands are dropped and replayed button presses never answer. After history and the gap settle, open cards are re-sent and old copies retired.
+
 If General messages were missed during an outage, the chat receives one gap line, **N General messages missed since …**, instead of replaying those messages. There is no line when the count is zero. Unknown send outcomes are kept as uncertain rather than blindly retransmitted.
 
-After the gap line, missed open cards and pending outcome edits are delivered. If the outage lasts longer than 150 seconds, every open card is re-sent at the bottom with **a button pressed then may have been lost; press again**, and each old copy shows **↓ Re-sent below** without buttons. Outages of 150 seconds or less do not re-send cards already delivered.
+For Telegram: After the gap line, missed open cards and pending outcome edits are delivered. If the outage lasts longer than 150 seconds, every open card is re-sent at the bottom with **a button pressed then may have been lost; press again**, and each old copy shows **↓ Re-sent below** without buttons. Outages of 150 seconds or less do not re-send cards already delivered.
 
 ## Status and maintenance
 
@@ -166,11 +176,13 @@ After the gap line, missed open cards and pending outcome edits are delivered. I
 | --- | --- |
 | `cland remote status` | Show token presence and fingerprint, pairing, connection, last inbound/outbound, outbox depth, mute and the bot link. Requires the running hub. |
 | `cland remote test telegram` | Check the token with Telegram and send one test line when paired. Requires Telegram enabled, a resolved token and network access. |
+| `cland remote test discord` | Check the application settings and send one test line when paired. Requires Discord enabled, a resolved token and network access. |
+| `cland remote unpair discord` | Forget the Discord binding; run `/cland pair` and approve a new code locally. |
 | `cland remote unpair telegram` | Forget the pairing. Pair again by pressing Start and approving the new code locally. |
 | `cland secret list` | List only the stored names and 12-character SHA-256 fingerprint prefixes. No running hub needed. |
 | `cland secret unset telegram.token` | Remove the file's token; reload to apply it. No running hub needed to edit the file. |
 
-The project-local `.cland/secrets.toml` is git-ignored and mode `600`; symlinks are refused. With a custom `.cland/.gitignore`, keep `/secrets.toml` as its last non-comment rule before setting or unsetting a secret. `CLAND_TELEGRAM_TOKEN` overrides the file in the hub's environment; changing or unsetting the file does not replace that override. Sessions do not inherit the token. Status and doctor show fingerprints, never values.
+The project-local `.cland/secrets.toml` is git-ignored and mode `600`; symlinks are refused. With a custom `.cland/.gitignore`, keep `/secrets.toml` as its last non-comment rule before setting or unsetting a secret. `CLAND_TELEGRAM_TOKEN` overrides the file in the hub's environment; changing or unsetting the file does not replace that override. `CLAND_DISCORD_TOKEN` similarly overrides `discord.token`. Sessions do not inherit either token. Status and doctor show fingerprints, never values.
 
 ### Rotate the token
 
@@ -182,6 +194,8 @@ cland hub reload
 ```
 
 Enter the replacement at the hidden prompt. Change an environment override at its source if you use one. Pairing and mute survive rotation because they are stored by numeric ids in the hub, separately from the token.
+
+For Discord, reset the token in the Developer Portal, then use `cland secret set discord.token` and `cland hub reload`. Pairing and mute survive the same way.
 
 ### If a remote stops
 
