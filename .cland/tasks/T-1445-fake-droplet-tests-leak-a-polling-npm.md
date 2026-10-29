@@ -3,7 +3,7 @@ id: T-1445
 kind: task
 title: Fake-droplet tests leak a polling 'npm test' and node pair whenever a run ends without writing the finish file
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T16:59:58.945Z
+updated: 2026-10-29T17:11:54.892Z
 ---
 
 ## Summary
@@ -27,8 +27,8 @@ Every fake-droplet run's remote command exits or is killed when its test or fixt
 
 ## Acceptance criteria
 
-- [ ] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
-  - failed: rev-34 [reviewer] · 2026-10-29T16:59:58.945Z · note Setup observation expiry still skips memoized disposal; missing held-create receipt can block cleanup release.
+- [x] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
+  - done: impl-1445 · 2026-10-29T17:11:54.756Z
 - [x] C2. The finish poller exits by itself after a bounded time even if nobody writes `finish`.
   - done: impl-1445 · 2026-10-29T16:24:22.166Z
 
@@ -75,3 +75,18 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-13829: M1 index and M2 admission/handler-drainage correction closed by source inspection. Sole remaining M3 is actual setup timeout/omitted-receipt disposal continuation, including new held-create control ownership. Preserve all existing assertions and add actual held/late-settlement controls; fresh source review before verification. Local macOS attribution only; no Reviewer execution or configured Linux claim.
 
 Criteria: C1 failed (Setup observation expiry still skips memoized disposal; missing held-create receipt can block cleanup release.).
+
+### rev-34 · 2026-10-29T17:09:24.383Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1445-source3
+commit: fbdc3d05ecd3feb1a96e8d373f7ca056bef3a2ce
+scope: full
+findings: [{"severity":"medium","text":"M3 remaining: new held native setup/cleanup controls rely on manually advanced FakeClock deadlines. The polling case directly awaits entered.promise before any clock advance; held-create acquisition/serving/disposal waits and polling native close/drain use fake-time caseDeadlines, with no independent elapsed-time failure bound. Missing native receipts or a stuck disposal can therefore hang rather than reach pre-owned cleanup. Keep injected time for deliberate caller-expiry assertions; add separate real elapsed-time setup/native-drain observation with release/cancel ownership, including the entered wait.","file":"hub/test/executor-safety.test.ts","line":329}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13843: M1/M2 remain closed; source2 retained teardown and early cancellation cycle corrected. Sole remaining M3 is independent real elapsed-time bounds for native serving/drain in new controls, including direct entered wait and final disposal. Keep fake time for deterministic caller timeout assertions. No Reviewer execution or Linux runtime verification.
+
+Criteria: C1 failed (New held native setup/disposal controls can wait forever on receipts because their deadlines use manually advanced fake time.).

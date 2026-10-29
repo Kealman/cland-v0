@@ -3,8 +3,9 @@ id: T-1447
 kind: task
 title: "Remotes: an agent's reply to the human's message arrives unthreaded on Telegram and Discord"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1201
 branch: t/T-1447-remotes-an-agent-s-reply-to-the-human-s
 created: 2026-10-29T17:00:36.038Z
-updated: 2026-10-29T17:03:22.688Z
+updated: 2026-10-29T17:08:25.920Z
 ---
 
 ## Summary
@@ -26,9 +27,12 @@ When a General message has `replyTo` pointing at a message mapped to a native me
 
 ## Acceptance criteria
 
-- [ ] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
-- [ ] C2. The same holds on Discord, with `message_reference` on the fake REST.
-- [ ] C3. A reply target unmapped on a remote, or deleted, still delivers once as a plain message.
+- [x] C1. An agent's `send` with `replyTo` set to the human's Telegram message goes out as a native reply to it, shown by a production-frame test on the fake Bot API that fails before the fix.
+  - done: impl-1447 · 2026-10-29T17:07:51.083Z
+- [x] C2. The same holds on Discord, with `message_reference` on the fake REST.
+  - done: impl-1447 · 2026-10-29T17:07:51.292Z
+- [x] C3. A reply target unmapped on a remote, or deleted, still delivers once as a plain message.
+  - done: impl-1447 · 2026-10-29T17:07:52.403Z
 
 ## Comments
 

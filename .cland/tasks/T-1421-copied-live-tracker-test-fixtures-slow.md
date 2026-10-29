@@ -2,8 +2,8 @@
 id: T-1421
 kind: task
 title: Copied live-tracker test fixtures slow down as the tracker grows
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1193
 branch: t/T-1421-copied-live-tracker-test-fixtures-slow
 created: 2026-10-28T10:09:57.493Z
-updated: 2026-10-29T16:55:29.435Z
+updated: 2026-10-29T17:22:54.364Z
+closed: 2026-10-29T17:22:54.364Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ The copied live-tracker fixtures read the whole project tracker, now about 1,420
 
 - [x] C1. The copied-tracker fixtures read a bounded snapshot (a fixed item count or a pinned copy) whose size does not grow with the live tracker, and each test keeps the behaviour it checks.
   - done: impl-1421 · 2026-10-29T16:17:20.443Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1421-final1 · 2026-10-29T17:13:03.096Z · commit 699b3b2322a159b9caad9ef15f0a7d4a92f25422
 - [x] C2. The T-1419 allowances for web/test/items.test.ts are removed or reduced to the new measured timing at 1.5x.
   - done: impl-1421 · 2026-10-29T16:44:02.897Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1421-final1 · 2026-10-29T17:13:03.096Z · commit 699b3b2322a159b9caad9ef15f0a7d4a92f25422
 
 ## Notes
 
@@ -95,3 +98,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear at manifest-only successor; Standards/Spec0. Exact Coordinator da798b54-approved15s Web/15.2s generated startup R-1278 caps cite actual Linux sizing and failed suite attribution; T4 allowance removed. Seven-day expiry2026-11-05 respects unchanged validator179–182 versus Coordinator's approximate two-week suggestion; reported distinction retained. All source2 fixtures/assertions/docs/tier mappings unchanged. A-13824. Prior A-13809/A-13810 remain failed historical evidence; final C1/C2 verification awaits new configured same-head receipt. No Reviewer execution.
+
+### rev-31 · 2026-10-29T17:13:03.096Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1421-final1
+commit: 699b3b2322a159b9caad9ef15f0a7d4a92f25422
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear C1/C2, source3 unchanged. Original A-13844/046d0944 exacthead4156 ordinary+5 load passes; T0/T1/allT2/changedT3/T4/Web all0. Corpus1+5/5, pinnedLua24+3/0differences0.6917s, pages1.7589s, startup0.3609s, Webparent9.3939s<15cap, generated9.6603s<15.2cap, unchanged full-liveT4 1444+3/0differences30.8541s. All8 Items cases pass. Prior A-13809 remains failed historical sizing, not relabeled. Original advisory stanza not committedcap. Linuxc8lon1 Node24.21/nvim0.12.5 CHS156/v1248 host73911332 reused/report-onlywarnings and absent remainingtiers retained. A-13845 includes exact case/load lines and local-vs-Linux table; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T17:22:54.364Z
+
+Merged 615857a88686546bad7e23e42245165c1cb56d9d onto dev.

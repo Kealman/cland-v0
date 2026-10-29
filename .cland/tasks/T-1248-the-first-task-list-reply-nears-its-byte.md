@@ -3,8 +3,9 @@ id: T-1248
 kind: task
 title: The first task.list reply nears its byte cap as the live tracker grows
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T17:00:35.256Z
+updated: 2026-10-29T17:09:32.261Z
 ---
 
 ## Summary
@@ -22,8 +23,10 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 
 ## Acceptance criteria
 
-- [ ] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
-- [ ] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
+- [x] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
+  - done: impl-1248 · 2026-10-29T17:08:20.011Z
+- [x] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
+  - done: impl-1248 · 2026-10-29T17:08:20.295Z
 
 ## Comments
 

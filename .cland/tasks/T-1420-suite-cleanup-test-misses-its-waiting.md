@@ -3,7 +3,7 @@ id: T-1420
 kind: task
 title: suite cleanup test misses its 'waiting for a verified worker identity' log line once under load
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1198
 branch: t/T-1420-suite-cleanup-test-misses-its-waiting
 created: 2026-10-28T09:24:24.815Z
-updated: 2026-10-29T17:04:03.118Z
+updated: 2026-10-29T17:05:28.563Z
 ---
 
 ## Summary
@@ -27,7 +27,8 @@ Find why the cleanup's log line can be missing when the assertion reads it under
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is attributed from the failing output (A-13169) and the code: the case stopped the hub before the worker PID receipt, shown by a deterministic held-admission regression red at 7687a520; the unchanged case did not reproduce 5/5 under load (A-13833).
+- [x] C1. The cause is attributed from the failing output (A-13169) and the code: the case stopped the hub before the worker PID receipt, shown by a deterministic held-admission regression red at 7687a520; the unchanged case did not reproduce 5/5 under load (A-13833).
+  - done: impl-1420 · 2026-10-29T17:05:12.812Z
 - [ ] C2. The cleanup identity and the new regression pass 10/10 under two owned busy CPU workers in one leased local probe at the reviewed head, with raw receipts.
 
 ## Comments

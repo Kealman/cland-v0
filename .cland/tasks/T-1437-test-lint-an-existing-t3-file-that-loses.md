@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1199
 branch: t/T-1437-test-lint-an-existing-t3-file-that-loses
 created: 2026-10-29T04:26:29.075Z
-updated: 2026-10-29T17:03:07.606Z
+updated: 2026-10-29T17:08:06.439Z
 ---
 
 ## Summary
@@ -41,3 +41,16 @@ Consumer inventory before policy change (rule 20): checkTestLint/testLintPolicy 
 ### impl-1437 · 2026-10-29T17:02:32.187Z
 
 Coordinator scope clarification (topic-1199): preserve never-headed existing debt. Final implementation is only hub/src/test-lint-policy.ts; direct census is unchanged. Existing T3/T4 missing lifecycle refuses only when base source supplied a declaration or process calls would otherwise exceed allowance. Header refusal replaces process-count consequences; independent wall-clock rules remain. T1 tests cover displaced T3/T4 headers at allowance 0/3, loss without process calls, never-headed/headed unchanged results, and all five process helpers. Local macOS Node run: 38/38 in touched test-lint.test.ts; root npm run typecheck passed. No Linux/full suite evidence yet. SKILL.md untouched under freeze; Coordinator holds proposed rule/skill wording.
+
+### rev-26 · 2026-10-29T17:08:06.439Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1437-source-1
+commit: 886dfbf7845b985f5fd1f7ac64662b5c1c139add
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13839 full6-file audit clear. Standards T1 source-as-data cases/guide/index/shared docs and Rule20 consumers checked, direct census/baseline/shape untouched; tracker-only merge provenance pinned. Spec matches Coordinator32269e67: detect base lifecycle loss or missing lifecycle exposing process-count growth, emit exact header cause and suppress only process consequences; wall-clock and headed/never-headed-within-allowance behavior retained, contract/scenario declaration valid. No findings. Local A13834 summary not configured evidence; C1/C2 runtime pending. Exact-head modefree then original named execution/load/census review; no Reviewer workload/full-all request.
