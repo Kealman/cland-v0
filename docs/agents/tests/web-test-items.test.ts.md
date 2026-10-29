@@ -54,3 +54,10 @@ T-1423's Darwin two-worker plus CPU baseline passed 10/10: requests ranged from
 or storage delay in the original Linux failure was not observed. A disposable
 5.2 s pre-handler delay control reproduces the old request timeout; it is a
 synthetic sensitivity check, not a natural Linux reproduction.
+
+T-1440's temporary 100 ms diagnostic sampler is retained only in recorded probe
+evidence (A-13703), not in the shipped test. The approved two-busy-worker probe
+at f42e87fd9 retained five green parent runs and every semantic assertion;
+raw baseline records include the first two incomplete diagnostic teardown runs.
+Safety polling now reads changed paths only, without increasing any request or
+rendered-row bound. Historic Linux 5 s attribution remains unobserved locally.

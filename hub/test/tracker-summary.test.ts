@@ -486,29 +486,59 @@ test('a healthy watcher with dropped events still indexes hand edits, additions 
   assert.equal(tracker.view('T-1')?.title, 'Hand edited');
   assert.equal(tracker.view('T-3')?.title, 'Added');
   assert.throws(() => tracker.view('T-2'), /no item T-2/);
+  const renamed = join(dir, 'T-1-renamed.md');
+  const renameReceipt = records.length;
+  await files.rename(file, renamed);
+  t.mock.timers.tick(SAFETY_POLL_MS);
+  await until(() => records.slice(renameReceipt).some(r => r.event === 'task-reindexed' && r.file === 'T-1-renamed.md'),
+    { what: 'renamed path is reindexed by safety poll', timeoutMs: 10000 });
+  assert.equal(tracker.view('T-1').file, 'T-1-renamed.md');
   assert.equal(records.some(r => r.event === 'task-watch-error'), false);
   t.diagnostic(`dropped native callbacks ${dropped}; mocked safety interval ${SAFETY_POLL_MS} ms; durable re-index/removal receipts after ${(performance.now() - started).toFixed(1)} ms`);
 });
 
-test('an unchanged first poll uses the startup stamp without reading or parsing item files', async t => {
+test('safety polls read only changed files and retain the startup stamp', async t => {
   const root = await tempProject(t), dir = join(root, '.cland/tasks');
   await mkdir(dir, { recursive: true });
   for (const n of [2, 10]) await writeFile(join(dir, `T-${n}-item.md`), serializeItem(parseItem(`---\nid: T-${n}\nkind: task\nstatus: backlog\ntitle: Item ${n}\n---\n`)));
   let poll!: () => void, reads = 0, parses = 0, stats = 0;
+  let pinned: Pick<import('node:fs').Stats, "mtimeMs" | "size" | "ino"> | undefined;
   const tracker = new Tracker({ root, db: ':memory:', git: async () => '',
     watch: (_dir, handlers) => { poll = handlers.poll; return { close() {} }; },
     parse: (...args) => { parses++; return parseItem(...args); },
     files: { ...files,
       readFile: async (...args) => { if (args[0].endsWith('-item.md')) reads++; return files.readFile(...args); },
-      stat: async path => { if (path.endsWith('-item.md')) stats++; return files.stat(path); },
+      stat: async path => {
+        if (path.endsWith('-item.md')) stats++;
+        const info = await files.stat(path);
+        return pinned && path.endsWith('T-2-item.md') ? Object.assign(info, pinned) : info;
+      },
     },
   });
   t.after(() => tracker.stop());
   await tracker.start();
   reads = parses = 0;
   poll();
-  await tracker.stop(); // Drains the admitted poll before checking its I/O receipts.
+  await tracker.viewAsync('T-2'); // Queue admission fences the completed safety poll.
   assert.equal(stats, 2);
-  assert.equal(reads, 0);
-  assert.equal(parses, 0);
+  assert.equal(reads, 1, 'only the explicit view reads a file');
+  reads = parses = 0;
+  await writeFile(join(dir, 'T-2-item.md'), serializeItem(parseItem('---\nid: T-2\nkind: task\nstatus: backlog\ntitle: Changed by hand\n---\n')));
+  poll();
+  await tracker.viewAsync('T-10'); // Fences the poll, adding one explicit view read.
+  assert.equal(reads, 2, 'only the changed file and explicit view are read');
+  assert.equal(tracker.list().find(item => item.id === 'T-2')?.title, 'Changed by hand');
+  reads = 0;
+  const before = await files.stat(join(dir, 'T-2-item.md'));
+  await writeFile(join(dir, 'T-2-item.md'), serializeItem(parseItem('---\nid: T-2\nkind: task\nstatus: backlog\ntitle: Another by hand\n---\n')));
+  await files.utimes(join(dir, 'T-2-item.md'), before.atime, before.mtime);
+  // Model an exact same mtime tick, size and inode without Date rounding.
+  pinned = { mtimeMs: before.mtimeMs, size: before.size, ino: before.ino };
+  poll();
+  await tracker.viewAsync('T-10');
+  assert.equal(tracker.list().find(item => item.id === 'T-2')?.title, 'Another by hand', 'same-size external edit with restored mtime is detected');
+  reads = 0;
+  await tracker.rescanAsync();
+  assert.equal(reads, 2, 'explicit rescans still read every body');
+  await tracker.stop();
 });

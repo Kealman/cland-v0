@@ -311,8 +311,8 @@ export class Tracker {
   #plannedTimer: NodeJS.Immediate | null = null;
   readonly #background = new Set<Promise<unknown>>();
   readonly #watchResumed: Resumed;
-  /** The folder as the last poll saw it (only used when it cannot be watched). */
-  #polled = '';
+  /** The last completed safety or fallback poll; compare each path independently. */
+  #polled: Map<string, string> | null = null;
   readonly #pending = new Map<string, NodeJS.Timeout>();
   #rescanTimer: NodeJS.Timeout | null = null;
 
@@ -842,11 +842,12 @@ export class Tracker {
           this.#runBackground(() => this.#serial(async resumed => {
             try {
               const stamp = await this.#folderStampAsync();
-              await resumed(() => {
-                if (stamp === this.#polled) return;
-                this.#polled = stamp;
-                return this.#rescanAsync(resumed);
-              });
+              // Keep the metadata sweep, but do not serialize unchanged body reads ahead of requests.
+              const changed = resumed(() => stamp === null ? null : [...new Set([...stamp.keys(), ...(this.#polled?.keys() ?? [])])]
+                .filter(name => !this.#polled || stamp.get(name) !== this.#polled.get(name)));
+              if (changed === null) await this.#rescanAsync(resumed);
+              else for (const name of changed) await this.#readWatchedFile(name, resumed);
+              resumed(() => { this.#polled = stamp; });
             } finally { resumed(() => { this.#polling = false; }); }
           }, this.#watchResumed, { operation: 'watch poll', item: null }));
         },
@@ -886,22 +887,15 @@ export class Tracker {
   }
 
   /** The item files with their times and sizes: what both safety and fallback polls compare. */
-  #folderStamp(): string {
+  #folderStamp(): Map<string, string> | null {
     try {
-      // Match the async stamp order; numeric startup order would force a full first rescan.
-      return this.#itemFiles().sort()
-        .map((name) => {
-          try {
-            const s = statSync(join(this.#dir, name));
-            return `${name}:${s.mtimeMs}:${s.size}:${s.ino}`;
-          } catch {
-            return name;
-          }
-        })
-        .join('|');
-    } catch {
-      return '';
-    }
+      return new Map(this.#itemFiles().map(name => {
+        try {
+          const s = statSync(join(this.#dir, name));
+          return [name, `${s.mtimeMs}:${s.ctimeMs}:${s.size}:${s.ino}`] as const;
+        } catch { return [name, 'unreadable'] as const; }
+      }));
+    } catch { return null; }
   }
 
   /** A fatal serving stall freezes continuations immediately, without a shutdown drain window. */
@@ -1085,18 +1079,18 @@ export class Tracker {
     }));
   }
 
-  async #folderStampAsync(): Promise<string> {
+  async #folderStampAsync(): Promise<Map<string, string> | null> {
     const resumed = this.#watchResumed;
     try {
       const names = await this.#files.readdir(this.#dir);
-      const stamps = await resumed(() => Promise.all(names.filter(n => this.#fileNumber(n) !== null).sort().map(async name => {
+      const stamps = await resumed(() => Promise.all(names.filter(n => this.#fileNumber(n) !== null).map(async name => {
         try {
           const info = await this.#files.stat(join(this.#dir, name));
-          return resumed(() => `${name}:${info.mtimeMs}:${info.size}:${info.ino}`);
-        } catch { return resumed(() => name); }
+          return resumed(() => [name, `${info.mtimeMs}:${info.ctimeMs}:${info.size}:${info.ino}`] as const);
+        } catch { return resumed(() => [name, 'unreadable'] as const); }
       })));
-      return resumed(() => stamps.join('|'));
-    } catch { return resumed(() => ''); }
+      return resumed(() => new Map(stamps));
+    } catch { return resumed(() => null); }
   }
 
   /** One admitted scan owns its listing and reads; later mutations cannot interleave a renamed path. */

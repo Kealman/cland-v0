@@ -268,6 +268,8 @@ receipts keep generic projects and old releases on their prior path.
 
 Hand saves use the native folder watcher with a 100 ms debounce. A 5 s safety
 stamp check recovers missed native notifications; refused or failed watching
-uses 500 ms checks. Checks compare listing, mtime, size and inode without reading
-or parsing unchanged files. Under load, wait for the exact file’s durable
+uses 500 ms checks. Checks compare listing, mtime, ctime, size and inode and read only added, removed
+or changed paths. On supported APFS/ext4, ctime detects same-size edits with
+restored mtime; native notifications and explicit full rescans backstop changes
+invisible in all metadata fields. Under load, wait for the exact file’s durable
 `task-reindexed` (or `task-removed`) receipt before checking client projections.

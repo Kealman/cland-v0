@@ -8149,7 +8149,7 @@
     "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after aborted setup receipt": 0.153056,
     "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after omitted setup receipt": 0.178086,
     "hub/test/tracker-summary.test.ts::a healthy watcher with dropped events still indexes hand edits, additions and removals": 1.09969,
-    "hub/test/tracker-summary.test.ts::an unchanged first poll uses the startup stamp without reading or parsing item files": 0.009473,
+    "hub/test/tracker-summary.test.ts::safety polls read only changed files and retain the startup stamp": 0.009473,
     "hub/test/web-authority.test.ts::web authority admits artifact.upload without local filesystem access": 0.065068,
     "nvim/test/artifact-upload.test.ts::uploaded PNG and extensionless JPEG open once in the viewer while a note opens in a buffer": 0.695194,
     "web/test/artifacts.test.ts::over-cap PNG retains its size and download while SVG stays sandboxed and broken images fall back": 1.196565,
