@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1184
 branch: t/T-1177-tap-filters-for-the-events-view-on-the
 created: 2026-10-23T07:00:15.868Z
-updated: 2026-10-29T16:02:22.349Z
+updated: 2026-10-29T16:03:53.704Z
 ---
 
 ## Summary
@@ -48,3 +48,16 @@ findings: [{"severity":"medium","text":"M1: new phone transitions wait on filter
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-13740 consolidated source1 not clear, M1 only: Standards1medium/Spec0. Phone controls reuse categories/filter/storage/subject picker/footer counts; keymap/wire unchanged, actual390×844 touch test supplied. Result-receipt finding is source-identified, no Reviewer execution/flake claim. Reported local12/12/typecheck remain local; C1 runtime-unverified. Preserve base and assertions, fresh source review after focused wait correction before verification; no full task run/per-item QA.
+
+### rev-31 · 2026-10-29T16:03:53.704Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1177-source2
+commit: 81c7245d94d12fb78dca2c338b29151c352bed3a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13744 source2 delta clear; M1 resolved, Standards0/Spec0. Exact rendered-ID oracles pre-armed before taps and used after reload, all nonempty/semantic controls and final equality/pressed/44px assertions retained. Existing finite until bound; UI/CSS/key/storage/wire unchanged from source1. Independently verified Coordinator Agents5cbfcf63 all-lane shared-merge direction; merge0ba34423 brings tracker+README d36aec5a only, no other implementation. Local reported12/12/843ms/typecheck remain macOS, configured evidence absent. C1 runtime-unverified; mode-free verify may proceed unchanged then original-record final review. No full task run/per-item QA.

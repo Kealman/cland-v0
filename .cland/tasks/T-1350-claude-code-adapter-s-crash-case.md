@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
+topic: topic-1191
 branch: t/T-1350-claude-code-adapter-s-crash-case
 created: 2026-10-26T22:36:48.083Z
-updated: 2026-10-29T16:02:36.024Z
+updated: 2026-10-29T16:03:25.573Z
 ---
 
 ## Summary
@@ -27,3 +27,9 @@ Make the wait drive the injected clock. Inside the `eventually` that waits for t
 ## Acceptance criteria
 
 - [ ] C1. The named case advances its clock until the exited row appears, without depending on the OS exit landing before a single advance, and passes 10/10 sequential runs plus its load-gate repetitions (test).
+
+## Comments
+
+### impl-1350 · 2026-10-29T16:03:25.573Z
+
+Scope/seam: existing native Claude Code binary contract through hub frames and fake Claude fixture. No shared contract changes or hub/src changes. Regression will advance the injected clock while the discovered process is still running, assert its running row, then kill it: native exit necessarily follows that first advance. Existing exited-state, process event, once-only log and replacement injection assertions remain. Fix drives 150ms watcher/grace advances inside eventually. C1 requires 10 sequential targeted passes; mode-free verification supplies configured load evidence (report exact selection).

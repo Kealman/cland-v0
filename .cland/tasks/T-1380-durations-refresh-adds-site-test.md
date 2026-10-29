@@ -3,8 +3,9 @@ id: T-1380
 kind: task
 title: durations refresh adds site/test identities that no tier owns, and periodic dev T3 then skips
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ regression_of: T-1368
 topic: topic-1186
 branch: t/T-1380-durations-refresh-adds-site-test
 created: 2026-10-27T23:10:18.366Z
-updated: 2026-10-29T16:00:50.503Z
+updated: 2026-10-29T16:04:09.073Z
 ---
 
 ## Summary
@@ -27,8 +28,10 @@ Either the refresh adds only identities the tier manifest owns (and says what it
 
 ## Acceptance criteria
 
-- [ ] C1. A refresh over a log that contains site/test identities adds no key the tier manifest does not own and prints the skipped identities (test).
-- [ ] C2. `npm run test:tiers` passes after a refresh over the c675faa3 cover logs A-12925 and A-12929 (test against fixture copies).
+- [x] C1. A refresh over a log that contains site/test identities adds no key the tier manifest does not own and prints the skipped identities (test).
+  - done: impl-1380 · 2026-10-29T16:03:56.324Z
+- [x] C2. `npm run test:tiers` passes after a refresh over the c675faa3 cover logs A-12925 and A-12929 (test against fixture copies).
+  - done: impl-1380 · 2026-10-29T16:03:56.935Z
 
 ## Comments
 

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1183
 branch: t/T-1441-version-bump-the-root-package-json-and
 created: 2026-10-29T15:55:47.281Z
-updated: 2026-10-29T16:01:31.781Z
+updated: 2026-10-29T16:04:44.170Z
 ---
 
 ## Summary

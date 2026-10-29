@@ -3,17 +3,17 @@ id: T-1422
 kind: task
 title: Dev T3 search calls a flaky file already-fixed on a green tip reached only through tracker commits
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1192
+branch: t/T-1422-dev-t3-search-calls-a-flaky-file-already
 created: 2026-10-28T10:16:48.937Z
-updated: 2026-10-29T15:59:35.714Z
+updated: 2026-10-29T16:04:50.548Z
 ---
 
 ## Summary

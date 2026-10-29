@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1181
 branch: t/T-1443-the-remote-docs-describe-0-3-0-as-built
 created: 2026-10-29T15:55:47.685Z
-updated: 2026-10-29T16:00:44.279Z
+updated: 2026-10-29T16:04:42.980Z
 ---
 
 ## Summary
@@ -37,3 +37,16 @@ Read each page against the build: commands and flags against `--help`, config ke
 ### impl-1443 · 2026-10-29T15:57:31.829Z
 
 Audit scope: public Remote control page, web-and-phone Remotes section, and hub/README remote/config/secrets/setup/doctor sections. Existing T1 source/vocabulary and T2 executable Telegram walkthrough seams retained; no runtime/shared contract changes. Findings: web page only describes Telegram; main guide's media/chat/recovery/maintenance mostly Telegram-only; README Remote commands incorrectly says Discord callbacks require injection although built-in client ships. SKILL.md freeze respected; proposed skill guidance: remote-docs guard should include both messenger descriptions, Discord media/history distinctions and README public commands.
+
+### rev-26 · 2026-10-29T16:04:42.980Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1443-source-1
+commit: 26fc7846f299ff2a3b0d8ab96e791e7ffce95880
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full current source1 clear, Standards/Spec nofindings afterM1correction. A-13749pinsbase/intermediatemerge/finalheadtree andcomplete5-filecontribution. TypedaskanswersnowTelegram-only; Discordordinarytexttopic.send vsbuttons/modal/mappedvoiceanswers sourcechecked/newguard. Built-inDiscordfactory/REST/gateway, numericlocalpairing/workbench/doctorlocalonly,dualremotevoice/media20MiB10files25MiBoverhead/history500oldestfirst/Telegram150s sourcechecked. GuardaddsREADMEvocabulary/flagsinventednegative+jsonpositive; existingT1wrapper/no renamedidentity/newfiletier/allowance, noproduction/dependency/skillchanges. C1/C2runtimepending; local16/16claimnotremoteproof. Submitunchangedheadconfiguredmodefree/finaloriginal-recordreview; no Reviewerfullrun/workload/releasepublish.
