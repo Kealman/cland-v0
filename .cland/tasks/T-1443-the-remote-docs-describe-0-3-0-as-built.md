@@ -3,7 +3,7 @@ id: T-1443
 kind: task
 title: The remote docs describe 0.3.0 as built
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1181
 branch: t/T-1443-the-remote-docs-describe-0-3-0-as-built
 created: 2026-10-29T15:55:47.685Z
-updated: 2026-10-29T16:09:07.676Z
+updated: 2026-10-29T16:11:15.089Z
 ---
 
 ## Summary
@@ -50,3 +50,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full current source1 clear, Standards/Spec nofindings afterM1correction. A-13749pinsbase/intermediatemerge/finalheadtree andcomplete5-filecontribution. TypedaskanswersnowTelegram-only; Discordordinarytexttopic.send vsbuttons/modal/mappedvoiceanswers sourcechecked/newguard. Built-inDiscordfactory/REST/gateway, numericlocalpairing/workbench/doctorlocalonly,dualremotevoice/media20MiB10files25MiBoverhead/history500oldestfirst/Telegram150s sourcechecked. GuardaddsREADMEvocabulary/flagsinventednegative+jsonpositive; existingT1wrapper/no renamedidentity/newfiletier/allowance, noproduction/dependency/skillchanges. C1/C2runtimepending; local16/16claimnotremoteproof. Submitunchangedheadconfiguredmodefree/finaloriginal-recordreview; no Reviewerfullrun/workload/releasepublish.
+
+### rev-26 · 2026-10-29T16:11:15.089Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1443-evidence-1
+commit: 26fc7846f299ff2a3b0d8ab96e791e7ffce95880
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run 4e009644/A-13758 stopped on DigitalOcean transport failure after T0; T1/T2/Web execution and criterion runtime evidence are unavailable."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Standards: source clearance rev-20261029-1443-source-1/A-13749 retained at unchanged head. Spec: evidence incomplete, not a criterion failure or suite pass. Original T0 host check passed in 54.905 s; remote runtime counts/platform/health unavailable. T3/T4 unexecuted. A-13761 records original-log versus hub-result provenance and excludes projections from measurements. Successor admitted run dbc65bc5 is separate and not assessed here.

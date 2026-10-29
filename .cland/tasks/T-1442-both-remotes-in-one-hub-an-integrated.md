@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1182
 branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T16:08:57.620Z
+updated: 2026-10-29T16:15:27.968Z
 ---
 
 ## Summary
@@ -28,9 +28,9 @@ A scenario test, for example `hub/test/scenarios/remotes.test.ts`, mapped T3 in 
 ## Acceptance criteria
 
 - [x] C1. An ask answered from a Discord modal is stored once and turns the Telegram card into its outcome; a hub-side inbox read shows the ask answered.
-  - done: impl-1442 · 2026-10-29T16:08:54.389Z
+  - done: impl-1442 · 2026-10-29T16:15:27.313Z
 - [x] C2. A photo and a voice note sent from each remote reach the other remote exactly once, marked "you (Telegram)" or "you (Discord)", with the 🎤 transcript.
-  - done: impl-1442 · 2026-10-29T16:08:55.163Z
+  - done: impl-1442 · 2026-10-29T16:15:27.412Z
 - [x] C3. A hub restart under 90 seconds and one over 3 minutes are each caught up on both remotes: Discord resumes or reads history back, Telegram catches up, and open cards are re-sent per platform rules.
   - done: impl-1442 · 2026-10-29T16:08:55.587Z
 - [x] C4. Revoking the Telegram token on the fake stops only Telegram with its cause, while Discord keeps serving General both ways.
@@ -44,3 +44,18 @@ A scenario test, for example `hub/test/scenarios/remotes.test.ts`, mapped T3 in 
 ### impl-1442 · 2026-10-29T16:02:48.938Z
 
 C6 consumer inventory before persistence change: rg across hub/src, hub/test (all tiers/scenarios), nvim, web, docs, .agents. Only telegram.ts reads/writes telegram.outage in production; #failed/#saveOutage/#armOffline/#caughtUp/#late/status consume it. Plan additive optional planned flag; old {since,reason,announced} records stay readable and existing T2 outage cases retain that previous shape. hub daemon remoteState projection, gateway/status/configuration, doctor-remotes and remote-stop consume status rather than raw record; suppress planned offlineSince/lastError/notice without wire changes. Web RemotesLine and nvim panels, web-area-state/remote-workbench tests and nvim sessions fixtures consume unchanged optional fields, unaffected. Tests directly reading outage: telegram-{approvals,cards,voice-answers,gap,catchup,pacing,liveness} and telegram fixtures; migrate cards 'plain component restart' null assertion to planned receipt, retaining no extra short-restart card/chat assertion. Existing long network outage/restart cases retain original records. Production factory/CLI startup probes and shipped QA briefs/skills do not decode outage; existing frame shapes remain unchanged. Docs consumers: hub README polling/recovery, telegram catchup/cards guides; update planned-stop behavior there; frozen skill text proposed in topic.
+
+### rev-34 · 2026-10-29T16:14:17.831Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1442-source1
+commit: 6887d96427eb6da21751cc248dcf26118eea4ad8
+scope: full
+findings: [{"severity":"medium","text":"M1: New remotes and graceful-restart entries violate path sorting (remotes before release; graceful-restart before gap), so the unchanged owning manifest guard rejects the head. Move only the new rows. Remove the blank line before the new Notes index rows so they remain in the Markdown table.","file":"hub/test/tiers.json","line":391},{"severity":"medium","text":"M2: Raw projectHub acquisition has no independently bounded setup observer or closing admission fence. Pre-registering an exchange.stop callback that waits acquiring does not bound startup or prevent late scenario continuation. Reuse a pre-owned bounded acquisition/late-hub disposal owner and prove omitted/aborted serving-receipt paths before root/Store disposal.","file":"hub/test/scenarios/remotes.test.ts","line":43},{"severity":"medium","text":"M3: C2 checks destination content/caption only; it does not verify destination native file upload/attachment bytes. It can pass with a missing/corrupted cross-remote photo/audio attachment. Preserve source history checks and add each destination's exact file hash/size/attachment identity and one upload, including no source-platform echo.","file":"hub/test/scenarios/remotes.test.ts","line":101},{"severity":"medium","text":"M4: C1's cardinality assertion counts the original ask row by id, not answer messages. Add exactly one answerTo=ask.ask record with expected text and Discord provenance, preserving the native Telegram outcome edit and inbox archive checks.","file":"hub/test/scenarios/remotes.test.ts","line":71}]
+finding_counts: {"high":0,"medium":4,"low":0}
+
+Full source not clear: M1 sorted manifest/index, M2 bounded pre-owned hub acquisition, M3 destination native media proof, M4 actual answer cardinality. Additive planned Telegram outage behavior is source-consistent, with legacy compatibility and restart/fatal controls retained. C1/C2 proof incomplete; C3/C4/C6 unverified and C5 load/Linux pending. Consolidate corrections, preserve assertions and request fresh pushed-head review before probe/verify.
+
+Criteria: C1 failed (Scenario counts the original ask row rather than exactly one stored modal answer.), C2 failed (Cross-remote assertions prove rendered text but omit destination native file/upload bytes and identity.).

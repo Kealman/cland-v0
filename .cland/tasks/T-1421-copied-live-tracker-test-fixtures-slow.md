@@ -3,8 +3,9 @@ id: T-1421
 kind: task
 title: Copied live-tracker test fixtures slow down as the tracker grows
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1193
 branch: t/T-1421-copied-live-tracker-test-fixtures-slow
 created: 2026-10-28T10:09:57.493Z
-updated: 2026-10-29T16:08:24.502Z
+updated: 2026-10-29T16:14:28.564Z
 ---
 
 ## Summary
@@ -22,8 +23,10 @@ The copied live-tracker fixtures read the whole project tracker, now about 1,420
 
 ## Acceptance criteria
 
-- [ ] C1. The copied-tracker fixtures read a bounded snapshot (a fixed item count or a pinned copy) whose size does not grow with the live tracker, and each test keeps the behaviour it checks.
-- [ ] C2. The T-1419 allowances for web/test/items.test.ts are removed or reduced to the new measured timing at 1.5x.
+- [x] C1. The copied-tracker fixtures read a bounded snapshot (a fixed item count or a pinned copy) whose size does not grow with the live tracker, and each test keeps the behaviour it checks.
+  - done: impl-1421 · 2026-10-29T16:12:05.373Z
+- [x] C2. The T-1419 allowances for web/test/items.test.ts are removed or reduced to the new measured timing at 1.5x.
+  - done: impl-1421 · 2026-10-29T16:12:05.474Z
 
 ## Notes
 

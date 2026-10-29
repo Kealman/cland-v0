@@ -15,7 +15,7 @@ regression_of: T-1368
 topic: topic-1186
 branch: t/T-1380-durations-refresh-adds-site-test
 created: 2026-10-27T23:10:18.366Z
-updated: 2026-10-29T16:09:15.261Z
+updated: 2026-10-29T16:13:32.219Z
 ---
 
 ## Summary
@@ -51,3 +51,42 @@ findings: [{"severity":"medium","text":"M1: exact test-path H1 and owning Notes 
 finding_counts: {"high":0,"medium":2,"low":0}
 
 A-13759 full8-file sourceaudit completeM1/M2only; noadditionalproductfinding. Full/addonly timing+fileenvelope filters ownership/skipdedup; no-manifestunfiltered/currentlegacymapping/previousinvalidkeyrefusal/addonlybytes preserved. All sharedconsumers inventoried/noformat/plannermigration orhubsrcchange. IndependentlycomparedA12925/A12929fixture6timingrows/head/greenmarker exactlyoriginaldurablelogs; excerptslabelled, T3nativeCLIreason/T1filterseamappropriate. Reportedworkingfixesoutsidehead; commit/freshsourcebeforemodefree. No runtimecriteriafailed/verified, no Reviewerworkloads. QA none/after-stage; skillproposalremainfrozen.
+
+### rev-26 · 2026-10-29T16:11:58.698Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1380-source-2
+commit: 2c74d6cee191abae1c9db8516be1c6c697385ce6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13765: Standards M1/M2 resolved in exact three-file correction; guide H1/index exact, three new CLI commands reuse bounded signal-owned commandIn with pre-directory process/close/result drainage, sealed environment and preserved success/nonzero exact-refusal assertions. Spec: A-13759 full audit carried forward; ownership filters, legacy behavior, format/planner refusal and original fixture provenance unchanged. No further findings or Reviewer workloads. C1/C2 runtime verification pending configured original records at frozen head; local receipts not substituted.
+
+### rev-26 · 2026-10-29T16:12:59.015Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261029-1380-evidence-1
+commit: 2c74d6cee191abae1c9db8516be1c6c697385ce6
+scope: evidence
+findings: [{"severity":"medium","text":"Admission refused before execution: the newly imported process-cleanup ownDirectory marks this filesystem-only T1 file as machine-resource. Preserve the classifier; use the existing filesystem cleanup pattern and obtain fresh source clearance before retry.","file":"hub/test/durations-refresh.test.ts","line":9}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-13769 independently traces hub refusal26672443 to test-lint direct import policy and suite-shards T1 admission. No suite ran and no criterion failed/verified inferred. Prior M1/M2 source corrections retained; lead is fixing the missed admission constraint without tier/guard bypass. Fresh exact-head source review required.
+
+### rev-26 · 2026-10-29T16:13:32.219Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1380-source-3
+commit: 8baea2eb5bab7af435b3003b8ada8cb70e648320
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13771: complete one-file correction inspected. Standards: unnecessary machine-resource import removed, immediately registered filesystem cleanup matches existing file, no child/concurrent writer ownership lost. Classifier/tiers/tests/assertions unchanged. Spec: full prior source audit and M1/M2 corrections retained; no additional findings. No Reviewer workloads or configured C1/C2 verification inferred from local receipts. Original configured execution/timing/load review pending at this frozen head.
