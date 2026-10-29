@@ -3,7 +3,7 @@ id: T-1248
 kind: task
 title: The first task.list reply nears its byte cap as the live tracker grows
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T18:08:46.302Z
+updated: 2026-10-29T18:13:59.558Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 
 - [x] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
   - done: impl-1248 · 2026-10-29T17:08:20.011Z
-- [ ] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
-  - failed: rev-34 [reviewer] · 2026-10-29T18:06:40.742Z · note Fixed initial deadline resets on every full traversal and discards valid late pages, so consistently slow reads can prevent startup indefinitely.
+- [x] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
+  - done: impl-1248 · 2026-10-29T18:12:32.763Z
 
 ## Comments
 
@@ -75,3 +75,16 @@ Criteria: C2 failed (Fixed initial deadline resets on every full traversal and d
 ### impl-1248 · 2026-10-29T18:08:46.302Z
 
 M3 design update before edits: replace the paged retry-invalidation option with coherent_retry. One shared event capture spans a page's oldest/newest retry attempts; capture each pushed event once, keep the existing oldest-valid answer and bounded exponential backoff, and report the shared capture's byte count on completion. Overflow alone invalidates the entire traversal. Existing snapshot callers do not opt in, retaining their original independent journals. No new consumers or wire fields beyond the local snapshot inventory already recorded. New regression holds original first/later page replies beyond multiple retry rounds, changes an earlier-page row, asserts at most two pending attempts/one shared capture, then observes complete unique final rows from late original replies.
+
+### rev-34 · 2026-10-29T18:13:59.558Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-source3
+commit: 59a967066cd5c227c716926d19f3682a6e52b37a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13916: full source clear. M1 bounded coherent traversal capture and M2 owning metadata remain resolved; M3 now retains oldest valid late reply/backoff with one capture across at-most-two attempts, each event recorded once. Overflow still restarts whole traversal. Original byte/legacy/client assertions retained; local 27/27 and native startup receipts only. C1/C2 runtime verification pending exact-head configured evidence, no Reviewer execution.

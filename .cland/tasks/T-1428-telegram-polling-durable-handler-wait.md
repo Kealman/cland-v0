@@ -3,17 +3,17 @@ id: T-1428
 kind: task
 title: telegram-polling durable-handler wait fails once under a loaded macOS stage cover
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1204
+branch: t/T-1428-telegram-polling-durable-handler-wait
 created: 2026-10-28T14:23:52.818Z
-updated: 2026-10-29T15:59:39.950Z
+updated: 2026-10-29T18:14:00.296Z
 ---
 
 ## Summary
@@ -27,3 +27,9 @@ updated: 2026-10-29T15:59:39.950Z
 ## Notes
 
 First sighting. If the same identity is red again in a cover, it becomes a fix item in the running release.
+
+## Comments
+
+### impl-1428 · 2026-10-29T18:14:00.296Z
+
+Baseline: macOS targeted durable-handler test passed 79.795 ms. Original A-13338 contains only generic “executor operation deadline reached” at deadline.ts:20/24 (1.426460916 s total), no await-site stack, so the original expired boundary cannot honestly be attributed from that receipt alone. Plan: name/time each of the three actual receipts (handler entry, cancellation, completed hub stop), reproduce under authorized exclusive stress capacity, then retain exact writer/offset assertions. Test-only change; no shared contract consumers to migrate.
