@@ -171,6 +171,8 @@ export type AdapterHost = {
   approvalRequested?: (sessionId: string, request: ApprovalRequest) => boolean;
   /** Native answer or withdrawal; reporting a close never answers a harness request. */
   approvalClosed?: (sessionId: string, requestId: string, outcome: ApprovalOutcome) => void;
+  /** Later item execution contradicts a delivered hub answer; correct history without inferring consent. */
+  approvalCorrected?: (sessionId: string, request: ApprovalRequest) => void;
   /** A completed native subscription/snapshot lists every pending native id, including child permissions. */
   approvalsReconciled?: (sessionId: string, requestIds: string[]) => void;
   /** A hard limit classified from the harness's machine-readable error field. */

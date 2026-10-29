@@ -1,3 +1,4 @@
+import type { ApprovalOutcome } from '../protocol.ts';
 import { appendRun, foldLine, joinsRun, runDay, type RunFacts } from './thread-runs.ts';
 import { parseItemReference } from '../tracker/prefixes.ts';
 import { idNumber } from '../tracker/item.ts';
@@ -1769,6 +1770,12 @@ export class Store implements HygieneMemory {
   inboxOutcome(kind: InboxRowKind, id: string): InboxDeparture['outcome'] | undefined {
     const row = this.#prepare('select outcome_json from inbox_departures where kind = ? and id = ? order by number desc limit 1').get(kind, id) as Row | undefined;
     return row?.outcome_json ? JSON.parse(row.outcome_json as string) as NonNullable<InboxDeparture['outcome']> : undefined;
+  }
+
+  /** Amend the existing departure; reconciliation must not create a second archive row. */
+  correctApprovalOutcome(id: string, outcome: ApprovalOutcome): void {
+    this.#prepare("update inbox_departures set outcome_json = ? where kind = 'approval' and id = ?")
+      .run(JSON.stringify(outcome), id);
   }
 
   departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = '', outcome?: InboxDeparture['outcome']): InboxDeparture | null {

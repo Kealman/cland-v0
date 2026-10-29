@@ -306,3 +306,6 @@ T-1336: distinguish metadata-only green dev tips as not reproduced (intermittent
 - T-1379: document supported Node selection and unsupported local evidence handling.
 
 - T-1379 review M1: distinguish shipped cland engines from the host project manifest.
+T-1162: Document Codex execution-evidence correction of approval races, preserving the unobservable protocol limit.
+
+T-1162 review M1: Require Telegram delivered-first and held-first outcome correction evidence.

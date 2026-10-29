@@ -478,6 +478,7 @@ export class Sessions {
       limitHit: (sessionId, hit) => this.#limitHit(sessionId, hit),
       approvalRequested: (sessionId, request) => this.#core.inbox.requestApproval(sessionId, request),
       approvalClosed: (sessionId, requestId, outcome) => this.#core.inbox.closeApproval(sessionId, requestId, outcome),
+      approvalCorrected: (sessionId, request) => this.#core.inbox.requestApproval(sessionId, request, true),
       approvalsReconciled: (sessionId, requestIds) => this.#core.inbox.reconcileApprovals(sessionId, requestIds),
       usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),

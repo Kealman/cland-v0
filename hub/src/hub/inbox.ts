@@ -359,7 +359,7 @@ export class InboxBoard {
   }
 
   /** Admit one native request or closed-first outcome; return a receipt for idempotent watch replay. */
-  requestApproval(sessionId: string, request: ApprovalRequest): boolean {
+  requestApproval(sessionId: string, request: ApprovalRequest, correctOutcome = false): boolean {
     const proc = this.#processes?.().find(p => p.sessionId === sessionId);
     if (!proc || (proc.status !== 'running' && !request.outcome)) return false;
     const id = `${sessionId}:${request.id}`;
@@ -368,10 +368,9 @@ export class InboxBoard {
       this.closeApproval(sessionId, request.id, request.outcome);
       return true;
     }
-    if (this.#port.store.leftInbox('approval', id)) return true;
-    this.#reported.add(sessionId);
-    const fallback = this.#fallbacks.get(sessionId);
-    if (fallback) this.#closeApproval(fallback, { choice: 'withdrawn', by: 'harness', via: 'harness', at: this.#port.now().toISOString() });
+    if (this.#port.store.leftInbox('approval', id)) {
+      if (!correctOutcome || !request.outcome || this.#port.store.inboxOutcome('approval', id)?.by !== 'human') return true;
+    }
     const subject = approvalSubject(request.subject);
     const tui = proc.harness === 'claude-code' || request.answerIn === 'tui';
     const record: InboxApproval = { id, sessionId, session: proc.name, ...(proc.role ? { role: proc.role } : {}),
@@ -381,6 +380,15 @@ export class InboxBoard {
       answerIn: tui ? 'tui' : 'hub', attach: proc.attach, since: previous?.since ?? request.since ?? this.#port.now().toISOString(),
       ...(request.topic !== undefined ? { topic: request.topic } : previous?.topic !== undefined ? { topic: previous.topic } : {}),
       state: previous?.state ?? 'pending', ...(previous?.outcome ? { outcome: previous.outcome } : {}) };
+    if (correctOutcome && request.outcome && this.#port.store.leftInbox('approval', id)) {
+      this.#port.store.correctApprovalOutcome(id, request.outcome);
+      this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', { ...record, state: 'closed', outcome: request.outcome }, 'approval') });
+      this.#changed();
+      return true;
+    }
+    this.#reported.add(sessionId);
+    const fallback = this.#fallbacks.get(sessionId);
+    if (fallback) this.#closeApproval(fallback, { choice: 'withdrawn', by: 'harness', via: 'harness', at: this.#port.now().toISOString() });
     this.#approvals.set(id, record);
     // An adapter can finish subject enrichment after another native client already answered.
     if (request.outcome) { this.#closeApproval(record, request.outcome); return true; }

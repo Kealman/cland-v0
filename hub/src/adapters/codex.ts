@@ -286,7 +286,7 @@ const pidAlive = (pid: number): boolean => {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-type NativeApproval = { nativeId: string | number; request: ApprovalRequest; ready: boolean; resolved?: ApprovalOutcome };
+type NativeApproval = { nativeId: string | number; request: ApprovalRequest; ready: boolean; turnId?: string; itemId?: string; resolved?: ApprovalOutcome };
 
 /** What the hub knows of one session's app-server. */
 type Live = {
@@ -300,6 +300,7 @@ type Live = {
   eventSequence: number;
   approvalCommand?: string;
   approvals?: Map<string, NativeApproval>;
+  answeredApprovals?: Map<string, { entry: NativeApproval; choice: ApprovalChoice }>;
   /** The active turn's id, from `turn/started` and `turn/start`: what `turn/steer` must name. */
   turnId: string | null;
   tokens: Record<string, unknown> | null;
@@ -507,6 +508,7 @@ export class CodexAdapter implements HarnessAdapter {
             };
             this.#subagent(live, subagent);
           }
+          if (mine(params)) this.#reconcileExecution(live, params.turnId, item);
           // Older servers have spawn tool calls, but no resolved-model activity. Wait for the turn's
           // end so a newer activity wins even when the tool call arrived first.
           if (mine(params) && method === 'item/completed' && item?.type === 'collabAgentToolCall' && item.tool === 'spawnAgent' && item.status === 'completed') {
@@ -543,6 +545,9 @@ export class CodexAdapter implements HarnessAdapter {
           live.activityAgents?.clear();
           live.subagentItems?.clear();
           const turn = params.turn as { id?: string; status?: string; error?: unknown } | undefined;
+          for (const [id, answered] of live.answeredApprovals ?? []) {
+            if (answered.entry.turnId === turn?.id) live.answeredApprovals!.delete(id);
+          }
           if (turn?.id && live.lastCompletedTurn === turn.id) return;
           if (turn?.id) live.lastCompletedTurn = turn.id;
           const limited = this.#limitError(live, turn?.error);
@@ -622,7 +627,8 @@ export class CodexAdapter implements HarnessAdapter {
       valid &&= typeof p.command === 'string' && typeof p.cwd === 'string' && (p.reason == null || typeof p.reason === 'string');
     }
     // Retain the native id separately: numeric RPC ids must be answered as numbers, not record strings.
-    const entry: NativeApproval = { nativeId: native.id, request, ready: false };
+    const entry: NativeApproval = { nativeId: native.id, request, ready: false,
+      ...(valid ? { turnId: p.turnId as string, itemId: p.itemId as string } : {}) };
     (live.approvals ??= new Map()).set(request.id, entry);
     if (!command && valid) {
       try {
@@ -682,7 +688,27 @@ export class CodexAdapter implements HarnessAdapter {
       throw error;
     }
     live.approvals!.delete(requestId);
+    if (!pending.resolved) (live.answeredApprovals ??= new Map()).set(requestId, { entry: pending, choice: answer.choice });
     return { noteDelivered: false };
+  }
+
+  /** Execution is evidence of a conflicting answer, never evidence of consent. */
+  #reconcileExecution(live: Live, turnId: unknown, item: { type?: string; id?: string; status?: string } | undefined): void {
+    if (item?.type !== 'commandExecution' && item?.type !== 'fileChange') return;
+    const executed = item.status === 'inProgress' || item.status === 'completed' || item.status === 'failed';
+    for (const [id, { entry, choice }] of live.answeredApprovals ?? []) {
+      if (entry.turnId !== turnId || entry.itemId !== item.id ||
+          (entry.request.kind === 'command' ? 'commandExecution' : 'fileChange') !== item.type) continue;
+      if ((choice === 'deny' && executed) || (choice !== 'deny' && item.status === 'declined')) {
+        const outcome: ApprovalOutcome = { choice: 'answered in the harness', by: 'harness', via: 'harness', at: this.#clock.now().toISOString() };
+        this.#host.approvalCorrected?.(live.p.sessionId, { ...entry.request, outcome });
+        this.#host.log({ event: 'approval-execution-reconciled', severity: 'warn', harness: this.harness,
+          session: live.p.name, request: id });
+        live.answeredApprovals!.delete(id);
+      } else if (item.status === 'completed' || item.status === 'declined' || item.status === 'failed') {
+        live.answeredApprovals!.delete(id);
+      }
+    }
   }
 
   #subagent(live: Live, subagent: SubagentLaunch): void {

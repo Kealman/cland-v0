@@ -197,6 +197,45 @@ test('Telegram Approve once runs the scripted Codex command and commits before c
 });
 
 
+for (const choice of ['deny', 'once'] as const) for (const first of ['delivered', 'held'] as const) test(`Telegram corrects a Codex ${choice} approval after its first outcome edit is ${first}`, async t => {
+  const f = await fixture(t, 'codex');
+  const { card, record } = await f.approval('codex', 'touch raced-command');
+  const edits = () => f.state.outbox().filter(job => job.source === record.id && job.kind === 'edit');
+  if (first === 'held') await control(f.fake.url, 'fault', { method: 'editMessageText', code: 500, response: 'hold' });
+  const held = first === 'held' ? f.fake.waitForHeldRequest('editMessageText') : undefined;
+  const sent = first === 'delivered' ? until(() => edits().some(job => job.state === 'sent'),
+    { timeoutMs: 1000, what: 'first human outcome edit durably sent' }) : undefined;
+  void sent?.catch(() => {});
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: record.id, choice })).ok, true);
+  const blocked = held ? await driveTelegram(f.clock, f.state, within(held, 1000)) : undefined;
+  if (sent) await driveTelegram(f.clock, f.state, sent);
+  const corrected = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).id === record.id
+    && (frame.approval as InboxApproval).outcome?.via === 'harness', 1000);
+  f.script!.codex.notify('serverRequest/resolved', { requestId: 'approval' });
+  f.script!.codex.notify('item/completed', { turnId: 'turn-command', item: { id: 'command', type: 'commandExecution', status: choice === 'deny' ? 'completed' : 'declined', exitCode: choice === 'deny' ? 0 : null } });
+  await corrected;
+  await until(() => edits().some(job => (job.payload as { params: { text: string } }).params.text.includes('Answered in the harness')),
+    { timeoutMs: 1000, what: 'distinct corrected outcome intent persisted' });
+  if (blocked) {
+    assert.equal(edits().filter(job => job.state === 'sending').length, 1);
+    await control(f.fake.url, 'release-requests', { ids: [blocked.id] });
+  }
+  const settled = until(() => edits().filter(job => job.state === 'sent').length === 2,
+    { timeoutMs: 1000, what: 'both ordered outcome edits durably sent' });
+  void settled.catch(() => {});
+  await driveTelegram(f.clock, f.state, settled);
+  const native = (await f.messages()).find(message => message.message_id === card.message_id)!;
+  assert.match(native.text!, /Answered in the harness · harness via harness/);
+  assert.deepEqual(native.reply_markup, { inline_keyboard: [] });
+  assert.equal(edits().length, 2);
+  const http = await control<{ requests: Array<{ method: string; params: { text?: string } }> }>(f.fake.url, 'state');
+  const sentTexts = http.requests.filter(request => request.method === 'editMessageText').map(request => request.params.text!);
+  assert.equal(sentTexts.length, 2);
+  assert.match(sentTexts[0]!, choice === 'deny' ? /Denied · human via Neovim/ : /Approved once · human via Neovim/);
+  assert.match(sentTexts[1]!, /Answered in the harness/);
+  assert.deepEqual(f.store.inboxOutcome('approval', record.id), ((await corrected).approval as InboxApproval).outcome);
+});
+
 test('Telegram Deny stops the scripted OpenCode command and a web answer edits its own card', { timeout: 5000 }, async t => {
   const f = await fixture(t, 'opencode');
   const { card, record } = await f.approval('opencode', 'touch approved-command');

@@ -116,3 +116,13 @@ the replacement's press-again note, original styled choices and durable approval
 map. Press the new copy, observe its confirmed offset, and require the same
 Telegram outcome without buttons on both copies. No real harness, messenger,
 browser or native process restart is claimed by this control.
+
+T-1162: retain all four generated `Telegram corrects a Codex … approval after
+its first outcome edit is …` cases (deny/once × delivered/held). Use the scripted
+native app-server plus real gateway/fake HTTP. Observe a sent first edit or
+pre-arm the held-request observer; then report contradictory item completion.
+Require the correction intent before releasing a held edit, two ordered sent
+receipts, final native text/empty keyboard and the corrected archive outcome.
+Human-outcome and explicit press-repair keys keep their legacy forms. Harness
+corrections use a deterministic rendered-content suffix; unchanged repeats
+reuse it. Existing uncertain/fallback tests retain their replay fences.

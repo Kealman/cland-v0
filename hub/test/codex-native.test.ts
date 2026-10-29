@@ -186,6 +186,57 @@ test('Codex Always and Deny preserve the human outcome when the resolution echo 
   }
 });
 
+test('Codex reconciles a delivered Deny when the resolved command later executes', async t => {
+  const f = await scriptedCodex(t);
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', { id: 'late-race', method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'race-turn', itemId: 'race-command', command: 'touch approved', cwd: f.root,
+  } });
+  const row = (await pending).approval as Inbox['approvals'][number];
+  const answer = await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'deny' });
+  assert.equal(answer.ok, true, answer.error);
+  for (const params of [
+    { threadId: 'other-thread', turnId: 'race-turn', item: { id: 'race-command', type: 'commandExecution', status: 'completed' } },
+    { turnId: 'other-turn', item: { id: 'race-command', type: 'commandExecution', status: 'completed' } },
+    { turnId: 'race-turn', item: { id: 'other-command', type: 'commandExecution', status: 'completed' } },
+    { turnId: 'race-turn', item: { id: 'race-command', type: 'fileChange', status: 'completed' } },
+    { turnId: 'race-turn', item: { id: 'race-command', type: 'commandExecution', status: 'unknown' } },
+  ]) f.native.notify('item/completed', params);
+  const before = ((await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox).archive!;
+  assert.equal((before.find(record => record.id === row.id)?.outcome as { choice: string }).choice, 'deny');
+  const corrected = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as typeof row).outcome?.via === 'harness');
+  f.native.notify('serverRequest/resolved', { requestId: 'late-race' });
+  f.native.notify('item/completed', { turnId: 'race-turn', item: { id: 'race-command', type: 'commandExecution', status: 'completed', exitCode: 0 } });
+  const closed = (await corrected).approval as typeof row;
+  const archive = ((await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox).archive!;
+  assert.equal(archive.filter(record => record.id === row.id).length, 1);
+  assert.deepEqual(archive.find(record => record.id === row.id)?.outcome, {
+    choice: 'answered in the harness', by: 'harness', via: 'harness', at: f.clock.now().toISOString(),
+  });
+  assert.deepEqual(closed.outcome, archive.find(record => record.id === row.id)?.outcome);
+  assert.match(await f.log(), /"event":"approval-execution-reconciled"[^\n]*"severity":"warn"/);
+});
+
+test('Codex reconciles a delivered Approve when the matching item completes declined', async t => {
+  const f = await scriptedCodex(t);
+  const pending = f.ui.waitFor(frame => frame.type === 'approval');
+  f.native.emit('serverRequest', { id: 'late-decline', method: 'item/commandExecution/requestApproval', params: {
+    threadId: f.native.thread, turnId: 'race-turn', itemId: 'race-command', command: 'touch approved', cwd: f.root,
+  } });
+  const row = (await pending).approval as Inbox['approvals'][number];
+  assert.equal((await f.ui.request({ type: 'approval.answer', approval: row.id, choice: 'once' })).ok, true);
+  const corrected = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as typeof row).outcome?.via === 'harness');
+  f.native.notify('serverRequest/resolved', { requestId: 'late-decline' });
+  f.native.notify('item/completed', { turnId: 'race-turn', item: { id: 'race-command', type: 'commandExecution', status: 'declined' } });
+  const archive = ((await f.ui.request({ type: 'inbox.list', archive: true })).value as Inbox).archive!;
+  const closed = (await corrected).approval as typeof row;
+  assert.deepEqual(archive.find(record => record.id === row.id)?.outcome, {
+    choice: 'answered in the harness', by: 'harness', via: 'harness', at: f.clock.now().toISOString(),
+  });
+  assert.equal(closed.state, 'closed');
+  assert.equal(closed.outcome?.choice, 'answered in the harness');
+});
+
 test('a Codex request resolved by another client closes for every subscribed client', async t => {
   const f = await scriptedCodex(t);
   const other = await connectUi(t, f.discovery);

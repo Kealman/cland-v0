@@ -2,7 +2,7 @@ import type { RemoteIngress } from './gateway.ts';
 import type { TelegramUpdateHandler } from './telegram-polling.ts';
 import { TelegramError, type TelegramApi, type TgEntity } from './telegram-api.ts';
 import type { Formatted } from './telegram-render.ts';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { AskCard, HubFrame, Inbox, InboxApproval, InboxAsk } from '../protocol.ts';
 import type { RemoteStore } from './state.ts';
 import type { TelegramOutbox } from './telegram-outbox.ts';
@@ -192,11 +192,18 @@ export class TelegramCards {
     const pairing = this.#store.pairing();
     const model = this.#store.get(`telegram.approval-model:${id}`);
     if (!pairing || !model) return;
+    // A stale press repair must use the latest committed closure too.
+    const latest = this.#store.get(`telegram.approval-closure:${id}`);
+    if (retry && latest) outcome = JSON.parse(latest);
     this.#store.set(`telegram.approval-closure:${id}`, JSON.stringify(outcome));
+    // Keep legacy human/press keys. A correction is a distinct immutable edit:
+    // an attempted earlier edit must settle before this one enters the lane.
+    const correction = outcome.choice === 'answered in the harness'
+      ? `:correction:${createHash('sha256').update(approvalOutcomeLine(outcome)).digest('hex')}` : '';
     const card = approvalCard(JSON.parse(model));
     await Promise.all(this.#store.messagesForApproval(id).filter(copy => copy.chatId === pairing.chatId && (!retry || copy.chatId === retry.chat && copy.messageId === retry.message)).map(copy =>
       this.#outbox.edit({ chat_id: copy.chatId, message_id: Number(copy.messageId), ...telegramCard(card, approvalOutcomeLine(outcome)), reply_markup: { inline_keyboard: [] } },
-      { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : ''}`, source: id, topic: copy.topic, approval: id })));
+      { key: `telegram.outcome:${copy.chatId}:${copy.messageId}${retry ? `:press:${retry.press}` : correction}`, source: id, topic: copy.topic, approval: id })));
   }
 
   async publishApprovals(approvals: InboxApproval[], resend?: string, note?: string): Promise<void> {
