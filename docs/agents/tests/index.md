@@ -341,3 +341,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/scenarios/remotes.test.ts`](../../../hub/test/scenarios/remotes.test.ts) | [Notes](hub-test-scenarios-remotes.test.ts.md) |
 | [`hub/test/telegram-graceful-restart.test.ts`](../../../hub/test/telegram-graceful-restart.test.ts) | [Notes](hub-test-telegram-graceful-restart.test.ts.md) |
 | [`hub/test/orphan-servers-perf.test.ts`](../../../hub/test/orphan-servers-perf.test.ts) | [Notes](hub-test-orphan-servers-perf.test.ts.md) |
+
+| [`nvim/test/events.test.ts`](../../../nvim/test/events.test.ts) | [Notes](nvim-test-events.test.ts.md) |
