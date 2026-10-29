@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T18:06:40.742Z
+updated: 2026-10-29T18:08:46.302Z
 ---
 
 ## Summary
@@ -71,3 +71,7 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-13909: M1 coherent bounded replay and M2 owning metadata resolved. Sole new M3 is late-answer liveness: invalidation mode drops pending answer and resets retry delay each traversal. Preserve aggregate/full-traversal correctness while allowing delayed valid first/later pages to complete; add deterministic short-timeout repeated-delay controls. Local evidence only, C1 runtime unverified, no Reviewer workload.
 
 Criteria: C2 failed (Fixed initial deadline resets on every full traversal and discards valid late pages, so consistently slow reads can prevent startup indefinitely.).
+
+### impl-1248 · 2026-10-29T18:08:46.302Z
+
+M3 design update before edits: replace the paged retry-invalidation option with coherent_retry. One shared event capture spans a page's oldest/newest retry attempts; capture each pushed event once, keep the existing oldest-valid answer and bounded exponential backoff, and report the shared capture's byte count on completion. Overflow alone invalidates the entire traversal. Existing snapshot callers do not opt in, retaining their original independent journals. No new consumers or wire fields beyond the local snapshot inventory already recorded. New regression holds original first/later page replies beyond multiple retry rounds, changes an earlier-page row, asserts at most two pending attempts/one shared capture, then observes complete unique final rows from late original replies.

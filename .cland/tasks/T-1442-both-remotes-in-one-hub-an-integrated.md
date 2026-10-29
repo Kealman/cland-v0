@@ -2,8 +2,8 @@
 id: T-1442
 kind: task
 title: "Both remotes in one hub: an integrated scenario on the fake platforms"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1182
 branch: t/T-1442-both-remotes-in-one-hub-an-integrated
 created: 2026-10-29T15:55:47.418Z
-updated: 2026-10-29T16:54:03.024Z
+updated: 2026-10-29T18:11:33.336Z
+closed: 2026-10-29T18:11:33.336Z
 ---
 
 ## Summary
@@ -107,3 +108,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-13821: original A-13819 independently parsed 4155 ordinary passes plus 20 task load/50 unrelated site load; changed T3 scenario passes 1.078330692 s, T0/T1/all fallback T2/Web complete. A-13800 five exact-head local leased/two-busy-worker runs all native pass with advancing counters, eight child joins, two worker exits0 and both lease releases fulfilled. C1–C6 verified with source3 assertions. Host receipt is tree-checked reuse, not Linux typecheck. Report-only timing/lint/growth warnings and retained-clone/native-object capture limits preserved. Remaining T3/T4 absent; Coordinator full verify-all gate remains before enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-29T18:11:33.336Z
+
+Merged 3f0045b1c3ea1a1cfc2297bc346af1420ca3b975 onto dev.
