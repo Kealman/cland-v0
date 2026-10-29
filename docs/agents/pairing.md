@@ -11,7 +11,13 @@ With Telegram enabled and its token resolved, open the `t.me/<bot>` link from
 `cland remote status` and press Start in a private chat. The native client calls
 the trusted pairing callback for `/start`; the private reply contains the sender's
 numeric id, code and copyable approval command. The service owns reply limits
-and expiry. After local approval, `/start` names the loaded project instead.
+and expiry. With the native client active and the API reachable, local approval
+queues one "Paired with <project>." confirmation in the durable outbox, then
+publishes open cards oldest first. A durable confirmation key holds all card
+and edit delivery while the confirmation is queued or sending, including after
+restart and across flood waits. Settled unknown attempts keep their replay fence.
+CLI, Neovim and setup share this path.
+A later `/start` names the loaded project again.
 Explicit injected handlers keep first-match priority. Use the
 [native pairing regression](tests/hub-test-telegram-pairing.test.ts.md) for the
 CLI grant, stranger silence, blocked-bot reports and durable kick consumption.
@@ -116,8 +122,8 @@ acknowledgement. Opening the invite does not pair a channel. Run `/cland pair` i
 with `cland remote approve discord <code>` on the trusted terminal or in Neovim.
 The code and in-memory interaction token expire after 15 minutes. Approval calls
 the optional `Remote.pairingApproved(pairing)` after the transaction commits;
-Discord edits the original private reply to Approved. Telegram and older adapters
-may omit the hook. A paired user can run pair in another channel to move the
+Discord edits the original private reply to Approved. Telegram queues its
+confirmation before publishing open cards. Older adapters may omit the hook. A paired user can run pair in another channel to move the
 binding on approval; other users receive only private refusals. Global command
 registration compares the eight-subcommand definition before writing. See the
 [Discord pairing guide](tests/hub-test-discord-pairing.test.ts.md). Fake runs select an

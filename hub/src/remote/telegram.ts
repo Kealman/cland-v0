@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { transcribes } from './media.ts';
 import { remoteRedactor, type RemoteRedactor } from './redact.ts';
 import { voiceNote } from './voice.ts';
@@ -557,6 +558,17 @@ export class TelegramRemote implements Remote {
 
   async #send(chat: string, text: string, entities: import('./telegram-api.ts').TgEntity[] = [], admission: 'paired' | 'pairing' | 'old-chat' = 'paired'): Promise<void> {
     await this.#outbox.send({ chat_id: chat, text, entities }, { admission });
+  }
+
+  pairingApproved(pairing: Pairing): Promise<void> {
+    // The durable confirmation key holds every card path until this attempt settles.
+    const sent = this.#outbox.send({ chat_id: pairing.chatId,
+      text: `Paired with ${this.#polling?.projectName?.() ?? 'this project'}.` },
+    { key: `telegram.pairing-confirmation:${randomUUID()}` });
+    return this.#track(async () => {
+      await sent;
+      if (this.#cards) await this.#cards.publishInbox(await this.#request<Inbox>('inbox.list'));
+    });
   }
 
   pairingReplaced(previous: Pairing, text: string): Promise<void> {

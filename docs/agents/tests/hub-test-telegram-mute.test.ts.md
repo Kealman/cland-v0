@@ -63,3 +63,6 @@ close invalidates event observers, so those controls use its completed native
 all-connections closure receipt. A finally block releases fake I/O before joining
 failed acquisition, keeping negative controls bounded too. These are in-process
 fixture-lifetime tests, not OS process-exit or Linux timing claims.
+
+Local approval adds its project confirmation before command replies; retain it
+in the exact native sequence even when mute_default is true.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, projectHub, tempProject } from './harness.ts';
+import { cland, connectUi, projectHub, tempProject, until, inProcessSpoke, frameClient } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { setSecret } from '../src/remote/secrets.ts';
 import { fakeTelegram, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
@@ -13,23 +13,61 @@ import { within } from '../src/executor/droplet/deadline.ts';
 import type { Inbox, RemoteStatusResult } from '../src/protocol.ts';
 import type { TgMessage, TgUpdate } from '../src/remote/telegram-api.ts';
 import { Store } from '../src/hub/store.ts';
+import { setupHub } from '../src/setup/hub.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { pacingOwner, driveTelegram } from './telegram-pacing-fixture.ts';
+
+type PairingOwner = ReturnType<typeof pacingOwner>;
+
+function receipt(owner: PairingOwner, check: (signal: AbortSignal) => boolean | Promise<boolean>, what: string) {
+  return owner.observe(async signal => {
+    let checking: Promise<boolean> | undefined;
+    try {
+      await until(() => signal.aborted || (checking = Promise.resolve(check(signal))), { timeoutMs: 2_000, what });
+      signal.throwIfAborted();
+    } finally { await checking?.catch(() => {}); }
+  });
+}
+
+async function nativeState(url: string, signal: AbortSignal): Promise<{ messages: TgMessage[] }> {
+  const response = await fetch(`${url}/control/state`, { signal: AbortSignal.any([signal, AbortSignal.timeout(1_000)]) });
+  assert.equal(response.status, 200);
+  return await response.json() as { messages: TgMessage[] };
+}
+
+async function pairingFrames(owner: PairingOwner, hub: Awaited<ReturnType<typeof projectHub>>, root: string) {
+  let receive = (_line: string) => {};
+  let open = true;
+  const conversation = hub.dispatcher.open({ send: frame => receive(`${JSON.stringify(frame)}\n`),
+    close: () => { open = false; }, isOpen: () => open }, { authenticated: true, edge: 'socket' });
+  const ui = frameClient(line => conversation.receive(line.trimEnd()), fn => { receive = fn; },
+    () => { if (open) { open = false; conversation.closed(); } }, root);
+  owner.close(() => ui.close());
+  const welcome = receipt(owner, () => ui.frames.some(frame => frame.type === 'welcome'), 'owned pairing frame welcome');
+  ui.send({ type: 'hello', protocol: 2, client: 'nvim' });
+  await welcome;
+  return ui;
+}
 
 test('Telegram private starts respect stranger limits and CLI approval names the paired project', async t => {
+  const owner = pacingOwner(t);
   const root = await tempProject(t);
   const clock = new FakeClock();
   const fake = await fakeTelegram(t, { clock });
+  owner.close(() => fake.close(), { startupOnly: true });
   await mkdir(join(root, '.cland'), { recursive: true });
   const config = defaultConfig('Pairing fixture project');
   config.remote.telegram.enabled = true;
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   setSecret(root, 'telegram.token', TELEGRAM_TEST_TOKEN);
-  const initial = fake.waitForPoll();
-  const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
+  const stateStore = owner.store(join(root, '.cland/hub.db')).remotes.forMessenger('telegram');
+  const initial = owner.observe(signal => fake.waitForPoll(signal));
+  const hub = await owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock);
   let poll = await within(initial, 1_000);
-  const ui = await connectUi(t, hub.discovery, 'nvim');
+  const ui = await pairingFrames(owner, hub, root);
   const say = async (user: 'human' | 'stranger', text: string) => {
     await clock.advance(1_000);
-    const confirmed = fake.waitForPoll();
+    const confirmed = owner.observe(signal => fake.waitForPoll(signal));
     const update = await control<TgUpdate>(fake.url, 'say', { user, text });
     poll = await within(confirmed, 1_000, undefined, () => new Error('Telegram /start durable handling receipt missing'));
     assert.equal(poll.params.offset, update.update_id + 1);
@@ -50,7 +88,14 @@ test('Telegram private starts respect stranger limits and CLI approval names the
   await say('human', '/start@cland_fixture_bot');
   const inbox = (await ui.request({ type: 'inbox.list' })).value as Inbox;
   const human = inbox.pairings!.find(row => row.userId === '101')!;
+  const confirmation = receipt(owner, async signal => {
+    const native = await nativeState(fake.url, signal);
+    return native.messages.some(message => message.text === 'Paired with Pairing fixture project.')
+      && stateStore.outbox().some(job => job.state === 'sent'
+        && (job.payload as { params?: { text?: string } }).params?.text === 'Paired with Pairing fixture project.');
+  }, 'pairing confirmation native send and durable sent receipt');
   const approved = await cland(root, 'remote', 'approve', 'telegram', human.code);
+  await driveTelegram(clock, stateStore, confirmation);
   assert.equal(approved.code, 0, approved.stderr);
   assert.equal(approved.stdout.trim(), 'paired telegram: Fixture human (101)');
   assert.deepEqual(((await ui.request({ type: 'inbox.list' })).value as Inbox).pairings, []);
@@ -62,11 +107,69 @@ test('Telegram private starts respect stranger limits and CLI approval names the
   state = await control(fake.url, 'state');
   assert.equal(state.messages.at(-1)!.chat.id, 101);
   assert.match(state.messages.at(-1)!.text!, /Pairing fixture project/);
-  assert.equal(state.messages.length, 4, 'a paired start is a project reply, not another code');
-  const closed = fake.waitForPollClose(poll.id);
+  assert.equal(state.messages.filter(message => message.text === 'Paired with Pairing fixture project.').length, 2,
+    'one approval confirmation plus the later explicitly requested paired start');
+  assert.equal(state.messages.length, 5, 'approval adds exactly one confirmation');
+  const closed = owner.observe(signal => fake.waitForPollClose(poll.id, signal), { drain: true });
   await hub.stop();
   assert.equal(await within(closed, 1_000), poll.id);
   assert.equal(clock.pending, 0);
+});
+
+for (const [approvalPath, recovery] of [['nvim', 'live'], ['setup', 'live'], ['nvim', 'restart'], ['nvim', '429']] as const) test(`Telegram ${approvalPath} approval confirms once before open cards in age order (${recovery})`, async t => {
+  const owner = pacingOwner(t);
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const fake = await fakeTelegram(t, { clock });
+  owner.close(() => fake.close(), { startupOnly: true });
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Ordered pairing');
+  config.remote.telegram.enabled = true;
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  setSecret(root, 'telegram.token', TELEGRAM_TEST_TOKEN);
+  const state = owner.store(join(root, '.cland/hub.db')).remotes.forMessenger('telegram');
+  const initial = owner.observe(signal => fake.waitForPoll(signal));
+  let hub = await owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock);
+  await within(initial, 1_000);
+  const ui = await pairingFrames(owner, hub, root);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  for (const question of ['Older question', 'Newer question']) {
+    assert.equal((await coord.call<{ ok: boolean }>('ask', { topic: 'general', question, options: ['Yes'] })).ok, true);
+    await clock.advance(250);
+  }
+  const confirmed = owner.observe(signal => fake.waitForPoll(signal));
+  const start = await control<TgUpdate>(fake.url, 'say', { text: '/start' });
+  assert.equal((await within(confirmed, 1_000)).params.offset, start.update_id + 1);
+  const row = ((await ui.request({ type: 'inbox.list' })).value as Inbox).pairings![0]!;
+  const delivered = receipt(owner, async signal => {
+    const native = await nativeState(fake.url, signal);
+    return native.messages.length === 5 && state.outbox().filter(job => job.state === 'sent').length === 5;
+  }, 'confirmation and all cards native and durable sent receipts');
+  if (recovery === '429') await control(fake.url, 'fault', { method: 'sendMessage', code: 429, retry_after: 1 });
+  if (approvalPath === 'setup') await setupHub(root, fixtureEnvironment(root, {})).approve!('telegram', row.code);
+  else assert.equal((await ui.request({ type: 'pairing.approve', messenger: 'telegram', code: row.code })).ok, true);
+  const live = await coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Live question during confirmation', options: ['Yes'] });
+  assert.equal(live.ok, true);
+  await clock.advance(250);
+  await receipt(owner, () => state.outbox().some(job => job.source === live.ask && job.state === 'queued'),
+    'live card durably queued while confirmation waits for its paced slot');
+  assert.ok(state.outbox().some(job => job.state === 'queued'
+    && (job.payload as { key?: string }).key?.startsWith('telegram.pairing-confirmation:')));
+  if (recovery === 'restart') {
+    await hub.stop();
+    hub = await owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock);
+  }
+  await driveTelegram(clock, state, delivered);
+  // Flush another inbox publication: it must not duplicate confirmation or cards.
+  await clock.advance(250);
+  await hub.stop();
+  const native = await control<{ messages: TgMessage[] }>(fake.url, 'state');
+  assert.equal(native.messages.length, 5);
+  assert.equal(native.messages[1]!.text, 'Paired with Ordered pairing.');
+  assert.match(native.messages[2]!.text!, /Older question/);
+  assert.match(native.messages[3]!.text!, /Newer question/);
+  assert.match(native.messages[4]!.text!, /Live question during confirmation/);
+  assert.equal(state.outbox().filter(job => job.state === 'sent').length, 5);
 });
 
 for (const source of ['membership', '403'] as const) test(`Telegram stops and reports a blocked bot from ${source} while status keeps its bot link`, async t => {

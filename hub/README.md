@@ -2434,7 +2434,13 @@ pairing it checks only the token. Disabled/unconfigured messengers or clients
 without test support refuse explicitly. Client failures are redacted and confined
 to that messenger. The gateway owns the callback through completion on shutdown.
 Telegram's built-in client checks `getMe` on startup and test, sends the test
-line when paired and sends replacement notices to the captured old chat. Its
+line when paired and sends replacement notices to the captured old chat. With
+Telegram enabled, a resolved token and its native client active, local approval
+(CLI, Neovim or setup) queues one "Paired with <project>." confirmation through
+the durable outbox, then open cards oldest first; delivery requires a reachable API. Queued/sending
+confirmation jobs hold all card/edit deliveries in that chat, including live
+publications, flood waits and restart recovery. Settled unknown attempts keep
+the outbox's existing replay fence. Its
 adapter supplies these callbacks, handles private `/start` pairing and polls
 updates through the registry below. Mirroring General requires its registered handler. The built-in Discord
 client checks the application settings and sends a paired test line through REST;

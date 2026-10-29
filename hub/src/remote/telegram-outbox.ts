@@ -171,6 +171,11 @@ export class TelegramOutbox {
     const explicit = intent?.key?.startsWith('telegram.command:') || intent?.key?.includes(':press:');
     const card = job.kind === 'card' || job.kind === 'edit' || intent?.key?.startsWith('telegram.outcome:')
       || intent?.key?.startsWith('telegram.catchup:');
+    if (card && this.#store.outbox(['queued', 'sending']).some(candidate => {
+      const confirmation = payload(candidate);
+      return confirmation?.key?.startsWith('telegram.pairing-confirmation:')
+        && String(confirmation.params.chat_id) === String(intent?.params.chat_id);
+    })) return true;
     return this.#cardsHeld && !!card && !explicit;
   }
 

@@ -6,6 +6,7 @@ import { TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { control } from './telegram-polling-fixture.ts';
 import { until, connectSocket } from './harness.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
+import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { telegramLivenessFixture as fixture } from './telegram-liveness-fixture.ts';
 
 test('workbenches receive an allowlisted remote state on a previous-shape hello', async t => {
@@ -67,6 +68,7 @@ test('failed Telegram exchange pushes offline immediately and a successful poll 
 });
 
 test('pairing, mute, outbox depth, unpair and configuration disable push safe replacements', async t => {
+  const observations = pacingOwner(t);
   const f = await fixture(t);
   const { ui } = await f.start();
   const observe = (predicate: (row: RemoteStateRow) => boolean) => {
@@ -87,17 +89,29 @@ test('pairing, mute, outbox depth, unpair and configuration disable push safe re
   assert.ok(request);
   const pairingRequest = request;
   const paired = observe(row => row.pairedName === pairingRequest.name);
+  const confirmation = observations.observe(signal => f.fake.waitForRequest('sendMessage',
+    request => request.params.text === 'Paired with Telegram liveness fixture.', AbortSignal.any([signal, AbortSignal.timeout(1_000)])));
   assert.equal((await ui.request({ type: 'pairing.approve', messenger: 'telegram', code: pairingRequest.code })).ok, true);
   await paired;
+  await f.clock.advance(1_000);
+  await within(confirmation, 1_000);
+  await until(async () => ((await ui.request({ type: 'remote.status' })).value as RemoteStatusResult).remotes[0]!.outboxDepth === 0,
+    { timeoutMs: 1_000, what: 'pairing confirmation durable sent settlement' });
+  await f.clock.advance(1_000);
   const muting = observe(row => row.mute);
   await control(f.fake.url, 'say', { text: '/mute' });
   await muting;
   const quiet = f.clock.now().getTime();
   const unmuting = observe(row => !row.mute);
-  // The prior /start reply used this chat's first send slot; /mute queues its reply.
+  const unmutedReply = observations.observe(signal => f.fake.waitForRequest('sendMessage',
+    request => request.params.text === '0 messages arrived while muted', AbortSignal.any([signal, AbortSignal.timeout(1_000)])));
+  // The /mute reply used this chat's last send slot.
   await f.clock.advance(1_000);
   await control(f.fake.url, 'say', { text: '/unmute' });
   await unmuting;
+  await within(unmutedReply, 1_000);
+  await until(async () => ((await ui.request({ type: 'remote.status' })).value as RemoteStatusResult).remotes[0]!.outboxDepth === 0,
+    { timeoutMs: 1_000, what: 'unmute reply durable sent settlement before depth measurement' });
   assert.equal(f.clock.now().getTime() - quiet, 1_000);
   const baseline = ui.frames.length;
   const before = await ui.request({ type: 'remote.status' });

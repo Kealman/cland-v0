@@ -94,7 +94,7 @@ test('Telegram mute suppresses three General messages but keeps a hub notice and
   await f.hub.stop();
   const messages = await f.messages();
   assert.deepEqual(messages.slice(1).map(message => message.text), [
-    '0 messages arrived while muted', 'General stream muted', 'hub · event\nA hub notice while muted',
+    'Paired with this project.', '0 messages arrived while muted', 'General stream muted', 'hub · event\nA hub notice while muted',
     '3 messages arrived while muted', 'coord · report\nafter unmute',
   ]);
   assert.equal(f.store.remotes.forMessenger('discord').get('mute'), null, 'mute belongs to Telegram');

@@ -42,3 +42,22 @@ while its last successful outbound stays at the original instant.
 The consumed-kick restart advances 1,000 fake milliseconds while stopped before
 recreating the adapter: request spacing now persists across recreation. The
 exact next-poll offset and paired reply remain required after restart.
+
+Approval now adds exactly one durable confirmation before a later explicit
+`/start` reply. The CLI case observes both the native message and sent outbox
+settlement. `Telegram nvim approval confirms once before open cards in age order (live)`
+and `Telegram setup approval confirms once before open cards in age order (live)` use
+the production factory, local approval frames (setup's real adapter included),
+and two pre-existing asks plus a live ask queued while the confirmation waits
+for the chat's paced slot. Native message order and durable sent rows prove
+confirmation precedes both cards in oldest-first order. The pacing owner joins
+hub writers before closing the reader Store. No real platforms or browser run.
+
+The `(restart)` and `(429)` variants keep that same exact five-message order
+through a stop/restart before delivery and a definite flood refusal. The durable
+confirmation key gates every card/edit admission path while its job is queued or
+sending. Historical jobs without this key keep their prior handling; settled
+unknown attempts retain the ordinary replay fence. Observer ownership uses
+`pacingOwner.observe`, abort-aware native state reads and joined condition waits.
+The in-process human frame client owns its conversation before hello, avoiding
+unowned socket acquisition. The CLI and setup paths retain native socket coverage.

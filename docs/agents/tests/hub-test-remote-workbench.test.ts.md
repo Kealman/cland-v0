@@ -20,3 +20,7 @@ clears offlineSince/lastError. Capture the frame-list boundary before recovery s
 an earlier connected frame cannot satisfy it. Native 401/403 retain the shared
 cause/stopCause and hub service without tokens. No three-minute General notice
 is needed for the frame. These are targeted component receipts, not suite evidence.
+
+After approval, observe the native project confirmation and its durable outbox
+settlement before starting the mute/depth scenario. Account for its paced send
+slot separately from the depth-only coalescing measurement.
