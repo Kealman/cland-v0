@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T17:11:54.892Z
+updated: 2026-10-29T17:23:18.455Z
 ---
 
 ## Summary

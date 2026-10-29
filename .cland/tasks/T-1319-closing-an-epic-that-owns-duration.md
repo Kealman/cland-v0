@@ -3,7 +3,7 @@ id: T-1319
 kind: task
 title: Closing an epic that owns duration allowances strands them with a closed owner and turns the next full run red
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1197
 branch: t/T-1319-closing-an-epic-that-owns-duration
 created: 2026-10-26T01:52:55.592Z
-updated: 2026-10-29T17:22:31.615Z
+updated: 2026-10-29T17:23:02.372Z
 ---
 
 ## Summary
@@ -29,6 +29,7 @@ Make `task close` on an epic refuse, or name the allowances it owns with the com
 
 - [x] C1. Closing an epic that owns a duration allowance is refused with a reason naming each owned allowance key and the re-own step, and closing it succeeds once no allowance names it (test).
   - done: impl-1319 · 2026-10-29T16:58:25.854Z
+  - verified: rev-26 [reviewer] · run rev-20261029-1319-evidence-1 · 2026-10-29T17:23:02.034Z · commit 0e6ae901dd656ff129bb7c91a7946ef6c11f77ec
 
 ## Comments
 
@@ -61,3 +62,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-13838 complete4-file correction inspected. Standards M1 owning TASK_USAGE-only insertion exact/guard sources unchanged/index contiguous; M2 durationFixture pre-owned pacingOwner, ownDirectory disposal barrier, bounded observed frame/spoke acquisition, readiness-loss omitted/aborted controls with actual stopped/zero observers+timers/root absent. Shared helper semantics read; no broad old-fixture rewrite. Spec original C1 assertions/product close policy unchanged from A-13832, no additional findings. Local19/19/typecheck reports not configured proof; C1 runtime pending. No Reviewer workloads; unchangedhead modefree then original-record final review, QA none.
+
+### rev-26 · 2026-10-29T17:23:02.034Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261029-1319-evidence-1
+commit: 0e6ae901dd656ff129bb7c91a7946ef6c11f77ec
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-13851 original A-13848 audited at source2 head. Standards nofindings; unchanged help/docs guards pass. C1 refusal/key/guidance/original-byte/re-own-success case passes0.152572344s; absentmanifest0.145390744s; omitted/aborted setup0.058939972/0.065529279s. All19epic-close ordinary and4new×5load pass; taskload max0.463625507s/no>=3s. Full4164ordinary+95load pass/no nonpass/unfinished, T0/T1/T2/Web complete; explicit hostgate d3cbbd8a reused, T3/T4 unrun. Budgets/lint reportonly retained; no integrated/full-all claim or Reviewer workload. C1 verified/QA none; Coordinator separate gates retained.
+
+Criteria: C1 verified.
