@@ -854,3 +854,16 @@ sent receipt. Outbox reads select pending states or exact ids; never decode the
 whole ledger per input. Advance fake clocks by observed sent receipts, not by
 mapping counts, and keep an independent hub request bounded during catch-up.
 Keep the previous adapter, wire and outbox shapes.
+
+For Discord files and voice in either direction, use
+`docs/agents/tests/hub-test-discord-inbound-media.test.ts.md` and
+`docs/agents/tests/hub-test-discord-artifacts.test.ts.md`, and reuse Telegram's
+paths: `artifact.upload`, `voiceNote`, `artifactPlan` and `artifactBody`. Inbound,
+keep original MIME, name and bytes, admit voice by duration before any CDN
+download, and refuse redirects, foreign hosts and credentials on CDN GETs; a
+refreshed URL repeats every check of the first download. Outbound, queue ids and
+captions, bind bytes through no-follow descriptors at delivery, and keep each
+request within ten files of 20 MiB and 25 MiB encoded, multipart envelope
+included; fakes check the whole encoded body, not only file sizes. Keep the
+original enforced nonce and its deadline, an empty `allowed_mentions`, and old
+JSON callers and persisted payloads.

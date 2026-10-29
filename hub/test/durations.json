@@ -80,9 +80,11 @@
       "A-13547",
       "A-13551",
       "A-13612",
-      "A-13610"
+      "A-13610",
+      "A-13645",
+      "A-13643"
     ],
-    "commit": "45348cf0137e5ce98ffe47cbfa1734b0a5a7a7bc"
+    "commit": "a9314b5a3b210f7721991ec4d86f56292d8e46d4"
   },
   "budget": {
     "testSeconds": 5,
@@ -2991,6 +2993,14 @@
     "web/test/telegram-marks.test.ts": {
       "seconds": 2.003849,
       "tests": 1
+    },
+    "hub/test/discord-artifacts.test.ts": {
+      "seconds": 4.670272,
+      "tests": 13
+    },
+    "hub/test/discord-inbound-media.test.ts": {
+      "seconds": 4.139875,
+      "tests": 14
     }
   },
   "tests": {
@@ -8400,7 +8410,34 @@
     "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": 21.853731,
     "hub/test/telegram-polling-restart.test.ts::Discord native history setup aborted drains its Store writers and observations": 1.748883,
     "hub/test/telegram-polling-restart.test.ts::Discord native history setup omitted drains its Store writers and observations": 1.875491,
-    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": 6.761701
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": 6.761701,
+    "hub/test/discord-artifacts.test.ts::Discord accepted unknown multipart keeps artifact identity across reopen with a missing file": 0.259389,
+    "hub/test/discord-artifacts.test.ts::Discord agent image and PDF travel together once with header and later sent-above references": 0.514235,
+    "hub/test/discord-artifacts.test.ts::Discord fake rejects multipart envelope overflow with individually legal files": 0.143487,
+    "hub/test/discord-artifacts.test.ts::Discord mirrors an actual Telegram gateway photo upload once with its origin header": 0.302963,
+    "hub/test/discord-artifacts.test.ts::Discord oversized 21 MiB artifact becomes one named path line": 0.322781,
+    "hub/test/discord-artifacts.test.ts::Discord partial file fallback never claims an unread file was sent above on repeat": 0.289148,
+    "hub/test/discord-artifacts.test.ts::Discord small artifacts split at ten files independently of the byte budget": 0.354049,
+    "hub/test/discord-artifacts.test.ts::Discord started artifact publication stays contiguous ahead of a later card": 0.422125,
+    "hub/test/discord-artifacts.test.ts::Discord Telegram-origin owner drains aborted setup before Store close": 0.242149,
+    "hub/test/discord-artifacts.test.ts::Discord Telegram-origin owner drains omitted setup before Store close": 0.233105,
+    "hub/test/discord-artifacts.test.ts::Discord Telegram-origin owner joins an omitted photo result observer on cancellation": 0.312961,
+    "hub/test/discord-artifacts.test.ts::Discord timed-out accepted multipart retries its original nonce without a second file publication": 0.274752,
+    "hub/test/discord-artifacts.test.ts::Discord twelve artifacts totalling 30 MiB respect file count and request byte limits": 0.999128,
+    "hub/test/discord-inbound-media.test.ts::Discord attachment expired obeys download boundaries": 0.164639,
+    "hub/test/discord-inbound-media.test.ts::Discord attachment foreign obeys download boundaries": 0.120842,
+    "hub/test/discord-inbound-media.test.ts::Discord attachment oversize obeys download boundaries": 0.12763,
+    "hub/test/discord-inbound-media.test.ts::Discord attachment redirect obeys download boundaries": 0.128481,
+    "hub/test/discord-inbound-media.test.ts::Discord captioned photo uploads original bytes once and reaches Telegram once": 0.385108,
+    "hub/test/discord-inbound-media.test.ts::Discord media aborted startup receipt joins acquired hub before Store and root removal": 0.118665,
+    "hub/test/discord-inbound-media.test.ts::Discord media omitted startup receipt joins acquired hub before Store and root removal": 1.03769,
+    "hub/test/discord-inbound-media.test.ts::Discord offline history pages attachment-only photo and voice with expired URL once": 0.265717,
+    "hub/test/discord-inbound-media.test.ts::Discord refuses long voice before CDN and voice free reply answers its mapped ask without audio": 0.413903,
+    "hub/test/discord-inbound-media.test.ts::Discord refuses long voice before CDN and voice label reply answers its mapped ask without audio": 0.398434,
+    "hub/test/discord-inbound-media.test.ts::Discord refuses long voice before CDN and voice number reply answers its mapped ask without audio": 0.391399,
+    "hub/test/discord-inbound-media.test.ts::Discord stop during held cdn leaves input unconfirmed for resume": 0.214932,
+    "hub/test/discord-inbound-media.test.ts::Discord stop during held speech leaves input unconfirmed for resume": 0.19238,
+    "hub/test/discord-inbound-media.test.ts::Discord voice keeps original audio and replies with transcript duration timings and provider": 0.180055
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
