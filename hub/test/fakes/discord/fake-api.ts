@@ -195,6 +195,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
         : { id: DISCORD_IDS.bot, username: 'Fixture bot', bot: true };
       const message: DiscordMessage = { id: String(nextId++), channel_id: String(body.channel_id ?? DISCORD_IDS.channel),
         author, content: String(content), timestamp: clock.now().toISOString(), type: 0,
+        ...(typeof body.reply_to === 'string' ? { type: 19, message_reference: { message_id: body.reply_to } } : {}),
         ...(typeof body.flags === 'number' ? { flags: body.flags } : {}),
         ...(Array.isArray(body.attachments) ? { attachments: body.attachments as NonNullable<DiscordMessage['attachments']> } : {}),
         ...(user === 'webhook' ? { webhook_id: DISCORD_IDS.webhook } : {}) };

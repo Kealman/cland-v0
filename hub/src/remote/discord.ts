@@ -100,7 +100,7 @@ export class DiscordRemote implements Remote {
   }
   #restFailed(): boolean { return this.#restFailedChannel !== undefined && this.#restFailedChannel === this.#options.store?.pairing()?.chatId; }
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
-  async start(_send: RemoteSend, _pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt): Promise<void> {
+  async start(_send: RemoteSend, _pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt, batch?: import('./gateway.ts').RemoteBatch): Promise<void> {
     const cancel = () => {
       this.#abort.abort();
       void this.#outbox?.stop().catch(() => {});
@@ -111,7 +111,7 @@ export class DiscordRemote implements Remote {
     this.#abort.signal.throwIfAborted();
     this.#commands.start(_pair, _send);
     this.#cards?.start(_send);
-    if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt, { ...this.#options.media, api: this.#api, clock: this.#clock });
+    if (this.#options.store) this.#inbound = new DiscordInbound(this.#options.store, _send, this.#abort.signal, this.#outbox, receipt, { ...this.#options.media, api: this.#api, clock: this.#clock }, batch);
     try {
       const application = await this.#api.getCurrentApplication({ signal: signal ? AbortSignal.any([signal, this.#abort.signal]) : this.#abort.signal });
       if (!/^\d+$/.test(application.id)) throw new Error('invalid application id');

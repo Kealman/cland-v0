@@ -35,6 +35,7 @@ create table if not exists remote_outbox (
   state text not null, payload text not null, created text not null, updated text not null,
   primary key (messenger, id)
 );
+create index if not exists remote_outbox_source on remote_outbox (messenger, source);
 create index if not exists remote_outbox_state on remote_outbox (messenger, state, created);
 create table if not exists remote_outbox_attempts (
   messenger text not null, id text not null, job text not null, at text not null, outcome text,
@@ -268,6 +269,18 @@ export class RemoteStore {
       ...(row.target === null ? {} : { target: String(row.target) }),
       id: String(row.id), kind: String(row.kind), source: nullable(row.source), state: String(row.state), payload: JSON.parse(String(row.payload)), created: String(row.created), updated: String(row.updated),
     }));
+  }
+  /** Source keys are not unique: preserve every historical match in insertion order. */
+  outboxForSource(source: string): OutboxJob[] {
+    return this.#db.prepare('select id from remote_outbox where messenger = ? and source = ? order by rowid')
+      .all(this.#id, source).flatMap(row => this.outbox(undefined, String(row.id)));
+  }
+  lastOutbox(): OutboxJob | undefined {
+    const row = this.#db.prepare('select id from remote_outbox where messenger = ? order by rowid desc limit 1').get(this.#id);
+    return row ? this.outbox(undefined, String(row.id))[0] : undefined;
+  }
+  outboxDepth(): number {
+    return Number(this.#db.prepare("select count(*) as depth from remote_outbox where messenger = ? and state in ('queued', 'sending', 'uncertain')").get(this.#id)!.depth);
   }
   putAttempt(attempt: OutboxAttempt): void {
     this.#db.prepare(`insert into remote_outbox_attempts (messenger, id, job, at, outcome) values (?, ?, ?, ?, ?)

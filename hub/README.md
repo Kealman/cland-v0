@@ -7278,7 +7278,17 @@ using string snowflakes and `before`. It retains the newest 500 admissible
 paired-human messages and forwards them oldest first with written and return
 HH:MM annotations. A silent channel line reports omitted older messages.
 A bounded history batch is persisted before forwarding; interruption retries that
-batch through the existing native ingress deduplication boundary. Live text waits
+batch through the existing native ingress deduplication boundary. Ordinary text inputs commit
+in groups of at most twenty through the gateway's optional synchronous transaction
+port. Frame results publish after commit; adapter mappings and cursors commit as
+one separate group, so an interruption between those commits reuses the native
+message identity. Replies run serially so earlier native mappings exist before
+reply routing; media keeps its awaited FIFO path. No transaction spans native
+I/O. Reaction attempts and settlements keep their existing per-operation fences.
+Source-key, last-row and outbox-depth queries avoid decoding historical payloads
+on every new input; existing persisted jobs and nonunique source keys remain valid.
+Older injected adapters or conversations may omit the batch port and retain
+individual commits. Live text waits
 behind history, while interaction deadlines stay independent.
 
 Recovery then flushes the neutral, source-counted silent gap above zero, recovers

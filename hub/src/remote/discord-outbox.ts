@@ -27,7 +27,7 @@ export class DiscordOutbox {
   async edit(channel: string, target: string, content: string, source: string): Promise<void> {
     this.#signal.throwIfAborted();
     const lane = this.#lane(channel);
-    if (this.#store.outbox().some(job => job.kind === 'edit' && job.target === target && job.source === source && intent(job).content === content && ['queued', 'sent'].includes(job.state))) return;
+    if (this.#store.outboxForSource(source).some(job => job.kind === 'edit' && job.target === target && job.source === source && intent(job).content === content && ['queued', 'sent'].includes(job.state))) return;
     lane.enqueue({ kind: 'edit', target, source, payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, edit: target } });
     await lane.drain();
   }
@@ -46,7 +46,7 @@ export class DiscordOutbox {
     if (line === undefined) return;
     for (const copy of (ask.startsWith('approval:') ? this.#store.messagesForApproval(ask.slice(9)) : this.#store.messagesForAsk(ask))) {
       const source = `discord.outcome:${ask}`;
-      if (this.#store.outbox().some(job => job.kind === 'edit' && job.target === copy.messageId && job.source === source
+      if (this.#store.outboxForSource(source).some(job => job.kind === 'edit' && job.target === copy.messageId && job.source === source
         && intent(job).content === line && ['queued', 'sent'].includes(job.state))) continue;
       this.#lane(copy.chatId).enqueue({ kind: 'edit', target: copy.messageId, source,
         payload: { discord: true, channel: copy.chatId, user: this.#store.pairing()?.userId, content: line, edit: copy.messageId } });
@@ -68,7 +68,7 @@ export class DiscordOutbox {
     // An explicit inbox invocation probes restored delivery like a new send.
     // Durable attempt proof and the original nonce deadline still fence retries.
     if (resend) lane.setAvailable(true);
-    if (!this.#store.outbox().some(job => job.source === source)) lane.enqueue({ kind: 'card', source,
+    if (!this.#store.outboxForSource(source).length) lane.enqueue({ kind: 'card', source,
       payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components,
         mapping: { chatId: channel, topic, message: ask, ask: approval ? null : ask, approval: approval ? ask : null } } });
     await lane.drain();
@@ -77,7 +77,7 @@ export class DiscordOutbox {
     const lane = this.#lane(channel);
     const key = `${resend ? `${resend}:` : ''}${source}`;
     if (resend) lane.setAvailable(true);
-    if (!this.#store.outbox().some(job => job.source === key)) lane.enqueue({ kind: 'card', source: key,
+    if (!this.#store.outboxForSource(key).length) lane.enqueue({ kind: 'card', source: key,
       payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components: [],
         mapping: { chatId: channel, topic, message, ask: null, approval: null } } });
     await lane.drain();
@@ -92,7 +92,7 @@ export class DiscordOutbox {
   }
   async recoveryWarning(channel: string, content: string, source: string): Promise<void> {
     await this.send(channel, content, source, true);
-    const job = this.#store.outbox().find(row => row.source === source && intent(row).channel === channel);
+    const job = this.#store.outboxForSource(source).find(row => row.source === source && intent(row).channel === channel);
     if (job?.state !== 'sent') throw new Error('Discord recovery warning delivery incomplete');
   }
   async react(channel: string, message: string, emoji: '👌' | '👀', user: string): Promise<void> {
@@ -100,7 +100,7 @@ export class DiscordOutbox {
     const pair = this.#store.pairing();
     if (pair?.chatId !== channel || pair.userId !== user) return;
     const lane = this.#lane(channel), source = `discord.reaction:${channel}:${message}:${emoji}`;
-    if (!this.#store.outbox().some(j => j.source === source)) lane.enqueue({ kind: 'message', source,
+    if (!this.#store.outboxForSource(source).length) lane.enqueue({ kind: 'message', source,
       payload: { discord: true, channel, user, reaction: { message, emoji } } });
     await lane.drain();
   }
@@ -116,7 +116,7 @@ export class DiscordOutbox {
     await lane.drain();
   }
   #enqueue(lane: Outbox, channel: string, content: string, source: string, silent: boolean, message: string, reply?: string, files?: string[], batch?: string): void {
-    if (this.#store.outbox().some(j => j.source === source)) return;
+    if (this.#store.outboxForSource(source).length) return;
     const id = lane.enqueue({ kind: 'general', source,
       payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, silent, ...(batch ? { batch } : {}), ...(reply ? { reply } : {}), ...(files?.length ? { files } : {}),
         mapping: { chatId: channel, topic: 'general', message, ask: null, approval: null } } });

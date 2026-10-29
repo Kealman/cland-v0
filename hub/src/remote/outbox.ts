@@ -44,7 +44,7 @@ export class Outbox {
     if (this.#stopped) throw new Error('outbox stopped');
     const at = this.#clock.now().toISOString();
     if (input.kind === 'edit' && !input.target) throw new Error('an outbox edit requires a target');
-    const previous = this.#store.outbox().at(-1);
+    const previous = this.#store.lastOutbox();
     if (input.kind === 'edit' && previous?.kind === 'edit' && previous.target === input.target
       && previous.source === input.source && previous.state === 'queued' && !this.#store.attempts(previous.id).length) {
       this.#store.putOutbox({ ...previous, payload: input.payload, updated: at });

@@ -266,3 +266,24 @@ assert closed sockets, zero handlers/observers/holds, zero pending native work
 and fake timers before Store.close runs. Root disposal uses the exchange's same
 drained barrier. Approval replacements select messagesForApproval; ask replacements
 select messagesForAsk, retaining each original native edit assertion.
+
+
+T-1436 groups at most twenty text inputs through the optional native batch port.
+The bounded-group cases hold the first native reaction, then use an independent
+SQLite reader to require twenty committed ordered General rows. One case restarts with those staged attempts and
+requires every reaction's durable sent receipt, native emoji and twenty unique
+human rows. The process-kill atomicity controls live in the T3 restart file.
+`settledReplacements` advances the fake reaction clock once per accepted native
+reaction receipt.
+Its final assertions still require durable sent retirement edits. Previous
+conversation/adapters can omit the optional callback; frames and payloads are
+unchanged. Downloads, speech and uploads retain their existing awaited path.
+
+
+The history reply-chain control (T-1436 M1) writes three native type-19 replies
+while the hub is down, anchored to a mapped card in a separate topic. The fake's
+optional `say.reply_to` records native references in channel history. Wait for
+the final exact native cursor and completed history, then assert all three
+messages stay in the anchor topic with exact hub reply ids and none in General.
+Replies run individually between ordinary-text groups so their predecessor's
+mapping has committed before routing. This preserves the T-1406 reply contract.

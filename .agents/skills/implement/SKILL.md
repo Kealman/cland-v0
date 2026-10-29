@@ -894,3 +894,15 @@ the native fake's close codes; for the Remotes row, voice, approval and pairing
 marks, use headless native inputs in both workbenches through
 `hub/test/discord-workbench-fixture.ts`. Keep at least one native-input case per
 supported messenger for every messenger-neutral workbench criterion.
+
+For bounded Discord history commits (T-1436), preserve the synchronous native
+batch port and post-commit frame results. Keep the frozen selection and ingress
+identity across both group rollback and the commit-to-adapter-receipt gap.
+Keep each reaction attempt and settlement fenced; never hold a transaction over
+an await. Use indexed source, last-row and depth reads and the full-scale decoded
+row guard; exact durable source lookups also bound test observers. Keep replies
+and media outside ordinary-text batches so reply mappings exist before routing. Preserve
+legacy optional callbacks, nonce fences and final durable assertions. The restart
+guide owns process-kill coverage; apply throughput thresholds in the external
+measurement probe, not as wall-clock assertions in suite tests. No role clause
+or CLI permission is added.

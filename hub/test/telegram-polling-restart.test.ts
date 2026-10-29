@@ -1,4 +1,5 @@
 // T3: a real hub process is SIGKILLed with an unconfirmed Telegram update or mid Discord history catch-up; restart recovers it.
+import { discordHistoryProfile } from './discord-history-profile.ts';
 import { discordCardsFixture as fixture, discordHistorySeed as historySeed } from './discord-cards-fixture.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -51,7 +52,7 @@ test('SIGKILL mid-update leaves the Telegram offset unconfirmed and restart hand
   await control(fake.url, 'say', { text: 'recover after real kill' });
   const held = await within(interrupted, 3_000);
   const before = new Store(db);
-  let original: TopicMessage;
+  let original: TopicMessage | undefined;
   try {
     const messages = before.topicMessages('general', 200).filter(message => message.text === 'recover after real kill');
     assert.equal(messages.length, 1, 'the accepted handler committed its human message before feedback');
@@ -147,7 +148,7 @@ test('SIGKILL after Telegram human commit before adapter receipt replays the dur
   await killDaemon(first.discovery.pid); // Join captured ownership/descendants before reopening writers.
   assert.equal(await within(pollClosed, 1_000), poll.id);
   const before = new Store(db);
-  let original: TopicMessage;
+  let original: TopicMessage | undefined;
   try {
     const messages = before.topicMessages('general', 200).filter(message => message.text === 'Committed before native crash');
     assert.equal(messages.length, 1, 'human effect is durable at the SIGKILL boundary');
@@ -255,7 +256,7 @@ async function discordHistoryCrashOwner(t: import('node:test').TestContext) {
   };
 }
 
-test('SIGKILL mid Discord history preserves the committed input and finishes the batch once', async t => {
+for (const boundary of ['committed', 'page-uncommitted'] as const) test(boundary === 'committed' ? 'SIGKILL mid Discord history preserves the committed input and finishes the batch once' : 'SIGKILL mid Discord history page commit rolls back and finishes the batch once', async t => {
   const { DISCORD_TEST_TOKEN, DISCORD_IDS: ids } = await import('./fakes/discord/fake-api.ts');
   const owner = await discordHistoryCrashOwner(t);
   const { root } = owner;
@@ -271,7 +272,7 @@ test('SIGKILL mid Discord history preserves the committed input and finishes the
   state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
   const cursor = await owner.fake.control('say', { content: 'Before crash history' });
   state.set('discord.lastMessageId', cursor.id);
-  const first = await owner.startNative({ CLAND_DISCORD_API_ROOT: owner.fake.url, CLAND_TEST_CRASH_AT: 'discord-input-committed' });
+  const first = await owner.startNative({ CLAND_DISCORD_API_ROOT: owner.fake.url, CLAND_TEST_CRASH_AT: boundary === 'committed' ? 'discord-input-committed' : 'discord-page-uncommitted' });
   const pid = first.discovery.pid;
   const processes = nativePollerProcesses(fixtureEnvironment(root, process.env));
   const captured = recordedProcess(pid);
@@ -290,12 +291,12 @@ test('SIGKILL mid Discord history preserves the committed input and finishes the
   await killDaemon(first.discovery.pid);
   assert.deepEqual(await processes.inspect(first.discovery.pid), { alive: false, started: null, identity: null });
   const checkpoint = new Store(db);
-  let original: TopicMessage;
+  let original: TopicMessage | undefined;
   try {
     const rows = checkpoint.topicMessages('general', 100).filter(m => m.text.startsWith('Killed history'));
-    assert.equal(rows.length, 1);
-    original = rows[0]!;
-    assert.equal(original.via, 'discord');
+    assert.equal(rows.length, boundary === 'committed' ? 2 : 0);
+    original = rows[0];
+    if (original) assert.equal(original.via, 'discord');
     assert.ok(checkpoint.remotes.forMessenger('discord').get('discord.history'));
     assert.equal(checkpoint.remotes.forMessenger('discord').get('discord.lastMessageId'), cursor.id);
   } finally { checkpoint.close(); }
@@ -307,7 +308,7 @@ test('SIGKILL mid Discord history preserves the committed input and finishes the
     return rows.length === 2;
   }, { what: 'both durable history inputs after native kill', timeoutMs: 10000 });
   assert.deepEqual(rows.map(m => m.text.split('\n')[0]), ['Killed history first', 'Killed history second']);
-  assert.equal(rows[0]!.id, original.id);
+  if (original) assert.equal(rows[0]!.id, original.id);
   await second.stop();
 });
 
@@ -342,9 +343,11 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Discord native hist
 });
 
 test('Discord fresh history forwards newest 500 of 620 once with one silent overflow line', async t => {
+  const profile = discordHistoryProfile(t);
   const f = await fixture(t);
   const seed = await historySeed(f);
   await f.fake.control('configure', { reactionWindow: 0 });
+  profile.reset();
   const started = performance.now();
   const hub = await f.restart(180000, async () => {
     f.state.set('discord.session', null);
@@ -357,10 +360,15 @@ test('Discord fresh history forwards newest 500 of 620 once with one silent over
   assert.equal((await within(ui.request({ type: 'topic.send', topic: 'general', kind: 'message', text: 'Responsive during history' }), 500)).ok, true);
   t.diagnostic(`topic.send during catch-up: ${(performance.now() - responsive).toFixed(1)} ms`);
   assert.ok(f.state.get('discord.history'), 'responsiveness measured before history completion');
+  const overflowKey = (JSON.parse(f.state.get('discord.history')!) as { key: string }).key;
   await until(async () => {
-    return f.state.outbox().some(j => j.source?.startsWith('discord.history-overflow:') && j.state === 'sent');
-  }, { what: '500 inputs and overflow settlement', timeoutMs: 45000, loadFactor: 1 }).catch(error => { t.diagnostic(JSON.stringify({ inputCount: f.frames.filter(r => r.frame.type === 'topic.send').length, jobs: f.state.outbox().reduce((a, j) => { a[j.state] = (a[j.state] ?? 0) + 1; return a; }, {} as Record<string, number>) })); throw error; });
-  t.diagnostic(`restart and 500-input completion: ${(performance.now() - started).toFixed(1)} ms (${process.platform}/local; injected pacing excluded)`);
+    return f.state.outboxForSource(overflowKey).some(j => j.state === 'sent');
+  }, { what: '500 inputs and overflow settlement', timeoutMs: 10000, loadFactor: 1 }).catch(error => { t.diagnostic(JSON.stringify({ inputCount: f.frames.filter(r => r.frame.type === 'topic.send').length, jobs: f.state.outbox().reduce((a, j) => { a[j.state] = (a[j.state] ?? 0) + 1; return a; }, {} as Record<string, number>) })); throw error; });
+  const elapsed = performance.now() - started;
+  t.diagnostic(`history phases (overlapping; includes instrumentation): ${JSON.stringify(profile.snapshot())}`);
+  assert.ok((profile.snapshot().outboxRead?.rows ?? 0) <= 500 * 100, 'outbox decoding stays bounded per input at full scale');
+  t.diagnostic(`restart and 500-input completion: ${elapsed.toFixed(1)} ms (${process.platform}; executor from run receipt; injected pacing excluded)`);
+
   const durable: Array<{ text: string; seq: number }> = [];
   let after = 0;
   for (;;) {

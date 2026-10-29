@@ -983,9 +983,11 @@ async function settledReplacements(f: Awaited<ReturnType<typeof fixture>>, cards
         && (job.payload as { content?: string }).content === '↓ Re-sent below'))) return true;
     // A mapped replacement does not finish its owner's queue. Late delivery
     // feedback can still own that lane. Advance its native250ms bucket only
-    // after a newly observed durable reaction completion, once per receipt.
-    const receipt = jobs.filter(job => job.source?.startsWith('discord.reaction:') && job.state === 'sent').at(-1);
-    if (receipt && receipt.id !== paced) { paced = receipt.id; await f.clock.advance(250); }
+    // after a newly observed accepted native reaction, once per receipt.
+    // Batched settlements stay pending until the bounded native group completes.
+    const receipts = (await f.fake.control('state')).reactions;
+    const receipt = receipts.length ? JSON.stringify(receipts.at(-1)) : undefined;
+    if (receipt && receipt !== paced) { paced = receipt; await f.clock.advance(250); }
     return false;
   }, { what, timeoutMs });
 }
@@ -1011,6 +1013,32 @@ test('Discord fresh Identify catches history in order and resends every open car
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === card.message)?.content === '↓ Re-sent below', { what: 'old-copy retirement', timeoutMs: 2000 });
   await until(async () => (await f.fake.control('state')).messages.find(m => m.id === peer.message)?.content === '↓ Re-sent below', { what: 'peer old-copy retirement', timeoutMs: 2000 });
   assert.equal((await f.fake.control('state')).messages.filter(m => m.content.includes('General messages missed')).length, 0);
+});
+
+test('Discord history reply chain retains exact mapped hub replies and topic', async t => {
+  const f = await fixture(t);
+  await historySeed(f);
+  await f.fake.control('configure', { reactionWindow: 0 });
+  const topic = (await f.coord.call<{ topic: { id: string } }>('topic.create', { title: 'History reply chain' })).topic.id;
+  const ask = await f.coord.call<{ ask: string }>('ask', { topic, question: 'Reply anchor', options: ['Yes'] });
+  await f.clock.advance(250);
+  await until(() => f.state.messagesForAsk(ask.ask).length === 1, { what: 'native topic anchor mapped', timeoutMs: 1500 });
+  const anchor = f.state.messagesForAsk(ask.ask)[0]!;
+  let lastId = '';
+  const hub = await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    const first = await f.fake.control('say', { content: 'History chain first', reply_to: anchor.messageId });
+    const second = await f.fake.control('say', { content: 'History chain second', reply_to: first.id });
+    lastId = (await f.fake.control('say', { content: 'History chain third', reply_to: second.id })).id;
+  });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  await until(() => f.state.get('discord.lastMessageId') === lastId && f.state.get('discord.history') === null, { what: 'reply-chain history durably completed', timeoutMs: 3000 });
+  const rows = ((await ui.request({ type: 'topic.history', topic })).value as { messages: Array<{ id: string; text: string; replyTo?: string }> }).messages
+    .filter(m => m.text.startsWith('History chain'));
+  assert.deepEqual(rows.map(m => m.text.split('\n')[0]), ['History chain first', 'History chain second', 'History chain third']);
+  assert.deepEqual(rows.map(m => m.replyTo), [anchor.message, rows[0]!.id, rows[1]!.id]);
+  const general = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
+  assert.equal(general.filter(m => m.text.startsWith('History chain')).length, 0);
 });
 
 test('Discord history cap forwards newest 20 of 25 in order with silent overflow and responsive hub', async t => {
@@ -1059,6 +1087,35 @@ test('Discord history cap forwards newest 20 of 25 in order with silent overflow
   assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
 });
 
+
+for (const recovery of [false, true]) test(`Discord history commits a bounded group before native feedback${recovery ? ' and recovers staged attempts' : ''}`, async t => {
+  const f = await fixture(t);
+  await historySeed(f);
+  await f.fake.control('configure', { reactionWindow: 0 });
+  f.holdFrames('topic.send');
+  await f.restart(180000, async () => {
+    f.state.set('discord.session', null);
+    await f.fake.control('say', { contents: Array.from({ length: 20 }, (_, i) => `Grouped input ${i}`) });
+  });
+  await until(() => f.frames.some(r => String(r.frame.text).startsWith('Grouped input')), { what: 'held first grouped input', timeoutMs: 2000 });
+  await holdRequest(f, async () => {
+    await f.fake.control('fault', { method: 'PUT', response: 'hold' });
+    f.releaseFrames();
+  });
+  // A separate SQLite reader observes committed frames, not the writer's transaction.
+  const reader = new Store(join(f.root, '.cland/hub.db'));
+  try {
+    const rows = reader.topicMessages('general', 100).filter(m => m.text.startsWith('Grouped input'));
+    assert.deepEqual(rows.map(m => m.text.split('\n')[0]), Array.from({ length: 20 }, (_, i) => `Grouped input ${i}`));
+  } finally { reader.close(); }
+  if (recovery) await f.restart();
+  else await f.fake.control('release', {});
+  await until(() => f.state.get('discord.history') === null, { what: 'grouped history feedback completed', timeoutMs: 3000 });
+  const rows = f.store.topicMessages('general', 100).filter(m => m.text.startsWith('Grouped input'));
+  assert.equal(rows.length, 20);
+  await until(() => f.state.outbox().filter(j => j.source?.startsWith('discord.reaction:') && j.source.endsWith(':👌') && j.state === 'sent').length === 21, { what: 'every grouped reaction durably settled', timeoutMs: 3000 });
+  assert.equal((await f.fake.control('state')).reactions.filter(r => r.emoji === '👌').length, 21);
+});
 
 test('Discord interrupted history resumes its frozen batch without duplicate General input', async t => {
   const f = await fixture(t);

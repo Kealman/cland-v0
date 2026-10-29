@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 /** Trusted native identity, carried separately from the frame and scoped by messenger. */
 export type RemoteIngress = { chatId: string; messageId: string };
 export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress, bytes?: readonly Buffer[]) => void;
+export type RemoteBatch = (write: () => void) => void;
 export type RemoteReceipt = (ingress: RemoteIngress) => TopicMessage | null;
 
 function inputId(via: RemoteVia, ingress: RemoteIngress): string {
@@ -23,7 +24,7 @@ export type Remote = {
   id: string;
   via: RemoteVia;
   /** Optional lifetime signal is aborted before the gateway joins an in-flight start. */
-  start: (send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt) => void | Promise<void>;
+  start: (send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt, batch?: RemoteBatch) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
   /** Successful platform exchanges, never inferred from starting a loop. */
   status?: () => RemoteConnection;
@@ -145,6 +146,10 @@ export class Gateway {
           if (!this.#open || this.#disabled.has(remote)) return null;
           const message = this.#conversation?.messageReceipt?.(inputId(remote.via, identity), remote.via);
           return message?.fromKind === 'human' && message.via === remote.via ? this.#output(message) : null;
+        }, write => {
+          if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
+          if (this.#conversation?.commitBatch) this.#conversation.commitBatch(write);
+          else write(); // Previous dispatchers retain individual commits.
         });
       } catch (error) {
         this.#disable(remote, error);

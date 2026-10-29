@@ -68,18 +68,20 @@ the one-second per-chat pacing interval. The default FakeClock epoch precedes
 that real daemon attempt and would pin recovery behind a future pacing deadline.
 This fixture excludes pacing latency; it preserves the stored attempt and fence.
 
-The Discord history SIGKILL case uses the same native process lifecycle tier.
-It seeds an exact TEXT cursor, starts a native daemon, retains its owned live
-birth, then stores two fake channel messages and invalidates the session with
-4003. The fresh Identify respects the five-second reservation. The existing
-committed-input hook accepts `discord-input-committed` and SIGKILLs after the
-first human commit and before returning its frame result. After positive native
-exit and captured-owner drainage, retain one original message, the frozen batch
-and the old cursor. Restart through projectHub with actual native process facts;
-require both ordered history messages once and the original first durable id.
-This proves one commit-to-adapter-receipt kill during catch-up; it claims no
-other SQLite instruction boundary. Only fake credentials and loopback endpoints
-are used. Report Linux duration for the native admission wait and restart.
+The Discord history SIGKILL cases use the same native process lifecycle tier.
+They seed an exact TEXT cursor, start a native daemon, retain its owned live
+birth, then store two fake channel messages and invalidate the session with
+4003. The fresh Identify respects the five-second reservation.
+`discord-input-committed` kills after the group's outer commit and before the
+adapter's frame result; both human rows survive, with the old native cursor.
+`discord-page-uncommitted` kills after the first effect inside the group but
+before its outer commit; neither row survives. After positive native exit and
+captured-owner drainage, retain the frozen selection and old cursor. Restart
+through projectHub with actual native process facts and require both ordered
+messages exactly once, preserving the original ids for the committed case.
+These prove the selected transaction/receipt boundaries, not every SQLite
+instruction boundary. Only fake credentials and loopback endpoints are used.
+Report Linux duration for the native admission wait and restart.
 
 The Discord native fixture pre-owns acquisition, Store and exit/setup observations
 through the shared pacing lifetime and exchange disposer. The Store closes only
@@ -93,11 +95,20 @@ separate; no observation is left running against a removed root.
 This existing T3 remote lifecycle file also owns the full-scale Discord C2
 620→500 production-frame case. It retains every durable history, overflow,
 nonce/silence and independent active-history request assertion from the original
-T2 case. Its completion wait is an absolute45 seconds (loadFactor1). The
-45-second case allowance is owned by R-1278 and expires2026-11-05, based on
-A-13581's original Linux passing workload (base27.622s; worst of five loaded
-passes29.716s), despite that run's separate M5 failure. T-1436 tracks batching
-per-page durable commits to shrink this cost; no reaction I/O is removed here.
+T2 case. Its completion wait is an absolute 10 seconds (loadFactor 1). The
+8-second case allowance is owned by E-880 through 2026-11-05. T-1436's
+Linux c-8 two-worker receipt A-14104 measured the full case at 5.166 seconds
+and its restart-to-completion interval at 4.9214 seconds, before final assertions
+and cleanup. This replaces the former 45-second allowance; all native reaction
+I/O and final semantic assertions remain. The decoded-row guard passed at
+16,545 of 50,000. The external stress probe applies the under-10-second threshold
+to each diagnostic sample; A-14086 records all ten loaded macOS samples at
+1.603–1.705 seconds on the same executable code (the later header-only change
+restores lint admission). Phase timings overlap and include instrumentation.
+The native page-commit rollback/kill case has a 10-second E-880 allowance through
+2026-11-05, based on A-14104's assertion-passing 6.396-second sample. That run
+stopped on its previously missing enforced allowance; Web did not run. The
+existing committed-kill 10-second allowance is also owned by E-880.
 No file allowance is added while file budgets remain report-only.
 
 
@@ -105,3 +116,16 @@ Native Discord acquisition has a separate10-second hang guard. It is not a speed
 assertion: A-13590 reached the old1-second guard before the native kill boundary
 on Linux. Omitted/aborted receipt controls explicitly retain1 second under their
 injected setup clock; kill, identity, recovery and shutdown bounds are unchanged.
+
+
+The full-scale case owns test-only overlapping phase diagnostics in
+`discord-history-profile.ts`: SQLite COMMIT/RELEASE time, Store transactions,
+synchronous topic.send/fanout, complete reaction calls, fetch-to-headers and
+outbox payload rows decoded. The reported intervals overlap and include the
+instrumentation overhead; they must not be added. Setup is reset out of these
+counters, while restart is included. Each snapshot is taken at the durable
+sent-overflow receipt, before the final history assertions and fixture cleanup.
+A work guard limits decoded outbox rows to 100 per forwarded input (50,000 at
+500); the positive control before indexed reads decoded over three million.
+The completion observer queries its captured exact overflow source instead of
+busy-decoding the full ledger. Native reaction I/O stays in the measurement.

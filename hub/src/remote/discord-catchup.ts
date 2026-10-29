@@ -42,9 +42,19 @@ export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, i
     batch = { channel: pair.chatId, user: pair.userId, returnedAt, messages: messages.slice(0, limit).reverse(), overflow: messages.length > limit, key: `discord.history-overflow:${channel.last_message_id}` };
     store.set('discord.history', JSON.stringify(batch));
   }
-  for (const m of batch.messages) {
+  for (let index = 0; index < batch.messages.length;) {
     signal.throwIfAborted();
-    inbound.dispatch({ op: 0, t: 'MESSAGE_CREATE', replayed: true, returnedAt: batch.returnedAt, d: { ...m, content: m.attachments?.length ? m.content : discordLateText(m.content, m.timestamp, batch.returnedAt) } });
+    const group: DiscordMessage[] = [];
+    // Replies need the earlier native mapping; keep them serial like media I/O.
+    while (index < batch.messages.length && group.length < 20) {
+      const message = batch.messages[index]!;
+      if (message.type === 19 || message.attachments?.length) break;
+      group.push(message); index++;
+    }
+    const dispatch = (m: DiscordMessage) => inbound.dispatch({ op: 0, t: 'MESSAGE_CREATE', replayed: true,
+      returnedAt: batch.returnedAt, d: { ...m, content: m.attachments?.length ? m.content : discordLateText(m.content, m.timestamp, batch.returnedAt) } });
+    if (group.length) inbound.group(() => { for (const m of group) dispatch(m); });
+    else dispatch(batch.messages[index++]!);
     await inbound.idle();
     await yieldIO();
   }

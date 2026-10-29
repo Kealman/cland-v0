@@ -17,13 +17,45 @@ type Receipt = { channel: string; user: string; message: string; hub: string; de
 
 /** Serialize native ingress; only a successful hub result confirms the cursor. */
 export class DiscordInbound {
+  readonly #batch: import('./gateway.ts').RemoteBatch | undefined;
+  #feedback: Set<string> | undefined;
+  #results: HubFrame[] | undefined;
+  #collecting: Array<() => Promise<void>> | undefined;
+  /** History supplies at most twenty text inputs; media retains its awaited FIFO path. */
+  group(dispatch: () => void): void {
+    const work: Array<() => Promise<void>> = [];
+    this.#collecting = work;
+    try { dispatch(); } finally { this.#collecting = undefined; }
+    this.#tail = this.#tail.catch(() => {}).then(async () => {
+      const pending: Promise<void>[] = [];
+      const start = () => { for (const run of work) pending.push(run()); };
+      const feedback = new Set<string>();
+      this.#feedback = feedback;
+      const results: HubFrame[] = [];
+      try {
+        this.#results = results;
+        try { if (this.#batch) this.#batch(start); else start(); }
+        finally { this.#results = undefined; }
+        this.#store.transaction(() => { for (const frame of results) this.receive(frame); });
+        await Promise.all(pending);
+      } catch (error) {
+        for (const completion of this.#pending.values()) completion.reject(new Error('Discord history group incomplete'));
+        await Promise.allSettled(pending);
+        throw error;
+      } finally { this.#feedback = undefined; }
+      const flushed: Promise<void>[] = [];
+      this.#store.transaction(() => { for (const message of feedback) flushed.push(this.#flush(message)); });
+      await Promise.all(flushed);
+    });
+    void this.#tail.catch(() => {});
+  }
   readonly #media: DiscordMediaOptions | undefined;
   readonly #store: RemoteStore; readonly #send: RemoteSend; readonly #signal: AbortSignal;
   readonly #pending = new Map<string, { resolve: (message: TopicMessage | null) => void; reject: (error: Error) => void; receipt: Receipt }>();
   readonly #outbox: DiscordOutbox | undefined; readonly #receipt: RemoteReceipt | undefined;
   readonly #echoes = new Set<Promise<void>>();
   #tail: Promise<void> = Promise.resolve(); #next = 0;
-  constructor(store: RemoteStore, send: RemoteSend, signal: AbortSignal, outbox?: DiscordOutbox, receipt?: RemoteReceipt, media?: DiscordMediaOptions) { this.#media = media; this.#store = store; this.#send = send; this.#signal = signal; this.#outbox = outbox; this.#receipt = receipt; }
+  constructor(store: RemoteStore, send: RemoteSend, signal: AbortSignal, outbox?: DiscordOutbox, receipt?: RemoteReceipt, media?: DiscordMediaOptions, batch?: import('./gateway.ts').RemoteBatch) { this.#batch = batch; this.#media = media; this.#store = store; this.#send = send; this.#signal = signal; this.#outbox = outbox; this.#receipt = receipt; }
   dispatch(frame: DiscordDispatch): void {
     if (frame.t !== 'MESSAGE_CREATE') return;
     const m = frame.d; const author = m.author as { id?: string; bot?: boolean } | undefined;
@@ -32,7 +64,7 @@ export class DiscordInbound {
       || m.webhook_id !== undefined || (m.type !== 0 && m.type !== 19)
       || typeof m.id !== 'string' || !/^\d+$/.test(m.id) || typeof m.content !== 'string' || (!m.content.trim() && !(Array.isArray(m.attachments) && m.attachments.length))) return;
     const messageId = m.id, content = m.content, channel = paired.chatId;
-    this.#tail = this.#tail.catch(() => {}).then(async () => {
+    const run = async () => {
       this.#signal.throwIfAborted();
       if (this.#store.pairing()?.chatId !== channel || this.#store.pairing()?.userId !== paired.userId) return;
       if (this.#store.get(`discord.inbound:${messageId}`)) { this.#confirmCursor(messageId); return; }
@@ -56,10 +88,11 @@ export class DiscordInbound {
         const noticeReference = reply?.message ? this.#store.get(`discord.notice-reference:${reply.message}`) : null;
         this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general', ...(reply?.message && !noticeReference ? { replyTo: reply.message } : {}), kind: 'message', text: noticeReference ? `${noticeReference} ${content}` : content }, { chatId: channel, messageId });
         await completion.promise;
-        this.#confirmCursor(messageId);
         await this.#flush(messageId);
       } finally { this.#pending.delete(id); this.#signal.removeEventListener('abort', abort); }
-    });
+    };
+    if (this.#collecting) this.#collecting.push(run);
+    else this.#tail = this.#tail.catch(() => {}).then(run);
     void this.#tail.catch(() => {}); // Native/result failures carry no arbitrary platform data into logs.
   }
   #paired(channel: string, user: string): boolean { const pair = this.#store.pairing(); return pair?.chatId === channel && pair.userId === user; }
@@ -166,6 +199,7 @@ export class DiscordInbound {
       }
     }
     if (frame.type !== 'result') return;
+    if (this.#results) { this.#results.push(frame); return; }
     const pending = this.#pending.get(frame.id);
     if (!pending) return;
     if (frame.ok) {
@@ -173,12 +207,14 @@ export class DiscordInbound {
       const receipt = { ...pending.receipt, hub: saved.id, delivered: saved.stage === 'delivered' || saved.stage === 'injected' };
       this.#store.set(`discord.inbound:${receipt.message}`, JSON.stringify(receipt));
       this.#store.putMessage({ chatId: receipt.channel, messageId: receipt.message, topic: saved.topic, message: saved.id, ask: null, approval: null });
+      this.#confirmCursor(receipt.message);
       pending.resolve(saved);
     }
     else if (this.#signal.aborted) pending.reject(new Error('Discord input cancelled'));
     else {
       // A terminal hub refusal is handled input, not a broken gateway exchange.
       this.#store.set(`discord.inbound:${pending.receipt.message}`, '1');
+      this.#confirmCursor(pending.receipt.message);
       pending.resolve(null);
     }
   }
@@ -201,6 +237,7 @@ export class DiscordInbound {
     }
   }
   async #flush(message: string): Promise<void> {
+    if (this.#feedback) { this.#feedback.add(message); return; }
     const value = this.#store.get(`discord.inbound:${message}`);
     if (!value || value === '1') return;
     const receipt = JSON.parse(value) as Receipt, pair = this.#store.pairing();

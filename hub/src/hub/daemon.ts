@@ -338,7 +338,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
             messenger, token: { present: token !== undefined, fingerprint: token === undefined ? null : createHash('sha256').update(token).digest('hex').slice(0, 12) },
             pairing: remote.pairing(), connection: status.disabled ? 'disabled' as const : traffic?.connected ? 'connected' as const : 'disconnected' as const,
             reason: status.reason, ...(status.stopCause ? { stopCause: status.stopCause } : {}), lastInbound: traffic?.lastInbound ?? null, lastOutbound: traffic?.lastOutbound ?? null,
-            outboxDepth: remote.outbox().filter(job => ['queued', 'sending', 'uncertain'].includes(job.state)).length,
+            outboxDepth: remote.outboxDepth(),
             mute: remote.get('mute') === 'true',
           }), botLink: publicLink };
         }) }),
@@ -391,7 +391,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
           : traffic?.connected ? 'connected' as const : 'offline' as const,
         offlineSince: traffic?.offlineSince ?? null, pairedName: remote.pairing()?.name ?? null,
         mute: remote.get('mute') === 'true',
-        outboxDepth: remote.outbox().filter(job => ['queued', 'sending', 'uncertain'].includes(job.state)).length,
+        outboxDepth: remote.outboxDepth(),
         lastError: status.stopCause ? remoteStopDetails(messenger, status.stopCause)?.cause ?? status.reason : status.reason ?? traffic?.lastError ?? null,
         ...(status.stopCause ? { stopCause: status.stopCause } : {}),
       });

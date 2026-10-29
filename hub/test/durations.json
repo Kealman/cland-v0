@@ -84,9 +84,10 @@
       "A-13645",
       "A-13643",
       "A-13725",
-      "A-13729"
+      "A-13729",
+      "A-14104"
     ],
-    "commit": "06e2b10ed80a10966e2b4378be303a5bef40146c"
+    "commit": "c4dfe02849eafccfa2bf125a3ffa8ba043152297"
   },
   "budget": {
     "testSeconds": 5,
@@ -2853,8 +2854,8 @@
       "tests": 3
     },
     "hub/test/telegram-polling-restart.test.ts": {
-      "seconds": 3.774485,
-      "tests": 2
+      "seconds": 23.782627,
+      "tests": 9
     },
     "hub/test/telegram-polling.test.ts": {
       "seconds": 0.686725,
@@ -7909,8 +7910,8 @@
     "hub/test/telegram-pairing.test.ts::Telegram private starts respect stranger limits and CLI approval names the paired project": 0.475258,
     "hub/test/telegram-pairing.test.ts::Telegram stops and reports a blocked bot from 403 while status keeps its bot link": 0.336484,
     "hub/test/telegram-pairing.test.ts::Telegram stops and reports a blocked bot from membership while status keeps its bot link": 0.376,
-    "hub/test/telegram-polling-restart.test.ts::SIGKILL after Telegram human commit before adapter receipt replays the durable message once": 1.700463,
-    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid-update leaves the Telegram offset unconfirmed and restart handles it once": 2.074022,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL after Telegram human commit before adapter receipt replays the durable message once": 1.342772,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid-update leaves the Telegram offset unconfirmed and restart handles it once": 1.79129,
     "hub/test/telegram-polling.test.ts::Telegram confirms only durable handling and deduplicates update and message ids": 0.190114,
     "hub/test/telegram-polling.test.ts::Telegram filters foreign identities unlisted kinds and bots before the handler": 0.098866,
     "hub/test/telegram-polling.test.ts::Telegram registry isolates private pairing starts and distinct callbacks on the same card": 0.078329,
@@ -8151,8 +8152,8 @@
     "hub/test/telegram-inbound.test.ts::Telegram input fixture drains observers after omitted setup receipt": 1.570758,
     "hub/test/telegram-inbound.test.ts::Telegram replies to an edit and delivers the following text": 0.109134,
     "hub/test/telegram-inbound.test.ts::Telegram unsupported messages reply once confirm and do not replay after restart": 0.222545,
-    "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after aborted setup receipt": 0.153056,
-    "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after omitted setup receipt": 0.178086,
+    "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after aborted setup receipt": 0.074424,
+    "hub/test/telegram-polling-restart.test.ts::Telegram restart observation owner drains after omitted setup receipt": 0.096397,
     "hub/test/tracker-summary.test.ts::a healthy watcher with dropped events still indexes hand edits, additions and removals": 1.09969,
     "hub/test/tracker-summary.test.ts::safety polls read only changed files and retain the startup stamp": 0.009473,
     "hub/test/web-authority.test.ts::web authority admits artifact.upload without local filesystem access": 0.065068,
@@ -8411,10 +8412,11 @@
     "hub/test/discord-cards.test.ts::Discord resumed press resends only its card without answering or acknowledging": 0.281107,
     "hub/test/discord-cards.test.ts::Discord resumed scripted approval press preserves the colon-bearing approval identity": 0.257518,
     "hub/test/discord-cards.test.ts::Discord retirement completion keeps pacing until late feedback and every old copy settle": 0.349874,
-    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": 21.853731,
-    "hub/test/telegram-polling-restart.test.ts::Discord native history setup aborted drains its Store writers and observations": 1.748883,
-    "hub/test/telegram-polling-restart.test.ts::Discord native history setup omitted drains its Store writers and observations": 1.875491,
-    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": 6.761701,
+    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": 5.165974,
+    "hub/test/telegram-polling-restart.test.ts::Discord native history setup aborted drains its Store writers and observations": 1.316556,
+    "hub/test/telegram-polling-restart.test.ts::Discord native history setup omitted drains its Store writers and observations": 1.286425,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": 6.312616,
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history page commit rolls back and finishes the batch once": 6.396172,
     "hub/test/discord-artifacts.test.ts::Discord accepted unknown multipart keeps artifact identity across reopen with a missing file": 0.259389,
     "hub/test/discord-artifacts.test.ts::Discord agent image and PDF travel together once with header and later sent-above references": 0.514235,
     "hub/test/discord-artifacts.test.ts::Discord fake rejects multipart envelope overflow with individually legal files": 0.143487,
@@ -10913,18 +10915,25 @@
       "reason": "T-1201 lints all 85 committed qa/briefs against an independent compiler-source oracle; this real-repo corpus control was the agreed bar for its bounded lexer (review-loop cap, 2026-10-24). Samples: macOS/local stage cover 7a8445c1 (A-11552) 4.078 s; Linux c-8 lon1 item verify 8d8e04c9 (A-11526) 4.071 s; Linux c-8 lon1 stage cover e70d2393 shard-1 (A-11549) 12.466 s under shard load. The 18.7 s cap rounds 1.5x the worst sample upward. Assertions unchanged. Owned by E-880 (D72 legacy owner) so E-1196 can close. Renewed 2026-10-26 (T-1338): recent passing samples A-12333 10.929478443 s, A-12360 4.148720988 s, A-12338 5.0689815 s, A-12224 3.719521292 s; A-12333/A-12360 Linux droplet, A-12338/A-12224 macOS local (duration budgets report-only). The 16.395 s cap rounds 1.5x the worst recent passing sample (10.929478443 s) upward to milliseconds; E-880 retains ownership within its 31-day span limit."
     },
     "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
-      "seconds": 45,
-      "owner": "R-1278",
+      "seconds": 8,
+      "owner": "E-880",
       "added": "2026-10-29",
       "expires": "2026-11-05",
-      "reason": "500 production-frame inputs with real loopback reaction receipts. T-1413: moved unchanged full-scale C2 from T2 to existing T3 per Coordinator decision 396ede14. Linux x64 c-8 lon1 run fa7e1e1f at 5ad59cec7 (A-13581) passed this exact workload at 27.622364890 s ordinarily and all five loaded samples, worst 29.716285979 s; the overall run remained red for M5 and duration treatment. 45 s rounds 1.5 times that worst passing Linux workload sample upward. R-1278 owns the seven-day allowance. T-1436 will shrink the cost by batching durable commits for each history page. The full-scale T3 completion wait is an absolute 45 s (loadFactor 1); T2 uses the same production-frame path with 25 inputs and injected cap20."
+      "reason": "T-1436 bounds synchronous ordinary-text commits and indexes outbox source, last-row and depth reads; its exact-source completion observer avoids full-ledger decoding. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this 620-to-500 production-frame case at 5.165974280 s, with all assertions passing and 16,545 decoded rows below the 50,000 work guard; overall exit 1 was the separate new rollback-kill duration gate and Web was unrun. Eight seconds rounds 1.5 times that full-case sample upward, shrinking the former 45 s allowance. Loaded macOS evidence A-14086 at executable-equivalent 9f9528b3 passed all ten samples at 1.603-1.705 s. E-880 owns this allowance through the existing expiry. Native reaction I/O, semantic assertions and the absolute 10 s completion wait remain."
     },
     "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": {
       "seconds": 10,
-      "owner": "R-1278",
+      "owner": "E-880",
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "real hub process start, admission, SIGKILL, owned-writer drain and exactly-once recovery in Discord history catch-up (T-1413). Coordinator decision 3a147fbb approves 10 s based on the passing Linux x64 c-8 lon1 run ab55068b at dec9e7713 (A-13594), 6.355606305 s, and local macOS 5.73 s. These are thin samples; 1.5 times the worst is rounded upward to 10 s, matching the native Telegram kill headroom. The Linux overall run remained red solely for this missing measured allowance and Web was unrun. Protocol, Identify spacing, kill/identity/recovery/drain assertions and timeouts are unchanged; the separate R-1278 45 s full-history allowance remains unchanged."
+    },
+    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history page commit rolls back and finishes the batch once": {
+      "seconds": 10,
+      "owner": "E-880",
+      "added": "2026-10-29",
+      "expires": "2026-11-05",
+      "reason": "T-1436 proves native hub SIGKILL mid-page-commit rolls back the interrupted group and restart replays every selected input exactly once. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this assertion-passing identity at 6.396172347 s; its enforced new-identity 5 s duration gate caused exit 1 and Web was unrun. Ten seconds rounds 1.5 times that measured sample (9.594 s) upward. E-880 owns the seven-day allowance approved by the Coordinator. Native Identify spacing, captured-process exit/drain, rollback and exactly-once assertions remain unchanged."
     },
     "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": {
       "seconds": 15,

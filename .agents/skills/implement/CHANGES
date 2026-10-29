@@ -302,6 +302,7 @@ Discord setup step, doctor stop causes and workbench rows, one stage-close docs 
 
 T-1336: distinguish metadata-only green dev tips as not reproduced (intermittent), retaining both receipts.
 
+- T-1436: document bounded Discord history commits, indexed outbox reads and work guard, post-commit results and external throughput measurement.
 - T-1337: document captured-descendant revalidation after native parent exit in fixture cleanup.
 - T-1379: document supported Node selection and unsupported local evidence handling.
 
@@ -314,3 +315,5 @@ T-410 review: Preserve independent live endpoints after sibling EOF; document pl
 T-410 source2: Record independent IPC acquisition and native-close ownership for failed single-channel fixture setup.
 T-410 source3: Fence directory removal on the writer owner disposal receipt and prove incomplete-stop retention through explicit recovery.
 T-410 source4: Use one fenced root owner and exercise all registered automatic cleanup callbacks across failure and recovery.
+
+- T-1436 M1: keep history replies serial between ordinary-text groups and prove exact mapped topic/reply identity through native history.

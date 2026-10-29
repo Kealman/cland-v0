@@ -132,6 +132,8 @@ export type Control = {
 };
 
 export type Conversation = {
+  /** Trusted gateway only: synchronous frame work; never accepts an async callback. */
+  commitBatch?: (write: () => void) => void;
   /** One frame; only the in-process gateway supplies trusted messenger provenance. */
   receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]) => void;
   /** Native gateway recovery only; not an action in the frame protocol. */
@@ -1690,7 +1692,11 @@ export class Dispatcher {
         peer.send({ type: 'result', id, ok: false, error: `unknown request type "${String(frame.type)}"` });
         return;
       }
-      const answer = (value: unknown) => peer.send({ type: 'result', id: frame.id, ok: true, value });
+      const answer = (value: unknown) => {
+        const publish = () => peer.send({ type: 'result', id: frame.id, ok: true, value });
+        if (transport.edge === 'gateway') core.store.afterCommit(publish, () => log({ event: 'result-publication-failed' }));
+        else publish();
+      };
       try {
         switch (frame.type) {
           case 'resume':
@@ -1774,7 +1780,8 @@ export class Dispatcher {
             // Native crash fixture: the durable human effect exists, but the
             // adapter has not received a result or stored its feedback receipt.
             if (messageId && ((via === 'telegram' && this.#options.env?.CLAND_TEST_CRASH_AT === 'telegram-input-committed')
-              || (via === 'discord' && this.#options.env?.CLAND_TEST_CRASH_AT === 'discord-input-committed'))) process.kill(process.pid, 'SIGKILL');
+              || (via === 'discord' && this.#options.env?.CLAND_TEST_CRASH_AT === 'discord-input-committed'))) core.store.afterCommit(() => { process.kill(process.pid, 'SIGKILL'); }, () => {});
+            if (via === 'discord' && this.#options.env?.CLAND_TEST_CRASH_AT === 'discord-page-uncommitted') process.kill(process.pid, 'SIGKILL');
             return answer({ message, outcomes });
           }
           case 'topic.rename':
@@ -2443,7 +2450,7 @@ export class Dispatcher {
     };
 
     return {
-      ...(transport.edge === 'gateway' ? { messageReceipt: (messageId: string, via?: import('../protocol.ts').RemoteVia) => {
+      ...(transport.edge === 'gateway' ? { commitBatch: (write: () => void) => core.store.transaction(write), messageReceipt: (messageId: string, via?: import('../protocol.ts').RemoteVia) => {
         if (done || !peer.isOpen()) return null;
         let message = core.store.message(messageId);
         if (!message && via) {
