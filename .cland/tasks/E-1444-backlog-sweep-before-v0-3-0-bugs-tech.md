@@ -2,7 +2,8 @@
 id: E-1444
 kind: epic
 title: "Backlog sweep before v0.3.0: bugs, tech debt and follow-ups"
-state: open
+state: closed
+criterion_seq: 2
 labels:
   - v0.3
   - ready-for-agent
@@ -12,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-29T15:58:42.986Z
-updated: 2026-10-29T20:55:18.291Z
+updated: 2026-10-29T22:04:30.831Z
+closed: 2026-10-29T22:04:30.831Z
 ---
 
 ## Summary
@@ -26,7 +28,9 @@ v0.3.0 ships on a `dev` without the known bugs and test flakes found during the 
 ## Definition of done
 
 - [ ] C1. Every child is closed: merged with its own criteria verified, or closed with a recorded reason (fixed elsewhere, duplicate, or the human's decision).
+  - verified: qa-677 [qa] · run qa-2026-10-29-677-1444 · 2026-10-29T22:03:45.765Z · commit 3e15caf47526a10c79dff01e4c637e9913f641bd
 - [ ] C2. A stage cover on Linux and macOS is green at the dev tip after the last child lands.
+  - verified: qa-677 [qa] · run qa-2026-10-29-677-1444 · 2026-10-29T22:03:45.765Z · commit 3e15caf47526a10c79dff01e4c637e9913f641bd
 
 ## Plan
 
@@ -73,3 +77,37 @@ stages:
       - - T-1450
       - - T-1452
 ```
+
+## Comments
+
+### qa-677 · 2026-10-29T22:03:45.765Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-2026-10-29-677-1444
+commit: 3e15caf47526a10c79dff01e4c637e9913f641bd
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Evidence / observation |
+| --- | --- | --- | --- |
+| M1 | hub-api, local macOS | PASS | No open children. |
+| M2 | hub-api, local macOS | PASS | 35 closed/done ids; 33 Item-trailer dev landings, all 59 child criteria verified; T-341/T-1320 explicit no-change reasons, branchless with no landing. |
+| M3 | hub-api, local macOS | PASS | the sweep closed; 35 eligible; both covers match verification tree e7f94ed72dfbda3ffe5fdf2c8794844a5fe5fbc4. |
+| M4 | log audit, local macOS | PASS | c6e2b28b / A-14131: Linux droplet, occasion stage, all exit 0; 5785 pass, 9 reasoned skips, fail 0. |
+| M5 | log audit, local macOS | PASS | d3c6e739 / A-14135: darwin local, occasion stage, all exit 0; 5793 pass, 1 reasoned skip, fail 0. |
+
+Clear; no scoped high/medium/low findings. C1 and C2 verified by this run. Artifact A-14140: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14140-e-1444-dod-evidence-audit-at-3e15caf4-clear-c1-c2/report.md — case receipts, full child matrix, logs, hub result messages, exact skip names/counterpart outcomes, scan manifest.
+
+Tested source/dev 3e15caf47526a10c79dff01e4c637e9913f641bd; final clean detached HEAD and dev equal the request; freshness current:true at 22:01:43Z. No product tests, browser or demo lease launched by this evidence audit; local Node v24.21.0. Existing covers independently read, not newly run and not cache hits (reused:false). Both completed T0–T4 and Web; T4 extra load repetitions excluded, base tests ran; budgets/ratchet/test-lint diagnostics report-only. Every skipped generated case passes on the other platform. Latest clear review and passed verify heads match for all 33 landed children; squash SHAs distinguished from task heads.
+
+Linux x64 6.8.0-142-generic, Node24.21.0/Neovim0.12.5; Headless Shell156.0.8078.4/v1248. Two c-8 lon1 machines: cland-v0-c321f683 lifetime1438s/$0.0999 and cland-v0-45daafe6 lifetime1447s/$0.1005; reported total$0.2003, wall1496.75s admission through collection. Web cases on shard-1, empty shard-2 Web selection is not extra coverage. macOS darwin arm64 27.0.0, same Node/Neovim; isolated Headless Shell (exact binary version unstamped); local cost not applicable. Its hub-generated suite result supplies occasion stage, absent from standalone local log.
+
+Audit corrections retained: initial M1 missing yaml before tracker access, corrected by existing dependency symlink and successful repeat; original M2 prose count60 superseded by appended M2-count-correction (actual59). Neither is a product finding. T-1320 C1 remains unverified under its explicit no-change disposition; no OOM fix claimed. Child product behavior and E-1314 live/release DoD outside this brief.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T22:04:30.831Z
+
+QA clear qa-2026-10-29-677-1444 at 3e15caf4 (A-14140). 35 children are closed: 33 landed with their criteria verified, and T-341 and T-1320 closed without a change. Stage covers are green on Linux (c6e2b28b, A-14131) and macOS (d3c6e739, A-14135).

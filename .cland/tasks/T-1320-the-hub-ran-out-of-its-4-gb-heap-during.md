@@ -11,9 +11,9 @@ assignee: null
 parent: E-1444
 blocked_by: []
 topic: topic-1185
-branch: t/T-1320-the-hub-ran-out-of-its-4-gb-heap-during
+branch: null
 created: 2026-10-26T02:27:30.262Z
-updated: 2026-10-29T16:04:24.106Z
+updated: 2026-10-29T21:51:50.049Z
 closed: 2026-10-29T16:04:24.106Z
 ---
 

@@ -11,9 +11,9 @@ assignee: null
 parent: E-1444
 blocked_by: []
 topic: topic-1190
-branch: t/T-341-claude-code-relaunch-keeps-the-tool
+branch: null
 created: 2026-10-13T19:49:24.214Z
-updated: 2026-10-29T16:02:23.160Z
+updated: 2026-10-29T21:51:49.886Z
 closed: 2026-10-29T16:02:23.160Z
 ---
 
