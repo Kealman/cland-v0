@@ -1905,24 +1905,44 @@ export class Tracker {
     const covers = this.#stageCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
     const landings = snapshot.items.flatMap(child => this.#index.landingReceipt(child)?.commit ?? []);
-    const candidates = covers.filter(cover => cover.platform === 'Linux droplet').map(cover => {
+    // Search newest first. An unresolved newer pair can still win, so settle
+    // that candidate before asking Git about older history. Unpaired trees
+    // cannot win; only the expected tree can provide a Linux-only fallback.
+    const macTrees = new Set(covers.filter(cover => cover.platform === 'macOS').map(cover => cover.tree));
+    const candidates: Array<{ cover: StageCover; current: boolean | undefined }> = [];
+    const check = (cover: StageCover): boolean | undefined => {
       const treeMatches = expected === null ? undefined : !build || cover.tree === expected;
-      // A tested build must have a known matching tree before ancestry can
-      // qualify its cover. Avoid queuing every historical cover while it loads.
-      if (treeMatches !== true) return { cover, current: treeMatches };
-      const facts = [treeMatches, this.#fresh.ancestor(id, cover.head), ...landings.map(landing => this.#fresh.contains(id, landing, cover.head))];
-      return { cover, current: facts.includes(false) ? false : facts.includes(undefined) ? undefined : true };
-    });
+      if (treeMatches !== true) return treeMatches;
+      const ancestor = this.#fresh.ancestor(id, cover.head);
+      if (ancestor !== true) return ancestor;
+      const facts = landings.map(landing => this.#fresh.contains(id, landing, cover.head));
+      return facts.includes(false) ? false : facts.includes(undefined) ? undefined : true;
+    };
+    let pair: StageCover | undefined;
+    let waitingPair = false;
+    for (const cover of covers.toReversed()) {
+      if (cover.platform !== 'Linux droplet' || !macTrees.has(cover.tree)) continue;
+      const current = check(cover);
+      candidates.push({ cover, current });
+      if (current === true) { pair = cover; break; }
+      if (current === undefined) { waitingPair = true; break; }
+    }
+    if (!pair && !waitingPair) {
+      for (const cover of covers.toReversed()) {
+        if (cover.platform !== 'Linux droplet' || expected !== null && cover.tree !== expected || macTrees.has(cover.tree)) continue;
+        const current = check(cover);
+        candidates.push({ cover, current });
+        if (current !== false) break;
+      }
+    }
     const eligible = candidates.filter(candidate => candidate.current === true).map(candidate => candidate.cover);
-    // A completed stage keeps its tested build across later descendant work.
-    const pair = eligible.findLast(linux => covers.some(mac => mac.platform === 'macOS' && mac.tree === linux.tree));
     const tree = pair?.tree ?? expected;
-    const linux = pair ?? eligible.findLast(cover => cover.tree === tree);
+    const linux = pair ?? eligible.find(cover => cover.tree === tree);
     const mac = covers.findLast(cover => cover.platform === 'macOS' && cover.tree === tree);
     const pending: StagePlatform[] = [];
     const missing: StagePlatform[] = [];
     if (!linux) {
-      const unresolved = candidates.some(candidate => candidate.current !== false && (!tree || candidate.cover.tree === tree)
+      const unresolved = waitingPair || candidates.some(candidate => candidate.current !== false && (!tree || candidate.cover.tree === tree)
         && (candidate.current === undefined || tree === null));
       (unresolved ? pending : missing).push('Linux droplet');
     }

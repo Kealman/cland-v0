@@ -359,3 +359,108 @@ test('recorded cover cannot close a changed stage or a build removed from dev an
   await tracker.comment(qa, epic.id, '', { verdict: 'qa', result: 'not clear', run: 'qa-rejected', stage: 'build' });
   assert.equal((await stage()).state, 'open', 'a later QA refusal overrides recorded cover');
 });
+
+test('forced closure recompute on copied tracker skips historical covers and preserves recorded closure', async t => {
+  const { copyPinnedTracker } = await import('./pinned-tracker.ts');
+  const root = await tempProject(t);
+  await copyPinnedTracker(root);
+  const head = 'a'.repeat(40), tree = 'b'.repeat(40);
+  const calls = new Set<string>();
+  const covers: StageCover[] = Array.from({ length: 1200 }, (_, n) => ({
+    id: `historical-${n}`, head: (n + 1).toString(16).padStart(40, '0'), tree,
+    platform: 'Linux droplet',
+  }));
+  covers.push({ id: 'latest', head: 'c'.repeat(40), tree, platform: 'Linux droplet' }, { id: 'mac', head, tree, platform: 'macOS' });
+  const options = { root, db: join(root, '.cland/hub.db'),
+    git: async (args: string[]) => {
+      if (args[0] === 'for-each-ref') return `${head} refs/heads/dev`;
+      if (args[0] === 'rev-parse') return args.at(-1)!.replace(/\^\{commit\}$/, '');
+      if (args[0] === 'merge-base') {
+        calls.add(`${args[2]}:${args[3]}`);
+        if (args[2] !== 'c'.repeat(40)) return null;
+      }
+      return '';
+    }, readBase: async () => 'dev', stageTree: async () => tree,
+    scheduleTips: () => ({ poke() {}, stop() {} }),
+  };
+  let tracker = new Tracker(options);
+  tracker.start(); onCleanup(t, () => tracker.stop());
+  const actor = { id: 'human', name: 'human', role: null };
+  const epic = await tracker.create(actor, { kind: 'epic', title: 'Recompute history' });
+  const child = await tracker.create(actor, { title: 'Evidence', size: 'S', parent: epic.id });
+  await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [
+    { name: 'build', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]] },
+  ] }));
+  await tracker.close(actor, child.id);
+  // No closure checkpoint exists: supply historical covers only after setup.
+  const started = performance.now();
+  tracker.useVerify(() => null, () => covers);
+  await tracker.refreshFreshness();
+  const closed = await eventually('forced recompute records its selected cover pair', async () => {
+    const stage = (await tracker.viewAsync(epic.id)).stages![0]!;
+    return stage.closure ? stage : undefined;
+  });
+  const elapsed = performance.now() - started;
+  assert.deepEqual(closed.cover, { tree, missing: [], linux: 'latest', macos: 'mac' });
+  assert.equal(calls.size, 1, 'only the newest deciding cover needs ancestry');
+  t.diagnostic(`copied tracker recompute ${elapsed.toFixed(1)} ms; ${calls.size} ancestry pair; injected Git, ${process.platform}/${process.arch}`);
+  await tracker.stop(); calls.clear();
+  tracker = new Tracker(options); tracker.start();
+  tracker.useVerify(() => null, () => covers);
+  await tracker.refreshFreshness();
+  const restored = (await tracker.viewAsync(epic.id)).stages![0]!;
+  assert.deepEqual(restored.closure, closed.closure);
+  assert.deepEqual(restored.cover, closed.cover);
+  await tracker.stop();
+  assert.ok(calls.size <= 1, 'saved closure only rechecks its recorded head');
+});
+
+test('open stage results match the full recompute across paired, rejected and incomplete history', async t => {
+  const root = await tempProject(t);
+  const head = 'a'.repeat(40), expected = 'b'.repeat(40), other = 'c'.repeat(40);
+  const valid = new Set<string>();
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'),
+    git: async args => {
+      if (args[0] === 'for-each-ref') return `${head} refs/heads/dev`;
+      if (args[0] === 'rev-parse') return args.at(-1)!.replace(/\^\{commit\}$/, '');
+      if (args[0] === 'merge-base') return valid.has(args[2]!) ? '' : null;
+      return '';
+    }, readBase: async () => 'dev', stageTree: async () => expected,
+    scheduleTips: () => ({ poke() {}, stop() {} }),
+  });
+  tracker.start(); onCleanup(t, () => tracker.stop());
+  const actor = { id: 'human', name: 'human', role: null };
+  const epic = await tracker.create(actor, { kind: 'epic', title: 'Differential recompute' });
+  const child = await tracker.create(actor, { title: 'Still open', size: 'S', parent: epic.id });
+  await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [
+    { name: 'build', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]] },
+  ] }));
+  await tracker.refreshFreshness();
+  // Previous eager algorithm with independently known, fully settled Git facts.
+  const fullRecompute = (covers: StageCover[]) => {
+    const eligible = covers.filter(c => c.platform === 'Linux droplet' && valid.has(c.head));
+    const pair = eligible.findLast(linux => covers.some(mac => mac.platform === 'macOS' && mac.tree === linux.tree));
+    const tree = pair?.tree ?? expected;
+    const linux = pair ?? eligible.findLast(c => c.tree === tree);
+    const mac = covers.findLast(c => c.platform === 'macOS' && c.tree === tree);
+    return { tree, missing: [...(!linux ? ['Linux droplet'] : []), ...(!mac ? ['macOS'] : [])],
+      ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
+  };
+  for (let scenario = 0; scenario < 16; scenario++) {
+    const covers: StageCover[] = [];
+    for (let n = 0; n < 4; n++) {
+      const commit = (scenario * 4 + n + 1).toString(16).padStart(40, '0');
+      if (scenario & (1 << n)) valid.add(commit);
+      covers.push({ id: `linux-${scenario}-${n}`, head: commit, tree: n % 2 ? other : expected, platform: 'Linux droplet' });
+    }
+    if (scenario % 3) covers.push({ id: 'mac-expected', head, tree: expected, platform: 'macOS' });
+    if (scenario % 2) covers.push({ id: 'mac-other', head, tree: other, platform: 'macOS' });
+    tracker.useVerify(() => null, () => covers);
+    const actual = await eventually(`scenario ${scenario} settles all deciding evidence`, async () => {
+      const stage = (await tracker.viewAsync(epic.id)).stages![0]!;
+      return stage.cover?.tree && !stage.cover.pending?.length ? stage : undefined;
+    });
+    assert.equal(actual.state, 'open');
+    assert.deepEqual(actual.cover, fullRecompute(covers), `scenario ${scenario}`);
+  }
+});
