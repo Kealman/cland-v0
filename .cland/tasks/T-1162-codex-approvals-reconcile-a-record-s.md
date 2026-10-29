@@ -3,17 +3,17 @@ id: T-1162
 kind: task
 title: "Codex approvals: reconcile a record's outcome with the item's execution when a TUI answer races the hub's write"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1219
+branch: t/T-1162-codex-approvals-reconcile-a-record-s
 created: 2026-10-23T02:33:54.189Z
-updated: 2026-10-29T15:59:43.704Z
+updated: 2026-10-29T19:32:00.214Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Where Codex later reports the item's execution (for example a command that runs 
 
 - [ ] C1. Through the scripted app-server, a hub Deny followed by a resolution and then the command's execution reads as answered in the harness with a warn-level event (test).
 - [ ] C2. A hub Approve followed by the item's declined completion reads as answered in the harness (test).
+
+## Comments
+
+### impl-1162 · 2026-10-29T19:32:00.214Z
+
+Consumer inventory before changing reconciliation semantics (rule 20): Codex NativeApproval and item notifications; AdapterHost approvalClosed in sessions.ts and OpenCode (retain existing semantics, add optional correction hook); InboxService pending/answer/archive and Store inbox_departures; wire ApprovalOutcome and approval deltas (unchanged shape); CLI inbox; Web ApprovalCard/inbox live/archive; Neovim inbox live/archive; gateway cards.ts, Telegram cards, Discord cards/outbox. Existing clients already accept harness outcomes; correction reuses closed approval delta and updates existing archive row, without adding a departure. Test consumers: codex-native T2, codex-adapter T3, approval-records T2, approval-restart T3, telegram-approvals T2, Web inbox/phone-approvals, Neovim inbox recorded fixtures, wire conformance; QA E-414 stage-1, shipped implement skill and native test guide. Startup probes do not consume approval outcomes; persisted pending records unaffected. Preserve previous wire shapes and optional callbacks. Agreed seam is scripted app-server notifications plus real frame clients, no platform or harness credentials.

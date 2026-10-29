@@ -2,8 +2,8 @@
 id: T-1416
 kind: task
 title: nvim events view test misses its 10 s first-page wait once under a loaded task run
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1212
 branch: t/T-1416-nvim-events-view-test-misses-its-10-s
 created: 2026-10-28T00:02:27.244Z
-updated: 2026-10-29T19:04:24.987Z
+updated: 2026-10-29T19:12:38.825Z
+closed: 2026-10-29T19:12:38.825Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14009 final same-head clear. Original A-14008 parsed4197 ordinary/75 separate load passes,zero nonpasses/unmatched starts; target1.351940815s,Events4/4,owning docs guard green. C1 verified across original already-rendered failure, controlled-rollover supplemental red/green and reviewed calendar assertions. C2 original A-13974 ten exact complete/positiveCPU/native-close probe rows at ea33d339 carried only through H1-only successor; not relabelled new-head execution. Host T0 distinct from Linux T1/allT2/Web, noT3/T4; lint/budgets report-only. No Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T19:12:38.825Z
+
+Merged 5918f1486a9b18b1411a0cc314e7cf867899db6f onto dev.

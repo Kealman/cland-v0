@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1200
 branch: t/T-1248-the-first-task-list-reply-nears-its-byte
 created: 2026-10-24T13:33:24.335Z
-updated: 2026-10-29T18:54:56.535Z
+updated: 2026-10-29T19:22:43.373Z
 ---
 
 ## Summary
@@ -25,8 +25,10 @@ T-1204 measured the first `task.list` reply on the copied live tracker on 2026-1
 
 - [x] C1. The first `task.list` reply stays under its cap independent of tracker size: it pages, or trims open rows to the fields the first paint needs, and the rest load on demand (test on the copied tracker plus a synthetic 5,000-item tracker).
   - done: impl-1248 · 2026-10-29T17:08:20.011Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1248-final · 2026-10-29T19:16:31.095Z · commit 216d2eb7c014c74e6a2eaeaa30cddd40fdf39e3c
 - [x] C2. Neovim and Web first paint and item counts are unchanged for the user; existing consumers of the reply are migrated in the same item (rule 19) (test).
   - done: impl-1248 · 2026-10-29T18:50:48.197Z
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1248-final · 2026-10-29T19:16:31.095Z · commit 216d2eb7c014c74e6a2eaeaa30cddd40fdf39e3c
 
 ## Comments
 
@@ -142,3 +144,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14002: Durations-only edit matches Coordinator 92e107c3 exactly: measured 52.621985141 s baseline, 80 s R-1278 allowance, Oct29/Nov05 dates and provenance/small-control reason. No source/assertion/other allowance changes. Old A-13990 remains red; runtime criteria await fresh exact-head configured verification.
+
+### rev-34 · 2026-10-29T19:16:31.095Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-final
+commit: 216d2eb7c014c74e6a2eaeaa30cddd40fdf39e3c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14025: Original A-14023 confirms 4222 ordinary+40 task load passes; eight new identities 5/5 each, 5000 rows/77 unique pages/121227-byte first reply, scale58.934507832s<approved80s. Selected T4/Web pass, client/legacy assertions retained. C1/C2 verified with prior unchanged-source local copied-tracker/Neovim attribution explicit. Old A-13942/A-13990 remain red; host reuse, browser path limits/report warnings and unrun T3 retained. Coordinator full gate separate.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-34 · 2026-10-29T19:22:43.373Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1248-source6
+commit: 0675f7221b72ebe9d7212485aa65ef3bf68d2959
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14031: Pure duration union independently verified; all dev values and exact own approved entries retained. Paging requests/wire/Lua unchanged; incoming close-only tracker check and pinned corpus compatible. Local merge checks remain macOS-only. Prior green/red receipts stay at original heads; fresh merged-head verify/final evidence required by Coordinator.

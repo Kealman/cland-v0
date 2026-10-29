@@ -2,8 +2,8 @@
 id: T-1450
 kind: task
 title: Discord fixture's cold tempProject acquisition exceeds the 2 s exchange operation budget once on macOS
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1208
 branch: t/T-1450-discord-fixture-s-cold-tempproject
 created: 2026-10-29T18:19:08.852Z
-updated: 2026-10-29T18:54:23.988Z
+updated: 2026-10-29T19:21:22.885Z
+closed: 2026-10-29T19:21:22.885Z
 ---
 
 ## Summary
@@ -40,9 +41,11 @@ Test "Discord hub fixture aborted held receipt joins writers before Store close"
 - [x] C1. The fixture records a timing receipt for the tempProject acquisition phase, and a failure names that phase and its elapsed time.
   - done: impl-1450 · 2026-10-29T18:26:14.789Z
   - verified: rev-34 [reviewer] · run rev-34-20261029-1450-final · 2026-10-29T18:50:26.011Z · commit 0611e564dcbb8af18c3ade6a075e2140502896f5
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1450-final2 · 2026-10-29T19:11:51.912Z · commit bd4eda53d3ac3031f13a1cfae02a0e9f4e951a18
 - [x] C2. The acquisition bound is sized from measured cold-start receipts on macOS (at least 10 fresh processes), or cold setup runs outside the 2 s exchange budget; the test passes 10/10 fresh-process repetitions under two workers plus CPU load on macOS.
   - done: impl-1450 · 2026-10-29T18:26:15.052Z
   - verified: rev-34 [reviewer] · run rev-34-20261029-1450-final · 2026-10-29T18:50:26.011Z · commit 0611e564dcbb8af18c3ade6a075e2140502896f5
+  - verified: rev-34 [reviewer] · run rev-34-20261029-1450-final2 · 2026-10-29T19:11:51.912Z · commit bd4eda53d3ac3031f13a1cfae02a0e9f4e951a18
 
 ## Comments
 
@@ -128,3 +131,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14001: Authorized merge resolution preserves both acquisition/drain receipt properties. Acquisition path, run function and T-1450 regression bodies byte-identical to reviewed parent; incoming disposal joins/fences/assertions retained. Coordinator conditional stress carry satisfied, prior receipts remain earlier-head only. Runtime criteria await fresh merged-head verification/final audit.
+
+### rev-34 · 2026-10-29T19:11:51.912Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261029-1450-final2
+commit: bd4eda53d3ac3031f13a1cfae02a0e9f4e951a18
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14019: Fresh A-14016 confirms 4199 ordinary passes, acquisition cases ordinary+5/5 each, and complete incoming native/fake/stop receipts in both held controls. C1/C2 refreshed; prior macOS A-13952 stays at0611e564d under Coordinator’s unchanged-path carry. Host reuse/browser path limits/report-only warnings/unrun T3/T4 retained.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-29T19:21:22.885Z
+
+Merged acd5caafe2c700d33dc4e07f4642337cc75ed8b5 onto dev.

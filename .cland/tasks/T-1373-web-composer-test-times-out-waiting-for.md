@@ -2,8 +2,8 @@
 id: T-1373
 kind: task
 title: Web composer test times out waiting for the General row after reload on a loaded Linux droplet
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1211
 branch: t/T-1373-web-composer-test-times-out-waiting-for
 created: 2026-10-27T07:48:08.661Z
-updated: 2026-10-29T19:11:02.890Z
+updated: 2026-10-29T19:21:41.147Z
+closed: 2026-10-29T19:21:41.147Z
 ---
 
 ## Summary
@@ -27,8 +28,9 @@ Make the case wait for the reloaded shell's topic list to be ready before it cli
 
 ## Acceptance criteria
 
-- [ ] C1. The case waits on an explicit post-reload readiness receipt before selecting General and passes 10/10 under the load gate's CPU load at two workers (test).
-  - failed: rev-31 [reviewer] · 2026-10-29T18:49:48.761Z · note Hard test-lint admission refusal prevents configured Linux verification; reported macOS load proof remains separate and pending audit.
+- [x] C1. The case waits on an explicit post-reload readiness receipt before selecting General and passes 10/10 under the load gate's CPU load at two workers (test).
+  - done: impl-1373 · 2026-10-29T19:11:55.099Z
+  - verified: rev-31 [reviewer] · run rev-20261029-1373-final1 · 2026-10-29T19:12:04.977Z · commit eda3372ea0807b935cced34ae3c6da13b4c07559
 
 ## Comments
 
@@ -103,3 +105,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Timer-free source3 clear, A-14000; tree 5ba069865d03ac3a109e4d13c8a785411afd1181. Coordinator-approved native timeout receipt signals release, readiness must remain pending, exact-row/original assertions retained and finally joins before context teardown. No allowance change. C1 not yet verified; old-head load proof does not carry. Fresh Coordinator stress slot and unchanged-head mode-free Linux evidence required; prior admission refusal remains separate.
+
+### impl-1373 · 2026-10-29T19:11:24.334Z
+
+Current-head runtime evidence eda3372ea: macOS arm64 two-worker CPU load A-14003,10/10 whole-file/80 cases with exact original reload generated case1.756–2.040s/native exits0/CPUprogress true/joins complete. Linux x64 droplet c7418a83/A-14015 passed4195/4195; T0–T2+Web complete, T3/T4 not selected/deferred; Headless Shell156.0.8078.4 revision1248, Web4workers. Exact reload case passed3.163804s. Duration gates report-only; host typecheck gate reused (not repeated). Old-head proof and admission refusal excluded. Final evidence review queued; fresh origin/dev merge-tree conflict check clean, no source change.
+
+### rev-31 · 2026-10-29T19:12:04.977Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261029-1373-final1
+commit: eda3372ea0807b935cced34ae3c6da13b4c07559
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1 verified. A-14018 audits current source3 plus fresh macOS A-14003/A-13999: ten whole-file native exits0, 80 passing generated cases, two lanes and per-child CPU progress, with cleanup/join source and raw-record limits retained. Ordinary exact-head Linux c7418a83/A-14015 passes4195 plus75 unrelated load samples; all8 composer cases pass, reload3.163804407s at21952, distinct from macOS load1.756–2.040s. Host T0/all Linux T1/fallback T2/Web complete; T3/T4 absent, automatic Web repeats0. Prior refused admission/old-head load remain historical; report-only warnings retained. No Reviewer executions.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-29T19:21:41.147Z
+
+Merged a3422c726113240fe45e0fc76560415e1213f204 onto dev.
