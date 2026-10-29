@@ -966,7 +966,7 @@ export class HubCore {
     else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
     const contextChanged = this.#refreshExplorerContext(false);
     if (change.item) change = {...change,item:this.#items?.get?.(change.id) ?? change.item};
-    if (!change.item || change.item.state === 'closed') {
+    if (!change.item || change.item.state === 'closed' || change.item.status === 'ready') {
       // Include disconnected verifiers: reopening an item must not revive an old reservation.
       for (const pending of this.#store.pendingVerifications()) {
         if (this.#sameItem(pending.item, change.id)) this.#store.clearMeta(pending.key);
@@ -1823,7 +1823,8 @@ export class HubCore {
     const stored = this.#store.meta(key);
     if (!stored) return undefined;
     const pending = JSON.parse(stored) as PendingVerification;
-    if (this.#items && this.#items.lead(pending.item)?.state !== 'open') {
+    if (this.#items && (this.#items.lead(pending.item)?.state !== 'open'
+      || this.#items.get?.(pending.item)?.status === 'ready')) {
       this.#store.clearMeta(key);
       return undefined;
     }
@@ -1845,7 +1846,7 @@ export class HubCore {
     const request = verifierRequest(message.text);
     if (!request) return false;
     const item = this.#items?.resolveId?.(request.item) ?? null;
-    if (!item || this.#items?.lead(item)?.state !== 'open') return false;
+    if (!item || this.#items?.lead(item)?.state !== 'open' || this.#items?.get?.(item)?.status === 'ready') return false;
     const key = `pending-verification:${this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id)}`;
     const pending = this.sessionHolds(connection).some(h => h.item === item)
       ? null : JSON.stringify({ item, kind: request.kind });

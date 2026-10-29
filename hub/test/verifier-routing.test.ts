@@ -76,8 +76,8 @@ for (const role of ['reviewer', 'qa'] as const) {
   });
 }
 
-for (const queued of [false, true]) {
-  test(`legacy closed-item pending after restart ${queued ? 'cannot block the oldest queued review' : 'is absent from who and session rows'}`, async t => {
+for (const ready of [false, true]) for (const queued of [false, true]) {
+  test(`legacy ${ready ? 'ready' : 'closed'}-item pending after restart ${queued ? 'cannot block the oldest queued review' : 'is absent from who and session rows'}`, async t => {
     const root = await tempProject(t);
     const served = await projectHub(t, root, {}, { clock: new FakeClock() });
     const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
@@ -85,7 +85,7 @@ for (const queued of [false, true]) {
     const previous = await create('Already landed before upgrade');
     const next = await create('Oldest queued review');
     const later = await create('Later queued review');
-    assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: previous.id })).ok, true);
+    assert.equal((await coord.call<{ ok: boolean }>(ready ? 'task.edit' : 'task.close', { id: previous.id, ...(ready ? { status: 'ready' } : {}) })).ok, true);
     const text = `review request ${next.id}\nOldest build`;
     const laterText = `review request ${later.id}\nLater build`;
     if (queued) for (const request of [text, laterText]) {
@@ -374,3 +374,43 @@ for (const verification of [false, true]) {
     assert.equal(fake.injections.filter(i => i.message.id === inputId).length, 1, 'uncertain input is never replayed automatically');
   });
 }
+
+test('ready clears an idle reviewer reservation and assigns queued work while another reviewer stays busy', async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
+  const reviewers = [];
+  for (const name of ['rev-busy', 'rev-idle']) {
+    const launch = await ui.request({ type: 'session.launch', name, role: 'reviewer', harness: 'codex' });
+    assert.equal(launch.ok, true, launch.error);
+    const process = (launch.value as { process: HarnessProcessView }).process;
+    const peer = await inProcessSpoke(t, { cwd: root, discover: true, name, assignRole: false, sessionId: process.sessionId });
+    await peer.waitForEvent(e => e.params.meta?.kind === 'role');
+    reviewers.push(peer);
+  }
+  fakes.codex!.busy('rev-busy');
+  fakes.codex!.idle('rev-idle');
+  const create = async (title: string) => (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title })).item;
+  const previous = await create('Ready review');
+  const next = await create('Queued review');
+  const first = `review request ${previous.id}\nPrevious build`;
+  await coord.call('send', { to: ['rev-idle'], text: first });
+  await reviewers[1]!.waitForEvent(e => e.params.content === first);
+  const who = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { item: string; kind: string } }> }>('who')).sessions;
+  assert.deepEqual((await who()).find(s => s.name === 'rev-idle')?.pending, { item: previous.id, kind: 'review' });
+  const text = `review request ${next.id}\nNext build`;
+  assert.equal((await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text })).outcomes[0]?.outcome, 'queued');
+  // The request response is the durable status boundary; no clock tick or idle signal follows it.
+  assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: previous.id, status: 'ready' })).ok, true);
+  const history = ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages;
+  assert.deepEqual(history.find(m => m.text === text)?.to, ['rev-idle'], 'assignment happens in the ready transition tick');
+  await reviewers[1]!.waitForEvent(e => e.params.content === text);
+  assert.deepEqual((await who()).find(s => s.name === 'rev-idle')?.pending, { item: next.id, kind: 'review' });
+  assert.equal(reviewers[0]!.events.some(e => e.params.content === text), false);
+  const late = `${first}\nLate ready-item delivery`;
+  await coord.call('send', { to: ['rev-idle'], text: late });
+  await reviewers[1]!.waitForEvent(e => e.params.content === late);
+  assert.deepEqual((await who()).find(s => s.name === 'rev-idle')?.pending, { item: next.id, kind: 'review' }, 'late ready delivery cannot replace live work');
+});
