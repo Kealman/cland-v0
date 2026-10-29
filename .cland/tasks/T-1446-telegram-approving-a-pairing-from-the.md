@@ -3,17 +3,18 @@ id: T-1446
 kind: task
 title: "Telegram: approving a pairing from the CLI sends no confirmation to the phone"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1444
 blocked_by: []
-topic: null
+topic: topic-1196
 branch: t/T-1446-telegram-approving-a-pairing-from-the
 created: 2026-10-29T16:50:28.430Z
-updated: 2026-10-29T16:54:47.318Z
+updated: 2026-10-29T16:59:08.508Z
 ---
 
 ## Summary
@@ -26,5 +27,13 @@ Find why approval queues no "Paired with <project>" line on Telegram. The spec a
 
 ## Acceptance criteria
 
-- [ ] C1. After `cland remote approve telegram <code>`, the paired chat receives exactly one confirmation through the outbox, shown by a T2 production-frame test on the fake Bot API, red before the fix.
-- [ ] C2. Open cards are sent after the confirmation, in order.
+- [x] C1. After `cland remote approve telegram <code>`, the paired chat receives exactly one confirmation through the outbox, shown by a T2 production-frame test on the fake Bot API, red before the fix.
+  - done: impl-1446 · 2026-10-29T16:59:07.822Z
+- [x] C2. Open cards are sent after the confirmation, in order.
+  - done: impl-1446 · 2026-10-29T16:59:07.943Z
+
+## Comments
+
+### impl-1446 · 2026-10-29T16:55:34.784Z
+
+Consumer search before change: pairing.approve production callers are hub/src/cli/remote.ts, hub/src/setup/hub.ts and nvim/lua/cland/pairing_card.lua. Shared callback traverses dispatch.ts → daemon.ts/configuration.ts → gateway.ts; Discord implements pairingApproved, Telegram does not. Existing fake messenger/legacy adapter tests exercise optional callback compatibility. Production-frame tests include pairing-approval, telegram-pairing, setup-remote-component, remote-workbench, telegram-mute, doctor-remotes and web-authority; UI pairing tests and qa/briefs/E-1313.md consume unchanged approval frames. No frame/schema/admission change planned: add existing optional adapter hook to Telegram only. Legacy adapters, persisted outbox readers and other tiers retain their shapes. Seam agreed by assignment: production frames/CLI and fake Bot API.

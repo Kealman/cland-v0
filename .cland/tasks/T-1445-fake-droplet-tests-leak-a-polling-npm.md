@@ -3,7 +3,7 @@ id: T-1445
 kind: task
 title: Fake-droplet tests leak a polling 'npm test' and node pair whenever a run ends without writing the finish file
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1194
 branch: t/T-1445-fake-droplet-tests-leak-a-polling-npm
 created: 2026-10-29T16:09:32.114Z
-updated: 2026-10-29T16:54:07.972Z
+updated: 2026-10-29T16:58:32.539Z
 ---
 
 ## Summary
@@ -27,8 +27,8 @@ Every fake-droplet run's remote command exits or is killed when its test or fixt
 
 ## Acceptance criteria
 
-- [ ] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
-  - failed: rev-34 [reviewer] · 2026-10-29T16:52:52.305Z · note Provider handler work can resume after close/census/root removal; new cleanup regressions also lack ownership across setup failure.
+- [x] C1. Each listed test file leaves no `npm test` or finish-polling `node` process behind after it passes, fails or is aborted, shown by a process census in the test.
+  - done: impl-1445 · 2026-10-29T16:58:15.406Z
 - [x] C2. The finish poller exits by itself after a bounded time even if nobody writes `finish`.
   - done: impl-1445 · 2026-10-29T16:24:22.166Z
 

@@ -2,8 +2,8 @@
 id: T-1350
 kind: task
 title: claude-code-adapter's crash case advances its injected clock once and can miss a late OS exit
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1191
 branch: t/T-1350-claude-code-adapter-s-crash-case
 created: 2026-10-26T22:36:48.083Z
-updated: 2026-10-29T16:48:40.393Z
+updated: 2026-10-29T16:59:11.014Z
+closed: 2026-10-29T16:59:11.014Z
 ---
 
 ## Summary
@@ -81,3 +82,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 C1 final evidence clear. Fresh authorized A-13816 supplies original ten exact sequential native passes at reviewed head/tree, 14 child joins/3 lease releases/clean completion; historical transcript no longer substitutes for that proof. A-13778 independently supplies five local CPU-load passes with both counters and joins/releases. Linux A-13801 supplies 4156 ordinary passes and changed Claude file 6/6, exact crash 5.291864244 s at line 21344. T0/T1/all T2/changed T3/Web complete; other T3/T4 absent, host-tree reuse and report-only warnings retained. No findings, C1 verified.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-29T16:59:11.014Z
+
+Merged 3f8add3c647f9bffe690121d34cf023f7107b797 onto dev.
