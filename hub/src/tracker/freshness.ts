@@ -6,6 +6,7 @@
 // one `git for-each-ref` on a timer and soon after every tracker change; a tip that moved changes the key, so nothing
 // has to be invalidated by hand: answers for tips no branch has any more are dropped. Missing answers are computed
 // asynchronously in separate foreground and demo lanes; items waiting for answers are announced (`settled`).
+import { assessMergeDelta, type MergeDelta } from './merge-delta.ts';
 import { epicDemoFreshness } from './epic-surfaces.ts';
 import type { IndexedVerdict } from './index-db.ts';
 import type { VerdictKind } from './item.ts';
@@ -18,6 +19,7 @@ export const TIP_CHECK_MS = 2000;
 const POKE_MS = 50;
 
 type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; demoTasks?: string[]; ids: Set<string> };
+type DeltaJob = { want: Want; baseTip: string; current: boolean };
 type Worker = { demo: boolean; working: boolean; promise: Promise<void> | null };
 
 /** Owns when tip reads run, including the first read; tests can drive and await them by hand. */
@@ -53,6 +55,7 @@ export type FreshnessOptions = {
   scheduleTips?: TipSchedule;
   /** Answers are known for these items now: announce them again. */
   settled: (ids: string[]) => void;
+  recordDelta?: (ids: string[], delta: MergeDelta) => Promise<void>;
   /** A branch tip or the base moved (or the first read is done): every item's freshness may have changed. */
   tipsMoved: () => void;
 };
@@ -65,6 +68,7 @@ export class Freshness {
   readonly #log: LogFn;
   readonly #intervalMs: number;
   readonly #scheduleTips: TipSchedule;
+  readonly #recordDelta: FreshnessOptions['recordDelta'];
   readonly #settled: (ids: string[]) => void;
   readonly #tipsMoved: () => void;
   /** Branch → tip as last read; null until the first read. */
@@ -76,6 +80,10 @@ export class Freshness {
   /** Task patch ids by (base, base tip, commit): the tip's is shared by the review and the QA verdict. */
   readonly #patches = new Map<string, Promise<string | null>>();
   readonly #workers: Worker[] = [false, true].map(demo => ({ demo, working: false, promise: null }));
+  readonly #deltaJobs = new Map<string, DeltaJob>();
+  #deltaActive: string | null = null;
+  #deltaPromise: Promise<void> | null = null;
+  #deltaImmediate: NodeJS.Immediate | null = null;
   #workImmediate: NodeJS.Immediate | null = null;
   /** The worker is due to start: never from inside a read, where its first git would run in the handler. */
   #workSoon = false;
@@ -101,6 +109,7 @@ export class Freshness {
     this.#intervalMs = options.intervalMs ?? TIP_CHECK_MS;
     this.#scheduleTips = options.scheduleTips ?? scheduleTips;
     this.#settled = options.settled;
+    this.#recordDelta = options.recordDelta;
     this.#tipsMoved = options.tipsMoved;
   }
 
@@ -117,6 +126,9 @@ export class Freshness {
     // Cancel the current native command and fence every later command in a
     // multi-command patch/demo scan before waiting for its close receipt.
     this.#gitStop.abort();
+    this.#deltaJobs.clear();
+    if (this.#deltaImmediate) clearImmediate(this.#deltaImmediate);
+    this.#deltaImmediate = null;
     this.#workSoon = false;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
@@ -130,7 +142,7 @@ export class Freshness {
     // Scheduling is stopped synchronously, but owned native Git operations must
     // settle before the tracker closes its index and the fixture checks handles.
     const read = this.#reading ? new Promise<void>(resolve => this.#readWaiters.push(resolve)) : Promise.resolve();
-    return Promise.all([read, ...this.#workers.map(worker => worker.promise)]).then(() => {});
+    return Promise.all([read, this.#deltaPromise, ...this.#workers.map(worker => worker.promise)]).then(() => {});
   }
 
   /** The integration branch patch ids are compared against, as last read; null when neither exists or not read yet. */
@@ -294,6 +306,7 @@ export class Freshness {
       if (mode === 'fixed') return true;
       return live.has(tip!) && (mode === 'ancestor' || mode === 'demo' || `${b} ${bt}` === baseKey);
     };
+    for (const key of this.#deltaJobs.keys()) if (!alive(key)) this.#deltaJobs.delete(key);
     for (const key of [...this.#results.keys()]) if (!alive(key)) this.#results.delete(key);
     for (const key of [...this.#wants.keys()]) if (!alive(key)) this.#wants.delete(key);
     for (const key of [...this.#retries.keys()]) if (!alive(key)) this.#retries.delete(key);
@@ -337,6 +350,7 @@ export class Freshness {
         this.#results.set(key, value);
         if (failed && (want.ancestry || want.demoTasks)) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
         this.#settled([...want.ids]);
+        if (!failed) this.#queueDelta(key, want, value);
       }
     } finally {
       worker.working = false;
@@ -352,7 +366,49 @@ export class Freshness {
     if (want.ancestry) return await this.#git(['merge-base', '--is-ancestor', resolved, want.tip]) !== null;
     if (!want.base) return false;
     const reviewed = await this.#patch(want.base, resolved);
-    return reviewed !== null && reviewed === (await this.#patch(want.base, want.tip));
+    const current = reviewed !== null && reviewed === (await this.#patch(want.base, want.tip));
+    return current;
+  }
+
+  /** Advisory work owns a separate serial lane; no graph or sink can hold freshness pending. */
+  #queueDelta(key: string, want: Want, current: boolean): void {
+    if (!this.#recordDelta || this.#stopped || want.ancestry || want.demoTasks || !want.base || this.#deltaActive === key) return;
+    const baseTip = this.#tips?.get(want.base);
+    if (!baseTip) return;
+    this.#deltaJobs.set(key, { want, baseTip, current });
+    this.#startDelta();
+  }
+
+  #startDelta(): void {
+    if (this.#stopped || this.#deltaPromise || this.#deltaImmediate || !this.#deltaJobs.size) return;
+    this.#deltaImmediate = setImmediate(() => {
+      this.#deltaImmediate = null;
+      this.#deltaPromise = this.#workDeltas().finally(() => {
+        this.#deltaPromise = null;
+        this.#startDelta();
+      });
+    });
+  }
+
+  async #workDeltas(): Promise<void> {
+    while (!this.#stopped) {
+      const next = this.#deltaJobs.entries().next().value;
+      if (!next) return;
+      const [key, { want, baseTip, current }] = next;
+      this.#deltaJobs.delete(key);
+      this.#deltaActive = key;
+      try {
+        const reviewed = await resolveCommit(this.#git, want.commit);
+        const delta = reviewed ? await assessMergeDelta(this.#git, reviewed, want.tip, baseTip) : null;
+        if (delta && !this.#stopped) await this.#recordDelta?.([...want.ids], { ...delta, patchIdCurrent: current });
+      } catch {
+        // Even a failed diagnostic sink must never enter the freshness failure path.
+        try { this.#log({ event: 'merge-delta-unavailable', reviewed: want.commit, head: want.tip, mode: 'report' }); }
+        catch { /* report-only diagnostics have no authority over freshness */ }
+      } finally {
+        this.#deltaActive = null;
+      }
+    }
   }
 
   #patch(base: string, sha: string): Promise<string | null> {

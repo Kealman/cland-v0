@@ -76,6 +76,7 @@ import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
 import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts, missingDoneCriteria, qaSatisfied } from './gate-verdicts.ts';
 import { MergeError, type MergeCode } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
+import { deltaComment } from './merge-delta.ts';
 import { Freshness, pending, type TipSchedule } from './freshness.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
@@ -428,6 +429,17 @@ export class Tracker {
       log: this.#log,
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
+      recordDelta: async (ids, delta) => {
+        const text = deltaComment(delta);
+        for (const id of ids) {
+          const view = await this.viewAsync(id);
+          const review = view.verdicts.filter(v => v.verdict === 'review' && v.source === 'hub').at(-1);
+          if (view.kind !== 'task' || view.state !== 'open' || review?.result !== 'clear' || review.writer?.role !== 'reviewer'
+            || review.commit !== delta.reviewed || this.#fresh.tip(view.branch) !== delta.head
+            || view.comments.some(c => c.text === text)) continue;
+          await this.comment({ id: 'hub', name: 'hub', role: null }, id, text);
+        }
+      },
       settled: (ids) => {
         this.#announceBatch(ids);
         for (const id of ids) { this.#scheduleReady(id); this.#schedulePlannedFor(id); }

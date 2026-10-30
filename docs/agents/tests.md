@@ -178,6 +178,17 @@ using the same selection and runner. The table below describes when each runs;
 `test = "npm test"` remains the whole-suite entry when no tier plan applies.
 These values control the release path and go through review like code.
 
+### Merge-delta advisory evidence
+
+A hosting hub with merge-delta assessment support writes report-only item
+comments from asynchronous freshness work after a clean merge of a reviewed
+head and dev. Assessment comments contain no verdict and do not replace the
+Reviewer workflow or change patch-id freshness. Held/failing advisory drainage
+controls live in [freshness.test.ts](tests/hub-test-freshness.test.ts.md).
+The native path, dependency and
+durable-comment controls live in
+[merge-policy.test.ts](tests/hub-test-merge-policy.test.ts.md).
+
 ## Tiers and the merge queue
 
 ### Project commands

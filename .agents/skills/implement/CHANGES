@@ -343,6 +343,8 @@ T-1459: Document repository auto-maintenance provisioning and disposable native-
 
 T-1453: Resolve authorized dev merge by retaining local preflight and repository auto-maintenance guidance together without changing either policy.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
+T-1462: Document report-only durable merge-delta comments, conservative dependency facts and unchanged Reviewer workflow/freshness.
+T-1462 source M1/M2: document independent advisory settlement/drainage and explicit unknown unsupported runtime imports.
 
 T-1454: Describe additive sibling-importer and merged-landing selection, bounds, evidence and fallback.
 T-1454 source1: Unsupported runtime edges report unknown; history failure retains full process execution through task planning.

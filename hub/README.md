@@ -180,6 +180,41 @@ build, including watch rebuilds, writes a stamp only after checking local asset
 references and unchanged inputs. See [web/README.md](../web/README.md) for tokens,
 fonts and the development loop. The hub serves this bundle on its web edge.
 
+### Merge-delta assessments (report mode)
+
+The hosting hub publishes the existing patch-id freshness result before scheduling
+a separate serial advisory worker to record an ordinary item comment for an exact,
+conflict-free two-parent merge of a reviewed head and a dev ancestor. Git's computed merge tree must equal the committed tree. The comment
+contains immutable reviewed/head/dev/merge-base identities, changed paths on both
+sides (deletions and both rename endpoints), shared paths and the applied
+`conservative-runtime-coupling-v1` rule. That rule reports overlap whenever either
+side includes a path outside the existing tracker/documentation override scope;
+only documentation/tracker-only, path-disjoint changes can report disjoint.
+
+Dependency facts reuse the batch import graph against committed candidate bytes:
+branch-changed JS/TS importers are traced transitively to dev-changed paths.
+Unsupported executable forms or exhausted budgets report unknown, never no
+dependency. The shared graph lazily loads the existing TypeScript parser and follows static
+and literal runtime imports, including template substitutions and literal require
+calls. Computed or unproven indirect loading stays unknown. A missing parser
+reports unknown; plain scalar template text does not hide dependency edges.
+The native reader caps 256 object reads and 8 MiB; the shared graph also caps
+source bytes, reads and traversed edges. Path censuses cap 2,000 paths and 128 KiB
+per side. An unavailable assessment is logged in report mode and cannot alter
+freshness or refuse an operation. The comment's `patchIdCurrent` records actual
+patch-id carry-over eligibility; it does not claim a merge gate has been called.
+
+The advisory lane deduplicates pending immutable inputs and is joined on stop,
+including native Git and already-entered persistence. Held work, persistence
+failures and throwing diagnostic sinks cannot delay the foreground freshness
+answer or unrelated verdicts.
+
+Comments persist on the item and deduplicate across restart by their immutable
+facts. They carry no verdict fields and grant no review authority. Existing
+patch-id freshness and merge gates stay unchanged. Rule 11 still requires the
+responsible item lead to obtain merge-delta review before the next verification.
+Enforcing finer disjointness rules requires the separate T-1486 replay rollout.
+
 ## Modules
 
 | Path | What it is |

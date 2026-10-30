@@ -1,4 +1,4 @@
-// Verdict freshness off the request path (T-67): the tracker against a real Git repository, with every git process
+// T3: native Git verdict freshness off the request path (T-67): the tracker against a real Git repository, with every git process
 // counted through the injected runner. `list` and `view` must start none; the answers arrive from the cache.
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -9,7 +9,7 @@ import { appendFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setImmediate } from 'node:timers/promises';
-import { tempProject } from './harness.ts';
+import { tempProject, eventually } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { Freshness } from '../src/tracker/freshness.ts';
 import { Tracker, TrackerError, type Actor, type ItemChange, type ItemSummary } from '../src/tracker/tracker.ts';
@@ -264,4 +264,50 @@ for (const phase of ['read', 'worker']) test(`freshness stop drains an active ${
   release();
   await Promise.all([reading, stopped]);
   assert.equal(finished, true);
+});
+
+
+for (const phase of ['graph', 'failing-sink'] as const) test(`advisory ${phase} cannot delay freshness and stop joins its owned work`, async t => {
+  const root = await tempProject(t);
+  const { feature } = await repository(root, 2);
+  const reviewed = git(root, 'rev-parse', 't/0');
+  await writeFile(join(root, 'GLOSSARY.md'), 'dev documentation\n');
+  git(root, 'add', 'GLOSSARY.md'); git(root, 'commit', '-qm', 'Dev documentation');
+  git(root, 'checkout', 't/0'); git(root, 'merge', '--no-edit', 'dev');
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let entered = false;
+  let diagnosticAttempts = 0;
+  const real = gitIn(root, fixtureEnvironment(root, process.env));
+  const fresh = new Freshness({
+    git: async (args, input, signal) => {
+      if (phase === 'graph' && args.includes('--format=%P')) { entered = true; await held; }
+      return real(args, input, signal);
+    },
+    recordDelta: async () => {
+      if (phase === 'failing-sink') { entered = true; await held; throw new Error('persistence unavailable'); }
+    },
+    log: entry => { if (entry.event === 'merge-delta-unavailable') { diagnosticAttempts++; throw new Error('diagnostic sink unavailable'); } },
+    settled: () => {}, tipsMoved: () => {}, scheduleTips: manualTips().scheduleTips,
+  });
+  onCleanup(t, async () => { release(); await fresh.stop(); });
+  fresh.start(); await fresh.refresh();
+  const verdict = (commit: string) => ({ verdict: 'review' as const, result: 'clear' as const, scope: 'full' as const,
+    commit, by: 'rev [reviewer]', author: 'rev', at: '2026-10-30T00:00:00Z', run: 'source', source: 'hub' as const });
+  const first = () => fresh.annotate('T-1', 't/0', [verdict(reviewed)])[0]?.current;
+  assert.equal(first(), undefined);
+  await eventually('advisory owner entered', () => entered ? true : undefined, 15_000);
+  await eventually('original patch-id result published while advisory held', () => first() === true ? true : undefined, 15_000);
+  const other = () => fresh.annotate('T-2', 't/1', [verdict(feature)])[0]?.current;
+  assert.equal(other(), undefined);
+  await eventually('unrelated freshness settles while advisory held', () => other() === true ? true : undefined, 15_000);
+  assert.equal(first(), true);
+  let stopped = false;
+  const stopping = fresh.stop().then(() => { stopped = true; });
+  await setImmediate();
+  assert.equal(stopped, false, 'shutdown must join the entered advisory owner');
+  release(); await stopping;
+  assert.equal(stopped, true);
+  assert.equal(first(), true, 'advisory and diagnostic failures preserve original freshness');
+  if (phase === 'failing-sink') assert.equal(diagnosticAttempts, 1, 'throwing diagnostic sink was exercised');
 });

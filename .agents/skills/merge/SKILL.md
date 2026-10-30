@@ -81,3 +81,13 @@ changes. Batch drop notices for retained queues use the same diagnosis.
 Dev conflicts retain the rebase-on-dev instruction. A refusal changes
 neither the existing queue nor refs/checkouts; obtain fresh review for any source
 fix before verification and retry. No additional role permission is needed.
+
+## Merge-delta advisory comments
+
+Read the report-only assessment on the item as path/dependency evidence, never
+as a Reviewer verdict. The hosting hub preserves patch-id freshness and existing
+gates; the item lead still obtains merge-delta review before verification under
+rule 11. `patchIdCurrent` records carry-over eligibility, not an observed gate
+acceptance. The conservative rule and unknown graph/budget outcomes are defined
+in `hub/README.md`, "Merge-delta assessments (report mode)". Enforcement awaits
+T-1486's separate replay decision. Existing role clauses cover this flow.

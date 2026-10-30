@@ -10,3 +10,17 @@ branch and repeated request still enqueue. No suite or batch execution is needed
 All child environments come from the existing prepared-project/harness builders
 and fixtureEnvironment with scratch Git configuration. Cleanup waits for the
 in-process hub and owned children before removing the disposable root.
+
+Merge-delta controls use the same disposable native Git/public task.view seam.
+Observe the committed assessment comment with a 15-second bound, then assert its
+immutable heads, docs-only disjointness, same-path overlap, both rename endpoints,
+deletion paths and a branch importer reaching a dev-changed module. Unsupported
+local aliases, computed/prefix imports, require/createRequire and escaped literals
+record unknown dependency evidence and preserve patch-id freshness. The positive
+control follows a plain static import through a helper re-export to the changed
+module beside ordinary scalar template text. Native hidden-template
+import/require/nested controls permit explicit unknown or a sound matching
+importer, never known-empty. The cleared shared TypeScript parser resolves literal
+loading; unsupported executable forms and missing parser support stay unknown. Compare
+patchIdCurrent to the actual verdict freshness and check the durable item bytes.
+These are report-only facts; no test treats the comment as a review verdict.

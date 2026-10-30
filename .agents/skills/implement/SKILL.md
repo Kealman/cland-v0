@@ -8,6 +8,17 @@ metadata:
 
 Implement the work described by the user in the spec or tickets.
 
+## Merge-delta advisory comments
+
+The hosting hub records clean reviewed-head/dev merges as report-only item
+comments with path and shared-import-graph facts. The conservative rule treats
+runtime/config/test/generated changes as potentially coupled. Unknown graph
+facts are explicit. `patchIdCurrent` is freshness eligibility, not a gate receipt.
+These comments never replace the Reviewer's merge-delta review before the next
+verification under rule 11; existing patch-id carry-over stays unchanged. See
+`hub/README.md`, "Merge-delta assessments (report mode)". No role clause changes
+or additional permissions are needed.
+
 Claude Code's managed Bash `PreToolUse` guard refuses computed rm/rmdir targets
 (command substitutions, named variables and xargs) before native approval stalls
 the session. Read its reason, print the path if needed, and retry with every path

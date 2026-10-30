@@ -357,3 +357,138 @@ test('enqueue refuses a conflicting queued member immediately with its item and 
   // Repeating the queued request must not merge its own changes twice.
   assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: clean.id })).queued, 2);
 });
+
+test('dev merge records a report-only disjoint assessment on the item without a new Reviewer verdict', async (t) => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(ui, 'Document the parser', 'README.md');
+  await review(rev, work.id);
+  const reviewed = git(work.path, 'rev-parse', 'HEAD');
+  await writeFile(join(root, 'GLOSSARY.md'), 'dev documentation\n');
+  git(root, 'add', 'GLOSSARY.md'); git(root, 'commit', '-qm', 'Dev documentation');
+  const dev = git(root, 'rev-parse', 'HEAD');
+  git(work.path, 'merge', '--no-edit', 'dev');
+  const head = git(work.path, 'rev-parse', 'HEAD');
+  const read = async () => (await value<{ item: { comments: Array<{ text: string; verdict?: unknown }> } }>(ui, { type: 'task.view', item: work.id })).item;
+  const receipt = await eventually('durable merge-delta assessment', async () => {
+    const comment = (await read()).comments.find(c => c.text.startsWith('Merge-delta assessment (report-only)'));
+    return comment ?? undefined;
+  }, 15_000);
+  assert.equal(receipt.verdict, undefined, 'an assessment is never a Reviewer verdict');
+  const assessment = JSON.parse(receipt.text.split('\n')[1]!);
+  assert.equal(assessment.result, 'disjoint');
+  assert.equal(assessment.reviewed, reviewed);
+  assert.equal(assessment.head, head);
+  assert.equal(assessment.dev, dev);
+  assert.deepEqual(assessment.branchPaths, ['README.md']);
+  assert.deepEqual(assessment.devPaths, ['GLOSSARY.md']);
+  assert.equal(assessment.rule, 'conservative-runtime-coupling-v1');
+});
+
+test('dev merge assessment retains rename and deletion facts and detects a branch importer reaching a dev change', async (t) => {
+  const { root, ui, rev } = await project(t);
+  await mkdir(join(root, 'docs'), { recursive: true });
+  await writeFile(join(root, 'docs/old.md'), 'move me\n');
+  await writeFile(join(root, 'docs/gone.md'), 'delete me\n');
+  await writeFile(join(root, 'dep.ts'), 'export const value = 1;\n');
+  await writeFile(join(root, 'helper.ts'), "export { value } from './dep.ts';\n");
+  git(root, 'add', 'docs/old.md', 'docs/gone.md', 'dep.ts', 'helper.ts'); git(root, 'commit', '-qm', 'Seed dependency and documents');
+  const work = await task(ui, 'Use dependency', 'parser.ts');
+  await writeFile(join(work.path, 'parser.ts'), "import { value } from './helper.ts';\nconst label = `value ${value}`;\nexport const result = { value, label };\n");
+  git(work.path, 'commit', '-qam', 'Use dependency');
+  await review(rev, work.id);
+  git(root, 'mv', 'docs/old.md', 'docs/new.md');
+  git(root, 'rm', 'docs/gone.md');
+  await writeFile(join(root, 'dep.ts'), 'export const value = 2;\n');
+  git(root, 'commit', '-qam', 'Move documents and change dependency');
+  git(work.path, 'merge', '--no-edit', 'dev');
+  const receipt = await eventually('dependency delta assessment committed', async () => {
+    const { item } = await value<{ item: { comments: Array<{ text: string }> } }>(ui, { type: 'task.view', item: work.id });
+    return item.comments.find(c => c.text.startsWith('Merge-delta assessment (report-only)'));
+  }, 15_000);
+  const assessment = JSON.parse(receipt.text.split('\n')[1]!);
+  assert.equal(assessment.result, 'overlapping');
+  assert.deepEqual(assessment.overlap, [], 'the dependency counter-case has disjoint paths');
+  assert.deepEqual(assessment.branchPaths, ['parser.ts']);
+  assert.deepEqual(assessment.devPaths, ['dep.ts', 'docs/gone.md', 'docs/new.md', 'docs/old.md']);
+  assert.deepEqual(assessment.dependency, { status: 'known', importers: ['parser.ts'] });
+});
+
+test('dev merge assessment records same-path overlap, persists once, and preserves patch-id freshness', async (t) => {
+  const { root, ui, rev } = await project(t);
+  await mkdir(join(root, 'docs'), { recursive: true });
+  const lines = Array.from({ length: 30 }, (_, i) => `line ${i}\n`);
+  await writeFile(join(root, 'docs/shared.md'), lines.join(''));
+  git(root, 'add', 'docs/shared.md'); git(root, 'commit', '-qm', 'Seed shared document');
+  const work = await task(ui, 'Document changes', 'README.md');
+  const branchLines = [...lines]; branchLines[0] = 'branch change\n';
+  await writeFile(join(work.path, 'docs/shared.md'), branchLines.join(''));
+  git(work.path, 'commit', '-qam', 'Branch document change');
+  await review(rev, work.id);
+  const devLines = [...lines]; devLines[29] = 'dev change\n';
+  await writeFile(join(root, 'docs/shared.md'), devLines.join(''));
+  git(root, 'commit', '-qam', 'Dev document change');
+  git(work.path, 'merge', '--no-edit', 'dev');
+  const receipt = await eventually('overlap assessment and unchanged freshness settled', async () => {
+    const { item } = await value<{ item: { path: string; comments: Array<{ text: string }>; verdicts: Array<{ current?: boolean }> } }>(ui, { type: 'task.view', item: work.id });
+    const comments = item.comments.filter(c => c.text.startsWith('Merge-delta assessment (report-only)'));
+    return comments.length && item.verdicts.at(-1)?.current !== undefined ? { item, comments } : undefined;
+  }, 15_000);
+  assert.equal(receipt.comments.length, 1);
+  const assessment = JSON.parse(receipt.comments[0]!.text.split('\n')[1]!);
+  assert.equal(assessment.result, 'overlapping');
+  assert.deepEqual(assessment.overlap, ['docs/shared.md']);
+  assert.equal(assessment.patchIdCurrent, receipt.item.verdicts.at(-1)!.current);
+  assert.equal(assessment.patchIdCurrent, true, 'existing patch-id carry-over is unchanged');
+  assert.ok((await readFile(join(root, receipt.item.path), 'utf8')).includes(receipt.comments[0]!.text), 'item bytes contain the assessment');
+});
+
+for (const [name, source] of [
+  ['alias', "import { value } from '@/dep'; export { value };"],
+  ['computed import', "const target = './dep.ts'; await import(target);"],
+  ['literal-prefix import', "const name = 'dep.ts'; await import('./' + name);"],
+  ['require', "const value = require('./dep.ts');"],
+  ['createRequire alias', "import { createRequire as factory } from 'node:module'; const load = factory(import.meta.url); load('./dep.ts');"],
+  ['escaped specifier', "import './d\\u0065p.ts';"],
+] as const) test(`dev merge assessment labels ${name} dependency evidence unknown without changing freshness`, async (t) => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(ui, 'Alias consumer', 'parser.ts');
+  await writeFile(join(work.path, 'parser.ts'), source);
+  git(work.path, 'commit', '-qam', 'Use alias');
+  await review(rev, work.id);
+  await writeFile(join(root, 'GLOSSARY.md'), 'dev documentation\n');
+  git(root, 'add', 'GLOSSARY.md'); git(root, 'commit', '-qm', 'Dev docs');
+  git(work.path, 'merge', '--no-edit', 'dev');
+  const assessment = await eventually('unknown graph recorded durably', async () => {
+    const { item } = await value<{ item: { comments: Array<{ text: string }> } }>(ui, { type: 'task.view', item: work.id });
+    const text = item.comments.find(c => c.text.startsWith('Merge-delta assessment (report-only)'))?.text;
+    return text ? JSON.parse(text.split('\n')[1]!) : undefined;
+  }, 15_000);
+  assert.equal(assessment.result, 'overlapping');
+  assert.equal(assessment.dependency.status, 'unknown');
+  assert.equal(assessment.patchIdCurrent, true);
+});
+
+for (const [name, source] of [
+  ['import', "const message = `${await import('./dep.ts')}`;"],
+  ['require', "const message = `${require('./dep.ts')}`;"],
+  ['nested import', "const message = `${`inner ${await import('./dep.ts')}`}`;"],
+] as const) test(`dev merge assessment never reports known empty for template ${name}`, async (t) => {
+  const { root, ui, rev } = await project(t);
+  await writeFile(join(root, 'dep.ts'), 'export const value = 1;\n');
+  git(root, 'add', 'dep.ts'); git(root, 'commit', '-qm', 'Seed template dependency');
+  const work = await task(ui, 'Template consumer', 'parser.ts');
+  await writeFile(join(work.path, 'parser.ts'), source);
+  git(work.path, 'commit', '-qam', 'Use dependency inside template');
+  await review(rev, work.id);
+  await writeFile(join(root, 'dep.ts'), 'export const value = 2;\n');
+  git(root, 'commit', '-qam', 'Dev changes template dependency');
+  git(work.path, 'merge', '--no-edit', 'dev');
+  const assessment = await eventually('template dependency evidence committed', async () => {
+    const { item } = await value<{ item: { comments: Array<{ text: string }> } }>(ui, { type: 'task.view', item: work.id });
+    const text = item.comments.find(c => c.text.startsWith('Merge-delta assessment (report-only)'))?.text;
+    return text ? JSON.parse(text.split('\n')[1]!) : undefined;
+  }, 15_000);
+  if (assessment.dependency.status === 'known') assert.deepEqual(assessment.dependency.importers, ['parser.ts']);
+  else assert.equal(assessment.dependency.status, 'unknown');
+  assert.equal(assessment.patchIdCurrent, true);
+});
