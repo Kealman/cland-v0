@@ -43,6 +43,11 @@ wording cannot return. No platform calls or browser are involved in these guards
 The chat guard keeps typed ask-card answers Telegram-only. Discord typed replies
 are topic messages; its buttons/modal and mapped voice replies answer asks.
 
+T-1479 adds the landing carousel, root README feature summary and Features entry
+to the source seam. All three name Telegram and Discord, General both ways,
+ask/approval cards, photos, files, voice notes and local setup, with a Remote
+control guide link. Keep the private-chat/server-channel scope and inspect claims
+against `docs/spec/v0.3.md`; these source checks do not prove native transport.
 
 ## Site prebuild guards
 

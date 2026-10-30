@@ -63,6 +63,7 @@ One Claude plan works too: opus leads, sonnet implements and reviews. So does a 
 - **Verification for any stack.** Your own check and test commands, on your machine or on cloud runners with a daily spend cap.
 - **Releases from the item.** When the release is accepted, cland tags it, writes the notes and pushes.
 - **Terminal, browser and phone.** Start the crew from the Neovim workbench, follow it in the browser, answer an ask from your phone. Every client talks to the same hub.
+- **[Telegram and Discord remote control](https://cland.app/docs/remote-control/).** Follow and steer the crew from a private Telegram chat or a channel in your own Discord server. General goes both ways; asks and Codex and OpenCode approvals arrive as cards. Send photos, files and voice notes. Pair through `cland setup` on the machine running the hub.
 
 ## Install
 
