@@ -4086,7 +4086,7 @@ What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/s
 | `{"type":"session.prune","id":…, "olderThan":"7d","dryRun"?:true}` | `{"names":[…],"dryRun":boolean}` | UI, human CLI, Coordinator |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI (Coordinator, Lead within its subtree, Aide on the human's word) |
 | `{"type":"session.resume","id":…,"session":…,"relaunch"?:true,"fresh"?:true}` | `{"found","reason"?,"process","role","claim","notes", "fresh"?:{"brief"}}` | UI, CLI (Coordinator, Aide on the human's word) |
-| `{"type":"session.retry","id":…,"session":…,"message":"<message id>"}` | `{"retried":true}`; refused unless that delivery is `uncertain` | UI, CLI |
+| `{"type":"session.retry","id":…,"session":…,"message":"<message id>"}` | `{"retried":true}`; force human input queued over 60 s through busy, or replay `uncertain`; optional `message` selects one delivery, omission chooses the oldest eligible one | UI, CLI |
 | `{"type":"session.signal","id":…,"session":…,"launch"?:…,"event":…,"at":…,"payload":{…}}` | `{"applied","state"?}` | `cland hook` |
 | `{"type":"session.bridge","id":…,"session":…,"launch"?:…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
 
@@ -7825,3 +7825,23 @@ cover stays red, and the finding still needs flaky-rerun filing. Logs name the
 executed and unexecuted phases: eligibility covers only the executed prefix.
 Changing the cover result needs a separate enforce item that completes the tail.
 See `docs/agents/tests.md`, "macOS cover load-gate reruns (report mode)".
+
+
+## Operator retry of queued input (T-1473)
+
+`cland session retry <name> [message id]` can force a never-attempted human
+message queued for more than 60 seconds through the busy hold. Without a message
+id it selects the oldest eligible queued or uncertain delivery. Only the selected
+message bypasses busy, through transport acceptance and its first native injection;
+other queued input stays held. A live transport is required. The queued record
+still advances to delivered only after acknowledgement, and to injected only
+after native confirmation. The log records `inject-retry` with `stage: queued`.
+Refusals retain the legacy `no uncertain delivery` phrase and identify the
+selected message's recipient stage and age in milliseconds
+since queue admission; a missing delivery has unknown stage and age.
+
+Attempted-unconfirmed delivered input cannot use this path. Its existing
+busy-to-idle/reconnect recovery and backoff remain in force. Uncertain deliveries
+keep the existing explicit operator replay path and never replay automatically.
+The message-id request and `{retried:true}` reply remain compatible with older
+hubs; omission of the id requires a hub with queued-input retry support.

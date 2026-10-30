@@ -1744,6 +1744,17 @@ export class HubCore {
     return true;
   }
 
+  /** Operator-selected queued input still requires the transport's positive ack before injection. */
+  retryQueued(messageId: string, session: string): boolean {
+    const candidate = this.#store.retryCandidate(session, this.#now().getTime(), messageId);
+    const connection = this.#live.get(session);
+    const message = this.#store.message(messageId);
+    if (!candidate?.queuedHuman || !connection || !message) return false;
+    if (!this.#sendTo(connection, message)) return false;
+    this.#log({ event: 'inject-retry', id: messageId, session, stage: 'queued' });
+    return true;
+  }
+
   /** The human asks for an uncertain delivery to go again: back to `delivered`; false when it was not uncertain. */
   retryUncertain(messageId: string, session: string): boolean {
     if (!this.#store.retryUncertain(messageId, session)) return false;

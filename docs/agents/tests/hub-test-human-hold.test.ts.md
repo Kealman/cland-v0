@@ -30,3 +30,13 @@ siblings. Capture the crash boundary after Store.markDelivered persists an ack
 but before the callback starts injection; do not model that boundary with rejection.
 Every Sessions state writer uses the same observation setter, including
 crew reuse, stop and exit; idle evidence cannot establish a busy episode's age.
+
+
+T-1473 uses public `Sessions.retry` and `answerSession` to force a human message
+older than 60 seconds through pushed busy, retaining the transport ack and final
+stored injected receipt. Assert the selected identity, queued-stage retry log,
+no sibling delivery, and no duplicate after idle/timer. Refusal controls retain
+exact queued (including the 60-second boundary), attempted delivered and injected
+stages with admission ages. The previous message-id request and legacy reply
+remain covered alongside optional-id selection. This seam excludes native CLI
+and actual harness I/O.

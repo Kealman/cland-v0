@@ -372,3 +372,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 
 | [`hub/test/human-hold.test.ts`](../../../hub/test/human-hold.test.ts) | [Notes](hub-test-human-hold.test.ts.md) |
 | [`hub/test/load-gate-rerun.test.ts`](../../../hub/test/load-gate-rerun.test.ts) | [Notes](hub-test-load-gate-rerun.test.ts.md) |
+
+| [`hub/test/session-retry.test.ts`](../../../hub/test/session-retry.test.ts) | [Notes](hub-test-session-retry.test.ts.md) |

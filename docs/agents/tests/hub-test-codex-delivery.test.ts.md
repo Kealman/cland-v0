@@ -40,3 +40,7 @@ admission each produce one terminal report and no further attempt. Ordinary
 endpoint/authentication/usage failures keep the previous failure-notice shape
 and never enter this retry policy. These are T2 policy proofs; they use no real
 provider, harness process or browser.
+
+T-1473 retains the existing `/no uncertain delivery/` assertion unchanged.
+Operator retry refusals append recipient stage and queue age after that legacy
+phrase; new queued-input eligibility must preserve uncertain replay fencing.

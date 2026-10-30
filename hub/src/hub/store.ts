@@ -121,6 +121,7 @@ create table if not exists deliveries (
   primary key (message_id, session)
 );
 create index if not exists deliveries_session on deliveries (session, state, queued_at);
+create index if not exists deliveries_recent on deliveries (session, queued_at desc);
 create table if not exists message_artifact_refs (
   artifact_id text not null, seq integer not null,
   message_id text not null references messages (id) on delete cascade,
@@ -1076,6 +1077,27 @@ export class Store implements HygieneMemory {
   deliveryCollisionCount(from: string, to: string): number {
     return Number((this.#prepare(`select count(*) as count from deliveries source join deliveries target
       on source.message_id = target.message_id where source.session = ? and target.session = ?`).get(from, to) as Row).count);
+  }
+
+  /** One operator retry candidate, using recipient facts rather than aggregate message stage.
+   * Without an id, prefer the oldest retryable input; otherwise report the latest recipient delivery.
+   */
+  retryCandidate(session: string, now: number, messageId?: string): { id: string; state: DeliveryState; ageMs: number; queuedHuman: boolean } | null {
+    const row = messageId !== undefined
+      ? this.#prepare(`select m.id, m.from_kind, d.state, d.injection_started, d.queued_at
+          from deliveries d join messages m on m.id = d.message_id where d.session = ? and m.id = ?`).get(session, messageId) as Row | undefined
+      : (this.#prepare(`select m.id, m.from_kind, d.state, d.injection_started, d.queued_at
+          from deliveries d join messages m on m.id = d.message_id
+          where d.session = ? and d.state in ('queued', 'uncertain') and d.digest_id is null
+            and (d.state = 'uncertain' or (m.from_kind = 'human' and d.injection_started = 0 and d.queued_at < ?))
+          order by d.queued_at limit 1`).get(session, now - 60_000)
+        ?? this.#prepare(`select m.id, m.from_kind, d.state, d.injection_started, d.queued_at
+          from deliveries d join messages m on m.id = d.message_id
+          where d.session = ? order by d.queued_at desc limit 1`).get(session)) as Row | undefined;
+    if (!row) return null;
+    const ageMs = Math.max(0, now - Number(row.queued_at));
+    return { id: row.id as string, state: row.state as DeliveryState, ageMs,
+      queuedHuman: row.from_kind === 'human' && row.state === 'queued' && !row.injection_started && ageMs > 60_000 };
   }
 
   /** Per-recipient facts, including states hidden by the aggregate stage. */

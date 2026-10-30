@@ -1149,7 +1149,7 @@ export type SessionRequest =
   | { type: 'session.prune'; id: string; olderThan: string; dryRun?: boolean }
   | { type: 'session.stop'; id: string; session: string }
   | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean }
-  | { type: 'session.retry'; id: string; session: string; message: string }
+  | { type: 'session.retry'; id: string; session: string; message?: string }
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
 

@@ -1220,3 +1220,14 @@ only; retain original aborted records rather than relabeling their raw counters.
 The manual memory probe defaults to the human-agreed256MiB heap/768MiB RSS
 report-only limits (ask53ad10db); flags provide explicit overrides. Preserve
 prior unconfigured diagnostic receipts and record the agreement with final evidence.
+
+## Operator retry of queued input (T-1473)
+
+`cland session retry <name> [message id]` is human-only. It forces one human
+message queued over 60 seconds through busy, requiring transport acknowledgement
+before native injection. Omit the id to select the oldest eligible queued or
+uncertain delivery; older hubs require the id. Refusals retain the legacy
+`no uncertain delivery` phrase and report recipient stage and queue age.
+Preserve attempted-unconfirmed recovery and the uncertain fence.
+Use the memory/fake-harness controls in
+`docs/agents/tests/hub-test-human-hold.test.ts.md`; no new role clause is needed.

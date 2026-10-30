@@ -89,9 +89,9 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     }
     case 'retry': {
       const message = rest.filter((a) => !a.startsWith('--'))[1];
-      if (!name || !message) throw new Error('usage: cland session retry <name> <message id>');
-      const v = (await askHubFrame(d, { type: 'session.retry', session: name, message }, 30_000)) as { retried: boolean };
-      out(v, `retried ${message} for ${name}`);
+      if (!name) throw new Error('usage: cland session retry <name> [message id]');
+      const v = (await askHubFrame(d, { type: 'session.retry', session: name, ...(message !== undefined ? { message } : {}) }, 30_000)) as { retried: boolean };
+      out(v, `retried ${message ?? 'pending input'} for ${name}`);
       return 0;
     }
     default:

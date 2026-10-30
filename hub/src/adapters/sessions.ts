@@ -116,6 +116,7 @@ export class Sessions {
   /** By session id: when the last applied signal happened, and when the last push signal arrived. */
   readonly #lastAt = new Map<string, number>();
   readonly #stateObservation = new Map<string, { state: SessionState; source: string; at: number; push: boolean }>();
+  readonly #forcedQueued = new Set<string>();
   readonly #heldDeliveries = new Map<string, { timer: ClockTimer; ids: Set<string> }>();
   readonly #lastPush = new Map<string, number>();
   /** Injects in flight, `<session id>:<message id>`, with when each went out: a retry never doubles one. A
@@ -409,7 +410,10 @@ export class Sessions {
       if (retry && (p.status !== 'running' || archived || p.role !== retry.process.role || p.item !== retry.process.item)) this.#clearCapacityRetry(p.sessionId);
       // Quarantined status is not a verified exit. Metadata changes must leave the
       // final fact to cleanup, which publishes it only after the original process is gone.
-      if (p.status !== 'running') this.#clearUnconfirmed(p.sessionId);
+      if (p.status !== 'running') {
+        this.#clearUnconfirmed(p.sessionId);
+        for (const key of this.#forcedQueued) if (key.startsWith(`${p.sessionId}:`)) this.#forcedQueued.delete(key);
+      }
       // Every row change is a durable checkpoint: the adapter's latest totals are written before a stop,
       // exit, archive or rename publishes a view that might not be read again.
       const usage = this.#reportedUsage(p);
@@ -1959,6 +1963,7 @@ export class Sessions {
   }
 
   #humanDeliveryBlocked(sessionId: string, messageId: string): boolean {
+    if (this.#forcedQueued.has(`${sessionId}:${messageId}`)) return false;
     if (this.#core.sessionState(sessionId) !== 'busy') return false;
     const observation = this.#stateObservation.get(sessionId);
     if (observation?.state === 'busy' && observation.source === 'poll' && !observation.push && this.#transportClock.now().getTime() - observation.at > 5 * 60_000) return false;
@@ -2048,6 +2053,7 @@ export class Sessions {
     if (!adapter) return;
     // Hook/adapter signal timestamps use transport time, independently of policy backoff time.
     const flight = { sentAt: this.#transportClock.now().getTime(), again: false, reconnected: false };
+    this.#forcedQueued.delete(key);
     this.#core.startInjection(messageId, name);
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');
@@ -2149,21 +2155,28 @@ export class Sessions {
     if (!episode.messages.size) this.#unconfirmed.delete(sessionId);
   }
 
-  /**
-   * The human sends an uncertain delivery again (`session.retry`): the adapter could not tell whether the turn
-   * started, so only a person decides to risk it twice.
-   */
-  retry(session: string, messageId: string): { retried: true } {
+  /** The human can force old queued input, or explicitly replay an uncertain native submission. */
+  retry(session: string, messageId?: string): { retried: true } {
     const p = this.#rowOfName(session) ?? this.#process(session);
     if (p.status !== 'running') throw new Error(`session "${session}" is not running (${p.status})`);
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
-    if (!this.#core.retryUncertain(messageId, name)) throw new Error(`no uncertain delivery of message "${messageId}" to "${name}": only a message whose inject got no answer is retried by hand`);
-    this.#inject(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
-    return { retried: true };
+    const candidate = this.#core.store.retryCandidate(name, this.#core.clock.now().getTime(), messageId);
+    if (!candidate) throw new Error(`no uncertain delivery${messageId ? ` of message "${messageId}"` : ''} to "${name}": stage unknown, age unknown`);
+    const key = `${p.sessionId}:${candidate.id}`;
+    if (candidate.queuedHuman && !this.#forcedQueued.has(key)) {
+      this.#forcedQueued.add(key);
+      if (this.#core.retryQueued(candidate.id, name)) return { retried: true };
+      this.#forcedQueued.delete(key);
+    } else if (candidate.state === 'uncertain' && this.#core.retryUncertain(candidate.id, name)) {
+      this.#inject(p.sessionId, this.#core.store.deliveryRoot(candidate.id, name));
+      return { retried: true };
+    }
+    throw new Error(`no uncertain delivery of message "${candidate.id}" to "${name}": stage ${candidate.state}, age ${candidate.ageMs} ms; requires queued human input older than 60000 ms with an available transport, or uncertain delivery`);
   }
 
   close(): void | Promise<void> {
     this.#closed = true;
+    this.#forcedQueued.clear();
     for (const held of this.#heldDeliveries.values()) this.#transportClock.clearTimeout(held.timer);
     this.#heldDeliveries.clear();
     this.#stateObservation.clear();

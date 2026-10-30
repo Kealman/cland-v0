@@ -401,6 +401,9 @@ T-1461: Document report-only macOS cover reruns, retained receipts and unexecute
 
 T-1483 evidence2: exact-lease native launch authority permits observed owned descendants in phase roots; restore, replacement and reuse retain recovery fences.
 T-1483 source correction: recheck launch lease after asynchronous scope proof and at each native signal; cover concurrent restore.
+
+T-1473: document human-only queued-input retry, optional selection and preserved attempted/uncertain fences.
+T-1473: preserve legacy no-uncertain-delivery refusal matching while appending stage and age.
 T-1478: Document explicit time-limited Coordinator used-swap waiver and shared quiet-machine stop conditions.
 T-1478: Correct quiet-slot pressure to native memorystatus level; retain transient counter/free percentage as context per Coordinator572bb1d0.
 T-1478: Configure agreed report-only256MiB heap/768MiB RSS defaults, ask53ad10db.

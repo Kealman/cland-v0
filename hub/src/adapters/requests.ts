@@ -10,7 +10,7 @@
 //   session.archive {session}                                  → {process}   human and Coordinator; stopped/exited only
 //   session.stop    {session}                                  → {process}
 //   session.resume  {session, relaunch?, fresh?}               → {found, reason?, process, role, claim, notes[], fresh?: {brief}}
-//   session.retry   {session, message}                         → {retried: true}   the human: an `uncertain` delivery sent again
+//   session.retry   {session, message}                         → {retried: true}   the human: force old queued human input or replay uncertain delivery
 //   session.signal  {session?, sessionId?, launch?, event, at?, payload?} → {applied, state?}   clients only (`cland hook`)
 //   session.bridge  {session, launch?}                         → {bridged: true}, then `inject` frames  clients only
 //
@@ -31,7 +31,7 @@ export type SessionRequest =
   | { type: 'session.prune'; id: string; olderThan: string; dryRun?: boolean }
   | { type: 'session.stop'; id: string; session: string }
   | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean }
-  | { type: 'session.retry'; id: string; session: string; message: string }
+  | { type: 'session.retry'; id: string; session: string; message?: string }
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
 
@@ -58,7 +58,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
     case 'session.resume':
       return typeof f.session === 'string' && (f.relaunch === undefined || typeof f.relaunch === 'boolean') && (f.fresh === undefined || typeof f.fresh === 'boolean');
     case 'session.retry':
-      return typeof f.session === 'string' && typeof f.message === 'string';
+      return typeof f.session === 'string' && optString(f.message);
     case 'session.signal':
       return (
         typeof f.event === 'string' &&

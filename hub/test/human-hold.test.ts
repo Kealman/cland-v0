@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { defaultCrew } from '../src/crew.ts';
 import { HubCore } from '../src/hub/core.ts';
+import { answerSession, isSessionRequest } from '../src/adapters/requests.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -12,7 +13,7 @@ async function fixture(t: TestContext, role = 'implementer') {
   const clock = new FakeClock();
   const logs: Array<Record<string, unknown>> = [];
   const config = defaultCrew();
-  const core = new HubCore({ clock, crew: { get: () => config, set: async () => config } });
+  const core = new HubCore({ clock, log: entry => logs.push(entry), crew: { get: () => config, set: async () => config } });
   const table = new ProcessTable(':memory:', clock);
   const sessions = new Sessions({ core, table, root: '/virtual/project', transportClock: clock, log: entry => logs.push(entry) });
   const owners = [sessions];
@@ -127,6 +128,10 @@ test('the recheck timer never retries an uncertain injection', async t => {
   await f.clock.advance(10 * 60_000);
   assert.equal(f.fake.injections.filter(i => i.message.id === id).length, 1);
   assert.equal(f.core.store.deliveriesOf(id).find(d => d.session === 'impl')?.state, 'uncertain');
+  assert.deepEqual(f.sessions.retry('impl', id), { retried: true }, 'legacy explicit uncertain retry remains available');
+  await f.clock.advance(0);
+  assert.equal(f.core.store.deliveriesOf(id)[0]?.state, 'injected');
+  assert.equal(f.fake.injections.filter(i => i.message.id === id).length, 2);
 });
 
 
@@ -185,4 +190,64 @@ test('restart seeds delivered agent supervision when native discovery is unavail
   assert.equal(f.core.store.deliveriesOf(attempted)[0]?.state, 'delivered');
   assert.equal(f.core.store.deliveriesOf(uncertain).find(d => d.session === 'impl')?.state, 'uncertain');
   assert.equal(f.core.store.deliveriesOf(terminal).find(d => d.session === 'impl')?.state, 'injected');
+});
+
+
+test('T-1473 C1: explicit retry forces an old queued human delivery through busy to injection', async t => {
+  const f = await fixture(t);
+  f.signal('busy', 'hook');
+  const id = f.send();
+  await f.clock.advance(60_001);
+  assert.equal(f.received.includes(id), false);
+  assert.deepEqual(f.sessions.retry('impl', id), { retried: true });
+  assert.ok(f.received.includes(id), 'operator retry reaches the session transport while busy');
+  f.core.ack(f.joined.connection, id);
+  await f.clock.advance(0);
+  assert.equal(f.core.store.deliveriesOf(id)[0]?.state, 'injected');
+  assert.equal(f.fake.injections.filter(i => i.message.id === id).length, 1);
+  assert.ok(f.logs.some(e => e.event === 'inject-retry' && e.id === id && e.stage === 'queued'));
+  f.signal('idle');
+  await f.clock.advance(60_000);
+  assert.equal(f.fake.injections.filter(i => i.message.id === id).length, 1);
+});
+
+
+test('T-1473 C2: refusals report recipient stage and age without replaying attempted input', async t => {
+  const f = await fixture(t);
+  f.signal('busy', 'hook');
+  const queued = f.send();
+  await f.clock.advance(60_000);
+  assert.throws(() => f.sessions.retry('impl', queued), /stage queued, age 60000 ms/);
+  f.signal('idle');
+  f.fake.scriptInject('impl', 'reject');
+  f.core.ack(f.joined.connection, queued);
+  await f.clock.advance(0);
+  assert.equal(f.core.store.deliveriesOf(queued)[0]?.injectionStarted, true);
+  assert.throws(() => f.sessions.retry('impl', queued), /stage delivered, age 60000 ms/);
+  assert.equal(f.fake.injections.filter(i => i.message.id === queued).length, 1);
+  f.signal('busy');
+  f.signal('idle');
+  await f.clock.advance(0);
+  assert.equal(f.core.store.deliveriesOf(queued)[0]?.state, 'injected');
+  assert.throws(() => f.sessions.retry('impl', queued), /stage injected, age 60000 ms/);
+});
+
+
+test('T-1473: message-less wire request chooses one old queued input and retains the legacy reply', async t => {
+  const f = await fixture(t);
+  f.signal('busy', 'hook');
+  const first = f.send();
+  await f.clock.advance(1);
+  const second = f.send();
+  await f.clock.advance(60_001);
+  const frame = { type: 'session.retry', id: 'retry-request', session: 'impl' };
+  assert.ok(isSessionRequest(frame));
+  const result = await answerSession(f.sessions, frame, { send: () => {}, isOpen: () => true, onClose: () => {} });
+  assert.deepEqual(result, { type: 'result', id: 'retry-request', ok: true, value: { retried: true } });
+  assert.ok(f.received.includes(first));
+  assert.equal(f.received.includes(second), false);
+  f.core.ack(f.joined.connection, first);
+  await f.clock.advance(0);
+  assert.equal(f.core.store.deliveriesOf(first)[0]?.state, 'injected');
+  assert.equal(f.core.store.deliveriesOf(second)[0]?.state, 'queued');
 });

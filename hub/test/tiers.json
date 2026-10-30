@@ -449,6 +449,7 @@
     "hub/test/session-resume-component.test.ts": "T2",
     "hub/test/session-resume-lifecycle.test.ts": "T3",
     "hub/test/session-resume.test.ts": "T2",
+    "hub/test/session-retry.test.ts": "T2",
     "hub/test/session-stop-races-cleanup.test.ts": "T3",
     "hub/test/session-stop-races-component.test.ts": "T2",
     "hub/test/session-stop-races.test.ts": "T3",
