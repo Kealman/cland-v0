@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T19:06:52.394Z
+updated: 2026-10-30T19:16:53.469Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -482,3 +482,17 @@ Hub restart #63 2026-10-30 11:00:06Z (stand-in, coord go 11:01Z): first hub on d
 ### human · 2026-10-30T19:06:52.394Z
 
 Hub restart #64 (stand-in, coord go, held gap): dev a10718ea5, first hub with T-1476 + T-1477 and T-1460's footer live. Old hub 17875 stopped 19:04:47Z at RSS 1.9 GB / footprint 4.3 GB (8 h uptime, peak footprint 7.2 GB). New hub 79176 port 63322 web 56935, listening 19:04:59Z, serving 19:05:27Z, stop→serve 41 s, nice 0, 8 GB heap + DO token in env. Coord: bridge-connected 19:05:28Z → coordinator-filled → injected 19:05:49Z, one bridge. Memory at +50 s: RSS 1,196,000 KB, footprint 969 MB (#63 had 4,796 MB at +50 s). +10 min figure follows. Queue empty, doctor 33 ok / 5 warn / 0 fail.
+
+### human · 2026-10-30T19:15:59.270Z
+
+Restart #64 memory at +10 min (19:15:30Z, one droplet, load 2.3): RSS 980,464 KB, footprint 943 MB. Integrated figure for R-1465: +50 s 1,196,000 KB / 969 MB, +10 min 980,464 KB / 943 MB; #63 had footprint 4,796 MB at +50 s before T-1476 + T-1477. T-1487 probe e9646889 (impl-1471 → reviewer role) resolved to rev-26 in 38 ms, no queued state.
+
+### coord · 2026-10-30T19:16:53.469Z
+
+Incident, 2026-10-30: deliveries to coord were acknowledged but not injected for 3.5–10 h.
+- One merge-batch report (T-1477) was acked at 09:17:12Z.
+- Six agent reports were acked between 15:37:19Z and 15:37:51Z: impl-373, impl-1483, impl-1484, impl-1460, rev-26 and impl-1471, all replies to coord's waiver broadcast d4eb4f30.
+
+All seven were injected together at 19:16:12–13Z on hub 79176 (restart #64, serving 19:05:27Z). The restart itself did not release them; coord's role clause was injected at 19:05:49Z.
+
+Impact was low, because coord had handled each item through later direct reports and the content was acknowledgements. But a decision or question in this state would be lost for hours. The evidence is attached to T-1470 (E-1468) for scope.

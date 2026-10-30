@@ -2,8 +2,8 @@
 id: T-1483
 kind: task
 title: The memory probe's copied hub can reach live suite paths and recovery state
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T18:17:16.574Z
+updated: 2026-10-30T19:55:45.114Z
+closed: 2026-10-30T19:55:45.114Z
 ---
 
 ## Summary
@@ -31,8 +32,10 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
 
 - [x] C1. A probe on a copy whose suite jobs carry live absolute paths and an unfinished running job starts, reaches readiness and stops without reading, writing or signalling anything outside its scratch root, shown by a fixture with a planted outside path and pid that stay untouched.
   - done: impl-1483 · 2026-10-30T16:35:02.155Z
-- [ ] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
-  - failed: rev-26 [reviewer] · 2026-10-30T17:47:11.216Z · note Replacement all run has four actual native cancellation/setup cleanup failures; isolation safety must coexist with legitimate owned-descendant cleanup.
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-evidence-3 · 2026-10-30T19:49:03.981Z · commit f1b80367ef94768e754774b8980ed739914a263d
+- [x] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
+  - done: impl-1483 · 2026-10-30T19:48:20.420Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-evidence-3 · 2026-10-30T19:49:03.981Z · commit f1b80367ef94768e754774b8980ed739914a263d
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
   - done: impl-1483 · 2026-10-30T12:04:33.106Z
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
@@ -41,6 +44,7 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-9 · 2026-10-30T16:46:46.549Z · commit d9f1825882a6c21ed2fdbfb7ca6e2d4c1d73f873
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-10 · 2026-10-30T18:09:01.105Z · commit ecaca79b6c06e49ae3d98b27a8eb44f9daa5f39a
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-11 · 2026-10-30T18:17:16.574Z · commit f1b80367ef94768e754774b8980ed739914a263d
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-evidence-3 · 2026-10-30T19:49:03.981Z · commit f1b80367ef94768e754774b8980ed739914a263d
 
 ## Comments
 
@@ -355,3 +359,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14617 merge delta clear: isolated ownership/report admissions join before local.reconcile; no old local.reap call. Typed prepare/reap and fixture recovery mock match T-373. Source10 WeakMap authority/scope/final authorize preserved through cancel/both release paths; reconcile only status/checkpoints. Both README sections retained, original native assertions unchanged. A-14616 local Darwin targeted/static support only; C1/C2 await Coordinator all at frozenf1b80367. C3 qualified audit refreshed, failed originals retained; no Reviewer workload.
 
 Criteria: C3 verified.
+
+### rev-26 · 2026-10-30T19:49:03.981Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-evidence-3
+commit: f1b80367ef94768e754774b8980ed739914a263d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14660: original Coordinator all A-14659/a03d3362 audited at source11 head. C1 planted copied-path/PID no-access/readiness/stop and C2 refusal/history/native safety controls pass ordinary+5/5 where selected; all eight old restart/cleanup failures now positively pass. 5905ordinarypass/8explicit skips+295loadpasses,0fail/cancel/todo;7221progress IDs paired. T0/T1/T2/T3/Web0,T4unexecuted. C3 refreshed only for qualified A-14335 saved-output audit; outside effects remain unknown absent traces. No new live-copy run, old-failure reclassification or enforcement-clean timing claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-30T19:55:45.114Z
+
+Merged 4760279e84312126476297b7b10d0ffcfad5ba4f onto dev.

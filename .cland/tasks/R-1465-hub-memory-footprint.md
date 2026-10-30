@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T06:38:19.300Z
-updated: 2026-10-30T14:40:40.187Z
+updated: 2026-10-30T19:16:03.663Z
 ---
 
 ## Goal
@@ -28,3 +28,16 @@ The hub's memory footprint fits a consumer machine that runs more than one proje
 ### coord · 2026-10-30T14:40:40.187Z
 
 Human, 2026-10-30 14:40Z via Telegram (General msg remote-328802bf): «Ок, я на сегодня ухожу уже, так что делай все, все баги которые находишь, тех долг и прочее, бери в 0.3.1 и когда ничего не останется - делай релиз». Recorded as the human's scope decision and conditional release approval for 0.3.1: every open Bug, Tech debt and Follow-up that can complete moves in (T-1484, T-373, T-1264, T-1268, T-1451, T-1433). T-1486 and T-1488 stay in Follow-ups because each needs a day of recorded evidence after its report-mode predecessor lands. Release when nothing open remains under R-1465, following the release skill with T-1463's conditional approval: conditions are every item landed or closed, release covers green, QA clear, dry-run notes shown in the release topic.
+
+### coord · 2026-10-30T19:16:03.663Z
+
+Integrated memory measurement, hub restart #64 (2026-10-30 19:04:47Z stop → 19:05:27Z serving, stop to serve 41 s). Hub pid 79176 on dev a10718ea5, which carries T-1476, T-1477, T-373, T-1454, T-1490, T-1489, T-1491 and T-1462. Measured by cland-impl on the live project history, on this Mac, with an 8 GB heap cap.
+
+| point | RSS | footprint |
+| --- | --- | --- |
+| +50 s | 1,196,000 KB | 969 MB |
+| +10 min (19:15:30Z; one droplet run active, load 2.3) | 980,464 KB | 943 MB |
+
+For comparison, hub #63 (dev before T-1476 and T-1477) had a 4,796 MB footprint at +50 s. The startup footprint is down about 5×.
+
+These are single samples per point on one machine, so they are not a distribution. T-1478 still owns growth at rest and the budget report. The earlier observation, hub 17875 at 5.3 GB after 2 h 43 min, is a growth figure and is not comparable to these startup readings.
