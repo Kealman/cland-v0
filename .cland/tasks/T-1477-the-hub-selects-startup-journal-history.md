@@ -2,8 +2,8 @@
 id: T-1477
 kind: task
 title: The hub selects startup journal history without reading the whole file
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1222
 branch: t/T-1477-the-hub-selects-startup-journal-history
 created: 2026-10-30T07:54:04.775Z
-updated: 2026-10-30T08:31:45.169Z
+updated: 2026-10-30T09:17:48.090Z
+closed: 2026-10-30T09:17:15.122Z
 ---
 
 ## Summary
@@ -88,3 +89,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final original-record evidence clear, A-14198; source3 A-14179 retained. Exact-head configured f9aefa18/A-14197:4231 ordinary+105 separate load-gate passing identities,0 nonpass. T0/T1/all fallback T2/Web complete;T3/T4 absent. C1 recorded-subset+constructed parity,C2 shared Promise/append/failure,C4>=300MiB/<1MiB input accounting each base+5extra pass. Native log/lock cleanup controls base+5extra pass. C3 verified from separately attributed Coordinator-accepted precommit same-Mac journal-stage A-14163/A-14169 versus A-14160:743.702→61.019MiB heap,682.682MiB less; unchanged reader through final head. Not a final-head/Linux memory run,retained-after-GC/RSS or later-stage result. Scale base2.194s,max2.393s;T1.5s advisory exceeded,report-only budgets/lint124/60 retained;0 static refusals. Host gate290a3047 reused,not remote repeated;browser CHS156/v1248. No Reviewer workloads;QA none. All C1–C4 verified;configured final clear,broader integrated cover remains Coordinator-owned.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-30T09:17:15.122Z
+
+Merged e91d6ad0258f70f915cd1808165c37a2e89693ba onto dev.

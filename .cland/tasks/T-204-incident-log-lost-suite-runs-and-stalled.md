@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T07:54:52.525Z
+updated: 2026-10-30T09:10:30.775Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -462,3 +462,7 @@ Hub restart #61 2026-10-30 07:38:48Z (stand-in, coord's memory alarm at 07:37Z):
 ### human · 2026-10-30T07:54:52.525Z
 
 Split brain 2026-10-30 07:33–07:53Z (stand-in): the 07:33 relaunch killed pid 57408 but not Claude job b62114e8, so the daemon respawned it (pid 21299) next to the hub's claimed spare (pid 84206, job 1c2b635c); both acted as coord (topic-1221 decision 07:39:51Z by the twin). Fix: claude stop 1c2b635c 07:50:53Z, then, as hub deliveries still did not reach 21299 (inject-unconfirmed 7a306414, 65fff904), claude stop b62114e8 07:52:33Z, session resume coord --relaunch, role set; bridge-connected 07:53:13Z, injected 07:53:13Z and 07:53:43Z; single coord pid 76028 (job df72bd84), one bridge. Root cause and fixes: coord's RCA A-14159, E-1468 (T-1469–T-1475) under R-1465.
+
+### human · 2026-10-30T09:10:30.775Z
+
+Hub restart #62 2026-10-30 09:09:01Z (stand-in, coord go 09:09Z, at-rest growth T-1478): hub 31310 before the stop footprint 3,972 MB (1,965 MB compressed, RSS 1.9 GB) after 1 h 30 min; peak seen 5,955 MB (3,779 MB compressed) at 08:40Z, so growth at rest is not monotonic. Gate: no droplets, no leases, queue empty, load 1.5, dev 2930ff79 = origin/dev, root clean. stop→serve 14 s; new hub 48336, port 64002, web 56935, nice 0, 8 GB heap, DO token present; coord bridge-connected 09:09:14Z, coordinator-filled 09:09:16Z; queue empty; doctor 34 ok / 4 warn / 0 fail; RSS 0.55 GB at +50 s; one coord bridge.
