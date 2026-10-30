@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1224
 branch: t/T-1476-the-hub-loads-only-active-suite-jobs-and
 created: 2026-10-30T07:54:04.502Z
-updated: 2026-10-30T10:17:42.619Z
+updated: 2026-10-30T10:58:36.784Z
 ---
 
 ## Summary
@@ -24,8 +24,8 @@ At startup the hub reads every archived suite job from hub.db (3,308 rows, 885 M
 ## Acceptance criteria
 
 - [x] C1. Hub startup reads only active or recoverable suite jobs in full, and bounded summary rows for finished ones. A finished job's full record is read by id on demand, and every existing consumer of suite history (selection, durations, culprit search, reports, `verify queue`, web and Neovim views) is listed in the item and migrated or shown unaffected (rule 20).
-  - done: impl-1476 · 2026-10-30T08:40:34.305Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
+  - done: impl-1476 · 2026-10-30T10:57:25.667Z
 - [x] C2. The decoded jobs no longer retain their source JSON strings alongside the parsed objects.
   - done: impl-1476 · 2026-10-30T08:08:53.653Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-source2 · 2026-10-30T08:23:24.478Z · commit ce11b0942526737921343413b4dff3e2e202d81f
@@ -33,6 +33,7 @@ At startup the hub reads every archived suite job from hub.db (3,308 rows, 885 M
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
   - verified: rev-32 [reviewer] · run rev-20261030-1476-delta1 · 2026-10-30T09:30:31.107Z · commit 2bc3f440505648792e05b2ec1a017fa76f01d721
   - verified: rev-32 [reviewer] · run rev-20261030-1476-delta2 · 2026-10-30T10:17:42.619Z · commit d51049e4722eb33d2fb4ae60925becfcdaafeb86
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-delta3 · 2026-10-30T10:58:36.784Z · commit d45333e0537c8cc0be8a490c5fb726295207dc24
 - [x] C3. On a T-1467-style scratch copy of this project, the startup heap after the suite-history stage drops by at least 2 GiB against A-14160's 3,567 MiB checkpoint, with the same probe and machine, and the per-stage table is published.
   - done: impl-1476 · 2026-10-30T08:08:54.200Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
@@ -148,5 +149,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Second merge delta source clear A-14239. Suite-history task bytes unchanged from c51f9984b/prior delta; imported T-1467/T-1469 runtime/test/probe files match dev parent. SKILL and README conflict resolutions retain both contracts and measurement plan/slot/sealing/swap/IPC/native-close/aggregate-only controls without duplicate advice; CHANGES preserves provenance. C2 source verification refreshed; C1/C4 new-head runtime and explicit predecessor C3 carry remain for final evidence. No exact merged-head suite/memory pass inferred. Coordinator-owned T3-inclusive verify-all replaces another Implementer mode-free run.
+
+Criteria: C2 verified.
+
+### impl-1476 · 2026-10-30T10:56:37.820Z
+
+Expanded T3/T4 consumer audit after fa19d304/A-14292: startup-replies-scale.test.ts was the sole old verification-checkpoint/jobs-visited assertion. Migrated it to exactly1645 summaries, bounded returned summary bytes, zero full-job hydration/full-history reads, and one active checkpoint serializing no finished records; all frame/total/snapshot/hang caps unchanged. T3 manual measure-memory observer also migrated to record suiteJobSummaries beside suiteJobHistory; its guide updated. No T4 startup-visit assumptions matched. T2 executor-liveness/hub-status and T1 heartbeat/persistence, plus shared suite-unit-fixture raw-history reads, remain explicit persisted-record checks and are unaffected. Original full run remains failed; targeted T3 file2cases passes locally with1645rows/1416803bytes and zero hydration, root typecheck passed.
+
+### rev-32 · 2026-10-30T10:58:36.784Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1476-delta3
+commit: d45333e0537c8cc0be8a490c5fb726295207dc24
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta3 clear, A-14298; four-file Coordinator-authorized T3 consumer/probe correction from reviewed d51049e. Positive pre-startup Store observers require1645 bounded summaries/0full hydration/0full-history reads and single checkpoint0full records; original frame/snapshot/item/explorer/hang limits unchanged. Memory probe separately observes summaries; owning guides and tier consumer inventory match. Production suite-history bytes unchanged from c51, C2source refreshed. A-14292 remains full-run red, local A-14297 two-case green is partial macOS only. C1/C4 current-head runtime await Coordinator successor verify all; C3 prior-head numeric proof remains labelled, not relabelled as current. No reviewer execution or head mutation.
 
 Criteria: C2 verified.
