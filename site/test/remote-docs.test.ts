@@ -1,5 +1,6 @@
 // T1: published source is checked against the shipped help and config/secret vocabulary.
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { test } from 'node:test';
 import { CONFIG_USAGE, HUB_USAGE, REMOTE_USAGE, SECRET_USAGE, SETUP_USAGE, DOCTOR_USAGE } from '../../hub/src/cli/usage.ts';
 import { commands, guidePath, phonePath, remoteSection, source } from './remote-docs-source.ts';
@@ -215,3 +216,41 @@ for (const [name, path, remote] of [
     assert.doesNotMatch(entry, /Telegram groups|forum topics|thread per item|Components V2|several humans|webhooks|cost accounting/i);
   });
 }
+
+const landingSource = source('site/src/pages/index.astro');
+const featureList = landingSource.slice(landingSource.indexOf('const features = ['), landingSource.indexOf('const pad ='));
+const featureSection = landingSource.split('<section id="features"')[1]!.split('</section>')[0]!;
+
+test('landing shows all eleven features in the chosen order without carousel controls', () => {
+  assert.deepEqual([...featureList.matchAll(/id: '([^']+)'/g)].map(match => match[1]),
+    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'artifacts', 'release']);
+  assert.match(featureSection, /features\.map\(/);
+  assert.doesNotMatch(landingSource, /carousel|scroll-snap|aria-roledescription/);
+  assert.match(featureSection, /All features in the docs →/);
+});
+
+test('feature cards keep anchors and only number, title, text and docs link in a responsive grid', () => {
+  assert.match(featureSection, /id=\{`feature-\$\{s.id\}`\}/);
+  assert.match(featureSection, /pad\(i \+ 1\)/);
+  for (const field of ['s.h', 's.p', 's.href']) assert.ok(featureSection.includes(field));
+  assert.doesNotMatch(featureSection, /Screenshot|Diagram|<img|<svg|<button|hidden/);
+  assert.match(landingSource, /\.feature-grid\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(landingSource, /@media \(max-width: 900px\)\s*\{\s*\.feature-grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
+});
+
+test('feature link clicks use GoatCounter feature ids and privacy wording includes clicks', () => {
+  assert.match(featureSection, /data-goatcounter-click=\{`feature-\$\{s.id\}`\}/);
+  assert.match(source('site/src/layouts/SiteLayout.astro'), /data-goatcounter=\{GOATCOUNTER\}[^>]*src="https:\/\/gc.zgo.at\/count.js"/);
+  for (const path of ['site/src/components/SiteFooter.astro', 'site/src/content/docs/docs/faq.md']) {
+    assert.match(source(path), /visits and link clicks[\s\S]*?(?:no|without) cookies[\s\S]*?personal data/);
+  }
+});
+
+test('every landing feature points to an existing documentation page', () => {
+  const links = [...featureList.matchAll(/href: '(\/docs\/[^']+)'/g)].map(match => match[1]!);
+  assert.equal(links.length, 11);
+  for (const href of links) {
+    const slug = href.split('#')[0]!.replace(/^\/docs\//, '').replace(/\/$/, '');
+    assert.ok(['md', 'mdx'].some(ext => existsSync(new URL(`../src/content/docs/docs/${slug}.${ext}`, import.meta.url))), href);
+  }
+});

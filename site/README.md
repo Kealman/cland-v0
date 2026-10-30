@@ -99,3 +99,17 @@ Before publishing, strip internal references: tracker and artifact ids, decision
 ## Deployment
 
 The site deploys to GitHub Pages with the custom domain `cland.app` (`public/CNAME`, and `site: 'https://cland.app'` in `astro.config.mjs`). The workflow `.github/workflows/pages.yml` builds `site/` and deploys it on a push to `main` (every release) or to the `site` branch (site changes between releases). The repository's Pages source is GitHub Actions, and its custom domain is set in the repository settings: a `CNAME` file alone does not set it for an Actions deployment.
+
+## Landing features
+
+The landing page shows all eleven features as compact cards, in two columns above
+900 px and one column below. Keep each `feature-<id>` anchor and docs link stable.
+Cards contain a number, title, text and Learn more link; screenshots and diagrams
+remain in the hero, workbench and documentation.
+
+Learn more links use GoatCounter's `data-goatcounter-click` attribute with the
+fixed event name `feature-<id>`. The existing async count.js binds these clicks
+when analytics is available; blocked analytics leaves ordinary docs navigation
+working. Website visit and link click counts use no cookies or personal data.
+The landing cases in `test/remote-docs.test.ts` checks the source list, responsive grid, event names,
+privacy wording and docs page targets during prebuild.

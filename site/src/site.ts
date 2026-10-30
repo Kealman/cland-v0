@@ -3,7 +3,7 @@
 export const SITE = 'https://cland.app';
 export const GITHUB = 'https://github.com/Kealman/cland-v0';
 export const DISCORD = 'https://discord.gg/Ssv3YFcA8Z';
-/** Cookieless visit counts for this website (the cland tool itself has no telemetry). */
+/** Cookieless visit and link click counts for this website (the cland tool itself has no telemetry). */
 export const GOATCOUNTER = 'https://cland.goatcounter.com/count';
 export const DOCS = '/docs/';
 export const TAGLINE = 'One coding crew across every AI plan you pay for.';

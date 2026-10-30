@@ -13,8 +13,6 @@ interface Props {
   n: number;
   /** A caption under the image or placeholder. */
   caption?: string;
-  /** Fixed 16:10 frame, for screenshots that sit side by side (the landing carousel). */
-  frame?: boolean;
   /** Load the image early, when it is above the fold. */
   eager?: boolean;
   /** The image's `sizes`; the default fits the docs column. */
@@ -22,13 +20,13 @@ interface Props {
   class?: string;
 }
 
-const { n, caption, frame = false, eager = false, sizes = '(min-width: 1200px) 760px, calc(100vw - 32px)', class: className } = Astro.props;
+const { n, caption, eager = false, sizes = '(min-width: 1200px) 760px, calc(100vw - 32px)', class: className } = Astro.props;
 const screen = getScreen(n);
 const image = findImage(screen);
 const [w, h] = screen.size.split('×').map(Number);
 ---
 
-<figure class:list={['cland-shot', 'not-content', { 'cland-shot-frame': frame }, className]}>
+<figure class:list={['cland-shot', 'not-content', className]}>
   {
     image ? (
       <Image
@@ -37,7 +35,7 @@ const [w, h] = screen.size.split('×').map(Number);
         widths={[480, 800, 1200, 1600, 2400].filter((x) => x <= image.width)}
         sizes={sizes}
         loading={eager ? 'eager' : 'lazy'}
-        style={frame ? undefined : `max-width: min(100%, ${Math.round(image.width / 2)}px)`}
+        style={`max-width: min(100%, ${Math.round(image.width / 2)}px)`}
       />
     ) : (
       <div class="cland-shot-placeholder" style={`--shot-ratio: ${w} / ${h}`} role="img" aria-label={`Screenshot ${n} to come: ${screen.desc}`}>
@@ -118,21 +116,6 @@ const [w, h] = screen.size.split('×').map(Number);
     text-align: center;
   }
 
-  /* A fixed frame: images letterbox, placeholders fill it. */
-  .cland-shot-frame {
-    margin: 0;
-  }
-  .cland-shot-frame :global(img),
-  .cland-shot-frame .cland-shot-placeholder {
-    aspect-ratio: 16 / 10;
-    max-height: none;
-    width: 100%;
-  }
-  .cland-shot-frame :global(img) {
-    object-fit: contain;
-    background: var(--shot-ground);
-  }
-
   /* A phone-shaped placeholder stays narrow in a wide column. */
   .cland-shot-placeholder[style*='1170 / 2532'] {
     max-width: 320px;
@@ -144,10 +127,6 @@ const [w, h] = screen.size.split('×').map(Number);
       aspect-ratio: auto;
       min-height: 220px;
       padding: 20px 18px;
-    }
-    .cland-shot-frame .cland-shot-placeholder {
-      aspect-ratio: auto;
-      min-height: 260px;
     }
     .cland-shot-desc {
       font-size: 14px;

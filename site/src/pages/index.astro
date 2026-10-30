@@ -3,7 +3,6 @@ import { Image } from 'astro:assets';
 import SiteLayout from '../layouts/SiteLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import Screenshot from '../components/Screenshot.astro';
-import Diagram from '../components/Diagram.astro';
 import { CATEGORY, DISCORD, GITHUB, SITE } from '../site';
 import { getPosts } from '../log';
 import heroShot from '../assets/screens/hero.png';
@@ -91,107 +90,73 @@ const problems = [
   { h: 'Frontier models do grunt work', p: 'Your best model writes boilerplate and burns the plan you need for the hard parts.' },
 ];
 
-// The features carousel: one slide per feature, each with its docs page and its
-// screenshot by number (src/screens.ts; a placeholder until the file exists).
-const slides = [
-  {
-    id: 'items',
-    h: 'Your tracker, in your repo',
-    p: 'Releases, epics, tasks, specs and questions are Markdown files committed with your code. Configure the container ladder, collect loose work in Bugs, Tech debt, Follow-ups and Ideas, and import your GitHub issues in one command.',
-    href: '/docs/items/',
-    shot: 5,
-  },
-  {
-    id: 'topics',
-    h: 'Topics, not one noisy chat',
-    p: 'Talk to the Coordinator in topics bound to the work, each with a status that says who is waited on. General is there for everything else, and agent-to-agent chatter folds away into its own read-only topic.',
-    href: '/docs/topics/',
-    shot: 13,
-  },
+// All landing features, in reading order; detailed visuals live in the docs.
+const features = [
   {
     id: 'harness',
     h: 'The harness, one key away',
     p: 'Every session is a real Claude Code, Codex or OpenCode session. Attach to it from the workbench, see exactly what it shows and type into it. cland adds structure on top; it never walls the harness off.',
     href: '/docs/sessions/',
-    shot: 7,
-  },
-  {
-    id: 'inbox',
-    h: 'Only what needs you',
-    p: 'Questions travel up the chain of leads, and only the Coordinator asks you. The inbox holds the asks, approvals, plans and requests waiting on you, each answered with one key, from the terminal or your phone.',
-    href: '/docs/topics/#the-inbox',
-    shot: 6,
-  },
-  {
-    id: 'remote',
-    h: 'Your crew, in Telegram and Discord',
-    p: 'Follow and steer the crew from a private Telegram chat or a channel in your own Discord server. General goes both ways; asks and Codex and OpenCode approvals arrive as cards. Send photos, files and voice notes. Pair through cland setup on the machine running the hub.',
-    href: '/docs/remote-control/',
-    diagram: `%% Both paired remotes connect to the same project hub
-flowchart LR
-  T["Private Telegram chat"] <--> H["Your project hub"]
-  H <--> D["Your Discord server channel"]`,
   },
   {
     id: 'accounts',
     h: "Every plan's limits in view",
     p: 'The usage windows Claude Code and Codex report, account by account. OpenCode has no limit meters. A limited account stops new launches, and you choose where the work goes next.',
     href: '/docs/accounts/',
-    shot: 2,
   },
   {
-    id: 'plans',
-    h: 'Plans with stages and lanes',
-    p: 'Every epic gets ordered stages, parallel lanes and a QA policy before work starts. Approve each plan yourself, or let the Coordinator start and tell you.',
-    href: '/docs/concepts/#plans-and-approval',
-    shot: 8,
+    id: 'remote',
+    h: 'Your crew, in Telegram and Discord',
+    p: 'Follow and steer the crew from a private Telegram chat or a channel in your own Discord server. General goes both ways; asks and Codex and OpenCode approvals arrive as cards. Send photos, files and voice notes. Pair through cland setup on the machine running the hub.',
+    href: '/docs/remote-control/',
+  },
+  {
+    id: 'inbox',
+    h: 'Only what needs you',
+    p: 'Questions travel up the chain of leads, and only the Coordinator asks you. The inbox holds the asks, approvals, plans and requests waiting on you, each answered with one key, from the terminal or your phone.',
+    href: '/docs/topics/#the-inbox',
   },
   {
     id: 'gate',
     h: 'A gate before every merge',
     p: "A task lands on dev only with clear verdicts from other sessions, current for the branch's head, and every acceptance criterion done and verified.",
     href: '/docs/verification-and-release/#the-merge-gate',
-    shot: 9,
+  },
+  {
+    id: 'items',
+    h: 'Your tracker, in your repo',
+    p: 'Releases, epics, tasks, specs and questions are Markdown files committed with your code. Configure the container ladder, collect loose work in Bugs, Tech debt, Follow-ups and Ideas, and import your GitHub issues in one command.',
+    href: '/docs/items/',
+  },
+  {
+    id: 'topics',
+    h: 'Topics, not one noisy chat',
+    p: 'Talk to the Coordinator in topics bound to the work, each with a status that says who is waited on. General is there for everything else, and agent-to-agent chatter folds away into its own read-only topic.',
+    href: '/docs/topics/',
+  },
+  {
+    id: 'plans',
+    h: 'Plans with stages and lanes',
+    p: 'Every epic gets ordered stages, parallel lanes and a QA policy before work starts. Approve each plan yourself, or let the Coordinator start and tell you.',
+    href: '/docs/concepts/#plans-and-approval',
   },
   {
     id: 'verify',
     h: 'Verification for any stack',
     p: 'Your own prepare, check and test commands, through one queue that never overloads your machine. Or run them on fresh cloud machines in parallel, under a daily spend cap.',
     href: '/docs/verification-and-release/#verification-for-any-stack',
-    diagram: `%% A verification run: the cached result, or one queue to your machine or the cloud
-flowchart TD
-  A["cland verify at the head"] --> Q["One queue, cached trees skip it"]
-  Q --> L["Your machine, one run at a time"]
-  Q --> C["Cloud machines, under a daily cap"]
-  L --> R["Result on the task's card"]
-  C --> R`,
   },
   {
     id: 'artifacts',
     h: 'Artifacts in the thread',
     p: 'Reports, diagrams and pages a session shows you arrive in their topic, and HTML renders inline in the browser. Keep the ones that matter, or promote them into the repository.',
     href: '/docs/concepts/#artifacts',
-    shot: 11,
   },
   {
     id: 'release',
     h: 'Releases from the item',
     p: 'From an idea to GitHub: grill it or chart it with a wayfinder map, write the spec, plan the epics, build the tasks in parallel lanes through the merge gate, demo each epic, and publish with one atomic push once you approve.',
     href: '/docs/verification-and-release/#releases',
-    diagram: `%% A release: an idea pinned down, planned into epics, built in parallel, accepted and pushed
-flowchart TD
-  I(["Idea"]) --> G["Grilling"]
-  I --> W["Wayfinder map"]
-  G --> S["Spec"]
-  W --> S
-  S --> E1["Epic"]
-  S --> E2["Epic"]
-  E1 --> T1["Task"]
-  E1 --> T2["Task"]
-  E2 --> T3["Task"]
-  T1 --> R(["Merge gate, QA, your OK, one push"])
-  T2 --> R
-  T3 --> R`,
   },
 ];
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -351,37 +316,16 @@ const crewRows = [
 
   <section id="features" aria-labelledby="feat-h" class="band alt">
     <div class="wrap stack-32">
-      <div class="feat-head">
-        <h2 id="feat-h">Built for shipping, not demos</h2>
-        <div class="carousel-arrows" data-carousel-arrows hidden>
-          <button type="button" class="arrow" data-carousel-prev aria-label="Previous feature">←</button>
-          <span class="carousel-count" data-carousel-count aria-hidden="true">01 / {pad(slides.length)}</span>
-          <button type="button" class="arrow" data-carousel-next aria-label="Next feature">→</button>
-        </div>
-      </div>
-      <div class="carousel" data-carousel role="region" aria-roledescription="carousel" aria-label="cland features">
-        <div class="carousel-track" data-carousel-track tabindex="0">
-          {slides.map((s, i) => (
-            <article class="slide" id={`feature-${s.id}`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}: ${s.h}`}>
-              <div class="slide-copy">
-                <div class="slide-num">{pad(i + 1)}</div>
-                <h3 class="slide-title">{s.h}</h3>
-                <p class="slide-text">{s.p}</p>
-                <a href={s.href} class="amber-link slide-link">Learn more →</a>
-              </div>
-              {s.diagram ? (
-                <Diagram code={s.diagram} compact class="slide-shot slide-diagram" />
-              ) : (
-                <Screenshot n={s.shot} frame class="slide-shot" sizes="(min-width: 1200px) 660px, calc(100vw - 72px)" />
-              )}
-            </article>
-          ))}
-        </div>
-        <div class="carousel-dots" data-carousel-dots hidden>
-          {slides.map((s, i) => (
-            <button type="button" class="carousel-dot" data-carousel-dot={i} aria-label={`Show ${s.h}`}></button>
-          ))}
-        </div>
+      <h2 id="feat-h">Built for shipping, not demos</h2>
+      <div class="feature-grid">
+        {features.map((s, i) => (
+          <article class="feature-card" id={`feature-${s.id}`}>
+            <div class="feature-num">{pad(i + 1)}</div>
+            <h3 class="feature-title">{s.h}</h3>
+            <p class="feature-text">{s.p}</p>
+            <a href={s.href} class="amber-link feature-link" data-goatcounter-click={`feature-${s.id}`}>Learn more →</a>
+          </article>
+        ))}
       </div>
       <p class="feat-all"><a href="/docs/features/" class="amber-link">All features in the docs →</a></p>
     </div>
@@ -481,93 +425,6 @@ const crewRows = [
         select(tabs[next], true);
       });
     });
-  }
-
-  // Features carousel. The strip scrolls natively (swipe, trackpad, scroll-snap);
-  // this adds previous/next buttons, dots, the counter and arrow keys.
-  for (const carousel of document.querySelectorAll<HTMLElement>('[data-carousel]')) {
-    const section = carousel.closest('section');
-    const track = carousel.querySelector<HTMLElement>('[data-carousel-track]');
-    const slides = Array.from(carousel.querySelectorAll<HTMLElement>('.slide'));
-    const dots = Array.from(carousel.querySelectorAll<HTMLButtonElement>('[data-carousel-dot]'));
-    const arrows = section?.querySelector<HTMLElement>('[data-carousel-arrows]');
-    const prev = section?.querySelector<HTMLButtonElement>('[data-carousel-prev]');
-    const next = section?.querySelector<HTMLButtonElement>('[data-carousel-next]');
-    const count = section?.querySelector<HTMLElement>('[data-carousel-count]');
-    const dotsBox = carousel.querySelector<HTMLElement>('[data-carousel-dots]');
-    if (!track || slides.length === 0) continue;
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const pad = (n: number) => String(n).padStart(2, '0');
-    let current = 0;
-    // While a button or key scrolls the strip, intermediate positions do not move the dots.
-    let heading = -1;
-
-    const indexFromScroll = () => {
-      const step = slides.length > 1 ? slides[1].offsetLeft - slides[0].offsetLeft : 1;
-      return Math.max(0, Math.min(slides.length - 1, Math.round(track.scrollLeft / step)));
-    };
-    const render = () => {
-      dots.forEach((dot, i) => dot.setAttribute('aria-current', i === current ? 'true' : 'false'));
-      if (prev) prev.disabled = current === 0;
-      if (next) next.disabled = current === slides.length - 1;
-      if (count) count.textContent = `${pad(current + 1)} / ${pad(slides.length)}`;
-    };
-    const go = (i: number) => {
-      const target = Math.max(0, Math.min(slides.length - 1, i));
-      const left = slides[target].offsetLeft - slides[0].offsetLeft;
-      heading = Math.abs(track.scrollLeft - left) < 2 ? -1 : target;
-      track.scrollTo({ left, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
-      current = target;
-      render();
-    };
-    const settle = () => {
-      heading = -1;
-      const i = indexFromScroll();
-      if (i !== current) {
-        current = i;
-        render();
-      }
-    };
-
-    let frame = 0;
-    track.addEventListener(
-      'scroll',
-      () => {
-        cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => {
-          const atTarget = heading >= 0 && Math.abs(track.scrollLeft - (slides[heading].offsetLeft - slides[0].offsetLeft)) < 2;
-          if (heading < 0 || atTarget) settle();
-        });
-      },
-      { passive: true },
-    );
-    track.addEventListener('scrollend', settle);
-    // A swipe or a wheel takes over from a scroll the buttons started.
-    for (const type of ['touchstart', 'wheel'] as const) track.addEventListener(type, () => (heading = -1), { passive: true });
-    prev?.addEventListener('click', () => go(current - 1));
-    next?.addEventListener('click', () => go(current + 1));
-    dots.forEach((dot, i) => dot.addEventListener('click', () => go(i)));
-    // Left and right arrows anywhere in the carousel or on its buttons; Home and End on the strip.
-    section?.addEventListener('keydown', (e) => {
-      const target = e.target as HTMLElement;
-      if (!carousel.contains(target) && !arrows?.contains(target)) return;
-      let to = -1;
-      if (e.key === 'ArrowRight') to = current + 1;
-      else if (e.key === 'ArrowLeft') to = current - 1;
-      else if (target === track && e.key === 'Home') to = 0;
-      else if (target === track && e.key === 'End') to = slides.length - 1;
-      if (to < 0 || to >= slides.length) return;
-      e.preventDefault();
-      go(to);
-      if (dots.includes(target as HTMLButtonElement)) dots[to].focus();
-    });
-
-    arrows?.removeAttribute('hidden');
-    dotsBox?.removeAttribute('hidden');
-    carousel.setAttribute('data-ready', '');
-    current = indexFromScroll();
-    render();
   }
 
   // Copy-to-clipboard: the label flips to "Copied" for two seconds.
@@ -980,202 +837,47 @@ const crewRows = [
     margin: 0;
   }
 
-  /* Features carousel: CSS scroll-snap; the script adds the buttons and dots.
-     Without the script it is a strip that scrolls sideways. */
-  .feat-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px 24px;
-  }
-  .carousel-arrows {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .carousel-arrows[hidden],
-  .carousel-dots[hidden] {
-    display: none;
-  }
-  .arrow {
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--panel);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 18px;
-    cursor: pointer;
-  }
-  .arrow:hover:not(:disabled) {
-    border-color: var(--amber);
-    color: var(--amber);
-  }
-  .arrow:disabled {
-    opacity: 0.35;
-    cursor: default;
-  }
-  .carousel-count {
-    min-width: 64px;
-    text-align: center;
-    font-family: var(--mono);
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .carousel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 0;
-  }
-  .carousel-track {
-    position: relative;
+  /* Features */
+  .feature-grid {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    scrollbar-color: var(--dash) transparent;
-    padding-bottom: 12px;
-    border-radius: 16px;
   }
-  .carousel-track:focus-visible {
-    outline-offset: 4px;
-  }
-  [data-carousel][data-ready] .carousel-track {
-    scrollbar-width: none;
-    padding-bottom: 0;
-  }
-  [data-carousel][data-ready] .carousel-track::-webkit-scrollbar {
-    display: none;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .carousel-track {
-      scroll-behavior: smooth;
-    }
-  }
-  .slide {
-    --cland-shot-ground: var(--ground);
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
+  .feature-card {
     min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 40px;
-    align-items: center;
-    padding: 36px;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    background: var(--panel);
-  }
-  .slide-copy {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    min-width: 0;
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--panel);
+    overflow-wrap: anywhere;
   }
-  .slide-num {
+  .feature-num {
     font-family: var(--mono);
     font-size: 14px;
     letter-spacing: 1px;
     color: var(--teal);
   }
-  .slide-title {
+  .feature-title {
     margin: 0;
     font-family: var(--mono);
     font-size: clamp(22px, 2.4vw, 28px);
     line-height: 1.2;
     letter-spacing: -0.3px;
   }
-  .slide-text {
+  .feature-text {
     margin: 0;
     color: var(--body-muted);
     font-size: 17px;
   }
-  .slide-link {
+  .feature-link {
     align-self: flex-start;
+    margin-top: auto;
     font-family: var(--mono);
     font-size: 15px;
     padding: 6px 0;
-  }
-  .slide :global(.slide-shot) {
-    min-width: 0;
-  }
-  /* A diagram slide: the same 16:10 frame as a screenshot, the diagram fitted inside. */
-  .slide :global(.slide-diagram) {
-    position: relative;
-    aspect-ratio: 16 / 10;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--ground);
-    overflow: hidden;
-  }
-  .slide :global(.slide-diagram .cland-diagram) {
-    position: absolute;
-    inset: 12px;
-    margin: 0;
-    border: 0;
-    background: transparent;
-  }
-  .slide :global(.slide-diagram .cland-diagram-scroll) {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .slide :global(.slide-diagram svg) {
-    display: block;
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    min-width: 0;
-  }
-  .slide :global(.slide-diagram svg text) {
-    font-family: var(--sans, 'IBM Plex Sans'), system-ui, sans-serif;
-  }
-  .carousel-dots {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2px;
-  }
-  .carousel-dot {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-  }
-  .carousel-dot::before {
-    content: '';
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--dash);
-    transition: background-color 0.2s, transform 0.2s;
-  }
-  .carousel-dot:hover::before {
-    background: var(--muted);
-  }
-  .carousel-dot[aria-current='true']::before {
-    background: var(--amber);
-    transform: scale(1.25);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .carousel-dot::before {
-      transition: none;
-    }
   }
   .feat-all {
     margin: 0;
@@ -1183,11 +885,8 @@ const crewRows = [
     font-size: 15px;
   }
   @media (max-width: 900px) {
-    .slide {
+    .feature-grid {
       grid-template-columns: minmax(0, 1fr);
-      gap: 24px;
-      align-items: start;
-      align-content: start;
     }
   }
 
@@ -1297,15 +996,11 @@ const crewRows = [
     .card-lg {
       padding: 20px;
     }
-    .carousel-track {
-      grid-auto-columns: calc(100% - 28px);
-      gap: 12px;
-    }
-    .slide {
+    .feature-card {
       padding: 20px;
       border-radius: 14px;
     }
-    .slide-text {
+    .feature-text {
       font-size: 16px;
     }
     .terminal {
