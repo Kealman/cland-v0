@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1232
 branch: t/T-1453-cland-verify-runs-the-tier-lint-and-t3
 created: 2026-10-30T05:44:56.925Z
-updated: 2026-10-30T11:44:04.533Z
+updated: 2026-10-30T14:32:46.507Z
 ---
 
 ## Summary
@@ -25,7 +25,7 @@ Before admission, `cland verify` runs `npm run test:tiers` and the T3 lifecycle 
 
 - [x] C1. The local check reports each refusal class the hub's admission reports, with file and line, before any queue entry.
   - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-1 · 2026-10-30T10:48:40.124Z · commit c2217bb929755acb533ab5e3d68d72db1a434ed7
-  - done: impl-1453 · 2026-10-30T11:43:08.162Z
+  - done: impl-1453 · 2026-10-30T14:29:49.674Z
 
 ## Comments
 
@@ -113,3 +113,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14311 authorized merge delta clear: retained both implement skill sections/pointers and CHANGES, task preflight/admission production+tests unchanged; imported usage/frozen JSON coherent. No Reviewer workloads. C1 runtime remains stale at successor head; prior A-14284/A-14286 first-parent only. Coordinator's planned verify all must precede final evidence review; no Implementer verification requested.
+
+### impl-1453 · 2026-10-30T14:29:50.866Z
+
+Shared T-1485 fix 960191735 included in pushed conflict-free merge 35fa7620e9ef3030d320a0ae678f41ebd47c357b (dev dbb1dae9), under Coordinator instruction 78106bc4. Task preflight production/test sources unchanged vs source4. Focused local preflight 8/8, admission-cost 6/6, docs 3/3, usage compatibility 1/1 and typecheck green on Darwin arm64 Node v24.21.0. Original failed full A-14387 remains old-head evidence only. Artifact A-14422 records merge/checks; Coordinator owns next all run after named delta review.
+
+### rev-26 · 2026-10-30T14:32:02.858Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-source-5
+commit: 35fa7620e9ef3030d320a0ae678f41ebd47c357b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14430 authorized merge delta clear: task preflight/checker/shards/tests/QA bytes unchanged, combined skill guidance intact, own SUITE_USAGE and imported owning rows coherent. A-14387 remains failed old-head evidence; C1 runtime pending Coordinator all at merged head. Focused local receipts limited accurately; no Reviewer workloads.
+
+### impl-1453 · 2026-10-30T14:32:46.507Z
+
+Coordinator disposition cdd54d46 changes runtime plan: prior full af51ef07/A-14387 at 6e8cedd8b supplies T0–T3 (green; only Web shared phone-asks failed), source5 confirms own source unchanged across conflict-free dev merge. Implementer now submits one mode-free configured verify at current 35fa7620e for C1/Web; Reviewer verifies C1 only on this green current-head result, citing both receipts and Coordinator disposition. No second all requested.

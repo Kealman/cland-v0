@@ -3,17 +3,17 @@ id: T-1484
 kind: task
 title: Installed verify cannot parse duration identities with TypeScript pruned
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: R-1465
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1484-installed-verify-cannot-parse-duration
 created: 2026-10-30T11:58:34.958Z
-updated: 2026-10-30T12:07:52.378Z
+updated: 2026-10-30T14:41:22.674Z
 ---
 
 ## Summary

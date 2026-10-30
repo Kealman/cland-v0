@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1225
 branch: t/T-1474-detect-claude-daemon-idle-retirement
 created: 2026-10-30T07:50:18.630Z
-updated: 2026-10-30T13:46:10.873Z
+updated: 2026-10-30T14:31:50.085Z
 ---
 
 ## Summary
@@ -147,3 +147,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source5 clear, A-14400. Sole source4 M1 resolved: revalidate captured native job after both identity awaits before PID publication, retaining object/conversation/previousPID/stop/shutdown guards. Both held-probe replacement controls preserve no-publication/PID-null assertions; same-job newer-hook positive discovery and earlier native regressions remain. Standards and Spec have no remaining findings. A-14397 local summaries and A-14386 prior evidence keep their limits; failed A-14385 remains separate. C1/C2 current-head runtime unverified; no new verification marks or Reviewer executions. Report ready for verify all at this exact SHA; Coordinator owns full run and subsequent original-record evidence review is required.
+
+### rev-31 · 2026-10-30T14:31:50.085Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1474-delta2
+commit: 99b5518e1d708a59bfd593b7d49678f1e668de22
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta2 clear, A-14429. Source5 retirement/PID adapter, contract, Sessions/core/checkpoint/kind/Store/Visibility and scheduling/checkpoint tests unchanged. Combined CHANGES retains both parents; skill, README and index retain retirement controls alongside incoming T-1485 clock/queue guidance. No bespoke resolution code or Standards/Spec finding. A-14427 local summaries retain scope; source5 all49f784c1/A-14419 remains overall red and old-head, original A-14385 separate. C1/C2 current-head runtime pending; no Reviewer execution. Report ready for Coordinator-owned verify all at exact merge SHA, then final original-record evidence review.

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1229
 branch: t/T-1464-periodic-dev-t3-skips-a-run-when-a-newer
 created: 2026-10-30T05:44:58.711Z
-updated: 2026-10-30T12:27:05.529Z
+updated: 2026-10-30T14:34:51.512Z
 ---
 
 ## Summary
@@ -80,3 +80,16 @@ Coordinator-authorized temporary evidence exception (2026-10-30T12:19:57.872Z, A
 ### impl-1464 · 2026-10-30T12:27:05.529Z
 
 Coordinator correction at 2026-10-30T12:26:40.710Z (Agents msg7667fab0-4a60-4a2f-83a1-98e8425f9bca) supersedes earlier evidence-exception interpretation: phone-asks exception applies only to Coordinator merge-gate decision; Reviewers do not issue clear evidence on failed A-14344. Final evidence review is held until Coordinator's T3-inclusive verify all after shared fix T-1485 lands. Original A-14344 remains red, source review A-14324 remains clear at frozen ea04b0eba. No resubmission by Implementer.
+
+### rev-26 · 2026-10-30T14:34:51.512Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1464-source-3
+commit: 299e8457cac6b4ccf47d23c27e8ee60e65077220
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14436 authorized merge delta clear: own periodic policy/source/two tests/unit fixture/guide byte-identical; shared-clock import matches dev and skill/help preserved. A-14344/A-14346 remain failed old-head evidence; C1 new-head runtime pending Coordinator all, no exception clearance. No Reviewer workloads.

@@ -3,7 +3,7 @@ id: T-1454
 kind: task
 title: Merge batches and task verifies widen test selection for sibling-merge interactions
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1241
 branch: t/T-1454-merge-batches-and-task-verifies-widen
 created: 2026-10-30T05:44:57.061Z
-updated: 2026-10-30T14:04:54.592Z
+updated: 2026-10-30T14:36:47.700Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ Merge batches add the T2 and Web files that import modules another landing chang
 
 ## Acceptance criteria
 
-- [ ] C1. A batch whose members change an imported module of another member's tests runs those tests, shown by a fixture with two interacting branches.
-  - failed: rev-32 [reviewer] · 2026-10-30T14:04:54.592Z · note Unsupported lexical terminators and unresolved specifier/source-extension boundaries can still hide runtime dependencies and omit interacting tests.
+- [x] C1. A batch whose members change an imported module of another member's tests runs those tests, shown by a fixture with two interacting branches.
+  - done: impl-1454 · 2026-10-30T14:32:58.240Z
 
 ## Comments
 
@@ -111,3 +111,23 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Full source5 not clear,A-14416. M7 closed; M1–M7 otherwise closed/disposed. Consolidated complete M8/M9 list per review-loop cap; Coordinator c8f6a162 additionally requires final-tree unknown-file counts/reasons and typical one-module batch phases, plus cheap sound narrowing proposal if >about25% unknown. Audit saved facts only, no Reviewer scan/tests. C1 failed. One shared production correction/fresh exact-head review before configured verify; no scanner-clear SHA yet.
 
 Criteria: C1 failed (Unsupported lexical terminators and unresolved specifier/source-extension boundaries can still hide runtime dependencies and omit interacting tests.).
+
+### impl-1454 · 2026-10-30T14:32:57.785Z
+
+Final policy per Coordinator decisions53d321b6/edae5998/6a132ac7/0cefb27a/a6bd6b13/7a5c399a: graph uses lazy TypeScript AST; registry externals proven through nearest declaring candidate ancestor (all dependency groups, workspace/local/Git/path refused), bounded createRequire literal forms supported, unknown file selects only that file, scan-wide unavailability selects phase, task-history failure remains full. Batch widening defaults report via merge.batch_interaction; explicit run executes additions. C1 fixture now proves report plan excludes additions and records files/phases, while run executes both named Node assertions. Report-mode fixture red expected T1,T3 but actual added T2; corrected green.
+Contract inventory update: optional SuiteSelection.batchTests and batchInteraction mirrored in shared/wire, validated by selectionFromEnv, compared in sameSuiteSelection, carried by selectionTransport/executor/run-suite/persistence, consumed by packageShards, pinVerificationPlan/tier report and merge-batches result line. Old receipts without optional fields retain baseline behavior; default report produces no extra scheduled files/tiers or exit gate. ProjectConfig.merge.batchInteraction is parsed/rendered by the single config consumer, surfaced through dynamic configKeys/settings writer and reload applied keys; current/older configs omitting it inherit report. Init-config and owning frozen SUITE_USAGE/MERGE_USAGE rows migrated. No role permission or clause expansion. Shared immutable scanner API keeps legacy defaults; optional diagnostic callback shares graph reads for measurement, defaults to throwing unknown for older callers. ImportGraphError distinguishes file from scan scope internally; T-1462 takes final shared commit only after reviewer clearance.
+Scanner19db19fa3, whole head8bca06c69. Measurement on sealed disposable source copy, macOS/Node24.21: direct/transitive unknown hub/test T2 5/256, Web0/49; five reasons are one nonliteral import, vm fixture, eval fixture, indirect require fixture, unsupported createRequire base fixture. Run-mode projections at baselineT1: store.ts294(244hub/1nvim/49Web), codex.ts292(242/1/49), cli/usage.ts40(39/1/noWeb). Default report executes no additions. These are static selection projections, not runtime tests/timing. One earlier independent-per-test measurement expired at60s/SIGTERM without results; final shared-graph measurement completed with bounds and no budget outcomes.
+Local targeted evidence: selection158/158, merge-batches72/72, init-config16/16, CLI compatibility1/1/help5/5, all-workspace typecheck and test:lint passed(report-only124 findings/60files/0refusals). No full local tiers, browser or configured hub verification yet. No dev merge since source1; next exact-head review required before verify.
+
+### rev-32 · 2026-10-30T14:36:47.700Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-source6
+commit: 8bca06c694800df67470aa5ac2caadd3971727b8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source6 clear,A-14437. scanner clear at19db19fa32693bdf790fd0fe38904c8439d9d239; scanner source bytes match reviewedhead. M1–M9 closed/disposed under final Coordinator AST/soundness/file-uncertainty/report-mode decisions. Defaultreport records exact additions/reason/phases and preserves configured execution; explicitrun masks selected T2/Web, C1fixture checks both plus owned native receipts. Config/default/render/settings/reload/help/wire/cache/shards audited. Saved local measurements5/256T2unknown,0/49Web with representative projections retained as claims, not runtime; manifest denominators checked. C1 remains runtime-unverified, no Reviewer workloads. One unchanged-head mode-free verify then original-record final review; no full run requested.

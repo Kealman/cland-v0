@@ -3,17 +3,17 @@ id: T-373
 kind: task
 title: "Executor interface: declare prepare and reap so the droplet backend implements all nine operations"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: R-1465
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-373-executor-interface-declare-prepare-and
 created: 2026-10-14T03:43:39.962Z
-updated: 2026-10-14T03:43:39.962Z
+updated: 2026-10-30T14:41:25.552Z
 ---
 
 ## Summary

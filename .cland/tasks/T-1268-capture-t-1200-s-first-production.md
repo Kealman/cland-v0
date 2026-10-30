@@ -3,17 +3,17 @@ id: T-1268
 kind: task
 title: "Capture T-1200's first production receipt: a branch adding a Web test file shows the 10-repetition count in its droplet verify"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: R-1465
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1268-capture-t-1200-s-first-production
 created: 2026-10-25T00:56:52.206Z
-updated: 2026-10-25T00:56:52.206Z
+updated: 2026-10-30T14:41:32.103Z
 ---
 
 ## Summary

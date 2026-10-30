@@ -3,17 +3,17 @@ id: T-1433
 kind: task
 title: Transcribe each audio file in a Telegram album, not only standalone voice notes
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-326
+parent: R-1465
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1433-transcribe-each-audio-file-in-a-telegram
 created: 2026-10-28T19:24:36.417Z
-updated: 2026-10-28T19:24:36.417Z
+updated: 2026-10-30T14:41:28.844Z
 ---
 
 ## Summary

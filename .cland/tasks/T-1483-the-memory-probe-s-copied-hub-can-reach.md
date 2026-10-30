@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T13:42:31.899Z
+updated: 2026-10-30T14:34:06.813Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
   - done: impl-1483 · 2026-10-30T12:04:33.106Z
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-source-5 · 2026-10-30T14:34:06.813Z · commit b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7
 
 ## Comments
 
@@ -169,5 +170,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14398 source4 clear under Coordinator assignment. Fixture-only positive scratch path migration preserves guard and semantic assertions; ordinary legacy exact bytes/outcome/artifact/no-refusal and isolated named-refusal/same-count controls address scope/count. Production unchanged from rev-32 source3. C3 qualified historical A-14335 source-verified; C1/C2 runtime pending successor original-record audit. Failed A-14373 retained; no Reviewer workloads. Shared T-1485 sequencing remains Coordinator-owned; merged head needs delta review.
+
+Criteria: C3 verified.
+
+### impl-1483 · 2026-10-30T14:29:23.582Z
+
+Coordinator rule11 authorization 78106bc4: fetched origin/dev at dbb1dae9d and merged shared T-1485 landed960191735 plus T-1456 enqueue preflight. Pushed merged head b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7. Only conflict was appended independent sections in .agents/skills/implement/SKILL.md; retained both copied recovery and browser fixture wall-time sections verbatim. No production conflict or new authored behavior. merge-tree against fetched origin/dev exit0, tree c0b436b0cf671a17846cdb815d979477cd3ae4f1. Local checks underway for changed shared FakeClock/process-cleanup dependencies; direct rev-26 delta review then Coordinator verify all, no task verify.
+
+### rev-26 · 2026-10-30T14:34:06.813Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-5
+commit: b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14434 merge delta clear: all own safety/fixture source bytes unchanged; shared clock files match dev, isolation/browser guidance preserved. C3 qualified original A-14335 refreshed; C1/C2 runtime pending Coordinator verify all at merged head. Prior A-14373 failed retained; no Reviewer workloads/no task verify requested.
 
 Criteria: C3 verified.
