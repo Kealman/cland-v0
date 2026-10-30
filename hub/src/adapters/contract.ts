@@ -189,7 +189,7 @@ export type AdapterHost = {
    *  whether or not the state changed (an idle session reconnected to is still idle). */
   reconnected?: (sessionId: string) => void;
   /** The process is gone without cland stopping it: the hub sets `unknown` and journals it. */
-  exited: (sessionId: string, detail: string) => void;
+  exited: (sessionId: string, detail: string, reason?: 'retired') => void;
 };
 
 /** Optional native replay of a confirmed failed turn. Older adapters keep the three-argument report.

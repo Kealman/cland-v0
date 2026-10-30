@@ -6806,6 +6806,24 @@ If a newer native-id hook arrives during discovery or a replacement's
 process-start probe, stale results cannot publish a PID or conversation. The next watcher tick
 reconciles the newer identity before any grace-expiry exit.
 
+A completed successful `claude agents --json` poll retires a previously listed
+job that disappears when its recorded PID is absent or gone, or a matching job
+reporting `done`, with `harness-exited` reason `retired`. Default discovery runs every 30 seconds,
+with a 15-second native query deadline and a 5-second watcher tick; failed,
+signed-out and cached reads cannot prove retirement. Terminal lookup uses the
+captured native job id, with a conversation fallback only for legacy rows without
+a job id. A known live PID remains supervised through missing native listings,
+including hub restart; a remembered conversation alone is not a listing receipt.
+A newer state hook fences terminal and state updates from an older query, even
+when the native conversation stays unchanged. It still permits verified late PID
+acquisition, which retains its own identity and ownership checks. An initial
+unlisted launch keeps discovering, and a missing PID retains the re-exec grace above.
+A retired Coordinator gets one `coordinator-retired` human inbox message with
+`cland session resume <name> --relaunch`. Its durable identity includes the
+cland session and native job id; restart preserves it, and successful reconnect
+or resume marks that exact notice read. General deduplication does not advance
+the Agents journal replay checkpoint. Other roles get the usual exit event.
+
 If the Coordinator stays vacant for ten minutes, the hub posts one `decision`
 notice in General naming the last holder and the recovery commands
 `cland session resume <name> --relaunch` and `cland role set <name> coordinator`.

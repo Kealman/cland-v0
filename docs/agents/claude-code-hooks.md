@@ -20,3 +20,14 @@ Hand-started sessions require `cland` on PATH. Project hooks stand aside when
 replace only managed hook entries, preserving user hooks and local settings;
 invalid project JSON is kept with a diagnostic and must be repaired before the
 hook can be provisioned. Do not keep a second project-own literal-rm hook.
+
+The hub also watches its launched background jobs through `claude agents --json`.
+A fresh successful list that loses a previously listed job without a known live
+PID, or reports its matching job `done`, produces `harness-exited` reason `retired`. Default polling
+uses a 30-second interval plus the 5-second watcher tick and bounded native I/O;
+failed, signed-out or cached reads do not retire jobs. Re-exec keeps its existing
+grace. Known live PIDs remain supervised through native discovery failure;
+newer hooks block stale terminal/state updates while allowing verified late PID
+discovery. A retired Coordinator receives one human inbox remedy, preserved across
+restart and cleared on successful reconnect or resume:
+`cland session resume <name> --relaunch`. This needs no new hook or role permission.

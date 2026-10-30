@@ -1,6 +1,10 @@
 // T1: journal projection and retention recovery use the in-process Store checkpoint.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { COORDINATOR_RETIRED } from '../src/hub/retirement.ts';
 import { agentsRecord, replayAgentsRecord } from '../src/hub/agents-topic.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, HubCore } from '../src/hub/core.ts';
 import { Journal } from '../src/hub/journal.ts';
@@ -109,4 +113,40 @@ test('retention pruning every lifecycle notice preserves the no-replay checkpoin
   assert.equal(replayAgentsRecord(restarted, records, entry => logs.push(entry)), 0);
   assert.deepEqual(restarted.topicHistory(AGENTS.id).messages, []);
   assert.equal(logs.some(entry => entry.event === 'agents-record-replayed'), false);
+});
+
+
+test('a deduplicated General retirement notice preserves pending Agents replay across Store reopen', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-retirement-checkpoint-'));
+  const file = join(root, 'hub.db');
+  let core = new HubCore({ store: new Store(file) });
+  const recorder = agentsRecord();
+  const records: Record<string, unknown>[] = [];
+  try {
+    recorder.attach(core);
+    const log = recorder.tap(entry => records.push(entry));
+    log({ event: 'role-assigned', session: 'coord', role: 'coordinator' });
+    await Promise.resolve();
+    const checkpoint = core.store.meta(AGENTS_JOURNAL_CHECKPOINT);
+    assert.ok(checkpoint);
+    log({ event: 'harness-exited', session: 'coord', harness: 'claude-code', reason: 'retired' });
+    const notice = { id: 'claude-retired:session:job', kind: COORDINATOR_RETIRED, text: 'Resume with cland session resume coord --relaunch' };
+    core.noticeInTopic('general', notice);
+    core.noticeInTopic('general', notice);
+    recorder.attach(null); // Simulate shutdown before the queued lifecycle projection runs.
+    core.close();
+    core.store.close();
+    core = new HubCore({ store: new Store(file) });
+    assert.equal(core.store.meta(AGENTS_JOURNAL_CHECKPOINT), checkpoint);
+    assert.equal(replayAgentsRecord(core, records), 1);
+    assert.equal(replayAgentsRecord(core, records), 0);
+    assert.equal(core.topicHistory('general').messages.filter(m => m.id === notice.id).length, 1);
+    assert.equal(core.topicHistory(AGENTS.id).messages.filter(m => m.kind === 'session-death').length, 1);
+  } finally {
+    recorder.attach(null);
+    core.close();
+    core.store.close();
+    await Promise.resolve(); // Detached projection settles before storage removal.
+    await rm(root, { recursive: true, force: true });
+  }
 });

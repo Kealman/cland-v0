@@ -344,6 +344,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/orphan-servers-perf.test.ts`](../../../hub/test/orphan-servers-perf.test.ts) | [Notes](hub-test-orphan-servers-perf.test.ts.md) |
 
 | [`nvim/test/events.test.ts`](../../../nvim/test/events.test.ts) | [Notes](nvim-test-events.test.ts.md) |
+| [`hub/test/agents-checkpoint.test.ts`](../../../hub/test/agents-checkpoint.test.ts) | [Notes](hub-test-agents-checkpoint.test.ts.md) |
 | [`hub/test/suite-persistence.test.ts`](../../../hub/test/suite-persistence.test.ts) | [Notes](hub-test-suite-persistence.test.ts.md) |
 | [`hub/test/measure-memory.test.ts`](../../../hub/test/measure-memory.test.ts) | [Notes](hub-test-measure-memory.test.ts.md) |
 | [`hub/test/journal-subagents.test.ts`](../../../hub/test/journal-subagents.test.ts) | [Notes](hub-test-journal-subagents.test.ts.md) |

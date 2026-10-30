@@ -926,6 +926,18 @@ guide owns process-kill coverage; apply throughput thresholds in the external
 measurement probe, not as wall-clock assertions in suite tests. No role clause
 or CLI permission is added.
 
+## Claude retirement and retained history
+
+For Claude daemon retirement, use the fake-clock/native-CLI seam in
+`docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`. Only fresh successful
+job observations retire a listed launch; retain known live PIDs behind missing
+listings. Preserve re-exec grace and newer hook identity, pin terminal decisions to the admitted job, and fence native queries
+against newer same-conversation hooks and watched launch/job replacement while
+allowing verified late PID discovery. Recheck the captured job after native
+identity probes before publishing a PID. Keep the `coordinator-retired` inbox kind compatible with generic message clients,
+key its remedy by session and native job, and retain restart, reconnect and
+failed-query controls. No role-clause or command changes are needed.
+
 For startup history changes, use the suite summary/by-id and recovery controls
 in `docs/agents/tests/hub-test-suite-persistence.test.ts.md` and the journal's
 bounded input-work/prior-selection controls in

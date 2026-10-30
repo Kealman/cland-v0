@@ -1921,7 +1921,7 @@ export class HubCore {
     this.#store.touchTopic(topic.id, message.ts);
     // a notice with an id of its own is a journalled lifecycle event's: the checkpoint the journal's replay starts
     // after, kept apart from the messages retention prunes
-    if (notice.id !== undefined) this.#store.setMeta(AGENTS_JOURNAL_CHECKPOINT, notice.id);
+    if (topicId === AGENTS.id && notice.id !== undefined) this.#store.setMeta(AGENTS_JOURNAL_CHECKPOINT, notice.id);
     return message;
   }
 

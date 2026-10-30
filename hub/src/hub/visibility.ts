@@ -1,3 +1,4 @@
+import { COORDINATOR_RETIRED } from './retirement.ts';
 import { Ladder } from '../tracker/kinds.ts';
 // §3.5 policy lives in the hub. Layers are projections, not stored decisions: history,
 // snapshots and live frames all use today's clock, role identities and project defaults.
@@ -163,7 +164,7 @@ export class Visibility {
         const to = Array.isArray(r.to) ? r.to : [];
         const toHuman = to.includes('human') || to.includes('aide') || to.some(n => typeof n === 'string' && this.#role(n) === 'aide') || (r.fromKind === 'agent' && to.length === 0 && (!r.artifact || Array.isArray(r.artifacts)) && !['progress', 'event'].includes(String(r.kind)));
         if (r.fromRole === 'coordinator' && (r.kind === undefined || r.kind === 'report') && toHuman) return 'coordinator_report';
-        if (r.fromKind === 'human' || r.fromRole === 'aide' || toHuman) return 'human';
+        if (r.fromKind === 'human' || r.fromRole === 'aide' || toHuman || r.fromKind === 'hub' && r.kind === COORDINATOR_RETIRED) return 'human';
         return 'agent';
       }
       case 'inbox':

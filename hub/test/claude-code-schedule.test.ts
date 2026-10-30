@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost, HarnessProcess, InjectFrame } from '../src/adapters/contract.ts';
-import type { Message } from '../src/protocol.ts';
+import type { Inbox, Message } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
@@ -24,6 +24,7 @@ function cli(t: TestContext) {
   const calls: Array<{ args: string[]; configDir: string | undefined; env: NodeJS.ProcessEnv }> = [];
   const sessions: Array<{ id: string; sessionId: string; pid?: number; status: string }> = [];
   let loggedOut = false;
+  let failure = false;
   let hold = false;
   let knownPid = false;
   let pid = process.pid;
@@ -39,7 +40,7 @@ function cli(t: TestContext) {
         const id = `background-${sessions.length}`;
         sessions.push({ id, sessionId: `native-${args[args.indexOf('--session-id') + 1]!}`, status: 'idle', ...(knownPid ? { pid } : {}) });
         callback(null, `claude attach ${id}`, '');
-      } else if (args[0] === 'agents') callback(null, listing, '');
+      } else if (args[0] === 'agents') callback(failure ? { code: 1 } : null, listing, '');
       else if (args[0] === 'stop') { const i = sessions.findIndex(s => s.id === args[1]); if (i >= 0) sessions.splice(i, 1); callback(null, '', ''); }
       else assert.fail(`unscripted command ${args[0]}`);
     };
@@ -49,7 +50,7 @@ function cli(t: TestContext) {
   });
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  return { calls, sessions, pending, killed, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, set pid(value: number) { pid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
+  return { calls, sessions, pending, killed, set failure(value: boolean) { failure = value; }, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, set pid(value: number) { pid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
 }
 
 // Native socket/MCP completion is bounded in real time while hub time stays fixed.
@@ -710,4 +711,288 @@ test('an expired --bg launch latches a directory once without discovery or retry
   await f.clock.advance(3 * 30_000);
   assert.deepEqual(f.native.calls.map(c => c.args[0]), ['--bg', '--bg']);
   assert.equal((await f.records(ui)).filter(record => record.event === 'claude-signed-out').length, 1);
+});
+
+// Reproducible retirement timing probe: hub virtual time only; excludes native CLI latency.
+for (const retirement of ['missing', 'done'] as const) test(`Claude retirement ${retirement} publishes one Coordinator inbox remedy within 60 seconds`, async t => {
+  let alive = true;
+  const f = await component(t, () => alive, undefined, null);
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const { hub, ui } = await f.open();
+  const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(result.ok, true, result.error);
+  const p = (result.value as { process: HarnessProcess }).process;
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  await peer.waitForPresence(['coord']);
+  const exited = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.status === 'exited');
+  const began = f.clock.now().getTime();
+  if (retirement === 'missing') { f.native.sessions.length = 0; alive = false; }
+  else f.native.sessions[0]!.status = 'done';
+  await f.clock.advance(30_000);
+  await receipt(exited);
+  const records = await f.records(ui) as Array<{ event: string; reason?: string }>;
+  assert.equal(records.filter(r => r.event === 'harness-exited' && r.reason === 'retired').length, 1);
+  const inbox = (await ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.equal(inbox.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 1);
+  assert.ok(f.clock.now().getTime() - began <= 60_000);
+  await f.clock.advance(60_000);
+  assert.equal((await f.records(ui)).filter(r => r.event === 'harness-exited').length, 1);
+  const later = (await ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.equal(later.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 1);
+  await peer.close();
+  await hub.stop();
+  const reopened = await f.open();
+  const saved = (await reopened.ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.equal(saved.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 1);
+  const reconnected = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  await reconnected.waitForPresence(['coord']);
+  const cleared = (await reopened.ui.request({ type: 'inbox.list' })).value as Inbox;
+  assert.equal(cleared.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 0);
+});
+
+test('Claude retirement ignores failed and cached snapshots and late launch discovery', async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  const exits: string[] = [];
+  const host = { ...await memoryHost(t), exited: (id: string) => { exits.push(id); } };
+  const adapter = new ClaudeCodeAdapter(host, options(clock));
+  t.after(() => adapter.close());
+  const first = await adapter.spawn(request('first'));
+  const second = await adapter.spawn(request('second'));
+  native.sessions.length = 0;
+  await clock.advance(5000);
+  assert.equal(exits.length, 0, 'cached discovery cannot retire a launch');
+  native.failure = true;
+  await clock.advance(25_000);
+  assert.equal(exits.length, 0, 'a failed CLI is not positive retirement evidence');
+  native.failure = false;
+  let retired!: () => void;
+  const observed = new Promise<void>(resolve => { retired = resolve; });
+  host.exited = id => { exits.push(id); retired(); };
+  await clock.advance(30_000);
+  await receipt(observed);
+  assert.deepEqual(exits, [first.sessionId]);
+  assert.ok(!exits.includes(second.sessionId), 'an as-yet unlisted launch is still discovering');
+});
+
+for (const order of ['other-first', 'own-first'] as const) for (const outcome of ['live', 'done', 'missing'] as const) test(`Claude retirement uses captured job with shared conversation: ${order} ${outcome}`, async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  const exits: string[] = [];
+  const host = { ...await memoryHost(t), exited: (id: string) => { exits.push(id); } };
+  const adapter = new ClaudeCodeAdapter(host, options(clock));
+  t.after(() => adapter.close());
+  const p = await adapter.spawn(request('own'));
+  let observed!: () => void;
+  const observation = new Promise<void>(resolve => { observed = resolve; });
+  host.exited = id => { exits.push(id); observed(); };
+  host.signal = id => { if (id === p.sessionId) observed(); };
+  const own = { ...native.sessions[0]!, status: outcome === 'done' ? 'done' : 'idle' };
+  const other = { ...own, id: 'other-job', status: outcome === 'live' ? 'done' : 'idle' };
+  native.sessions.splice(0, native.sessions.length, ...(outcome === 'missing' ? [other] : order === 'other-first' ? [other, own] : [own, other]));
+  await clock.advance(30_000);
+  await receipt(observation); // Native state or terminal receipt, with time fixed.
+  assert.deepEqual(exits, outcome === 'live' ? [] : [p.sessionId]);
+});
+
+for (const outcome of ['missing', 'done'] as const) test(`a newer same-conversation hook fences held Claude ${outcome} retirement`, async t => {
+  let alive = true;
+  const f = await component(t, () => alive, undefined, null);
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const { ui } = await f.open();
+  const launch = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launch.ok, true, launch.error);
+  const p = (launch.value as { process: HarnessProcess }).process;
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  await peer.waitForPresence(['coord']);
+  const made = await ui.request({ type: 'task.create', title: 'Held retirement ownership', size: 'S' });
+  assert.equal(made.ok, true, made.error);
+  const id = (made.value as { item: { id: string } }).item.id;
+  assert.equal((await peer.call<{ ok: boolean }>('task.claim', { id })).ok, true);
+  if (outcome === 'missing') f.native.sessions.length = 0;
+  else f.native.sessions[0]!.status = 'done';
+  f.native.hold = true;
+  try {
+    await f.clock.advance(30_000);
+    await receipt((async () => { while (!f.native.pending.length) await yieldIO(); })());
+    const hook = await ui.request({ type: 'session.signal', session: 'coord', launch: p.sessionId, event: 'tool-done', at: f.clock.now().getTime(), payload: { session_id: p.harnessSessionId } });
+    assert.equal(hook.ok, true, hook.error);
+    const writes = f.scheduleWrites;
+    for (const finish of f.native.pending.splice(0)) finish();
+    f.native.hold = false;
+    await f.queryCompleted(writes);
+    const rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+    assert.equal(rows.processes[0]?.status, 'running');
+    assert.equal(rows.processes[0]?.role, 'coordinator');
+    const item = (await ui.request({ type: 'task.view', item: id })).value as { item: { claim: { sessionId: string } } };
+    assert.equal(item.item.claim.sessionId, p.sessionId);
+    assert.equal((await f.records(ui)).filter(r => r.event === 'harness-exited').length, 0);
+    const inbox = (await ui.request({ type: 'inbox.list' })).value as Inbox;
+    assert.equal(inbox.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 0);
+    const exited = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.status === 'exited');
+    if (outcome === 'missing') alive = false;
+    await f.clock.advance(30_000);
+    await receipt(exited);
+    assert.equal((await f.records(ui)).filter(r => r.event === 'harness-exited').length, 1);
+  } finally {
+    f.native.hold = false;
+    for (const finish of f.native.pending.splice(0)) finish();
+  }
+});
+
+for (const outcome of ['done', 'missing'] as const) test(`legacy Claude row without a job id retains conversation retirement: ${outcome}`, async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  const exits: string[] = [];
+  let observed!: () => void;
+  const observation = new Promise<void>(resolve => { observed = resolve; });
+  const host = { ...await memoryHost(t), exited: (id: string) => { exits.push(id); observed(); } };
+  const adapter = new ClaudeCodeAdapter(host, options(clock));
+  t.after(() => adapter.close());
+  const p = await adapter.spawn(request('legacy'));
+  p.harnessId = null;
+  if (outcome === 'missing') native.sessions.length = 0;
+  else native.sessions[0]!.status = 'done';
+  await clock.advance(30_000);
+  await receipt(observation);
+  assert.deepEqual(exits, [p.sessionId]);
+});
+
+for (const replacementMode of ['object', 'job-id'] as const) test(`held Claude directory observation cannot retire a replacement job in the same conversation: ${replacementMode}`, async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  const exits: string[] = [];
+  const state = new Map<string, string>();
+  let completed!: () => void;
+  let writes = 0;
+  let observed!: () => void;
+  const terminal = new Promise<void>(resolve => { observed = resolve; });
+  const host: AdapterHost = { ...await memoryHost(t), log: event => { if (event.event === 'claude-observation-stale') observed(); }, exited: id => { exits.push(id); observed(); }, adapterState: {
+    read: key => state.get(key) ?? null,
+    write: (key, value) => { state.set(key, value); if (++writes >= 2) completed?.(); },
+  } };
+  const adapter = new ClaudeCodeAdapter(host, options(clock));
+  t.after(() => adapter.close());
+  native.knownPid = true;
+  const original = await adapter.spawn(request('replacement'));
+  assert.ok(original.harnessSessionId, 'the captured native conversation is known');
+  native.sessions[0]!.status = 'done';
+  native.hold = true;
+  try {
+    await clock.advance(30_000);
+    await receipt((async () => { while (!native.pending.length) await yieldIO(); })());
+    const replacement = replacementMode === 'object' ? { ...original, harnessId: 'replacement-job' } : original;
+    replacement.harnessId = 'replacement-job';
+    assert.equal(replacement.harnessSessionId, original.harnessSessionId);
+    adapter.watch(replacement);
+    native.sessions[0] = { ...native.sessions[0]!, id: replacement.harnessId, status: 'idle' };
+    writes = 0;
+    const queryDone = new Promise<void>(resolve => { completed = resolve; });
+    for (const finish of native.pending.splice(0)) finish();
+    native.hold = false;
+    await receipt(queryDone);
+    await receipt(terminal);
+    assert.deepEqual(exits, [], 'the old snapshot has no terminal authority over the replacement');
+    let polled!: () => void;
+    const next = new Promise<void>(resolve => { polled = resolve; });
+    host.signal = id => { if (id === replacement.sessionId) polled(); };
+    await clock.advance(30_000);
+    await receipt(next);
+    assert.deepEqual(exits, [], 'the fresh live replacement remains watched');
+  } finally {
+    native.hold = false;
+    for (const finish of native.pending.splice(0)) finish();
+  }
+});
+
+test('an absent Claude directory row cannot retire a known live PID', async t => {
+  const native = cli(t);
+  native.knownPid = true;
+  const clock = new FakeClock();
+  const exits: string[] = [];
+  const base = await memoryHost(t);
+  let persisted!: () => void;
+  const empty = new Promise<void>(resolve => { persisted = resolve; });
+  const host: AdapterHost = { ...base, exited: id => { exits.push(id); }, adapterState: {
+    read: key => base.adapterState!.read(key), write: (key, value) => {
+      base.adapterState!.write(key, value);
+      if (JSON.parse(value).entries?.length === 0) persisted();
+    },
+  } };
+  const adapter = new ClaudeCodeAdapter(host, options(clock));
+  t.after(() => adapter.close());
+  const p = await adapter.spawn(request('temporarily-hidden'));
+  const listing = native.sessions[0]!;
+  native.sessions.length = 0;
+  await clock.advance(30_000);
+  await receipt(empty);
+  await yieldIO(); // Allow the persisted query continuation to settle before its final assertion.
+  assert.deepEqual(exits, [], 'a live process stays supervised through native discovery failure');
+  let polled!: () => void;
+  const recovery = new Promise<void>(resolve => { polled = resolve; });
+  host.signal = id => { if (id === p.sessionId) polled(); };
+  native.sessions.push(listing);
+  await clock.advance(30_000);
+  await receipt(recovery);
+  assert.deepEqual(exits, [], 'the same watch recovers when native discovery returns');
+});
+
+test('a newer Claude hook fences terminal status without blocking late PID discovery', async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  const base = await memoryHost(t);
+  let discovered!: (pid: number) => void;
+  const publication = new Promise<number>(resolve => { discovered = resolve; });
+  const host: AdapterHost = { ...base, recordPid: (_id, pid) => discovered(pid) };
+  const adapter = new ClaudeCodeAdapter(host, options(clock));
+  t.after(() => adapter.close());
+  const p = await adapter.spawn(request('late-live'));
+  native.sessions[0]!.pid = process.pid;
+  native.hold = true;
+  try {
+    await clock.advance(30_000);
+    await receipt((async () => { while (!native.pending.length) await yieldIO(); })());
+    adapter.interpret('tool-done', { session_id: native.sessions[0]!.sessionId }, p);
+    for (const finish of native.pending.splice(0)) finish();
+    native.hold = false;
+    assert.equal(await receipt(publication), process.pid);
+    assert.equal(p.pid, process.pid);
+  } finally {
+    native.hold = false;
+    for (const finish of native.pending.splice(0)) finish();
+  }
+});
+
+for (const probe of ['birth', 'identity'] as const) test(`a replaced Claude job cannot inherit a PID from a held ${probe} probe`, async t => {
+  const native = cli(t);
+  const clock = new FakeClock();
+  let entered!: () => void, release!: () => void, observed!: () => void;
+  const probing = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const settled = new Promise<void>(resolve => { observed = resolve; });
+  const publications: number[] = [];
+  const host: AdapterHost = { ...await memoryHost(t),
+    recordPid: (_id, pid) => { publications.push(pid); observed(); },
+    log: event => { if (event.event === 'claude-observation-stale') observed(); },
+  };
+  const adapter = new ClaudeCodeAdapter(host, { ...options(clock), pidAlive: () => true,
+    processStarted: async () => { if (probe === 'birth') { entered(); await held; } return 'fixture-start'; },
+    processIdentity: async () => { if (probe === 'identity') { entered(); await held; } return 'fixture-identity'; },
+  });
+  t.after(() => adapter.close());
+  const p = await adapter.spawn(request('replaced-during-probe'));
+  adapter.interpret('session-start', { session_id: native.sessions[0]!.sessionId }, p);
+  native.sessions[0]!.pid = 91001;
+  try {
+    await clock.advance(30_000);
+    await receipt(probing);
+    p.harnessId = 'replacement-job';
+    adapter.watch(p); // Same watched object and conversation; only the admitted job changed.
+    release();
+    await receipt(settled);
+    assert.deepEqual(publications, [], 'old native identity cannot publish into the replacement job');
+    assert.equal(p.pid, null);
+  } finally { release(); }
 });

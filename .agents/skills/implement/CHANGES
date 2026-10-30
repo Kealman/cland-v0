@@ -318,6 +318,9 @@ T-410 source4: Use one fenced root owner and exercise all registered automatic c
 
 - T-1436 M1: keep history replies serial between ordinary-text groups and prove exact mapped topic/reply identity through native history.
 Verifier routing, Inbox read races, remote docs, Claude Code crash, both remotes, pinned tracker, lost lifecycle headers, paged open summaries and suite workers, one stage-close docs commit (T-1426, T-1430, T-1443, T-1350, T-1442, T-1421, T-1437, T-1248, T-1420)
+
+2026-10-30 · T-1474: Claude retirement receipts and durable inbox remedy guidance.
+2026-10-30 · T-1474 review: captured-job and same-conversation hook fences.
 T-1476: document suite archive summary/by-id recovery checks and measurement scope.
 T-1467: Document the sealed manual memory probe, sparse copy plan, slot/swap controls and private snapshot analysis.
 T-1467: Narrow the live-scale probe to startup sampling and stage counts; require IPC shutdown and durable/native receipts after the swap-stop failure.
@@ -338,6 +341,9 @@ T-1459: Document repository auto-maintenance provisioning and disposable native-
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
 T-1458: Document report-only packaging/site import guards and shared Web readiness reports.
 T-1458 source1: Shared import-edge policy and owned smoke child lifecycle controls are described in the owning test notes.
+2026-10-30 · T-1474 merge delta: combine retirement and retained-history guidance on T-1476 summaries.
+2026-10-30 · T-1474 T3 regressions: retain live undiscoverable PIDs and allow verified PID acquisition behind hook fences.
+2026-10-30 · T-1474 source-review follow-up: post-probe native-job ownership check and held birth/identity controls.
 
 - T-1485: document Date-only browser fixture synchronization and extra-page enrollment.
 - T-1485 source review: bound and join Date writers before native cleanup; expand the hub clock inventory.

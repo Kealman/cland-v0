@@ -66,6 +66,35 @@ positive PID in both launch and list replies before asserting zero probes after
 shutdown. Keep the opt-out local to this scripted fixture; FrameClient's default
 native accounting remains enabled for native fixtures.
 
+T-1474 retirement uses the two generated `Claude retirement missing/done publishes
+one Coordinator inbox remedy within 60 seconds` cases. Run
+`node --test hub/test/claude-code-schedule.test.ts`. These are reproducible virtual
+time probes, excluding native CLI latency, process scheduling and browsers.
+They observe the terminal process frame, flush the durable journal, assert
+`reason: retired`, and check exactly one inbox relaunch command at 30 seconds.
+They advance another minute, reopen the scratch store, retain one notice, then
+reconnect and assert it leaves the inbox. The cached/failed/late-discovery case
+retains its final exact exit-id assertion. All existing re-exec, signed-out,
+stop and old two-argument host regressions remain in the same file.
+
+Review regressions pin terminal lookup to the captured job id, with same-conversation
+two-job cases in both orders (own live, done and missing); legacy no-job rows keep
+the conversation fallback. Held missing/done queries capture their hook revision
+before native I/O. A newer same-conversation tool hook must retain the running
+row, role and claim with no remedy until a later fresh terminal observation.
+Observers wait for native state/exit receipts or the persisted query completion,
+with final ownership and journal assertions; no elapsed sleep proves settlement.
+
+General-notice deduplication and lifecycle replay isolation are covered separately
+at T1 by `agents-checkpoint.test.ts`; see its file-specific guide. Only Agents
+notice ids may advance the Agents journal checkpoint.
+
+The held-query replacement case changes the watched launch object and job id
+while preserving its cland session and conversation. Observe the explicit
+`claude-observation-stale` receipt, then require a fresh native state receipt for
+the replacement and keep the no-exit assertion. Each native observation captures
+both the watched object and job id before I/O; same-conversation watch replacement
+cannot inherit terminal authority. The observation map releases unwatched rows.
 `Claude busy poll after 37 seconds respects pushed idle: true/false` replays
 the incident through the production session manager, adapter and frame bridge.
 The scripted CLI reports busy after 37 virtual seconds. Explicit `transportClock`
@@ -94,3 +123,19 @@ Run this T2 file with `node --test hub/test/claude-code-schedule.test.ts` under
 fixtureEnvironment. It uses sealed disposable projects with no native Claude,
 browser or live retained history. Virtual elapsed time is not delivery latency
 or a memory measurement. A local file run takes about four seconds on the Mac.
+
+T3 regression controls retain the running row for a known live PID behind a
+successful empty listing, and publish a late verified PID when a newer live hook
+has fenced terminal/state updates from the held query. The original native
+feedback loops remain in `claude-code-accounts.test.ts` (late identity probe),
+`lead-routing-process.test.ts` (PID publication before death routing) and
+`session-resume-lifecycle.test.ts` (restart with discovery unavailable). Run
+these files separately. Missing-job retirement cases now include observed PID
+death; `done` remains a positive terminal native receipt. Remembered conversation
+identity does not seed the seen-job set on watch/restart.
+
+Held birth and native-identity probes also replace the job id in place while
+keeping the watched object, conversation and previous PID. Both tests observe
+the stale-identity receipt, assert no PID publication, and keep the PID unknown.
+Publication rechecks the captured native job id after both identity awaits;
+positive same-job newer-hook discovery remains covered separately.

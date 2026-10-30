@@ -1,3 +1,4 @@
+import { COORDINATOR_RETIRED } from './retirement.ts';
 import { suiteHistoryProjection } from './suite-history.ts';
 import type { ApprovalOutcome } from '../protocol.ts';
 import { appendRun, foldLine, joinsRun, runDay, type RunFacts } from './thread-runs.ts';
@@ -1729,6 +1730,7 @@ export class Store implements HygieneMemory {
 
   /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
   inboxMessages(): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
+    const hubCandidate = `(m.from_kind = 'hub' and (json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete' or m.notice = '${COORDINATOR_RETIRED}'))`;
     // An addressed report becomes a human inbox candidate only on a waiting
     // topic. Unread direct messages and unsettled requests have separate paths.
     const rows = this.#prepare(`with latest_messages as materialized (
@@ -1740,7 +1742,7 @@ export class Store implements HygieneMemory {
       -- Only unread human-addressed rows after the last same-topic human reply can become messages.
       select m.id from topics t cross join messages m on m.topic = t.id
         and m.seq > max(t.read_seq, coalesce((select max(h.seq) from messages h where h.topic = t.id and h.from_kind = 'human'), 0))
-      where (m.from_kind = 'agent' or (m.from_kind = 'hub' and json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete'))
+      where (m.from_kind = 'agent' or ${hubCandidate})
         and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0
       union
       select m.id from latest_messages l cross join messages m on m.topic = l.topic and m.seq = l.seq
@@ -1758,7 +1760,7 @@ export class Store implements HygieneMemory {
         or (m.notice = 'request' and exists (select 1 from messages h where h.reply_to = m.id and h.seq > m.seq and h.from_kind = 'human'))) as replied
       from candidates c cross join messages m on m.id = c.id join topics t on t.id = m.topic
       left join latest_messages latest on latest.topic = m.topic
-      where (m.from_kind = 'agent' or (m.from_kind = 'hub' and json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete')) and coalesce(m.notice, '') not in ('progress', 'event')
+      where (m.from_kind = 'agent' or ${hubCandidate}) and coalesce(m.notice, '') not in ('progress', 'event')
         and not exists (select 1 from asks a where a.id = m.id)
         and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
           or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))

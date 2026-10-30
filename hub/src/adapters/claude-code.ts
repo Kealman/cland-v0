@@ -208,7 +208,7 @@ const PROMPT_HISTORY_LIMIT = 64;
 
 type DirectorySchedule = {
   configDir: string; lastAgentsAt: number; signedOut: boolean; signedOutAt: number; signedOutId: string;
-  entries: AgentEntry[] | null; agentsVersion: number; agentsFlight: Promise<AgentEntry[] | null> | null;
+  observedLaunches: Map<string, { process: HarnessProcess; job: string | null }>; observationRevision: number; entries: AgentEntry[] | null; agentsVersion: number; agentsFlight: Promise<AgentEntry[] | null> | null;
 };
 const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'] as const;
 
@@ -247,6 +247,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #usage = new Map<string, SessionUsage>();
   /** Sessions being stopped: still watched, but their exit is the stop's to report. */
   readonly #stopping = new Set<string>();
+  /** Directory-confirmed launches; an initial discovery miss is not retirement. */
+  readonly #listed = new Set<string>();
+  #hookRevision = 0;
+  readonly #activity = new Map<string, number>();
   #timer: ClockTimer | null = null;
 
   constructor(host: AdapterHost, options: ClaudeCodeOptions = {}) {
@@ -292,7 +296,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const configDir = resolve(p.accountEnv?.CLAUDE_CONFIG_DIR || this.#configDir);
     let schedule = this.#directories.get(configDir);
     if (schedule) return schedule;
-    schedule = { configDir, lastAgentsAt: 0, signedOut: false, signedOutAt: 0, signedOutId: '', entries: null, agentsVersion: 0, agentsFlight: null };
+    schedule = { configDir, lastAgentsAt: 0, signedOut: false, signedOutAt: 0, signedOutId: '', observedLaunches: new Map(), observationRevision: 0, entries: null, agentsVersion: 0, agentsFlight: null };
     const saved = this.#host.adapterState?.read(`claude-poll:${configDir}`);
     if (saved) {
       try {
@@ -360,6 +364,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#saveSchedule(d);
     d.agentsFlight = continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
       try {
+        d.observationRevision = this.#hookRevision;
+        d.observedLaunches = new Map([...this.#watched.values()].filter(w => this.#directory(w) === d).map(w => [w.sessionId, { process: w, job: w.harnessId }]));
         const r = yield* wait(this.#run(['agents', '--json'], this.#host.root, p, 15000, resumed));
         if (this.#closed || d.signedOut) return null;
         const parsed: unknown = r.code === 0 ? JSON.parse(r.stdout) : null;
@@ -389,6 +395,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       (p.harnessId ? entries.find((e) => e.id === p.harnessId) : undefined) ??
       (p.pid !== null ? entries.find((e) => e.pid === p.pid && e.sessionId === undefined && e.id === undefined) : undefined)
     );
+  }
+
+  /** Terminal observations belong to the admitted job, even when conversations are shared. */
+  #job(entries: AgentEntry[], p: HarnessProcess): AgentEntry | undefined {
+    return p.harnessId ? entries.find(e => e.id === p.harnessId) : this.#find(entries, p);
   }
 
   // ---------------------------------------------------------------- launch
@@ -491,6 +502,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         const previous = d.agentsVersion;
         const entries = yield* wait(this.#agents(launched, resumed));
         const found = entries && d.agentsVersion > previous ? this.#find(entries, launched) : undefined;
+        if (entries && this.#job(entries, launched)) this.#listed.add(launched.sessionId);
         if (found?.pid !== undefined) {
           launched.pid = found.pid;
           launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
@@ -571,6 +583,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const watched = p && this.#watched.get(p.sessionId);
     if (watched && typeof payload.session_id === 'string' && payload.session_id) watched.harnessSessionId = payload.session_id;
     const meaning = interpret(event, payload);
+    if (watched && meaning.state) this.#activity.set(watched.sessionId, ++this.#hookRevision);
     if (p && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
       this.#markSignedOut(p, at);
       meaning.state = 'unknown';
@@ -628,6 +641,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     for (const prompt of this.#prompts.get(sessionId)?.values() ?? []) prompt.resolve?.([]);
     this.#prompts.delete(sessionId);
     this.#watched.delete(sessionId);
+    this.#listed.delete(sessionId);
+    this.#activity.delete(sessionId);
+    for (const d of this.#directories.values()) d.observedLaunches.delete(sessionId);
     if (this.#watched.size === 0 && this.#timer) {
       this.#clock.clearInterval(this.#timer);
       this.#timer = null;
@@ -673,6 +689,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         const conversations = new Map([...this.#watched.values()].filter(p => this.#directory(p) === d).map(p => [p.sessionId, p.harnessSessionId]));
         // Launch/resume can own a bounded query independently of this poll.
         // Settle it before deciding whether grace requires a fresh observation.
+        const version = d.agentsVersion;
         const flight = d.agentsFlight;
         if (flight) await flight;
         const at = this.#clock.now().getTime();
@@ -685,13 +702,36 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         if (d.signedOut || (!flight && !recovery && at - d.lastAgentsAt < this.#agentsMs)) return;
         const entries = await this.#agents(representative, untimed, recovery);
         for (const p of [...this.#watched.values()]) {
-          if (this.#stopping.has(p.sessionId) || this.#directory(p) !== d) continue;
+          if (this.#closed || this.#stopping.has(p.sessionId) || this.#directory(p) !== d || !conversations.has(p.sessionId)) continue;
+          const observed = d.observedLaunches.get(p.sessionId);
+          if (observed?.process !== p || observed.job !== p.harnessId) {
+            changedIdentity.add(p.sessionId);
+            this.#host.log({ event: 'claude-observation-stale', session: p.name, reason: 'launch-replaced' });
+            continue;
+          }
           const entry = entries ? this.#find(entries, p) : undefined;
           if (conversations.has(p.sessionId) && conversations.get(p.sessionId) !== p.harnessSessionId && entry?.sessionId !== p.harnessSessionId) {
             changedIdentity.add(p.sessionId);
             continue;
           }
-          if (!entry) continue;
+          // Only a completed successful native query can retire a job. Cached,
+          // failed and signed-out observations carry no terminal authority.
+          const missingSince = this.#missingSince.get(p.sessionId);
+          const job = entries ? this.#job(entries, p) : undefined;
+          const matchingDone = job?.status === 'done';
+          // Newer hooks fence terminal/state authority, not independently verified PID acquisition.
+          const newerHook = (this.#activity.get(p.sessionId) ?? 0) > d.observationRevision;
+          if (newerHook) changedIdentity.add(p.sessionId);
+          const replacing = missingSince !== undefined && at - missingSince < this.#reexecGraceMs;
+          // Native discovery can omit a live job; retain its PID for reconnect and explicit stop.
+          const disappeared = !job && this.#listed.has(p.sessionId) && (p.pid === null || !this.#pidAlive(p.pid));
+          if (!newerHook && entries && d.agentsVersion > version && !replacing && (matchingDone || disappeared)) {
+            this.#unwatch(p.sessionId);
+            this.#host.exited(p.sessionId, job ? 'Claude background job reports done' : 'Claude background job disappeared from agents --json', 'retired');
+            continue;
+          }
+          if (!entry || matchingDone) continue;
+          if (job) this.#listed.add(p.sessionId);
           if (entry.pid !== undefined && entry.pid !== p.pid && this.#pidAlive(entry.pid)
             && ((p.pid === null && p.harnessSessionId === null) || entry.sessionId === (p.harnessSessionId ?? p.sessionId))) {
             const nativeId = p.harnessSessionId, previousPid = p.pid;
@@ -699,10 +739,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             const identity = await this.#processIdentity(entry.pid);
             // A stop, relaunch or shutdown while probing cannot acquire the old launch's PID.
             if (this.#closed || this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId)) continue;
-            if (p.harnessSessionId !== nativeId || p.pid !== previousPid) {
-              // A hook advanced the authoritative conversation during the native probe.
+            if (p.harnessSessionId !== nativeId || p.pid !== previousPid || p.harnessId !== observed.job) {
+              // A hook or watch replacement advanced the identity during the native probe.
               // Reconcile it on the next bounded poll before any grace-expiry exit.
               changedIdentity.add(p.sessionId);
+              this.#host.log({ event: 'claude-observation-stale', session: p.name, reason: 'identity-changed-during-probe' });
               continue;
             }
             if (!started || !this.#pidAlive(entry.pid)) continue;
@@ -713,7 +754,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             this.#clearMissing(p.sessionId);
             this.#host.recordPid(p.sessionId, entry.pid, started, entry.sessionId, identity);
           }
-          this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
+          if ((this.#activity.get(p.sessionId) ?? 0) <= d.observationRevision) this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
         }
       }));
       for (const p of [...this.#watched.values()]) {
@@ -841,6 +882,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#reexecTimers.clear();
     this.#missingSince.clear();
     this.#watched.clear();
+    this.#listed.clear();
+    this.#activity.clear();
+    for (const d of this.#directories.values()) d.observedLaunches.clear();
     for (const pending of this.#pending.values()) {
       this.#clock.clearTimeout(pending.timer);
       pending.reject(new Error('the hub is stopping'));

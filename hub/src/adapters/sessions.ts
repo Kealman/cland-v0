@@ -1,3 +1,4 @@
+import { COORDINATOR_RETIRED } from '../hub/retirement.ts';
 import { processIdentityAsync } from '../process-identity.ts';
 import { removeSessionRunDirectory, writeSessionCredential } from '../../../shared/session-credential.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
@@ -388,6 +389,8 @@ export class Sessions {
     }));
     this.#unhello = this.#core.onSessionHello((_name, _id, credential) => {
       if (credential) this.#firstHello.delete(credential);
+      const row = this.#table.bySessionId(_id);
+      if (row) this.#clearRetirement(row);
     });
     this.#core.pendingLaunch(id => {
       return [...this.#pendingStops.values()].find(entry => (!entry.ownership && entry.process.sessionId === id) || entry.ownership?.sessionIds.includes(id) || (entry.priorSessionId ?? entry.rollback?.previousSessionId) === id)?.process.name
@@ -488,7 +491,7 @@ export class Sessions {
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages, replay) => this.#turnFailed(sessionId, error, messages, replay),
       notifyFailureSenders: (sessionId, error, messages) => this.#notifyTurnSenders(sessionId, error, messages),
-      exited: (sessionId, detail) => this.#exited(sessionId, detail),
+      exited: (sessionId, detail, reason) => this.#exited(sessionId, detail, reason),
       reconnected: (sessionId) => {
         const p = this.#table.bySessionId(sessionId);
         if (!p || p.status !== 'running') return;
@@ -1365,6 +1368,7 @@ export class Sessions {
     });
     const process = await resumed(() => this.#launchNew(request, request.role, resumed, authorize, undefined, undefined, original.sessionId));
     return resumed(() => {
+      this.#clearRetirement(original);
       const work = this.#resumeWork(this.#process(process.name), original.role);
       if (original.launchBrief == null) work.notes.push('no brief recorded');
       if (original.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: original.archivedBy, reason: 'resume' });
@@ -1483,6 +1487,7 @@ export class Sessions {
         // starts from the totals the stopped row already holds. A fresh launch (#freshResume) has none.
         ...(relaunch && found.process.usage == null && current.usage ? { usage: current.usage } : {}),
       };
+      this.#clearRetirement(current);
       this.#table.put(process);
       this.#log({ event: 'session-launched', ...(process.launchPolicy ? { policy: process.launchPolicy } : {}), account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
@@ -1778,7 +1783,18 @@ export class Sessions {
     }
   }
 
-  #exited(sessionId: string, detail: string): void {
+  #retirementId(p: HarnessProcess): string {
+    return `claude-retired:${p.sessionId}:${p.harnessId ?? p.startedAt}`;
+  }
+
+  #clearRetirement(p: HarnessProcess): void {
+    const id = this.#retirementId(p);
+    if (!this.#core.store.message(id)) return;
+    this.#core.store.markMessageRead(id);
+    this.#core.inbox.refresh();
+  }
+
+  #exited(sessionId: string, detail: string, reason?: 'retired'): void {
     if (this.#pendingStops.has(sessionId)) {
       const entry = this.#pendingStops.get(sessionId)!;
       entry.stages.stopped = true;
@@ -1790,9 +1806,15 @@ export class Sessions {
     if (!p || p.status !== 'running') return;
     this.#table.update(p.name, { status: 'exited', cleanupItem: this.#stopItem(p) });
     // journalled (`journal.ts`) and recorded in Agents as a death (`agents-topic.ts`)
-    this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail });
+    this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail, ...(reason ? { reason } : {}) });
     this.#core.setSessionState(sessionId, p.name, 'unknown', 'process');
+    const retiredCoordinator = reason === 'retired' && this.#core.holderOf('coordinator') === p.name;
     this.#vacate(p, 'its harness exited');
+    if (retiredCoordinator) this.#core.noticeInTopic('general', {
+      id: this.#retirementId(p),
+      kind: COORDINATOR_RETIRED,
+      text: `${p.name}'s Claude background job retired. Resume with \`cland session resume ${p.name} --relaunch\`.`,
+    });
   }
 
   /** A dead holder leaves its role vacant (spec 4.4); the process table keeps it for a relaunch. */
