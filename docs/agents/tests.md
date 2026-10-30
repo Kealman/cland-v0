@@ -2191,3 +2191,12 @@ footer names its original run and retains the original observations. The browser
 version-only probe proves no Web test execution. Missing skip reasons are reported
 by `skipReasonCheck` in report mode and do not fail a run. Legacy candidates may
 have no browser receipt; report that absence explicitly.
+
+### Installed compiler availability
+
+Verification admission needs the hub installation's development TypeScript
+compiler when a target has source duration identities or compiler-based tier/test
+lint. A pruned installation refuses with a single line naming the unavailable
+compiler and unknown check; use a source installation with development
+dependencies. This refusal supplies no test evidence. Targets without these
+manifests avoid compiler-based admission. The compiler stays lazy and dev-only.

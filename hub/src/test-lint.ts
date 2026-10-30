@@ -1,14 +1,13 @@
 // Syntax-only test analysis; the policy module decides which findings refuse admission.
 import type ts from 'typescript';
-import { createRequire } from 'node:module';
+import { requireTypeScript } from './typescript-capability.ts';
 import { createHash } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import { posix, join, relative, resolve, extname } from 'node:path';
 import type { Tier, TierEntry, TierManifest } from './suite-shards.ts';
 
 // Most hub sessions never lint. Do not load the compiler into every daemon or CLI.
-let parser: typeof ts | undefined;
-const syntax = (): typeof ts => parser ??= createRequire(import.meta.url)('typescript') as typeof ts;
+const syntax = (): typeof ts => requireTypeScript('test lint');
 
 export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle' | 'skip-reason'; message: string };
 export type TestLintFile = { file: string; tier: Tier; qualifies: Tier; findings: TestLintFinding[]; reachable?: { tier: Tier; resources: TestLintFinding[] } };

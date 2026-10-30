@@ -354,3 +354,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/web-bundle.test.ts`](../../../hub/test/web-bundle.test.ts) | [Notes](hub-test-web-bundle.test.ts.md) |
 | [`hub/test/prerequisite-process.test.ts`](../../../hub/test/prerequisite-process.test.ts) | [Notes](hub-test-prerequisite-process.test.ts.md) |
 | [`hub/test/merge-policy.test.ts`](../../../hub/test/merge-policy.test.ts) | [Notes](hub-test-merge-policy.test.ts.md) |
+
+| [`hub/test/suite-admission-native.test.ts`](../../../hub/test/suite-admission-native.test.ts) | [Notes](hub-test-suite-admission-native.test.ts.md) |

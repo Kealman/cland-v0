@@ -7552,3 +7552,14 @@ format. Both workbenches preserve filename-labelled album sections as body text,
 including when only one file survives size/download filtering; standalone
 recording markers still move to their headers. Native album
 mappings and durable ingress receipts remain unchanged.
+
+## Installed verification compiler capability
+
+TypeScript remains a development dependency of the hub. On an installation that
+prunes development dependencies, verification admission for a project with source
+duration identities or compiler-based tier/test lint refuses with one line naming
+the unavailable TypeScript compiler and the unknown check. Use a source
+installation with development dependencies for those checks. Projects without
+these manifests do not need the compiler for admission. The shared lazy compiler
+loader runs only when a check needs syntax analysis; ordinary hub and CLI startup
+do not load it. Existing admission error codes and policies are unchanged.

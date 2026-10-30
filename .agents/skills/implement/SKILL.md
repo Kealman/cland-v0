@@ -1023,3 +1023,13 @@ native ingress maps and the legacy receipt shape. Preserve filename headings in
 both workbench bodies; exercise the shared native Telegram marks fixture,
 including a filename beginning `not transcribed: ` and a single surviving file
 after an oversized peer is refused. No role permission changes.
+
+## Installed verification without the development compiler
+
+For compiler-backed duration identity or test-lint admission, preserve the shared
+lazy capability boundary in `hub/src/typescript-capability.ts`. A pruned install
+refuses with a single line naming TypeScript unavailable and the unknown check;
+use a source install with development dependencies for verification. Missing
+compiler capability is no passing evidence. Keep TypeScript dev-only and ordinary
+startup compiler-free. The native installed CLI fixture is documented in
+`docs/agents/tests/hub-test-suite-admission-native.test.ts.md`.

@@ -55,3 +55,176 @@ test('the first lint baseline keeps its freeze when dev moves debt before public
   await writeFile(join(root, LINT_BASELINE), JSON.stringify(grown));
   assert.ok((await testLintPolicy(root)).some(f => f.rule === 'lint-baseline' && /baseline grew/.test(f.message)));
 });
+
+for (const consumer of ['duration identities', 'test lint'] as const) {
+  test(`installed verify refuses ${consumer} cleanly when TypeScript is pruned`, async t => {
+    const { cp, symlink, realpath } = await import('node:fs/promises');
+    const { createRequire } = await import('node:module');
+    const { admissionExchange } = await import('./admission-exchange.ts');
+    const { pathToFileURL } = await import('node:url');
+    const root = await tempProject(t, 'cland-pruned-verify-');
+    const installed = join(root, 'installed');
+    await mkdir(join(installed, 'hub'), { recursive: true });
+    for (const path of ['hub/src', 'hub/bin', 'shared']) await cp(new URL(`../../${path}`, import.meta.url), join(installed, path), { recursive: true });
+    await writeFile(join(installed, 'package.json'), '{"type":"module"}');
+    // Link only runtime packages: compiler lookup must not reach this checkout.
+    const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+    assert.equal(pkg.devDependencies.typescript, '5.9.3');
+    assert.equal(pkg.dependencies.typescript, undefined);
+    for (const name of Object.keys(pkg.dependencies)) {
+      const { dirname } = await import('node:path');
+      const target = join(installed, 'node_modules', name);
+      await mkdir(dirname(target), { recursive: true });
+      await symlink(await realpath(new URL(`../../node_modules/${name}`, import.meta.url)), target);
+    }
+    const installedRequire = createRequire(join(installed, 'hub/src/test-lint.ts'));
+    assert.throws(() => installedRequire.resolve('typescript'), { code: 'MODULE_NOT_FOUND' });
+    const { suiteCandidate } = await import(pathToFileURL(join(installed, 'hub/src/hub/suite-candidate.ts')).href);
+    const project = join(root, 'project');
+    await mkdir(join(project, 'hub/test'), { recursive: true });
+    await mkdir(join(project, '.cland'), { recursive: true });
+    const file = 'hub/test/example.test.ts';
+    await writeFile(join(project, file), "import test from 'node:test'; test('example', () => {});\n");
+    await writeFile(join(project, 'package.json'), '{"scripts":{"test":"node --test"}}');
+    await writeFile(join(project, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T1' } }));
+    if (consumer === 'duration identities') await writeFile(join(project, 'hub/test/durations.json'), JSON.stringify({
+      version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 },
+      files: {}, tests: { [`${file}::example`]: 0.01 }, allow: {},
+    }));
+    const env = fixtureEnvironment(root, process.env);
+    const git = (...args: string[]) => promisify(execFile)('git', ['-c', 'gc.auto=0', ...args], { cwd: project, env: fixtureEnvironment(root, process.env), timeout: 15_000 });
+    await git('init', '-qb', 'dev'); await git('add', '.'); await git('commit', '-qm', 'fixture');
+    // Sealed transport: the real installed admission implementation judges suite.start.
+    // No scheduler, test runner or live project hub is involved.
+    let inspected = false;
+    const exchange = admissionExchange(t, root, async () => {
+      inspected = true;
+      return suiteCandidate(env).inspect(project, 'auto', 1);
+    });
+    await exchange.listen();
+    await writeFile(join(project, '.cland/hub.json'), JSON.stringify({ socket: exchange.socket, port: 0, secret: 'fixture', pid: process.pid, version: 'fixture' }));
+    const result = await exchange.run(join(installed, 'hub/bin/cland.ts'), project);
+    assert.equal(inspected, true);
+    assert.equal(result.code, 1);
+    assert.equal(result.stdout, '');
+    const check = consumer === 'duration identities' ? 'duration source identities' : 'test lint';
+    assert.equal(result.stderr, `cland: verify-tiers: TypeScript compiler unavailable; ${check} unknown; use a source installation with development dependencies for this check\n`);
+    assert.equal(result.stderr.trim().split('\n').length, 1);
+    assert.doesNotMatch(result.stderr, /Require stack|ERR_MODULE_NOT_FOUND|Cannot find package|\n\s+at /);
+  });
+}
+
+for (const setup of ['omitted', 'aborted', 'held inspection'] as const) {
+  test(`installed admission cleanup owns ${setup} setup`, async t => {
+    const { admissionExchange } = await import('./admission-exchange.ts');
+    const root = await tempProject(t, 'cland-admission-owner-');
+    if (setup === 'held inspection') {
+      const control = await heldObservation(t, root);
+      await control.run(receipt => receipt);
+      assert.equal(control.finished(), true);
+      return;
+    }
+    const exchange = admissionExchange(t, root, async () => {});
+    if (setup === 'aborted') {
+      const setup = assert.rejects(exchange.listen(), /closed/);
+      await exchange.dispose();
+      await setup;
+    }
+    await exchange.dispose();
+    assert.equal(exchange.drained(), true);
+  });
+}
+
+test('installed CLI operation deadline retains missing native close until repaired', async t => {
+  const { admissionExchange } = await import('./admission-exchange.ts');
+  const { FakeClock } = await import('./fake-clock.ts');
+  const { default: cp } = await import('node:child_process');
+  const { default: events } = await import('node:events');
+  const { syncBuiltinESMExports } = await import('node:module');
+  const { stat } = await import('node:fs/promises');
+  const root = await tempProject(t, 'cland-admission-no-close-');
+  const clock = new FakeClock();
+  const child = new events.EventEmitter();
+  let nativeClose = false;
+  child.once('close', () => { nativeClose = true; });
+  t.mock.method(cp, 'execFile', (_bin: string, _args: string[], _options: unknown, callback: (error: null, stdout: string, stderr: string) => void) => {
+    queueMicrotask(() => callback(null, '', 'bounded diagnostic tail'));
+    return child;
+  });
+  syncBuiltinESMExports();
+  const exchange = admissionExchange(t, root, async () => {}, { clock });
+  const operation = exchange.run('sealed-fake-cli', root).then(value => ({ value, error: undefined }), error => ({ value: undefined, error }));
+  try {
+    await clock.advance(35_000);
+    assert.equal(exchange.signal.aborted, true, 'operation deadline must start owned cancellation without caller disposal');
+    await clock.advance(45_000);
+    const result = await operation;
+    assert.match(String(result.error), /incomplete admission exchange.*native=0\/none.*bounded diagnostic tail/);
+    assert.equal(exchange.drained(), false);
+    assert.equal((await stat(root)).isDirectory(), true, 'missing close retains storage');
+    assert.equal(nativeClose, false);
+  } finally {
+    child.emit('close', 0, null);
+    await operation;
+    await exchange.dispose();
+    t.mock.restoreAll(); syncBuiltinESMExports();
+  }
+  assert.equal(nativeClose, true);
+  assert.equal(exchange.drained(), true);
+});
+
+async function heldObservation(t: import('node:test').TestContext, root: string) {
+  const { admissionExchange } = await import('./admission-exchange.ts');
+  const { createConnection } = await import('node:net');
+  const { within } = await import('../src/executor/droplet/deadline.ts');
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let finished = false;
+  const { onCleanup, guardDirectoryRemoval } = await import('./process-cleanup.ts');
+  let exchange: ReturnType<typeof admissionExchange> | undefined;
+  let client: import('node:net').Socket | undefined;
+  let nativeClose = Promise.resolve();
+  const cleanup = async () => {
+    release.resolve();
+    client?.destroy();
+    await within(nativeClose, 5000);
+    await exchange?.dispose();
+  };
+  // The control's release/client owner precedes the exchange's drain registration.
+  onCleanup(t, cleanup);
+  guardDirectoryRemoval(root, cleanup);
+  exchange = admissionExchange(t, root, async () => {
+    entered.resolve();
+    await release.promise;
+    finished = true;
+  });
+  return {
+    cleanup, finished: () => finished,
+    async run(observe: (receipt: Promise<void>) => Promise<void>) {
+      try {
+        await exchange!.listen();
+        client = createConnection(exchange!.socket);
+        nativeClose = new Promise<void>(resolve => client!.once('close', () => resolve()));
+        client.on('error', () => {});
+        client.write('{"type":"suite.start","id":"held"}\n');
+        await observe(within(entered.promise, 5000));
+        const draining = exchange!.dispose();
+        await within(nativeClose, 5000);
+        release.resolve();
+        await draining;
+      } finally { await cleanup(); }
+    },
+  };
+}
+
+test('held admission releases and joins after early observation failure', async t => {
+  const root = await tempProject(t, 'cland-early-');
+  const control = await heldObservation(t, root);
+  try {
+    await assert.rejects(control.run(async receipt => {
+      await receipt;
+      throw new Error('setup observation deliberately aborted before close');
+    }), /deliberately aborted/);
+    assert.equal(control.finished(), true, 'observation failure must join the gated inspection before returning');
+  } finally { await control.cleanup(); }
+  assert.equal(control.finished(), true);
+});
