@@ -3,7 +3,7 @@ id: T-1453
 kind: task
 title: cland verify runs the tier lint and T3 header check locally before submitting
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1232
 branch: t/T-1453-cland-verify-runs-the-tier-lint-and-t3
 created: 2026-10-30T05:44:56.925Z
-updated: 2026-10-30T11:42:48.883Z
+updated: 2026-10-30T11:43:08.399Z
 ---
 
 ## Summary
@@ -24,8 +24,8 @@ Before admission, `cland verify` runs `npm run test:tiers` and the T3 lifecycle 
 ## Acceptance criteria
 
 - [x] C1. The local check reports each refusal class the hub's admission reports, with file and line, before any queue entry.
-  - done: impl-1453 · 2026-10-30T10:30:18.379Z
   - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-1 · 2026-10-30T10:48:40.124Z · commit c2217bb929755acb533ab5e3d68d72db1a434ed7
+  - done: impl-1453 · 2026-10-30T11:43:08.162Z
 
 ## Comments
 
