@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { copyTree, swapPercent } from './measure-memory.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { checkDurations, readDurationManifest } from '../src/suite-durations.ts';
 
 test('memory copy excludes secret-shaped entries and symlinks and sparsifies bodies', async t => {
   const root = await mkdtemp(join(tmpdir(), 'memory-copy-'));
@@ -48,6 +49,16 @@ test('offline dominators exclude weak edges and preserve shared ownership', asyn
 });
 
 test('offline analyzer reads a real V8 snapshot and finds an owned large array', async t => {
+  // Replay assertion-passing Linux c-8 samples A-14575 and A-14539 through the
+  // shipped gate; native ownership assertions below remain the actual proof.
+  const manifest = await readDurationManifest(new URL('../../', import.meta.url).pathname);
+  assert.ok(manifest);
+  for (const seconds of [5.133541762, 5.283094746]) {
+    assert.deepEqual(checkDurations([{
+      file: 'hub/test/measure-memory.test.ts',
+      name: 'offline analyzer reads a real V8 snapshot and finds an owned large array', seconds,
+    }], manifest).failures, []);
+  }
   const root = await mkdtemp(join(tmpdir(), 'memory-native-'));
   ownDirectory(t, root);
   const path = join(root, 'native.heapsnapshot');

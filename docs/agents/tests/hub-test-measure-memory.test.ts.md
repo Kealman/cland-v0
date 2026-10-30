@@ -8,7 +8,12 @@ and disconnect controls preserve a non-expiring
 native exit/pipe-close fact, bound setup and join independently, and gate root
 removal on successful disposal. They check native exit, durable outcome and the
 root before and after removal. Synchronous analysis children close before directory cleanup. These
-controls take a few seconds and set no performance threshold.
+controls take a few seconds. The native snapshot identity retains its real V8
+snapshot and 800000-byte owned-array assertion. T-1491 replays the passing Linux
+c-8 samples from A-14575 (5.133541762 s) and A-14539 (5.283094746 s) through the
+production duration checker. Its exact allowance is 7.925 s (1.5x the worst sample,
+rounded upward to milliseconds), owned by E-1466 through 2026-11-06; it does not
+replace any baseline or change the suite's duration policy.
 
 The manual Mac probe is separate:
 

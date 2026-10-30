@@ -11092,6 +11092,13 @@
       "added": "2026-10-29",
       "expires": "2026-11-05",
       "reason": "T-1248: 5,000-row byte-bounded startup-page proof required by C1; A-13990 measured 52.622 s on Linux c-8 with 2 workers. The 12-row injected-byte T1 and 3-row frame T2 cases retain byte-boundary, ordered complete unique membership and legacy-shape assertions at small scale."
+    },
+    "hub/test/measure-memory.test.ts::offline analyzer reads a real V8 snapshot and finds an owned large array": {
+      "seconds": 7.925,
+      "owner": "E-1466",
+      "added": "2026-10-30",
+      "expires": "2026-11-06",
+      "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-1466 owns this seven-day exception. Native snapshot and ownership assertions remain intact; no baseline is replaced."
     }
   }
 }
