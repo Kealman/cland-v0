@@ -530,6 +530,7 @@
     "hub/test/suite-load-diagnostics.test.ts": "T1",
     "hub/test/suite-log-backfill.test.ts": "T2",
     "hub/test/suite-persistence.test.ts": "T1",
+    "hub/test/suite-preflight.test.ts": { "tier": "T3", "contract": "Native Git candidate lint before CLI submission" },
     "hub/test/suite-progress.test.ts": "T1",
     "hub/test/suite-protocol.test.ts": "T2",
     "hub/test/suite-queue-policy.test.ts": "T2",

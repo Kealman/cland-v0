@@ -348,6 +348,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-persistence.test.ts`](../../../hub/test/suite-persistence.test.ts) | [Notes](hub-test-suite-persistence.test.ts.md) |
 | [`hub/test/measure-memory.test.ts`](../../../hub/test/measure-memory.test.ts) | [Notes](hub-test-measure-memory.test.ts.md) |
 | [`hub/test/journal-subagents.test.ts`](../../../hub/test/journal-subagents.test.ts) | [Notes](hub-test-journal-subagents.test.ts.md) |
+| [`hub/test/suite-preflight.test.ts`](../../../hub/test/suite-preflight.test.ts) | [Notes](hub-test-suite-preflight.test.ts.md) |
 | [`hub/test/suite-remote-log.test.ts`](../../../hub/test/suite-remote-log.test.ts) | [Notes](hub-test-suite-remote-log.test.ts.md) |
 | [`hub/test/suite-log-backfill.test.ts`](../../../hub/test/suite-log-backfill.test.ts) | [Notes](hub-test-suite-log-backfill.test.ts.md) |
 | [`hub/test/prerequisite-guards.test.ts`](../../../hub/test/prerequisite-guards.test.ts) | [Notes](hub-test-prerequisite-guards.test.ts.md) |

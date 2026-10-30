@@ -65,6 +65,13 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   const requested = positionals[0] ?? 'auto';
   if (positionals.length > 1 || !['auto', 'all', 'hub', 'nvim'].includes(requested) || (values.report !== undefined && !values.report.trim())) throw new Error(SUITE_USAGE.trim());
   const mode = values.all ? 'all' : requested;
+  // Other project stacks retain their hub-owned command policy.
+  const { clandRunner } = await import('../verification-commands.ts');
+  if (await clandRunner(cwd)) {
+    const { lintSuiteCandidate, suiteCandidate } = await import('../hub/suite-candidate.ts');
+    const env = options.env ?? process.env;
+    await lintSuiteCandidate(cwd, await suiteCandidate(env).head(cwd), env);
+  }
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
   // Materialize the default for running hubs whose prior validator requires report.

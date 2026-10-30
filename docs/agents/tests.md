@@ -2181,6 +2181,16 @@ request is recorded before continuing. Shutdown completes before root removal.
 Publish the output as an artifact with head/tree and platform. This is diagnostic
 measurement, not suite evidence; local runs require cover-quiet admission.
 
+### Local verify preflight
+
+`cland verify` and `suite`, including `--dry-run`, run the hub's shared tier,
+duration-identity and frozen test-lint admission checks locally before sending
+for projects with `hub/test/run-suite.ts`. Fix the reported file/line and cause
+before resubmitting. HEAD and dirty disk are both checked; diagnostic-only lint
+findings remain report-only. This preflight is not a test run or a verdict.
+Other project stacks retain configured hub admission. Focused coverage and its
+isolation boundary are in [suite-preflight.test.ts](tests/hub-test-suite-preflight.test.ts.md).
+
 ### Verification log provenance
 
 Hub verification logs on local and droplet executors end with a `suite provenance`

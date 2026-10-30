@@ -7515,6 +7515,20 @@ report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
 
+### Local verify admission preflight
+
+For projects containing `hub/test/run-suite.ts`, `cland verify` (including
+`--dry-run` and the `suite` alias) checks HEAD and the caller's worktree before
+sending `suite.start`. It calls the same exported `lintSuiteCandidate` used by
+hub admission: tier/duration manifest validation (the `test:tiers` checks) and
+frozen test-lint policy, including missing or displaced lifecycle headers.
+Failures retain the admission cause and file/line locations; tier failures also
+point to matching manifest rows in the rejected HEAD or worktree source, named
+in the diagnostic. Report-only diagnostics do not
+block submission. Other project stacks keep their configured hub-owned checks.
+Queue, cancel, classify and help do not run preflight. The hub rechecks admission;
+local success supplies no execution or review evidence and changes no wire frame.
+
 ### Suite provenance footer (T-1460)
 
 After final local or droplet collection, every hub verification log ends in one

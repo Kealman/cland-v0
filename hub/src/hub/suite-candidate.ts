@@ -1,8 +1,10 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { candidateTree } from '../verification-tree.ts';
 import { selectPackageSuite, type SuiteRequest, type SuiteSelection } from '../suite-selection.ts';
-import { lintHubShards, lintHubShardTree, ShardManifestError } from '../suite-shards.ts';
+import { lintHubShards, lintHubShardTree, shardRefusalLocations, ShardManifestError } from '../suite-shards.ts';
 import { planTierReport, type TierPlan } from '../suite-tier-report.ts';
 import { testLintPolicy, TestLintError } from '../test-lint-policy.ts';
 import { fetchSuiteDev } from '../suite-dev-fetch.ts';
@@ -11,11 +13,36 @@ import { durationBase } from '../suite-duration-context.ts';
 export class SuiteAdmissionError extends Error {
   readonly code: 'verify-tiers' | 'verify-test-lint';
   readonly files: string[];
-  constructor(error: unknown) {
+  constructor(error: unknown, detail = '') {
     const code = error instanceof TestLintError ? 'verify-test-lint' : 'verify-tiers';
-    super(`${code}: ${error instanceof Error ? error.message : String(error)}`);
+    super(`${code}: ${error instanceof Error ? error.message : String(error)}${detail}`);
     this.code = code;
     this.files = error instanceof ShardManifestError || error instanceof TestLintError ? error.files : [];
+  }
+}
+
+/** Shared CLI preflight and hub admission; report-only diagnostics are excluded. */
+export async function lintSuiteCandidate(cwd: string, at: string, env: NodeJS.ProcessEnv): Promise<void> {
+  let immutable = at !== 'unknown';
+  try {
+    if (immutable) await lintHubShardTree(cwd, at, env);
+    immutable = false;
+    await lintHubShards(cwd);
+    if (at !== 'unknown') {
+      immutable = true;
+      const findings = await testLintPolicy(cwd, { tree: at, head: at, env });
+      if (findings.length) throw new TestLintError(findings);
+    }
+    immutable = false;
+    const findings = await testLintPolicy(cwd, { head: at, env });
+    if (findings.length) throw new TestLintError(findings);
+  } catch (error) {
+    const provenance = immutable ? `HEAD ${at}` : 'worktree';
+    const source = immutable
+      ? async (file: string) => (await promisify(execFile)('git', ['show', `${at}:${file}`], { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout
+      : (file: string) => readFile(join(cwd, file), 'utf8');
+    const locations = error instanceof ShardManifestError ? await shardRefusalLocations(error, source) : [];
+    throw new SuiteAdmissionError(error, `\nsource: ${provenance}` + (locations.length ? '\n' + locations.join('\n') : ''));
   }
 }
 
@@ -48,16 +75,7 @@ export function suiteCandidate(env: NodeJS.ProcessEnv): SuiteCandidate {
       const [at, branch, selection] = await Promise.all([head(cwd), git(cwd, ['branch', '--show-current']), selectPackageSuite(cwd, mode, env)]);
       const candidate = await tree(cwd, at);
       // Bind admission lint to both the captured commit and executing worktree.
-      try {
-        if (at !== 'unknown') await lintHubShardTree(cwd, at, env);
-        await lintHubShards(cwd);
-        if (at !== 'unknown') {
-          const findings = await testLintPolicy(cwd, { tree: at, head: at, env });
-          if (findings.length) throw new TestLintError(findings);
-        }
-        const findings = await testLintPolicy(cwd, { head: at, env });
-        if (findings.length) throw new TestLintError(findings);
-      } catch (error) { throw new SuiteAdmissionError(error); }
+      await lintSuiteCandidate(cwd, at, env);
       return { head: at, branch, selection, tree: candidate,
         tierPlan: await planTierReport(cwd, selection, workers), budgetBase: await durationBase(cwd, at, env) };
     },

@@ -131,7 +131,7 @@ test('cold suite.start refuses a new violating file inside the three-second admi
   assert.equal(reply.ok, false);
   assert.equal((reply as { code?: string }).code, 'verify-test-lint');
   assert.deepEqual((reply as { files?: string[] }).files, [f.planted]);
-  assert.equal(reply.error, `verify-test-lint: ${f.planted}:1 [wall-clock-wait] wall-clock-wait count 1 exceeds frozen allowance 0`);
+  assert.equal(reply.error, `verify-test-lint: ${f.planted}:1 [wall-clock-wait] wall-clock-wait count 1 exceeds frozen allowance 0\nsource: HEAD ${f.head}`);
   const elapsed = f.clock.now().getTime() - started;
   t.diagnostic(`${elapsed} ms modeled admission; ${f.commands.filter(args => args[0] === 'show').length} git show calls`);
   assert.ok(elapsed < 3000, `${elapsed} ms cold refusal exceeds the 3 s budget`);
@@ -192,8 +192,9 @@ test('suite.start admission over a repository-sized manifest', async t => {
     const path = f.paths[0]!;
     const original = f.files.get(path)!;
     const before = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
-    let finding: string | undefined;
+    let stableCause: string | undefined;
     for (const where of ['committed', 'dirty'] as const) {
+      let finding: string | undefined;
       if (where === 'committed') f.files.set(path, 'sleep(10);\n');
       else { f.files.set(path, original); await writeFile(join(f.root, path), 'sleep(10);\n'); }
       for (const dryRun of [false, true]) {
@@ -201,9 +202,12 @@ test('suite.start admission over a repository-sized manifest', async t => {
         assert.equal(refusal.ok, false, JSON.stringify(refusal));
         assert.equal((refusal as { code?: string }).code, 'verify-test-lint');
         assert.deepEqual((refusal as { files?: string[] }).files, [path]);
-        assert.equal(refusal.error, `verify-test-lint: ${path}:1 [wall-clock-wait] wall-clock-wait count 1 exceeds frozen allowance 0`);
+        assert.equal(refusal.error, `verify-test-lint: ${path}:1 [wall-clock-wait] wall-clock-wait count 1 exceeds frozen allowance 0\nsource: ${where === 'committed' ? `HEAD ${f.head}` : 'worktree'}`);
+        const cause = refusal.error!.split('\n')[0]!;
+        stableCause ??= cause;
+        assert.equal(cause, stableCause, 'HEAD and worktree retain the identical refusal cause');
         finding ??= refusal.error;
-        assert.equal(refusal.error, finding, 'dry and real submissions return the same finding for disk and immutable sources');
+        assert.equal(refusal.error, finding, 'dry and real submissions return identical cause and provenance for each source');
         const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
         assert.deepEqual(queue.waiters, []);
         assert.deepEqual(queue.remote, []);

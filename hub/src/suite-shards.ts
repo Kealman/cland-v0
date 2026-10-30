@@ -38,6 +38,30 @@ export class ShardManifestError extends Error {
   constructor(message: string, files: string[] = []) { super(message); this.files = files; }
 }
 
+/** Location formatting only; admission policy stays in the manifest checkers.
+ * The caller supplies the exact immutable or working source that failed. */
+export async function shardRefusalLocations(error: ShardManifestError, source: (file: string) => Promise<string>): Promise<string[]> {
+  const manifests = await Promise.all([TIER_MANIFEST, LEGACY_MANIFEST, DURATION_MANIFEST, QUARANTINE_MANIFEST].map(async file =>
+    ({ file, lines: (await source(file).catch(() => '')).split('\n') })));
+  return error.files.map(file => {
+    for (const manifest of manifests) {
+      const line = manifest.lines.findIndex(line => line.includes(JSON.stringify(file).slice(0, -1)));
+      if (line >= 0) return `${manifest.file}:${line + 1} (${file})`;
+      if (file === manifest.file) {
+        const keys = manifest.lines.flatMap((text, index) => {
+          const key = text.match(/^\s*("(?:[^"\\]|\\.)*")\s*:/)?.[1];
+          try {
+            const value: string = key ? JSON.parse(key) : '';
+            return value && error.message.includes(value) ? [{ value, line: index + 1 }] : [];
+          } catch { return []; }
+        }).sort((a, b) => b.value.length - a.value.length);
+        return `${file}:${keys[0]?.line ?? 1}`;
+      }
+    }
+    return `${file}:1`;
+  });
+}
+
 function tierOf(entry: unknown): Tier | undefined {
   if (entry === 'T1' || entry === 'T2' || entry === 'T3' || entry === 'T4' || entry === 'Web') return entry;
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;

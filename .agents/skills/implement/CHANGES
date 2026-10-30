@@ -337,8 +337,11 @@ T-1467 merge-delta M4: Join the daemon’s shared startup journal scan to preser
 T-1469: Point Claude poll-authority changes to the scripted idle/delivery and unknown-launch regressions.
 T-1469 source review M1/M2: Document complete transport-clock replay and shared acquisition/observer ownership controls.
 
+T-1453: Document local verify preflight through shared hub admission, HEAD/disk checks and report-only policy.
 T-1464: document periodic fresh integrated-cover skips and retained exact-head item verification.
 T-1459: Document repository auto-maintenance provisioning and disposable native-fetch/doctor coverage.
+
+T-1453: Resolve authorized dev merge by retaining local preflight and repository auto-maintenance guidance together without changing either policy.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
 T-1460: Document final local/droplet provenance, unknown/browser/cache facts and report-only missing skip reasons.
 T-1458: Document report-only packaging/site import guards and shared Web readiness reports.
@@ -352,7 +355,10 @@ T-1458 source1: Shared import-edge policy and owned smoke child lifecycle contro
 - T-1485 source review 2: retain roots on missing Date drainage, preserve native disposal, and pre-own bounded fault controls.
 - T-1485 verification: keep the clock audit in tracker comments/artifacts, outside indexed per-test guides.
 
+T-1453: Resolve authorized T-1458 dev merge retaining both local preflight and advisory packaging/Web prerequisites skill and help text.
 - T-1484: document shared lazy compiler capability and installed verification refusal without development TypeScript.
 T-1433: Document the Telegram album speech seam and single-upload/per-file failure contract.
 T-1433 M1: Include native workbench consumers and sentinel-like filenames in album regression guidance.
 T-1433 M1 follow-up: Preserve labelled surviving album sections after oversized-peer filtering.
+
+T-1453: Under docs/help conflict waiver retain local preflight alongside periodic T3 fresh-cover guidance and combined help/frozen rows.

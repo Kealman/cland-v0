@@ -958,6 +958,16 @@ a hub run, use `measure-history-storage.ts` on its fresh disposable backup and
 publish only aggregate field/row sizes. Existing role clauses cover both flows;
 add no permission lines.
 
+## Local verify preflight
+
+`cland verify` (also `suite` and `--dry-run`) runs the shared hub tier/duration
+and frozen test-lint admission before sending when the caller has
+`hub/test/run-suite.ts`. Repair the named cause and file/line on HEAD or disk;
+report-only findings remain nonblocking. Other stacks retain configured hub
+checks. Preflight success is not verification evidence. See
+`docs/agents/tests/hub-test-suite-preflight.test.ts.md` for the disposable CLI seam.
+Existing role clauses already require these checks; no new clause is needed.
+
 ## Periodic dev T3 fresh-cover skips
 
 Periodic dev T3 skips a due admission when a full T3 integrated dev cover passed
