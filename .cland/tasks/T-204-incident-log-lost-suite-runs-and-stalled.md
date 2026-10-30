@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-28T16:33:17.698Z
+updated: 2026-10-30T06:26:54.426Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -446,3 +446,7 @@ Hub restart #58 by cland-impl at 13:22:08Z 2026-10-28 (coord ask 99e4939a, optio
 ### human · 2026-10-28T16:33:17.698Z
 
 Hub restart #59 by cland-impl at 16:31:29Z 2026-10-28 on coord's go (dev 60ad6021 = origin/dev; purpose: make the T-1425 stuck-merge-batch fix live after the 15:37–15:39Z stall). Gate: waited for the hub's own periodic dev T3 droplet 4932c982 (run 72ed2007) to finish, clear window held 16:30:55Z, merge queue empty. Stop→serve 12 s; new hub pid 35680, port 56920, web 56935, nice 0, NODE_OPTIONS 8 GB heap, DO token present, starter cli, no meta edit. Coord bridge: injected 16:31:46Z, coordinator role intact. Hub git maintenance completed 16:32:10–16:32:17Z, stale owner file from 13:23Z gone. Doctor 32 ok / 4 warn / 0 fail. Machine: the human restarted fseventsd at ~16:14Z (ask 8a8f8681 option 1; old pid 536 held 3.3–4.1 GB RSS at 89–125% CPU after 23 days up); new pid 96946 at 8 MB, 0% CPU; swap 11.5→9.3 GB and falling.
+
+### human · 2026-10-30T06:26:54.426Z
+
+Hub restart #60 by cland-impl at 06:25:24Z 2026-10-30 on coord's request (dev 82eb1d22 = origin/dev: v0.3.0 63103af6 + tracker/rules; purpose: run the released code before enabling the real Telegram/Discord remotes on this project). Gate: no droplet (the hub's periodic T3 638177ce finished), merge queue empty, and additionally load1 under 10 for 2 minutes after the Mac had sat at load 49–79 with swap 14.9/15 GB from the human's parallel narrapunk test runs; hub 35680 had stalled silently 06:08:21–06:19:56Z (RSS 94 MB, VSZ 510 GB, swapped out) and resumed by itself once the human stopped those tests. Recipe (foreground serve from the hub's own env, nice 0, 8 GB heap), stop→serve 16 s. New hub pid 88459, port 55997, web 56935; NODE_OPTIONS and DIGITALOCEAN_TOKEN present; coord bridge-connected 06:25:39Z and injected 06:25:41Z, coordinator-filled; merge queue empty; doctor 34 ok / 4 warn / 0 fail; RSS 1.87 GB at +50 s; no git-maintenance owner file. Preceding incident: coord's Claude Code auto-updated 2.1.311→2.1.314 at 06:04Z and re-exec'd (pid 27389→46512); the hub missed the 1 s re-exec grace, logged harness-exited/role-cleared, the bridge reconnected but no delivery injected afterwards (five role clauses acked only). Recovery 06:23:50Z: SIGTERM 46512, cland session resume coord --relaunch, role set coord coordinator; bridge-connected 06:24:03Z, injected 06:24:18Z. Quirk: the first injections after the relaunch were stale replays of 10-28 deliveries (impl-1398/impl-1384 progress, a 00:36Z heartbeat, rev-26's T-1394 report), which coord ignored.
