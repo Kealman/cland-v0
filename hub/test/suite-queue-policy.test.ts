@@ -32,7 +32,7 @@ test('task queue executes the hub policy with explicit worker overrides', async 
   let config = parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), 'queue-policy', {});
   const delivered = new Map<string, RunRef>();
   // The executor boundary records exactly what the scheduler would deliver.
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   let beforeAdmission = () => {};
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => { beforeAdmission(); return false; });

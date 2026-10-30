@@ -54,12 +54,11 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   let held = false;
   let holder: Awaited<ReturnType<LocalExecutor['holder']>> = null;
   const lease = (run: RunRef, deadline: string): Lease => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline, resource: null });
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => holder);
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => held);
   t.mock.method(LocalExecutor.prototype, 'restore', (run: RunRef) => lease(run, clock.now().toISOString()));
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
-  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { delivered.set(run.id, structuredClone(run)); publish(); });
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });

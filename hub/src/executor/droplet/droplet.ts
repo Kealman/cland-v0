@@ -18,7 +18,7 @@ import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
-import type { Executor, Released, RunRef } from '../executor.ts';
+import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
 
 type PrepareJob = { state: 'running' | 'done' | 'failed'; started: string; finished?: string; step: string; key?: PrepareKey; result?: Prepared; error?: string };
 
@@ -30,7 +30,7 @@ export class RemoteBudgetFull extends Error {
 export class ProviderCapacityUnavailable extends Error {}
 
 /** Owns the project's durable droplet lifecycle, independently of suite delivery. */
-export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | 'start' | 'status' | 'log' | 'cancel' | 'release'> {
+export class DropletExecutor implements Executor {
   readonly root: string;
   readonly store: Store | undefined;
   readonly logger: LogFn;
@@ -284,7 +284,12 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     return { state: 'submitted', summary: 'snapshot preparation submitted; see cland executor status' };
   }
 
-  async prepare(key: PrepareKey, step: (step: string) => void = () => {}): Promise<Prepared> {
+  prepare(options?: PrepareOptions): Promise<Prepared>;
+  /** Compatibility for callers that already captured a backend snapshot key. */
+  prepare(key: PrepareKey, step?: (step: string) => void): Promise<Prepared>;
+  async prepare(input: PrepareOptions | PrepareKey = {}, progress?: (step: string) => void): Promise<Prepared> {
+    const key = 'base' in input ? input : await this.#key();
+    const step = 'base' in input ? progress ?? (() => {}) : input.step ?? (() => {});
     const recoveries = await readRecoveries(this.root);
     if (recoveries.some(record => record.phase !== 'cleanup' || record.requested && record.actionState !== 'completed' && record.actionState !== 'errored')) throw new Error('snapshot recovery pending; see cland executor status');
     const config = await this.#config();
@@ -466,7 +471,11 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     this.#sweepState = failures ? 'deferred' : 'idle';
     this.logger({ event: 'executor-sweep', leases: (await readLeases(this.root)).filter(l => l.state !== 'released').length, reapedDroplets, reapedKeys, failures });
   }
-  async reap(authorize: () => void = () => {}) {
+  reap(options?: ReapOptions): Promise<{ deleted: number[]; deletedKeys: number[]; summary: string }>;
+  /** Compatibility for the hub's existing authorization callback. */
+  reap(authorize: () => void): Promise<{ deleted: number[]; deletedKeys: number[]; summary: string }>;
+  async reap(options: ReapOptions | (() => void) = {}) {
+    const authorize = typeof options === 'function' ? options : options.authorize ?? (() => {});
     authorize();
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const config = await this.#config();

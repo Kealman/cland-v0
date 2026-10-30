@@ -7515,6 +7515,17 @@ report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
 
+### Executor lifecycle interface
+
+All nine operations, including `prepare` and `reap`, are declared on `Executor`.
+Preparation accepts optional progress reporting; reaping accepts an optional
+authorization callback. The backend owns image keys and resource identifiers.
+Local preparation and provider reaping return typed `not-applicable` results;
+local restored-worker recovery runs separately through `reconcile`.
+The droplet backend retains its captured-key and callback overloads and concrete
+result fields. `cland executor prepare|reap` uses the existing hub jobs and keeps
+its command arguments, help, JSON and plain output unchanged.
+
 ## Additive interaction selection (T-1454)
 
 For cland-runner candidates, `[merge] batch_interaction = "report"` defaults to

@@ -380,11 +380,10 @@ test('a red singleton posts its bisection refusal to the member lead after appea
   const started = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };
   const lease = (run: RunRef, deadline: string): Lease => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null });
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
-  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { await writeFile(run.log, 'suite test failures [{"file":"hub/test/parser.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n'); started.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);
@@ -422,11 +421,10 @@ test('refusing a cancelled live batch member preserves its re-enqueued request',
   // T2: public merge frames through projectHub; only the executor and Git edges are fake.
   const started = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null }));
-  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
     await writeFile(run.log, '# tests 1\n# pass 1\n'); started.resolve(run);
@@ -470,11 +468,10 @@ test('refusing a cancelled live batch member preserves its re-enqueued request',
 test('a code movement rebuild notice survives the original green result notice', async t => {
   const started = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null }));
-  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
     await writeFile(run.log, '# tests 1\n# pass 1\n'); started.resolve(run);

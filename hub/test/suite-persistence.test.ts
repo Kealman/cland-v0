@@ -17,7 +17,7 @@ async function fixture(t: test.TestContext, count: number, reported: boolean, op
   const env = fixtureEnvironment(root, process.env);
   const database = join(root, 'hub.db');
   const store = new Store(database), clock = new FakeClock();
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   const jobs: SuiteJob[] = [];
   for (let i = 0; i < count; i++) {
     const dir = join(root, String(i));

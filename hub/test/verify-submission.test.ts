@@ -27,7 +27,7 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   const inspections: Array<SuiteSelection | undefined> = [];
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { started.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,

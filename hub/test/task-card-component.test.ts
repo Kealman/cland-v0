@@ -47,11 +47,10 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
   const clock = new FakeClock();
   const admitted = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline, resource: null }));
-  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { admitted.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);

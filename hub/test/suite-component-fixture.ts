@@ -56,12 +56,11 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
   };
   const receipts = new Map<string, RunStatus>(), executions: RunRef[] = [];
   const exists = (file: string) => access(file).then(() => true, () => false);
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   t.mock.method(LocalExecutor.prototype, 'occupied', () => exists(join(root, 'suite.lock')));
   t.mock.method(LocalExecutor.prototype, 'restore', (run: RunRef): Lease => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline: clock.now().toISOString(), resource: run }));
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline, resource: run }));
-  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
   let workerCode = code;
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {

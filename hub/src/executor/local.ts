@@ -9,7 +9,7 @@ import { pidAlive } from '../project.ts';
 import { processStartedAsync } from '../hub/lock.ts';
 import { systemProcesses, endProcess } from '../system-processes.ts';
 import { compatibilityOccupied, compatibilityHolder } from '../suite-lock.ts';
-import type { Executor, Lease, Platform, Released, RunRef, RunStatus } from './executor.ts';
+import type { Executor, Lease, NotApplicable, Platform, PrepareOptions, ReapOptions, Released, RunRef, RunStatus } from './executor.ts';
 
 export type LocalWorker = { pid: number | null; started: string | null; identity?: string | null; outcome: { code: number; cause: string } | null; cancelled?: boolean };
 type Resource = LocalWorker & { run: RunRef; platform?: Platform; attempted?: boolean };
@@ -56,7 +56,8 @@ export class LocalExecutor implements Executor {
     this.#checkpoint(lease, lease.resource as Resource);
     return lease;
   }
-  async prepare(_identity: string): Promise<void> {}
+  async prepare(_options?: PrepareOptions): Promise<NotApplicable> { return { state: 'not-applicable', summary: 'local executor needs no preparation' }; }
+  async reap(_options?: ReapOptions): Promise<NotApplicable> { return { state: 'not-applicable', summary: 'local executor has no provider resources to reap' }; }
   async deliver(_lease: Lease, _run: RunRef): Promise<void> {}
   start(lease: Lease, run: RunRef): Promise<void> {
     const existing = this.#starting.get(run.id);
@@ -175,7 +176,7 @@ export class LocalExecutor implements Executor {
     return { lifetimeMs: null, costUsd: null };
   }
   /** Restored leases reattach to receipts/live identities; Suites settles and reports them. */
-  async reap(olderThanMs = 0): Promise<void> {
+  async reconcile(olderThanMs = 0): Promise<void> {
     for (const lease of this.#leases.values()) {
       if (Date.now() - Date.parse(lease.created) < olderThanMs) continue;
       const status = await this.status(lease);

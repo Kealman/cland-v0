@@ -28,7 +28,7 @@ for (const phase of ['sweep', 'lease recovery'] as const) test(`status observes 
     size: 'c-8', region: 'lon1', priceHourly: 1, keyName: 'old-key', keyId: null, resource: 123, state: 'releasing',
     created: clock.now().toISOString(), deadline: new Date(clock.now().getTime() + 60000).toISOString(),
   });
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   const hub = await projectHub(t, root, { CLAND_EXECUTOR_STATE: join(root, 'state') }, { clock, syntheticProvider: { token: 'cland-test-liveness', api }, droplet: { api, processes } });
   await sweepEntered.promise;
   const ui = await connectUi(t, hub.discovery, 'cli');
@@ -58,7 +58,7 @@ test('status bypasses the ledger lock held during deferred reconcile', async t =
   const attempted = Promise.withResolvers<void>();
   const waiting = { ...processes, alive: () => { attempted.resolve(); return true; } };
   const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'cland-test-liveness' }, clock, async () => ({ droplets: [], ssh_keys: [] }));
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   const hub = await projectHub(t, root, { CLAND_EXECUTOR_STATE: state }, { clock, syntheticProvider: { token: 'cland-test-liveness', api }, droplet: { api, processes: waiting } });
   await attempted.promise;
   const ui = await connectUi(t, hub.discovery, 'cli');
@@ -93,7 +93,7 @@ test('930-job legacy history serves status within the component bound during a s
   const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'cland-test-liveness' }, clock, async () => {
     entered[calls++]?.resolve(); return new Promise(() => {});
   });
-  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   // Timing is diagnostic evidence; the test's component timeout and real RPC
   // deadline enforce the bound. Product timers advance only through FakeClock.
   const starting = performance.now();

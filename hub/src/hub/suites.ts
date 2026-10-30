@@ -306,7 +306,7 @@ export class Suites {
     this.#jobs.sort((a, b) => a.sequence! - b.sequence!);
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
-    this.#reaping = this.#local.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
+    this.#reaping = this.#local.reconcile().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
     // Seed durable slots for a queue read that precedes the first tick. This never
     // gates a tick: an extra await here would delay inspection on a fake clock.
     this.#refreshLeases();
@@ -833,7 +833,7 @@ export class Suites {
         if (head !== job.head && !(job.integrated && job.tree && await this.#candidate.tree(job.cwd) === job.tree)) throw new Error(`cancelled: queued head changed from ${job.head} to ${head}; submit verification again`);
         job.lease = await this.#local.acquire(run, new Date(Date.now() + 15000).toISOString());
         this.#save(job);
-        await this.#local.prepare(job.tree ?? job.head);
+        await this.#local.prepare();
         await this.#local.deliver(job.lease, run);
         await this.#local.start(job.lease, run);
       }

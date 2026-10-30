@@ -1066,6 +1066,17 @@ register `guardDirectoryRemoval` to retain the fixture root until writers settle
 Use `clockControl` for held-write probes so setup, abort, release and joining are
 owned before launch, with separate bounded setup and effect observations.
 
+## Executor lifecycle interface
+
+For executor interface work, call `prepare` with optional progress options and
+`reap` with optional authorization options. Backend image keys stay inside the
+backend; local operations return typed `not-applicable` results. Local startup
+recovery uses `reconcile`, including fixture interception of that boundary.
+Keep droplet CLI/frame output and concrete legacy overloads compatible. Use the
+scripted interface checks in
+`docs/agents/tests/hub-test-executor-prepare-retry.test.ts.md`; native image and
+CLI evidence remains in the existing executor tests. No role clause is added.
+
 ## Telegram album speech
 
 For album transcription, use the production-frame/fake Bot API and speech cases
