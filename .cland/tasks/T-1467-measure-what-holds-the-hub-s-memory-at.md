@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1221
 branch: t/T-1467-measure-what-holds-the-hub-s-memory-at
 created: 2026-10-30T06:38:36.583Z
-updated: 2026-10-30T07:39:45.779Z
+updated: 2026-10-30T07:49:52.125Z
 ---
 
 ## Summary
@@ -43,3 +43,7 @@ Context: hub 88459 (v0.3.0) held 3.0 GB RSS 80 s after start on this project (ab
 ### impl-1467 · 2026-10-30T06:44:31.628Z
 
 Script-first implementation underway: sealed projectHub child, consistent read-only SQLite backup, full tracker/journal/log copy, sparse artifact-body placeholders, one-second process samples and sequential startup/rest heap snapshots. Independent supervisor watches swap every 30s. Dry plan about 1.86 GiB allocated payload plus metadata/snapshots; no secrets/config/accounts/worktree copy. Measurement blocked pending Coordinator slot and swap <=80% (dry preflight 84.67%).
+
+### impl-1467 · 2026-10-30T07:49:52.125Z
+
+First live-scale attempt 422b5b7a5 was partial: swap >92% guard at30s, child exit143, missing worker stop receipt, no snapshots/rest. Published A-14157 analysis and A-14158 seven numeric receipts; removed original scratch state after child close. Coordinator narrowed C1–C3 to startup allocations. c8defa34d implements startup-only 1MiB sampling with stage counts and IPC stop receipts; six focused controls, typecheck and report-mode lint pass. Awaiting second Coordinator slot.

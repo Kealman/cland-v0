@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T07:36:03.091Z
+updated: 2026-10-30T07:40:40.183Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -454,3 +454,7 @@ Hub restart #60 by cland-impl at 06:25:24Z 2026-10-30 on coord's request (dev 82
 ### human · 2026-10-30T07:36:03.091Z
 
 Coord deaf bridge 2026-10-30 06:53–07:34Z (stand-in). Coord went idle 06:52:58Z after asking 06c38b39 (T-1467 memory probe); the hub's poll marked it busy at 06:53:35Z, so the human's Telegram answer 4448994d (06:53:39Z) was outcome coord:queued and never injected. At 07:26:12Z spoke-left/bridge-closed, flushed count 1; no reconnect for 7 min; claude pid 57408 alive at 0.1% CPU, hub row still running/busy, so no harness-exited and session retry refused ('no uncertain delivery'). Recovery 07:33:56Z: kill -TERM 57408 (exited 2 s), session resume coord --relaunch, role set coord coordinator; bridge-connected 07:34:05Z, role clause injected 07:34:07Z, the queued human answer re-injected by the hub itself 07:34:09Z, coord answered in General 07:34:40Z. Human waited 41 min for a reaction. Third deaf-bridge case this week after an idle period; pattern: poll says busy while idle, queued delivery, later bridge-closed drops it.
+
+### human · 2026-10-30T07:40:40.183Z
+
+Hub restart #61 2026-10-30 07:38:48Z (stand-in, coord's memory alarm at 07:37Z): hub 88459 at rest after 1 h 15 min reached footprint 6,657 MB (4,876 MB compressed, RSS 1.6 GB), swap 9.6/11.3 GB; crew idle, queue empty, no leases or droplets, load 2.7, dev c39cb384 = origin/dev. stop→serve 14 s; new hub 31310, port 57079, web 56935, nice 0, 8 GB heap, DO token present; coord bridge-connected 07:39:02Z, coordinator-filled 07:39:03Z, injected 07:39:05Z; queue empty; doctor 30 ok / 6 warn / 0 fail; RSS 0.63 GB at +50 s. Second data point for T-1467: live hub grows ~2.3 GB footprint in 40 min with nothing running.
