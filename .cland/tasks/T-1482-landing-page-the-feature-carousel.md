@@ -3,7 +3,7 @@ id: T-1482
 kind: task
 title: "Landing page: the feature carousel becomes a grid of all features"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1238
 branch: t/T-1482-landing-page-the-feature-carousel
 created: 2026-10-30T11:51:19.056Z
-updated: 2026-10-30T11:58:06.896Z
+updated: 2026-10-30T12:15:04.565Z
 ---
 
 ## Summary
@@ -68,3 +68,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear,A-14327,treed83ae30d42cd145c85a94c4a1968a509a1220be6. Standards/Spec0findings:eleven features exactorder,compact semantic1/2-column900pxgrid,stableanchors/docslinks,carousel code/ARIA/styles removed;unused frame/compact props have no pinned-source callers. Static feature-id GoatCounter attributes match official Events documentation;FAQ/footer/README/screenshots inventory updated. Existing T1 wrapper covers new source regressions. C1–C4runtime-unverified pending original final-head configured receipts and localbuild/browser/docsfragment evidence;source tests alone do not prove runtime clicks/layout/build. A-14323 summary separate;new captured folder limitations preserved,including unversioned count.js bytes/hash gap and wrapperpartialtranscription. No Reviewer workloads/edits;QA none;publicationask outside review. Run one unchanged-head mode-free verify then final evidence request.
+
+### rev-31 · 2026-10-30T12:15:04.565Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261030-1482-evidence1
+commit: 5c7b396165397c4937721a5da2cc3cfcb729f760
+scope: evidence
+findings: [{"severity":"medium","text":"Original configured4fc0ab74/A-14347 exits1: second-phone ask case times out3000ms waiting for exact Inbox archive question text. Final evidence cannot clear;retain original red and obtain lead/Coordinator diagnosis/retry disposition.","file":"web/test/phone-asks.test.ts","line":195}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence1notclear,A-14348;source1/A-14327 unchanged. Original same-head A-14347 independently4256ordinary(4255pass/1fail)+125extra loadpass;T0/T1/allfallbackT2pass,Webfail,T3/T4absent. Actual timeout text and source195:150 quoted in artifact;no flake/infra/task-cause classification by Reviewer. Four landing source cases base+5pass each retained,not a greenrun substitute. C1–C4 remain unverified;no new semantic criterionfailure inferred from separate phone timeout. Local A-14328 not finalaudited here,capturegaps retained. No Reviewer workloads/retry;lead/Coordinator own disposition;QA none.

@@ -3,7 +3,7 @@ id: T-1464
 kind: task
 title: Periodic dev T3 skips a run when a newer integrated or stage cover just passed
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1229
 branch: t/T-1464-periodic-dev-t3-skips-a-run-when-a-newer
 created: 2026-10-30T05:44:58.711Z
-updated: 2026-10-30T11:56:46.093Z
+updated: 2026-10-30T12:14:07.910Z
 ---
 
 ## Summary
@@ -59,3 +59,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14324 source2 clear: sole M1 resolved with shared scratchMachine/commandIn setup and caseDeadlines pending ancestry drainage before proxied cleanup; assertions preserved. Production policy/T1 unchanged from full source1. No Reviewer workloads. C1 runtime remains pending exact-head configured evidence and final review; local receipts not a configured pass.
+
+### rev-26 · 2026-10-30T12:14:07.910Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1464-evidence-1
+commit: ea04b0eba3e3b603ed174a43c63fb1d55874d78a
+scope: evidence
+findings: [{"severity":"medium","text":"Original A-14344 fails Inbox archive locator visibility within3000ms (5.241889533s case). Cause/classification unresolved; whole configured result blocks final clearance despite new policy cases passing.","file":"web/test/phone-asks.test.ts","line":195}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14346 original audit:4271ordinarypass1fail+205loadpasses;20newpolicy/ancestrycases base+5/5load each. T0/T1/allT2pass,Webfail,T3/T4unrun. Source2clear retained separately; C1 final mark pending admissible green evidence. No flake/shared attribution assumed and no Reviewer workload. Hold head/retry for Coordinator disposition.

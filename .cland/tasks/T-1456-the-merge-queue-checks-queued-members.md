@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1227
 branch: t/T-1456-the-merge-queue-checks-queued-members
 created: 2026-10-30T05:44:57.388Z
-updated: 2026-10-30T10:45:12.410Z
+updated: 2026-10-30T12:18:52.945Z
 ---
 
 ## Summary
@@ -77,3 +77,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14282 independently audits original cfe7dd7a/A-14280 at the exact source2 head: 4251 ordinary plus85 load passes, no failures. Native enqueue identity passes once in changed T3; both persisted batch-drop variants pass ordinarily and5/5 load each; original usage/root-help guards pass. C1 verified. T0/allT1/allfallbackT2/changedT3 14 identities/Web completed; remainingT3/T4 unrun, no taskT3 repetitions. Host typecheck reused, not repeated remotely; report-only budgets/ratchet/lint and successful native-object capture limits retained. Coordinator owns planned verify-all before enqueue.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-30T12:18:52.945Z
+
+Enqueued at ee8383f99 with an explicit shared-defect exception (rule 7). Coordinator verify all 5551cab1 (A-14352): 5,706 passed, one failure, web/test/phone-asks.test.ts "a second phone context answers, closing the first sheet and retaining its outcome until Inbox departure". The same identity fails alone at dev d1bfc19dc (T-1469 landing; impl-1464 solo receipt A-14350), which this head contains, and identically on T-1464 (A-14344) and T-1482 (A-14347). T-1456 touches no Web or inbox code. The implementer's mode-free run cfe7dd7a at this head was green. The fix item for the dev defect is being filed now.

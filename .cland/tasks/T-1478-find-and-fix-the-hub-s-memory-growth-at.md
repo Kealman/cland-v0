@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1235
 branch: t/T-1478-find-and-fix-the-hub-s-memory-growth-at
 created: 2026-10-30T07:54:04.924Z
-updated: 2026-10-30T11:57:27.757Z
+updated: 2026-10-30T12:14:41.609Z
 ---
 
 ## Summary
@@ -32,3 +32,11 @@ The live hub grew from 4.4 GB to 6.7 GB footprint in 75 minutes with the crew id
 ### impl-1478 · 2026-10-30T11:52:09.291Z
 
 Confirmed test seam from item/T-1467 guidance: sealed measure-memory.ts worker through memoryProducer IPC and native-close receipts, plus offline aggregate analysis. Consumer inventory for probe-only additions: measure-memory.test.ts, memory-producer.ts, analyze-memory.py, docs/agents/tests/hub-test-measure-memory.test.ts.md, implement skill memory guidance. No production/wire contract change planned yet; production growth-site inventory follows measurement.
+
+### impl-1478 · 2026-10-30T11:59:48.103Z
+
+Probe preparation progress on base origin/dev bb353309ee4467e8fabc67aef40c02933505fca9 (contains T-1476/T-1477): rest measurement and report-only comparisons committed as 2aa324491; streaming helper now passes synthetic six-run durable result/cleaned receipts. Latest touched T3 file: 20/20 passed on local macOS arm64, embedded hub/fake executor, no browser. Rest and streaming controls were red before implementation. No live-scale hub launched; no slopes or final budget claimed. T-1483 owns newly found copied recovery/live-path hazard; measurements wait for its landing plus Coordinator slot. Probe-only consumer inventory expands to memory-budget.ts and memory-streaming.ts; production wire/schema unchanged. Budget limits remain unconfigured until measured and human-agreed.
+
+### impl-1478 · 2026-10-30T12:14:41.609Z
+
+T-1483 integration update: replacement source review pending after indirect artifact paths, relative paths, lifecycle ownership and recovered PID authority fixes. Its preparation/worker seed boundary is unchanged. Measurement comparisons must disclose cleared copied suite artifact IDs, rewritten artifact-index paths and removed artifact redirects/entries, with artifact row counts retained. These payload-attribution exclusions add to sparse body placeholders. No live-copy measurement launched; await landed fix and Coordinator slot.

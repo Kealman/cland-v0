@@ -13,12 +13,12 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T11:58:34.958Z
-updated: 2026-10-30T11:58:34.958Z
+updated: 2026-10-30T12:07:52.378Z
 ---
 
 ## Summary
 
-An installed `cland` (TypeScript pruned as a dev dependency) running `cland verify` on a project that has `hub/test/durations.json` source identities reaches `sourceTestIdentities`, whose lazy `import('typescript')` resolves against the installed hub and fails. The path is runSuiteCommand, then suite-candidate lintHubShards/lintHubShardTree, then lintDurationIdentities, then sourceTestIdentities. A generic project without duration or tier manifests avoids it. Found by T-1458's packaging guard, 2026-10-30.
+An installed `cland` (TypeScript pruned as a dev dependency) running `cland verify` on a project that has `hub/test/durations.json` source identities reaches `sourceTestIdentities`, whose lazy `import('typescript')` resolves against the installed hub and fails. The path is runSuiteCommand, then suite-candidate lintHubShards/lintHubShardTree, then lintDurationIdentities, then sourceTestIdentities. A second consumer has the same defect: a lazy `createRequire` of the compiler in `hub/src/test-lint.ts`, reached through suite-shards and the hub's suite test-lint paths on tiered, cland-shaped targets (T-1458, 12:07Z). A generic project without duration or tier manifests avoids both. Found by T-1458's packaging guard, 2026-10-30.
 
 ## What to build
 
@@ -26,4 +26,4 @@ The installed CLI handles that path without the compiler: either a non-TypeScrip
 
 ## Acceptance criteria
 
-- [ ] C1. An install-shaped run of `cland verify` on a project with duration identities, with `typescript` unresolvable from the installed hub, either completes identity checks without the compiler or refuses with one line naming the cause, shown by a fixture; `typescript` stays in devDependencies.
+- [ ] C1. An install-shaped run of `cland verify` on a project with duration identities, with `typescript` unresolvable from the installed hub, either completes identity checks without the compiler or refuses with one line naming the cause, for both the duration-identity and the test-lint consumers, shown by a fixture; `typescript` stays in devDependencies.
