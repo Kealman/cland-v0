@@ -72,3 +72,13 @@ matching fixture cases assert the root remains, the writer receives no signal,
 and root removal succeeds only after simulated branch reaping. Stop retries
 retain a positive managed-leader signal and settle a fully exited branch.
 The shared retainProcessAncestry walk is linear and keeps cycles bounded by PID.
+
+## Native-default liveness control (T-1451)
+
+`default process liveness observes the real PID birth without an injected observer`
+uses a disposable project and fixtureEnvironment. It captures the test process's
+real native birth, then requires default `processAlive` to accept it and reject a
+different birth. Unavailable native proof cannot pass the rejection assertion.
+On macOS this exercises the native Perl probe; Linux reads procfs. A negative
+control replacing only the default identity observer with an unavailable result
+must fail that rejection. No signal is sent to the observed process.

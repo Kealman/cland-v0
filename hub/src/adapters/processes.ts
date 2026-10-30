@@ -7,7 +7,7 @@ import { openDatabase } from '../database.ts';
 import type { HarnessProcess } from './contract.ts';
 import type { SessionUsage } from '../protocol.ts';
 import type { LaunchFilesState } from './launch-files.ts';
-import { processIdentityAsync } from '../process-identity.ts';
+import { processIdentityAsync, type IdentityExited } from '../process-identity.ts';
 import { processStartedAsync as processStarted } from '../hub/lock.ts';
 
 export { processStarted };
@@ -33,11 +33,12 @@ export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted' |
   return resumed(() => identity !== null && identity === p.pidIdentity);
 }
 
-/** Whether the row still runs: native exited states are absent; unreadable live proof stays conservative. */
-export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted' | 'pidIdentity'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env, readStarted: (pid: number, resumed: Resumed) => Promise<string | null> = (pid, resumed) => processStarted(pid, undefined, resumed, undefined, env)): Promise<boolean> {
+/** Whether the row still runs: native exited states are absent; unreadable live proof stays conservative.
+ * Synthetic callers may inject identity observation; omitted observers retain native exit reporting. */
+export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted' | 'pidIdentity'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env, readStarted: (pid: number, resumed: Resumed) => Promise<string | null> = (pid, resumed) => processStarted(pid, undefined, resumed, undefined, env), readIdentity: (pid: number, reportExited: IdentityExited) => Promise<string | null> = (pid, reportExited) => processIdentityAsync(pid, env, undefined, reportExited)): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
   let exited = false;
-  const identity = await processIdentityAsync(p.pid, env, undefined, () => { exited = true; });
+  const identity = await readIdentity(p.pid, () => { exited = true; });
   if (resumed(() => exited)) return false;
   if (p.pidIdentity) {
     return resumed(() => identity === null || identity === p.pidIdentity);

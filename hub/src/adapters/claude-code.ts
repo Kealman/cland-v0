@@ -235,6 +235,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #processEnv: NodeJS.ProcessEnv;
   readonly #processStarted: NonNullable<ClaudeCodeOptions['processStarted']>;
   readonly #processIdentity: (pid: number) => Promise<string | null>;
+  readonly #livenessIdentity: ClaudeCodeOptions['processIdentity'];
   readonly #pidAlive: (pid: number) => boolean;
   readonly #reexecGraceMs: number;
   readonly #missingSince = new Map<string, number>();
@@ -263,6 +264,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#processIdentity = options.processIdentity ?? (options.processStarted ? async () => null : pid => processIdentityAsync(pid, this.#processEnv, (pid, error) => {
       if (!this.#closed) this.#host.log({ event: 'native-identity-unavailable', harness: this.harness, pid, error });
     }));
+    this.#livenessIdentity = options.processStarted || options.processIdentity ? this.#processIdentity : undefined;
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#processEnv));
     this.#pidAlive = options.pidAlive ?? pidAlive;
     this.#reexecGraceMs = options.reexecGraceMs ?? 1000;
@@ -952,7 +954,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       // identity at this PID *is* proof that it is not ours, even with a same-second start stamp.
       const conflicting = entries.some(e => e.pid === p.pid && e !== entry && (e.sessionId !== undefined || e.id !== undefined));
       const readStarted = entry && p.pid === pid ? async () => identity : this.#processStarted;
-      const alive = !conflicting && (yield* wait(processAlive(p, resumed, this.#processEnv, readStarted)));
+      const alive = !conflicting && (yield* wait(processAlive(p, resumed, this.#processEnv, readStarted, this.#livenessIdentity)));
       return { found: false, reason: entry ? 'listed by claude agents, but its process identity could not be verified' : 'not listed by claude agents --json', alive };
     }).call(this), options.resumed ?? untimed);
   }

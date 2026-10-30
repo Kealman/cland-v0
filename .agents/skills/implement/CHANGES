@@ -383,3 +383,4 @@ T-1471 integrated stop receipt: preserve controller row/role/claim on unconfirme
 T-1453: Under docs/help conflict waiver retain local preflight alongside periodic T3 fresh-cover guidance and combined help/frozen rows.
 
 T-1490: Preserve typed compiler capability refusals without source provenance decoration.
+- T-1451: link synthetic Claude fallback liveness injection and the T3 native-default control.

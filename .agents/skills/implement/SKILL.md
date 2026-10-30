@@ -1139,3 +1139,11 @@ use a source install with development dependencies for verification. Missing
 compiler capability is no passing evidence. Keep TypeScript dev-only and ordinary
 startup compiler-free. The native installed CLI fixture is documented in
 `docs/agents/tests/hub-test-suite-admission-native.test.ts.md`.
+
+## Claude fallback liveness fixtures
+
+For synthetic Claude resume identities, follow the injected fallback observer
+and positive-controlled spawn guard in
+`docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`.
+Keep the native-default real-PID control in T3 as described in
+`docs/agents/tests/hub-test-system-processes.test.ts.md`.

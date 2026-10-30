@@ -107,11 +107,21 @@ test('Claude close cancels a held native query and drains its callback before re
 });
 
 test('Claude discovery misses retain liveness without accepting a conflicting native or process identity', async t => {
+  const spawns = t.mock.method(cp, 'spawn', () => { throw new Error('unexpected native spawn'); });
+  syncBuiltinESMExports();
+  t.after(() => { spawns.mock.restore(); syncBuiltinESMExports(); });
+  // cland-allow-child-env: positive control throws at the installed spawn guard before any native execution
+  assert.throws(() => cp.spawn('fixture-positive-control'), /unexpected native spawn/);
+  spawns.mock.resetCalls();
   const native = cli(t);
   native.knownPid = true;
   const clock = new FakeClock();
   let started: string | null = 'fixture-start';
-  const adapter = new ClaudeCodeAdapter(await memoryHost(t), { ...options(clock), agentsMs: 1, processStarted: async () => started });
+  const identities: number[] = [];
+  const adapter = new ClaudeCodeAdapter(await memoryHost(t), {
+    ...options(clock), agentsMs: 1, processStarted: async () => started,
+    processIdentity: async pid => { identities.push(pid); return null; },
+  });
   t.after(() => adapter.close());
   const p = await adapter.spawn(request('recover'));
   assert.equal(p.pid, process.pid, 'only observe the test process; never signal it');
@@ -142,6 +152,9 @@ test('Claude discovery misses retain liveness without accepting a conflicting na
   const conflicting = await probe();
   assert.equal(conflicting.found, false);
   if (!conflicting.found) assert.equal(conflicting.alive, false, 'another native session at the same PID cannot match by a same-second stamp');
+  await adapter.close();
+  assert.ok(identities.includes(process.pid), 'fallback liveness reaches the injected identity observer');
+  assert.equal(spawns.mock.callCount(), 0, 'resume and shutdown never spawn a native process probe');
 });
 
 test('Claude discovery and watch share the default schedule across adapter restart; unknown-pid stop ends the watch', async t => {

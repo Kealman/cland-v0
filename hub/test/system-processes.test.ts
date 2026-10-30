@@ -1,3 +1,4 @@
+// T3: real native PID identity/listing controls and isolated termination probes.
 // Portable OS listings, then the termination API against a deterministic OS boundary.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,6 +6,10 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseProcessTable } from '../src/process-table.ts';
+import { processAlive } from '../src/adapters/processes.ts';
+import { processIdentityAsync } from '../src/process-identity.ts';
+import { tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { systemProcesses } from '../src/system-processes.ts';
 import { processStarted, processStartedAsync } from '../src/hub/lock.ts';
 import { captureProcess, ownProcess } from './process-cleanup.ts';
@@ -125,6 +130,17 @@ assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), 
 assert.deepEqual(signals, [], 'the final native read grants absence, never a signal');
 assert.deepEqual(rows.map(r => r.pid), [420100], 'PID reaping belongs to the parent, not termination');
 `);
+});
+
+test('default process liveness observes the real PID birth without an injected observer', async t => {
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  const identity = await processIdentityAsync(process.pid, env);
+  assert.ok(identity, 'native observer positively captures the test process birth');
+  const row = { pid: process.pid, pidStarted: null, pidIdentity: identity };
+  assert.equal(await processAlive(row, undefined, env), true);
+  assert.equal(await processAlive({ ...row, pidIdentity: 'different-native-birth' }, undefined, env), false,
+    'a real native observation rejects another identity; unavailable proof cannot satisfy this control');
 });
 
 test('real whole-table and selected listings match lock and cleanup start identities without truncation', async t => {

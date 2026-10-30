@@ -173,3 +173,16 @@ Keep the final delivery id, one-injection count, stable job/role and positive
 native-poll assertions. The dispatcher UI's optional process observer defaults
 to native ownership discovery for existing callers; these invented-PID
 components explicitly disable that observer.
+
+## Injected fallback liveness (T-1451)
+
+`Claude discovery misses retain liveness without accepting a conflicting native or
+process identity` injects both start-time and identity observation. Its spawn guard
+is installed before fixture/adapter setup, positively tested, reset and checked
+through adapter shutdown. Keep all missing, unavailable, reused and conflicting
+identity assertions. `processAlive` accepts an optional fifth identity observer;
+Claude forwards its existing observer only when start-time or identity observation
+was explicitly injected. Without either option, native identity and exited-state
+reporting remain enabled. Codex and OpenCode keep their existing default calls.
+The native-default positive control belongs to T3 in system-processes.test.ts;
+this T2 case starts no child process and uses no experimental module mocking.
