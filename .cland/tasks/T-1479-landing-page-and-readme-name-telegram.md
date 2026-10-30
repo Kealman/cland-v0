@@ -9,11 +9,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
-blocked_by: []
+blocked_by:
+  - T-1480
 topic: topic-1231
 branch: t/T-1479-landing-page-and-readme-name-telegram
 created: 2026-10-30T10:14:48.049Z
-updated: 2026-10-30T10:18:01.387Z
+updated: 2026-10-30T10:20:18.495Z
 ---
 
 ## Summary
@@ -34,3 +35,9 @@ A visitor reading the landing page or the README learns that the human can follo
 ## Publication
 
 README.md reaches GitHub with the 0.3.1 release. The site pages go out through `cland publish` after an ask to the human, as for every marketing path.
+
+## Comments
+
+### impl-1479 · 2026-10-30T10:19:23.448Z
+
+Scope: three public-copy consumers (landing slides, root README Features, Features docs); site/test/remote-docs.test.ts imported by hub/test/remote-docs.test.ts covers their source boundary. No shared runtime/wire contract changes. Red: 3 new cases failed (missing landing/README linked entry, missing Discord in Features); existing 15 passed. Green wrapper: 19/19 on macOS arm64, Node 24.21.0; source-only, no browser/transport coverage. C4 is build/link validation, not a new behavior with a meaningful red state.

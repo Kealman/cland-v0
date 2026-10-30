@@ -3,17 +3,17 @@ id: T-1457
 kind: task
 title: test:tiers refuses a duration allowance owned by a task-kind item
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1233
+branch: t/T-1457-test-tiers-refuses-a-duration-allowance
 created: 2026-10-30T05:44:57.517Z
-updated: 2026-10-30T10:18:26.829Z
+updated: 2026-10-30T10:19:10.203Z
 ---
 
 ## Summary

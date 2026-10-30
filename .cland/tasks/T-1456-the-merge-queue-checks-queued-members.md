@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1227
 branch: t/T-1456-the-merge-queue-checks-queued-members
 created: 2026-10-30T05:44:57.388Z
-updated: 2026-10-30T10:17:46.671Z
+updated: 2026-10-30T10:18:47.582Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ At enqueue, the queue runs merge-tree against already queued heads, and a drop n
 ## Acceptance criteria
 
 - [ ] C1. Enqueueing a branch that conflicts with a queued member is refused at once, naming that member and the files.
+
+## Comments
+
+### impl-1456 · 2026-10-30T10:18:47.582Z
+
+Consumer audit (rule 20): merge admission TaskMerges.merge -> MergeQueue candidate/enqueue; territory squashTask and prepareMergeBatch conflict handling; MergeError merge-conflict serialized by dispatcher to CLI merge, MCP merge, web/nvim generic tool errors. MergeQueueEntry/store/wire snapshots stay unchanged, including legacy clients. Tests: merge-policy (T3 native admission), merge-queue (T2 frames), merge-queue-unit and merge-batches (T1), merge-checkout (T3), merge.test/merge-recovery and CLI usage tests; T4 guards do not parse conflict text. Docs/skills: CLI MERGE_USAGE, hub README queue section, docs/agents/tests queue section and per-file guide, merge skill. QA E-678 audits queue/budget and E-617 docs; neither depends on exact rebase text. New refusal retains merge-conflict + optional files shape. Proposed native frame regression extends existing merge-policy seam.
