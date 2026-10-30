@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 22 -->
+<!-- cland: rule high-water 27 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -66,12 +66,12 @@ Before cland merge, compare the actual local task-branch head and freshly fetche
 
 ## 8 Check the verify queue before committing on dev
 Scope: coordinator, aide
-Date: 2026-10-15
+Date: 2026-10-30
 Status: active
-Origin: memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/tracker-commits-cancel-dev-runs.md
-Reason: Moving or dirtying the tree used by an integrated cover cancels valuable batch evidence and costs the crew a lengthy rerun; a fixed clean copy isolates planning changes while hub-code changes still need coverage.
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: A tracker commit after a QA request blocked E-1280's admission, and QA briefs check HEAD against dev (E-1444, E-1314). Rule batch 4 (A-14151) P2.
 
-Check cland verify queue before a dev commit that changes hub code, and coordinate that commit with the Coordinator when integrated coverage is queued or running. Keep planning changes committed promptly through their authorized owner. Tracker, spec and glossary commits need no waiting when the cover runs from a separate clean copy at a fixed dev commit. Run integrated covers from a clean detached worktree and, before a hub restart, confirm that the hub code at the dev tip still matches the cover’s commit.
+Check cland verify queue before a dev commit that changes hub code, and coordinate that commit with the Coordinator when integrated coverage is queued or running. Keep planning changes committed promptly through their authorized owner. Tracker, spec and glossary commits need no waiting when the cover runs from a separate clean copy at a fixed dev commit. Once item, stage or epic QA or a demo has admitted a pinned dev SHA, every dev commit, tracker-only included, waits until the requested verdicts are recorded; if dev moves anyway, the requester sends one replacement SHA for every pending run before QA resumes. Run integrated covers from a clean detached worktree and, before a hub restart, confirm that the hub code at the dev tip still matches the cover’s commit.
 
 ## 9 Wait for the durable receipt of the boundary you assert
 Scope: implementer, reviewer
@@ -101,14 +101,14 @@ Reason: a generic merge-dev-before-review habit discarded valid Linux receipts t
 
 After the first source review, the task head takes only shared fixes the Coordinator posts. It is not merged with dev unless the Coordinator asks or `cland merge` reports a conflict. Any change to the head needs a fresh source review before verification.
 
-## 12 P4. Stop fixture writers before deleting their directories
+## 12 Stop writers and join owned work before releasing what they use
 Scope: implementer, reviewer
-Date: 2026-10-24
+Date: 2026-10-30
 Status: active
-Origin: message:general/c41bb6da-8f8b-4a96-942a-5c2b09bbdaec
-Reason: Linux reports ENOTEMPTY when a live hub writes .cland/run during a recursive rm (T-498, T-508).
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: A delayed-kill timer leaked past hub stop (T-1261); droplet reservation lock waits ignored hub shutdown (T-1154); hub.stop left the CLI alive on referenced native handles (T-1217); the ledger lock leaked in async cleanup (T-813). Rule batch 4 (A-14151) P5; the title also drops a stale "P4." prefix.
 
-A test or cancellation path that deletes a fixture or run directory first stops every writer in it, drains its pending asynchronous writes, and observes that they're gone. When process termination is handed to another owner, the root and its ownership metadata stay until that owner confirms the captured descendants are gone. If the assertion itself needs a live process with a deleted root, the test keeps that assertion and uses bounded removal retries, recording the bound and the reason.
+A test or cancellation path that deletes a fixture or run directory first stops every writer in it, drains its pending asynchronous writes, and observes that they're gone. Production owners follow the same order: an adapter, edge, reload, lock or acquisition joins its in-flight work, releases what it acquired and observes its children closed before it reports stopped, cancelled, timed out or applied, and before its storage closes. When process termination is handed to another owner, the root and its ownership metadata stay until that owner confirms the captured descendants are gone. If the assertion itself needs a live process with a deleted root, the test keeps that assertion and uses bounded removal retries, recording the bound and the reason.
 
 ## 13 No opencode CLI inside a session until T-296
 Scope: all
@@ -154,12 +154,12 @@ An item that changes a command, setting, policy, verification default or role pe
 
 ## 17 Evidence states what actually ran
 Scope: all
-Date: 2026-10-24
+Date: 2026-10-30
 Status: active
-Origin: message:general/c41bb6da-8f8b-4a96-942a-5c2b09bbdaec
-Reason: These failures happened in the v0.1.4 run: a release run was satisfied from a macOS stage cache (T-950); projections were judged as wall times; a T0–T2 receipt was described as an integration pass (T-713); missing receipts read as zero (T-681). 21 proposals in the v0.1.4 build (A-7281).
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: A missing reading showed as a 0% meter (T-1134); filtered counts implied global totals (T-1061, T-1177); unexecuted groups could start red covers (T-1211). Rule batch 4 (A-14151) P9.
 
-A claim about tests, timing or coverage names what actually ran: the head or tree, the tiers or phases completed and those that did not run, the platform, executor and browser binary, what a measurement excludes, and whether a gate was in report or enforce mode. A partial run, a cache hit, a projection or a missing receipt is labelled as such. None of them ever counts as a pass, a wall time or zero. Coverage names the required tests by their generated case names and checks the recorded facts apart from the exit status; exit 0 from a probe that caught its own step errors, a count of textual or drafting-time tests, or a zero-match scan without a positive control taken before the change is not coverage. A diagnosis quotes the actual failure output before it classifies the failure.
+A claim about tests, timing or coverage names what actually ran: the head or tree, the tiers or phases completed and those that did not run, the platform, executor and browser binary, what a measurement excludes, and whether a gate was in report or enforce mode. A partial run, a cache hit, a projection or a missing receipt is labelled as such. None of them ever counts as a pass, a wall time or zero. The product shows the same distinction: CLI summaries, meters, counts and verdict freshness render unknown, pending, unexecuted or loaded-only values as such, and totals come from the hub's aggregate over the complete index, never from the rows a client has loaded. Coverage names the required tests by their generated case names and checks the recorded facts apart from the exit status; exit 0 from a probe that caught its own step errors, a count of textual or drafting-time tests, or a zero-match scan without a positive control taken before the change is not coverage. A diagnosis quotes the actual failure output before it classifies the failure.
 
 ## 18 Crew sessions never drive the human's browser or desktop
 Scope: all
@@ -181,12 +181,12 @@ When an item depends on something the running hub or a prepared executor lacks (
 
 ## 20 Inventory every consumer before changing a shared contract
 Scope: coordinator, lead, implementer, reviewer
-Date: 2026-10-24
+Date: 2026-10-30
 Status: active
-Origin: message:general/c41bb6da-8f8b-4a96-942a-5c2b09bbdaec
-Reason: T-1117, T-1228 and T-1220 passed their own verification and broke tests they never selected; each cost a stage cover (T-1220's seven T3 failures at d41e7321, A-11286). Rule 19's shape and row sentences move here. Approved with rule batch 3 (A-11329 R1).
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: Import-only searches missed a deep-equal stored-shape test (T-1386, A-13273), raw socket readers (T-1362) and the droplet watchdog's persisted-pid path (T-1298). Rule batch 4 (A-14151) P4.
 
-Before an item changes a shared contract (the shape of a reply, snapshot or list, or the rows it carries; a schema's validation; a refusal or outcome class; a delivery, credential or admission policy), it searches for every consumer and lists them in the item. The search covers production callers and clients, shipped skill examples, QA briefs and fixtures, startup probes, persisted-record readers, and tests in every tier, T3 and T4 included; selecting tests by changed file does not prove the list complete. The item migrates each consumer or records why it is unaffected, adds new fields while keeping the old ones until every consumer has moved, and keeps a client regression at the previous wire shape, because a new client can meet an older running hub.
+Before an item changes a shared contract (the shape of a reply, snapshot or list, or the rows it carries; a schema's validation; a refusal or outcome class; a delivery, credential or admission policy), it searches for every consumer and lists them in the item. The search covers production callers and clients, shipped skill examples, QA briefs and fixtures, startup probes, persisted-record readers, and tests in every tier, T3 and T4 included, and it searches for the contract's field, frame and function names as well as its importers, so deep-equal assertions, read-then-parse locals, raw positional socket readers and direct process.kill paths are found; selecting tests by changed file does not prove the list complete. The item migrates each consumer or records why it is unaffected, adds new fields while keeping the old ones until every consumer has moved, and keeps a client regression at the previous wire shape, because a new client can meet an older running hub.
 
 ## 21 Keyboard changes are proven with real key presses
 Scope: implementer, reviewer, qa
@@ -205,3 +205,48 @@ Origin: message:general/c41bb6da-8f8b-4a96-942a-5c2b09bbdaec
 Reason: E-416 DOD-03 assumed lane order where the product uses rank; the E-417 seed read message ids from a send result; E-419 S1 selectors were guessed before the code existed; E-417 key-encoding errors read as product results. Approved with rule batch 3 (A-11329 R8).
 
 A brief written before it has run marks which selectors, test names and ids it verified and which it inferred from the criteria, and checks the inferred ones against the source at the final build. Each step asserts its own preconditions before the action it tests: it validates seeded identifiers, reads created ids from topic history (never from a `send` result), sets explicitly any order it relies on (rank, lane or close time), and states the tool-specific key syntax it uses, so a setup or encoding fault reads apart from a product failure.
+
+## 23 Work over retained history stays bounded
+Scope: implementer, reviewer
+Date: 2026-10-30
+Status: active
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: Unbounded reads of retained history ran the live hub out of heap at restart #22 (T-912), made a 13 MB status reply take 6.8 s (T-906), produced a 72 MB hub.status (T-1038), and decoded 3 M outbox rows for 500 Discord inputs (T-1436). Rule batch 4 (A-14151) P1.
+
+Code that reads retained history (logs, the tracker, coverage maps, journals, Git ranges) streams or scans it incrementally, checkpoints what it derives, shares one in-flight computation between concurrent callers, keeps that work off startup and liveness replies, and is tested against a byte or work-count budget on a copy of the live project's data.
+
+## 24 One source for each shared policy
+Scope: implementer, reviewer
+Date: 2026-10-30
+Status: active
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: A copied production guard list broke on every new guard (T-1299), and the offline linter and runtime admission drifted on argument order and default recipients (T-1225); fifteen items reported the same defect. Rule batch 4 (A-14151) P3.
+
+A policy, list, parser, default or computed fact that two paths use (admission and lint, startup and a settings command, doctor and setup, hub and client, production and a test fake) lives in one exported module that every path imports, and a settings write validates its candidate with the consumer's own parser; a copied allowlist, re-derived value or parallel parser is removed, not extended.
+
+## 25 Uncertain outcomes stay fenced
+Scope: implementer, reviewer
+Date: 2026-10-30
+Status: active
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: Cancelling an admitted event could confirm input nobody saw (T-1412); a pid exit alone could revoke a role before reconnect (T-1034); a harness acknowledgement was read as delivery (T-1256); a crash between reserving and sending could undercount Discord identifies (T-1403). Extends the remote outbox design in hub/README.md to executors, verification and harness delivery. Rule batch 4 (A-14151) P6.
+
+Production state moves only on a positive receipt: an effect's durable identity, budget spend and rendered bytes are persisted before the native send, a terminal frame or notice follows its durable checkpoint, an accepted send whose outcome is unknown stays fenced until reconciled, and a retry, replay or ownership release happens only after positive non-delivery, a confirmed failure or an observed exit.
+
+## 26 Authority comes from the identity captured at admission
+Scope: implementer, reviewer
+Date: 2026-10-30
+Status: active
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: A rename during native resume stranded the original reservation (T-1235); native request ids are unique only within one transport (T-1109); an approval key presented on an ask card must change nothing (T-1357). Rule batch 4 (A-14151) P7.
+
+Authorization, ownership and settlement decisions key on the durable identity captured at admission (pairing id, reservation key, session-scoped native request id, paired message mapping, the pinned item, head and enqueue time), validated before permission classification, and never on a display name, button text, caller-supplied actor field or frame data.
+
+## 27 A gate goes from report to enforce in its own item
+Scope: coordinator, lead, implementer, reviewer
+Date: 2026-10-30
+Status: active
+Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
+Reason: Gate switches needed replay proof, and an advisory notice quietly became a gate (T-1207; also T-683, T-915, T-919, T-923). Rule batch 4 (A-14151) P11.
+
+A new gate, budget or advisory check ships in report mode, where it feeds no exit status and blocks no operation; switching it to enforce is its own item, which replays every authorized platform and occasion log through the production checker and keeps the before-and-after failures and each bounded exception in one artifact.
