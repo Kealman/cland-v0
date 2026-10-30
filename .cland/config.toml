@@ -1,11 +1,11 @@
-# managed by cland 0.2.0 — cland update rewrites this file and keeps the values below; remove this line to take it over.
+# managed by cland 0.3.0 — cland update rewrites this file and keeps the values below; remove this line to take it over.
 # The project's cland settings (spec 4.9). Committed.
 
 [project]
 name = "v0"
 
 [release]
-# Publish the product Web bundle and SHA-256 as GitHub Release assets.
+# cland product only: attach a prebuilt web archive and SHA-256 through gh.
 web_bundle = true
 
 [release.homebrew]
@@ -136,9 +136,34 @@ port = 0
 # Empty serves the installed web/dist; a development bundle path is relative to the project root.
 dist = ""
 
+# Remote and speech changes apply on cland hub reload (config set applies them immediately).
+[remote]
+# The initial mute state for a new pairing.
+mute_default = false
+
+[remote.telegram]
+# Active only when enabled with a resolved token. Tokens belong in cland secret, never here.
+enabled = true
+# General: rich Markdown by default; entities selects numbered plain text. Rich rejection falls back.
+format = "rich"
+
+[remote.discord]
+enabled = true
+
+[speech]
+# elevenlabs, command, or empty to turn transcription off.
+provider = "elevenlabs"
+model = "scribe_v2"
+# Empty detects the language.
+language = ""
+max_seconds = 600
+# The command provider's argv; no shell expansion.
+command = []
+
 # Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]
 retention_days = 30
+max_upload_mb = 50
 
 # Surface.kind = layer (now, watch, background, archive); read at hub start.
 [visibility]
