@@ -88,6 +88,8 @@ export type SuiteJob = {
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
+/** Facts available without decoding an archived execution plan. */
+export type SuiteRunFacts = Pick<SuiteJob, 'id' | 'batch' | 'devT3Probe' | 'reported' | 'outcome' | 'head' | 'tree' | 'runMs'> & { selection?: Pick<SuiteSelection, 'tiers'> };
 export type VerifyResult = { webPhase?: WebPhaseUnavailable; executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | 'unavailable' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
@@ -181,7 +183,7 @@ export { SuiteAdmissionError } from './suite-candidate.ts';
 /** Release evidence is an executed, reported full T3 receipt at this exact tree. */
 export function releaseT3Cover(store: Store, tree: string): { run: string; head: string } | null {
   // Consult durable receipts so admission uses only checkpointed evidence.
-  const receipts = store.suiteJobHistory().map(text => JSON.parse(text) as { position: number; job: SuiteJob }).sort((a, b) => a.position - b.position).map(entry => entry.job);
+  const receipts = store.suiteJobSummaries().map(text => JSON.parse(text) as { position: number; job: SuiteJob }).sort((a, b) => a.position - b.position).map(entry => entry.job);
   const job = receipts.findLast(job => job.tree === tree && job.integrated && job.branch === 'dev'
     && ['dev-t3', 'soak', 'stage', 'release'].includes(job.occasion ?? '')
     && job.state === 'finished' && job.reported && job.artifact && store.resolveArtifact(job.artifact) && job.outcome?.code === 0
@@ -224,6 +226,7 @@ export class Suites {
   #options: SuiteSchedulerOptions;
   readonly #humans = new Map<object, HumanSlot>();
   readonly #savedJobs = new Map<string, string>();
+  readonly #summaries = new Set<string>();
   #savedActive = '';
   #lastQueue = '';
   readonly #local: LocalExecutor;
@@ -249,12 +252,16 @@ export class Suites {
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
-    const history = store.suiteJobHistory().map(text => {
+    const history = store.suiteJobSummaries().map(text => {
       const entry = JSON.parse(text) as { position: number; job: SuiteJob };
-      this.#savedJobs.set(entry.job.id, text);
+      if (!entry.job.reported || !entry.job.cleaned || entry.job.accountingPending) {
+        return JSON.parse(store.suiteJob(entry.job.id)!) as { position: number; job: SuiteJob };
+      }
+      this.#summaries.add(entry.job.id);
       return entry;
     }).sort((a, b) => a.position - b.position);
     const active = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
+    for (const job of active) this.#summaries.delete(job.id);
     this.#jobs = [...history.map(entry => entry.job).filter(job => !active.some(current => current.id === job.id)), ...active];
     this.#savedActive = store.meta(KEY) ?? '';
 
@@ -274,12 +281,15 @@ export class Suites {
       if (job.cleaned && job.error?.startsWith('forbidden:')) job.reportFailedPermanently = true;
       job.executor ??= 'local';
       job.state ??= job.outcome || job.reported ? 'finished' : 'running';
-      if (job.state !== 'queued' && !job.config && options.projectConfig) job.config = options.projectConfig();
-      if (job.executor === 'local' && !job.cached && !job.reported && job.state !== 'queued') job.lease = this.#local.restore(runRef(job), job, job.lease);
+      const summary = this.#summaries.has(job.id);
+      if (!summary && job.state !== 'queued' && !job.config && options.projectConfig) job.config = options.projectConfig();
+      if (!summary && job.executor === 'local' && !job.cached && !job.reported && job.state !== 'queued') job.lease = this.#local.restore(runRef(job), job, job.lease);
       // T-232 stores the worker's ps start identity and exit receipt. Recover a
       // second-resolution estimate without replacing the identity used for cleanup.
+      let timingChanged = false;
       const started = Date.parse(job.started ?? '');
       if (!job.admittedAt && job.pid && Number.isFinite(started)) {
+        timingChanged = true;
         job.admittedAt = new Date(Math.max(started, Date.parse(job.queued ?? '') || started)).toISOString();
         job.timingEstimated = true;
       }
@@ -287,7 +297,9 @@ export class Suites {
       if (job.reported && job.outcome && completion && !job.completedAt) {
         job.timingEstimated = true;
         this.#recordTiming(job, completion);
+        timingChanged = true;
       }
+      if (summary && timingChanged) store.repairSuiteJobTiming(job.id, { admittedAt: job.admittedAt, completedAt: job.completedAt, waitMs: job.waitMs, runMs: job.runMs, timingEstimated: job.timingEstimated });
     }
     this.#jobs.sort((a, b) => a.sequence! - b.sequence!);
     for (const job of this.#jobs) this.#remember(job, false);
@@ -322,16 +334,17 @@ export class Suites {
   #save = (job?: SuiteJob) => {
     if (job && !job.parentRun && !this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     const parent = job?.parentRun ? this.#jobs.find(parent => parent.id === job.parentRun) : job;
-    const changed = parent ? [parent] : this.#jobs;
+    const changed = parent ? [parent] : this.#jobs.filter(job => !this.#summaries.has(job.id));
     const saved = new Map<string, string>();
     const active = JSON.stringify(this.#jobs.filter(current => current.state !== 'finished'));
     this.#store.transaction(() => {
       for (const current of changed) {
         if (current.state !== 'finished') continue;
         const value = JSON.stringify({ position: this.#order.get(current.id), job: current });
-        if (this.#savedJobs.get(current.id) === value) continue;
+        const digest = createHash('sha256').update(value).digest('hex');
+        if (this.#savedJobs.get(current.id) === digest) continue;
         this.#store.setMeta(`suite-job:${current.id}`, value);
-        saved.set(current.id, value);
+        saved.set(current.id, digest);
       }
       if (active !== this.#savedActive) this.#store.setMeta(KEY, active);
     });
@@ -350,7 +363,7 @@ export class Suites {
     const later = (previous: SuiteJob | undefined) => !previous || this.#order.get(job.id)! >= this.#order.get(previous.id)!;
     // Task frames can also be built by unrelated tracker updates. Keep their lookup
     // at the last publishable checkpoint while the live job awaits cleanup/reporting.
-    const snapshot = { ...job };
+    const snapshot = { ...(this.#summaries.has(job.id) ? this.#jobs.find(current => current.id === job.id)! : job) };
     if (job.item && later(this.#latestItems.get(idNumber(job.item)))) this.#latestItems.set(idNumber(job.item), snapshot);
     if (job.branch && later(this.#latestBranches.get(job.branch))) this.#latestBranches.set(job.branch, snapshot);
     // Report recovery makes a finished result eligible for stage evidence even
@@ -359,6 +372,9 @@ export class Suites {
     const moved = this.#cards.get(job.id) !== card;
     this.#cards.set(job.id, card);
     if (announce && moved) this.#options.onJob?.(job);
+  }
+  #full(job: SuiteJob): SuiteJob {
+    return this.#summaries.has(job.id) ? (JSON.parse(this.#store.suiteJob(job.id)!) as { job: SuiteJob }).job : job;
   }
   /** Latest submission by item or branch, reconstructed once at startup and maintained on saves. */
   latest(item: string, branch: string | null): VerifyResult | null {
@@ -418,10 +434,12 @@ export class Suites {
   classify(id: string, cause: string, note: string, by: string, authorize: () => void): { id: string; cover: import('../protocol.ts').CoverRecord } {
     if (this.#closed) throw new Error('hub is closing');
     authorize();
-    const job = this.#jobs.find(job => job.id === id);
-    if (!job) throw new Error(`no suite named ${id}`);
+    const summary = this.#jobs.find(job => job.id === id);
+    if (!summary) throw new Error(`no suite named ${id}`);
+    const job = this.#full(summary);
     job.cover = classifyCover(job, cause, note, by, this.#clock.now().toISOString());
     this.#save(job);
+    summary.cover = job.cover;
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
@@ -683,22 +701,24 @@ export class Suites {
       const landing = this.#options.taskLanding?.(job.item);
       if (!landing || landing.base !== 'dev' || landing.tip !== job.head || landing.branch !== job.branch) continue;
       // Backfill retained pre-upgrade receipts once; future runs store proof at reporting.
-      if (!job.loadProofs) {
+      const full = this.#full(job);
+      if (!full.loadProofs) {
         const artifact = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
-        job.loadProofs = await retainedLoadProofs(artifact?.path ?? job.log).catch(() => []);
-        this.#save(job);
+        full.loadProofs = await retainedLoadProofs(artifact?.path ?? job.log).catch(() => []);
+        this.#save(full);
       }
-      for (const identity of job.loadProofs) known.add(identity);
+      for (const identity of full.loadProofs) known.add(identity);
     }
     return [...known].sort();
   }
   async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
-    const stage = this.#jobs.findLast(job => (occasion === 'batch'
+    const summary = this.#jobs.findLast(job => (occasion === 'batch'
       ? job.occasion === 'stage' && job.integrated && job.branch === 'dev' || job.occasion === 'batch' && job.batch
       : job.occasion === occasion && job.integrated && job.branch === 'dev')
       && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
       && job.reported && job.outcome?.code === 0);
-    if (!stage) return { run: null, tests: [] };
+    if (!summary) return { run: null, tests: [] };
+    const stage = this.#full(summary);
     if (!stage.timingIdentities) {
       let pending = this.#stageReads.get(stage.id);
       if (!pending) {
@@ -721,7 +741,7 @@ export class Suites {
   #cached(tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
+    const job = this.#jobs.findLast(j => j.tree === tree && JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && sameSuiteSelection(this.#full(j).selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.webPhase?.status === 'not-run' || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     if (!receiptExecutionMatches(job, { occasion, executor: requiredExecutor })) return undefined;
@@ -1475,7 +1495,7 @@ export class Suites {
     if (!job?.reported || !job.outcome || !job.artifact) throw new Error(`suite ${id} has no collected receipt`);
     const artifact = this.#store.resolveArtifact(job.artifact);
     if (!artifact) throw new Error(`suite ${id} log artifact unavailable`);
-    return { job: structuredClone(job), log: await this.evidence(job) };
+    return { job: structuredClone(this.#full(job)), log: await this.evidence(job) };
   }
   #cacheEvidence(id: string, text: string): string {
     this.#evidence.delete(id); this.#evidence.set(id, text);
@@ -1503,8 +1523,12 @@ export class Suites {
     }
     return pending;
   }
+  /** Automatic controllers search facts; full receipts require an explicit id. */
+  findRun(predicate: (job: Readonly<SuiteRunFacts>) => boolean): Readonly<SuiteRunFacts> | undefined {
+    return this.#jobs.find(predicate);
+  }
   status(includeFinished = true): SuiteStatus[] {
-    return this.#jobs.filter(job => includeFinished || job.state !== 'finished').map(job => ({
+    return this.#jobs.filter(job => includeFinished || job.state !== 'finished').map(job => this.#full(job)).map(job => ({
       ...(job.devT3Probe ? { devT3Probe: job.devT3Probe } : {}),
       ...(job.batch ? { batch: job.batch } : {}),
       ...(job.cover ? { cover: job.cover } : {}),

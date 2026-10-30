@@ -7411,6 +7411,29 @@ new ownership. The existing incomplete-cleanup warning remains if EOF is absent;
 unidentifiable processes survive and the queue moves on. This is local worker
 cleanup; droplet cancellation retains its executor-owned release path.
 
+### Suite archive startup memory
+
+Finished suite receipts stay in `meta` under `suite-job:<id>` in the previous
+JSON shape. A SQLite summary index holds scheduler facts, compact selection
+flags and shard outcomes without execution plans, identity lists or lease
+resources. Startup reads this index, loading full records only for unfinished
+reporting, cleanup or accounting recovery. The first read backfills legacy
+records inside SQLite; later starts reuse the checkpoint. Persistent triggers
+maintain summaries even when an older hub writes the original records.
+Explicit history/status and receipt requests read full records by id; compact
+status, queue durations, recent covers and heartbeat digests use summaries.
+Automatic merge-batch and dev-T3 probe searches use `Suites.findRun` summary
+facts, then request a full receipt only for the selected id. Legacy admission
+and completion estimates are repaired from summary/message facts and patched
+inside SQLite without decoding plans; the timing repair survives reopening.
+Original JSON strings are not retained alongside decoded scheduler records.
+
+`node hub/scripts/measure-suite-history.ts` reports a short synthetic startup
+measurement in a disposable fixture; `--help` describes its scope. It is report
+mode only and supplies no suite or live-scale memory evidence. Live-scale memory
+comparisons use the T-1467 memory probe with a Coordinator measurement slot.
+No archive retention or deletion policy is introduced.
+
 ### Offline memory measurement
 
 `node hub/test/measure-memory.ts --help` describes the manual Mac startup probe.

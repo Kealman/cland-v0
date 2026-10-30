@@ -926,18 +926,21 @@ guide owns process-kill coverage; apply throughput thresholds in the external
 measurement probe, not as wall-clock assertions in suite tests. No role clause
 or CLI permission is added.
 
-For startup journal selection, use the bounded input-work and prior synchronous
-selection controls in `docs/agents/tests/hub-test-journal-subagents.test.ts.md`.
-Keep one in-flight scan per path, preserve escaped/unterminated records and leave
-CLI/wire shapes unchanged.
+For startup history changes, use the suite summary/by-id and recovery controls
+in `docs/agents/tests/hub-test-suite-persistence.test.ts.md` and the journal's
+bounded input-work/prior-selection controls in
+`docs/agents/tests/hub-test-journal-subagents.test.ts.md`. Preserve legacy full
+receipt storage and history replies, one in-flight journal scan per path, and
+escaped or unterminated records. Keep CLI/wire shapes unchanged.
 
 For hub memory investigations, use `hub/test/measure-memory.ts --plan` before a
 Coordinator-granted local measurement slot. Follow
 `docs/agents/tests/hub-test-measure-memory.test.ts.md`: sparse artifact bodies,
 sealed child, independent swap supervisor, startup-only coarse allocation
-sampling and per-stage counts. Name each checkpoint and any unexecuted later
-stages; require the IPC stop outcome plus native close. Publish aggregate
-analysis only, distinguish sampled allocation from retained size/RSS, and delete
+sampling and per-stage counts. Report synthetic and copied live-scale evidence
+separately. Name each checkpoint and any unexecuted later stages; require the IPC
+stop outcome plus native close. Publish aggregate analysis only, distinguish
+sampled allocation from retained size/RSS, and delete
 any raw snapshots by literal path before review. For payload attribution without
 a hub run, use `measure-history-storage.ts` on its fresh disposable backup and
 publish only aggregate field/row sizes. Existing role clauses cover both flows;

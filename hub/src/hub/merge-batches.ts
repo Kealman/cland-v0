@@ -138,10 +138,10 @@ export class MergeBatches {
       batch = { id: randomUUID(), members: entries };
       this.#save(batch);
     }
-    const admitted = this.suites.status().find(job => job.id === batch!.run || job.batch?.id === batch!.id && !job.batch.diagnostic);
+    const admitted = this.suites.findRun(job => job.id === batch!.run || job.batch?.id === batch!.id && !job.batch.diagnostic);
     if (admitted && !batch.run) { batch.run = admitted.id; this.#save(batch); }
     // A cancellation cannot replace the candidate checkout under a live worker.
-    if (admitted && !admitted.reported || this.suites.status().some(job => job.batch?.id === batch!.id && !job.reported)) return;
+    if (admitted && !admitted.reported || this.suites.findRun(job => job.batch?.id === batch!.id && !job.reported)) return;
     // Retained failures cannot hold a batch after every member has finished.
     // Keep this after the worker barrier: cleanup must not remove a live checkout.
     if (batch.members.every(entry => batch!.completed?.includes(entry.item) || batch!.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) {
@@ -160,14 +160,14 @@ export class MergeBatches {
     if (this.#closed) return;
     if (!batch.run) {
       // The durable batch id binds a crash between Suites admission and this checkpoint.
-      const prior = this.suites.status().find(job => job.batch?.id === batch!.id && !job.batch.diagnostic);
+      const prior = this.suites.findRun(job => job.batch?.id === batch!.id && !job.batch.diagnostic);
       if (!prior) await this.boundary.checkout(batch.candidate);
       const run = prior ?? await this.suites.start({ mode: 'all', cwd: batch.candidate.cwd, topic: 'agents', to: [],
         actor: null, occasion: 'batch', batch: { id: batch.id, members: batch.members }, ...(batch.planFrom ? { batchPlanFrom: batch.planFrom } : {}), priority: 0, fresh: true }, () => {});
       if (!('id' in run)) throw new Error('batch needs an admitted suite');
       batch.run = run.id; this.#save(batch);
     }
-    const job = this.suites.status().find(job => job.id === batch!.run);
+    const job = this.suites.findRun(job => job.id === batch!.run);
     if (!job?.reported || !job.outcome || this.#closed) return;
     if (job.tree !== batch.candidate.tree || job.head !== batch.candidate.head) throw new Error('batch suite does not match its prepared candidate');
     const evidence = await this.suites.receipt(job.id);
@@ -365,7 +365,7 @@ export class MergeBatches {
     if (job.result === 'inconclusive') { this.#holdDiagnostic(batch, job); return false; }
     if (job.result) return true;
     if (!job.run) {
-      const prior = this.suites.status().find(run => run.batch?.id === batch.id && run.batch.diagnostic?.key === job.key);
+      const prior = this.suites.findRun(run => run.batch?.id === batch.id && run.batch.diagnostic?.key === job.key);
       if (!prior) await this.boundary.checkout(job.candidate);
       if (this.#closed) return false;
       const run = prior ?? await this.suites.start({ mode: 'all', cwd: job.candidate.cwd, topic: 'agents', to: [], actor: null,
@@ -373,7 +373,7 @@ export class MergeBatches {
       if (!('id' in run)) throw new Error('file job needs an admitted suite');
       job.run = run.id; this.#save(batch);
     }
-    const status = this.suites.status().find(run => run.id === job.run);
+    const status = this.suites.findRun(run => run.id === job.run);
     if (!status?.reported || this.#closed) return false;
     const { job: receipt, log } = await this.suites.receipt(job.run);
     if (receipt.tree !== job.candidate.tree || receipt.head !== job.candidate.head) throw new Error('file job does not match its prepared candidate');

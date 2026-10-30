@@ -1,3 +1,4 @@
+import { suiteHistoryProjection } from './suite-history.ts';
 import type { ApprovalOutcome } from '../protocol.ts';
 import { appendRun, foldLine, joinsRun, runDay, type RunFacts } from './thread-runs.ts';
 import { parseItemReference } from '../tracker/prefixes.ts';
@@ -26,6 +27,7 @@ export type ReleasedDigest = { trigger: string; session: string; notes: string[]
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+create table if not exists suite_job_summaries (key text primary key, value text not null);
 create table if not exists session_credentials (
   session_id text primary key, credential text not null
 );
@@ -434,6 +436,16 @@ export class Store implements HygieneMemory {
     });
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
+    // Persisted triggers also maintain the index when an older hub writes meta.
+    this.#db.exec(`create trigger if not exists suite_summary_insert after insert on meta when new.key glob 'suite-job:*' begin
+      insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
+    end;
+    create trigger if not exists suite_summary_update after update of value on meta when new.key glob 'suite-job:*' begin
+      insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
+    end;
+    create trigger if not exists suite_summary_delete after delete on meta when old.key glob 'suite-job:*' begin
+      delete from suite_job_summaries where key = old.key;
+    end;`);
     this.remotes = new RemoteState(this.#db);
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
@@ -734,6 +746,27 @@ export class Store implements HygieneMemory {
   setMeta(key: string, value: string): void {
     this.#prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
   }
+
+  /** Legacy archives are projected within SQLite, never returned to V8 in full.
+   * Each row is checkpointed; subsequent reads visit only the summary index. */
+  suiteJobSummaries(): string[] {
+    if (!this.meta('suite-summary-index-v1')) this.#transaction(() => {
+      this.#db.exec(`insert or ignore into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key glob 'suite-job:*'`);
+      this.setMeta('suite-summary-index-v1', '1');
+    });
+    return (this.#prepare('select value from suite_job_summaries').all() as Row[]).map(row => row.value as string);
+  }
+
+  /** Legacy timing repair patches only compact facts inside SQLite. Plans never
+   * cross into V8 and the same durable trigger refreshes the summary atomically. */
+  repairSuiteJobTiming(id: string, timing: { admittedAt?: string | undefined; completedAt?: string | undefined; waitMs?: number | null | undefined; runMs?: number | null | undefined; timingEstimated?: boolean | undefined }): void {
+    const fields = Object.entries(timing).filter(([, value]) => value !== undefined);
+    if (!fields.length) return;
+    this.#prepare(`update meta set value = json_set(value, ${fields.map(() => '?, json(?)').join(', ')}) where key = ?`)
+      .run(...fields.flatMap(([key, value]) => [`$.job.${key}`, JSON.stringify(value)]), `suite-job:${id}`);
+  }
+
+  suiteJob(id: string): string | null { return this.meta(`suite-job:${id}`); }
 
   /** Finished suites are separate rows, never part of the frequently rewritten active snapshot. */
   suiteJobHistory(): string[] {

@@ -173,7 +173,7 @@ if (args.includes('--help')) {
     };
     // Probe only: production Store and wire contracts stay unchanged. Record
     // first-call startup boundaries and counts without exporting row contents.
-    for (const method of ['artifacts', 'topics', 'allSubscriptions', 'inboxMessages', 'inboxWaits', 'pendingApprovals', 'suiteJobHistory', 'meta'] as const) {
+    for (const method of ['artifacts', 'topics', 'allSubscriptions', 'inboxMessages', 'inboxWaits', 'pendingApprovals', 'suiteJobHistory', 'suiteJobSummaries', 'meta'] as const) {
       const original = Store.prototype[method] as (...values: unknown[]) => unknown;
       const seen = new Set<string>();
       t.mock.method(Store.prototype, method, function(this: Store, ...values: unknown[]) {

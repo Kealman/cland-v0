@@ -91,6 +91,22 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
   });
   syncBuiltinESMExports();
   onCleanup(t, () => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  let summaryRows = 0, summaryBytes = 0, hydratedJobs = 0, fullHistoryReads = 0;
+  const summaries = Store.prototype.suiteJobSummaries, fullJob = Store.prototype.suiteJob, history = Store.prototype.suiteJobHistory;
+  t.mock.method(Store.prototype, 'suiteJobSummaries', function(this: InstanceType<typeof Store>) {
+    const rows = summaries.call(this);
+    summaryRows += rows.length;
+    summaryBytes += rows.reduce((total, row) => total + Buffer.byteLength(row), 0);
+    return rows;
+  });
+  t.mock.method(Store.prototype, 'suiteJob', function(this: InstanceType<typeof Store>, id: string) {
+    hydratedJobs++;
+    return fullJob.call(this, id);
+  });
+  t.mock.method(Store.prototype, 'suiteJobHistory', function(this: InstanceType<typeof Store>) {
+    fullHistoryReads++;
+    return history.call(this);
+  });
   const cpuStarted = process.cpuUsage();
   const started = performance.now();
   const hub = await projectHub(t, root, {}, { clock: new FakeClock(),
@@ -116,9 +132,13 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
       t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms wall; ${cpuMs.toFixed(1)} ms process CPU; hang guard 30000 ms wall; ${process.platform}/${process.arch}; embedded projectHub`);
       t.diagnostic(`startup steps (wall ms): ${JSON.stringify(steps)}`);
       const maxReads = Math.max(...reads.values());
-      t.diagnostic(`startup work: ${checkpoints.length} checkpoints; ${checkpoints.reduce((a, b) => a + b, 0)} jobs visited; ${recomputes} explorer batches; ${reads.size} item files; ${[...reads.values()].reduce((a, b) => a + b, 0)} reads; max ${maxReads} reads/item`);
+      t.diagnostic(`startup work: ${checkpoints.length} checkpoints; ${checkpoints.reduce((a, b) => a + b, 0)} full jobs checkpointed; ${summaryRows} summary rows / ${summaryBytes} bytes; ${hydratedJobs} full jobs hydrated; ${recomputes} explorer batches; ${reads.size} item files; ${[...reads.values()].reduce((a, b) => a + b, 0)} reads; max ${maxReads} reads/item`);
       assert.equal(checkpoints.length, 1, 'retained suite history is checkpointed once, independent of stopped sessions');
-      assert.deepEqual(checkpoints, [1645], 'one checkpoint visits each retained suite once');
+      assert.equal(summaryRows, 1645, 'startup reads every retained suite as a summary exactly once');
+      assert.ok(summaryBytes > 0 && summaryBytes <= 1645 * 2048, `startup summary bytes ${summaryBytes}; bound 2048 per fixture row`);
+      assert.equal(hydratedJobs, 0, 'finished suite plans are never hydrated at startup');
+      assert.equal(fullHistoryReads, 0, 'startup never materializes full archive history');
+      assert.deepEqual(checkpoints, [0], 'the single active checkpoint serializes no finished full records');
       assert.ok(recomputes > 0 && recomputes <= 4, `startup recomputed explorer ${recomputes} times; bound 4 batches`);
       assert.equal(reads.size, 1004, 'the complete durable tracker was read');
       assert.ok(maxReads <= 2, `startup read an item ${maxReads} times; bound 2 reads/item`);

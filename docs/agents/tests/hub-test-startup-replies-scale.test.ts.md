@@ -3,16 +3,21 @@
 `startup-replies-scale.test.ts` retains the eight byte assertions on 1,000 tasks,
 8,163 artifacts, 200 General messages and 200 event records. It also restores
 1,645 completed suite receipts, 217 stopped sessions, four plans with 250 children
-each, and 800 closed topics. T-1094 enforces deterministic work through the first
-completed status socket reply, excluding fixture creation: one suite checkpoint
-visits the 1,645 retained jobs once, at most four explorer recomputation batches
-run, and all 1,004 item files are read at most twice each (the initial scan plus
-plan validation). Native `readFileSync` and `readFile` observers are armed before
-startup; the existing explorer log and `verification-checkpoint { jobs }` completion
-log count work even when cached serialized snapshots avoid database writes.
-The checkpoint receipt is emitted after its transaction and in-memory publication;
-it counts jobs visited, not rows changed. Reintroducing per-stopped-session
-`#save()` calls must fail the checkpoint count, independent of the machine clock.
+each, and 800 closed topics. Through the first completed status socket reply,
+excluding fixture creation, T-1476 observes Store reads before startup and asserts
+exactly 1,645 summary rows, at most 2,048 returned UTF-8 bytes per fixture row in
+aggregate, zero full-job hydrations and zero full-history reads. The single
+active checkpoint serializes zero finished full records. This replaces the old
+full-receipt visit expectation; it preserves the one-checkpoint guard independent
+of 217 stopped sessions. SQLite's native summary backfill is outside returned
+JavaScript byte counts; this seeded fixture already has its summary index.
+
+At most four explorer recomputation batches run, and all 1,004 item files are
+read at most twice each (initial scan plus plan validation). Native readFileSync,
+readFile and Store observers are armed before startup. The existing
+verification-checkpoint completion follows its transaction/in-memory publication;
+it counts full records visited for serialization, not summary rows or rows
+changed. Reintroducing per-stopped-session saves must fail the checkpoint count.
 
 First-status process CPU, wall time, work counts and named startup-step wall
 durations remain diagnostic. The attempted fixed CPU budget failed on Linux at
@@ -42,7 +47,8 @@ project. The synthetic T2 case in `hub-status-component.test.ts` and this pinned
 T3 case call `startup-replies-fixture.ts` for identical eight framed UTF-8 reply
 checks, first-item/per-reply/total caps, count checks and individual/aggregate
 oversize controls. The first scale case above keeps all 1,004 generated item
-files and every work/byte assertion unchanged. Snapshot and Lua guards remain
+files and every byte cap; its suite work assertions now enforce summary-only
+startup as described above. Snapshot and Lua guards remain
 separate: the default Lua case uses this corpus, while the T4 Lua soak checks
 every live tracker body. The manual `nvim/test/startup-budget-probe.ts` retains
 its explicit full-copy source and five-second startup target.

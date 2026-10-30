@@ -79,7 +79,7 @@ export class DevT3Probes {
     }
     const absence = this.store.meta(`${key}:absence`);
     if (absence) return JSON.parse(absence) as ProbeReceipt;
-    let job = this.suites.status().find(job => job.devT3Probe?.key === key);
+    let job = this.suites.findRun(job => job.devT3Probe?.key === key);
     if (!job) {
       if (!await this.repository.contains(head, file)) {
         const receipt: ProbeReceipt = { head, file, tree: candidate.tree, result: 'absent', run: null, artifact: null, path: null, reason: 'file absent from pinned commit; not executed' };
@@ -91,9 +91,9 @@ export class DevT3Probes {
         const run = await this.suites.start({ mode: 'all', cwd: candidate.cwd, topic: 'agents', to: ['coordinator'], actor: null,
           devT3Probe: { key, files: [file] }, executor: 'droplet', priority: 10, fresh: true }, () => {});
         if (!('id' in run)) throw new Error('probe needs an admitted suite');
-        job = this.suites.status().find(job => job.id === run.id)!;
+        job = this.suites.findRun(job => job.id === run.id)!;
       } catch (error) {
-        job = this.suites.status().find(job => job.devT3Probe?.key === key);
+        job = this.suites.findRun(job => job.devT3Probe?.key === key);
         if (!job) { await this.repository.remove(candidate); throw error; }
       }
     }

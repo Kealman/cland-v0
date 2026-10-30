@@ -55,7 +55,8 @@ log boundary to the same shared in-flight reader. Its journal-selection-complete
 receipt records selected startup records, exact input bytes and the reader’s
 conservative peak-buffer work fact before tracker startup. No second scan runs.
 The whole-read-returned checkpoint appears only on the earlier synchronous path. Historical measurements retain their original source head. Probe-only method wrappers record first-call tracker, artifact, topic,
-subscription, inbox and suite-history row counts; notice counts are cumulative
+subscription and inbox row counts, plus suiteJobHistory and suiteJobSummaries
+rows separately; notice counts are cumulative
 calls, not input journal counts. Stage profiles remain private. vmmap failure is
 unavailable, not zero. Array buffers are included in external memory; never add
 them twice. RSS-minus-heap/external is an approximation, not measured SQLite
