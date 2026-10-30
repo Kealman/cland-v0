@@ -3,7 +3,7 @@ id: T-1467
 kind: task
 title: Measure what holds the hub's memory at startup and at rest
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1221
 branch: t/T-1467-measure-what-holds-the-hub-s-memory-at
 created: 2026-10-30T06:38:36.583Z
-updated: 2026-10-30T07:49:52.125Z
+updated: 2026-10-30T07:53:21.692Z
 ---
 
 ## Summary
@@ -34,9 +34,12 @@ Context: hub 88459 (v0.3.0) held 3.0 GB RSS 80 s after start on this project (ab
 
 ## Acceptance criteria
 
-- [ ] C1. The script runs a sealed hub on a scratch copy of the live .cland state, never the live hub, stops it at readiness, and records RSS, heap and external memory at a checkpoint after each startup stage (journal read, each history replay, tracker, artifact index, subscriptions, inbox) with record counts; a guard stop leaves a stop receipt.
-- [ ] C2. A sampling heap profile of startup attributes allocations to call stacks, and an artifact names the top allocation sites by size per startup stage.
-- [ ] C3. The artifact proposes a fix per dominant startup allocator with an estimated saving; retained-at-rest analysis and the RSS budget are deferred to the fix tickets.
+- [x] C1. The script runs a sealed hub on a scratch copy of the live .cland state, never the live hub, stops it at readiness, and records RSS, heap and external memory at a checkpoint after each startup stage (journal read, each history replay, tracker, artifact index, subscriptions, inbox) with record counts; a guard stop leaves a stop receipt.
+  - done: impl-1467 · 2026-10-30T07:53:00.185Z
+- [x] C2. A sampling heap profile of startup attributes allocations to call stacks, and an artifact names the top allocation sites by size per startup stage.
+  - done: impl-1467 · 2026-10-30T07:53:00.270Z
+- [x] C3. The artifact proposes a fix per dominant startup allocator with an estimated saving; retained-at-rest analysis and the RSS budget are deferred to the fix tickets.
+  - done: impl-1467 · 2026-10-30T07:53:00.637Z
 
 ## Comments
 

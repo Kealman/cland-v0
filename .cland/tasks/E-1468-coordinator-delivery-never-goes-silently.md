@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T07:49:58.701Z
-updated: 2026-10-30T07:49:58.701Z
+updated: 2026-10-30T07:54:18.425Z
 ---
 
 ## Goal
@@ -33,3 +33,21 @@ The human asked for the investigation and a fix (cland-impl, 07:44Z): «разо
 - [ ] C1. The incident's sequence is replayed in a test: idle hook, then a poll reporting busy, then a human send, then idle. The message is injected within 60 s.
 - [ ] C2. A relaunch leaves one Claude Code process for the session, and a spoke from an earlier launch is refused.
 - [ ] C3. A live session holding a human delivery for over 5 minutes is shown as `deaf`, the human is told, and `cland session retry` releases it.
+
+## Plan
+
+```yaml
+stages:
+  - name: delivery and launch fixes
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1469
+        - T-1470
+        - T-1473
+        - T-1472
+        - T-1475
+      - - T-1471
+      - - T-1474
+```

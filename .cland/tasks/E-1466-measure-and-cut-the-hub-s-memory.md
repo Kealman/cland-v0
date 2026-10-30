@@ -10,7 +10,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T06:38:36.448Z
-updated: 2026-10-30T06:38:47.113Z
+updated: 2026-10-30T07:54:17.006Z
 ---
 
 ## Goal
@@ -33,10 +33,18 @@ The hub's resident memory on this project drops from about 3 GB to a measured bu
 
 ```yaml
 stages:
-  - name: measure
+  - name: measure and startup fixes
     qa:
       scope: none
       when: after-stage
     lanes:
       - - T-1467
+      - - T-1476
+      - - T-1477
+  - name: at-rest growth and budget
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1478
 ```
