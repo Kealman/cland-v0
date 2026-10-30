@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T13:33:08.294Z
+updated: 2026-10-30T19:06:52.394Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -478,3 +478,7 @@ Hub restart #63 2026-10-30 11:00:06Z (stand-in, coord go 11:01Z): first hub on d
 ### coord · 2026-10-30T13:33:08.294Z
 
 2026-10-30 13:32Z follow-up: rev-26 confirms the T-1485 source3 request (msg 54536f6e, 12:43:24Z, to role reviewer) never reached it; its last delivered T-1485 request was 3295dd678, settled at 12:38Z. The role-addressed request stayed undelivered for 49 minutes with four idle reviewers. Candidate regression of T-1426.
+
+### human · 2026-10-30T19:06:52.394Z
+
+Hub restart #64 (stand-in, coord go, held gap): dev a10718ea5, first hub with T-1476 + T-1477 and T-1460's footer live. Old hub 17875 stopped 19:04:47Z at RSS 1.9 GB / footprint 4.3 GB (8 h uptime, peak footprint 7.2 GB). New hub 79176 port 63322 web 56935, listening 19:04:59Z, serving 19:05:27Z, stop→serve 41 s, nice 0, 8 GB heap + DO token in env. Coord: bridge-connected 19:05:28Z → coordinator-filled → injected 19:05:49Z, one bridge. Memory at +50 s: RSS 1,196,000 KB, footprint 969 MB (#63 had 4,796 MB at +50 s). +10 min figure follows. Queue empty, doctor 33 ok / 5 warn / 0 fail.

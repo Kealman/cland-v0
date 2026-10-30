@@ -2,8 +2,8 @@
 id: T-1471
 kind: task
 title: One harness process per Claude Code launch
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1223
 branch: t/T-1471-one-harness-process-per-claude-code
 created: 2026-10-30T07:50:17.744Z
-updated: 2026-10-30T17:27:33.496Z
+updated: 2026-10-30T19:13:52.621Z
+closed: 2026-10-30T19:13:52.621Z
 ---
 
 ## Summary
@@ -27,10 +28,13 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 
 - [x] C1. `session resume --relaunch` on a Claude Code row runs `claude stop <previous harnessId>` even when the recorded pid is gone or the row is `exited`.
   - done: impl-1471 · 2026-10-30T17:25:20.416Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1471-evidence-3 · 2026-10-30T19:06:52.469Z · commit aeca6321867912172e41b65f6f99fdbe34133f6e
 - [x] C2. Each launch writes its own settings and MCP files with a new launch id; a spoke, hook or bridge carrying an earlier launch id is refused with "belongs to an earlier launch".
   - done: impl-1471 · 2026-10-30T17:25:20.520Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1471-evidence-3 · 2026-10-30T19:06:52.469Z · commit aeca6321867912172e41b65f6f99fdbe34133f6e
 - [x] C3. A second spoke whose hooks carry a different harness session id than the row logs `duplicate-harness` and posts one Agents notice naming both job ids and pids.
   - done: impl-1471 · 2026-10-30T15:43:51.407Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1471-evidence-3 · 2026-10-30T19:06:52.469Z · commit aeca6321867912172e41b65f6f99fdbe34133f6e
 
 ## Comments
 
@@ -186,3 +190,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source7 clear: explicit shared recorded-settings reader migrates all13 failed native consumers; rollback fault hits immutable generation and preserves original native/credential/peer/bytes assertions plus failed-generation removal. No transport inference, negative-control relaxation or own production generation/freshness change. Clean authorized dev merge preserves task seams. Coordinatora4d16807 exact8.967s allowance matches six original samples/openE-880/Oct30–Nov6, no baseline/budget/assertion/timeout change. Local A-14609/A-14610 summaries report171pass/1Linuxskip, not configured Linux proof; original A-14603/A-14606 remain failed. C1–C3 final runtime pending Coordinator all at frozen aeca63218; no Reviewer workloads.
+
+### rev-26 · 2026-10-30T19:06:52.469Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1471-evidence-3
+commit: aeca6321867912172e41b65f6f99fdbe34133f6e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14625 final original A-14624/c16c9469 clear at exact source7 head:5905ordinarypass/8skip+685loadpass,0fail/cancel/todo; all paired,T0–T3/Webgreen,T4unrun. All13 former regressions pass. C1native previous-job stop5.611756211s+5/5load under approved8.967s; C2immutable settings/generation/actual-frame revocation and C3exactly-one duplicate log/Agents notice with both controlled job ids/pids pass. No hard duration-budget line; report-only diagnostics/skips and no-provenance-footer limitation retained. C1–C3verified. Old failures retained; no Reviewer workload.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-30T19:13:52.621Z
+
+Merged 9de7b0c0683044a798cdb0db21c0831b091ac89a onto dev.
