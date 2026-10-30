@@ -200,6 +200,7 @@
     "hub/test/hook-bridge-doctor.test.ts": "T3",
     "hub/test/hub-priority.test.ts": "T2",
     "hub/test/hub-status-component.test.ts": "T2",
+    "hub/test/human-hold.test.ts": "T1",
     "hub/test/human-marks.test.ts": "T2",
     "hub/test/human-routing.test.ts": "T2",
     "hub/test/hygiene.test.ts": "T2",

@@ -10,7 +10,7 @@ import { artifactEntry } from '../hub/artifact-folder.ts';
 //
 //   delivered → inject: when a session's spoke accepts a message (stage `delivered`), the session's adapter
 //   injects it; the adapter's confirmation moves it to `injected`. An unconfirmed inject stays `delivered`, is
-//   logged once per episode, and is retried at idle with capped backoff (or immediately on reconnect).
+//   logged once per episode, and is retried on busy-to-idle with capped backoff (or on reconnect).
 //
 //   state: signals from inside the session (`session.signal`, sent by `cland hook`) and the adapter's own poll.
 //   A signal older than the last one applied is dropped; a polled one counts only while no push signal came
@@ -115,6 +115,8 @@ export class Sessions {
   readonly #adapters = new Map<string, HarnessAdapter>();
   /** By session id: when the last applied signal happened, and when the last push signal arrived. */
   readonly #lastAt = new Map<string, number>();
+  readonly #stateObservation = new Map<string, { state: SessionState; source: string; at: number; push: boolean }>();
+  readonly #heldDeliveries = new Map<string, { timer: ClockTimer; ids: Set<string> }>();
   readonly #lastPush = new Map<string, number>();
   /** Injects in flight, `<session id>:<message id>`, with when each went out: a retry never doubles one. A
    *  retry asked for while one is in flight — by an idle the harness fired after it went out, or a bridge
@@ -209,7 +211,7 @@ export class Sessions {
         this.#table.put({ ...current, item: request.item ?? null });
         // Reserve the handoff even when the caller sends the review request separately.
         if (!brief) this.#core.store.setMeta(`pool-handoff:${current.sessionId}`, request.item!);
-        this.#core.setSessionState(current.sessionId, current.name, 'busy', 'crew reuse');
+        this.#setObservedState(current.sessionId, current.name, 'busy', 'crew reuse');
         if (brief) this.#core.deliverReuseBrief(brief);
         this.#log({ event: 'session-reused', session: current.name, requested: request.name, sessionId: current.sessionId, role, item: request.item });
         return this.view(this.#table.bySessionId(current.sessionId)!);
@@ -418,6 +420,7 @@ export class Sessions {
         this.#scheduleArchive();
       }
     });
+    this.#core.onHumanDeliveryCheck((id, message) => this.#humanDeliveryBlocked(id, message));
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     this.#core.onWithdrawalCheck((messageId, names) => {
       for (const name of names) {
@@ -807,6 +810,7 @@ export class Sessions {
         if (timer) this.#core.clock.clearTimeout(timer);
         this.#usageTimers.delete(p.sessionId);
         this.#lastAt.delete(p.sessionId);
+        this.#stateObservation.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
       }
       this.#table.removeBatch(rows);
@@ -1162,6 +1166,7 @@ export class Sessions {
         }
         if (reservation) this.#core.launchSettled(request.name);
         this.#lastAt.delete(p.sessionId);
+        this.#stateObservation.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
         this.#log({ event: 'session-launched', ...(p.launchPolicy ? { policy: p.launchPolicy } : {}), account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
@@ -1295,7 +1300,7 @@ export class Sessions {
           const current = this.#table.bySessionId(p.sessionId) ?? p;
           this.#table.update(current.name, { status: 'stopped', cleanupItem: this.#stopItem(current) });
           if (this.#env.CLAND_TEST_CRASH_AT === 'stop-recorded') process.kill(process.pid, 'SIGKILL');
-          this.#core.setSessionState(p.sessionId, current.name, 'unknown', 'stopped');
+          this.#setObservedState(p.sessionId, current.name, 'unknown', 'stopped');
           this.#log({ event: 'session-stopped', session: current.name, harness: p.harness });
           this.#vacate(current, 'its session was stopped');
           return this.view(this.#process(current.name));
@@ -1515,7 +1520,8 @@ export class Sessions {
       if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at }, false);
       // A reconnect can acknowledge deliveries while the row is still stopped.
       // Publication must retry them even when resume reports the same idle state.
-      this.#retry(process, at);
+      this.#recoverHeld(process);
+      this.#retry(process, at, false, true);
       return { found: true, process: this.view(process), ...work };
     };
     const settled = resumed(() => {
@@ -1530,6 +1536,7 @@ export class Sessions {
           // A missing native listing/socket is not an OS exit. Keep the original PID identity so
           // reconnect and explicit stop can recover it; stop still verifies ownership itself.
           adapter.watch(current);
+          this.#recoverHeld(current);
           this.#log({ event: 'session-resume-unavailable', session: current.name, harness: current.harness, pid: current.pid, reason: r.reason });
         } else if (p.status === 'running') this.#exited(p.sessionId, r.reason);
         if (reservation && desiredRole) {
@@ -1726,6 +1733,16 @@ export class Sessions {
     }
   }
 
+  /** Every Sessions state writer records the provenance of the same episode. */
+  #setObservedState(sessionId: string, name: string, state: SessionState, source: string, push = false, approvalCommand?: string): boolean {
+    const previous = this.#stateObservation.get(sessionId);
+    const repeatedPollBusy = !push && source === 'poll' && state === 'busy'
+      && this.#core.sessionState(sessionId) === 'busy' && previous?.state === 'busy'
+      && previous.source === 'poll' && !previous.push;
+    this.#stateObservation.set(sessionId, { state, source, at: repeatedPollBusy ? previous.at : this.#transportClock.now().getTime(), push });
+    return this.#core.setSessionState(sessionId, name, state, source, approvalCommand);
+  }
+
   #signal(sessionId: string, signal: StateSignal, push: boolean): boolean {
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return false;
@@ -1752,11 +1769,11 @@ export class Sessions {
     // only push signals order each other: a poll reads a snapshot, and a hook that started before it still counts
     if (push) this.#lastAt.set(sessionId, Math.max(signal.at, this.#lastAt.get(sessionId) ?? 0));
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
-    const changed = this.#core.setSessionState(sessionId, name, signal.state, signal.source, signal.approvalCommand);
-    // the next idle — a transition, not every poll that finds it idle — retries what was never confirmed
-    if (signal.state === 'idle' && changed) {
+    const changed = this.#setObservedState(sessionId, name, signal.state, signal.source, push, signal.approvalCommand);
+    // Every idle drains never-attempted work; only busy-to-idle retries attempted input.
+    if (signal.state === 'idle') {
       this.#core.flushQueued(name);
-      this.#retry(p, signal.at);
+      this.#retry(p, signal.at, false, current !== 'busy');
     }
     return changed;
   }
@@ -1876,7 +1893,7 @@ export class Sessions {
     this.#table.update(p.name, { status: 'exited', cleanupItem: this.#stopItem(p) });
     // journalled (`journal.ts`) and recorded in Agents as a death (`agents-topic.ts`)
     this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail, ...(reason ? { reason } : {}) });
-    this.#core.setSessionState(sessionId, p.name, 'unknown', 'process');
+    this.#setObservedState(sessionId, p.name, 'unknown', 'process');
     const retiredCoordinator = reason === 'retired' && this.#core.holderOf('coordinator') === p.name;
     this.#vacate(p, 'its harness exited');
     if (retiredCoordinator) this.#core.noticeInTopic('general', {
@@ -1941,13 +1958,61 @@ export class Sessions {
     this.#clearUnconfirmedMessage(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
   }
 
+  #humanDeliveryBlocked(sessionId: string, messageId: string): boolean {
+    if (this.#core.sessionState(sessionId) !== 'busy') return false;
+    const observation = this.#stateObservation.get(sessionId);
+    if (observation?.state === 'busy' && observation.source === 'poll' && !observation.push && this.#transportClock.now().getTime() - observation.at > 5 * 60_000) return false;
+    this.#holdRecheck(sessionId, messageId);
+    return true;
+  }
+
+  /** Configured recovery, after native discovery: retain supervision even without a native listing. */
+  #recoverHeld(p: HarnessProcess): void {
+    const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
+    this.#core.flushQueued(name);
+    for (const message of this.#core.store.uninjected(name)) this.#holdRecheck(p.sessionId, message.id);
+  }
+
+  #unattemptedDelivery(name: string, messageId: string): boolean {
+    return this.#core.store.deliveriesOf(messageId).some(d => d.session === name
+      && (d.state === 'queued' || d.state === 'delivered') && !d.injectionStarted);
+  }
+
+  /** Supervise only captured never-attempted identities; attempted work needs its existing retry trigger. */
+  #holdRecheck(sessionId: string, messageId: string): void {
+    if (this.#closed) return;
+    const process = this.#table.bySessionId(sessionId);
+    const recipient = this.#core.connectionOf(sessionId)?.name ?? process?.name;
+    if (!recipient || !this.#unattemptedDelivery(recipient, messageId)) return;
+    const existing = this.#heldDeliveries.get(sessionId);
+    if (existing) { existing.ids.add(messageId); return; }
+    const ids = new Set([messageId]);
+    const timer = this.#transportClock.setTimeout(() => {
+      this.#heldDeliveries.delete(sessionId);
+      const p = this.#table.bySessionId(sessionId);
+      if (this.#closed || !p || p.status !== 'running' || p.archivedAt) return;
+      const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
+      const pending = [...ids].filter(id => this.#unattemptedDelivery(name, id));
+      if (!pending.length) return;
+      const observation = this.#stateObservation.get(sessionId);
+      this.#log({ event: 'human-hold-recheck', session: name, sessionId, state: this.#core.sessionState(sessionId), source: observation?.source ?? 'unknown', ageMs: observation ? this.#transportClock.now().getTime() - observation.at : null });
+      this.#core.flushQueued(name);
+      this.#retry(p, undefined, false, true);
+      for (const id of pending) this.#holdRecheck(sessionId, id);
+    }, 60_000);
+    timer.unref();
+    this.#heldDeliveries.set(sessionId, { timer, ids });
+  }
+
   /** Called once at the hub's serving receipt, before native session recovery. */
   markServing(): void { this.#servingAt ??= this.#core.clock.now().getTime(); }
 
   /** Everything the session's spoke accepted and its adapter has not confirmed: injected again. */
-  #retry(p: HarnessProcess, at?: number, reconnected = false): void {
+  #retry(p: HarnessProcess, at?: number, reconnected = false, unattemptedOnly = false): void {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
-    for (const m of this.#core.store.uninjected(name)) this.#inject(p.sessionId, m.id, at, reconnected);
+    for (const m of this.#core.store.uninjected(name)) {
+      if (!unattemptedOnly || this.#unattemptedDelivery(name, m.id)) this.#inject(p.sessionId, m.id, at, reconnected);
+    }
   }
 
   /** `at`: when the idle that asks for this happened; an idle from before an inject in flight went out is no
@@ -1976,7 +2041,8 @@ export class Sessions {
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
     const message = this.#core.store.deliveryMessage(messageId, name);
     if (!message || this.#core.store.deliveriesOf(messageId).find(d => d.session === name)?.state !== 'delivered') return;
-    if (message.fromKind === 'human' && this.#core.sessionState(sessionId) === 'busy') return;
+    this.#holdRecheck(sessionId, messageId);
+    if (message.fromKind === 'human' && this.#core.humanDeliveryBlocked(sessionId, messageId)) return;
     if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && this.#core.sessionState(sessionId) !== 'idle') return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
@@ -2098,6 +2164,10 @@ export class Sessions {
 
   close(): void | Promise<void> {
     this.#closed = true;
+    for (const held of this.#heldDeliveries.values()) this.#transportClock.clearTimeout(held.timer);
+    this.#heldDeliveries.clear();
+    this.#stateObservation.clear();
+    this.#core.onHumanDeliveryCheck(null);
     for (const sessionId of this.#capacityRetries.keys()) this.#clearCapacityRetry(sessionId);
     this.#earlyLimitHits.clear();
     for (const sessionId of this.#unconfirmed.keys()) this.#clearUnconfirmed(sessionId);

@@ -3840,6 +3840,31 @@ An unfinalized launch identity is fenced against rename and role changes (assign
 - A retry asked for while an inject of the same message is still waiting for its confirmation (an `idle`, a bridge that connected) is made when that inject gives up, if the message still waits. A rename takes the session's `delivered` messages along, so their retry and confirmation find them. At a launch, the bridges that connected early are registered before the early signals are replayed.
 - A polled signal counts only while no push came for `CLAND_PUSH_TRUST_MS` (15 s), or while nothing is known yet. For Claude Code, after any accepted hook/mod state signal, a polled `busy` never changes state: background shells and agents also make `claude agents --json` report busy. A launch with no pushed state still accepts polled busy. Idle, waiting, unknown and liveness polling retain their existing behaviour; this exception does not change other adapters.
 
+#### Held-delivery rechecks
+
+Every accepted idle observation flushes queued deliveries and starts acknowledged
+work whose durable `injectionStarted` receipt is false, including when state
+remains idle. Attempted, unconfirmed work retains its busy-to-idle or reconnect
+retry trigger and capped backoff; a bare idle observation cannot replay it. While
+captured never-attempted deliveries remain queued or delivered, Sessions rechecks
+them every 60 seconds
+using its transport clock. `human-hold-recheck` records session identity, current
+state, source and `ageMs` (null when no observation exists). This supervision also
+covers agent reports; existing injection backoff and uncertain-delivery fences
+still apply. It stops on terminal delivery, stopped/archived sessions or hub close.
+
+Human busy gating at both socket delivery and adapter injection uses one policy.
+A poll-only busy episode older than five minutes no longer holds human input;
+repeated busy polls do not renew that episode. Accepted push state replaces its
+provenance, so pushed busy remains authoritative. This does not change displayed
+state or heartbeat gating. Bare cores without Sessions retain ordinary busy gating.
+Recovery seeds supervision from retained acknowledged work after native discovery,
+including an alive process whose native listing is unavailable, and excludes
+already-attempted work from the new idle/timer path. Every Sessions
+state writer records matching provenance; crew reuse starts a fresh busy episode.
+No new setting, command, wire field or role permission is required.
+
+
 Isolated fixtures can pass a complete `transportClock` through `serveProject` and
 `projectSessions` for hook/poll/injection timestamps, using the same clock for
 the adapter schedule. Omission retains native `realClock`, separately from core

@@ -428,6 +428,9 @@ export class HubCore {
   #drainingVerifierRequests = false;
   /** Sessions rejects recipients without an adapter-owned injection boundary. */
   #withdrawalRefusal: ((messageId: string, sessions: string[]) => string | null) | null = null;
+  /** Shared human-delivery policy installed by Sessions; bare cores retain busy gating. */
+  #humanDeliveryCheck: ((sessionId: string, messageId: string) => boolean) | null = null;
+
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
@@ -1666,6 +1669,12 @@ export class HubCore {
   }
 
   /** Who injects what a spoke accepted (the adapters' supervisor); one at a time. */
+  onHumanDeliveryCheck(check: ((sessionId: string, messageId: string) => boolean) | null): void { this.#humanDeliveryCheck = check; }
+
+  humanDeliveryBlocked(sessionId: string, messageId: string): boolean {
+    return this.#humanDeliveryCheck?.(sessionId, messageId) ?? (this.sessionState(sessionId) === 'busy');
+  }
+
   onDelivered(listener: ((messageId: string, session: string, sessionId: string) => void) | null): void {
     this.#onDelivered = listener;
   }
@@ -2663,7 +2672,7 @@ export class HubCore {
 
   #sendTo(c: Connection, message: Message): boolean {
     if (!this.isCurrent(c)) return false;
-    if (message.fromKind === 'human' && this.sessionState(c.sessionId) === 'busy') return false;
+    if (message.fromKind === 'human' && this.humanDeliveryBlocked(c.sessionId, message.id)) return false;
     if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return false;
     if (isHeldDelivery(message)) return false;
     if (message.kind !== 'role' && this.sessionState(c.sessionId) === 'idle') this.#store.bindTurnEvents(message.id, c.name);

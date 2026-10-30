@@ -246,7 +246,9 @@ export interface HarnessAdapter {
   /**
    * Hand a message to the session as a turn. Resolves when the harness confirmed it (stage `injected`);
    * rejects when it could not be handed over or was not confirmed in time — the message then stays
-   * `delivered` and the hub retries it at the next `idle`. Rejects with `InjectUncertain` when the request reached
+   * `delivered` and the hub retries it after busy-to-idle evidence or reconnect,
+   * with capped backoff. Repeated idle observations and minute rechecks drain only
+   * never-attempted work. Rejects with `InjectUncertain` when the request reached
    * the harness and its answer never came: the delivery is `uncertain`, never retried on its own.
    */
   inject(process: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void>;

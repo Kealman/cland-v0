@@ -1162,6 +1162,17 @@ compiler capability is no passing evidence. Keep TypeScript dev-only and ordinar
 startup compiler-free. The native installed CLI fixture is documented in
 `docs/agents/tests/hub-test-suite-admission-native.test.ts.md`.
 
+
+## Held-delivery supervision
+
+For queued human input and acknowledged agent reports, use the memory Sessions,
+fake-harness and transport-clock seam in
+`docs/agents/tests/hub-test-human-hold.test.ts.md`. Retain minute rechecks,
+repeated-idle drainage, stale poll-only busy expiry and push-busy controls;
+limit repeated-idle/timer replay to durable never-attempted deliveries. Attempted
+unconfirmed input keeps its busy-to-idle/reconnect trigger and backoff; explicit
+uncertain input stays fenced.
+
 ## macOS cover rerun reports
 
 A single recent-green load-gate repetition failure in an integrated or occasion
