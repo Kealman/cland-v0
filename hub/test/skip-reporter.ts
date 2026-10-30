@@ -16,6 +16,7 @@ export default async function* skipReporter(source: AsyncIterable<TestEvent>, op
   const phase = randomUUID();
   let sequence = 0;
   const active = new Map<string, TestProgress[]>();
+  const completed = new Set<string>();
   const names = new Map<string, string>();
   const skips: Array<{ file: string; name: string; reason: string }> = [];
   for await (const event of source) {
@@ -39,6 +40,15 @@ export default async function* skipReporter(source: AsyncIterable<TestEvent>, op
           const first = pending.shift();
           if (!pending.length) active.delete(key);
           const error = event.data.details.error as (Error & { failureType?: string }) | undefined;
+          const identified = Number.isInteger(data.testId) || Number.isInteger(event.data.testNumber);
+          const completion = JSON.stringify([key, event.data.testNumber, event.data.details.duration_ms,
+            event.data.details.passed, event.data.skip, event.data.todo, error?.failureType, error?.message]);
+          // Node replays nested completions when an out-of-order parent drains.
+          // Keep real finish-only receipts, but never mint a second identity for
+          // an identified execution with identical completion evidence. A fresh
+          // dequeue still owns its pair; changed or unidentified finishes survive.
+          if (!first && identified && completed.has(completion)) continue;
+          if (identified) completed.add(completion);
           const cancelled = ['cancelledByParent', 'testAborted', 'testTimeoutFailure'].includes(error?.failureType ?? '');
           const row: TestProgress = { event: 'finish', id: first?.id ?? `${phase}:${++sequence}`, file, name: first?.name ?? data.name, at: clock.now().getTime(), nesting: data.nesting, ...(scope ? { scope } : {}),
             ...(error?.failureType === 'testTimeoutFailure' ? { timedOut: true } : {}),

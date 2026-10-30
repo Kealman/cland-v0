@@ -78,3 +78,31 @@ without publishing the main marker; verify both leaked PIDs and both roots are
 gone after the nested test closes. Keep recovery independent of the marker and
 keep the primary sweep assertions before emergency teardown. Omitting planned
 phase-root recovery must fail this control's final root-removal assertion.
+
+## T4 repetition progress (T-1489)
+
+The selected `T4 repetition progress` case launches a sealed synthetic two-lane,
+five-repetition Node test through the production progress reporter. A promise
+holds lane 1 until lane 2 completes, reproducing Node's replay of lane 2's
+nested completion events when its parent drains. It requires no CPU stress,
+browser, Git or hub. Run it locally with
+`node --test --test-name-pattern='T4 repetition progress' hub/test/suite-runner.test.ts`.
+This is a reporter regression for the T4 hierarchy, not a T4 load receipt.
+
+Use `scratchMachine` and `commandIn` for abort, process reaping and native
+close/result drainage, with the final shared fixture-environment seal. The child
+has a ten-second Node test timeout inside the command owner’s separate bound.
+Assert exit zero after command completion,
+exactly ten starts and ten finishes at nesting 2, full parent/lane/case names,
+a shared id for each pair, ten reduced completions, and the native 13-pass summary
+(ten cases, two lanes, one parent). The fixture root survives until child cleanup.
+The full runner file still requires the queued machine lease described above.
+
+Progress JSON fields and finish-only compatibility are unchanged. The emitter
+suppresses a completion replay only after the same identified execution and
+completion evidence (test number, duration, outcome and error) completed and no
+new dequeue owns it. Changed or unidentified finish-only receipts survive. Genuine finish-only receipts remain visible. Consumers
+must distinguish nested cases from enclosing lane and parent rows; phase totals
+continue to come from Node's summaries. For historical logs such as A-14547,
+review/QA audits disclose unpaired replay rows rather than counting them as
+additional coverage. No historical log is rewritten.

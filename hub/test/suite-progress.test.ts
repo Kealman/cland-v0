@@ -8,6 +8,40 @@ import { suiteProgress, progressLines } from '../src/suite-progress.ts';
 
 async function* events(rows: TestEvent[]) { yield* rows; }
 
+test('replayed completions preserve finish-only receipts and fresh executions at the same location', async () => {
+  for (const testId of [undefined, 1]) {
+    const start = { file: '/project/example.test.ts', name: 'repetition', nesting: 2, line: 9, column: 1, testId, type: 'test' as const };
+    const finish = { ...start, testNumber: 1, details: { passed: true, duration_ms: 250 } };
+    let log = '';
+    for await (const line of skipReporter(events([
+      { type: 'test:dequeue', data: start }, { type: 'test:complete', data: finish },
+      { type: 'test:complete', data: finish },
+      { type: 'test:dequeue', data: start }, { type: 'test:complete', data: finish },
+      { type: 'test:complete', data: { ...finish, name: 'finish only' } },
+    ]), { cwd: '/project' })) log += line;
+    const receipt = suiteProgress(log, 0)!;
+    assert.deepEqual(receipt.completed.map(row => row.name), ['repetition', 'repetition', 'finish only']);
+    assert.equal(new Set(receipt.completed.map(row => row.id)).size, 3);
+    assert.deepEqual(receipt.unfinished, []);
+  }
+});
+
+test('distinct legacy finish-only completions at the same location keep every outcome', async () => {
+  const data = { file: '/project/example.test.ts', name: 'repetition', nesting: 2, line: 9, column: 1,
+    testNumber: 1, details: { passed: true, duration_ms: 250 } };
+  let log = '';
+  for await (const line of skipReporter(events([
+    { type: 'test:complete', data },
+    { type: 'test:complete', data: { ...data, testNumber: 2 } },
+    { type: 'test:complete', data: { ...data, details: { passed: false, duration_ms: 300 } } },
+    { type: 'test:complete', data: { ...data, testNumber: undefined! } },
+    { type: 'test:complete', data: { ...data, testNumber: undefined! } },
+  ]), { cwd: '/project' })) log += line;
+  assert.deepEqual(suiteProgress(log, 0)!.completed.map(row => [row.outcome, row.seconds]), [
+    ['pass', 0.25], ['pass', 0.25], ['fail', 0.3], ['pass', 0.25], ['pass', 0.25],
+  ]);
+});
+
 test('execution completion is streamed before any ordered pass or reporter flush', async () => {
   const file = '/project/hub/test/example.test.ts';
   const start = { file, name: 'finished behind hang', nesting: 0, line: 9, column: 1, type: 'test' as const, testId: 1 };

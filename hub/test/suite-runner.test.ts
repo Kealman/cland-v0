@@ -12,6 +12,8 @@ import { suiteSummary } from '../src/hub/suites.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { runWebRepetitions } from './web-repetitions.ts';
 import { sweep, type Holder } from '../src/suite-lock.ts';
+import { suiteProgress } from '../src/suite-progress.ts';
+import { commandIn, scratchMachine } from './init-machine.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 const fakeClock = fileURLToPath(new URL('./fake-clock.ts', import.meta.url));
@@ -45,6 +47,42 @@ async function until(check: () => boolean | Promise<boolean>) {
   for (let n = 0; n < 800; n++) { if (await check()) return; await delay(25); }
   throw new Error('runner did not reach the expected state');
 }
+
+test('T4 repetition progress pairs ten full names once across concurrent lanes', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const dir = machine.root;
+  const file = join(dir, 'repetitions.test.ts');
+  await writeFile(file, `import test from 'node:test';
+test('load fixture', { concurrency: 2 }, async t => {
+  let release; const secondLaneDone = new Promise(resolve => { release = resolve; });
+  await Promise.all([1, 2].map(lane => t.test('lane ' + lane, async laneTest => {
+    for (let n = 1; n <= 5; n++) await laneTest.test('repetition ' + n, async () => {
+      if (lane === 1 && n === 1) await secondLaneDone;
+    });
+    if (lane === 2) release();
+  })));
+});`);
+  machine.env = fixtureEnvironment(dir, machine.env, { NODE_TEST_CONTEXT: undefined, TEST_SUITE_CWD: dir });
+  const result = await commandIn(machine, dir, process.execPath, ['--test', '--test-timeout=10000',
+    `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`,
+    '--test-reporter-destination=stdout', '--test-reporter=spec', '--test-reporter-destination=stderr', file]);
+  const { stdout: output, stderr } = result;
+  assert.equal(result.code, 0, stderr);
+  const rows = output.split('\n').filter(line => line.startsWith('suite progress '))
+    .map(line => JSON.parse(line.slice('suite progress '.length)) as import('../src/suite-progress.ts').TestProgress)
+    .filter(row => row.nesting === 2);
+  assert.equal(rows.filter(row => row.event === 'start').length, 10, output);
+  assert.equal(rows.filter(row => row.event === 'finish').length, 10, output);
+  for (const lane of [1, 2]) for (let repetition = 1; repetition <= 5; repetition++) {
+    const pair = rows.filter(row => row.name === `load fixture > lane ${lane} > repetition ${repetition}`);
+    assert.deepEqual(pair.map(row => row.event), ['start', 'finish']);
+    assert.equal(pair[0]!.id, pair[1]!.id);
+    assert.equal(pair[1]!.outcome, 'pass');
+  }
+  assert.equal(suiteProgress(output, 0)!.completed.filter(row => row.nesting === 2).length, 10);
+  assert.match(stderr, /pass 13\b/);
+  assert.match(suiteSummary(output + '\n' + stderr), /^tests 13; pass 13; fail 0;/);
+});
 
 test('a stalled Web child names its file and silence window and reaps owned processes', async t => {
   const fault = process.env.CLAND_WEB_GUARD_CLEANUP_FAULT;
