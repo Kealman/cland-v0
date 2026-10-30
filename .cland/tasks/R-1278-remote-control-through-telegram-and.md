@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:40:57.049Z
-updated: 2026-10-30T05:25:17.782Z
+updated: 2026-10-30T05:34:01.983Z
 closed: 2026-10-30T05:25:17.782Z
 ---
 
@@ -135,3 +135,44 @@ tap commit 77fffdc16052e05771e10659b72f13d697ae1c40
 Web bundle published: Kealman/cland-v0 v0.3.0
 cland-web.tar.gz 1726912 bytes; cland-web.tar.gz.sha256 83 bytes
 sha256 26daceacfddb1ae8661b4fd5769da3aa4a649561e78b322f6264b418d9d01ce3
+
+### qa-677 · 2026-10-30T05:34:01.983Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-post-2026-10-30-677-1278
+commit: 63103af654f05a7bf6d1b74adb585421e6cd7abc
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface / executor | Result | Evidence |
+| --- | --- | --- | --- |
+| P1 | hub-api / local macOS | PASS | [P1-P2-facts.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P1-P2-facts.json), [P1-P2-remote-refs.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P1-P2-remote-refs.json) |
+| P2 | hub-api / local macOS | PASS | [P1-P2-facts.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P1-P2-facts.json), [main-object.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/main-object.json) |
+| P3 | hub-api / local macOS | PASS | [P3-facts.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P3-facts.json), [item-notes.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/item-notes.txt) |
+| P4 | hub-api / local macOS | PASS | [P4-facts.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P4-facts.json), [formula-public-http.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/formula-public-http.json) |
+| P5 | hub-api / local macOS | PASS | [P5-facts.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P5-facts.json), [P5-item-after.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/P5-item-after.json) |
+
+**QA clear R-1278 — post-release publication check of v0.3.0.** Run **qa-post-2026-10-30-677-1278**, released/tested commit **63103af654f05a7bf6d1b74adb585421e6cd7abc**. All five checks in Coordinator request b86512f3-4381-43a3-9875-1e480631b8ba passed. R-1278 has no criterion ids, so no criterion marks were added.
+
+P1/P2: public GitHub main equals 63103af654f05a7bf6d1b74adb585421e6cd7abc. Annotated tag object **843a1fff988e1952a20fb7e1635e6a04771a6eea** peels to that same commit; merge-base --is-ancestor exited0. Checks used public HTTPS ls-remote and a fresh depth1 fetch in a disposable Git root, not existing local remote-tracking refs. The fetched released tree was clean.
+
+P3: R-1278’s Notes at the released commit equal the current item Notes: **4051 words,25307 UTF-8 bytes**, SHA256 **9be803ac653a92b855357cd3c9bdc9d929f1769d310c49357b149c5495a114dc**. They are the exact opening section of the tag annotation, followed by the expected epic deliverables and commit notes. The whole annotation is59491 UTF-8 bytes, SHA256 **2dfb4904b842a81b445354de73ed4c8e539019529dee577bcfd62867e52f7df9**; the GitHub release body matches it in full. This is not a claim that the item Notes alone equal the entire annotation. Comparisons/hashes used raw bytes in memory; exported text is shared-redacted.
+
+P4: Homebrew tap **Kealman/homebrew-tap**, main **77fffdc16052e05771e10659b72f13d697ae1c40**, Formula/cland.rb version0.3.0. The raw public HTTP formula matches the fetched Git blob. Its public source archive at codeload.github.com, path `/Kealman/cland-v0/tar.gz/refs/tags/v0.3.0`, downloaded successfully and hashes to **5cf7ba5817ed4a3f5150bc261fe0cfa9ba9d786161596a7335858e2dfe5a65f0**, equal to the formula and release comment.
+
+The published GitHub release is neither draft nor prerelease. Downloaded **cland-web.tar.gz** is **1726912 bytes**, SHA256 **26daceacfddb1ae8661b4fd5769da3aa4a649561e78b322f6264b418d9d01ce3**. This matches the downloaded83-byte checksum sidecar, GitHub asset digest and release comment. Public unauthenticated HTTPS was used; redirect destinations carrying temporary signatures were not captured. No archive was installed, extracted or executed.
+
+P5: fresh task.view confirms R-1278 closed at version0.3.0, with Coordinator’s release comment dated2026-10-30T05:25:17.782Z naming the exact release commit, tap commit and both SHA256 values. The Coordinator’s release-output file was read as supporting evidence; independent public reads supply P1–P4.
+
+Method and limits: local darwin/arm64, Nodev24.21.0 (shipped contract >=24.13.0 <25), no browser, no droplet or cost. These were publication/integrity checks only: no suite, test tier, installer or runtime smoke ran. Every Git/recorder child used shared fixtureEnvironment then scratchGitEnvironment after final overlays, with scratch HOME/XDG/Git and removed inherited account/provider/repository configuration. No push or release command ran.
+
+The hold attempt returned **“R-1278 is closed”**. It was not retried, and the item was not reopened. The requested read-only checks and post-release verdict proceeded independently of that refused hold action.
+
+Findings: **high:none; medium:none; low:none**. One QA helper correction is retained in helper-correction.md: the first asset phase tried a URL from a redacted persisted receipt and stopped with `ERR_INVALID_URL` before the source-archive request. The corrected helper used raw public response/Git values in memory while still redacting persisted captures. This was not a product or publication failure.
+
+Proposed project rule to the Coordinator: post-release QA receipts should retain the annotated tag object and peeled commit separately, and accept asset integrity only after calculating the digest from freshly downloaded bytes; API metadata alone is insufficient.
+
+
+Evidence: A-14148, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/report.md
