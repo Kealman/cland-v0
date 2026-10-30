@@ -2279,3 +2279,26 @@ lint. A pruned installation refuses with a single line naming the unavailable
 compiler and unknown check; use a source installation with development
 dependencies. This refusal supplies no test evidence. Targets without these
 manifests avoid compiler-based admission. The compiler stays lazy and dev-only.
+
+### macOS cover load-gate reruns (report mode)
+
+A cland-runner integrated or occasion cover on macOS can rerun one identity once
+when the executed prefix has exactly one load-gate repetition failure and no
+ordinary, duration-budget, resource-tier, incomplete or timeout failure. Task
+runs and other platforms are excluded. Recent green means an explicit passing
+identity in one of the last five completed, reported, noncached integrated or
+occasion covers within seven days. Failed covers occupy window slots but supply
+no greens. Diagnostic, cancelled, unexecuted and shard child runs are excluded.
+Missing or older receipts without the explicit pass checkpoint supply no evidence;
+admission reads at most five existing full records, never historical logs.
+
+The runner retains the original failure and the single rerun receipt with head,
+platform and repetition index. Its log names green phases, the phase green apart
+from the repetition, and unexecuted phases. It states: "eligible on executed prefix
+only; later phases unexecuted, cover result unchanged". The original cover remains
+red even if the rerun passes; the identity remains a flaky-rerun filing finding.
+No rerun becomes an original load proof or recent green. This rollout's known
+limitation is that the existing runner stops at the failing phase. A future enforce
+item must continue remaining phases after a successful rerun or rerun the cover
+tail before it can change the result. Native controls and policy cases:
+`docs/agents/tests/hub-test-load-gate-rerun.test.ts.md`.

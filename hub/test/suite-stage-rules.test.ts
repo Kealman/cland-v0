@@ -185,3 +185,34 @@ test('batch and close runs fall back whole with one warning for cap or slots', a
     assert.deepEqual(f.api.droplets, []);
   }
 });
+
+test('cover rerun context checkpoints only explicit passes and survives restart', async t => {
+  const f = await suiteUnit(t, { machineReceiptsOnly: true });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const first = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
+  const timings = ['pass', 'skip', 'fail'].map(outcome => `suite timing ${JSON.stringify({ file: 'hub/test/example.test.ts', name: outcome, seconds: 0.01, outcome })}\n`).join('');
+  await f.finish(first.id, 0, '# tests 3\n# pass 1\n# skipped 1\n' + timings);
+  await f.reopen();
+  const next = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
+  assert.equal(f.status(next.id).selection?.loadGateRerun?.head, f.candidate.head);
+  assert.deepEqual(f.status(next.id).selection?.loadGateRerun?.recent, ['hub/test/example.test.ts::pass']);
+});
+
+
+test('recent-cover admission hydrates at most five full records from compact history', async t => {
+  const f = await suiteUnit(t, { machineReceiptsOnly: true });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const run = await f.launch({ mode: 'all', integrated: true, fresh: true });
+  await f.finish(run.id);
+  const template = (await f.jobs())[0]!;
+  const jobs = Array.from({ length: 30 }, (_, i) => ({ ...template, id: `archive-${i}`,
+    selection: { ...template.selection!, loadGateRerun: { head: template.head, recent: [], passed: [`identity-${i}`] } },
+    completedAt: new Date(f.clock.now().getTime() - (30 - i) * 1000).toISOString() }));
+  await f.reopen(jobs); await f.reopen();
+  const reads = t.mock.method(f.store, 'suiteJob');
+  const next = await f.launch({ mode: 'all', integrated: true, fresh: true });
+  assert.ok(reads.mock.callCount() <= 5, `full hydrations: ${reads.mock.callCount()}`);
+  assert.deepEqual(f.status(next.id).selection?.loadGateRerun?.recent, ['identity-25', 'identity-26', 'identity-27', 'identity-28', 'identity-29']);
+});

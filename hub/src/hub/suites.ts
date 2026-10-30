@@ -1,3 +1,5 @@
+import { recentCoverGreens } from '../suite-load-rerun.ts';
+
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
 import { batchInteractionSelection } from '../suite-interactions.ts';
 import { appendSuiteProvenance } from '../suite-provenance.ts';
@@ -155,6 +157,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   // Keep every failed repetition's full error/stack next to the count summary.
   const loadDiagnostics = text.split('\n').filter(line => line.startsWith('load gate failure '));
   timings.push(...loadDiagnostics);
+  timings.push(...text.split('\n').filter(line => line.startsWith('load-gate rerun')));
   const tierLines = text.split('\n').filter(line => /^tier (?:(?:T[0-4]|Web):|share:)/.test(line));
   timings.push(...text.split('\n').filter(line => /^shard-\d+ tier (?:T[1-4]|Web):/.test(line)));
   const lastTiers = new Map<string, string>();
@@ -578,6 +581,20 @@ export class Suites {
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (!pinned && runner && input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     if (runner && !input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
+    if (runner && input.integrated && !input.devT3Probe && !input.batch?.diagnostic && !files) {
+      const covers: SuiteJob[] = [];
+      const completed = (job: SuiteJob) => Date.parse(job.completedAt ?? job.finished ?? '') || 0;
+      for (const prior of this.#jobs) {
+        if (!prior.integrated || prior.parentRun || prior.batch?.diagnostic || prior.devT3Probe
+          || prior.cached || !prior.reported || !prior.outcome || prior.outcome.notRun || prior.cancelled || prior.requesterDied) continue;
+        covers.push(prior);
+        covers.sort((a, b) => completed(a) - completed(b));
+        if (covers.length > 5) covers.shift();
+      }
+      selection.loadGateRerun = { head, phases: verificationSteps(commands).map(step => step.name),
+        recent: recentCoverGreens(covers.map(prior => ({ completed: completed(prior),
+          green: prior.outcome?.code === 0, identities: this.#full(prior).selection?.loadGateRerun?.passed ?? [] })), this.#clock.now().getTime()) };
+    } else delete selection.loadGateRerun;
     const tierPlan = !runner || input.devT3Probe ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
     if (runner && input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
@@ -1508,6 +1525,9 @@ export class Suites {
       if (job.integrated && !job.parentRun && !job.cover) {
         const cover = deriveCover(job, await logEvidence());
         if (cover) job.cover = cover;
+      }
+      if (job.integrated && !job.cached && job.outcome.code === 0 && job.selection?.loadGateRerun && !job.selection.loadGateRerun.passed) {
+        job.selection.loadGateRerun.passed = [...new Set(timingReceipts(await logEvidence()).filter(test => test.outcome === 'pass').map(test => `${test.file}::${test.name}`))].sort();
       }
       if (job.integrated && job.occasion && !job.cached && job.outcome.code === 0 && !job.timingIdentities) {
         job.timingIdentities = [...new Set(timingReceipts(await logEvidence()).map(test => `${test.file}::${test.name}`))].sort();

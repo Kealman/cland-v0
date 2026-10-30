@@ -467,3 +467,68 @@ test('runner enforces tier budgets through real reporter receipts', async t => {
   assert.equal(passed.code, 0, passed.output);
   assert.doesNotMatch(passed.output, /duration budget:/);
 });
+
+test('macOS cover reruns one recent-green failed repetition once and preserves red with both receipts', async t => {
+  const { run, manifest, path, file, cwd } = await fixture(t);
+  const repeats = join(cwd, 'repetition-count');
+  await writeFile(file, `import test from 'node:test'; import { readFileSync, writeFileSync } from 'node:fs';
+    test('recent green', () => { if (process.env.CLAND_TEST_TIMING_RECEIPTS === '0') { let r = 0; try { r = Number(readFileSync(${JSON.stringify(repeats)}, 'utf8')); } catch {} writeFileSync(${JSON.stringify(repeats)}, String(++r)); if (r === 1) throw new Error('one repetition failure'); } });`);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 } }));
+  const result = await run(true, { loadGateRerun: { head: 'a'.repeat(40), recent: ['hub/test/fixture.test.ts::recent green'] } });
+  assert.equal(result.code, 1, result.output);
+  // This native control runs only on macOS; the platform table covers Linux exclusion.
+  assert.equal(await readFile(repeats, 'utf8'), process.platform === 'darwin' ? '6' : '5');
+  if (process.platform === 'darwin') {
+    assert.match(result.output, /load-gate rerun: .*passed once on rerun \(report only\); cover result unchanged/);
+    const rows = result.output.split('\n').filter(line => line.startsWith('load-gate rerun receipt ')).map(line => JSON.parse(line.slice('load-gate rerun receipt '.length)));
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].kind, 'original'); assert.equal(rows[0].repetition, 1);
+    assert.equal(rows[1].kind, 'rerun'); assert.equal(rows[1].passed, true);
+    for (const row of rows) { assert.equal(row.head, 'a'.repeat(40)); assert.equal(row.platform, 'darwin'); }
+  } else assert.doesNotMatch(result.output, /load-gate rerun receipt /);
+});
+
+test('failed macOS advisory rerun retains redacted useful diagnostic facts', async t => {
+  const { run, manifest, path, file, cwd } = await fixture(t);
+  const counter = join(cwd, 'failed-rerun-counter');
+  await writeFile(file, `import test from 'node:test'; import { readFileSync, writeFileSync } from 'node:fs';
+    test('sensitive retry', () => {
+      if (process.env.CLAND_TEST_TIMING_RECEIPTS !== '0') return;
+      let n = 0; try { n = Number(readFileSync(${JSON.stringify(counter)}, 'utf8')); } catch {} writeFileSync(${JSON.stringify(counter)}, String(++n));
+      if (n === 1) throw new Error('original repetition failure');
+      if (n === 6) { const value = process.env.CLAND_DIAGNOSTIC_FIXTURE; delete process.env.CLAND_DIAGNOSTIC_FIXTURE; throw new Error('retry diagnostic ' + value + ' argv: private-command-tail-1461'); }
+    });`);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 } }));
+  const result = await run(true, { loadGateRerun: { head: 'a'.repeat(40), recent: ['hub/test/fixture.test.ts::sensitive retry'] } });
+  assert.equal(result.code, 1);
+  if (process.platform === 'darwin') {
+    assert.doesNotMatch(result.output, /private-fixture-value-720|private-command-tail-1461/);
+    assert.match(result.output, /retry diagnostic/);
+    assert.match(result.output, /"code":1,"signal":null,"timedOut":false/);
+    assert.match(result.output, /did not pass on rerun/);
+  }
+});
+
+test('macOS advisory retry blocked in admission retains an incomplete native receipt', async t => {
+  const { run, manifest, path, file, cwd } = await fixture(t);
+  const counter = join(cwd, 'admission-retry-counter');
+  await writeFile(file, `import test from 'node:test'; import { readFileSync, writeFileSync } from 'node:fs';
+    test('blocked retry', () => {
+      if (process.env.CLAND_TEST_TIMING_RECEIPTS !== '0') return;
+      let n = 0; try { n = Number(readFileSync(${JSON.stringify(counter)}, 'utf8')); } catch {} writeFileSync(${JSON.stringify(counter)}, String(++n));
+      if (n === 1) throw new Error('original repetition failure');
+      if (n === 6) throw Object.assign(new Error('admission timed out: sealed setup unavailable'), { code: 'CLAND_ADMISSION_TIMEOUT' });
+    });`);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 } }));
+  const result = await run(true, { loadGateRerun: { head: 'a'.repeat(40), recent: ['hub/test/fixture.test.ts::blocked retry'] } });
+  assert.equal(result.code, 1);
+  if (process.platform === 'darwin') {
+    const rows = result.output.split('\n').filter(line => line.startsWith('load-gate rerun native receipt '));
+    assert.equal(rows.length, 1, result.output);
+    const row = JSON.parse(rows[0]!.slice('load-gate rerun native receipt '.length));
+    assert.equal(row.code, 1); assert.equal(row.signal, null); assert.equal(row.incomplete, true);
+    assert.match(row.diagnosticTail, /admission timed out/);
+    assert.match(result.output, /"kind":"original"/);
+    assert.match(result.output, /"passed":false,"skipped":0,"admissions":1/);
+  }
+});

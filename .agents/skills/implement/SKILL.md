@@ -1162,6 +1162,16 @@ compiler capability is no passing evidence. Keep TypeScript dev-only and ordinar
 startup compiler-free. The native installed CLI fixture is documented in
 `docs/agents/tests/hub-test-suite-admission-native.test.ts.md`.
 
+## macOS cover rerun reports
+
+A single recent-green load-gate repetition failure in an integrated or occasion
+macOS cover can receive one automatic advisory rerun. Keep both receipts and the
+flaky-rerun finding; a passing rerun never changes the original red cover. Recent
+means the last five completed covers within seven days with explicit pass evidence.
+Report the executed prefix and named unexecuted tail, as described in
+`docs/agents/tests.md#macos-cover-load-gate-reruns-report-mode`. Task runs are
+excluded. Existing role clauses cover the flow; no permission line is added.
+
 ## Claude fallback liveness fixtures
 
 For synthetic Claude resume identities, follow the injected fallback observer

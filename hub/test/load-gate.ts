@@ -1,3 +1,4 @@
+import { serializeLoadRerunReceipt, type LoadRepetitionFailure } from '../src/suite-load-rerun.ts';
 import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { prepareRunnerFixture } from './fixture-directories.ts';
 import { spawn } from 'node:child_process';
@@ -25,13 +26,16 @@ export async function runLoadGate(options: {
   manifest: DurationManifest; timeoutMs: number; workers: number; phase: Promise<number>;
   quarantine?: QuarantineManifest | null;
   interrupted: () => boolean; active: Set<ProcessIdentity>;
-}): Promise<{ failed: boolean; extraWallMs: number }> {
+}): Promise<{ failed: boolean; extraWallMs: number; failures: LoadRepetitionFailure[]; rerun: (identity: string) => Promise<void> }> {
   if (!Number.isSafeInteger(options.workers) || options.workers < 1) throw new Error('load gate workers must be a positive integer');
   process.stderr.write(`load gate workers ${options.workers}; five sequential repetitions per new test\n`);
   let phaseFinished: number | undefined;
   void options.phase.then(() => { phaseFinished = performance.now(); }, () => { phaseFinished = performance.now(); });
   const seen = new Set<string>();
   let failed = false;
+  const failures: LoadRepetitionFailure[] = [];
+  const originals = new Map<string, unknown>();
+  const eventsByIdentity = new Map<string, LoadGateEvent>();
   let offset = 0;
   let pending = '';
   const decoder = new StringDecoder('utf8');
@@ -62,8 +66,9 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
   const queued: LoadGateEvent[] = [];
   const running = new Set<Promise<void>>();
   let error: unknown;
-  const repeat = async (event: LoadGateEvent): Promise<void> => {
+  const repeat = async (event: LoadGateEvent, rerun = false): Promise<void> => {
     const key = timingKey({ ...event, seconds: 0 });
+    const count = rerun ? 1 : loadGateRepetitions(key, options.selection, options.manifest.tests);
     let passed = 0;
     let skipped = 0;
     let excused = 0;
@@ -72,8 +77,8 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
     const quarantine = options.quarantine?.tests[key];
     const skipReasons = new Set<string>();
     const pattern = `^${event.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
-    process.stderr.write(`load gate start: ${key}; five repetitions alongside phase\n`);
-    for (let repetition = 0; repetition < loadGateRepetitions(key, options.selection, options.manifest.tests) && !options.interrupted(); repetition++) {
+    if (!rerun) process.stderr.write(`load gate start: ${key}; five repetitions alongside phase\n`);
+    for (let repetition = 0; repetition < count && !options.interrupted(); repetition++) {
       const receipt = join(options.root, `load-${sequence++}.jsonl`);
       const quarantinePath = `${receipt}.quarantine`;
       const gate = `${receipt}.start`;
@@ -136,11 +141,18 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         const results = records.filter(record => record.file === event.file && record.name === event.name && record.passed !== undefined);
         const diagnostics = records.filter(record => record.diagnostic).map(record => ({ name: record.name, error: record.diagnostic! }));
         const admission = records.map(record => admissionTimeoutMessage(record.diagnostic)).find(message => message !== null);
+        if (rerun) process.stdout.write(`load-gate rerun native receipt ${serializeLoadRerunReceipt({ identity: key,
+          head: options.selection?.loadGateRerun?.head ?? null, platform: process.platform, repetition: 1,
+          code, signal: child.signalCode, timedOut, incomplete: Boolean(admission) || timedOut || results.length !== 1,
+        }, { results, diagnostics }, options.env)}\n`);
         if (admission) {
           admissions++;
           process.stdout.write(`suite admission timeouts ${JSON.stringify([{ file: event.file, message: admission }])}\n`);
           const ordinary = diagnostics.some(record => !admissionTimeoutMessage(record.error) && record.error.failureType !== 'subtestsFailed');
-          if (!ordinary && !tierFailed && !timedOut && code === 1) continue;
+          if (!ordinary && !tierFailed && !timedOut && code === 1) {
+            if (!rerun) failures.push({ identity: key, repetition: repetition + 1, timeout: true });
+            continue;
+          }
         }
         if (!admission && !tierFailed && !timedOut && code === 0 && results.length === 1) {
           const result = results[0]!;
@@ -165,7 +177,12 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
             ...(timedOut ? { timeoutMs: options.timeoutMs, graceMs: 250 } : {}),
             diagnostics: diagnostics.length ? diagnostics : [{ name: event.name, error: { message: tierFailed ? 'enforced resource tier violation' : `runner exit ${code}; expected one passing receipt, received ${results.length}` } }],
           }, options.env);
-          process.stderr.write(`load gate failure ${JSON.stringify(failure)}\n`);
+          if (!rerun) {
+            failures.push({ identity: key, repetition: repetition + 1, timeout: timedOut || tierFailed || results.length !== 1 || diagnostics.some(record => /testTimeoutFailure|cancelledByParent|test did not finish|timed out/i.test(JSON.stringify(record.error))) });
+            originals.set(key, { kind: 'original', identity: key, head: options.selection?.loadGateRerun?.head ?? null,
+              platform: process.platform, repetition: repetition + 1, passed: false, code, signal: child.signalCode, failure });
+            process.stderr.write(`load gate failure ${JSON.stringify(failure)}\n`);
+          }
         }
       } finally {
         clearTimeout(timer);
@@ -174,6 +191,13 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         if (incomplete) process.stderr.write(`incomplete: receipt missing; ${event.file} :: ${event.name}; repetition ${repetition + 1}\ntest process exit ${child.exitCode}; signal ${child.signalCode ?? 'none'}\nstderr tail:\n${stderrTail.toString() || '(empty)\n'}`);
         options.active.delete(identity);
       }
+    }
+    if (rerun) {
+      process.stdout.write(`load-gate rerun receipt ${JSON.stringify({ kind: 'rerun', identity: key,
+        head: options.selection?.loadGateRerun?.head ?? null, platform: process.platform, repetition: 1,
+        passed: passed === 1, skipped, admissions })}\n`);
+      process.stdout.write(`load-gate rerun: ${key} ${passed === 1 ? 'passed once on rerun' : 'did not pass on rerun'} (report only); cover result unchanged; retain flaky-rerun finding\n`);
+      return;
     }
     failed ||= passed + excused !== 5 && skipped !== 5;
     if (admissions) process.stderr.write(`load gate admission blocked: ${event.file}; ${admissions} admission timeouts; not test results\n`);
@@ -191,6 +215,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         const key = timingKey({ ...event, seconds: 0 });
         if (seen.has(key) || !loadGateRepetitions(key, options.selection, options.manifest.tests)) continue;
         seen.add(key);
+        eventsByIdentity.set(key, event);
         queued.push(event);
       }
       while (queued.length && running.size < options.workers && !options.interrupted() && error === undefined) {
@@ -208,5 +233,11 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
     await Promise.all(running);
   }
   if (error !== undefined) throw error;
-  return { failed, extraWallMs: phaseFinished === undefined ? 0 : performance.now() - phaseFinished };
+  return { failed, failures, extraWallMs: phaseFinished === undefined ? 0 : performance.now() - phaseFinished,
+    rerun: async identity => {
+      const event = eventsByIdentity.get(identity);
+      if (!event || options.interrupted()) return;
+      process.stdout.write(`load-gate rerun receipt ${JSON.stringify(originals.get(identity))}\n`);
+      await repeat(event, true);
+    } };
 }

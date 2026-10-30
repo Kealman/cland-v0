@@ -369,3 +369,5 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/freshness.test.ts`](../../../hub/test/freshness.test.ts) | [Notes](hub-test-freshness.test.ts.md) |
 
 | [`hub/test/suite-admission-native.test.ts`](../../../hub/test/suite-admission-native.test.ts) | [Notes](hub-test-suite-admission-native.test.ts.md) |
+
+| [`hub/test/load-gate-rerun.test.ts`](../../../hub/test/load-gate-rerun.test.ts) | [Notes](hub-test-load-gate-rerun.test.ts.md) |

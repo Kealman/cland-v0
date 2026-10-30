@@ -250,6 +250,7 @@
     "hub/test/lifecycle-serialization.test.ts": "T1",
     "hub/test/literal-rm-cli.test.ts": "T2",
     "hub/test/literal-rm.test.ts": "T1",
+    "hub/test/load-gate-rerun.test.ts": "T1",
     "hub/test/measure-memory.test.ts": "T3",
     "hub/test/merge-batches.test.ts": "T1",
     "hub/test/merge-budget.test.ts": "T1",

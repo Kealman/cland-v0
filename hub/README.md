@@ -7754,3 +7754,16 @@ unavailable compiler and unknown check. This capability refusal has no source
 location or provenance suffix. Source lint findings continue to include their
 HEAD/worktree provenance and locations; result codes and fields are unchanged.
 Use a source installation with development dependencies to run these checks.
+
+### macOS cover repetition reruns (report mode)
+
+Integrated and occasion cland-runner covers on macOS automatically rerun one
+recent-green identity once when the executed prefix has exactly one load-gate
+repetition failure and no other failure or timeout. Recent means the last five
+completed reported covers within seven days, using explicit passing identities
+checkpointed by the hub; absent evidence supplies no green. Task runs are excluded.
+Both original and rerun receipts name head, platform and repetition. The original
+cover stays red, and the finding still needs flaky-rerun filing. Logs name the
+executed and unexecuted phases: eligibility covers only the executed prefix.
+Changing the cover result needs a separate enforce item that completes the tail.
+See `docs/agents/tests.md`, "macOS cover load-gate reruns (report mode)".

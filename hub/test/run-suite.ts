@@ -1,3 +1,4 @@
+import { eligibleLoadRerun } from '../src/suite-load-rerun.ts';
 import { waitForHumanSlot } from '../src/suite-human-queue.ts';
 import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { prepareRunnerFixture } from './fixture-directories.ts';
@@ -297,7 +298,7 @@ process.chdir(cwd);`);
         quarantine,
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
-      }) : Promise.resolve({ failed: false, extraWallMs: 0 });
+      }) : Promise.resolve({ failed: false, extraWallMs: 0, failures: [], rerun: async (_identity: string) => {} });
       const [phaseOutcome, gateOutcome] = await Promise.allSettled([done.finally(() => phaseGuard?.stop()), repeats]);
       await guardCleanup;
       if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
@@ -370,6 +371,23 @@ process.chdir(cwd);`);
           process.stdout.write(`${WEB_REPETITION_REPORT} not run; ${String(error).replace(/\s+/g, ' ')}; missing load proof\n`);
         }
         process.stdout.write(`load gate Web extra wall ${((performance.now() - repeatStarted) / 1000).toFixed(3)} s; outside Web phase budget\n`);
+      }
+      const rerunIdentity = eligibleLoadRerun({ platform: process.platform,
+        cover: Boolean(options.selection?.loadGateRerun), ordinaryFailed: code !== 0 || budgetFailed || incomplete || !loadResult.failed || Boolean(phaseReceipt?.results.some(result => result.outcome === 'fail')),
+        failures: loadResult.failures, recent: options.selection?.loadGateRerun?.recent ?? [] });
+      if (rerunIdentity && !interruption.signal) {
+        const phaseNames = options.phaseNames ?? suites.map((_, i) => `phase ${i + 1}`);
+        const current = phaseNames[index]!;
+        const planned = options.selection?.loadGateRerun?.phases ?? [];
+        const currentTier = options.selection?.tiers?.length === 1 ? options.selection.tiers[0]! : current;
+        const at = planned.indexOf(currentTier);
+        process.stdout.write(`load-gate rerun scope ${JSON.stringify({
+          green: [...(at >= 0 ? planned.slice(0, at) : []), ...phaseNames.slice(0, index)],
+          greenApartFromRepetition: current,
+          unexecuted: [...phaseNames.slice(index + 1), ...(at >= 0 ? planned.slice(at + 1) : [])],
+        })}\n`);
+        process.stdout.write('eligible on executed prefix only; later phases unexecuted, cover result unchanged\n');
+        await loadResult.rerun(rerunIdentity);
       }
       // A borrowed interrupted run leaves root cleanup to its worker's hub-side
       // termination owner, which still holds the full descendant identities.
