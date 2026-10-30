@@ -14,7 +14,10 @@ import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost, HarnessProcess, InjectFrame } from '../src/adapters/contract.ts';
 import type { Message } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
+import { pacingOwner } from './telegram-pacing-fixture.ts';
+import { cardWebOwner } from './telegram-card-web-fixture.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject, until, frameClient, type FrameClient } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 
 function cli(t: TestContext) {
@@ -178,15 +181,16 @@ test('Claude discovery and watch share the default schedule across adapter resta
   assert.equal(clock.pending, 0);
 });
 
-async function component(t: TestContext, pidAlive?: (pid: number) => boolean, processStarted: (pid: number) => Promise<string | null> = async pid => `fixture-start-${pid}`, reexecGraceMs: number | null = 30_000) {
+async function component(t: TestContext, pidAlive?: (pid: number) => boolean, processStarted: (pid: number) => Promise<string | null> = async pid => `fixture-start-${pid}`, reexecGraceMs: number | null = 30_000, ownedTransport = false) {
   const native = cli(t);
   const root = await tempProject(t);
   const clock = new FakeClock();
   const directory = join(root, 'claude');
   let scheduleWrites = 0;
   let polls = 0;
+  const owner = ownedTransport ? pacingOwner(t) : undefined;
   const open = async () => {
-    const hub = await projectHub(t, root, {}, { clock, probes: 'fake', adapters: [(host) => {
+    const hubOptions = { clock, ...(ownedTransport ? { transportClock: clock } : {}), probes: 'fake', adapters: [(host) => {
       const adapterHost: AdapterHost = { ...host,
         signal: (id, signal) => { if (signal.source === 'poll') polls++; host.signal(id, signal); },
         adapterState: { read: key => host.adapterState!.read(key), write: (key, value) => {
@@ -196,9 +200,25 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
       };
       const adapter = new ClaudeCodeAdapter(adapterHost, { clock, bin: 'fixture-claude', pollMs: 5000, ...(reexecGraceMs === null ? {} : { reexecGraceMs }), ...(pidAlive ? { pidAlive } : {}), processStarted, env: fixtureEnvironment(root, {}, { CLAUDE_CONFIG_DIR: directory, DISABLE_AUTOUPDATER: '0' }) });
       return adapter;
-    }] });
-    // The scripted adapter reports invented PIDs; only native fixtures own OS processes.
-    const ui = await connectUi(t, hub.discovery, 'ui', () => {});
+    }] } satisfies import('./harness.ts').ProjectHubOptions;
+    const hub = owner ? await owner.start(root, {}, clock, { hubOptions }) : await projectHub(t, root, {}, hubOptions);
+    // Owned replay setup uses the synchronous production dispatcher edge; no
+    // native socket acquisition can outlive setup before registration.
+    let ui: FrameClient;
+    if (owner) {
+      let live = true;
+      let receive = (_line: string) => {};
+      let close = () => {};
+      onCleanup(t, () => close());
+      const conversation = hub.dispatcher.open({ send: frame => receive(`${JSON.stringify(frame)}\n`), close: () => { live = false; }, isOpen: () => live }, { authenticated: true, edge: 'socket' });
+      ui = frameClient(line => conversation.receive(line.trimEnd()), fn => { receive = fn; }, () => { live = false; conversation.closed(); }, root, () => {});
+      close = () => ui.close();
+      ui.send({ type: 'hello', protocol: 2, client: 'ui' });
+      assert.ok(ui.frames.some(frame => frame.type === 'welcome'));
+    } else {
+      // The scripted adapter reports invented PIDs; native fixtures own OS processes.
+      ui = await connectUi(t, hub.discovery, 'ui', () => {});
+    }
     await receipt(ui.request({ type: 'subscribe' }));
     return { hub, ui };
   };
@@ -220,8 +240,79 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
     while (scheduleWrites === after && performance.now() < deadline) await yieldIO();
     assert.ok(scheduleWrites > after, 'shared query persisted its completion receipt');
   }
-  return { native, root, clock, directory, open, records, nextPoll, queryCompleted, get scheduleWrites() { return scheduleWrites; } };
+  return { native, root, clock, directory, open, records, nextPoll, queryCompleted, get polls() { return polls; }, get scheduleWrites() { return scheduleWrites; } };
 }
+
+for (const pushed of [true, false]) test(`Claude busy poll after 37 seconds respects pushed idle: ${pushed}`, async t => {
+  const web = cardWebOwner(t);
+  const f = await component(t, undefined, undefined, 30_000, true);
+  const { ui } = await f.open();
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: HarnessProcess }).process;
+  const state = async () => {
+    const listed = await ui.request({ type: 'session.list' });
+    assert.equal(listed.ok, true, listed.error);
+    return (listed.value as { processes: Array<{ sessionId: string; state: string }> }).processes.find(row => row.sessionId === p.sessionId)!.state;
+  };
+  if (pushed) {
+    const args = f.native.calls.find(call => call.args[0] === '--bg')!.args;
+    const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
+    const spoke = await inProcessSpoke(t, { cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN });
+    await spoke.waitForPresence([p.name]);
+  }
+  const bridge = await web.start(ui);
+  assert.equal((await bridge.request({ type: 'session.bridge', session: p.name, launch: p.sessionId })).ok, true);
+  if (pushed) {
+    const idle = await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-turn-complete', payload: {} });
+    assert.equal(idle.ok, true, idle.error);
+    assert.equal(await state(), 'idle');
+  } else assert.equal(await state(), 'unknown');
+  f.native.sessions[0]!.status = 'busy';
+  const before = f.polls;
+  await f.clock.advance(37_000);
+  await until(() => f.polls > before, { what: 'production poll signal at the 37-second boundary' });
+  assert.ok(f.polls > before);
+  assert.equal(await state(), pushed ? 'idle' : 'busy');
+  if (pushed) {
+    // The owned bridge buffers frames before the trigger; no independent waiter
+    // can reject behind a failed send. Read the exact durable id from that buffer.
+    const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: 'incident replay input' });
+    assert.equal(sent.ok, true, sent.error);
+    const value = sent.value as { message: Message; outcomes: Array<{ outcome: string }> };
+    await until(() => bridge.frames.some(frame => frame.type === 'inject' && frame.message === value.message.id), { what: 'buffered inject for the durable human message id' });
+    const frame = bridge.frames.find(frame => frame.type === 'inject' && frame.message === value.message.id) as InjectFrame;
+    assert.equal(value.outcomes[0]?.outcome, 'delivered');
+    assert.equal(frame.message, value.message.id);
+    assert.equal(bridge.frames.filter(frame => frame.type === 'inject' && frame.message === value.message.id).length, 1);
+  }
+});
+
+for (const mode of ['omitted', 'aborted'] as const) test(`Claude replay bridge ${mode} setup drains its owner`, async t => {
+  const web = cardWebOwner(t);
+  const f = await component(t, undefined, undefined, 30_000, true);
+  const { ui, hub } = await f.open();
+  const setupClock = new FakeClock();
+  const abort = new AbortController();
+  const starting = web.start(ui, { setupClock, publishReady: false, signal: abort.signal });
+  const failed = assert.rejects(starting, mode === 'omitted' ? /setup receipt deadline reached/ : /replay setup cancelled/);
+  void failed.catch(() => {});
+  await web.actual(); // Native HTTP and WebSocket acquisition completed; ready receipt is withheld.
+  if (mode === 'omitted') await setupClock.advance(1000);
+  else abort.abort(new Error('replay setup cancelled'));
+  await failed;
+  await web.dispose();
+  const receipt = web.receipts();
+  assert.deepEqual(receipt.started, { requests: 1, responses: 1, sockets: 1 });
+  assert.deepEqual(receipt.closed, receipt.started);
+  assert.equal(receipt.joined, true);
+  assert.equal(receipt.observing, false);
+  assert.equal(receipt.pending, 0);
+  assert.equal(setupClock.pending, 0);
+  await hub.stop();
+  await hub.stopped;
+  assert.equal(f.clock.pending, 0);
+});
 
 test('scripted Claude frame results skip native process ownership probes', async t => {
   const f = await component(t, () => true);

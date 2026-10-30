@@ -65,3 +65,32 @@ process ownership probes` intercepts synchronous child launches and checks a
 positive PID in both launch and list replies before asserting zero probes after
 shutdown. Keep the opt-out local to this scripted fixture; FrameClient's default
 native accounting remains enabled for native fixtures.
+
+`Claude busy poll after 37 seconds respects pushed idle: true/false` replays
+the incident through the production session manager, adapter and frame bridge.
+The scripted CLI reports busy after 37 virtual seconds. Explicit `transportClock`
+forwarding through projectHub/serveProject/projectSessions/Sessions gives the
+manager the same complete FakeClock as the core and adapter; production defaults
+to realClock, independently of the core policy clock. The existing server socket
+transportClock seam remains scoped to socket liveness. Hook interpretation,
+push age, retry stamps and injection admission use the manager's transport clock.
+Shared `until` observes the poll signal receipt before the final state read.
+With a pushed idle, assert the human send's `delivered` outcome and exactly one
+inject carrying its durable message id; without any pushed state, assert the
+initial unknown becomes busy. A scratch-source negative control removes only
+the busy-poll guard and must fail with actual busy versus expected idle.
+
+The replay uses the shared pacingOwner for hub acquisition and cardWebOwner for
+the real HTTP/WebSocket bridge. A synchronous production dispatcher client owns
+its close before setup and supplies the local trigger; no new raw connectUi
+acquisition is introduced. The bridge buffers frames before the send; shared
+`until` reads that buffer by durable id after the owned request, leaving no
+separate inject waiter on a failed trigger. The `Claude replay bridge omitted/
+aborted setup drains its owner` cases withhold readiness after actual native
+acquisition. Deadline/cancellation must join native HTTP/WS close receipts and
+leave zero observations or timers before hub stop and root disposal.
+
+Run this T2 file with `node --test hub/test/claude-code-schedule.test.ts` under
+fixtureEnvironment. It uses sealed disposable projects with no native Claude,
+browser or live retained history. Virtual elapsed time is not delivery latency
+or a memory measurement. A local file run takes about four seconds on the Mac.

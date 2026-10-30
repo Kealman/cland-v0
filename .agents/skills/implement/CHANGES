@@ -328,3 +328,6 @@ T-1477 review: Record failed journal-read log drainage and captured parity prove
 T-1477 source2: Fence direct startup fixture removal on bounded acquisition and late-success daemon disposal.
 T-1467 merge delta: Preserve T-1477 startup-journal controls beside the memory-probe workflow; consolidate slot, checkpoint/provenance and existing-role guidance.
 T-1467 merge-delta M4: Join the daemon’s shared startup journal scan to preserve selected-record/input-work receipts after streaming; retain small count-boundary red/green control.
+
+T-1469: Point Claude poll-authority changes to the scripted idle/delivery and unknown-launch regressions.
+T-1469 source review M1/M2: Document complete transport-clock replay and shared acquisition/observer ownership controls.

@@ -442,6 +442,7 @@ export type ProjectHubOptions = {
   log?: (entry: Record<string, unknown>) => void;
   droplet?: DropletDependencies;
   clock?: Clock;
+  transportClock?: Clock;
 };
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.

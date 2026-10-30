@@ -61,6 +61,8 @@ function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: 
 }
 
 export type SessionsOptions = {
+  /** Hook/poll/injection time domain; native time unless an isolated fixture owns it. */
+  transportClock?: Clock;
   /** Native cleanup retries use real time by default; isolated fixtures can own their schedule. */
   recoveryClock?: Clock;
   processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
@@ -93,6 +95,7 @@ export const DEFAULT_HARNESS = 'claude-code';
 
 export class Sessions {
   readonly #recoveryClock: Clock;
+  readonly #transportClock: Clock;
   readonly #processStarted: NonNullable<SessionsOptions['processStarted']>;
   readonly #processIdentity: (pid: number) => Promise<string | null>;
   readonly #processRows: NonNullable<SessionsOptions['processRows']>;
@@ -303,6 +306,7 @@ export class Sessions {
 
   constructor(options: SessionsOptions) {
     this.#recoveryClock = options.recoveryClock ?? realClock;
+    this.#transportClock = options.transportClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#env));
     this.#processIdentity = options.processIdentity ?? (options.processStarted ? async () => null : pid => processIdentityAsync(pid, this.#env));
@@ -1488,7 +1492,7 @@ export class Sessions {
       if (reservation) this.#core.launchSettled(name);
       const work = this.#resumeWork(process, desiredRole);
       this.#log({ event: 'session-resumed', session: process.name, harness: p.harness, pid: found.process.pid, state: found.state, relaunched: relaunch && p.status !== 'running', ...work });
-      const at = realClock.now().getTime();
+      const at = this.#transportClock.now().getTime();
       if (found.state !== 'unknown') this.#signal(p.sessionId, { state: found.state, source: 'resume', at }, false);
       // A reconnect can acknowledge deliveries while the row is still stopped.
       // Publication must retry them even when resume reports the same idle state.
@@ -1613,7 +1617,7 @@ export class Sessions {
     // the harness's own conversation id, as its hooks carry it (a `/clear` starts a new one)
     const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
     if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
-    const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? realClock.now().getTime());
+    const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? this.#transportClock.now().getTime());
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     this.#recordHarness(p, meaning);
     if (meaning.usage) {
@@ -1621,7 +1625,7 @@ export class Sessions {
       this.#usageChanged(p.sessionId);
     }
     if (meaning.rateLimits) {
-      this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? realClock.now().getTime()).toISOString());
+      this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? this.#transportClock.now().getTime()).toISOString());
       this.#usageChanged(p.sessionId);
     }
     if (meaning.limitHit) this.#limitHit(p.sessionId, meaning.limitHit);
@@ -1632,7 +1636,7 @@ export class Sessions {
       if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages, meaning.failureDedupe));
     }
     if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent || meaning.usage || meaning.rateLimits) };
-    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? realClock.now().getTime(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
+    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? this.#transportClock.now().getTime(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
   }
 
@@ -1655,7 +1659,7 @@ export class Sessions {
     this.#recordHarness(p, signal);
     if (!signal.state) return Boolean(signal.model || signal.subagent);
     // Native adapter signals and injection retries stay in the transport time domain.
-    const now = realClock.now().getTime();
+    const now = this.#transportClock.now().getTime();
     const current = this.#core.sessionState(sessionId);
     if (push) {
       if (signal.at < (this.#lastAt.get(sessionId) ?? 0)) {
@@ -1663,6 +1667,10 @@ export class Sessions {
         return false;
       }
       this.#lastPush.set(sessionId, now);
+    } else if (p.harness === 'claude-code' && signal.state === 'busy' && this.#lastPush.has(sessionId)) {
+      // Claude's background jobs also count as busy in agents --json. Once
+      // hooks/mod events have spoken, only they can establish a busy turn.
+      return false;
     } else if (current !== 'unknown' && now - (this.#lastPush.get(sessionId) ?? 0) < this.#pushTrustMs) {
       // a push signal is fresher than any poll
       return false;
@@ -1881,7 +1889,7 @@ export class Sessions {
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
     // Hook/adapter signal timestamps use transport time, independently of policy backoff time.
-    const flight = { sentAt: realClock.now().getTime(), again: false, reconnected: false };
+    const flight = { sentAt: this.#transportClock.now().getTime(), again: false, reconnected: false };
     this.#core.startInjection(messageId, name);
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');

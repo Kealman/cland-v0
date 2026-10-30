@@ -3773,7 +3773,12 @@ An unfinalized launch identity is fenced against rename and role changes (assign
 - A push signal (a hook, the mod) carries the time it happened; one older than the last push applied is dropped, so out-of-order hooks never move a session back. For a hook that time is when its `cland hook` process started (the harness fires the event by starting it; the process may take hundreds of milliseconds more to run), for the mod the event's own time. The hub's receipt order is not used: two hook processes started in one order often arrive in the other.
 - A signal or a bridge names its launch (`--launch`, the cland session id the launch gave the hooks and the mod). One from an earlier launch under the same name is ignored (`signal-other-launch` in the log) or refused: it never changes the row of the process that replaced it. A signal never revives a row that is not `running`; only resume does.
 - A retry asked for while an inject of the same message is still waiting for its confirmation (an `idle`, a bridge that connected) is made when that inject gives up, if the message still waits. A rename takes the session's `delivered` messages along, so their retry and confirmation find them. At a launch, the bridges that connected early are registered before the early signals are replayed.
-- A polled signal counts only while no push came for `CLAND_PUSH_TRUST_MS` (15 s), or while nothing is known yet.
+- A polled signal counts only while no push came for `CLAND_PUSH_TRUST_MS` (15 s), or while nothing is known yet. For Claude Code, after any accepted hook/mod state signal, a polled `busy` never changes state: background shells and agents also make `claude agents --json` report busy. A launch with no pushed state still accepts polled busy. Idle, waiting, unknown and liveness polling retain their existing behaviour; this exception does not change other adapters.
+
+Isolated fixtures can pass a complete `transportClock` through `serveProject` and
+`projectSessions` for hook/poll/injection timestamps, using the same clock for
+the adapter schedule. Omission retains native `realClock`, separately from core
+policy time; this is an in-process dependency seam, not a configuration setting.
 
 ### The process table
 

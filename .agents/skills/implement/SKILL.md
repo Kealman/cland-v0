@@ -395,6 +395,10 @@ For Claude Code crash regressions, follow
 `docs/agents/tests/hub-test-claude-code-adapter.test.ts.md`: advance the injected
 clock inside the bounded exited-row wait; one advance is not an exit receipt.
 
+For Claude poll authority, use the 37-second scripted regression in
+`docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`; cover both pushed
+idle delivery and the no-push unknown launch.
+
 For Claude delivery confirmation, require the exact envelope-bearing turn-start;
 the legacy mod `injected` frame proves submission acceptance only. Use the
 re-exec bridge regression in `docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`
