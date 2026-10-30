@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T06:26:54.426Z
+updated: 2026-10-30T07:36:03.091Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -450,3 +450,7 @@ Hub restart #59 by cland-impl at 16:31:29Z 2026-10-28 on coord's go (dev 60ad602
 ### human · 2026-10-30T06:26:54.426Z
 
 Hub restart #60 by cland-impl at 06:25:24Z 2026-10-30 on coord's request (dev 82eb1d22 = origin/dev: v0.3.0 63103af6 + tracker/rules; purpose: run the released code before enabling the real Telegram/Discord remotes on this project). Gate: no droplet (the hub's periodic T3 638177ce finished), merge queue empty, and additionally load1 under 10 for 2 minutes after the Mac had sat at load 49–79 with swap 14.9/15 GB from the human's parallel narrapunk test runs; hub 35680 had stalled silently 06:08:21–06:19:56Z (RSS 94 MB, VSZ 510 GB, swapped out) and resumed by itself once the human stopped those tests. Recipe (foreground serve from the hub's own env, nice 0, 8 GB heap), stop→serve 16 s. New hub pid 88459, port 55997, web 56935; NODE_OPTIONS and DIGITALOCEAN_TOKEN present; coord bridge-connected 06:25:39Z and injected 06:25:41Z, coordinator-filled; merge queue empty; doctor 34 ok / 4 warn / 0 fail; RSS 1.87 GB at +50 s; no git-maintenance owner file. Preceding incident: coord's Claude Code auto-updated 2.1.311→2.1.314 at 06:04Z and re-exec'd (pid 27389→46512); the hub missed the 1 s re-exec grace, logged harness-exited/role-cleared, the bridge reconnected but no delivery injected afterwards (five role clauses acked only). Recovery 06:23:50Z: SIGTERM 46512, cland session resume coord --relaunch, role set coord coordinator; bridge-connected 06:24:03Z, injected 06:24:18Z. Quirk: the first injections after the relaunch were stale replays of 10-28 deliveries (impl-1398/impl-1384 progress, a 00:36Z heartbeat, rev-26's T-1394 report), which coord ignored.
+
+### human · 2026-10-30T07:36:03.091Z
+
+Coord deaf bridge 2026-10-30 06:53–07:34Z (stand-in). Coord went idle 06:52:58Z after asking 06c38b39 (T-1467 memory probe); the hub's poll marked it busy at 06:53:35Z, so the human's Telegram answer 4448994d (06:53:39Z) was outcome coord:queued and never injected. At 07:26:12Z spoke-left/bridge-closed, flushed count 1; no reconnect for 7 min; claude pid 57408 alive at 0.1% CPU, hub row still running/busy, so no harness-exited and session retry refused ('no uncertain delivery'). Recovery 07:33:56Z: kill -TERM 57408 (exited 2 s), session resume coord --relaunch, role set coord coordinator; bridge-connected 07:34:05Z, role clause injected 07:34:07Z, the queued human answer re-injected by the hub itself 07:34:09Z, coord answered in General 07:34:40Z. Human waited 41 min for a reaction. Third deaf-bridge case this week after an idle period; pattern: poll says busy while idle, queued delivery, later bridge-closed drops it.
