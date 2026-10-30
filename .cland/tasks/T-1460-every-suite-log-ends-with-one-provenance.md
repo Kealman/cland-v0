@@ -2,8 +2,8 @@
 id: T-1460
 kind: task
 title: Every suite log ends with one provenance footer
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1237
 branch: t/T-1460-every-suite-log-ends-with-one-provenance
 created: 2026-10-30T05:44:57.980Z
-updated: 2026-10-30T15:28:27.967Z
+updated: 2026-10-30T15:39:26.758Z
+closed: 2026-10-30T15:39:26.758Z
 ---
 
 ## Summary
@@ -28,6 +29,7 @@ Every suite log, local and droplet, ends with one provenance footer: head, verif
   - done: impl-1460 · 2026-10-30T12:27:24.788Z
   - verified: rev-26 [reviewer] · run rev-20261030-1460-evidence-3 · 2026-10-30T14:53:22.916Z · commit f2d967400773ba601fdfffecf82b7da3b5b5f3c4
   - verified: rev-26 [reviewer] · run rev-20261030-1460-evidence-4 · 2026-10-30T15:28:27.885Z · commit 6996fc482158e9231bccd547de7ef7d5e85654b4
+  - verified: rev-26 [reviewer] · run rev-20261030-1460-source-7 · 2026-10-30T15:32:05.432Z · commit 1d03b0650471610fd6815e8286638a31e55a67bb
 
 ## Comments
 
@@ -178,3 +180,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14510 independently audits A-14509/afd6051f: 4272 ordinary and 115 load passes, T0/T1/all T2/Web complete, T3/T4 unrun. Both exact footer cases base+5/5 pass with timing parity; cache/shared-path/byte/backfill regressions pass. Readiness report precedes retained actual browser version-only record, distinct from passing Web execution. Scripted local/droplet fixture scope and known T-1484 incomplete installed CLI advisory retained. C1 current-head verified; older receipts retain original heads/outcomes. Live own landing/restart separate. No Reviewer workloads.
 
 Criteria: C1 verified.
+
+### rev-26 · 2026-10-30T15:32:05.432Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1460-source-7
+commit: 1d03b0650471610fd6815e8286638a31e55a67bb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14513 records Coordinator 989d8011 rule6 conflict-resolution waiver and rule11 merge authority. Exact README conflict preserves provenance and album sections; own code/runner/tests/help unchanged, imports match actual dev parent10782a4a9 (tracker-only step beyond e83b1081e). Independent matching-source search agrees with eight actual readers/text consumers; lead A-14512 reports all85 targeted local cases passing. C1 verified on this merged head using unchanged code plus targeted proof and original A-14509 at6996fc482 under explicit disposition. No fresh verify or old-head execution relabelled; T3/T4 and live landing/restart exclusions retained. No Reviewer workloads.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-30T15:32:15.591Z
+
+Enqueued at 1d03b0650 under the Coordinator's rule 6 conflict-resolution waiver. The merge from 6996fc48 to 1d03b065 resolved hub/README.md only, after T-1433 and T-1474 landed; T-1460's code is byte-identical. Suite evidence is mode-free 3aaec351/A-14456 plus A-14509 at 6996fc48, and rev-26 cleared the merge delta together with the targeted README and doc guard runs. The live footer appears after landing plus a hub restart (rule 19). T-1461 launches after that.
+
+### coord · 2026-10-30T15:39:26.758Z
+
+Merged 1bfa2532d998740c1b39aa0f5cc837d8c69231d4 onto dev.

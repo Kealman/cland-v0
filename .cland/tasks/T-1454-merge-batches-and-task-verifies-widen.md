@@ -3,7 +3,7 @@ id: T-1454
 kind: task
 title: Merge batches and task verifies widen test selection for sibling-merge interactions
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1241
 branch: t/T-1454-merge-batches-and-task-verifies-widen
 created: 2026-10-30T05:44:57.061Z
-updated: 2026-10-30T15:16:56.879Z
+updated: 2026-10-30T16:04:43.700Z
 ---
 
 ## Summary
@@ -27,6 +27,8 @@ Merge batches add the T2 and Web files that import modules another landing chang
 
 - [x] C1. A batch whose members change an imported module of another member's tests runs those tests, shown by a fixture with two interacting branches.
   - done: impl-1454 · 2026-10-30T14:32:58.240Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1454-evidence1 · 2026-10-30T15:36:22.100Z · commit 1b208941fc2fd57e114d02ebc6ff4f6d77d66db3
+  - verified: rev-32 [reviewer] · run rev-20261030-1454-evidence2 · 2026-10-30T16:04:43.130Z · commit 20c6b99d30bd836d02903a940ac2800a41948d20
 
 ## Comments
 
@@ -157,3 +159,46 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta clear A-14497. Parents8253d9e6f+effffe1e7; Coordinator0cdea12d rule11. Own implementation/tests unchanged; five scanner files exact19db19fa3. Combined decodedSUITE_USAGE retains both parents, frozen row matches; all nonblank skill/CHANGES/docs parent lines retained. Incoming prerequisites/clock/phone/site bytes matchdevparent. A14493 local claims only; originalA14464/A14489 stay failed, C1runtime-unverified. One unchanged-head configured verify then original-record final review. No Reviewer execution/mutations.
+
+### rev-32 · 2026-10-30T15:36:22.100Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-evidence1
+commit: 1b208941fc2fd57e114d02ebc6ff4f6d77d66db3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear A-14516/rawA14515/run0bb3f89d. Parsed4446ordinary/516file passes +5separate loadtest/file passes, zero adverse outcomes. C1 interacting branches native-generated-plan receipt pass.394s: report preservesbaseline, explicitrun executes named T2+syntheticWeb assertions of mergedvalue2. All158selection identities once; configordinary+5load, selectedT4guard once/10nestedcontrols. Former singleton/phone regressions pass. T0/T1/allfallbackT2/changedT3/T4guard/Web complete, no full integrated/all. Existing selection>3s identities3.476/6.841 retained, newC1/history<3. Hostgate reused, Web4workers, lint/budget/ratchet reportonly. PriorA14464/A14489 remain failed. No Reviewer rerun. C1 verified under Coordinator report/run policy.
+
+Criteria: C1 verified.
+
+### rev-32 · 2026-10-30T15:45:32.521Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-delta2
+commit: 20c6b99d30bd836d02903a940ac2800a41948d20
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta2 clear A-14531. Suites.ts comparedtodev leaves only reviewed selectionimport+hook; footer finalizer/import matchesincomingdev, no logic interleaving. Scannerfivefiles exact19db19fa3; otherownselection/config/wire/fixtures unchanged. Both help/frozen/skill/docs contracts retained; oldaudioREADME lines intentionally superseded. Incomingcode matchesdev. A14526 localclaims only, no-match protocolfilter nocoverage. Coordinator eef67366 requires fresh verify despite adjacent-import conflict, superseding docs-only waiver. PredecessorA14515/A14516 not current runtime, C1 stale pending new configured original records. No Reviewer execution.
+
+### rev-32 · 2026-10-30T16:04:43.130Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-evidence2
+commit: 20c6b99d30bd836d02903a940ac2800a41948d20
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Executed-head evidence2 clear A-14550/rawA14547 b393a187. Phase terminal totals4469passes/0adverse; structured4474 includes5unpaired duplicateT4finish-only rows22687–22691 excluded, matchedcases4469. All158selectiononce, C1actualgeneratedplanpass.352s, configordinary+5load; T4oneparent/10nestedmatched, Webcomplete. T0/T1/T2/changedT3/T4guard/Web all exit0, no integrated/all. NO provenancefooter: claimant corrected; Coordinatorbebae419 confirmsoldhostinghub17875/pendingrestart64; browser proof from real suitebrowser, tree from staticGit, no inventedfooterfields. Hostgate reused; reportonlywarnings retained. C1 refreshed onlyat20c6b99d3; Coordinatora9737fee requires T1453merge/freshsource+verify/evidence before readiness. Priorreceiptsretainheads. NoReviewerexecution.
+
+Criteria: C1 verified.

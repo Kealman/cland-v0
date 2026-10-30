@@ -3,7 +3,7 @@ id: T-1483
 kind: task
 title: The memory probe's copied hub can reach live suite paths and recovery state
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T14:34:06.813Z
+updated: 2026-10-30T16:05:07.664Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
 
 - [x] C1. A probe on a copy whose suite jobs carry live absolute paths and an unfinished running job starts, reaches readiness and stops without reading, writing or signalling anything outside its scratch root, shown by a fixture with a planted outside path and pid that stay untouched.
   - done: impl-1483 · 2026-10-30T12:22:26.005Z
-- [x] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
-  - done: impl-1483 · 2026-10-30T12:14:36.372Z
+- [ ] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
+  - failed: rev-26 [reviewer] · 2026-10-30T15:55:15.587Z · note A-14539 full run fails four legitimate restart-recovery cases; isolation ownership compatibility requires correction before final acceptance.
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
   - done: impl-1483 · 2026-10-30T12:04:33.106Z
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
@@ -191,3 +191,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14434 merge delta clear: all own safety/fixture source bytes unchanged; shared clock files match dev, isolation/browser guidance preserved. C3 qualified original A-14335 refreshed; C1/C2 runtime pending Coordinator verify all at merged head. Prior A-14373 failed retained; no Reviewer workloads/no task verify requested.
 
 Criteria: C3 verified.
+
+### rev-26 · 2026-10-30T15:55:15.587Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-evidence-1
+commit: b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7
+scope: evidence
+findings: [{"severity":"medium","text":"Full run A-14539 has four actual T3 restart-recovery failures in executor.test.ts:87, suite-cancel.test.ts:224/:253 and suite.test.ts:172. Preserve those controls and correct isolation ownership for legitimate fixture scratch/temp roots; executor legacy control deliberately deletes lease, so native authority also needs positive remaining identity proof. No blanket copied-PID authority or test relaxation.","file":"hub/src/hub/suite-isolation.ts","line":60}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Original c4f4be38/A-14539 at reviewed b5cd1bc5f is native exit1: 5302 ordinary pass/4fail/5skip plus175 separate load passes; completed5477pass/4fail/5skip includes load. T0/T1/T2 green,T3 red; Web/T4 unexecuted. All25 named memory base controls and50 memory load outcomes passed, but no failed-run clearance. C1 final unverified; C3 qualified historical audit remains separate. Coordinator a51982a5 requires guard correction preserving tests, fresh source review then Coordinator all rerun. Detailed native failure output/platform/limits in A-14542.
+
+Criteria: C2 failed (A-14539 full run fails four legitimate restart-recovery cases; isolation ownership compatibility requires correction before final acceptance.).
+
+### impl-1483 · 2026-10-30T16:01:38.355Z
+
+A-14539 follow-up: exact four T3 restart cases reproduced red serially with original 15000ms messages. Targeted temporary diagnostic (removed, original tests restored) confirmed native ownership refusal for a worker already exited with a held report, not a stored-path refusal. Minimal guard change distinguishes positive process absence from live signal authority and binds legacy captured ps-start + owned cwd to a stable observed native birth, persisted via LocalExecutor.restore. Original executor legacy case now passes, as do both original suite-cancel restart cases; original muted result next. Added red controls for builder scratch-root grants and required outside-log report-only publication. All three original test files remain unchanged; no weakening. No verify/dev merge.
+
+### impl-1483 · 2026-10-30T16:05:07.664Z
+
+Contract inventory for T3 correction: new additive CLAND_TEST_OWNED_ROOT produced by shared fixtureEnvironment after final overlay; read only through shared/fixture-roots.ts by suite path, resolved evidence and native cwd guards. accountFixtureEnvironment/projectHub/startDaemon/runCland/runnerFixtureEnvironment reseal via that builder; no copied root allowlist, no generic TMPDIR/HOME-parent grant. Old env shape without grant falls back to project root, covered by fixture-environment.test.ts. isolatedSuiteProcessOwned now returns positive owned/native identity proof or refusal; only Suites constructor consumes it, migrated and persists legacy birth in restored lease before further action. Positive native exit permits existing report/receipt handling, never authorizes a new live signal. Outside terminal pending reports are rebound to new hub-owned unavailable log/result files; Store/archive/wire shapes stay unchanged and all artifact/evidence consumers remain behind shared root guard. Four original T3 cases unchanged; no debug marker remains. No dev merge or verification submission.

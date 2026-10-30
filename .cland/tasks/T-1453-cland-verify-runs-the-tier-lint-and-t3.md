@@ -2,8 +2,8 @@
 id: T-1453
 kind: task
 title: cland verify runs the tier lint and T3 header check locally before submitting
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1232
 branch: t/T-1453-cland-verify-runs-the-tier-lint-and-t3
 created: 2026-10-30T05:44:56.925Z
-updated: 2026-10-30T15:27:07.503Z
+updated: 2026-10-30T16:06:03.325Z
+closed: 2026-10-30T16:06:03.325Z
 ---
 
 ## Summary
@@ -27,7 +28,10 @@ Before admission, `cland verify` runs `npm run test:tiers` and the T3 lifecycle 
   - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-1 · 2026-10-30T10:48:40.124Z · commit c2217bb929755acb533ab5e3d68d72db1a434ed7
   - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-2 · 2026-10-30T14:54:57.378Z · commit 35fa7620e9ef3030d320a0ae678f41ebd47c357b
   - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-3 · 2026-10-30T15:20:07.211Z · commit 75bc8701718c68b7e3766c87ab593706e94c5282
-  - done: impl-1453 · 2026-10-30T15:26:32.284Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1453-source-8 · 2026-10-30T15:45:57.733Z · commit a23466dcdd652fa48f9aa921ceb8822db112d72c
+  - verified: rev-26 [reviewer] · run rev-20261030-1453-source-9 · 2026-10-30T15:53:51.702Z · commit d2a221c0088fdc40c83c67b1a33de3ced791b2f7
+  - done: impl-1453 · 2026-10-30T15:58:58.943Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1453-source-10 · 2026-10-30T15:59:40.130Z · commit a7b4ba04b95a3b4fbe76661dfd0e5b079e31b5d7
 
 ## Comments
 
@@ -200,3 +204,72 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14508 authorized merge delta clear: README preserves both complete preflight and Telegram album sections; imported source/tests match actual dev parent. Own preflight core/tests/help/frozen usage unchanged from prior green. C1 current-head runtime pending fresh configured original; prior green remains attributed to 75bc87017, prior qualified T3 disposition unchanged. Local focused/advisory receipts accurately scoped. No Reviewer workloads. One mode-free configured verify may proceed at frozen exact head then final evidence review.
+
+### impl-1453 · 2026-10-30T15:40:42.344Z
+
+Coordinator docs/help waiver d4eb4f30 and explicit merge be52db14: merged T-1460 dev 1bfa2532d as a23466dcdd652fa48f9aa921ceb8822db112d72c, pushed. Text conflicts only: tests.md/README retain both preflight/provenance sections, usage/frozen row retain both help lines. Own preflight production/tests unchanged. Matching guards only, sequential: docs 3/3, usage compatibility 1/1, native help 5/5, Darwin arm64 Node v24.21.0. No new suite under waiver. Last reviewed green A-14502; already-admitted a608f068 remains pinned to prior head 276715c81. Named delta review then ready per disposition.
+
+### impl-1453 · 2026-10-30T15:44:48.586Z
+
+Waiver consumer inventory expanded and disposition recorded in A-14530 (full sequential receipts). At unchanged a23466dcd, additional complete matching files pass: cli-command-help18, cli-usage-merge2, install-claims3, roles-clauses39, web-readme3, session-usage7, remote-docs26 (site README readers included), suite-persistence14, suite-protocol15, suite-remote-log1, suite-summary4, skills-onboarding15, skills-invocation3: 150 total, zero fail/cancel/skip. Existing exact-head docs3/usage-compat1/cli-help5 also green. PUSH-only/import-graph guards unaffected; fixture path classifiers/comment references do not read modified docs, listed in artifact. Footer raw/persisted readers all covered. Parent run a608f068/A-14528 now green 4303 ordinary at 276715c81; attributed as predecessor, not current head. No source change or new verify.
+
+### rev-26 · 2026-10-30T15:45:57.733Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-source-8
+commit: a23466dcdd652fa48f9aa921ceb8822db112d72c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14532 records Coordinator docs/help rule6 waiver: exact conflict resolution retains preflight/provenance/help/frozen text; own core/tests unchanged, imported source matches dev. Expanded inventory A-14530 has 150 additional complete-file native exit0 passes plus earlier9 exact-head guards (159 targeted total). Independently audited immediate predecessor A-14528/a608f068 at276715c81:4303 ordinary+125load passes, eight exact C1 cases timing parity, six admission-cost identities, changedT3 once/Web complete; remainingT3/T4 unrun. C1 verified on merged head under waiver, without relabelling any prior receipt. Prior qualified fullT3 and failed whole-run facts remain separate; report-only limits retained. No Reviewer workloads.
+
+Criteria: C1 verified.
+
+### impl-1453 · 2026-10-30T15:51:19.839Z
+
+Applied Coordinator d4d25ee7 after T-1464 landing. Pushed d2a221c0088fdc40c83c67b1a33de3ced791b2f7 merging dev db4bb9a8; conflicts only implement skill/usage/frozen row, both policies retained, CHANGES recorded. T-1464 auto-imports SuiteCandidate.isAncestor exactly from dev; T-1453 checker/CLI/tests unchanged. All16 matching reader files rerun sequentially:159 pass, zero fail/cancel/skip, raw outputs in artifact. Last audited green A-14528 at 276715c81 remains attributed predecessor; source8 waiver A-14532 parent a23466dcd. No new verify under docs/help waiver; requesting named delta before ready.
+
+### rev-26 · 2026-10-30T15:53:51.702Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-source-9
+commit: d2a221c0088fdc40c83c67b1a33de3ced791b2f7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14541 source9 waiver audit: both help/skill policies retained and exact frozen row matches; own lintSuiteCandidate/preflight CLI/tests unchanged. Imported ancestry API/Git implementation matches dev (entire shared module is not unchanged). A-14538 complete raw 16 sequential reader files confirms 159 named/terminal passes, all native exit0, zero adverse outcomes at d2a221c00. C1 refreshed under Coordinator d4d25ee7 docs/help waiver using current targeted receipts plus separately attributed A-14528 at ancestor276715c81 and prior full-T3 phase disposition. No new-head full-suite claim or new verify; prior report-only/platform/phase limits retained.
+
+Criteria: C1 verified.
+
+### impl-1453 · 2026-10-30T15:58:59.092Z
+
+Applied Coordinator d152dd49 after T-1484 landing0e4e223cb; pushed a7b4ba04b95a3b4fbe76661dfd0e5b079e31b5d7. Only conflicts usage/frozen row; local preflight and compiler requirement help retained. No authored code changes; imported lazy compiler capability matches dev, own checker/CLI/tests unchanged. Same full matching-reader inventory A-14530 rerun sequentially:16 files/159 pass/zero adverse outcomes, raw outputs in artifact. Last audited ancestor green A-14528 and source9 waiver A-14541 remain attributed. No new verify under standing text waiver; requesting rev-26 delta then ready.
+
+### rev-26 · 2026-10-30T15:59:40.130Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-source-10
+commit: a7b4ba04b95a3b4fbe76661dfd0e5b079e31b5d7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source10 waiver clear: local preflight plus incoming compiler requirement and prior help text retained; exact SUITE_USAGE frozen row matches. Own checker/CLI/preflight/admission tests unchanged; compiler capability/consumers and native controls match dev. A-14545 raw16 sequential complete files independently confirms159 named/terminal passes, all native exit0, zero adverse outcomes. C1 refreshed under Coordinator d152dd49 waiver via exact delta/current targeted plus ancestor A-14528 at276715c81; no current-head full/runtime/browser claim and no new verify. Prior qualified fullT3 and all report-only/unrun limits preserved. Full audit in attached source10 artifact.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-30T15:59:49.414Z
+
+Enqueued at a7b4ba04b. Suite evidence under the Coordinator's dispositions: T3 from verify all af51ef07 / A-14387 at 6e8cedd8b (rule 7, phone-asks only); current-head runtime from mode-free 618b4e13 / A-14502 at 75bc87017 and A-14528 at 276715c81. The later merges after T-1458, T-1460, T-1464 and T-1484 landed resolved docs and help text only, under the standing rule 6 waiver, with rev-26 delta reviews and targeted raw text-reader receipts (A-14530, A-14538). T-1453's own preflight code and tests are unchanged since rev-26's source5.
+
+### coord · 2026-10-30T16:06:03.325Z
+
+Merged 18f57f55f107bd3e3bfd24da073eb9a24b8b2b28 onto dev.

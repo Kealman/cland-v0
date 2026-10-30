@@ -3,7 +3,7 @@ id: T-1471
 kind: task
 title: One harness process per Claude Code launch
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1223
 branch: t/T-1471-one-harness-process-per-claude-code
 created: 2026-10-30T07:50:17.744Z
-updated: 2026-10-30T09:26:26.073Z
+updated: 2026-10-30T16:04:29.297Z
 ---
 
 ## Summary
@@ -25,12 +25,12 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 
 ## Acceptance criteria
 
-- [ ] C1. `session resume --relaunch` on a Claude Code row runs `claude stop <previous harnessId>` even when the recorded pid is gone or the row is `exited`.
-  - failed: rev-26 [reviewer] · 2026-10-30T08:57:32.003Z · note Configured relaunch/lifecycle consumers fail and native Linux T3 is unexecuted; runtime evidence is incomplete.
+- [x] C1. `session resume --relaunch` on a Claude Code row runs `claude stop <previous harnessId>` even when the recorded pid is gone or the row is `exited`.
+  - done: impl-1471 · 2026-10-30T15:43:51.179Z
 - [x] C2. Each launch writes its own settings and MCP files with a new launch id; a spoke, hook or bridge carrying an earlier launch id is refused with "belongs to an earlier launch".
-  - done: impl-1471 · 2026-10-30T08:22:45.807Z
+  - done: impl-1471 · 2026-10-30T15:43:51.294Z
 - [x] C3. A second spoke whose hooks carry a different harness session id than the row logs `duplicate-harness` and posts one Agents notice naming both job ids and pids.
-  - done: impl-1471 · 2026-10-30T08:22:45.910Z
+  - done: impl-1471 · 2026-10-30T15:43:51.407Z
 
 ## Comments
 
@@ -103,3 +103,24 @@ Criteria: C1 failed (Configured relaunch/lifecycle consumers fail and native Lin
 ### impl-1471 · 2026-10-30T09:26:26.073Z
 
 Expanded production-path audit after failed b103e729 (source-only results unless noted): (1) launch, fresh resume and pool restart: Sessions #launchNew/#spawnLaunch -> Claude spawn -> sole #launch/#sessionFlags; always new generation in persisted owner/current metadata, immutable settings/MCP, hook --launch and mod settings. (2) explicit relaunch and account-selected relaunch: Claude resume(relaunch) -> same #launch/#sessionFlags after positive stop/absence; account overlay cannot replace explicit launch files. (3) startup/plain resume: no process creation/settings rewrite; preserves current generation or absent metadata for legacy jobs; persisted legacy restart/adoption control passes. (4) native/auto-update re-exec: hub schedules none; generated CLI/settings disable auto-update, and native replacement retains immutable launch files/MCP generation. Found/fixed mod partial-env bug: settings generation now wins before legacy env session-id; mod control red/green proves bridge/hook argv. (5) session retry: #retry/#inject -> current admitted bridge, no process/rotation. (6) account refresh/restart: account usage poller creates isolated -p /usage subprocess, removes all CLAND variables, never joins as a session; account-pinned session restart is path2. Additional consumer migration: native accounts authentication hook reads generation from recorded settings; T3 header/native assertions retained. New optional adapter relaunchStopsProcess preserves generic/fake outer-stop counts and held authorization boundaries rather than branching by harness name. The sole freshness mechanism will be T-1474 #hookRevision/#activity + DirectorySchedule observationRevision/observedLaunches after Coordinator-authorized dev merge; no next review/verify on temporary parallel counter.
+
+### impl-1471 · 2026-10-30T15:43:21.796Z
+
+Merged authorized origin/dev after T-1474 landing in d12ee878b; corrected/pushed integrated head4c3ece4dbc54ca8ee30dc9ed7314b1934e6950f3. Sole native freshness owner is T-1474 #hookRevision/#activity with DirectorySchedule.observationRevision/observedLaunches; pending identity is a marker on that same activity record, and no #hookRevisions map remains. Ordinary hooks preserve independent verified PID acquisition. Sessions #frameRevisions only sequences its deferred frame/lifecycle admissions. Added red-first stateless positive-inspection release and adapter-owned unconfirmed-stop row/role/claim retention controls. ResumeOptions.stopped is an optional local callback, not wire data; only relaunchStopsProcess adapters use it, and it persists positive stop then returns the latest row before replacement. Generic/fake adapters retain dev stop count and held-stop boundary; Codex/OpenCode unaffected. Production path audit A-14222 retained: launch/fresh/pool/account relaunch all use sole #launch/#sessionFlags; plain/startup resume preserves saved generation or legacy absence; native re-exec uses retained files and corrected settings-before-legacy-env mod fallback; retry spawns nothing; account usage probes strip CLAND fields. Native account auth-hook consumer and newly landed schedule consumers migrated to their recorded generation. All existing native PID/job/role/claim/message assertions retained. Next review goes directly to rev-26, then ready-for-verify-all to Coordinator; no duplicate self-submitted run.
+
+### rev-26 · 2026-10-30T15:53:08.067Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1471-source-4
+commit: 4c3ece4dbc54ca8ee30dc9ed7314b1934e6950f3
+scope: delta
+findings: [{"severity":"medium","text":"M1: Three new component regressions (also stateless-hook case and claude-code-sessions.test.ts uncertain-stop case) acquire hubs/UI through raw fixture/open; second legacy hub/bridge likewise unowned before acquisition. The copied receipt race does not join timed-out work. Use shared pre-registered setup/observation/disposal owners with separate setup bound and removal barrier; preserve semantic assertions and cover omitted/aborted setup (rules 9/12).","file":"hub/test/claude-code-schedule.test.ts","line":1009}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Integrated source review at 4c3ece4db: Standards M1 remains in three new tests; Spec production integration has no additional blocker identified. Single native freshness owner retained, positive stop receipt preserves unknown-stop supervision, generation/revocation and post-stop query fixes retained. C1–C3 runtime pending; prior A-14211 stays failed. Local/native pre-commit limits retained. See source4 audit artifact. Exact corrected-head source review precedes Coordinator verify all; no duplicate task submission.
+
+### impl-1471 · 2026-10-30T16:00:26.323Z
+
+Source4 M1 correction in progress: shared claudeComponentOwner composes pacingOwner+dispatcherUi before acquisition, bounds hub/welcome/subscription setup, tracks late clients/spokes and frame/native-poll observations, and guards root removal until drainage. Omitted/aborted readiness controls preserve actual stopped-hub + retained-root + admitted-observation completion receipts. Production source unchanged from 4c3ece4db. dispatcherUi gains only an optional process-observer argument; default and all existing 3-argument consumers remain unchanged (sessionDispatcherUi wrapper, CLI/role/tracker/release/merge/heartbeat/permissions component callers); invented-PID Claude fixtures explicitly disable native PID discovery. New helper clients: schedule legacy/stateless cases and sessions uncertain-stop case. No wire/client contract change.

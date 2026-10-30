@@ -2,8 +2,8 @@
 id: T-1464
 kind: task
 title: Periodic dev T3 skips a run when a newer integrated or stage cover just passed
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1229
 branch: t/T-1464-periodic-dev-t3-skips-a-run-when-a-newer
 created: 2026-10-30T05:44:58.711Z
-updated: 2026-10-30T15:05:18.928Z
+updated: 2026-10-30T15:49:32.039Z
+closed: 2026-10-30T15:49:32.039Z
 ---
 
 ## Summary
@@ -26,6 +27,8 @@ Periodic dev T3 cost $9.01 and 35.9 h in v0.3.0 (25 % of spend); three runs repe
 - [x] C1. A periodic tick after a fresh green cover at the same tip records a skip naming that cover.
   - done: impl-1464 · 2026-10-30T11:55:26.886Z
   - verified: rev-26 [reviewer] · run rev-20261030-1464-evidence-2 · 2026-10-30T15:02:26.011Z · commit 299e8457cac6b4ccf47d23c27e8ee60e65077220
+  - verified: rev-26 [reviewer] · run rev-20261030-1464-evidence-3 · 2026-10-30T15:32:39.067Z · commit d199e06108b50ff090862933a2bb4ab482c73704
+  - verified: rev-26 [reviewer] · run rev-20261030-1464-source-5 · 2026-10-30T15:42:33.082Z · commit 5b00945ce72ceeaa78808f5fba16a131af0cc9fb
 
 ## Comments
 
@@ -122,3 +125,41 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14488 authorized merge delta clear: own periodic policy/tests/fixture/guide unchanged from green299e8457c; imported prerequisite/runner and T-1482 files match actual fetched dev effffe1e7. Combined skill/docs/help/frozen rows retain both policies, report-only prerequisite status preserved. C1 current runtime pending new same-head configured original; predecessor green remains attributed. Known T-1484 install CLI probe incomplete/advisory, not pass. No Reviewer workloads. One mode-free verify may proceed then final review.
+
+### rev-26 · 2026-10-30T15:32:39.067Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1464-evidence-3
+commit: d199e06108b50ff090862933a2bb4ab482c73704
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14514 independently audits A-14511/705ad3ca: 4294 ordinary plus 225 load passes; T0/T1/all T2/Web complete, T3/T4 unrun. All20 new policy/ancestry identities base+5/5 with timing parity; durable named-cover skip/restart and native positive ancestry final assertions preserved. Phone case passes2.172302985s. Known T-1484 install CLI probe remains incomplete nativeexit1/advisory, report-only warnings retained. C1 current-head verified; predecessor greens and old failed receipts stay separately attributed. No Reviewer workloads.
+
+Criteria: C1 verified.
+
+### rev-26 · 2026-10-30T15:42:33.082Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1464-source-5
+commit: 5b00945ce72ceeaa78808f5fba16a131af0cc9fb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14525 records rule6 waiver: help/frozen conflicts retain fresh-cover, provenance and both readiness notices; exact usage values match frozen rows. Own periodic skip/ancestry/tests unchanged; shared Suites difference is automatic dev provenance-publication import, with no manual code conflict. A-14523 reports four matching help/frozen-row files 26/26 passes at merged head. C1 verified using that delta/targeted evidence plus original 705ad3ca/A-14511 at d199e0610, as Coordinator directed; no fresh verify or old-head execution relabelled. Prior report-only limits retained. No Reviewer workloads.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-30T15:42:42.240Z
+
+Enqueued at 5b00945ce under the Coordinator's standing rule 6 docs and help waiver. The d199e0610 to 5b00945ce merge resolved only usage.ts, commands.json and doc conflicts after T-1460 landed; T-1464's own code is unchanged. Suite evidence is 705ad3ca / A-14511 at d199e0610, plus rev-26's delta review with targeted help, usage and frozen-row runs.
+
+### coord · 2026-10-30T15:49:32.039Z
+
+Merged db4bb9a8740b1202e8ae22441cc2ce12a3429be1 onto dev.
