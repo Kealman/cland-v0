@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T09:10:30.775Z
+updated: 2026-10-30T11:01:48.217Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -466,3 +466,7 @@ Split brain 2026-10-30 07:33–07:53Z (stand-in): the 07:33 relaunch killed pid 
 ### human · 2026-10-30T09:10:30.775Z
 
 Hub restart #62 2026-10-30 09:09:01Z (stand-in, coord go 09:09Z, at-rest growth T-1478): hub 31310 before the stop footprint 3,972 MB (1,965 MB compressed, RSS 1.9 GB) after 1 h 30 min; peak seen 5,955 MB (3,779 MB compressed) at 08:40Z, so growth at rest is not monotonic. Gate: no droplets, no leases, queue empty, load 1.5, dev 2930ff79 = origin/dev, root clean. stop→serve 14 s; new hub 48336, port 64002, web 56935, nice 0, 8 GB heap, DO token present; coord bridge-connected 09:09:14Z, coordinator-filled 09:09:16Z; queue empty; doctor 34 ok / 4 warn / 0 fail; RSS 0.55 GB at +50 s; one coord bridge.
+
+### human · 2026-10-30T11:01:48.217Z
+
+Hub restart #63 2026-10-30 11:00:06Z (stand-in, coord go 11:01Z): first hub on dev 6be4bb3e with T-1477's bounded journal read (T-1476 not in yet). Hub 48336 before the stop: footprint 4,176 MB (2,235 MB compressed, RSS 1.9 GB) after 1 h 51 min; peak seen by coord 8.2 GB at ~10:30Z with 6 remote runs streaming, 6,491 MB at 10:37Z, 4,134 MB at 10:53Z with 1 run. Gate: queue empty, no droplets, no leases, load 1.8, root clean. stop→serve 42 s (listening 11:00:19Z, serving 11:00:47Z: 28 s of startup replay); new hub 17875, port 56375, web 56935, nice 0, 8 GB heap, DO token present; coord bridge-connected 11:00:48Z, coordinator-filled 11:01:08Z, injected 11:01:10Z, one bridge; queue empty; doctor 34 ok / 4 warn / 0 fail; at +50 s RSS 0.94 GB, footprint 4,796 MB (3,696 MB compressed).
