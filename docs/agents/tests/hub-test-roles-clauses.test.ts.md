@@ -4,7 +4,7 @@ T-1260 checks that both Implementer clauses and the cover-quiet procedure say to
 do other work or end the turn until `test-slot-available`, without polling.
 Replace existing clause text and keep both byte and growth-reserve assertions.
 
-The Aide onboarding wording assigns root commits and publication to the
+The onboarding wording assigns root commits and publication to the
 Coordinator when the current Aide harness lacks root Git write access (the
 generated Codex workspace-write default). Check both defaults and the project
 clause, retaining the byte reserve. `roles-editor.test.ts` checks that the old
