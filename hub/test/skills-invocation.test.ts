@@ -26,3 +26,34 @@ test('every shipped skill keeps Codex implicit invocation consistent with its fr
   }
   assert.deepEqual(mismatches, [], 'Codex policy and disable-model-invocation disagree for these skills');
 });
+
+test('release skill records human conditional approval and checks every condition before publication', async () => {
+  const skill = await readFile(new URL('release/SKILL.md', SKILLS), 'utf8');
+  const conditional = skill.split('## Conditional release approval')[1]?.split('\n## ')[0];
+  assert.ok(conditional, 'release skill has a conditional approval procedure');
+  for (const requirement of [
+    /daytime/,
+    /Coordinator.*`ask`/,
+    /human.*version.*conditions/s,
+    /release epic is clear.*covers are green/,
+    /Record.*ask.*answer.*release item/s,
+    /each condition.*evidence.*before.*`cland release`/s,
+    /missing.*failed.*pending/s,
+    /version or.*notes.*fresh.*ask/s,
+    /declined.*approval/s,
+  ]) assert.match(conditional, requirement);
+  assert.match(skill, /Once the preview is approved and every recorded condition is satisfied/);
+});
+
+test('conditional release approval survives only the human-approved readiness changes', async () => {
+  const skill = await readFile(new URL('release/SKILL.md', SKILLS), 'utf8');
+  const conditional = skill.split('## Conditional release approval')[1]?.split('\n## ')[0];
+  assert.ok(conditional);
+  assert.match(conditional, /ask.*future changes/s);
+  assert.match(conditional, /reviewed fixes.*tracker.*evidence/s);
+  assert.match(conditional, /within.*approved scope.*without another ask/s);
+  assert.match(conditional, /outside.*scope.*fresh.*ask/s);
+  assert.match(conditional, /final.*preview.*head.*cover/s);
+  assert.match(skill, /For ordinary exact-build approval, if dev or the notes changed/);
+  assert.doesNotMatch(conditional, /step 4 also requires a new\s+preview and approval when dev changes/);
+});

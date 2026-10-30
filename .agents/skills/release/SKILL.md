@@ -37,16 +37,51 @@ hashing. An empty tap reports skipped. The human creates the tap first. See
 [Homebrew publication](../../../hub/README.md#homebrew-formula-publication) for
 receipt/retry semantics; final output and item comment include SHA and tap commit.
 
+For approval before readiness work finishes, use [Conditional release approval](#conditional-release-approval) before step 2's final dry run. Complete all preflight steps before publication.
+
 1. Work in the project root on `dev`. Read the current release item with `cland task view T-n --json` and use or open its bound topic. The current release is the open top-level item with the lowest semver version. Commit outstanding tracker and docs changes on `dev`, keeping unrelated staged work out of that commit, and publish them to the territory with `cland push` from your own shell. Resolve any fast-forward refusal before releasing. The default branch is `main` unless the territory records another in `cland.defaultBranch`. Release includes all committed work between the default branch and `dev`; a project version bump is an ordinary item reviewed and merged before release.
 2. Read the item's version and the human's recorded version decision. When a recorded decision exists, ensure the item's version matches it before previewing. If the version is missing, ask the human to choose it, then record it with `cland task edit T-n --version X.Y.Z`. Before the dry run, ensure the root `package.json` version equals the release's through an ordinary commit reviewed and merged onto `dev`. Release reads the committed `dev` version and refuses a mismatch with `release-version`; it never writes the bump. Projects without that file or its `version` key release as before. Before the dry run, when releasing cland itself (the repository containing `hub/bin/check-opencode.ts`), run the [informational OpenCode check](OPENCODE-CHECK.md) and include any differences in the release report. Differences do not stop the release. Run `cland release --item T-n --dry-run`. Resolve every refusal before continuing: close or move open descendants; when GitHub has commits dev lacks, run `cland sync` from a clean root, then preview again. Share the resulting notes, version, commit and refs in the release topic through `artifact.create`.
-3. Ask through the Coordinator's `ask` in that topic: show the preview's notes and version and request approval to release that build, allowing a free answer (`free: true`). Wait for approval. The version comes from the human. An Aide or a stand-in named by the human may relay approval and the version only when the human has recorded that version decision; cite the record (for this project's v0.1, D18 in docs/spec/v0.1.md records v0.1.0). A stand-in never invents a version; an unrecorded version needs the human's decision. Follow the project's recorded acceptance policy: D19 uses QA's clear T-117 walkthrough instead of a separate human acceptance pass, and the notes retain T-109 C1 and T-111 M7 as verified in v0.1.1.
+3. For daytime approval while readiness is pending, use [Conditional release approval](#conditional-release-approval). Otherwise ask through the Coordinator's `ask` in that topic: show the preview's notes and version and request approval to release that build, allowing a free answer (`free: true`). Wait for approval. The version comes from the human. An Aide or a stand-in named by the human may relay approval and the version only when the human has recorded that version decision; cite the record (for this project's v0.1, D18 in docs/spec/v0.1.md records v0.1.0). A stand-in never invents a version; an unrecorded version needs the human's decision. Follow the project's recorded acceptance policy: D19 uses QA's clear T-117 walkthrough instead of a separate human acceptance pass, and the notes retain T-109 C1 and T-111 M7 as verified in v0.1.1.
 
-4. If the approved version differs, record it on the item, run `cland release --item T-n --dry-run` again and show the resulting notes and version in a fresh approval ask. If dev or the notes changed, preview and obtain approval for that build again. Once the preview is approved, run `cland release --item T-n` yourself. It prepares an annotated tag with the item Notes, epic deliverables and commit notes, pushes the default branch and the tag atomically, advances the default branch locally and in the territory, then comments the tag and full commit on the item and closes it. The next open release becomes current. Web assets use gh’s GitHub Release API only when opted in; the Git refs transaction makes no API calls.
+4. If the approved version differs, record it on the item, run `cland release --item T-n --dry-run` again and show the resulting notes and version in a fresh approval ask. For ordinary exact-build approval, if dev or the notes changed, preview and obtain approval for that build again. Conditional approval follows its recorded future-change scope below. Once the preview is approved and every recorded condition is satisfied, run `cland release --item T-n` yourself. It prepares an annotated tag with the item Notes, epic deliverables and commit notes, pushes the default branch and the tag atomically, advances the default branch locally and in the territory, then comments the tag and full commit on the item and closes it. The next open release becomes current. Web assets use gh’s GitHub Release API only when opted in; the Git refs transaction makes no API calls.
 5. Report the returned version and full commit in the release topic. If it says `released; follow-up failed`, GitHub already accepted the release: preserve `.cland/release.tmp`, repair the named local, territory, Web assets, Homebrew tap or item obstruction, and retry **the same item and version** with `cland release --item T-n`. The receipt pins the published item, tag, commit and notes, so a restart or later dev commit cannot publish a different release on that retry. A failed push can also have lost its reply; retry the same item and version to let cland check the receipt against GitHub. With a pending sync, preserve `.cland/sync.tmp` and finish `cland sync` before releasing.
 
 For a project without a release item, `cland release <chosen-version> [--dry-run]` retains the version-based flow: run the same applicable preflight check, preview the notes, ask for approval with a human-chosen version, then publish from your own shell. It does not comment on or close tracker items.
 
 `cland sync` fetches GitHub and prepares a replay of dev's unreleased commits. Finish any pending `cland merge` follow-up first: sync refuses to rewrite a merge whose checkout, item, claim or topic completion is still pending. A dirty root refuses; a conflict names the files and leaves the default branch, dev and the root untouched. Reconcile the conflicting work on dev, then retry. Sync publishes only to the local territory, never to GitHub. If it says `synced locally; follow-up failed`, preserve its receipt, repair the named obstruction, and retry sync; it finishes the same prepared replay.
+
+## Conditional release approval
+
+In daytime, the Coordinator may use `ask` in the release topic (`free: true`)
+to request the human's approval of a named version, notes and explicit conditions
+before readiness is complete. The ask must name the scope of future changes it
+authorizes, such as reviewed fixes for named release items and their committed
+tracker and evidence updates. For example: “Approve release vX.Y.Z with these
+notes, including reviewed fixes for the listed release items and their tracker
+and evidence updates, once the release epic is clear and the covers are green?”
+Attach the notes artifact and identify the release item, current candidate commit, named future
+work and required covers (platforms, executor and occasions). Name any other conditions in the ask; the
+human decides both the version and conditions. A declined ask is not approval.
+
+Record the ask id, human answer, approved version, notes artifact and exact
+conditions and authorized future-change scope in a release item comment.
+A conditional approval authorizes release only when all those conditions hold. While a dry run still refuses pending
+readiness, keep the recorded notes as a proposal; complete step 2's successful
+preview before publication. Compare every intervening commit with the recorded
+scope. The final successful preview must identify the final head, and required
+cover receipts must match that head under the existing coverage rules. Existing
+release gates and acceptance policy apply.
+
+The Coordinator checks each condition and records its evidence in the release
+item before running `cland release`: cite the clear epic verdict and matching green
+cover receipts, including their heads, platforms, executor and occasions, plus
+evidence for every other named condition. A missing, failed or pending condition
+means wait; report which evidence is outstanding. When all conditions hold and
+every intervening commit is within the human-approved scope, release without another ask.
+Any change outside that scope requires a fresh approval ask. Any change to the
+version or the notes, conditions or other approved publication facts (including
+asset and Homebrew facts above) also requires a fresh approval ask. Approval
+never waives a release refusal.
 
 ## Publish marketing without a release
 
