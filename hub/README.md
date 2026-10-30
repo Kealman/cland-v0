@@ -5745,6 +5745,18 @@ occasion facts determine the author, including after restart.
 The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
+
+### Fresh integrated cover before periodic dev T3
+
+A periodic tick skips admission when a reported, executed green integrated dev
+cover completed within the last hour at the same head or a descendant of the
+captured dev tip. Integrated runs, stage/epic/release occasions and integrated
+batches qualify only with a full T3 selection; red, partial, cached, diagnostic
+and subset receipts do not. The skip notice names the covering run id and head,
+and the durable attempt cursor throttles another attempt for the configured
+interval, including across restart. Missing ancestry evidence never counts as
+coverage. This skips only the periodic admission, without changing cover gates.
+
 Red results first probe each failing file at current local dev. A passing file
 reports `already fixed on dev at <commit>` without filing a Bug only when the
 red head is an ancestor and an intervening commit changes a path outside

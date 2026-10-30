@@ -43,6 +43,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   await mkdir(join(root, '.cland/run/executor'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   await writeFile(join(root, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: 1, minDiskSize: 10, created: image.created_at }));
+  const ancestry: Array<[string, string]> = [];
   const candidate = { head: 'a'.repeat(40), branch: 'candidate', tree: 'd'.repeat(40) as string | null,
     selection: { mode: 'hub-only', files: ['hub/src/example.ts'], reason: 'fixture' } as SuiteSelection };
   let changed = Promise.withResolvers<void>();
@@ -109,6 +110,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     const artifact = store.registerArtifact(id => ({ id, title: job.id, kind: 'file', path: job.log, creator: 'hub', time: clock.now().toISOString(), topic: job.topic, status: 'shared' }), () => {});
     checkpoint(artifact.id); reports.push(structuredClone(job)); publish();
   }, { clock, durationContext, candidate: {
+    isAncestor: async (_cwd, ancestor, descendant) => ancestry.some(pair => pair[0] === ancestor && pair[1] === descendant),
     head: async () => candidate.head,
     tree: async () => candidate.tree,
     inspect: async () => { await inspectBarrier(); return { ...structuredClone(candidate), tierPlan: [], budgetBase: undefined }; },
@@ -176,7 +178,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     });
     suites = make();
   }
-  return { root, env, clock, api, machine, acquisitions, candidate, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
+  return { root, env, clock, api, machine, acquisitions, candidate, ancestry, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
     ownIO(release: () => void) { releases.add(release); },
     get suites() { return suites; }, get store() { return store; }, get config() { return config; },
     beforeReport(barrier: typeof beforeReport) { beforeReport = barrier; },

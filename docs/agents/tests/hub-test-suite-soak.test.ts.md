@@ -26,3 +26,18 @@ hold local admission, submit a null-actor periodic run and an ordinary human
 run, then assert queued authors. Release both slots, observe each executor start,
 and assert running queue rows, heartbeat text and completed timing records.
 No origin field is required to read the retained records.
+
+Fresh-cover policy uses a completed semantic executor receipt before the periodic
+tick. Reopen to assert durable history and the attempt cursor, then assert both
+no periodic admission and the skip event/notice naming the cover. Eligibility
+cases retain the final positive admission assertion for red, partial, stale,
+cached, subset, diagnostic, cancelled, missing-time, older and unrelated covers.
+Candidate ancestry facts distinguish descendants from ancestors. Full integrated,
+stage, epic, release and T3 batch covers qualify; T1-only batches do not.
+
+The native ancestry control in `suite-soak-component.test.ts` uses scratchMachine
+and commandIn for setup Git, with sealed final environment and explicit exit
+assertions. Every production ancestry read is registered through caseDeadlines;
+its pending-work drain precedes scratch directory cleanup even if an observer
+aborts. The shared command owner's adverse cancellation/native-close control
+remains in `hub/test/init-machine-lifecycle.test.ts`.

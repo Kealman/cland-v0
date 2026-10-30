@@ -296,6 +296,16 @@ droplet under the ordinary shared remote budget and daily spend cap, selects T2
 and T3 without load repetitions, and never holds or rebuilds a merge batch.
 Nightly soak still runs T1–T4 independently.
 
+A periodic tick skips admission when a reported, executed green integrated dev
+cover completed within the last hour at the same head or a descendant of the
+captured dev tip. Integrated runs, stage/epic/release occasions and integrated
+batches qualify only with a full T3 selection; red, partial, cached, diagnostic
+and subset receipts do not. The skip notice names the covering run id and head,
+and the durable attempt cursor throttles another attempt for the configured
+interval, including across restart. Missing ancestry evidence never counts as
+coverage. This skips only the periodic admission, without changing cover gates.
+
+
 Once admitted, periodic dev bundles the captured commit from Git objects. Later
 root dev source or administrative commits and dirty files cannot change those
 bytes. Its recorded check runs remotely on the detached commit, without a

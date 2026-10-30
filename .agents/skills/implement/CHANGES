@@ -337,6 +337,7 @@ T-1467 merge-delta M4: Join the daemon’s shared startup journal scan to preser
 T-1469: Point Claude poll-authority changes to the scripted idle/delivery and unknown-launch regressions.
 T-1469 source review M1/M2: Document complete transport-clock replay and shared acquisition/observer ownership controls.
 
+T-1464: document periodic fresh integrated-cover skips and retained exact-head item verification.
 T-1459: Document repository auto-maintenance provisioning and disposable native-fetch/doctor coverage.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
 T-1460: Document final local/droplet provenance, unknown/browser/cache facts and report-only missing skip reasons.

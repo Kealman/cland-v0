@@ -146,6 +146,78 @@ test('periodic dev T3 waits two hours, skips unchanged dev and survives restart 
   assert.equal(f.store.mergeQueue().length, 0);
 });
 
+test('periodic tick skips a fresh green integrated cover naming its run across restart', async t => {
+  const run = caseDeadlines(t);
+  const notices: string[] = [];
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true,
+    remoteBudget: 1, onSoakNotice: (_id, text) => { notices.push(text); },
+  }, 'dev_t3_every="2h"'));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  await f.tick(); await f.suites.settled();
+  f.clock.block(7_000_000);
+  const cover = await run.wait('cover submission', () => f.launch({ mode: 'all', integrated: true, occasion: 'stage', executor: 'droplet' }));
+  await run.wait('cover execution', () => f.machine.waits.run(f.machine.started(cover.id)));
+  await run.wait('durable green cover', () => f.finish(cover.id));
+  assert.equal((await f.suites.receipt(cover.id)).job.outcome?.code, 0);
+  f.clock.block(200_000);
+  await f.reopen();
+  const hydrate = t.mock.method(f.store, 'suiteJob');
+  await f.tick(); await f.suites.settled();
+  assert.equal(hydrate.mock.callCount(), 0, 'periodic skip uses compact summaries without hydrating execution plans');
+  hydrate.mock.restore();
+  assert.equal(f.suites.status().some(job => job.occasion === 'dev-t3'), false);
+  assert.match(notices[0] ?? '', new RegExp(`periodic dev T3 skipped: fresh green cover ${cover.id}`));
+  assert.equal(f.logs.some(row => row.event === 'verification-dev-t3-skipped' && String(row.text).includes(cover.id)), true);
+  const attempt = f.store.meta('dev-t3-attempt');
+  await f.reopen(); await f.tick(); await f.suites.settled();
+  assert.equal(notices.length, 1, 'skip is throttled across restart');
+  assert.equal(f.store.meta('dev-t3-attempt'), attempt);
+});
+
+for (const scenario of ['newer', 'older', 'unrelated', 'stale', 'red', 'partial', 'subset', 'cached', 'unreported', 'batch-without-T3', 'missing-time', 'integrated', 'batch', 'epic', 'boundary', 'web-partial', 'cancelled', 'diagnostic'] as const) {
+  test(`periodic fresh cover eligibility: ${scenario}`, async t => {
+    const run = caseDeadlines(t);
+    const notices: string[] = [];
+    const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true, remoteBudget: 1,
+      onSoakNotice: (_id, text) => { notices.push(text); },
+    }, 'dev_t3_every="2h"'));
+    f.candidate.branch = 'dev';
+    f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+    await f.tick(); await f.suites.settled();
+    f.clock.block(7_000_000);
+    const cover = await run.wait('cover submission', () => f.launch({ mode: 'all', integrated: true, occasion: 'release', executor: 'droplet' }));
+    await run.wait('cover execution', () => f.machine.waits.run(f.machine.started(cover.id)));
+    await run.wait('durable cover', () => f.finish(cover.id, scenario === 'red' ? 1 : 0));
+    const jobs = await f.jobs();
+    const saved = jobs.find(job => job.id === cover.id)!;
+    if (['newer', 'older', 'unrelated'].includes(scenario)) {
+      saved.head = 'b'.repeat(40);
+      f.ancestry.push(scenario === 'newer' ? [f.candidate.head, saved.head] : [saved.head, f.candidate.head]);
+      if (scenario === 'unrelated') f.ancestry.length = 0;
+    }
+    if (scenario === 'stale') saved.completedAt = saved.finished = new Date(f.clock.now().getTime() - 3_600_001).toISOString();
+    if (scenario === 'partial') saved.outcome = { code: 0, cause: 'not executed', notRun: 'infrastructure' };
+    if (scenario === 'subset') saved.selection!.tests = ['hub/test/example.test.ts'];
+    if (scenario === 'cached') saved.cached = { run: 'previous', head: saved.head, tree: saved.tree! };
+    if (scenario === 'unreported') saved.artifact = null;
+    if (scenario === 'batch-without-T3') { saved.occasion = 'batch'; saved.selection!.tiers = ['T1']; }
+    if (scenario === 'integrated') { delete saved.occasion; delete saved.selection!.tiers; saved.selection!.soak = false; }
+    if (scenario === 'batch') { saved.occasion = 'batch'; saved.selection!.tiers = ['T1', 'T3']; }
+    if (scenario === 'epic') saved.occasion = 'epic';
+    if (scenario === 'boundary') saved.completedAt = saved.finished = new Date(f.clock.now().getTime() - 3_399_000).toISOString();
+    if (scenario === 'web-partial') saved.webPhase = { status: 'not-run', reason: 'missing browser' };
+    if (scenario === 'cancelled') saved.cancelled = true;
+    if (scenario === 'diagnostic') saved.devT3Probe = { key: 'probe', files: ['hub/test/example.test.ts'] };
+    if (scenario === 'missing-time') { delete saved.completedAt; delete saved.finished; }
+    f.clock.block(200_000);
+    await f.reopen(jobs); await f.tick(); await f.suites.settled();
+    const eligible = ['newer', 'integrated', 'batch', 'epic', 'boundary'].includes(scenario);
+    assert.equal(f.suites.status().some(job => job.occasion === 'dev-t3'), !eligible);
+    assert.equal(notices.some(text => text.includes(`fresh green cover ${cover.id}`)), eligible);
+  });
+}
+
 test('periodic T3 configuration round-trips duration and disable settings', () => {
   for (const interval of ['', '2h', '30m']) {
     const c = parseConfig(`[verification]\ndev_t3_every=${JSON.stringify(interval)}`, 'test');

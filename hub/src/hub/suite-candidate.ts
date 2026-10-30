@@ -21,6 +21,7 @@ export class SuiteAdmissionError extends Error {
 
 /** Build facts at admission; scheduler rules do not own Git or package discovery. */
 export interface SuiteCandidate {
+  isAncestor?(cwd: string, ancestor: string, descendant: string): Promise<boolean>;
   head(cwd: string): Promise<string>;
   tree(cwd: string, head?: string): Promise<string | null>;
   inspect(cwd: string, mode: SuiteRequest, workers: number, projectTest?: SuiteSelection, fetchDev?: boolean, historicalProbe?: boolean): Promise<{
@@ -35,6 +36,7 @@ export function suiteCandidate(env: NodeJS.ProcessEnv): SuiteCandidate {
   const tree = (cwd: string, at?: string) => candidateTree(cwd, at, env);
   return {
     head, tree,
+    isAncestor: (cwd, ancestor, descendant) => promisify(execFile)('git', ['-c', 'gc.auto=0', 'merge-base', '--is-ancestor', ancestor, descendant], { cwd, env, timeout: 30_000 }).then(() => true, () => false),
     async inspect(cwd, mode, workers, projectTest, fetchDev = false, historicalProbe = false) {
       // Historical diagnostics run the candidate's own checks, not today's admission lints.
       if (projectTest || historicalProbe) {

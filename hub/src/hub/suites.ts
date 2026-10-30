@@ -1056,6 +1056,28 @@ export class Suites {
       if (this.#closed || this.#options.projectConfig?.().verification.devT3EveryMs !== interval) return;
       if (candidate.branch !== 'dev' || !candidate.tree || candidate.selection.fetchedDev !== candidate.head) return;
       if (lastStarted?.tree === candidate.tree) return;
+      // Only complete, positively reported execution can suppress a scheduled run.
+      // #jobs is the scheduler's loaded/checkpointed index; do not rescan logs here.
+      for (let index = this.#jobs.length - 1; index >= 0; index--) {
+        const cover = this.#jobs[index]!;
+        const age = now - Date.parse(cover.completedAt ?? cover.finished ?? '');
+        if (!Number.isFinite(age) || age < 0 || age > 3_600_000
+          || !cover.integrated || cover.branch !== 'dev' || cover.mode !== 'all'
+          || cover.occasion === 'dev-t3' || cover.occasion === 'soak'
+          || cover.parentRun || cover.batch?.diagnostic || cover.devT3Probe
+          || cover.state !== 'finished' || !cover.reported || !cover.artifact
+          || !this.#store.resolveArtifact(cover.artifact) || cover.outcome?.code !== 0 || cover.outcome.notRun
+          || cover.cached || cover.cancelled || cover.requesterDied || cover.webPhase
+          || cover.shards?.some(shard => shard.outcome?.code !== 0 || shard.outcome.notRun || shard.webPhase)
+          || cover.selection?.mode !== 'full' || cover.selection.tests || cover.selection.nvimTests || cover.selection.shard
+          || !(cover.selection.tiers?.includes('T3') ?? true)) continue;
+        if (cover.head !== candidate.head && !await this.#candidate.isAncestor?.(this.#root, candidate.head, cover.head)) continue;
+        this.#store.setMeta('dev-t3-attempt', String(now));
+        const text = `periodic dev T3 skipped: fresh green cover ${cover.id} at ${cover.head} passed within the last hour`;
+        this.#options.log?.({ event: 'verification-dev-t3-skipped', text });
+        this.#options.onSoakNotice?.(`dev-t3-skip:${now}`, text);
+        return;
+      }
       // Persist before async admission, including spend refusal, to avoid retry storms.
       this.#store.setMeta('dev-t3-attempt', String(now));
       await this.start({ mode: 'all', cwd: this.#root, topic: 'agents', to: ['coordinator'], actor: null,

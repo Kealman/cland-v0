@@ -958,6 +958,16 @@ a hub run, use `measure-history-storage.ts` on its fresh disposable backup and
 publish only aggregate field/row sizes. Existing role clauses cover both flows;
 add no permission lines.
 
+## Periodic dev T3 fresh-cover skips
+
+Periodic dev T3 skips a due admission when a full T3 integrated dev cover passed
+within the last hour at the captured tip or a descendant. The notice names its
+run id and head; the attempt cursor persists across restart. Red, partial,
+cached, diagnostic and subset receipts never qualify. This does not replace
+an item's exact-head verification or source review. Regression guidance:
+`docs/agents/tests/hub-test-suite-soak.test.ts.md`. Existing role clauses cover
+the flow; no permission line is added.
+
 ## Packaging and Web prerequisite reports
 
 `npm run test:lint` includes report-only install-shaped CLI imports and site test

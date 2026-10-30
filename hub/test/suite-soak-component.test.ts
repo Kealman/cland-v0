@@ -1,5 +1,7 @@
 // T2: the shared spend ledger and dispatch publication use in-process providers and FakeClock.
 import test from 'node:test';
+import { commandIn, scratchMachine } from './init-machine.ts';
+import { suiteCandidate } from '../src/hub/suite-candidate.ts';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -17,6 +19,28 @@ import { runBundle } from '../src/executor/droplet/run.ts';
 import { committedTree } from '../src/verification-tree.ts';
 import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
+
+test('periodic cover ancestry requires a positive native Git descendant receipt', async t => {
+  const run = caseDeadlines(t);
+  const machine = await run.wait('setup', () => scratchMachine(run.fixtures, { identity: true }));
+  const env = fixtureEnvironment(machine.root, machine.env, {});
+  machine.env = env;
+  const git = async (...args: string[]) => {
+    const result = await run.wait('owned native Git receipt', () => commandIn(machine, machine.root, 'git', ['-c', 'gc.auto=0', ...args]));
+    assert.equal(result.code, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  await git('init', '-q', '-b', 'dev');
+  await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com');
+  await git('commit', '--allow-empty', '-qm', 'old tip');
+  const old = await git('rev-parse', 'HEAD');
+  await git('commit', '--allow-empty', '-qm', 'new tip');
+  const newer = await git('rev-parse', 'HEAD');
+  const candidate = suiteCandidate(env);
+  assert.equal(await run.wait('native positive ancestry', () => candidate.isAncestor!(machine.root, old, newer)), true);
+  assert.equal(await run.wait('native reverse ancestry', () => candidate.isAncestor!(machine.root, newer, old)), false);
+  assert.equal(await run.wait('native missing ancestry', () => candidate.isAncestor!(machine.root, old, 'f'.repeat(40))), false, 'missing Git evidence is not coverage');
+});
 
 test('periodic dev T3 bundles its captured commit when root dev moves during delivery', async t => {
   const run = caseDeadlines(t);
