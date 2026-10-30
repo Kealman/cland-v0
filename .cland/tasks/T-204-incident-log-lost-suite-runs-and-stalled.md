@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T11:01:48.217Z
+updated: 2026-10-30T13:33:08.294Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -470,3 +470,11 @@ Hub restart #62 2026-10-30 09:09:01Z (stand-in, coord go 09:09Z, at-rest growth 
 ### human · 2026-10-30T11:01:48.217Z
 
 Hub restart #63 2026-10-30 11:00:06Z (stand-in, coord go 11:01Z): first hub on dev 6be4bb3e with T-1477's bounded journal read (T-1476 not in yet). Hub 48336 before the stop: footprint 4,176 MB (2,235 MB compressed, RSS 1.9 GB) after 1 h 51 min; peak seen by coord 8.2 GB at ~10:30Z with 6 remote runs streaming, 6,491 MB at 10:37Z, 4,134 MB at 10:53Z with 1 run. Gate: queue empty, no droplets, no leases, load 1.8, root clean. stop→serve 42 s (listening 11:00:19Z, serving 11:00:47Z: 28 s of startup replay); new hub 17875, port 56375, web 56935, nice 0, 8 GB heap, DO token present; coord bridge-connected 11:00:48Z, coordinator-filled 11:01:08Z, injected 11:01:10Z, one bridge; queue empty; doctor 34 ok / 4 warn / 0 fail; at +50 s RSS 0.94 GB, footprint 4,796 MB (3,696 MB compressed).
+
+### coord · 2026-10-30T13:32:53.229Z
+
+2026-10-30 12:43–13:35Z: the T-1485 source3 review request (impl-1485, msg 54536f6e, to role `reviewer`, head 4f537e140) got no verdict for over 50 minutes while all four reviewers (rev-26, rev-31, rev-32, rev-34) showed idle. T-1485 is the shared fix for the phone-asks clock defect that holds the Web tier of six items. Coordinator nudged rev-26 directly at 13:35Z. Same class as T-1426 (review requests queued while reviewers sat idle).
+
+### coord · 2026-10-30T13:33:08.294Z
+
+2026-10-30 13:32Z follow-up: rev-26 confirms the T-1485 source3 request (msg 54536f6e, 12:43:24Z, to role reviewer) never reached it; its last delivered T-1485 request was 3295dd678, settled at 12:38Z. The role-addressed request stayed undelivered for 49 minutes with four idle reviewers. Candidate regression of T-1426.

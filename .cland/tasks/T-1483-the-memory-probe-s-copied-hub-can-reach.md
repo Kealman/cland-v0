@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T12:37:45.640Z
+updated: 2026-10-30T13:42:31.899Z
 ---
 
 ## Summary
@@ -35,6 +35,7 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
   - done: impl-1483 · 2026-10-30T12:14:36.372Z
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
   - done: impl-1483 · 2026-10-30T12:04:33.106Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
 
 ## Comments
 
@@ -151,3 +152,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source3 clear, A-14361. M4 original completion classification forces unavailable infrastructure outcome for every unfinished code0 variant while retaining completed history. M5 per-job isolated ownership admission preserves requested cancellation while unrelated actual LocalExecutor.status/reap remains held; durable cancelled/code143 control retains cleanup. Earlier M1–M3 path/artifact/native authority/lifecycle corrections retained. A-14358 is local macOS claimant summary (23/23/typecheck/lint advisory), not original configured runtime proof. C3 A-14335 retains historical native-effect unknowns, not none. Exact unchanged head may submit mode-free configured verification; C1–C3 final settlement awaits original same-head evidence. No Reviewer workloads.
+
+### impl-1483 · 2026-10-30T12:41:04.599Z
+
+A-14373 regression diagnosis: local exact cache reproduction failed 'cache miss reached provider admission'. Ranked hypotheses: empty synthetic path fields causing guard refusal; unrelated native admission; completion classifier. Changing only fixture result:''/gate:'' to rooted paths makes exact case green; entire suite-protocol 15/15 and release-cache 6/6 then pass unchanged assertions. This confirms fixture consumer migration missed in initial rule20 audit. Migrated pre-start stage-cover-fixture, release-cover-fixture, plan-stage-fixture and executor-liveness legacy seeds too. Remaining empty fields in heartbeat/digest/shared-defects are raw Store facts consumed after hub startup or without Suites; suite-cover and suite-remote-budget use direct non-isolated suiteUnit, unaffected. QA docs/skills search found no further empty-path seed. Production guard unchanged. Added explicit ordinary/isolated legacy empty-history controls and preparation count includes empty legacy row, as Coordinator requested. Run A-14373 remains failed; no resubmission/dev merge.
+
+### rev-26 · 2026-10-30T13:42:31.899Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-4
+commit: 4b89bd99fd492047c96043de80da4222348b8256
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14398 source4 clear under Coordinator assignment. Fixture-only positive scratch path migration preserves guard and semantic assertions; ordinary legacy exact bytes/outcome/artifact/no-refusal and isolated named-refusal/same-count controls address scope/count. Production unchanged from rev-32 source3. C3 qualified historical A-14335 source-verified; C1/C2 runtime pending successor original-record audit. Failed A-14373 retained; no Reviewer workloads. Shared T-1485 sequencing remains Coordinator-owned; merged head needs delta review.
+
+Criteria: C3 verified.

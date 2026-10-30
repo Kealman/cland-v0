@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1225
 branch: t/T-1474-detect-claude-daemon-idle-retirement
 created: 2026-10-30T07:50:18.630Z
-updated: 2026-10-30T11:55:02.899Z
+updated: 2026-10-30T13:46:10.873Z
 ---
 
 ## Summary
@@ -26,11 +26,10 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 ## Acceptance criteria
 
 - [x] C1. When a hub-launched Claude Code job disappears from `claude agents --json`, or its job reports `done`, while the row is running, the hub logs `harness-exited` with reason `retired` within 60 s.
-  - done: impl-1474 · 2026-10-30T08:20:02.523Z
-  - verified: rev-32 [reviewer] · run rev-20261030-1474-evidence1 · 2026-10-30T08:40:23.156Z · commit 1ed304429a5c0f156cccc7583347ed9571bdd87e
+  - done: impl-1474 · 2026-10-30T13:42:22.591Z
 - [x] C2. A retired Coordinator gets one human inbox entry with the relaunch command within 2 min.
-  - done: impl-1474 · 2026-10-30T08:02:09.680Z
   - verified: rev-32 [reviewer] · run rev-20261030-1474-evidence1 · 2026-10-30T08:40:23.156Z · commit 1ed304429a5c0f156cccc7583347ed9571bdd87e
+  - done: impl-1474 · 2026-10-30T13:04:51.240Z
 
 ## Comments
 
@@ -120,3 +119,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merge delta1 clear,A-14321. Parents1ed304429+dev8a87246b9. Store keeps both imports, exact reviewed retirement inbox predicate and untouched incoming summary methods/schema; combined skill retains retirement/history/memory/maintenance controls and all CHANGES lines from both parents. Entire ClaudeCodeAdapter, host reason/core checkpoint/kind/visibility/checkpoint tests unchanged from reviewed parent. Sessions retains incoming transportClock/pushed-idle guards alongside prior retirement/notice logic; scheduling fixture preserves both lineages. C1/C2 implementation retained but current-head runtime remains stale: prior A-14204 is old-head only; Coordinator verify all and final original-record review required. Local A-14319 partial; no reviewer execution/live changes.
+
+### rev-31 · 2026-10-30T13:40:56.185Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261030-1474-source4
+commit: 06fca2a58ab63547a6bbe9294576f0bea5c552ce
+scope: full
+findings: [{"severity":"medium","text":"M1: post-processStarted/processIdentity PID publication omits captured native job revalidation; same-object/same-conversation/previousPID replacement A→B can accept A's PID into B. Recheck admitted job after both awaits; add held birth/identity replacement controls preserving same-job hook-positive/native T3 cases.","file":"hub/src/adapters/claude-code.ts","line":741}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Coordinator-assigned successor audit complete,A-14393;M1only. KnownlivePID/missing-list supervision and hookterminal/state versus PID-discovery separation otherwise sound;docs/skill/native regressions retained. Prior rev-32 source/evidence/delta chain and parent full-runA-14385 failed3T3 preserved;A-14386 local red/green summaries not configured/nativeSLA proof. No new criteria verified/Reviewer workloads. Fix samebase,red/green,refresh C1done,new exact-head source review;afterclear reportreadyforCoordinatorverifyall as directed. QA none.
+
+Criteria: C1 failed (Held late PID identity probing can publish an old native job PID into an in-place replacement launch.).
+
+### rev-31 · 2026-10-30T13:46:10.873Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1474-source5
+commit: 2df0e24c7087d91645c91c13e27f597c65a64013
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source5 clear, A-14400. Sole source4 M1 resolved: revalidate captured native job after both identity awaits before PID publication, retaining object/conversation/previousPID/stop/shutdown guards. Both held-probe replacement controls preserve no-publication/PID-null assertions; same-job newer-hook positive discovery and earlier native regressions remain. Standards and Spec have no remaining findings. A-14397 local summaries and A-14386 prior evidence keep their limits; failed A-14385 remains separate. C1/C2 current-head runtime unverified; no new verification marks or Reviewer executions. Report ready for verify all at this exact SHA; Coordinator owns full run and subsequent original-record evidence review is required.
