@@ -3,7 +3,7 @@ id: T-1487
 kind: task
 title: A role-addressed review request stays queued while reviewers are idle
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1254
 branch: t/T-1487-a-role-addressed-review-request-stays
 created: 2026-10-30T13:33:21.942Z
-updated: 2026-10-30T22:24:06.007Z
+updated: 2026-10-30T22:32:44.164Z
 ---
 
 ## Summary
@@ -25,10 +25,10 @@ A review request sent to the role `reviewer` was queued and never assigned for 4
 
 ## Acceptance criteria
 
-- [ ] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
-  - failed: rev-31 [reviewer] · 2026-10-30T22:24:06.007Z · note Retained pre-upgrade owned launch first-input with NULL admission loses pending reservation on completion or acceptance.
+- [x] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
+  - done: impl-1487 · 2026-10-30T22:31:34.442Z
 - [x] C2. A queued request that stays unassigned past the bound posts one Agents notice naming the request, the idle verifiers and why each was not chosen.
-  - done: impl-1487 · 2026-10-30T22:22:26.356Z
+  - done: impl-1487 · 2026-10-30T22:31:34.513Z
 
 ## Comments
 
@@ -200,3 +200,25 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Source5 supplement A-14718 supersedes clear A-14717/runrev-20261030-1487-source5 recorded concurrently with Implementer95102d46. Current producer receipts and local/global fix remain sound, but legacy owned hub brief migration is missing; source confirmed via Store remember/activate/launchBriefs and NULL branch. No new Reviewer execution/red result claimed; isolated reopen control pending from Implementer. Full retry explicitly held; fresh source review after correction. C2 runtime pending; prior failed runtime receipts retained.
 
 Criteria: C1 failed (Retained pre-upgrade owned launch first-input with NULL admission loses pending reservation on completion or acceptance.).
+
+### impl-1487 · 2026-10-30T22:31:34.385Z
+
+Source6 4c6f7d7ed7eb2c543270dab2259fb37f1bd21885 pushed; no dev merge. Addresses source5 supplement A-14718. Isolated reader control stopped Core/Store/Tracker, seeded legacyNULL launch admission, reopened and observed accepted completion: owned pending was undefined (red), ordinary-hub/cancelled/wrong-owner/explicit0 controls remained unreserved. New indexed Store.hasAcceptedLaunchBrief validates exact message+recipient, accepted delivery state, captured launch token and durable session credential/current recipient identity before NULL migration. Cancelled delivery and explicit0 cannot gain admission. No schema/wire change; consumers are #rememberVerification plus existing deliveries/session_credentials/session rows and launch admission producers listed in source5 inventory. Current trusted producers and local/global distinction unchanged.
+Source6 production-tree checks singly: native session-holds2/2, routing38/38, computed4/4, inbox8/8; routing rerun at final head after fixture-only TS narrowing correction (earlier host typecheck correctly rejected its unreachable error-branch property). Final-head root typecheck and test:lint exit0, 0refusals/123report-only findings; known prerequisite advisory retained. No browser/local full suite/remote retry. Previous A-14712 remains red at c6b043908. Source5 clear was superseded by supplement; fresh source6 review requested before any full retry.
+
+### rev-31 · 2026-10-30T22:32:33.173Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-source6
+commit: 4c6f7d7ed7eb2c543270dab2259fb37f1bd21885
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source6 clear A-14726, Standards0/Spec0. A-14718 M1 resolved: NULL canonical hub launch admission requires exact message/recipient accepted delivery and captured token bound to durable current session credential/identity. Explicit0, unowned ordinary hub, cancelled and wrong-owner controls retained; migration uses indexed ownership lookup and persists in acceptance transaction. Existing current launch/reuse, human/legacy-agent authority and local/global distinction unchanged. Original native session-holds and computed/inbox assertions unchanged. A-14725 local52cases production-tree scope with final routing/typecheck/lint after fixture type-only correction retained, not configured Linux proof. Source5 clear remains historically superseded; this new head resolves its supplement. C1/C2 final runtime pending; prior failed A-14712/A-14687 remain separate. Report ready for Coordinator-owned verify all frozen head, then original-record final review. No Reviewer workloads.
+
+### impl-1487 · 2026-10-30T22:32:44.164Z
+
+Source6 clear A-14726 at4c6f7d7ed7eb2c543270dab2259fb37f1bd21885; reported ready for Coordinator verify all at frozen head. Fresh fetch origin/dev3cc3d62e8ed9c8142938e6746fa693453d304aa6; merge-tree exit1 shows sole SKILL.md conflict (core.ts/README/CHANGES auto-merge), prospective conflicted tree1c66c41ff1c1a68e94979620201dcf76832c2535. Worktree clean/pushed; no dev merge. Coordinator be566d70 authorizes one dev merge after green, keeping both skill sections then host/text checks and delta review. Final runtime evidence remains pending; prior failed receipts unchanged; claim retained.
