@@ -123,6 +123,16 @@ const slides = [
     shot: 6,
   },
   {
+    id: 'remote',
+    h: 'Your crew, in Telegram and Discord',
+    p: 'Follow and steer the crew from a private Telegram chat or a channel in your own Discord server. General goes both ways; asks and Codex and OpenCode approvals arrive as cards. Send photos, files and voice notes. Pair through cland setup on the machine running the hub.',
+    href: '/docs/remote-control/',
+    diagram: `%% Both paired remotes connect to the same project hub
+flowchart LR
+  T["Private Telegram chat"] <--> H["Your project hub"]
+  H <--> D["Your Discord server channel"]`,
+  },
+  {
     id: 'accounts',
     h: "Every plan's limits in view",
     p: 'The usage windows Claude Code and Codex report, account by account. OpenCode has no limit meters. A limited account stops new launches, and you choose where the work goes next.',

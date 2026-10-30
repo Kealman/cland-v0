@@ -200,3 +200,18 @@ test('chat guide distinguishes Telegram typed ask answers from Discord topic rep
   assert.match(chat, /On Discord, typed replies send a message to the topic/);
   assert.match(chat, /answer with the card's buttons or modal, or a voice reply/);
 });
+
+for (const [name, path, remote] of [
+  ['landing feature', 'site/src/pages/index.astro', /id: 'remote',[\s\S]*?href: '\/docs\/remote-control\/'/],
+  ['README feature', 'README.md', /^- .*\[.*remote control.*\]\(https:\/\/cland\.app\/docs\/remote-control\/\).*$/im],
+  ['Features entry', 'site/src/content/docs/docs/features.md', /^- .*\[Remote control\]\(\/docs\/remote-control\/\).*$/m],
+] as const) {
+  test(`${name} names both shipped remotes and links their guide`, () => {
+    const entry = source(path).match(remote)?.[0] ?? '';
+    assert.ok(entry, `${path}: remote feature links the guide`);
+    for (const fact of [/Telegram/, /Discord/, /General/, /both ways/, /asks/, /approvals/, /cards/, /photos/i, /files/, /voice notes/, /cland setup/]) {
+      assert.match(entry, fact, `${path}: shipped remote fact ${fact}`);
+    }
+    assert.doesNotMatch(entry, /Telegram groups|forum topics|thread per item|Components V2|several humans|webhooks|cost accounting/i);
+  });
+}
