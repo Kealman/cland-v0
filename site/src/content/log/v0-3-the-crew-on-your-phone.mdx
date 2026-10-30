@@ -1,0 +1,152 @@
+---
+title: 'v0.3: the crew in your Telegram and Discord'
+description: 'v0.3.0 lets you follow and steer an AI coding crew from Telegram or Discord: General both ways, asks and approvals as cards, voice notes as answers. Seven epics, every demo clear on its first run, and a live run on real bots that found the bugs the fakes could not.'
+date: 2026-10-30
+release: v0.3.0
+tags: [retrospective, remote, telegram, discord]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+v0.3.0 shipped on October 30 at 05:25 UTC. Seventy minutes later the maintainer paired real Telegram and Discord bots with cland's own project, and one of their first messages was a voice note to the Coordinator asking for the next release.
+
+That is the feature in one line: the crew no longer needs you at the desk. This post covers what remote control does, five decisions behind it, how the crew built it in 99 hours with the Coordinator approving its own plans, where those hours went, and what we have not proven yet. It also covers v0.2.2, the debt sweep that shipped just before.
+
+The crew: a Coordinator on `claude-opus-5-5`, Implementers and Reviewers on `gpt-6.1-sol` through Codex, and QA on `gpt-6-astra`.
+
+## What you can do from the phone
+
+Pair your private Telegram chat with the project's bot, or one text channel of your own Discord server, or both at once. Then:
+
+- **General comes to you, and your messages go back.** Agents' messages arrive under an "author · kind" header. What you type reaches the Coordinator as your message, marked "via Telegram" or "via Discord". 👌 means the hub stored it, 👀 means the session received it. Reply to a mirrored message and your reply goes to its topic.
+- **Asks arrive as cards.** A card names who asks and where, with one button per option, plus "Other answer…" and "Decline…". Codex and OpenCode command approvals arrive the same way, with the command and the harness's own choices.
+- **The first answer wins, everywhere.** Answer a card on Telegram and its copies in Discord, Neovim and the browser turn into the outcome. A card already answered says so. A press by anyone but you changes nothing.
+- **Voice notes become text.** A voice note reaches General as your 🎤 transcript with the audio attached. A voice reply to a card answers it. Transcription goes through ElevenLabs by default, or through any local command you point it at, or it stays off.
+- **Photos and files go both ways.** A photo from the phone becomes your artifact on your message. An agent's screenshot or report reaches the phone as a photo or a document, once.
+- **Commands made for a phone screen.** `/status`, `/inbox` to re-send everything still waiting on you, `/mute` for the General stream while cards keep coming, `/decision` and `/question`.
+
+What stays local: releases, pushes, publishing, stopping the hub, and pairing itself. The [remote control docs](/docs/remote-control/) walk through both bots.
+
+## Five decisions behind it
+
+**1. The hub only connects out.** Telegram is long-polled and Discord is a gateway socket the hub opens itself. There is no webhook, no tunnel, no public address and no open port on your machine. The remotes live inside the hub process and start and stop with it. A remote that fails, with a revoked token or a wrong bot setting, stops only itself with its cause and fix, and the hub, the browser and the other remote carry on.
+
+**2. Only you can pair, and only in your own terminal.** The bot shows an eight-character code in the chat. You approve it with `cland remote approve` or from Neovim's card. The browser only points you to the terminal, and agents are refused. Approval binds numeric user and chat ids, never a username, and a new pairing replaces the old one. A stranger who finds the bot gets at most two replies.
+
+**3. Tokens never pass through an agent.** They live in a git-ignored secrets file held at mode 600. `cland secret set` reads them only from a hidden prompt or stdin, never from an argument. The token variables are on every session's deny-list, and one redactor masks tokens and keys in everything the remotes write. Uploads are stored byte for byte, so the redactor cannot clean one. A file whose bytes contain a registered secret is refused instead, by name, without echoing the value. Real tokens never reached our cloud test machines: every suite ran against fakes, and an audit of the live run found 157 rows with no remote execution and 90 captures clean.
+
+**4. Nothing lost, nothing twice.** Telegram's offset is confirmed only after the update is stored. Each remote has a durable outbox that records an attempt before every send and resends only what provably never left. After an outage, late messages carry the time they were written, one line counts what you missed, and if the outage passed 150 seconds every open card is re-sent.
+
+**5. No new dependency.** The Telegram client is plain `fetch`. The Discord client is hand-written on the `ws` package we already pinned, with its own resume, heartbeat and rate-limit handling.
+
+## How it was built
+
+**Prototypes first, then a spec.** Before a line of the build, research looked at both platforms and two throwaway prototypes put real bots on the maintainer's phone. The maintainer accepted them there. The prototype branches were never merged: the build followed the spec test first, and the prototypes were only something to read.
+
+**The Coordinator ran it alone.** For the first time the maintainer did not approve epic plans: the Coordinator cut every epic into tickets and approved its own plans. Seven feature epics ran in 18 stages, and each stage closed on a full test run on a Linux cloud machine and another on macOS, sometimes shared with a stage running beside it. Each epic closed on a QA demo of its Definition of done against fake platform servers that run inside the suite: a fake Telegram Bot API, a fake Discord gateway and REST, and a fake speech provider. All of them were clear on the first run.
+
+**Then real bots.** On October 29 the maintainer took the phone for a live run. It ran in a sandbox project with sandbox bots, so the working hub stayed untouched. In 2.2 hours it found three bugs the fakes had passed, and fixing them turned up a fourth:
+
+- After a pairing was approved in the terminal, the phone heard nothing. The maintainer's first report was "Nothing came to the bot."
+- An agent's reply to the maintainer's message arrived as a new message on both platforms, not as a reply.
+- A photo showed "could not be stored; retrying" even though the retry had already succeeded.
+- While fixing the replies, the crew found that a Discord message re-attaching an earlier file lost its own text.
+
+The Coordinator's verdict on the fakes: they did not lie, they under-asserted. No fake test checked for a confirmation that was never sent, or for reply threading. All four were fixed and landed the same evening. During the build the crew had also found a near miss going the other way: some sealed test fixtures could in principle have reached the real Telegram or Discord endpoint. They now fail closed.
+
+Partway through, the Mac was needed for other work, and the maintainer stopped the walk: "We tested all the main things. The rest, do what you can yourself, and if you can't, close it as not verified by the human's decision. If corner cases cause trouble later, I'll file separate tasks for them." The remaining steps are listed below as not verified.
+
+## The numbers
+
+<Stats
+  items={[
+    { value: '137', label: 'tasks landed in 92 hours, tag to tag', was: 'v0.2.2: 43 in 20 h' },
+    { value: '7 of 7', label: 'feature epics clear on their first QA demo', was: 'v0.2.0: 12 of 12' },
+    { value: '7,023', label: 'lines of new remote and speech code in 54 files, with no new dependency' },
+    { value: '13', label: 'fake-server files for Telegram, Discord and speech, used by 43 test files' },
+    { value: '122 of 123', label: 'merge-queue batch runs green; the other failed on a cloud host check', was: 'v0.2.2: 39 of 39' },
+    { value: '$36.24', label: 'of cloud test machines: 503 leases', was: 'v0.2.2: $9.51' },
+  ]}
+/>
+
+<BarChart
+  title="Three releases, same method"
+  legend={[
+    { name: 'v0.2.1', color: 'muted' },
+    { name: 'v0.2.2', color: 'teal' },
+    { name: 'v0.3.0', color: 'amber' },
+  ]}
+  perRow
+  rows={[
+    { label: 'Landings per hour', bars: [{ value: 3.21, text: '3.21', color: 'muted' }, { value: 2.19, text: '2.19', color: 'teal' }, { value: 1.49, text: '1.49' }] },
+    { label: 'Cleared their first review', bars: [{ value: 47.2, text: '47%', color: 'muted' }, { value: 40.9, text: '41%', color: 'teal' }, { value: 20.4, text: '20%' }] },
+    { label: 'Red test runs', bars: [{ value: 27.3, text: '27%', color: 'muted' }, { value: 22.6, text: '23%', color: 'teal' }, { value: 18.4, text: '18%' }] },
+    { label: 'Test time spent waiting in a queue', bars: [{ value: 4.8, text: '4.8%', color: 'muted' }, { value: 1.3, text: '1.3%', color: 'teal' }, { value: 0.9, text: '0.9%' }] },
+    { label: 'Questions that reached a human', bars: [{ value: 16, text: '16', color: 'muted' }, { value: 8, text: '8', color: 'teal' }, { value: 30, text: '30' }] },
+  ]}
+  caption="Each row is scaled on its own. Windows run from one tagged commit to the next: v0.2.2 took 20 hours, v0.3.0 took 92."
+/>
+
+Two numbers stand out. Only one task in five cleared its first review, the lowest we have recorded. This was new code, much of it protocol edge cases, and the Reviewers sent 113 of 137 tasks back at least once. And 30 questions reached the maintainer, almost twice as many as in v0.2.1. Most were the same question: should a bug or a flaky test found during the build go into the running release? The median answer took under ten minutes; the slowest waited overnight.
+
+The test suite grew from 4,817 tests at v0.2.2 to 5,794 at v0.3.0.
+
+## Where the time went
+
+The Coordinator's retrospective was about one question the maintainer asked: where did the time go? From the first claim to the release took 98.9 hours, 85.4 of them on the seven feature epics. A task took a median of 1.14 hours from claim to landing, and 6.6 minutes of that from the merge queue to `dev`. The queue was not the bottleneck.
+
+<BarChart
+  title="Where the hours went"
+  rows={[
+    { label: 'Stage work, mostly review', bars: [{ value: 69, text: '69 h' }] },
+    { label: 'Waiting on the human (critical path)', bars: [{ value: 13, text: '~13 h' }] },
+    { label: 'Red test runs and reruns', bars: [{ value: 10.9, text: '10.9 h' }] },
+    { label: 'Release approval, overnight', bars: [{ value: 6.8, text: '6.8 h' }] },
+    { label: 'Incidents', bars: [{ value: 5, text: '~5 h' }] },
+  ]}
+  caption="From the Coordinator's retrospective. The rows overlap: the overnight approval is part of the time waiting on the human, and red runs ran alongside stage work."
+/>
+
+- **Review.** 608 review verdicts for 137 tasks: three per task at the median, seven at the 90th percentile. 194 were not clear. 64 of those were re-reviews of a branch's merge with `dev`, needed only because `dev` had moved under it.
+- **Our own tests, not the protocol.** macOS stage runs went red 20 times in 34, Linux runs 5 times in 28, mostly on load-sensitive tests rather than real bugs. The worst chain held two epic stages for 5.8 hours. On another night a macOS system file-watcher grew to 4.1 GB with swap full, stalled the hub three times and turned runs red until the maintainer killed it by hand.
+- **The human.** The release approval waited 6.8 hours overnight. Another overnight ask held a stage for about 3.2 hours, after which the maintainer gave a standing yes for moving test defects into the running release, and those asks stopped blocking.
+
+The fixes the Coordinator proposes, in hours saved: one automatic rerun before a macOS load flake turns a run red; a mechanical check, instead of a full review, when a branch's merge with `dev` is clean and touches other files; and a conditional release approval asked in daytime, so it does not wait overnight.
+
+## v0.2.2, the release in between
+
+v0.2.2 took 20 hours and landed 43 tasks in six epics, all fixes and debt. Every one of its 39 merge-queue batch runs was green. For the crew, the changes that mattered most:
+
+- **A deaf session now raises an alarm.** After a harness auto-update, a session could reconnect and then silently drop every delivery for an hour. The hub now notices.
+- **Long Codex threads reattach after a hub restart.** Before, a thread past a size limit could not be read back.
+- **Precise process identity.** Stop paths and the cloud-machine watchdog check that a process is the one they started, so a reused process id can never be killed by mistake.
+- **Reports that survive restarts.** The merge queue, stage closure and publishing now report the truth across a hub restart.
+- **OpenCode login diagnostics,** for when a crew session cannot see your paid OpenCode login.
+
+Its tag shipped on October 26 at 02:26 UTC, and the first v0.3 task landed twenty minutes later.
+
+## What we have not proven
+
+The live run covered the main paths, on a build from before its own fixes landed. These have not been checked on the real platforms:
+
+- the pairing confirmation, reply threading and the corrected retry note on a real phone;
+- a real network outage with both remotes reconnecting, and catch-up after a long restart on a real phone;
+- OpenCode approval cards and the 📥 notices on a real remote (only a Codex approval was tried);
+- `cland setup`'s remote step and its Discord application checks against the real platforms;
+- real platform limits: file-size caps, a 429 from either platform, a revoked token, Discord's daily identify budget;
+- a hub on Linux against the real platforms, since real tokens never go to cloud machines;
+- the ElevenLabs cost per voice note, which we have not measured.
+
+Not in 0.3.0 at all: Telegram groups and forum topics, a thread per item, several humans on one project, webhooks and transcription cost accounting.
+
+## What's next
+
+The first real morning with remote control also showed its weak spot. One Telegram answer took 41 minutes to reach the Coordinator: its session was busy, and held messages were released only when it went idle. 0.3.1, the release that first voice note asked for, fixes it. It has two epics:
+
+- **The Coordinator never goes silently deaf.** A pushed idle now beats a busy poll, and that fix has landed. Next: when the daemon retires an idle session, the hub detects it and shows it to you, and each launch gets exactly one harness process.
+- **The hub's memory.** On our own project's history the hub reached about 3.8 GB of heap at startup. Two fixes so far, each measured alone in a single startup run on one Mac: reading the journal in bounded steps took that step's heap from about 744 MiB to about 116 MiB, and loading only active test-job history took the history step from about 3.6 GB to about 0.9 GB. The combined figure will be measured on the integrated build before the release.
+
+0.3.1 also carries the process changes from this release's retrospective, the ones from "Where the time went" among them: a check that queued merges don't conflict with each other, an automatic rerun for a macOS load flake, a conditional release approval asked in daytime, and skipping a periodic test run that a fresh full run has already covered.
+
+There is no date yet. Like every release, it ships when the maintainer says so.
