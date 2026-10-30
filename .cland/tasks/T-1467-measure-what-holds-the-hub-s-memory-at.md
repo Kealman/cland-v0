@@ -2,8 +2,8 @@
 id: T-1467
 kind: task
 title: Measure what holds the hub's memory at startup and at rest
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1221
 branch: t/T-1467-measure-what-holds-the-hub-s-memory-at
 created: 2026-10-30T06:38:36.583Z
-updated: 2026-10-30T08:42:19.215Z
+updated: 2026-10-30T09:48:15.879Z
+closed: 2026-10-30T09:48:15.879Z
 ---
 
 ## Summary
@@ -35,15 +36,18 @@ Context: hub 88459 (v0.3.0) held 3.0 GB RSS 80 s after start on this project (ab
 ## Acceptance criteria
 
 - [x] C1. The script runs a sealed hub on a scratch copy of the live .cland state, never the live hub, stops it at readiness, and records RSS, heap and external memory at a checkpoint after each startup stage (journal read, each history replay, tracker, artifact index, subscriptions, inbox) with record counts; a guard stop leaves a stop receipt.
-  - done: impl-1467 · 2026-10-30T08:22:50.200Z
-  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-1 · 2026-10-30T08:42:19.075Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
+  - done: impl-1467 · 2026-10-30T09:24:15.947Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-2 · 2026-10-30T09:42:05.877Z · commit e43673dd7402e07c0e225f86f007a2720b93cb0e
 - [x] C2. A sampling heap profile of startup attributes allocations to call stacks, and an artifact names the top allocation sites by size per startup stage.
   - done: impl-1467 · 2026-10-30T07:53:00.270Z
   - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-1 · 2026-10-30T08:42:19.075Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-2 · 2026-10-30T09:42:05.877Z · commit e43673dd7402e07c0e225f86f007a2720b93cb0e
 - [x] C3. The artifact proposes a fix per dominant startup allocator with an estimated saving; retained-at-rest analysis and the RSS budget are deferred to the fix tickets.
   - done: impl-1467 · 2026-10-30T07:53:00.637Z
   - verified: rev-26 [reviewer] · run rev-20261030-1467-source-3 · 2026-10-30T08:26:37.908Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
   - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-1 · 2026-10-30T08:42:19.075Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-source-5 · 2026-10-30T09:24:56.788Z · commit e43673dd7402e07c0e225f86f007a2720b93cb0e
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-2 · 2026-10-30T09:42:05.877Z · commit e43673dd7402e07c0e225f86f007a2720b93cb0e
 
 ## Comments
 
@@ -118,3 +122,52 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14210 final original-record audit clear: c4f557d5/A-14208 has4239 ordinary passes+75 separately scoped load passes elsewhere; all14 changedT3 memory controls pass once/no repetitions. C1-C3 verified across exact-head controls/source and explicitly historical c8defa34d startup sampling A-14160 plus SQL addendum A-14167. Original partial/red histories, report-only budgets/ratchet/missing baseline, host gate reuse, platform/browser and allocation-versus-retention/RSS limits preserved. No new live-scale run/Reviewer workload; remainingT3/T4 unrun. Coordinator owns enqueue/restart/integrated gates.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-26 · 2026-10-30T09:21:21.544Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1467-source-4
+commit: 06fd9488fa3a8cc49f68731ea160921ebc0d9879
+scope: delta
+findings: [{"severity":"medium","text":"M4: merged startup uses readStartupJournal/file.read, bypassing probe fs.readFileSync line/byte counter. indexing-tracker checkpoint has memory but no journal counts. Migrate shared bounded reader/selection facts and add small durable checkpoint/count control; no second whole-history scan.","file":"hub/test/measure-memory.ts","line":205}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14217 authorized merge delta not clear: one medium M4 consumer mismatch; skill conflict/README preserve both workflows and incoming reviewed journal logic is unchanged from landed parent. Prior d4d9f479 verification and historical c8defa34d memory/storage evidence stay separate. No new live-scale run requested. Correct instrumentation with a small control, then exact-head source review before configured verification; no Reviewer workload.
+
+Criteria: C1 failed (Streamed startup bypasses the probe journal count receipt; replacement memory boundary alone does not retain required per-stage counts.).
+
+### rev-26 · 2026-10-30T09:24:56.788Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1467-source-5
+commit: e43673dd7402e07c0e225f86f007a2720b93cb0e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14219 source5 delta clear: M4 migrated to same shared in-flight journal reader; owned completion persists selected records/exact bytes/buffer work before tracker. Small durable count/order/native-stop control retained, no second scan/API change. Prior merge/docs/lifetime fixes preserved. C3 historical proposals/limits source verified; C1/C2 successor runtime pending exact-head configured evidence. Prior d4d9f479 green and c8 sampling remain historical. No new live-scale measurement/Reviewer workload requested.
+
+Criteria: C3 verified.
+
+### rev-26 · 2026-10-30T09:42:05.877Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1467-evidence-2
+commit: e43673dd7402e07c0e225f86f007a2720b93cb0e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14226 original successor audit clear:8a8d2b6e/A-14225 shows4246 ordinary+75 separate scoped load passes; all15 memoryT3 identities pass once/no repetitions, including streamed selected-count/input-byte/pre-tracker receipt. C1-C3 refreshed with historical sampling/storage provenance preserved, not a new live-scale run. Native V8 analyzer actual3.354365048s retained; report-only budget/ratchet/missing baseline advisories not enforcement passes. RemainingT3/T4 unrun, host gate reuse/browser/platform/phase limits recorded. No Reviewer workload; Coordinator owns enqueue/integrated gates.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-30T09:48:15.879Z
+
+Merged 27c36557cd9a0fe321c939f6b9ea3be82238dccd onto dev.

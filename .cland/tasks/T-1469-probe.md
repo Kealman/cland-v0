@@ -2,8 +2,8 @@
 id: T-1469
 kind: task
 title: Claude Code poll must not turn a pushed idle into busy
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1226
 branch: t/T-1469-probe
 created: 2026-10-30T07:50:08.613Z
-updated: 2026-10-30T08:35:09.892Z
+updated: 2026-10-30T09:53:34.294Z
+closed: 2026-10-30T09:53:34.294Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14202 final original-record audit of2c1e711b/A-14200:4230 ordinary +20 separately scoped load passes; four named replay/setup cases each base pass plus5/5 scoped repetitions. C1-C3 verified with inspected delivered/id/count/state assertions. T0/T1/allfallbackT2/Web and selectedT4 base once complete; noT4 repetitions, remainingT3/T4 unrun. Report-only advisories/host gate reuse/platform/browser provenance retained; no Reviewer execution. Source/head unchanged, Coordinator owns enqueue and integrated gates.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-30T09:53:34.294Z
+
+Merged d1bfc19dc5bc2aad396cb624dde0b3e461226935 onto dev.

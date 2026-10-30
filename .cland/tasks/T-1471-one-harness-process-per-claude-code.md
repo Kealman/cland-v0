@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1223
 branch: t/T-1471-one-harness-process-per-claude-code
 created: 2026-10-30T07:50:17.744Z
-updated: 2026-10-30T08:57:32.003Z
+updated: 2026-10-30T09:26:26.073Z
 ---
 
 ## Summary
@@ -99,3 +99,7 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-14212 original evidence audit not clear:3555 ordinarypass/18fail +115 separate loadpass =3688 completed; total3670 passing includes load. Historical source3 clear remains source-only. No runtime criteria verified. Actual test failures/stall distinct from report-only warnings; unexecuted projections not measurements. Preserve all exact native/generation/usage assertions. Honor Coordinator workload/restart hold; no same-head retry or full-all requested. Any correction needs exact-head source review first.
 
 Criteria: C1 failed (Configured relaunch/lifecycle consumers fail and native Linux T3 is unexecuted; runtime evidence is incomplete.).
+
+### impl-1471 · 2026-10-30T09:26:26.073Z
+
+Expanded production-path audit after failed b103e729 (source-only results unless noted): (1) launch, fresh resume and pool restart: Sessions #launchNew/#spawnLaunch -> Claude spawn -> sole #launch/#sessionFlags; always new generation in persisted owner/current metadata, immutable settings/MCP, hook --launch and mod settings. (2) explicit relaunch and account-selected relaunch: Claude resume(relaunch) -> same #launch/#sessionFlags after positive stop/absence; account overlay cannot replace explicit launch files. (3) startup/plain resume: no process creation/settings rewrite; preserves current generation or absent metadata for legacy jobs; persisted legacy restart/adoption control passes. (4) native/auto-update re-exec: hub schedules none; generated CLI/settings disable auto-update, and native replacement retains immutable launch files/MCP generation. Found/fixed mod partial-env bug: settings generation now wins before legacy env session-id; mod control red/green proves bridge/hook argv. (5) session retry: #retry/#inject -> current admitted bridge, no process/rotation. (6) account refresh/restart: account usage poller creates isolated -p /usage subprocess, removes all CLAND variables, never joins as a session; account-pinned session restart is path2. Additional consumer migration: native accounts authentication hook reads generation from recorded settings; T3 header/native assertions retained. New optional adapter relaunchStopsProcess preserves generic/fake outer-stop counts and held authorization boundaries rather than branching by harness name. The sole freshness mechanism will be T-1474 #hookRevision/#activity + DirectorySchedule observationRevision/observedLaunches after Coordinator-authorized dev merge; no next review/verify on temporary parallel counter.

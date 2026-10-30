@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1224
 branch: t/T-1476-the-hub-loads-only-active-suite-jobs-and
 created: 2026-10-30T07:54:04.502Z
-updated: 2026-10-30T08:41:43.378Z
+updated: 2026-10-30T09:30:31.107Z
 ---
 
 ## Summary
@@ -25,14 +25,19 @@ At startup the hub reads every archived suite job from hub.db (3,308 rows, 885 M
 
 - [x] C1. Hub startup reads only active or recoverable suite jobs in full, and bounded summary rows for finished ones. A finished job's full record is read by id on demand, and every existing consumer of suite history (selection, durations, culprit search, reports, `verify queue`, web and Neovim views) is listed in the item and migrated or shown unaffected (rule 20).
   - done: impl-1476 · 2026-10-30T08:40:34.305Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
 - [x] C2. The decoded jobs no longer retain their source JSON strings alongside the parsed objects.
   - done: impl-1476 · 2026-10-30T08:08:53.653Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-source2 · 2026-10-30T08:23:24.478Z · commit ce11b0942526737921343413b4dff3e2e202d81f
   - verified: rev-32 [reviewer] · run rev-20261030-1476-source3 · 2026-10-30T08:41:43.378Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-delta1 · 2026-10-30T09:30:31.107Z · commit 2bc3f440505648792e05b2ec1a017fa76f01d721
 - [x] C3. On a T-1467-style scratch copy of this project, the startup heap after the suite-history stage drops by at least 2 GiB against A-14160's 3,567 MiB checkpoint, with the same probe and machine, and the per-stage table is published.
   - done: impl-1476 · 2026-10-30T08:08:54.200Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
 - [x] C4. A test with a synthetic history of at least 3,000 large finished jobs asserts a bounded number of rows and bytes read at startup (a work-count guard, rule 23).
   - done: impl-1476 · 2026-10-30T08:08:54.661Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
 
 ## Comments
 
@@ -97,5 +102,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source3 clear A-14209. Explicit outer meta.value qualification preserves archived child shard facts through nested JSON projection; positive original/cached stage-cover restart regression and consumer re-audit checked. C2 source verification refreshed; C1/C4 await successor configured runtime, C3 needs fresh exact-head memory measurement. A-14203/A-14205 remain failed old-head evidence; A-14193 memory is not carried to the changed projection. A-14207 local persistence 12/12 is distinct from failed/refused component attempts (no component pass claimed). Configured mode-free successor and Coordinator measurement slot may proceed at unchanged head; additional full T3 remains separate.
+
+Criteria: C2 verified.
+
+### rev-32 · 2026-10-30T09:28:03.663Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1476-evidence2
+commit: c51f9984b2c2fe4025c206b08d3733ed1c8af09e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record clear A-14221. A-14220/0aa034af at source-cleared head: parsed 4233 ordinary test passes/513 files, 115 explicit load passes/115 files, no nonpass/unmatched starts; T0/T1/all T2/Web pass, no T3/T4. Own persistence 12 primary plus 8 new identities×5 load pass; previously failed unchanged stage-cache restart identity passes at line16241. C1/C2/C4 source/runtime checked. C3 original A-14214 current-head numeric checkpoint: heap 932365864 B vs baseline3740349120 B, reduction2807983256 B (2677.93 MiB), manifest probe hash matches, durable joined stop/native close0/null; same-Mac copied startup-only measurement limits retained. C1–C4 verified. Old failed A-14203 and old memory remain separate; report-only lint/budget warnings retained. Coordinator additional full T3 remains a separate landing gate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-32 · 2026-10-30T09:30:31.107Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1476-delta1
+commit: 2bc3f440505648792e05b2ec1a017fa76f01d721
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta source clear A-14224. Task suite-history production/test/probe/guide bytes unchanged from cleared c51f9984b; landed T-1477 journal/daemon/tests match dev parent exactly. Manual SKILL merge coherently retains both boundaries and measurement/checkpoint/slot requirements; CHANGES/README/index preserve both. C2 source verification refreshed; no new-head runtime or numeric memory proof inferred. Prior A-14220/A-14214/A-14221 remain predecessor evidence, not relabelled. Coordinator-owned merged-head full T3-inclusive verify-all replaces another Implementer mode-free run, with original-record final settlement after receipt and explicit C3 predecessor carry provenance.
 
 Criteria: C2 verified.
