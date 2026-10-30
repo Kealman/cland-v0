@@ -8,7 +8,7 @@ import { TerritoryGitError } from '../src/territory.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
+import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, batchInteractionSummary, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
 import type { MergeQueueEntry } from '../src/protocol.ts';
 import type { TopicNotice } from '../src/hub/core.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
@@ -1166,8 +1166,9 @@ for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured ti
   await f.finish(job.id); await runner.tick();
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
   assert.equal(reports[0]!.split('; ').find(field => field.startsWith('tiers ')), tiers ? 'tiers T1' : 'tiers T1, T3');
+  assert.match(reports[0]!, /log A-\d+: /);
   assert.match(reports[0]!, /batch interaction.*\"mode\":\"report\"/);
-  assert.match(reports[0]!, /\"files\":\[\]/);
+  assert.match(reports[0]!, /\"selectedFileCount\":0/);
 });
 
 test('merge batches form and land while periodic culprit search awaits its runner', async t => {
@@ -1236,4 +1237,16 @@ for (const devConflict of [false, true]) test(`persisted batch conflict drop nam
     assert.doesNotMatch(dropped[0]!, /rebase .* on dev/);
   }
   assert.deepEqual(entries.map(e => e.item), [first.item, 'T-3']);
+});
+
+
+test('batch interaction notice bounds paths and groups fallback causes without changing full evidence', () => {
+  const files = Array.from({ length: 300 }, (_, i) => `web/test/example-${i}.test.ts`);
+  const report = { mode: 'report' as const, files, phases: ['Web' as const], reason: files.map(file => `${file} fallback: Error: incomplete import graph: unsupported createRequire base [hub/src/web-readiness.ts]`).join('; ') + '; T2 phase fallback: Error: TypeScript parser unavailable: hub/test/other.test.ts' };
+  const summary = batchInteractionSummary(report);
+  assert.deepEqual(summary, { mode: 'report', phases: ['Web'], selectedFileCount: 300, fallbackCounts: { 'incomplete import graph: unsupported createRequire base': 300, 'TypeScript parser unavailable': 1 }, examples: files.slice(0, 10) });
+  assert.equal(report.files.length, 300);
+  assert.ok(report.reason.includes(files[299]!));
+  assert.equal(batchInteractionSummary({ ...report, files: null }).selectedFileCount, null);
+  assert.equal(batchInteractionSummary(undefined).selectedFileCount, null);
 });

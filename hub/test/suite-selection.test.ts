@@ -1155,3 +1155,81 @@ test('a file graph unknown adds that file without the other T2 or Web files', as
   const { selectionFromEnv } = await import('../src/suite-selection.ts');
   assert.deepEqual(selectionFromEnv({ CLAND_SUITE_SELECTION: JSON.stringify(selected) }), selected);
 });
+
+// T1: immutable candidate source graph; no runtime project or browser is launched.
+test('project package base resolves declared externals without import edges', async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const prefix = `import { createRequire } from 'node:module'; import { join } from 'node:path'; import { pathToFileURL } from 'node:url'; function probe(root: string) { const req = createRequire(pathToFileURL(join(root, 'web/package.json'))); `;
+  const files: Record<string, string> = {
+    'hub/src/probe.ts': prefix + `for (const name of ['pkg', 'pkg/sub']) req.resolve(name); }`,
+    'web/package.json': '{"dependencies":{"pkg":"^1.0.0"}}', 'package.json': '{}',
+  };
+  const scan = () => importingTestsFromSource(['web/unrelated.ts'], ['hub/src/probe.ts'], async path => files[path]);
+  assert.deepEqual(await scan(), []);
+  files['hub/src/probe.ts'] = prefix + `for (const name of ['undeclared']) { for (const name of ['pkg']) req.resolve(name); } }`;
+  assert.deepEqual(await scan(), []);
+  for (const suffix of [
+    `for (const name of ['pkg']) { for (const name of dynamicNames) req.resolve(name); } }`,
+    `for (const name of ['pkg']) { try {} catch (name) { req.resolve(name); } } }`,
+    `for (const name of ['pkg']) { switch (kind) { case 0: const name = dynamicName; req.resolve(name); } } }`,
+    `for (const name of ['pkg']) { switch (kind) { default: const {name} = dynamicNames; req.resolve(name); } } }`,
+    `for (const name of ['pkg']) { (class name { static value = req.resolve(name); }); } }`,
+    `for (const name of ['pkg']) { { const {name} = dynamicNames; req.resolve(name); } } }`,
+    `for (const name of ['pkg']) { for (const {name} of dynamicNames) req.resolve(name); } }`,
+    `for (const name of ['pkg']) { try {} catch ({name}) { req.resolve(name); } } }`,
+    `for (const name of ['pkg']) { for (const name in dynamicNames) req.resolve(name); } }`,
+    `for (const name of ['pkg']) { for (let name = dynamicName; cond; step()) req.resolve(name); } }`,
+  ]) {
+    files['hub/src/probe.ts'] = prefix + suffix;
+    await assert.rejects(scan(), /incomplete import graph: non-literal module specifier/);
+  }
+  for (const suffix of [`req.resolve(name); }`, `req.resolve('undeclared'); }`, `req('pkg'); }`, `pass(req); }`]) {
+    files['hub/src/probe.ts'] = prefix + suffix;
+    await assert.rejects(scan(), /incomplete import graph: (escaping require binding|non-literal module specifier)/);
+  }
+  files['hub/src/probe.ts'] = prefix + `req.resolve('pkg'); }`;
+  files['web/package.json'] = '{}';
+  files['package.json'] = '{"devDependencies":{"pkg":"^1.0.0"}}';
+  assert.deepEqual(await scan(), []);
+  files['package.json'] = '{}';
+  files['../package.json'] = '{"dependencies":{"pkg":"^1.0.0"}}';
+  for (const manifest of ['{}', '{"peerDependencies":{"pkg":"^1.0.0"}}', '{"dependencies":{"pkg":"file:../local"}}']) {
+    files['web/package.json'] = manifest;
+    await assert.rejects(scan(), /incomplete import graph: escaping require binding/);
+  }
+});
+
+test('unknown project package bases retain unsupported createRequire base fallback', async () => {
+  const { graphImportSpecifiers } = await import('../src/suite-import-parser.ts');
+  for (const helper of ['pathToFileURL', 'join']) {
+    await assert.rejects(graphImportSpecifiers(`import { createRequire } from 'node:module'; import { join } from 'node:path'; import { pathToFileURL } from 'node:url'; function probe(root) { const run = function ${helper}(value) { if (typeof value === 'string') return new URL('file:///outside/package.json'); const req = createRequire(pathToFileURL(join(root, 'web/package.json'))); req.resolve('pkg'); }; }`, 'probe.ts'), /incomplete import graph: unsupported createRequire base \[probe.ts\]/);
+  }
+  for (const base of ['pathToFileURL(join(root, name))', "pathToFileURL(join(root, '../outside/package.json'))", "pathToFileURL(join(root, '/outside/package.json'))", 'other']) {
+    await assert.rejects(graphImportSpecifiers(`import { createRequire } from 'node:module'; const req = createRequire(${base}); req('pkg');`, 'probe.ts'), /incomplete import graph: unsupported createRequire base \[probe.ts\]/);
+  }
+});
+
+
+test('Web candidate assessment follows real web-readiness without package-base fallbacks', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-package-base-'));
+  ownDirectory(t, root);
+  const repo = fileURLToPath(new URL('../../', import.meta.url));
+  for (const file of ['hub/src/web-readiness.ts', 'hub/src/web-bundle.ts', 'web/package.json', 'hub/package.json', 'package.json']) {
+    await mkdir(dirname(join(root, file)), { recursive: true });
+    await writeFile(join(root, file), await readFile(join(repo, file)));
+  }
+  await mkdir(join(root, 'web/test'), { recursive: true });
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'web/test/affected.test.ts'), `import '../../hub/src/web-readiness.ts'; import '../shared.ts';`);
+  await writeFile(join(root, 'web/test/unaffected.test.ts'), `import '../../hub/src/web-readiness.ts';`);
+  await writeFile(join(root, 'web/shared.ts'), 'export const value = 1;');
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'web/test/affected.test.ts': 'Web', 'web/test/unaffected.test.ts': 'Web' } }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const assessment = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'candidate', tiers: ['T1'], web: 'none' }, ['member'], async () => 'web/shared.ts\0');
+  assert.doesNotMatch(assessment.batchInteraction!.reason, /fallback/);
+  assert.deepEqual(assessment.batchInteraction?.files, ['web/test/affected.test.ts']);
+  assert.deepEqual(assessment.batchInteraction?.phases, ['Web']);
+  assert.equal(assessment.batchInteraction?.mode, 'report');
+  assert.doesNotMatch(assessment.batchInteraction!.reason, /fallback/);
+  assert.equal(assessment.web, 'none');
+});

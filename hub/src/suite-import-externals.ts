@@ -34,8 +34,8 @@ export function externalModuleProof(read: (path: string) => Promise<string | und
     }
     return names;
   })();
-  return async (source: string, specifier: string): Promise<boolean> => {
-    if (specifier.startsWith('node:') || builtinModules.includes(specifier)) return true;
+  return async (source: string, specifier: string, resolveOnly = false): Promise<boolean> => {
+    if (specifier.startsWith('node:') || builtinModules.includes(specifier)) return !resolveOnly;
     if (!/^(@[a-zA-Z0-9_.-]+\/)?[a-zA-Z0-9_.-]+(?:\/[^\s]*)?$/.test(specifier)) return false;
     const name = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0]!;
     if ((await workspaces()).has(name)) return false;
@@ -43,7 +43,7 @@ export function externalModuleProof(read: (path: string) => Promise<string | und
     for (;;) {
       const entry = await manifest(posix.join(directory, 'package.json'));
       if (entry) {
-        for (const field of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+        for (const field of (resolveOnly ? ['dependencies', 'devDependencies', 'optionalDependencies'] : ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'])) {
           const dependencies = entry[field];
           if (!dependencies || typeof dependencies !== 'object' || Array.isArray(dependencies) || !Object.hasOwn(dependencies, name)) continue;
           const version = (dependencies as Record<string, unknown>)[name];

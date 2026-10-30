@@ -2217,6 +2217,16 @@ specifiers, escaping loaders, eval/Function/vm forms, parse errors, unavailable
 TypeScript and unsupported source extensions remain unknown. Bounded direct
 createRequire(import.meta.url)(literal) calls and const handles used only in
 direct literal calls use the same resolution; other uses remain unknown.
+The additional project-package base is limited to
+`const handle = createRequire(pathToFileURL(join(root, 'dir/package.json')))`
+with named Node path/URL imports and a literal project-relative package path.
+That handle may only call `handle.resolve(name)`, with a literal name or a
+const loop variable over a literal string array in the same function.
+Every name must have registry dependency proof from the base directory through
+the candidate root (dependencies, devDependencies or optionalDependencies;
+peerDependencies do not suffice). These path resolutions add no runtime import
+edge. Direct calls, other members, escaped handles, unknown names, dynamic or
+out-of-project base paths keep the existing fail-closed messages.
 
 Built-ins are external. A bare package is external only when an ancestor
 candidate package.json declares a registry dependency (including dev, optional
@@ -2224,6 +2234,11 @@ and peer entries). The nearest declaring ancestor wins; workspace package names,
 workspace/file/link/Git/path specs and undeclared names remain unknown. Candidate
 manifests use the same immutable source reader; no live node_modules proof is
 used. Missing browser/runtime support still determines whether Web actually runs.
+
+Batch result notices show mode, phases, selected-file count (unknown when the
+whole-phase file set is unavailable), fallback counts by cause, at most ten example
+paths and the log artifact/path. The full selection and reasons remain in the
+batch log and persisted receipt; this notice projection does not change execution.
 
 Selection reasons name importer triggers and phase fallback causes;
 interactionTests lists every added file; optional batchTests masks execute the

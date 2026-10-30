@@ -2,7 +2,7 @@ import { ImportGraphError } from './suite-import-errors.ts';
 import { externalModuleProof } from './suite-import-externals.ts';
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, posix, resolve } from 'node:path';
-import { graphImportSpecifiers } from './suite-import-parser.ts';
+import { graphImports } from './suite-import-parser.ts';
 
 /** Relative runtime dependencies, including helpers and re-exports. Caller owns the checkout. */
 export async function importingTests(cwd: string, changedPaths: readonly string[], testFiles: readonly string[], onUnknown?: (test: string, error: unknown) => void): Promise<string[]> {
@@ -46,12 +46,17 @@ export async function importingTestsFromSource(changedPaths: readonly string[], 
         const source = await read(file);
         if (source === undefined) throw new Error(`missing import source: ${file}`);
         const result: string[] = [];
-        for (const specifier of await graphImportSpecifiers(source, file)) {
+        for (const { specifier, base, resolveOnly } of await graphImports(source, file)) {
+          const importer = base ?? file;
+          if (resolveOnly) {
+            if (await external(importer, specifier, true)) continue;
+            throw new Error(`incomplete import graph: escaping require binding [${file}]`);
+          }
           if (!specifier.startsWith('.')) {
-            if (await external(file, specifier)) continue;
+            if (await external(importer, specifier)) continue;
             throw new Error(`incomplete import graph: unresolved module specifier ${specifier}`);
           }
-          const path = posix.normalize(posix.join(dirname(file), specifier));
+          const path = posix.normalize(posix.join(dirname(importer), specifier));
           if (path.startsWith('../') || posix.isAbsolute(path)) throw new Error('import outside candidate');
           const candidates = [path, `${path}.ts`, `${path}.tsx`, `${path}/index.ts`, `${path}/index.tsx`];
           let found: string | undefined;

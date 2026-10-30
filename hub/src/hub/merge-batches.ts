@@ -11,6 +11,17 @@ import { verificationStepLabel, verificationStepResults, type VerificationStep }
 import { MergeError } from '../merge.ts';
 import type { LogFn } from '../log.ts';
 
+/** Human-facing projection; persisted selection and log retain the full assessment. */
+export function batchInteractionSummary(report: import('../suite-selection.ts').SuiteSelection['batchInteraction']) {
+  const fallbackCounts: Record<string, number> = {};
+  for (const match of report?.reason.matchAll(/(?:^|; )[^;]*? fallback: (?:Error: )?([^;]+)/g) ?? []) {
+    const cause = match[1]!.replace(/ \[[^\]]*\](?::.*)?$/, '').replace(/: (?:hub|web|nvim)\/test\/.*$/, '');
+    fallbackCounts[cause] = (fallbackCounts[cause] ?? 0) + 1;
+  }
+  return { mode: report?.mode ?? 'unavailable', phases: report?.phases ?? [], selectedFileCount: report?.files?.length ?? null,
+    fallbackCounts, examples: report?.files?.slice(0, 10) ?? [] };
+}
+
 export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
@@ -174,7 +185,8 @@ export class MergeBatches {
     if (batch.reportedRun !== job.id) {
       const tiers = job.selection?.tiers?.join(', ') || 'unavailable';
       const steps = verificationStepResults(evidence.log).map(step => `${verificationStepLabel(step.name)}: exit ${step.code}; duration ${step.seconds} s`);
-      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(evidence.job.selection?.batchInteraction ?? 'unavailable')}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
+      const log = this.store.resolveArtifact(evidence.job.artifact ?? '');
+      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       batch.reportedRun = job.id; this.#save(batch);
     }
     const requiredSteps: VerificationStep['name'][] = evidence.job.commands?.check === '' ? [] : ['check'];
