@@ -3,7 +3,7 @@ id: T-1487
 kind: task
 title: A role-addressed review request stays queued while reviewers are idle
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1254
 branch: t/T-1487-a-role-addressed-review-request-stays
 created: 2026-10-30T13:33:21.942Z
-updated: 2026-10-30T19:35:31.495Z
+updated: 2026-10-30T20:51:31.362Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ A review request sent to the role `reviewer` was queued and never assigned for 4
 
 ## Acceptance criteria
 
-- [x] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
-  - done: impl-1487 · 2026-10-30T19:34:19.518Z
+- [ ] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
+  - failed: rev-31 [reviewer] · 2026-10-30T20:51:31.362Z · note Configured run regresses legitimate human verifier requests: acceptance no longer reserves/publishes pending work in two existing consumer tests.
 - [x] C2. A queued request that stays unassigned past the bound posts one Agents notice naming the request, the idle verifiers and why each was not chosen.
   - done: impl-1487 · 2026-10-30T19:34:19.590Z
 
@@ -111,3 +111,22 @@ Source3 clear A-14652. Current0/1 vs legacyNULL admission resolves M1: stable st
 ### impl-1487 · 2026-10-30T19:35:31.495Z
 
 Ready for Coordinator full verification at frozen source3-clear head 079b65a130a49372cc992585a0aa87d63a98105c. Fresh fetch origin/dev=66cf804fb584f5630f0955f4baf1c8b07904587f; merge-tree exit0/tree fc8a25431b2c26a3f19ebf0e249e5348eb3f7af2, clean branch/pushed, no post-review merge. Source clear A-14652; local final evidence A-14651. Per routing launch exception, no Implementer suite enqueue: Coordinator owns full verification, then Reviewer owns original-record final evidence review. C1/C2 runtime verification pending; claim retained.
+
+### impl-1487 · 2026-10-30T20:50:20.280Z
+
+Full-run red evidence A-14687 / run5cd274e9 at079b65a13 (Linux droplet c-8/lon1): computed-sessions pending-row wait 'no frame matched within 5000ms'; inbox-workload 'changing requests publish only the final changed presence per tick', actual0/expected1. T0/T1 completed; T2 red; T3/Web unexecuted, not passing. Read-only cause: trusted human sendFromHuman never writes verifier_admitted, so accepted human review requests are rejected as legacy rows with no sender session. Consumer inventory extension: trusted topic.send/CLI/web/remote ingress all converge on sendFromHuman in HubCore; dispatch.ts topic.send/upload/voice entry points and gateway authority remain unchanged. Existing human pending consumers computed-sessions.test.ts, inbox-archive-workload.ts via inbox-workload.test.ts, web/test/sessions.test.ts and QA brief E-418-stage-1.md must retain behavior. No assertion changes planned. Added current trusted-human supersession and legacy human NULL-admission cases beside session/legacy controls; tests not run yet. Coordinator quiet-machine decision d488f56c explicitly defers all tests/typecheck/lint until 'slot released'; no local command violating it started.
+
+### rev-31 · 2026-10-30T20:51:31.362Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-evidence1
+commit: 079b65a130a49372cc992585a0aa87d63a98105c
+scope: evidence
+findings: [{"severity":"medium","text":"M1: trusted human sendFromHuman messages have NULL admission and no agent senderSessionId, so legacy reauthorization persists false and accepted legitimate human review requests lose pending reservation/publication. Original computed-sessions and inbox-workload both fail. Preserve human authority and pending contract in production with both existing consumer assertions unchanged, retaining unauthorized agent rejection.","file":"hub/src/hub/core.ts","line":1902}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence1 not clear A-14688. Original all5cd274e9/A-14687 exit1: independently counted3683 ordinary passes,2 failures,185 distinct load passes (file wrapper finishes excluded). T0/T1 clear,T2 incomplete/red,T3/Web unrun,T4 absent. Both original errors and exact-head source identify missing trusted-human admission, not just presence diff. Focused routing/checkpoint/heartbeat passes remain scoped; no final criterion verification. Preserve failed receipt and prior source3 assessment; production correction with unchanged assertions, Coordinator-scheduled focused checks, fresh source review, then Coordinator-owned full run. Host typecheck reuse/advisory findings retained; no Reviewer workloads.
+
+Criteria: C1 failed (Configured run regresses legitimate human verifier requests: acceptance no longer reserves/publishes pending work in two existing consumer tests.).

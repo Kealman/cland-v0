@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1253
 branch: t/T-1470-held-human-deliveries-drain-on-any-idle
 created: 2026-10-30T07:50:17.481Z
-updated: 2026-10-30T19:27:50.995Z
+updated: 2026-10-30T20:40:30.002Z
 ---
 
 ## Summary
@@ -26,9 +26,9 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 ## Acceptance criteria
 
 - [x] C1. A human delivery held for a busy session is sent within 60 s after any signal source reports the session idle, even when the state did not change.
-  - done: impl-1470 · 2026-10-30T19:20:17.847Z
+  - done: impl-1470 · 2026-10-30T20:39:25.735Z
 - [x] C2. While a human delivery is held, the hub re-evaluates the session at least every 60 s and logs `human-hold-recheck` with the state source and its age.
-  - done: impl-1470 · 2026-10-30T19:25:50.918Z
+  - done: impl-1470 · 2026-10-30T20:39:25.853Z
 - [x] C3. A busy state that comes only from a poll and is older than 5 min with no push signal no longer holds human deliveries.
   - done: impl-1470 · 2026-10-30T19:25:51.077Z
 
@@ -79,3 +79,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Successor full source clear A-14647. Same base66cf804fb/no dev merge. rev-31/A-14641 M1–M3 closed: canonical guide/index; all Sessions state writers share provenance with busy-state eligibility/continuation; successful and alive/unavailable recovery seed captured durable delivered ids. Public pool-reuse and retained-agent recovery controls retain exact injection receipts plus uncertain/terminal exclusions. Existing inflight/backoff and native signal trust unchanged; owned minute timers stop at close. T1 memory/fake-clock tests, docs/skill/CHANGES match. A-14633/A-14643/local lint summaries not configured runtime proof; C1–C3 remain unverified. Source-clear handoff to Coordinator-owned runtime verification; no Reviewer workload or new full/all task-head request.
+
+### rev-32 · 2026-10-30T20:37:10.358Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261030-1470-evidence1
+commit: 9b5743610b0a593018129a6bef17bb1d3faa4fca
+scope: evidence
+findings: [{"severity":"medium","text":"M4: unconditional repeated-idle #retry and minute timer #retry at1992 include previously attempted inject-unconfirmed deliveries. Original composition assertion 'idle observations alone do not retry an unconfirmed input' fails 3 !== 2 at adapter-composition.test.ts:193. Preserve transition-only retry for unconfirmed/rejected attempts; only never-attempted or positively pre-harness-refused work may drain on repeated idle/timer per Coordinator5c2a45be. Add split control; keep existing assertion/backoff.","file":"hub/src/adapters/sessions.ts","line":1776}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear A-14677/rawA-14675 all runa4f66679. Exact adapter-composition failure quoted in artifact; source passA-14647 missed this consumer/fence and is superseded for its fence claim. T0/T1 pass,T2 exit1; completed3846/3845pass/1fail before interruption, separate tieraggregate3681/3680/1 not extra coverage. T3/Web unexecuted,browsernull,report-only warnings separate. C1/C2 failed,C3 unverified. Keep original adapter composition assertion; correct safe retry eligibility plus split control, run Coordinator-named files singly, then new exact-head source review before Coordinator-owned all run. No Reviewer execution.
+
+Criteria: C1 failed (Repeated idle drainage replays a previously unconfirmed attempt; original composition fence fails 3 !== 2.), C2 failed (Minute retry uses the same unfiltered uninjected path and does not preserve required attempted-work fence.).
+
+### impl-1470 · 2026-10-30T20:39:42.684Z
+
+M4 at be5b629baed4863150c3691642a1704cf12a2b87: original adapter-composition assertion preserved; production repeated-idle/minute/recovery replay now keys on durable injectionStarted=false. Attempted-unconfirmed work retains busy→idle/reconnect/backoff. Existing injectionStarted consumers are Store migration/startInjection/deliveriesOf, Core withdrawal admission, Sessions injection and tests; no field/schema changes. A-14682 records exact original 3!==2 failure and new split/restart red→green. Local macOS Node24.21.0 singly: human-hold8/8, adapter-composition4/4, inject-stalled8/8, codex-delivery22/22; typecheck passed; lint completed exit0/zero refusals, existing advisory diagnostics. Prior Linux full run A-14675 remains failed/partial (T3/Web unexecuted). Fresh source review requested from rev-32; no further checks during Coordinator's quiet slot.
+
+### rev-32 · 2026-10-30T20:40:30.002Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1470-source3
+commit: be5b629baed4863150c3691642a1704cf12a2b87
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full successor source3 clear A-14683. M4 closed: existing persisted injectionStarted plus state governs repeated-idle/timer/recovery safe drainage; legacy attempted rows remain conservative. Busy-to-idle/reconnect keep attempted retry and #inject backoff/inflight; explicit uncertainty remains excluded. Original adapter-composition assertion and inject-stalled/codex-delivery files unchanged. New split and durable-ack/pre-attempt recovery sibling controls assert exact attempts/states. M1–M3 fixes retained; docs/contract/skill updated. A-14682 local summaries separate from configured runtime. A-14675 remains failed at prior head with T3/Web unexecuted. C1–C3 remain runtime-unverified; ready for Coordinator-owned all-run handoff, not a new Reviewer task-head full-run request. No Reviewer execution.
