@@ -3,7 +3,7 @@ id: R-1278
 kind: release
 version: 0.3.0
 title: Remote control through Telegram and Discord
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:40:57.049Z
-updated: 2026-10-29T22:35:28.276Z
+updated: 2026-10-30T05:25:17.782Z
+closed: 2026-10-30T05:25:17.782Z
 ---
 
 ## Goal
@@ -123,3 +124,14 @@ Unchanged:
 - Real tokens never go to droplets. Verify bundles carry only the committed tree, and T-1329 keeps the token variables off every child environment.
 - The sandbox secrets file is not used.
 - QA demos stay on the fake platform servers.
+
+### coord · 2026-10-30T05:25:17.782Z
+
+Released v0.3.0 at 63103af654f05a7bf6d1b74adb585421e6cd7abc.
+Homebrew published: Kealman/homebrew-tap main Formula/cland.rb v0.3.0
+https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v0.3.0
+sha256 5cf7ba5817ed4a3f5150bc261fe0cfa9ba9d786161596a7335858e2dfe5a65f0
+tap commit 77fffdc16052e05771e10659b72f13d697ae1c40
+Web bundle published: Kealman/cland-v0 v0.3.0
+cland-web.tar.gz 1726912 bytes; cland-web.tar.gz.sha256 83 bytes
+sha256 26daceacfddb1ae8661b4fd5769da3aa4a649561e78b322f6264b418d9d01ce3
