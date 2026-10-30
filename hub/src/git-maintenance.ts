@@ -28,6 +28,25 @@ export async function projectGitDirectory(root: string): Promise<string | null> 
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return directory; throw error; }
 }
 
+/** One repository-local policy shared by provisioning, collection and doctor. */
+export const AUTO_MAINTENANCE_CONFIG = [['gc.auto', '0'], ['maintenance.auto', 'false']] as const;
+
+export async function disableAutoMaintenance(git: (args: string[]) => Promise<unknown>): Promise<void> {
+  for (const [key, value] of AUTO_MAINTENANCE_CONFIG) await git(['config', '--local', key, value]);
+}
+
+/** Provision common config (also inherited by linked task worktrees), never global config. */
+export async function configureProjectGitMaintenance(root: string, env: NodeJS.ProcessEnv): Promise<void> {
+  if (!await projectGitDirectory(root)) return;
+  const repositories = [root];
+  try { if ((await lstat(territoryPath(root))).isDirectory()) repositories.push(territoryPath(root)); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  for (const cwd of repositories) await disableAutoMaintenance(async args => {
+    const result = await run('git', ['-C', cwd, '-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], env, 5000);
+    if (result.error || result.code !== 0) throw new Error(`cannot configure Git maintenance: ${result.error ?? result.stderr}`);
+  });
+}
+
 /** Missing legacy fields, malformed records and expired-but-unreleased leases
  * cannot establish idleness. Retained finished jobs are conservative too. */
 async function mayPrune(root: string, meta: (key: string) => string | null): Promise<boolean> {
@@ -81,8 +100,7 @@ export async function maintainProjectGit(root: string, meta: (key: string) => st
         };
         // Shared repository-local config covers task worktrees and ordinary Git
         // commands too. No global configuration or upstream repository is changed.
-        await git(['config', '--local', 'gc.auto', '0']);
-        await git(['config', '--local', 'maintenance.auto', 'false']);
+        await disableAutoMaintenance(git);
         const hadGcLog = await lstat(join(repository.directory, 'gc.log')).then(() => true, error => {
           if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error;
         });

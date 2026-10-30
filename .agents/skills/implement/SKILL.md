@@ -942,3 +942,13 @@ any raw snapshots by literal path before review. For payload attribution without
 a hub run, use `measure-history-storage.ts` on its fresh disposable backup and
 publish only aggregate field/row sizes. Existing role clauses cover both flows;
 add no permission lines.
+
+## Repository auto-maintenance configuration
+
+Init/update write local `gc.auto=0` and `maintenance.auto=false` for the common
+project repository and existing territory; doctor reads and reports both keys.
+Use the disposable init/update/doctor/native-fetch seams in
+`docs/agents/tests/hub-test-init.test.ts.md` for changes to this policy. Ordinary
+worktrees inherit common config unless explicit Git overrides supersede it.
+Do not apply configuration to the live project as a test. Existing role clauses
+cover this flow without adding permission lines.

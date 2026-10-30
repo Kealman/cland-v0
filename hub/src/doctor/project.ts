@@ -314,5 +314,5 @@ export async function checkProject(root: string, readers: ProjectReaders = {}, e
   if (!existsSync(l.dir)) return [fail('project', `${root} has no ${CLAND_DIR}/: not a cland project`, `cland init ${root}`)];
   const problems = (readers.territoryProblems ?? territoryProblems)(root);
   const territory = problems === null ? ok('territory', 'not a git repository: no territory needed') : problems.length ? fail('territory', problems.join('; '), 'cland init (restore origin to .cland/territory.git if it was changed)') : ok('territory', 'origin is the local bare repository; main and dev protected; HEAD on dev');
-  return [...(await checkHub(l, readers, env)), territory, await checkGitMaintenance(root), await checkCaptures(root), ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
+  return [...(await checkHub(l, readers, env)), territory, await checkGitMaintenance(root, env), await checkCaptures(root), ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
 }

@@ -1,7 +1,7 @@
 // T3: concurrency lifecycle: init overlaps a separate SQLite writer thread. Shell hook execution and a real Claude fake
 // retain the provisioned launch contract; their process receipts are the assertions' subject.
 // Held-worker cancellation proves database/worker disposal precedes fixture removal.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -130,7 +130,7 @@ test('init waits for an overlapping hub database writer', { timeout: 10_000 }, a
       const code = await runInit(['--json'], workerData.root, text => { stdout += text; });
       parentPort.postMessage({ type: 'result', code, stdout });
     });
-  `, { eval: true, workerData: { module, root } });
+  `, { eval: true, env: fixtureEnvironment(root, process.env), workerData: { module, root } });
   owner.attach(worker);
   const exited = once(worker, 'exit', { signal: t.signal });
   const results: Array<{ code: number; stdout: string }> = [];

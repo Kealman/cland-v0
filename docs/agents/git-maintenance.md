@@ -5,7 +5,12 @@ The hub schedules one background pass 30 seconds after serving. See
 Requests stay available; startup never waits for collection.
 
 `cland doctor` has one read-only `git maintenance` row for the current collector
-owner, `.cland/run/git-maintenance.json` results and native `gc.log` files. It
+owner, repository-local `gc.auto` and `maintenance.auto` values for the common
+project repository and existing territory, `.cland/run/git-maintenance.json`
+results and native `gc.log` files. Missing or different values produce an advisory
+warning: run `cland update` to restore `gc.auto=0` and `maintenance.auto=false`.
+Init writes the same keys; linked worktrees inherit common local config unless
+explicit Git overrides supersede it. Global config and upstreams are untouched. It
 never collects objects, including with `--fix`.
 
 The private exec gate durably records PID/start/group before Git launches. A

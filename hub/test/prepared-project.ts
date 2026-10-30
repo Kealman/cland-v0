@@ -1,3 +1,4 @@
+import { withInitGitIdentity } from './git-identity-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -43,7 +44,7 @@ async function build(shape: Shape, stack: FixtureStack): Promise<string> {
   else if (shape !== 'repository') {
     // These fixtures deliberately start with an empty tracker; init's category contract
     // belongs to init-categories/first-commit, not every consumer's item numbering.
-    await provision(root, { territory: true, categories: false });
+    await withInitGitIdentity(root, () => provision(root, { territory: true, categories: false, env: fixtureEnvironment(root, process.env) }));
   }
   if (shape === 'verification') {
     const path = join(root, '.cland/config.toml');

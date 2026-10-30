@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile, readlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { clandWithEnv } from './harness.ts';
 import { captureCli } from './cli-in-process.ts';
@@ -39,13 +40,13 @@ export async function gitRepo(root: string): Promise<void> {
 }
 
 export async function run(root: string, command: 'init' | 'update', env: Record<string, string> = {}): Promise<Change[]> {
-  return withInitGitIdentity(() => runWithIdentity(root, command, env));
+  return withInitGitIdentity(root, () => runWithIdentity(root, command, env), env);
 }
 
 async function runWithIdentity(root: string, command: 'init' | 'update', env: Record<string, string>): Promise<Change[]> {
   // Version is a module constant: the old-release fixture needs a fresh module graph.
   if (env.CLAND_VERSION_OVERRIDE) return runCli(root, command, env);
-  if (env.CLAND_SKILLS_SOURCE_OVERRIDE) return provision(root, { skillsSource: env.CLAND_SKILLS_SOURCE_OVERRIDE, territory: command === 'init', categories: command === 'init' });
+  if (env.CLAND_SKILLS_SOURCE_OVERRIDE) return provision(root, { skillsSource: env.CLAND_SKILLS_SOURCE_OVERRIDE, territory: command === 'init', categories: command === 'init', env: fixtureEnvironment(root, process.env, env) });
   const r = await captureCli(write => command === 'init' ? runInit(['--json'], root, write) : runUpdate(['--json'], root, write));
   assert.equal(r.code, 0, `cland ${command}: ${r.stderr}`);
   return (JSON.parse(r.stdout) as { changes: Change[] }).changes;

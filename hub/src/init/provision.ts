@@ -28,6 +28,7 @@ import { provisionConfig, readProjectConfig } from './config.ts';
 import { isManagedFile, readText, refuseSymlink, Report, writeIfChanged, type Change } from './files.ts';
 import { provisionAgentsMd, provisionClaudeMd, provisionDocs } from './instructions.ts';
 import { provisionClaudeSkills, provisionSkills, SKILLS_SOURCE } from './skills.ts';
+import { configureProjectGitMaintenance } from '../git-maintenance.ts';
 import { provisionTerritory } from '../territory.ts';
 import { commitClandFiles, createRepository, existingClandFiles, foldReport } from './repository.ts';
 
@@ -128,5 +129,6 @@ export async function provision(root: string, options: ProvisionOptions = {}): P
     provisionTerritory(again, root, firstCommit);
     foldReport(report, again);
   }
+  await configureProjectGitMaintenance(root, options.env ?? process.env);
   return report.changes;
 }

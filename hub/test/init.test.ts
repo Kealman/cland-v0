@@ -10,6 +10,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
 import { runUpdate } from '../src/cli/init.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { checkGitMaintenance } from '../src/doctor/git.ts';
 import { checkProject } from '../src/doctor/project.ts';
 import { provision } from '../src/init/provision.ts';
 import { clandWithEnv, connectUi, projectHub, tempProject } from './harness.ts';
@@ -383,7 +385,7 @@ test('a manifest that is not cland\'s, malformed, or names a path outside its sk
     await mkdir(join(initialSource, name));
     await writeFile(join(initialSource, name, 'SKILL.md'), 'initial release bytes\n');
   }
-  await provision(root, { territory: false, skillsSource: initialSource });
+  await provision(root, { territory: false, env: fixtureEnvironment(root, process.env), skillsSource: initialSource });
   const manifestPath = join(root, '.agents', 'skills', '.cland-manifest.json');
   const good = JSON.parse(await readFile(manifestPath, 'utf8')) as { managed: string; skills: Record<string, Record<string, string>> };
   const hash = good.skills.tdd!['SKILL.md']!;
@@ -419,7 +421,7 @@ test('a manifest that is not cland\'s, malformed, or names a path outside its sk
     const text = manifest === null ? '{ not json' : `${JSON.stringify(manifest, null, 2)}\n`;
     await writeFile(manifestPath, text);
     const before = await tree(root);
-    const changes = await provision(root, { territory: false, skillsSource: source });
+    const changes = await provision(root, { territory: false, env: fixtureEnvironment(root, process.env), skillsSource: source });
     assert.deepEqual(changes.filter((c) => c.action === 'removed'), [], what);
     const report = changes.find((c) => c.path === '.agents/skills/.cland-manifest.json');
     assert.equal(report?.action, 'kept', what);
@@ -429,15 +431,15 @@ test('a manifest that is not cland\'s, malformed, or names a path outside its sk
     assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'ours\n', what);
     assert.equal(await readFile(join(root, '.agents', 'skills', 'x', 'SKILL.md'), 'utf8'), 'ours\n', what);
     await lstat(join(root, '.agents', 'skills', 'tdd', 'SKILL.md'));
-    const doctor = (await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest');
+    const doctor = (await checkProject(root, { started: async () => null, territoryProblems: () => null }, fixtureEnvironment(root, process.env))).find(c => c.name === 'skills manifest');
     assert.equal(doctor?.verdict, 'fail', what);
     assert.match(doctor?.detail ?? '', /not valid/, what);
   }
   // a valid manifest again: update works as before
   await writeFile(manifestPath, `${JSON.stringify(good, null, 2)}\n`);
-  const changes = await provision(root, { territory: false, skillsSource: initialSource });
+  const changes = await provision(root, { territory: false, env: fixtureEnvironment(root, process.env), skillsSource: initialSource });
   assert.equal(changes.find((c) => c.path === '.agents/skills/.cland-manifest.json')?.action, 'unchanged');
-  assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest')?.verdict, 'ok');
+  assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null }, fixtureEnvironment(root, process.env))).find(c => c.name === 'skills manifest')?.verdict, 'ok');
 });
 
 // T1: the provisioning and doctor file seams need neither Git nor a running hub.
@@ -447,7 +449,7 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   await mkdir(join(source, 'tdd'));
   await writeFile(join(source, 'tdd', 'SKILL.md'), 'abc');
   await writeFile(join(source, 'tdd', 'NOTES.md'), 'notes v1');
-  const update = () => provision(root, { territory: false, skillsSource: source });
+  const update = () => provision(root, { territory: false, env: fixtureEnvironment(root, process.env), skillsSource: source });
   await update();
   const target = join(root, '.agents', 'skills');
   const manifestPath = join(target, '.cland-manifest.json');
@@ -455,13 +457,13 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   const initial = await read();
   const legacy = { managed: initial.managed, skills: { tdd: ['NOTES.md', 'SKILL.md'] } };
   await writeFile(manifestPath, JSON.stringify(legacy));
-  const legacyCheck = (await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest');
+  const legacyCheck = (await checkProject(root, { started: async () => null, territoryProblems: () => null }, fixtureEnvironment(root, process.env))).find(c => c.name === 'skills manifest');
   assert.equal(legacyCheck?.verdict, 'warn');
   assert.equal(legacyCheck?.fix, 'cland update');
   await update();
   assert.deepEqual((await read()).skills, initial.skills, 'unchanged cland bytes acquire hashes too');
   assert.equal(((await read()).skills.tdd as Record<string, string>)['SKILL.md'], 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
-  assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest')?.verdict, 'ok');
+  assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null }, fixtureEnvironment(root, process.env))).find(c => c.name === 'skills manifest')?.verdict, 'ok');
 
   await writeFile(manifestPath, JSON.stringify(legacy));
   const notes = join(target, 'tdd', 'NOTES.md');
@@ -584,4 +586,85 @@ test('a parent folder replaced by a symlink between the check and the write: the
   assert.equal(c?.action, 'kept', JSON.stringify(c));
   assert.match(c?.note ?? '', /^symlink: \.claude /);
   assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the project changed');
+});
+
+test('init and update disable implicit Git maintenance in common project and territory config', async t => {
+  const root = await tempProject(t);
+  await gitRepo(root);
+  const git = async (cwd: string, args: string) => {
+    const result = await sh(cwd, `git -c gc.auto=0 ${args}`);
+    assert.equal(result.code, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  const worktree = await tempProject(t);
+  await git(root, `worktree add --detach '${worktree}' HEAD`);
+  const fetch = () => sh(worktree, 'GIT_TRACE=1 git fetch');
+  const before = await fetch();
+  assert.equal(before.code, 0, before.stderr);
+  assert.match(before.stderr, /maintenance run --auto/, 'positive control observes native fetch maintenance');
+  await run(root, 'init');
+  const territory = join(root, '.cland/territory.git');
+  const assertConfig = async () => {
+    for (const cwd of [root, territory, worktree]) {
+      assert.equal(await git(cwd, 'config --local --get gc.auto'), '0');
+      assert.equal(await git(cwd, 'config --local --get maintenance.auto'), 'false');
+    }
+    const fetched = await fetch();
+    assert.equal(fetched.code, 0, fetched.stderr);
+    assert.doesNotMatch(fetched.stderr, /maintenance run --auto|gc --auto/);
+  };
+  await assertConfig();
+  for (const cwd of [root, territory]) {
+    await git(cwd, 'config --local gc.auto 1');
+    await git(cwd, 'config --local maintenance.auto true');
+  }
+  await run(root, 'update');
+  await assertConfig();
+});
+
+
+test('doctor reports repository and territory auto-maintenance config without changing it', async t => {
+  const root = await tempProject(t);
+  await gitRepo(root);
+  await run(root, 'init');
+  const check = await checkGitMaintenance(root, fixtureEnvironment(root, process.env));
+  assert.equal(check.verdict, 'ok');
+  assert.match(check.detail, /project: gc.auto=0, maintenance.auto=false/);
+  assert.match(check.detail, /territory: gc.auto=0, maintenance.auto=false/);
+  const changed = await sh(root, 'git config --local maintenance.auto true');
+  assert.equal(changed.code, 0, changed.stderr);
+  const warning = await checkGitMaintenance(root, fixtureEnvironment(root, process.env));
+  assert.equal(warning.verdict, 'warn');
+  assert.match(warning.detail, /project: gc.auto=0, maintenance.auto=true/);
+  assert.match(warning.fix!, /cland update/);
+  const kept = await sh(root, 'git config --local --get maintenance.auto');
+  assert.equal(kept.stdout.trim(), 'true', 'doctor stays read-only');
+});
+
+test('init update and doctor ignore inherited Git redirection into a disposable sentinel', async t => {
+  const root = await tempProject(t);
+  const sentinel = await tempProject(t);
+  await gitRepo(root);
+  await gitRepo(sentinel);
+  assert.equal((await sh(sentinel, 'git config gc.auto 91 && git config maintenance.auto true')).code, 0);
+  const original = { ...process.env };
+  const sentinelConfig = await readFile(join(sentinel, '.git/config'), 'utf8');
+  try {
+    Object.assign(process.env, {
+      HOME: join(sentinel, 'home'), XDG_CONFIG_HOME: join(sentinel, 'config'),
+      GIT_DIR: join(sentinel, '.git'), GIT_WORK_TREE: sentinel,
+      GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'gc.auto', GIT_CONFIG_VALUE_0: '91',
+      DIGITALOCEAN_TOKEN: 'synthetic-fixture-poison',
+    });
+    await run(root, 'init');
+    await run(root, 'update');
+    const check = await checkGitMaintenance(root, fixtureEnvironment(root, process.env));
+    assert.equal(check.verdict, 'ok');
+    assert.match(check.detail, /project: gc.auto=0, maintenance.auto=false/);
+    assert.match(check.detail, /territory: gc.auto=0, maintenance.auto=false/);
+  } finally {
+    for (const key of Object.keys(process.env)) delete process.env[key];
+    Object.assign(process.env, original);
+  }
+  assert.equal(await readFile(join(sentinel, '.git/config'), 'utf8'), sentinelConfig);
 });

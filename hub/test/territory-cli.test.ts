@@ -25,7 +25,7 @@ const ok = (r: CliResult): CliResult => {
 };
 type Change = { path: string; action: string; note?: string };
 const init = async (root: string, ...args: string[]): Promise<Change[]> =>
-  withInitGitIdentity(async () => JSON.parse(ok(await captureCli(write => runInit([...args, '--json'], root, write))).stdout).changes);
+  withInitGitIdentity(root, async () => JSON.parse(ok(await captureCli(write => runInit([...args, '--json'], root, write))).stdout).changes);
 const initCli = async (root: string, ...args: string[]): Promise<Change[]> =>
   JSON.parse(ok(await clandWithEnv(root, INIT_GIT_IDENTITY, 'init', ...args, '--json')).stdout).changes;
 
@@ -388,7 +388,7 @@ test('projects without a remote get only origin; non-Git folders get a first com
   assert.equal(git(folder, 'status', '--porcelain'), '?? README.md');
   const agents = await readFile(join(folder, 'AGENTS.md'), 'utf8');
   assert.match(agents, /Publish to GitHub through cland/);
-  ok(await captureCli(write => runUpdate([], folder, write)));
+  ok(await withInitGitIdentity(folder, () => captureCli(write => runUpdate([], folder, write))));
   assert.equal(await readFile(join(folder, 'AGENTS.md'), 'utf8'), agents);
 });
 
@@ -409,7 +409,7 @@ test('update preserves a legacy territory origin recorded under a symlinked pare
   for (const hasGithub of [false, true]) {
     if (hasGithub) git(root, 'remote', 'add', 'github', github);
     const before = git(root, 'config', '--get-regexp', '^remote\\.');
-    const result = ok(await captureCli(write => runUpdate([legacyRoot, '--json'], root, write)));
+    const result = ok(await withInitGitIdentity(root, () => captureCli(write => runUpdate([legacyRoot, '--json'], root, write))));
     const changes: Change[] = JSON.parse(result.stdout).changes;
     const remotes = changes.filter(change => change.path.startsWith('.cland/territory.git/remotes/'));
     assert.ok(remotes.length > 0);
@@ -425,10 +425,10 @@ test('update refreshes territory instructions but leaves a Git project without a
   await init(root);
   const agentsPath = join(root, 'AGENTS.md');
   await writeFile(agentsPath, (await readFile(agentsPath, 'utf8')).replace('`cland publish` is the only out-of-release push', 'old rule'));
-  ok(await captureCli(write => runUpdate([], root, write)));
+  ok(await withInitGitIdentity(root, () => captureCli(write => runUpdate([], root, write))));
   assert.match(await readFile(agentsPath, 'utf8'), /`cland publish` is the only out-of-release push/);
   await init(root, '--undo');
-  ok(await captureCli(write => runUpdate([], root, write)));
+  ok(await withInitGitIdentity(root, () => captureCli(write => runUpdate([], root, write))));
   assert.match(await readFile(agentsPath, 'utf8'), /Push to GitHub only on the Coordinator/);
   assert.equal(git(root, 'remote'), 'origin');
 });

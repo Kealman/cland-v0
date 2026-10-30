@@ -3337,9 +3337,21 @@ Each project hub start schedules one background collection 30 seconds after its
 serving receipt. Maintenance does no Git I/O during startup, and status/ordinary
 requests remain available while it runs under the territory lock. The pass
 collects the common project repository and existing local bare territory. Once
-it runs, repository-local `gc.auto=0` and `maintenance.auto=false` replace
-implicit collection, including in task worktrees; global config, upstream
-repositories and executor clones are unchanged.
+it runs, it reasserts the same repository-local policy described below.
+
+#### Repository auto-maintenance configuration
+
+`cland init` and `cland update` set repository-local `gc.auto=0` and
+`maintenance.auto=false` in the common project repository and existing bare
+territory. Task worktrees inherit that common configuration, so ordinary
+`git fetch` does not start implicit maintenance. Update also repairs changed or
+missing values, without creating a territory in projects that have none. Explicit
+command overrides or worktree-specific Git config can supersede these values.
+Global config, upstream repositories and executor clones are unchanged.
+`cland doctor` reports both local values for each repository, warns on missing or
+different values, and suggests `cland update`; diagnosis never writes Git config.
+This warning is advisory and introduces no failing gate. Existing role clauses
+cover init/update and doctor; no additional permission is needed.
 
 With no retained work, `git gc --cruft --prune=2.weeks.ago` applies a 14-day grace
 to loose and packed unreachable objects. Fresh objects and their descendants

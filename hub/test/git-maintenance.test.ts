@@ -249,7 +249,7 @@ test('failed collection remains visible in doctor while implicit Git collection 
   await maintainProjectGit(f.root, () => null, f.env);
   assert.equal(await f.exists(old.commit), true);
   assert.equal(await f.git(['config', '--local', '--get', 'gc.auto']), '0');
-  const checks = await checkProject(f.root, { started: async () => null, territoryProblems: () => null });
+  const checks = await checkProject(f.root, { started: async () => null, territoryProblems: () => null }, fixtureEnvironment(f.root, process.env));
   const maintenance = checks.filter(check => check.name === 'git maintenance');
   assert.equal(maintenance.length, 1);
   assert.equal(maintenance[0]!.verdict, 'warn');
@@ -275,7 +275,7 @@ test('maintenance recovers stale gc.log and doctor reports it once without repea
   assert.equal(await f.git(['config', '--local', '--get', 'gc.auto']), '0');
   assert.equal(await f.git(['config', '--local', '--get', 'maintenance.auto']), 'false');
   for (let n = 0; n < 2; n++) assert.equal((await ordinary()).stderr, '');
-  const checks = await checkProject(f.root, { started: async () => null, territoryProblems: () => null });
+  const checks = await checkProject(f.root, { started: async () => null, territoryProblems: () => null }, fixtureEnvironment(f.root, process.env));
   const maintenance = checks.filter(check => check.name === 'git maintenance');
   assert.equal(maintenance.length, 1);
   assert.match(maintenance[0]!.detail, /recovered.*gc.log/);

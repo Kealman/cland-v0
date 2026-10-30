@@ -15,3 +15,20 @@ T1 shared settings provisioning is covered by init-settings.test.ts; pure payloa
 recognition by literal-rm.test.ts; T2 native exit/stdin by literal-rm-cli.test.ts;
 T2 recorded launch injection by claude-code-environment.test.ts. Shell hook and
 native harness/process races remain in init-process.test.ts.
+
+## Repository auto-maintenance (T-1459)
+
+The init/update regression checks local `gc.auto=0` and `maintenance.auto=false`
+in the disposable project, territory and linked worktree. Its plain fetch trace
+has a pre-init positive control that observes `maintenance run --auto`; after
+init and update, fetch completes without maintenance. The doctor regression
+checks both reported repositories, advisory drift and unchanged native config.
+All Git and CLI work uses the sealed init fixture and disposable roots; no hub,
+real account, network or live repository configuration is needed.
+
+The inherited-Git sentinel regression poisons HOME/XDG and Git repository/config
+inputs with disposable paths. The in-process init fixture scopes the final
+`fixtureEnvironment` after identity/option overlays and restores the worker env.
+Direct provision/doctor calls pass the shared sealed environment explicitly.
+The sentinel Git config remains byte-identical. With the former identity-only
+overlay the control fails (`warn` instead of `ok` for the target repository).
