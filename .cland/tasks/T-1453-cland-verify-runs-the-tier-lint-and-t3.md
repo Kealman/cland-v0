@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1232
 branch: t/T-1453-cland-verify-runs-the-tier-lint-and-t3
 created: 2026-10-30T05:44:56.925Z
-updated: 2026-10-30T14:32:46.507Z
+updated: 2026-10-30T15:27:07.503Z
 ---
 
 ## Summary
@@ -25,7 +25,9 @@ Before admission, `cland verify` runs `npm run test:tiers` and the T3 lifecycle 
 
 - [x] C1. The local check reports each refusal class the hub's admission reports, with file and line, before any queue entry.
   - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-1 · 2026-10-30T10:48:40.124Z · commit c2217bb929755acb533ab5e3d68d72db1a434ed7
-  - done: impl-1453 · 2026-10-30T14:29:49.674Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-2 · 2026-10-30T14:54:57.378Z · commit 35fa7620e9ef3030d320a0ae678f41ebd47c357b
+  - verified: rev-26 [reviewer] · run rev-20261030-1453-evidence-3 · 2026-10-30T15:20:07.211Z · commit 75bc8701718c68b7e3766c87ab593706e94c5282
+  - done: impl-1453 · 2026-10-30T15:26:32.284Z
 
 ## Comments
 
@@ -134,3 +136,67 @@ A-14430 authorized merge delta clear: task preflight/checker/shards/tests/QA byt
 ### impl-1453 · 2026-10-30T14:32:46.507Z
 
 Coordinator disposition cdd54d46 changes runtime plan: prior full af51ef07/A-14387 at 6e8cedd8b supplies T0–T3 (green; only Web shared phone-asks failed), source5 confirms own source unchanged across conflict-free dev merge. Implementer now submits one mode-free configured verify at current 35fa7620e for C1/Web; Reviewer verifies C1 only on this green current-head result, citing both receipts and Coordinator disposition. No second all requested.
+
+### rev-26 · 2026-10-30T14:54:57.378Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-evidence-2
+commit: 35fa7620e9ef3030d320a0ae678f41ebd47c357b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14470 independently audits current A-14461/d1ec8a5c: 4270 ordinary passes plus 105 load passes; T0/T1/all T2/changed preflight T3 once/Web complete, remaining T3/T4 unrun. Eight exact C1 refusal/provenance cases pass with matching timings; six admission-cost generated identities pass. Coordinator cdd54d46 rule-7 disposition applied: separately cite pre-merge A-14387 T0–T3 green (203 T3 files), each preflight base+5/5, own source unchanged; preserve old whole native exit1/phone-asks failure, eight skips and interruption marker. Current green includes phone case pass. Advisory budgets/lint/missing baseline retained. C1 current-head verified, no Reviewer workloads.
+
+Criteria: C1 verified.
+
+### impl-1453 · 2026-10-30T15:01:47.638Z
+
+Merged T-1458 dev landing bd0f3e34f under Coordinator 879898c6; pushed 75bc8701718c68b7e3766c87ab593706e94c5282. Three conflicts resolved keeping both skill sections and combined SUITE_USAGE/frozen commands row. Preflight core/test behavior unchanged. Focused preflight 8/8, usage compatibility 1/1, cli-help 5/5, docs 3/3, typecheck and test:lint pass on Darwin arm64 Node v24.21.0. Lint has 124 report-only findings, zero refusals; new imported prerequisite advisory names existing T-1484. A-14482 records merge. Prior A-14461 green is prior head only. Delta review by rev-26 then one mode-free verify and final evidence review.
+
+### rev-26 · 2026-10-30T15:03:34.352Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-source-6
+commit: 75bc8701718c68b7e3766c87ab593706e94c5282
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14485 authorized T-1458 merge delta clear: own preflight core/tests byte-identical to green first parent; imported runtime/guard files match dev. Combined skill/help and exact frozen usage rows preserve preflight plus both advisory readiness sentences; owning docs/index/T3 entry retained. No report-to-enforce promotion. C1 current runtime pending new same-head configured evidence; predecessor green not carried. Local A-14482 receipts retain advisory T-1484 limit. No Reviewer workloads. One Coordinator-directed mode-free verify may proceed, then final original-record review.
+
+### rev-26 · 2026-10-30T15:20:07.211Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-evidence-3
+commit: 75bc8701718c68b7e3766c87ab593706e94c5282
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14503 independently audits original A-14502/618b4e13: 4278 ordinary passes plus 105 load passes; T0/T1/all T2/changed preflight T3 once/Web complete, remaining T3/T4 unrun. All eight C1 preflight cases and six admission-cost generated identities pass with timing parity. No current preflight repetitions claimed. Imported CLI prerequisite probe remains incomplete native exit1/known T-1484 TypeScript advisory; site boundary clear and readiness reports are not execution proof. Existing Coordinator cdd54d46 disposition retains separately attributed A-14387 pre-merge full T3, with its whole failure/skips unchanged. Source6 owns unchanged core/tests. C1 current-head verified; report-only warnings retained, no Reviewer workloads.
+
+Criteria: C1 verified.
+
+### impl-1453 · 2026-10-30T15:26:32.423Z
+
+Coordinator 6276c5e2 authorized merge after T-1433/T-1474. Pushed head 276715c81462b774f6e4f9a8c797c6c575ae1f43 merges dev e83b1081e; only conflict README, both local preflight/Telegram album transcripts sections retained verbatim. Own preflight core/test diff empty. Local Darwin arm64 Node v24.21.0 preflight 8/8, docs 3/3, usage compatibility 1/1, typecheck/test:lint pass (124 report-only findings, zero refusals; known T-1484 prerequisite probe incomplete/advisory). A-14507 records merge. Prior A-14502 green is prior head only. Named delta review then one mode-free verify and final evidence review.
+
+### rev-26 · 2026-10-30T15:27:07.503Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1453-source-7
+commit: 276715c81462b774f6e4f9a8c797c6c575ae1f43
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14508 authorized merge delta clear: README preserves both complete preflight and Telegram album sections; imported source/tests match actual dev parent. Own preflight core/tests/help/frozen usage unchanged from prior green. C1 current-head runtime pending fresh configured original; prior green remains attributed to 75bc87017, prior qualified T3 disposition unchanged. Local focused/advisory receipts accurately scoped. No Reviewer workloads. One mode-free configured verify may proceed at frozen exact head then final evidence review.

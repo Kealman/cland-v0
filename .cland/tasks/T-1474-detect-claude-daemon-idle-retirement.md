@@ -2,8 +2,8 @@
 id: T-1474
 kind: task
 title: Detect Claude daemon idle retirement
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1225
 branch: t/T-1474-detect-claude-daemon-idle-retirement
 created: 2026-10-30T07:50:18.630Z
-updated: 2026-10-30T14:31:50.085Z
+updated: 2026-10-30T15:25:15.490Z
+closed: 2026-10-30T15:25:15.490Z
 ---
 
 ## Summary
@@ -27,9 +28,11 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 
 - [x] C1. When a hub-launched Claude Code job disappears from `claude agents --json`, or its job reports `done`, while the row is running, the hub logs `harness-exited` with reason `retired` within 60 s.
   - done: impl-1474 · 2026-10-30T13:42:22.591Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1474-final1 · 2026-10-30T15:16:19.628Z · commit 99b5518e1d708a59bfd593b7d49678f1e668de22
 - [x] C2. A retired Coordinator gets one human inbox entry with the relaunch command within 2 min.
   - verified: rev-32 [reviewer] · run rev-20261030-1474-evidence1 · 2026-10-30T08:40:23.156Z · commit 1ed304429a5c0f156cccc7583347ed9571bdd87e
   - done: impl-1474 · 2026-10-30T13:04:51.240Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1474-final1 · 2026-10-30T15:16:19.628Z · commit 99b5518e1d708a59bfd593b7d49678f1e668de22
 
 ## Comments
 
@@ -160,3 +163,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merge delta2 clear, A-14429. Source5 retirement/PID adapter, contract, Sessions/core/checkpoint/kind/Store/Visibility and scheduling/checkpoint tests unchanged. Combined CHANGES retains both parents; skill, README and index retain retirement controls alongside incoming T-1485 clock/queue guidance. No bespoke resolution code or Standards/Spec finding. A-14427 local summaries retain scope; source5 all49f784c1/A-14419 remains overall red and old-head, original A-14385 separate. C1/C2 current-head runtime pending; no Reviewer execution. Report ready for Coordinator-owned verify all at exact merge SHA, then final original-record evidence review.
+
+### rev-31 · 2026-10-30T15:16:19.628Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1474-final1
+commit: 99b5518e1d708a59bfd593b7d49678f1e668de22
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record clear A-14494. A-14490 independently5755 ordinary passes/8 prerequisite skips+225 separate load passes,zero fail/duplicate/unmatched starts. T0–T3/Web complete,T4 absent. Own44schedule+7checkpoint primary pass;20new identities each5/5load. Missing/done assert retired reason and one durable inbox remedy within60s,duplicate suppression/reopen/reconnect clearing. Three original native T3 regression identities now pass2.852/7.609/12.870s;phone shared-clock case2.078s pass. C1/C2 verified at production factory/public-frame scripted CLI/FakeClock seam; actual production Claude SLA latency unmeasured. Explicit skip reasons/hostgate657181059/report-only warnings retained. A-14385/A-14419 original reds separate. No Reviewer workload/QA. Ready report and Coordinator enqueue may proceed at frozen exact head.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-30T15:25:15.490Z
+
+Merged e83b1081e3d6fcf73860aa3fa15bce1ab8f320a8 onto dev.

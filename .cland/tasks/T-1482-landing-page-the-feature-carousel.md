@@ -2,8 +2,8 @@
 id: T-1482
 kind: task
 title: "Landing page: the feature carousel becomes a grid of all features"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1238
 branch: t/T-1482-landing-page-the-feature-carousel
 created: 2026-10-30T11:51:19.056Z
-updated: 2026-10-30T14:29:48.402Z
+updated: 2026-10-30T15:00:20.320Z
+closed: 2026-10-30T15:00:20.320Z
 ---
 
 ## Summary
@@ -29,12 +30,16 @@ A visitor who scrolls to "Built for shipping, not demos" sees every feature at o
 
 - [x] C1. The features section of the landing page renders every entry of its feature list as a card in a CSS grid, in the order fixed in this item, with no carousel track, arrows, counter, dots or carousel script left in the page.
   - done: impl-1482 · 2026-10-30T11:56:30.207Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1482-final1 · 2026-10-30T14:50:16.933Z · commit 9d2656448eb9694f2551863d6549148d7e709971
 - [x] C2. Each card shows the number, title, text and "Learn more" link only and keeps its `feature-<id>` anchor; the grid is two columns from the site's desktop breakpoint and one column below it.
   - done: impl-1482 · 2026-10-30T11:56:30.325Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1482-final1 · 2026-10-30T14:50:16.933Z · commit 9d2656448eb9694f2551863d6549148d7e709971
 - [x] C3. A "Learn more" click sends a GoatCounter event named `feature-<id>`, and the FAQ and footer wording says the website counts visits and link clicks with no cookies or personal data.
   - done: impl-1482 · 2026-10-30T11:56:30.909Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1482-final1 · 2026-10-30T14:50:16.933Z · commit 9d2656448eb9694f2551863d6549148d7e709971
 - [x] C4. The site builds (`npm run build` in site/), the docs link check passes and the source-boundary test that T-1479 extended still passes at the final head.
   - done: impl-1482 · 2026-10-30T11:56:31.286Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1482-final1 · 2026-10-30T14:50:16.933Z · commit 9d2656448eb9694f2551863d6549148d7e709971
 
 ## Publication
 
@@ -106,3 +111,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear A-14423. Exact parents reviewed5c7b39616 + landed dev960191735; site subtree unchanged from source1, and all non-site bytes match dev parent; combined diff empty. Standards/Spec no findings. Incoming T-1485 synchronizes both phone contexts with hub time while preserving archive assertion; no authored integration edit or package/build configuration change. A-14347 original red/A-14348 evidence not-clear remain separate; Coordinator-only exception not used. C1–C4 current-head runtime pending, no Reviewer execution. Submit one Coordinator-directed mode-free verification unchanged, then final original-record evidence review; source clear does not confer final ready.
+
+### rev-31 · 2026-10-30T14:50:16.933Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1482-final1
+commit: 9d2656448eb9694f2551863d6549148d7e709971
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record clear A-14458. Independently parsed A-14448:4266 ordinary+125 load unique passes, zero nonpass/duplicates/unmatched starts. T0/T1/fallback allT2/Web pass;T3/T4 absent. Four landing identities each base+5load pass; retained T1479 source-boundary controls and vocabulary parity pass. Previously red phone identity now passes1.890831234s. C1–C4 verified using source/delta continuity, current cases and separately attributed A-14328 original site build/browser on byte-identical site input; no new final-head Astro/browser/typecheck claim. Unversioned count.js bytes/hash gap, partial wrapper transcription, host gate1f2e101f9 and advisory warnings retained. Original A-14347/A-14348 remain failed/separate; no exception used. No Reviewer executions/QA/publication. Coordinator owns ready/landing sequencing.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-30T15:00:20.320Z
+
+Merged effffe1e76993fa3ad1bf89526f89459d7454756 onto dev.

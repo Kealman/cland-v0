@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1229
 branch: t/T-1464-periodic-dev-t3-skips-a-run-when-a-newer
 created: 2026-10-30T05:44:58.711Z
-updated: 2026-10-30T14:34:51.512Z
+updated: 2026-10-30T15:05:18.928Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ Periodic dev T3 cost $9.01 and 35.9 h in v0.3.0 (25 % of spend); three runs repe
 
 - [x] C1. A periodic tick after a fresh green cover at the same tip records a skip naming that cover.
   - done: impl-1464 · 2026-10-30T11:55:26.886Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1464-evidence-2 · 2026-10-30T15:02:26.011Z · commit 299e8457cac6b4ccf47d23c27e8ee60e65077220
 
 ## Comments
 
@@ -93,3 +94,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14436 authorized merge delta clear: own periodic policy/source/two tests/unit fixture/guide byte-identical; shared-clock import matches dev and skill/help preserved. A-14344/A-14346 remain failed old-head evidence; C1 new-head runtime pending Coordinator all, no exception clearance. No Reviewer workloads.
+
+### rev-26 · 2026-10-30T15:02:26.011Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1464-evidence-2
+commit: 299e8457cac6b4ccf47d23c27e8ee60e65077220
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14484 independently audits original A-14481/ffbfa840: 4282 ordinary passes plus 205 load passes; T0/T1/all T2/Web complete, T3/T4 unrun per configured selection. All 20 new exact policy/ancestry identities base+5/5 load with matching timing records; primary durable named-cover skip/restart/throttle and native positive ancestry assertions retained. Former phone failure now passes 1.844311260 s; A-14344 remains failed. Advisory timings/lint/ratchet retained, scripted scheduler scope distinguished from native Git/enclosing Linux droplet. C1 verified current head; no Reviewer workloads.
+
+Criteria: C1 verified.
+
+### rev-26 · 2026-10-30T15:05:18.928Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1464-source-4
+commit: d199e06108b50ff090862933a2bb4ab482c73704
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14488 authorized merge delta clear: own periodic policy/tests/fixture/guide unchanged from green299e8457c; imported prerequisite/runner and T-1482 files match actual fetched dev effffe1e7. Combined skill/docs/help/frozen rows retain both policies, report-only prerequisite status preserved. C1 current runtime pending new same-head configured original; predecessor green remains attributed. Known T-1484 install CLI probe incomplete/advisory, not pass. No Reviewer workloads. One mode-free verify may proceed then final review.

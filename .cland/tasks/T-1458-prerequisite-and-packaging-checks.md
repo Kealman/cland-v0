@@ -2,8 +2,8 @@
 id: T-1458
 kind: task
 title: "Prerequisite and packaging checks: install-shaped CLI smoke, site/ import boundary, current web/dist"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1236
 branch: t/T-1458-prerequisite-and-packaging-checks
 created: 2026-10-30T05:44:57.647Z
-updated: 2026-10-30T14:32:18.746Z
+updated: 2026-10-30T15:00:04.710Z
+closed: 2026-10-30T15:00:04.710Z
 ---
 
 ## Summary
@@ -26,6 +27,7 @@ Add an install-shaped smoke run of every CLI command's runtime imports, an impor
 
 - [x] C1. Each of the three guards fails on a planted defect and passes on dev.
   - done: impl-1458 · 2026-10-30T12:19:06.724Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1458-evidence1 · 2026-10-30T14:49:54.608Z · commit 7d7255174bd20fa860a774b96bc0b729461b337f
 
 ## Comments
 
@@ -96,3 +98,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized dev integration delta clear,A-14431. Own guard/parser/native-owner/readiness/runner/probe and tests/tier bytes unchanged from source3; own help row and both parents' skill lines retained. Shared directory guards additive; existing captured-process/removal contracts preserved. Clock/Web/merge-preflight bytes match dev960191735, no manual conflict. A14426 local macOS summary only; knownT1484 retained. C1 runtime-unverified, A14370 remains failed/withdrawn. One fresh exact-head configured mode-free verify then original-record final audit; no Reviewer workloads.
+
+### rev-32 · 2026-10-30T14:49:54.609Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1458-evidence1
+commit: 7d7255174bd20fa860a774b96bc0b729461b337f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear A-14455 against raw A-14454/fbb0b455 at unchanged delta-cleared head. Parsed4276 ordinary/515 file passes plus145 separate load test/120 load file passes, zero adverse outcomes; T0/T1/fallback allT2/changedT3six once/Web complete. Eight guard/generated CLI identities ordinary+5/5; six native ownership controls once; no new own >=3s Linux case. C1 verified under Coordinator6469e3a3 known T1484 baseline disposition: healthy synthetic/planted negatives proven, actual installed compiler defect openly reported, not clean install proof. Host gate reuse not repeated Linux; Web shard4workers; remainingT3/T4 unexecuted. Lint/budgets/ratchet report-only warnings retained; A14370 remains failed/withdrawn. No Reviewer execution or reruns.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-30T15:00:04.710Z
+
+Merged bd0f3e34f4ef4b35b5fcf21ef809039d80adef8b onto dev.

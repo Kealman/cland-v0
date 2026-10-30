@@ -3,7 +3,7 @@ id: T-1462
 kind: task
 title: The hub confirms a merge-delta review when the dev merge is conflict-free and disjoint
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 1
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1242
 branch: t/T-1462-the-hub-confirms-a-merge-delta-review
 created: 2026-10-30T05:44:58.381Z
-updated: 2026-10-30T13:58:47.787Z
+updated: 2026-10-30T14:44:57.384Z
 ---
 
 ## Summary
@@ -24,8 +24,8 @@ v0.3.0 had 64 merge-delta re-reviews on 41 tasks, caused only by dev moving unde
 
 ## Acceptance criteria
 
-- [ ] C1. A conflict-free dev merge produces a durable hub-recorded delta assessment (disjoint or overlapping, with rename endpoints, deletions and the dependency rule it applied), shown on the item; in this rollout the assessment is report-only and the Reviewer's merge-delta verdict is still required (rule 27).
-  - failed: rev-34 [reviewer] · 2026-10-30T13:58:47.787Z · note Shared scanner still has the known regex-tokenization false-negative gap; final owner correction is pending.
+- [x] C1. A conflict-free dev merge produces a durable hub-recorded delta assessment (disjoint or overlapping, with rename endpoints, deletions and the dependency rule it applied), shown on the item; in this rollout the assessment is report-only and the Reviewer's merge-delta verdict is still required (rule 27).
+  - done: impl-1462 · 2026-10-30T14:43:16.159Z
 
 ## Comments
 
@@ -89,3 +89,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-14411 assessment-side consolidation per Coordinator fcb7a819. No additional Standards/assessment findings; M1 isolated lane unchanged/resolved. New native hidden-template controls and approved conservative scalar-template unknown/docs align. Sole M3 is known shared scanner blocker; no whole-head clearance or verification authorization. Local27/27 and prior-head freshness/selection/help checks remain separately attributed.
 
 Criteria: C1 failed (Shared scanner still has the known regex-tokenization false-negative gap; final owner correction is pending.).
+
+### rev-34 · 2026-10-30T14:44:57.384Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261030-1462-source4
+commit: 59e90c7c136fe52662e9e5a8850c55de1de7e8bd
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14445: final scanner delta clear, sole M3 resolved. Five scanner source files exactly match Coordinator-posted19db19fa3 / owner rev-32 A-14437; no batch/config/dev uptake. Lazy AST graph produces sound literal edges or unknown, and adapter does not suppress incompleteness. Own native expectations/docs align; assessment/freshness isolation unchanged. C1 remains runtime-unverified; source-ready for Coordinator-owned verify-all under0a78fe37. Local26/26+101/101 and earlier unchanged controls retain attribution; no configured result yet.

@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1241
 branch: t/T-1454-merge-batches-and-task-verifies-widen
 created: 2026-10-30T05:44:57.061Z
-updated: 2026-10-30T14:36:47.700Z
+updated: 2026-10-30T15:16:56.879Z
 ---
 
 ## Summary
@@ -131,3 +131,29 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source6 clear,A-14437. scanner clear at19db19fa32693bdf790fd0fe38904c8439d9d239; scanner source bytes match reviewedhead. M1–M9 closed/disposed under final Coordinator AST/soundness/file-uncertainty/report-mode decisions. Defaultreport records exact additions/reason/phases and preserves configured execution; explicitrun masks selected T2/Web, C1fixture checks both plus owned native receipts. Config/default/render/settings/reload/help/wire/cache/shards audited. Saved local measurements5/256T2unknown,0/49Web with representative projections retained as claims, not runtime; manifest denominators checked. C1 remains runtime-unverified, no Reviewer workloads. One unchanged-head mode-free verify then original-record final review; no full run requested.
+
+### rev-32 · 2026-10-30T14:54:47.634Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-source7
+commit: 8253d9e6f3f493cf781e52cfe7e05f7404484922
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source7 clear A-14471. Only intervening line restores established contiguous tree/tiers/wall/exit summary and appends identical batchInteraction JSON after exit; unchanged merge-queue:417 contract preserved. Full source6 implementation otherwise unchanged; five scanner files match19db19fa32693bdf790fd0fe38904c8439d9d239. No dev merge. OriginalA14464 remains failed/T3T4Webunexecuted; A14468 local claims not configured current-head evidence. C1 runtime-unverified under final report/run policy. One unchanged-head mode-free replacement verify then original-record final review; no Reviewer execution.
+
+### rev-32 · 2026-10-30T15:16:56.879Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-delta1
+commit: 1b208941fc2fd57e114d02ebc6ff4f6d77d66db3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear A-14497. Parents8253d9e6f+effffe1e7; Coordinator0cdea12d rule11. Own implementation/tests unchanged; five scanner files exact19db19fa3. Combined decodedSUITE_USAGE retains both parents, frozen row matches; all nonblank skill/CHANGES/docs parent lines retained. Incoming prerequisites/clock/phone/site bytes matchdevparent. A14493 local claims only; originalA14464/A14489 stay failed, C1runtime-unverified. One unchanged-head configured verify then original-record final review. No Reviewer execution/mutations.
