@@ -3,7 +3,7 @@ id: T-1475
 kind: task
 title: Truthful bridge and flush logs
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T07:50:18.785Z
-updated: 2026-10-30T07:50:18.785Z
+updated: 2026-10-30T07:54:21.418Z
 ---
 
 ## Summary

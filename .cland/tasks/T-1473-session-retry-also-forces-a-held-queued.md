@@ -3,7 +3,7 @@ id: T-1473
 kind: task
 title: "`session retry` also forces a held queued delivery"
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T07:50:18.352Z
-updated: 2026-10-30T07:50:18.352Z
+updated: 2026-10-30T07:54:20.684Z
 ---
 
 ## Summary

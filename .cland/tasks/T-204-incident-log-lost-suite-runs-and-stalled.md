@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T07:40:40.183Z
+updated: 2026-10-30T07:54:52.525Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -458,3 +458,7 @@ Coord deaf bridge 2026-10-30 06:53–07:34Z (stand-in). Coord went idle 06:52:58
 ### human · 2026-10-30T07:40:40.183Z
 
 Hub restart #61 2026-10-30 07:38:48Z (stand-in, coord's memory alarm at 07:37Z): hub 88459 at rest after 1 h 15 min reached footprint 6,657 MB (4,876 MB compressed, RSS 1.6 GB), swap 9.6/11.3 GB; crew idle, queue empty, no leases or droplets, load 2.7, dev c39cb384 = origin/dev. stop→serve 14 s; new hub 31310, port 57079, web 56935, nice 0, 8 GB heap, DO token present; coord bridge-connected 07:39:02Z, coordinator-filled 07:39:03Z, injected 07:39:05Z; queue empty; doctor 30 ok / 6 warn / 0 fail; RSS 0.63 GB at +50 s. Second data point for T-1467: live hub grows ~2.3 GB footprint in 40 min with nothing running.
+
+### human · 2026-10-30T07:54:52.525Z
+
+Split brain 2026-10-30 07:33–07:53Z (stand-in): the 07:33 relaunch killed pid 57408 but not Claude job b62114e8, so the daemon respawned it (pid 21299) next to the hub's claimed spare (pid 84206, job 1c2b635c); both acted as coord (topic-1221 decision 07:39:51Z by the twin). Fix: claude stop 1c2b635c 07:50:53Z, then, as hub deliveries still did not reach 21299 (inject-unconfirmed 7a306414, 65fff904), claude stop b62114e8 07:52:33Z, session resume coord --relaunch, role set; bridge-connected 07:53:13Z, injected 07:53:13Z and 07:53:43Z; single coord pid 76028 (job df72bd84), one bridge. Root cause and fixes: coord's RCA A-14159, E-1468 (T-1469–T-1475) under R-1465.

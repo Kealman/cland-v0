@@ -3,7 +3,7 @@ id: T-1470
 kind: task
 title: Held human deliveries drain on any idle observation and on a timer
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-30T07:50:17.481Z
-updated: 2026-10-30T07:50:17.481Z
+updated: 2026-10-30T07:54:19.549Z
 ---
 
 ## Summary
