@@ -158,12 +158,13 @@ def analyze_profiles(root):
             sites[node['id']] = [label] + parents[:7]
             for child in node.get('children', []): stack.append((child, [label] + parents[:7]))
         samples = profile.get('samples', []); current = {sample['ordinal'] for sample in samples}
-        totals = {}
+        totals = {}; surviving = {}
         for sample in samples:
+            surviving[sample['nodeId']] = surviving.get(sample['nodeId'], 0) + sample['size']
             if sample['ordinal'] not in previous:
                 totals[sample['nodeId']] = totals.get(sample['nodeId'], 0) + sample['size']
         rows = [{'sampledBytes': size, 'stack': sites.get(node, [])} for node, size in sorted(totals.items(), key=lambda row: row[1], reverse=True)[:10]]
-        stages.append({'boundary': boundary['boundary'], 'ms': boundary['ms'], 'sampledNewBytes': sum(totals.values()), 'topSites': rows})
+        stages.append({'boundary': boundary['boundary'], 'ms': boundary['ms'], 'sampledNewBytes': sum(totals.values()), 'topSites': rows, 'sampledSurvivingBytes': sum(surviving.values()), 'survivingSites': [{'sampledBytes': size, 'stack': sites.get(node, [])} for node, size in sorted(surviving.items(), key=lambda row: row[1], reverse=True)[:10]]})
         previous = current
     return {'method': '1 MiB V8 allocation sampling; new sample ordinals between checkpoints; CLI default surviving-object samples, not retained sizes or exact allocation totals; GC can remove earlier samples', 'stages': stages}
 

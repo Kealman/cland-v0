@@ -346,6 +346,9 @@ T-1459: Document repository auto-maintenance provisioning and disposable native-
 
 T-1453: Resolve authorized dev merge by retaining local preflight and repository auto-maintenance guidance together without changing either policy.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
+
+T-1478: Document sealed bounded rest measurements and partial/native evidence.
+T-1478: Add the synthetic run-streaming phase and durable collection requirements.
 T-1462: Document report-only durable merge-delta comments, conservative dependency facts and unchanged Reviewer workflow/freshness.
 T-1462 source M1/M2: document independent advisory settlement/drainage and explicit unknown unsupported runtime imports.
 
@@ -398,3 +401,6 @@ T-1461: Document report-only macOS cover reruns, retained receipts and unexecute
 
 T-1483 evidence2: exact-lease native launch authority permits observed owned descendants in phase roots; restore, replacement and reuse retain recovery fences.
 T-1483 source correction: recheck launch lease after asynchronous scope proof and at each native signal; cover concurrent restore.
+T-1478: Document explicit time-limited Coordinator used-swap waiver and shared quiet-machine stop conditions.
+T-1478: Correct quiet-slot pressure to native memorystatus level; retain transient counter/free percentage as context per Coordinator572bb1d0.
+T-1478: Configure agreed report-only256MiB heap/768MiB RSS defaults, ask53ad10db.

@@ -23,8 +23,14 @@ node --max-old-space-size=8192 hub/test/measure-memory.ts --source /absolute/pro
 ```
 
 The second command needs a Coordinator-granted local measurement slot. Allow
-about 1–2 minutes including copy/backup. It stops at readiness, without a rest
-phase or full heap snapshots. Its supervisor launches Node with `--heap-prof`,
+about 1–2 minutes including copy/backup. It stops at readiness by default, without full heap snapshots.
+For T-1478, add `--rest-seconds 600` for a diagnostic rest run, or
+`--rest-seconds 1800` for the final 30-minute record, within the granted slot.
+Rest records heap, RSS and physical footprint every ten seconds; vmmap failures
+are unavailable readings. Rest-start/end profiles report new and surviving sampled
+allocation sites, not exact retained sizes. The rest duration extends both the
+supervisor and producer native-close deadline. Guard interruption records
+rest-interrupted and cannot count as a completed run. Its supervisor launches Node with `--heap-prof`,
 `--heap-prof-interval=1048576` and a private profile directory. The inspector
 captures sampling profiles at startup boundaries. New sample ordinals attribute
 sampled surviving allocations between boundaries to call stacks; they are not
@@ -83,7 +89,9 @@ Publish curated aggregates only, after a secret scan with a positive control.
 Profiles and copied state may contain historical strings and paths. Never attach
 them. Delete any raw snapshots by literal path before review. Keep startup peaks,
 sampled allocation estimates, physical RSS and reported compressed footprint
-separate. Rest retention and an RSS budget need separate post-fix measurements.
+separate. Rest slopes and an RSS budget require completed live-scale before/after measurements.
+The short synthetic rest control proves boundary ordering, sampling and native closure;
+it supplies no live-scale slope or budget evidence.
 
 The SQL-only companion `node hub/test/measure-history-storage.ts --help` describes
 a fresh disposable read-only DB backup and aggregate row/field-size inspection.
@@ -102,6 +110,27 @@ lines and requires the durable selected-count/input-byte receipt before tracker,
 plus successful hub/native disposal. This preserves per-stage counts after the
 streaming-reader integration.
 
+### Rest budget report
+
+`--heap-budget-mib N --rss-budget-mib N` supplies human-agreed limits in MiB.
+`memory-budget.json` compares readiness and completed-rest measurements, with
+mode `report`; over-budget readings never change the exit status. Omitted CLI limits default to human-agreed256MiB heap/768MiB RSS (ask53ad10db); an absent generic comparison limit is `unconfigured`, and an interrupted/unexecuted rest is `unavailable`.
+These comparisons become C3 evidence only on the copied live-scale data with
+human-agreed figures. Synthetic test limits prove reporting only.
+
+### Synthetic run streaming
+
+After the separate idle run, add `--stream-runs 6 --rest-seconds 600` in a
+Coordinator-granted quiet window. The worker seeds six scratch-bound active
+jobs after preparation, then the production hub's Suites owner polls fake
+DropletExecutor status/log/release receipts. No provider, worker or network runs.
+Each fake offers about 4 KiB per ten seconds per run without retaining an expanding
+string. Normal checkpoint persistence, log mirrors and result collection run in
+production code. `streaming.json` requires durable result files and cleaned job
+records for every synthetic run. Boundary/sample phases say streaming; these are
+synthetic load slopes, never idle evidence or actual remote-executor coverage.
+Copied active recovery capabilities are excluded by T-1483 preparation before
+synthetic seeds; use a base containing that fix before copying live-scale data.
 
 ## Copied suite recovery isolation
 
@@ -186,3 +215,79 @@ Lease binding is rechecked after awaited scope proof and at the native signal
 boundary. No generic temporary-directory grant is added. The original cancellation and
 setup-failure cleanup controls and native no-inherited-authority cases must pass
 alongside outside-group refusal and ordinary restart recovery.
+
+Probe instrumentation uses owner-restored wrappers without node:test call
+recording. Recurring Store, notice and fake-executor calls must not retain
+argument/result histories across a long run. The wrapper lifetime control keeps
+the original method restoration assertion and rejects recording mock contexts.
+
+### Completed-rest and settlement boundaries
+
+Each admitted sample freezes its phase, timestamp and process reading before
+queued I/O. Rest completion closes periodic admission and joins held samples,
+then saves `rest-end.json` from the still-running hub. The budget uses that
+immutable reading; shutdown and rejected late admissions cannot overwrite it.
+The held-sample control checks admission-phase retention, the endpoint/budget
+identity and rejection of disposal-time sampling.
+
+Streaming settlement and durable-result reads share one bounded operation through
+`within` and the existing pacing owner. Timeout writes `streaming.json` with an
+explicit incomplete reason; the underlying operation remains owned until it
+settles, so cleanup joins it before native close and root removal. The held
+settlement control releases that operation during disposal and preserves both
+incomplete receipts and root-before/root-after assertions. Normal six-run
+controls still require every cleaned durable job and its code-zero result file.
+
+`startup-vmmap.txt` always describes `startup-ready`, before rest/streaming starts.
+`native-captures.jsonl` records stage, admission phase/time, completion time and
+availability. The ordering control writes an unavailable synthetic receipt and
+never executes vmmap. Search of shipped code, docs, skills and QA briefs found
+no other filename-specific reader; the generic receipt description here remains
+the manual reader contract. End-of-rest footprint comes from the endpoint sample.
+
+### Coordinator-granted quiet slot with allocated-swap waiver
+
+Only under an explicit Coordinator grant, `--quiet-slot-until ISO` waives the
+allocated used-swap limits for that bounded slot. Preparation and child startup
+still take independent preflights. The shared machine checker requires load1 at
+most 6, `kern.memorystatus_vm_pressure_level` at most 1, no increase in cumulative vm_stat Swapouts
+from the initial receipt, and an unexpired grant. Parent and worker check every
+five seconds and use the existing owned IPC/native drainage on refusal. Unknown
+machine facts refuse. `machine-preflight.json`, supervisor.jsonl and guard-stops.jsonl
+retain the waiver, initial/post-copy facts and any stop cause. Original no-flag
+80% admission/90% stop behavior remains. Do not begin a phase without enough
+slot time for its full rest, copy and disposal; report partial/guard stops plainly.
+
+Quiet-slot admission and its expiry timer use the same exported
+`memoryStopReserveMs` budget from the producer owner: graceful wait, captured-birth
+acquisition, deadline-aware native fallback, native close, writer drainage and
+bounded machine-probe/scheduling slack (75 seconds with default timings). The
+quiet-slot fallback uses the shared deadline-aware native termination seam,
+rather than the ordinary fixture's synchronous unbounded discovery path. A
+fallback failure stays incomplete and retains its root/ownership until drainage;
+it never authorizes abandoning a writer. The short-window held-grace/fallback
+control requires the exact native exit/pipe-close timestamp before grant expiry
+and keeps forced/incomplete facts explicit. ClosedAt is additive to prior native
+receipt fields; the manual probe and this test file are its only callers.
+
+Parent/worker monitors and all preflights use `readGuardedMachine`. Every known
+refusal is committed to guard-stops.jsonl before stop; native reader/parse failure
+stores explicit unavailable, native code/signal and bounded redacted diagnostic
+facts. Failed-reader controls cover parent and worker; native worker controls
+also prove pressure/load/new-swap-out refusals retain cause and code-zero graceful
+closure stays guard-stopped. The manual supervisor rejects that partial outcome
+as completed measurement evidence even when the child exits zero.
+
+`pressure` retains the raw transient `vm.memory_pressure` counter for prior-record
+compatibility and never aborts. `pressureLevel` is the actual native
+`kern.memorystatus_vm_pressure_level`: at most1 admits,2+ aborts. The batched
+native receipt also records `freeMemoryPercent` from `kern.memorystatus_level`
+as context only. The three sysctl values share one bounded native call, so
+machine-probe slack is unchanged. Controls prove counter2285/level1 continues
+and counter0/level2 or4 refuses; old records without pressureLevel are not
+reinterpreted as actual native-level evidence. The first aborted raw root stays
+private and unchanged; its two raw counter readings do not prove warning pressure.
+
+The configured manual probe defaults to256MiB heap/768MiB RSS in report mode,
+approved under ask53ad10db (2026-10-30). CLI flags may explicitly override them.
+Prior diagnostic receipts remain unconfigured records and are not rewritten.

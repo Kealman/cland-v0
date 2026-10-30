@@ -1038,6 +1038,21 @@ worktrees inherit common config unless explicit Git overrides supersede it.
 Do not apply configuration to the live project as a test. Existing role clauses
 cover this flow without adding permission lines.
 
+## Rest memory measurements (T-1478)
+
+Use the sealed memory probe with `--rest-seconds 600` for diagnostic idle runs
+and `--rest-seconds 1800` for the final record, only within a Coordinator-granted
+measurement slot. The default remains startup only. Require rest-start/end,
+heap/RSS/footprint samples and both worker/native disposal receipts. Missing
+footprint readings remain unavailable; sampled surviving allocations are estimates,
+not exact retained sizes. A guard-interrupted run is partial evidence.
+
+For the separate synthetic load phase, add `--stream-runs 6` to the timed probe.
+It uses fake executor receipts through production suite checkpoint/log/result
+collection. Require all durable synthetic results and cleaned records in
+streaming.json; label these slopes separately from idle. Seed after sealed-copy
+preparation, never from live unfinished recovery capabilities.
+
 
 ## Copied memory probe suite recovery (T-1483)
 
@@ -1190,3 +1205,18 @@ and positive-controlled spawn guard in
 `docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`.
 Keep the native-default real-PID control in T3 as described in
 `docs/agents/tests/hub-test-system-processes.test.ts.md`.
+
+For an explicit Coordinator-granted used-swap waiver, pass the granted ISO end
+through `--quiet-slot-until ISO`. Parent/worker enforce its load, pressure,
+no-new-swap-out and expiry predicates through the shared machine checker.
+Record the Coordinator's baseline/waiver and all machine receipts, and allow
+copy/rest/disposal time before slot expiry. Source changes still need fresh
+review before measurement. Without a grant, keep the default swap thresholds.
+
+The quiet-slot pressure predicate uses `kern.memorystatus_vm_pressure_level <= 1`.
+The transient `vm.memory_pressure` counter and free-memory percentage are context
+only; retain original aborted records rather than relabeling their raw counters.
+
+The manual memory probe defaults to the human-agreed256MiB heap/768MiB RSS
+report-only limits (ask53ad10db); flags provide explicit overrides. Preserve
+prior unconfigured diagnostic receipts and record the agreement with final evidence.

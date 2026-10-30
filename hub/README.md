@@ -7625,6 +7625,25 @@ report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
 
+### Sealed rest memory probe
+
+The manual `hub/test/measure-memory.ts` probe defaults to startup only. Within a
+Coordinator-granted Mac measurement slot, `--rest-seconds 600` adds a diagnostic
+idle phase; `--rest-seconds 1800` records the final 30-minute phase. It uses a
+sealed disposable project copy, fake adapters and independent swap supervision;
+no live hub or connected crew is measured. Ten-second rest samples record heap,
+RSS and native physical footprint, with missing native readings unavailable.
+Sampling profiles estimate surviving allocations by site, not exact retained size.
+`--heap-budget-mib N --rss-budget-mib N` writes readiness/completed-rest
+comparisons in `memory-budget.json` in report mode only; omitted CLI limits use human-agreed256MiB heap/768MiB RSS. Limits require human agreement for budget evidence. See
+[the probe guide](../docs/agents/tests/hub-test-measure-memory.test.ts.md) for
+exclusions, guard stops and required disposal receipts.
+
+The separate `--stream-runs 6 --rest-seconds 600` diagnostic drives synthetic
+log/status/release receipts through production suite persistence and collection,
+after sealed-copy preparation. It creates no droplets or workers and uses no
+network. Its streaming samples/results remain separate from idle evidence.
+
 
 ### Copied probe suite recovery isolation
 
@@ -7779,6 +7798,20 @@ unavailable compiler and unknown check. This capability refusal has no source
 location or provenance suffix. Source lint findings continue to include their
 HEAD/worktree provenance and locations; result codes and fields are unchanged.
 Use a source installation with development dependencies to run these checks.
+
+### Memory measurement slots
+
+An explicitly Coordinator-granted allocated-swap waiver uses the manual probe's
+`--quiet-slot-until ISO` option. It expires with the slot and replaces used-swap
+thresholds with load1 ≤6, kern.memorystatus_vm_pressure_level ≤1 and no new swap-out pages, sampled
+by parent and worker every five seconds with separate preflights. Missing facts
+refuse; owned shutdown/native receipts still apply. Without the option, the
+original 80% initial/90% stop swap thresholds apply. This is an authorized manual
+measurement occasion, never an automatic budget gate or a standing slot grant.
+
+The native pressure level governs the slot guard; the transient
+`vm.memory_pressure` counter and `kern.memorystatus_level` free-memory percentage
+are recorded as context only.
 
 ### macOS cover repetition reruns (report mode)
 

@@ -11,7 +11,7 @@ import { mkdtemp, mkdir, writeFile, readFile, symlink, stat } from 'node:fs/prom
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { copyTree, swapPercent, prepareCopy } from './measure-memory.ts';
+import { copyTree, swapPercent, physicalFootprint, prepareCopy } from './measure-memory.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { checkDurations, readDurationManifest } from '../src/suite-durations.ts';
@@ -179,6 +179,78 @@ test('streamed startup publishes selected journal records and exact shared input
   assert.equal((await producer.native).code, 0);
 });
 
+test('sealed rest phase records both boundary receipts and timed samples before successful native close', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-rest-'));
+  const producer = memoryProducer(t, root, ['--heap-prof', `--heap-prof-dir=${root}`,new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--rest-seconds', '0.1', '--sample-ms', '20', '--heap-budget-mib', '0.000001', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start();
+  await producer.ready();
+  await producer.join(5000);
+  await producer.dispose();
+  const rows = (await readFile(join(root, 'boundaries.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(rows.find(row => row.boundary === 'rest-start'));
+  assert.ok(rows.find(row => row.boundary === 'rest-end'));
+  const samples = (await readFile(join(root, 'samples.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(samples.filter(row => row.phase === 'rest').length >= 2);
+  assert.ok(samples.every(row => typeof row.heapUsed === 'number' && typeof row.rss === 'number'));
+  assert.equal(JSON.parse(await readFile(join(root, 'outcome.json'), 'utf8')).outcome, 'complete');
+  const budget = JSON.parse(await readFile(join(root, 'memory-budget.json'), 'utf8'));
+  assert.equal(budget.mode, 'report');
+  assert.equal(budget.rest.heap.status, 'over');
+  assert.equal(budget.readiness.heap.status, 'over');
+  assert.equal(budget.rest.rss.status, 'within');
+  assert.equal(budget.rest.rss.budget, 768 * 1024 * 1024);
+  const profile = JSON.parse(await readFile(join(root, `stage-${rows.find(row => row.boundary === 'rest-end').ordinal}.heapprofile`), 'utf8'));
+  assert.ok(profile.head);
+  assert.equal((await producer.native).code, 0);
+});
+
+test('sampling analysis reports surviving sites as well as new allocations', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'memory-survivors-'));
+  ownDirectory(t, root);
+  await writeFile(join(root, 'boundaries.jsonl'), [{ ordinal: 0, boundary: 'rest-start', ms: 0 }, { ordinal: 1, boundary: 'rest-end', ms: 100 }].map(row => JSON.stringify(row)).join('\n'));
+  const head = { id: 1, callFrame: { functionName: 'owner', url: 'file:///fixture/owner.ts', lineNumber: 0, columnNumber: 0 }, children: [] };
+  await writeFile(join(root, 'stage-0.heapprofile'), JSON.stringify({ head, samples: [{ ordinal: 1, nodeId: 1, size: 100 }] }));
+  await writeFile(join(root, 'stage-1.heapprofile'), JSON.stringify({ head, samples: [{ ordinal: 1, nodeId: 1, size: 100 }, { ordinal: 2, nodeId: 1, size: 200 }] }));
+  const result = JSON.parse(execFileSync('python3', [new URL('./analyze-memory.py', import.meta.url).pathname, '--profiles', root], { env: fixtureEnvironment(root, process.env), encoding: 'utf8', timeout: 5000 }));
+  assert.equal(result.stages[1].sampledSurvivingBytes, 300);
+  assert.equal(result.stages[1].survivingSites[0].sampledBytes, 300);
+});
+
+test('memory budget comparison is report only and distinguishes missing limits and readings', async () => {
+  const { memoryBudgetReport } = await import('./memory-budget.ts');
+  const report = memoryBudgetReport({ heapUsed: 200, rss: 300 }, null, { heap: 100, rss: 400 });
+  assert.equal(report.mode, 'report');
+  assert.equal(report.readiness.heap.status, 'over');
+  assert.equal(report.readiness.rss.status, 'within');
+  assert.equal(report.rest.heap.status, 'unavailable');
+  assert.equal(memoryBudgetReport({ heapUsed: 200, rss: 300 }, null, {}).readiness.heap.status, 'unconfigured');
+});
+
+
+test('physical footprint reads the current value and rejects missing native facts', () => {
+  assert.equal(physicalFootprint('Physical footprint: 1.5G\nPhysical footprint (peak): 2G'), 1610612736);
+  assert.equal(physicalFootprint('Physical footprint: 100B'), 100);
+  assert.throws(() => physicalFootprint('Physical footprint (peak): 2G'), /unusable/);
+});
+
+test('sealed streaming phase persists six fake-run results through production suite collection', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-streaming-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--rest-seconds', '0.1', '--stream-runs', '6', '--sample-ms', '20', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(8000); await producer.dispose();
+  const receipt = JSON.parse(await readFile(join(root, 'streaming.json'), 'utf8'));
+  assert.equal(receipt.runs, 6);
+  assert.equal(receipt.completed, 6);
+  assert.ok(receipt.bytes > 0);
+  assert.ok(receipt.checkpoints >= 6);
+  assert.equal(JSON.parse(await readFile(join(root, 'outcome.json'), 'utf8')).outcome, 'complete');
+  assert.equal((await producer.native).code, 0);
+});
 
 test('copied probe seals unfinished suite capabilities and preserves finished history before readiness', async t => {
   const { memoryProducer } = await import('./memory-producer.ts');
@@ -765,4 +837,198 @@ for (const authority of ['fresh', 'restored', 'restored-owned', 'replaced', 'rep
   if (authority !== 'fresh' && authority !== 'restored-owned') assert.equal(await processIdentityAsync(child.pid, env), identity);
   await within(lifetime.dispose(), 5000);
   assert.equal(await processIdentityAsync(child.pid, env), null);
+});
+
+test('probe instrumentation restores its owner without retaining recurring call payloads', async t => {
+  const { memoryInstrumentation } = await import('./memory-instrumentation.ts');
+  const target = { read: (value: string) => value.length };
+  const original = target.read;
+  await t.test('bounded wrapper lifetime', child => {
+    const instrument = memoryInstrumentation(child);
+    instrument(target, 'read', (value: string) => original(value) + 1);
+    for (let i = 0; i < 1000; i++) assert.equal(target.read('synthetic-payload'), 18);
+    assert.equal(Reflect.get(target.read, 'mock'), undefined, 'recording mocks retain every argument/result in a long probe');
+  });
+  assert.equal(target.read, original);
+});
+
+test('held late sample drains before immutable rest budget receipt and disposal rejects new samples', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-endpoint-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--control-late-sample', '--rest-seconds', '0.1', '--sample-ms', '20', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(5000); await producer.dispose();
+  const endpoint = JSON.parse(await readFile(join(root, 'rest-end.json'), 'utf8'));
+  const budget = JSON.parse(await readFile(join(root, 'memory-budget.json'), 'utf8'));
+  const held = JSON.parse(await readFile(join(root, 'sampling-control.json'), 'utf8'));
+  assert.equal(endpoint.hubRunning, true);
+  assert.equal(budget.rest.heap.bytes, endpoint.heapUsed);
+  assert.equal(budget.rest.rss.bytes, endpoint.rss);
+  assert.equal(held.admittedPhase, 'rest');
+  assert.equal(held.writtenPhase, 'rest');
+  assert.equal(held.releasePhase, 'rest-drain');
+  assert.equal(held.disposalAdmissionRejected, true);
+  const samples = (await readFile(join(root, 'samples.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(samples.every(row => row.ms <= endpoint.ms));
+  assert.equal((await producer.native).code, 0);
+});
+
+test('held streaming settlement records incomplete then releases and joins before native close and root removal', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-settlement-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--control-held-settlement', '--rest-seconds', '0.1', '--stream-runs', '6', '--source', root, '--root', root]);
+  const remove = ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(5000); await producer.dispose();
+  const result = JSON.parse(await readFile(join(root, 'streaming.json'), 'utf8'));
+  assert.equal(result.incomplete, true);
+  assert.match(result.reason, /settlement\/result deadline/);
+  const release = JSON.parse(await readFile(join(root, 'settlement-control.json'), 'utf8'));
+  assert.equal(release.entered, true);
+  assert.equal(release.released, true);
+  assert.equal(release.joined, true);
+  assert.equal(JSON.parse(await readFile(join(root, 'outcome.json'), 'utf8')).outcome, 'incomplete');
+  assert.equal((await producer.native).code, 1);
+  assert.equal(producer.forced(), false);
+  assert.ok((await stat(root)).isDirectory());
+  await remove();
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+});
+
+test('startup native receipt stays at readiness before rest and marks synthetic readings unavailable', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-native-order-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--rest-seconds', '0.1', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(5000); await producer.dispose();
+  const captures = (await readFile(join(root, 'native-captures.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const boundaries = (await readFile(join(root, 'boundaries.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(captures.length, 1);
+  assert.equal(captures[0].stage, 'startup');
+  assert.equal(captures[0].phase, 'startup-ready');
+  assert.equal(captures[0].available, false);
+  assert.ok(captures[0].completedMs <= boundaries.find(row => row.boundary === 'rest-start').ms);
+  assert.match(await readFile(join(root, 'startup-vmmap.txt'), 'utf8'), /unavailable/);
+  assert.equal((await producer.native).code, 0);
+});
+
+test('quiet slot waives allocated swap only and refuses active pressure, paging, load or expired grant', async () => {
+  const { quietSlotRefusal, swapOutPages } = await import('./memory-machine-guard.ts');
+  const normal = { load1: 1.66, swapPercent: 83.5, pressure: 0, pressureLevel: 1, freeMemoryPercent: 64, swapOuts: 100 };
+  assert.equal(swapOutPages('Swapins: 4.\nSwapouts: 100.'), 100);
+  assert.throws(() => swapOutPages('unavailable'), /unusable/);
+  assert.equal(quietSlotRefusal(normal, 100, 200, 100), null);
+  assert.match(quietSlotRefusal({ ...normal, pressureLevel: 2 }, 100, 200, 100)!, /pressure/);
+  assert.match(quietSlotRefusal({ ...normal, swapOuts: 101 }, 100, 200, 100)!, /swap-outs/);
+  assert.match(quietSlotRefusal({ ...normal, load1: 6.1 }, 100, 200, 100)!, /load1/);
+  assert.match(quietSlotRefusal(normal, 100, 200, 200)!, /expired/);
+});
+
+test('short quiet window reserves held graceful fallback and confirms native close before grant expiry', async t => {
+  const { memoryProducer, memoryStopReserveMs } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-slot-close-'));
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const timing = { graceMs: 40, fallbackMs: 1000, closeMs: 100, drainMs: 100, probeSlackMs: 100, schedulingSlackMs: 100 };
+  const producer = memoryProducer(t, root, ['-e', "process.on('message',()=>{});process.send({type:'memory-ready'});setInterval(()=>{},1000)"], timing.graceMs, {
+    boundedTermination: true, timing,
+    beforeFallback: async () => { await writeFile(join(root, 'fallback-entered.json'), '{"entered":true}'); entered.resolve(); await release.promise; },
+  });
+  ownDirectory(t, root, { beforeRemove: async () => { release.resolve(); await producer.dispose(); } });
+  producer.start(); await producer.ready();
+  const reserve = memoryStopReserveMs(timing);
+  const grantEnd = Date.now() + reserve + 30;
+  let disposal: Promise<void> | undefined;
+  const stopTimer = setTimeout(() => { disposal = producer.dispose(); void disposal.catch(() => {}); }, grantEnd - reserve - Date.now());
+  t.after(() => clearTimeout(stopTimer));
+  await within(entered.promise, 2000);
+  assert.equal(JSON.parse(await readFile(join(root, 'fallback-entered.json'), 'utf8')).entered, true);
+  release.resolve();
+  await disposal;
+  const native = await producer.native;
+  assert.ok(native.closedAt < grantEnd, 'native pipe/exit receipt must precede the granted endpoint');
+  const receipt = JSON.parse(await readFile(join(root, 'supervisor-outcome.json'), 'utf8'));
+  assert.equal(receipt.forced, true);
+  assert.equal(receipt.incomplete, true);
+  assert.equal(receipt.nativeClose, 'confirmed');
+  assert.ok((await stat(root)).isDirectory());
+});
+
+test('failed worker machine reader retains native cause and code-zero stop stays guard-interrupted', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-machine-failure-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--control-machine-failure', '--rest-seconds', '0.1', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(5000); await producer.dispose();
+  const guard = JSON.parse((await readFile(join(root, 'guard-stops.jsonl'), 'utf8')).trim());
+  assert.equal(guard.source, 'worker');
+  assert.match(guard.unavailable, /reader/);
+  assert.equal(guard.nativeCode, 7);
+  assert.equal(guard.nativeSignal, 'SIGTERM');
+  assert.match(guard.diagnosticTail, /redacted/);
+  assert.doesNotMatch(guard.diagnosticTail, /SYNTHETIC_MACHINE_SECRET/);
+  assert.equal(JSON.parse(await readFile(join(root, 'outcome.json'), 'utf8')).outcome, 'guard-stopped');
+  assert.equal((await producer.native).code, 0);
+});
+
+for (const condition of ['pressure', 'load', 'swapouts'] as const) test(`worker quiet-slot ${condition} refusal persists before graceful guard stop`, async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-machine-refusal-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', `--control-machine-${condition}`, '--quiet-slot-until', new Date(Date.now() + 120_000).toISOString(), '--rest-seconds', '0.1', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(5000); await producer.dispose();
+  const guard = JSON.parse((await readFile(join(root, 'guard-stops.jsonl'), 'utf8')).trim());
+  assert.equal(guard.source, 'worker');
+  assert.match(guard.refusal, condition === 'swapouts' ? /swap-outs/ : condition === 'load' ? /load1/ : /pressure/);
+  assert.equal(JSON.parse(await readFile(join(root, 'outcome.json'), 'utf8')).outcome, 'guard-stopped');
+  assert.equal((await producer.native).code, 0);
+});
+
+test('parent failed-reader guard commits bounded native diagnostics before requesting stop', async t => {
+  const { readGuardedMachine } = await import('./memory-machine-guard.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-parent-machine-'));
+  ownDirectory(t, root);
+  let stopped = false;
+  const reading = await readGuardedMachine(root, 'parent', () => { throw Object.assign(new Error('synthetic native failure'), { status: 9, signal: 'SIGTERM', stderr: 'Bearer SYNTHETIC_PARENT_SECRET' }); }, 100, Date.now() + 60_000, () => {
+    assert.equal(fs.existsSync(join(root, 'guard-stops.jsonl')), true);
+    stopped = true;
+  }, true);
+  assert.equal(reading, null); assert.equal(stopped, true);
+  const cause = JSON.parse((await readFile(join(root, 'guard-stops.jsonl'), 'utf8')).trim());
+  assert.equal(cause.nativeCode, 9); assert.equal(cause.nativeSignal, 'SIGTERM');
+  assert.match(cause.diagnosticTail, /redacted/);
+  assert.doesNotMatch(cause.diagnosticTail, /SYNTHETIC_PARENT_SECRET/);
+});
+
+test('transient pressure spike stays informational while native pressure level governs the guard', async () => {
+  const { quietSlotRefusal } = await import('./memory-machine-guard.ts');
+  const normal = { load1: 3, swapPercent: 83, pressure: 2285, pressureLevel: 1, freeMemoryPercent: 64, swapOuts: 100 };
+  assert.equal(quietSlotRefusal(normal, 100, 200, 100), null);
+  assert.match(quietSlotRefusal({ ...normal, pressure: 0, pressureLevel: 2 }, 100, 200, 100)!, /pressure/);
+  assert.match(quietSlotRefusal({ ...normal, pressure: 0, pressureLevel: 4 }, 100, 200, 100)!, /pressure/);
+});
+
+
+test('native pressure receipt retains transient counter, actual level and free-memory context separately', async () => {
+  const { quietSlotPressure } = await import('./memory-machine-guard.ts');
+  assert.deepEqual(quietSlotPressure('2285\n1\n64\n'), { pressure: 2285, pressureLevel: 1, freeMemoryPercent: 64 });
+  assert.throws(() => quietSlotPressure('2285\n64\n'), /unusable/);
+  assert.throws(() => quietSlotPressure('2285\nunknown\n64\n'), /unusable/);
+});
+
+test('sealed worker completes rest with a transient counter spike and normal native level', async t => {
+  const { memoryProducer } = await import('./memory-producer.ts');
+  const root = await mkdtemp(join(tmpdir(), 'memory-counter-context-'));
+  const producer = memoryProducer(t, root, [new URL('./measure-memory.ts', import.meta.url).pathname,
+    '--run', '--worker', '--control', '--control-machine-transient', '--quiet-slot-until', new Date(Date.now() + 120_000).toISOString(), '--rest-seconds', '0.1', '--source', root, '--root', root]);
+  ownDirectory(t, root, { beforeRemove: producer.dispose });
+  producer.start(); await producer.ready(); await producer.join(5000); await producer.dispose();
+  const reading = JSON.parse((await readFile(join(root, 'system.jsonl'), 'utf8')).trim());
+  assert.equal(reading.pressure, 2285); assert.equal(reading.pressureLevel, 1);
+  assert.equal(reading.freeMemoryPercent, 64);
+  assert.equal(JSON.parse(await readFile(join(root, 'outcome.json'), 'utf8')).outcome, 'complete');
+  assert.equal((await producer.native).code, 0);
 });

@@ -2,6 +2,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
+import { endProcess } from '../src/system-processes.ts';
+import { processIdentityAsync } from '../src/process-identity.ts';
+import { processStartedAsync } from '../src/hub/lock.ts';
+import { testWaitMs } from './until.ts';
 import { remoteRedactor } from '../src/remote/redact.ts';
 import { join } from 'node:path';
 import type { TestContext } from 'node:test';
@@ -10,12 +14,20 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownProcess, beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 
-export type MemoryClose = { code: number | null; signal: string | null; pid: number | undefined; rootPresent: boolean };
+export type MemoryStopTiming = { graceMs: number; fallbackMs: number; closeMs: number; drainMs: number; probeSlackMs: number; schedulingSlackMs: number; captureMs?: number };
+export function memoryStopTiming(graceMs = 10_000): MemoryStopTiming {
+  return { graceMs, fallbackMs: 30_000, closeMs: graceMs, drainMs: testWaitMs(5000), probeSlackMs: 8000, schedulingSlackMs: 7000, captureMs: 5000 };
+}
+export function memoryStopReserveMs(timing = memoryStopTiming()): number {
+  return timing.graceMs + timing.fallbackMs + timing.closeMs + timing.drainMs + timing.probeSlackMs + timing.schedulingSlackMs + (timing.captureMs ?? 5000);
+}
+export type MemoryClose = { code: number | null; signal: string | null; pid: number | undefined; rootPresent: boolean; closedAt: number };
 export function requestMemoryStop(child: ChildProcess): void {
   if (child.connected) child.send({ type: 'memory-stop' }, () => {});
 }
-export function memoryProducer(t: TestContext, root: string, args: string[], stopMs = 10_000, options: { detached?: boolean } = {}) {
+export function memoryProducer(t: TestContext, root: string, args: string[], stopMs = 10_000, options: { detached?: boolean; boundedTermination?: boolean; timing?: MemoryStopTiming; beforeFallback?: () => Promise<void> } = {}) {
   const owner = pacingOwner(t);
+  const timing = options.timing ?? memoryStopTiming(stopMs);
   const ready = Promise.withResolvers<void>();
   void ready.promise.catch(() => {});
   const acquired = Promise.withResolvers<void>();
@@ -31,8 +43,16 @@ export function memoryProducer(t: TestContext, root: string, args: string[], sto
   owner.close(async () => {
     if (!child) return;
     requestMemoryStop(child);
-    try { await within(closed.promise, stopMs); }
-    catch { forced = true; await stopPid(); await within(closed.promise, stopMs); }
+    try { await within(closed.promise, timing.graceMs); }
+    catch {
+      forced = true;
+      const fallback = owner.observe(async () => { await options.beforeFallback?.(); await stopPid(); }, { drain: true });
+      let failure: unknown;
+      try { await within(fallback, timing.fallbackMs); }
+      catch (error) { failure = error; await fallback.catch(() => {}); }
+      await within(closed.promise, timing.closeMs);
+      if (failure) throw failure;
+    }
   });
   // Receipt finalization follows all closers AND owned observers/writes; closers
   // run concurrently inside pacingOwner and cannot publish the final facts.
@@ -44,7 +64,7 @@ export function memoryProducer(t: TestContext, root: string, args: string[], sto
       ...(receipt ?? { code: null, signal: null, pid: child?.pid, rootPresent: existsSync(root) }),
       nativeClose: receipt ? 'confirmed' : child ? 'unconfirmed' : 'not-started', forced,
       incomplete: Boolean(failure) || forced || !receipt || receipt.code !== 0 || writeFailures.length > 0,
-      writeFailures, diagnosticTail: tail,
+      writeFailures, diagnosticTail: tail, shutdownTiming: timing,
     }));
     if (failure) throw failure;
     if (child && !receipt) throw new Error('memory producer native close is unconfirmed; root retained');
@@ -54,7 +74,27 @@ export function memoryProducer(t: TestContext, root: string, args: string[], sto
   // Register the owner and its native-close disposer before spawn.
   const start = () => {
     child = spawn(process.execPath, args, { cwd: root, env: fixtureEnvironment(root, process.env, { NODE_TEST_CONTEXT: undefined }), detached: options.detached ?? false, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
-    stopPid = ownProcess(undefined, child.pid);
+    let producerExited = false;
+    child.once('exit', () => { producerExited = true; });
+    if (options.boundedTermination) {
+      const pid = child.pid;
+      const env = fixtureEnvironment(root, process.env);
+      const birth = owner.observe(async () => {
+        if (!pid) throw new Error('memory producer did not acquire a PID');
+        const pidStarted = await processStartedAsync(pid, 2000, undefined, undefined, env);
+        const pidIdentity = await processIdentityAsync(pid, env);
+        if (producerExited) throw new Error('memory producer exited during birth capture; root retained');
+        return { pid, pidStarted, pidIdentity };
+      }, { drain: true });
+      void birth.catch(() => {});
+      stopPid = async () => {
+        const captured = await within(birth, timing.captureMs ?? 5000);
+        if (producerExited) throw new Error('memory producer already exited; outstanding pipes remain owned');
+        if (!captured.pidStarted || !captured.pidIdentity) throw new Error('memory producer native birth unavailable; root retained');
+        const gone = await endProcess(captured, () => {}, 0, undefined, { env, deadline: Date.now() + timing.fallbackMs });
+        if (!gone) throw new Error('memory producer termination could not verify its captured birth; root retained');
+      };
+    } else stopPid = ownProcess(undefined, child.pid);
     const redact = remoteRedactor();
     const capture = () => {
       let pending = '', dropping = false;
@@ -89,7 +129,7 @@ export function memoryProducer(t: TestContext, root: string, args: string[], sto
     const finish = (code: number | null, signal: string | null) => {
       ready.reject(new Error(`memory producer closed before readiness: ${code ?? signal}; ${tail}`));
       acquired.resolve(); started.resolve();
-      nativeReceipt ??= { code, signal, pid: child?.pid, rootPresent: existsSync(root) };
+      nativeReceipt ??= { code, signal, pid: child?.pid, rootPresent: existsSync(root), closedAt: Date.now() };
       closed.resolve(nativeReceipt);
     };
     child.once('close', finish);
