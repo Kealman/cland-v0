@@ -3,7 +3,7 @@ id: T-1487
 kind: task
 title: A role-addressed review request stays queued while reviewers are idle
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1254
 branch: t/T-1487-a-role-addressed-review-request-stays
 created: 2026-10-30T13:33:21.942Z
-updated: 2026-10-30T20:51:31.362Z
+updated: 2026-10-30T21:06:52.817Z
 ---
 
 ## Summary
@@ -25,10 +25,10 @@ A review request sent to the role `reviewer` was queued and never assigned for 4
 
 ## Acceptance criteria
 
-- [ ] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
-  - failed: rev-31 [reviewer] · 2026-10-30T20:51:31.362Z · note Configured run regresses legitimate human verifier requests: acceptance no longer reserves/publishes pending work in two existing consumer tests.
+- [x] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
+  - done: impl-1487 · 2026-10-30T21:05:27.965Z
 - [x] C2. A queued request that stays unassigned past the bound posts one Agents notice naming the request, the idle verifiers and why each was not chosen.
-  - done: impl-1487 · 2026-10-30T19:34:19.590Z
+  - done: impl-1487 · 2026-10-30T21:05:28.035Z
 
 ## Comments
 
@@ -130,3 +130,25 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence1 not clear A-14688. Original all5cd274e9/A-14687 exit1: independently counted3683 ordinary passes,2 failures,185 distinct load passes (file wrapper finishes excluded). T0/T1 clear,T2 incomplete/red,T3/Web unrun,T4 absent. Both original errors and exact-head source identify missing trusted-human admission, not just presence diff. Focused routing/checkpoint/heartbeat passes remain scoped; no final criterion verification. Preserve failed receipt and prior source3 assessment; production correction with unchanged assertions, Coordinator-scheduled focused checks, fresh source review, then Coordinator-owned full run. Host typecheck reuse/advisory findings retained; no Reviewer workloads.
 
 Criteria: C1 failed (Configured run regresses legitimate human verifier requests: acceptance no longer reserves/publishes pending work in two existing consumer tests.).
+
+### impl-1487 · 2026-10-30T21:05:27.915Z
+
+Source4 c6b043908a8cbace3c6ebf7622f96276d936f9d6 pushed; no dev merge after source review. After explicit quiet-slot release, reproduced computed-sessions singly (3pass/1fail: no frame matched within5000ms) and inbox-workload singly (7pass/1fail: changing requests publish only final presence,0!=1). New current-human and legacy-human controls also red with pending undefined instead of {item,kind}. Production fix atomically captures trusted human admission in sendFromHuman before delivery and preserves stored-human authority during legacyNULL migration. Agent admission remains explicit0/1 with stored session identity for legacy agents. Git diff against079b65a13 confirms computed-sessions.test.ts, inbox-workload.test.ts and inbox-archive-workload.ts unchanged. Consumer inventory includes public topic.send/CLI/web/remote input convergence, Web sessions and E-418-stage-1 brief; no public shape changed.
+Final source4 local macOS arm64, six sequential files: computed4/4, inbox8/8, routing31/31, heartbeat18/18, checkpoint8/8, session-events2/2. Root typecheck and test:lint pass (0refusals,123report-only findings; known installed TypeScript advisory retained). No local full suite/browser/remote retry. Prior Linux run5cd274e9 at079b65a13 remains red:3683ordinary passes+185extra load passes,2ordinary failures,T3/Web unrun. Awaiting fresh source review before Coordinator verify-all retry.
+
+### rev-31 · 2026-10-30T21:06:38.543Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-source4
+commit: c6b043908a8cbace3c6ebf7622f96276d936f9d6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source4 clear A-14691, Standards0/Spec0 findings. A-14688 M1 resolved: trusted human message/admission recorded atomically before delivery; legacy stored-human producer retains sessionless authority. Durable ack message lookup, explicit denied0, legacy-agent sender identity/authority and recipient-kind guard retained. Original computed-sessions/inbox-workload/helper producers and assertions unchanged; new human current/supersession and legacy reopen controls use existing owned T2 seams. Prior source3 queue/diagnostic/checkpoint/held-heartbeat fixes unchanged. A-14689 summarizes71 focused local macOS passes/typecheck/lint, not configured proof. C1/C2 runtime pending; original A-14687/A-14688 remain failed at prior head. Report ready for Coordinator-owned verify all exact frozen source4 head; original-record final review follows. No Reviewer workloads.
+
+### impl-1487 · 2026-10-30T21:06:52.817Z
+
+Source4 clear A-14691 at c6b043908a8cbace3c6ebf7622f96276d936f9d6. Reported ready for Coordinator verify all at frozen reviewed head. Fresh fetch origin/dev2b487a3250ca3a8202240bcad0d1d67681299efe; merge-tree exit1 identifies sole prospective conflict .agents/skills/implement/SKILL.md. Task worktree clean/pushed; no post-review dev merge under rule11. Coordinator informed and decides frozen-head verify vs authorized dev merge then fresh review. Prior run/evidence1 remain red at079b65a13; no green/full-runtime claim.

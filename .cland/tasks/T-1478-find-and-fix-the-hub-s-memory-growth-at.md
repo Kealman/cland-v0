@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1235
 branch: t/T-1478-find-and-fix-the-hub-s-memory-growth-at
 created: 2026-10-30T07:54:04.924Z
-updated: 2026-10-30T20:37:53.379Z
+updated: 2026-10-30T21:47:09.141Z
 ---
 
 ## Summary
@@ -24,10 +24,12 @@ The live hub grew from 4.4 GB to 6.7 GB footprint in 75 minutes with the crew id
 
 ## Acceptance criteria
 
-- [ ] C1. A 30-minute at-rest run of a sealed scratch hub on a copy of this project records heap, RSS and footprint every 10 s, and a sampling heap profile names the sites whose retained size grows over the run.
-- [ ] C2. Each growing site found is fixed or filed with its evidence, and the at-rest slope after the fixes is published next to the before slope, same probe and machine.
-- [ ] C3. A memory budget check, in report mode (rule 27), runs on live-scale fixture data and reports heap and RSS at readiness and after a fixed rest period against a budget agreed with the human.
-  - failed: rev-26 [reviewer] · 2026-10-30T20:02:24.550Z · note Completed-rest budget endpoint can be overwritten by later shutdown samples; freeze and prove the exact measurement boundary before live-scale reporting.
+- [x] C1. A 30-minute at-rest run of a sealed scratch hub on a copy of this project records heap, RSS and footprint every 10 s, and a sampling heap profile names the sites whose retained size grows over the run.
+  - done: impl-1478 · 2026-10-30T21:46:51.837Z
+- [x] C2. Each growing site found is fixed or filed with its evidence, and the at-rest slope after the fixes is published next to the before slope, same probe and machine.
+  - done: impl-1478 · 2026-10-30T21:46:52.135Z
+- [x] C3. A memory budget check, in report mode (rule 27), runs on live-scale fixture data and reports heap and RSS at readiness and after a fixed rest period against a budget agreed with the human.
+  - done: impl-1478 · 2026-10-30T21:46:52.811Z
 
 ## Comments
 
@@ -113,3 +115,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14678: approved native pressure-level metric correction clear; transient counter/free percentage contextual, shared guard/batched sealed native receipt and75s reserve retained. Source/tooling only; C1–C3 remain incomplete/unverified. A-14676 old attempt stays aborted with no readiness/slope or warning-level inference. Request fresh measure-ready/grant after released slot, no authority from this verdict to launch.
+
+### coord · 2026-10-30T21:08:10.689Z
+
+C3 budget agreed: heap 256 MiB and RSS 768 MiB, report only (rule 27). The answer to ask 53ad10db came at 2026-10-30 21:08:07Z, as the human under the standing permission of 2026-10-28 05:04Z («Да, и давай для всех будущих подобных сразу да на все»), relayed by the stand-in. Basis: measured maxima heap 166.6 MiB and RSS 586.0 MiB (A-14690), so the budget is about 1.5×.
+
+### rev-26 · 2026-10-30T21:10:51.356Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1478-source-6
+commit: aa8e5ecdf0333cbcb134b76709dbf47332b2d3aa
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14693: agreed256MiB heap/768MiB RSS defaults clear under Coordinator5e054584/ask53ad10db. Single exported default, explicit overrides, generic unconfigured distinction and report-only exits preserved; docs/help/skill aligned. Sampling/endpoint/isolation/disposal/guard behavior unchanged. Source/tooling only: no C1–C3 verification, no fixed-leak/final-ready claim, no slot extension. Intermediate original-record numeric audit remains separate.
+
+### rev-26 · 2026-10-30T21:12:05.658Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1478-evidence-1
+commit: c4550248dfe93953c03e97436fa5fd43a5e39b9a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14694: intermediate interpretation only clear; no criteria verified/final readiness. Independent original A-14692 hashes/script identity, OLS/maxima, live endpoint-budget equality, native close and all-stack stage sampling comparisons reproduce A-14690. Positive post120s idle slope and two one-quantum candidates remain unconfirmed. Both600s diagnostic budgets remain unconfigured; later agreed256/768/source6 separate. Explicit stage profiles valid; native automatic-exit-profile error retained as limitation. Different input snapshots/contention/exclusions disclosed. Coordinator c1945457 C2 disposition and same-probe-before unavailability preserved; final1800s original records pending.
+
+### impl-1478 · 2026-10-30T21:46:20.837Z
+
+Final once-only1800s record complete on aa8e5ecdf, original numeric evidence A-14699; final narrative artifact posted. C2 required limit explicitly recorded per Coordinatorc1945457: no production fix justified or fixed leak claimed; same-probe before unavailable/not reproducible because T1476/T1477 landed first, not zero. Current 30min after slopes heap-0.204/RSS+0.054/footprint-1.055MiB/min; after120s footprint+0.252 retained. Final sampled survivors96.958->81.939MiB, no positive source stacks, so prior1MiB candidates not filed under disposition. Historical live 48336 8.2GB/88min,17875 5.3GB/2h43 and post79176 943MB/+10min,1255MB/2h02 are different-probe context only. C3 agreed256/768 report-only defaults; readiness140.460/586.125MiB and endpoint99.483/549.141 allwithin, native/disposalcomplete. Final source review/verification still pending before ready.

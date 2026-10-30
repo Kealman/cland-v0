@@ -2,8 +2,8 @@
 id: T-1470
 kind: task
 title: Held human deliveries drain on any idle observation and on a timer
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1253
 branch: t/T-1470-held-human-deliveries-drain-on-any-idle
 created: 2026-10-30T07:50:17.481Z
-updated: 2026-10-30T20:40:30.002Z
+updated: 2026-10-30T21:52:17.829Z
+closed: 2026-10-30T21:52:17.829Z
 ---
 
 ## Summary
@@ -27,10 +28,16 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 
 - [x] C1. A human delivery held for a busy session is sent within 60 s after any signal source reports the session idle, even when the state did not change.
   - done: impl-1470 · 2026-10-30T20:39:25.735Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1470-evidence2 · 2026-10-30T21:28:39.088Z · commit be5b629baed4863150c3691642a1704cf12a2b87
+  - verified: rev-32 [reviewer] · run rev-20261030-1470-delta1 · 2026-10-30T21:45:44.759Z · commit 6f2ce4b63b2b23984a0acdcc245371d94a341be3
 - [x] C2. While a human delivery is held, the hub re-evaluates the session at least every 60 s and logs `human-hold-recheck` with the state source and its age.
   - done: impl-1470 · 2026-10-30T20:39:25.853Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1470-evidence2 · 2026-10-30T21:28:39.088Z · commit be5b629baed4863150c3691642a1704cf12a2b87
+  - verified: rev-32 [reviewer] · run rev-20261030-1470-delta1 · 2026-10-30T21:45:44.759Z · commit 6f2ce4b63b2b23984a0acdcc245371d94a341be3
 - [x] C3. A busy state that comes only from a poll and is older than 5 min with no push signal no longer holds human deliveries.
   - done: impl-1470 · 2026-10-30T19:25:51.077Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1470-evidence2 · 2026-10-30T21:28:39.088Z · commit be5b629baed4863150c3691642a1704cf12a2b87
+  - verified: rev-32 [reviewer] · run rev-20261030-1470-delta1 · 2026-10-30T21:45:44.759Z · commit 6f2ce4b63b2b23984a0acdcc245371d94a341be3
 
 ## Comments
 
@@ -111,3 +118,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full successor source3 clear A-14683. M4 closed: existing persisted injectionStarted plus state governs repeated-idle/timer/recovery safe drainage; legacy attempted rows remain conservative. Busy-to-idle/reconnect keep attempted retry and #inject backoff/inflight; explicit uncertainty remains excluded. Original adapter-composition assertion and inject-stalled/codex-delivery files unchanged. New split and durable-ack/pre-attempt recovery sibling controls assert exact attempts/states. M1–M3 fixes retained; docs/contract/skill updated. A-14682 local summaries separate from configured runtime. A-14675 remains failed at prior head with T3/Web unexecuted. C1–C3 remain runtime-unverified; ready for Coordinator-owned all-run handoff, not a new Reviewer task-head full-run request. No Reviewer execution.
+
+### rev-32 · 2026-10-30T21:28:39.088Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1470-evidence2
+commit: be5b629baed4863150c3691642a1704cf12a2b87
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final executed-head evidence clear A-14696/raw A-14695 Coordinator all runfb275c5f. Matched5927 ordinary pass/8 skip/720 file pass +165 separate load test/file passes, no failures/cancel/todo/unmatched finishes; terminal totals5935 agree. Eight human-hold identities ordinary+5/5 each, all pass; max0.113857s. C1 exact receipt,C2 minute/source/age,C3 poll-only expiry plus push/reuse/recovery/never-attempted/uncertain controls satisfy source3. Unchanged M4 composition assertion passes0.092088s; all composition4/inject-stalled8/codex-delivery22 pass. T0/T1/T2/T3/Web exit0; no T4 phase. Linux droplet Node24.21.0, Headless Shell1248/156.0.8078.4, footer candidate tree69c05f47 matches static filtered headtree, cachednull; Web4workers/hostcheck reused. Eight reasoned platform/OpenCode skips retained, not coverage; report-only lint/budget/ratchet/incomplete-baselines retained. A-14675 remains prior-head red. C1–C3 verified ONLY at be5b629ba; successor6f2ce4b63 needs authorized separate delta/text-check carry review. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-32 · 2026-10-30T21:45:44.759Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1470-delta1
+commit: 6f2ce4b63b2b23984a0acdcc245371d94a341be3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear A-14700 under Coordinatora4e3469d docs/help waiver. Parents executedbe5b629ba+dev2b487a325. Own production/test/guide and fence files byte unchanged; incoming code/test/shared files dev-exact. Only manual SKILL resolution retains both parents' nonblank text, three intended sections once; CHANGES/index/README/tiers preserve both contracts. A-14698 original existing tool-return exports establish post-merge typecheck exit0/docs3/3/provenance1/1/lint15headers exit0; combined captures, no separate raw streams/no truncation marker/no reruns. C1–C3 refreshed via explicit carry of fb275c5f/A-14695/A-14696 atbe5b629ba plus unchanged-source delta and targeted checks, NOT a new-head suite. Retain5927pass/8reasonedskip,T0–T3/Web/noT4,report-only limits and predecessor platform/browser. A-14675 remains prior red. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-30T21:52:17.829Z
+
+Merged bd9fd9cf41dc77a0ccb2f90d88deccdfe14e5734 onto dev.
