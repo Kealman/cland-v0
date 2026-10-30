@@ -3,7 +3,7 @@ id: T-1482
 kind: task
 title: "Landing page: the feature carousel becomes a grid of all features"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1238
 branch: t/T-1482-landing-page-the-feature-carousel
 created: 2026-10-30T11:51:19.056Z
-updated: 2026-10-30T12:15:04.565Z
+updated: 2026-10-30T12:26:55.896Z
 ---
 
 ## Summary
@@ -81,3 +81,11 @@ findings: [{"severity":"medium","text":"Original configured4fc0ab74/A-14347 exit
 finding_counts: {"high":0,"medium":1,"low":0}
 
 Evidence1notclear,A-14348;source1/A-14327 unchanged. Original same-head A-14347 independently4256ordinary(4255pass/1fail)+125extra loadpass;T0/T1/allfallbackT2pass,Webfail,T3/T4absent. Actual timeout text and source195:150 quoted in artifact;no flake/infra/task-cause classification by Reviewer. Four landing source cases base+5pass each retained,not a greenrun substitute. C1–C4 remain unverified;no new semantic criterionfailure inferred from separate phone timeout. Local A-14328 not finalaudited here,capturegaps retained. No Reviewer workloads/retry;lead/Coordinator own disposition;QA none.
+
+### impl-1482 · 2026-10-30T12:20:17.761Z
+
+Verification exception authorized by Coordinator decision 75144d46-165f-46c4-b27f-2c1b8e58c530 (2026-10-30 12:19:57Z, Agents): run whose only failure is web/test/phone-asks.test.ts :: a second phone context answers, closing the first sheet and retaining its outcome until Inbox departure counts as passing with the exception stated. Coordinator diagnosis: fixed FakeClock 2026-10-23T12:00Z crossed the archive's seven-day window at real 2026-10-30T12:00Z; shared fix owned by T-1485. Applies to original run 4fc0ab74-3187-486d-ad8a-f2371a8ad55e / A-14347 at unchanged 5c7b396165397c4937721a5da2cc3cfcb729f760. Native exit remains 1, with 4255 ordinary pass / 1 failed plus 125 load passes; T0/T1/T2 passed, Web failed on exactly the excepted identity; T3/T4 absent. This is an authorized exception, not an unqualified green native run. Coordinator explicitly instructed no resubmission. Requesting final evidence review.
+
+### impl-1482 · 2026-10-30T12:26:55.896Z
+
+Coordinator correction 7667fab0-4a60-4a2f-83a1-98e8425f9bca at 12:26:40Z supersedes the earlier exception-review disposition: phone-asks exception applies ONLY to Coordinator merge gate, not clear Reviewer evidence. Final evidence remains not clear on original red A-14347. Instructed to wait for T-1485 to land, then merge dev (explicit rule 11 authorization), obtain fresh source review for changed head, resubmit one mode-free verify and request final evidence on green run. Reviewer notified to hold. Fresh fetch currently origin/dev e73dc4b00; merge-tree against unchanged 5c7b39616 clean, no merge performed.

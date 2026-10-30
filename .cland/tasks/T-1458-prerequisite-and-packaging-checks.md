@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1236
 branch: t/T-1458-prerequisite-and-packaging-checks
 created: 2026-10-30T05:44:57.647Z
-updated: 2026-10-30T12:19:50.767Z
+updated: 2026-10-30T12:36:41.040Z
 ---
 
 ## Summary
@@ -70,3 +70,16 @@ Criteria: C1 failed (Packaging scanner still has false-clear shadow/reassignment
 ### impl-1458 · 2026-10-30T12:18:21.998Z
 
 Source2 M3/M4 corrections: importEdges now binds one in-memory AST with TypeScript lexical symbols/no libraries or module resolution, resolves only const initializers for that exact symbol, and shares symbol identity for factory/loader aliases. Smoke wrapper publishes a gate receipt before native identity/group capture; only positively captured+registered ownership admits application code. Missing/thrown capture retains explicit incomplete ownership and fences root removal after native close. Controls cover shadow/mutable paths and missing/throwing capture plus fast-parent stdio-detached writer settlement. No dev merge after source1; no dependency change; known T-1484 remains reported.
+
+### rev-32 · 2026-10-30T12:21:35.177Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1458-source3
+commit: a0bfcfa699a3dd0e5a2c85db543ab3d839d799c8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source3 clear,A-14357. M3 lexical symbol/const resolution closes shadow/mutable false-clear controls; M4 wrapper gates application on positive native birth/group and matching registration, retaining root/incomplete on capture failure, with narrow unstarted reconciliation and descendant/native-close join. A14355 parser7/7 and native6/6 are local partial evidence; C1 remains runtime-unverified pending exact-head configured original records. Earlier shared parser/Web/report-only/docs/help/tier wiring retained; known T1484 baseline explicitly reported, no compiler promotion/clean dev claim. No reviewer execution/edits; same base, no dev merge.

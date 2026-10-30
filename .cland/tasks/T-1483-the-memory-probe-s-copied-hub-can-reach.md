@@ -3,7 +3,7 @@ id: T-1483
 kind: task
 title: The memory probe's copied hub can reach live suite paths and recovery state
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T12:19:16.717Z
+updated: 2026-10-30T12:25:12.651Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
 
 ## Acceptance criteria
 
-- [ ] C1. A probe on a copy whose suite jobs carry live absolute paths and an unfinished running job starts, reaches readiness and stops without reading, writing or signalling anything outside its scratch root, shown by a fixture with a planted outside path and pid that stay untouched.
-  - failed: rev-32 [reviewer] · 2026-10-30T12:19:16.717Z · note Copied unfinished zero-exit records can be turned into passing history; seal classification and nonisolated cancellation behavior need correction before runtime verification.
+- [x] C1. A probe on a copy whose suite jobs carry live absolute paths and an unfinished running job starts, reaches readiness and stops without reading, writing or signalling anything outside its scratch root, shown by a fixture with a planted outside path and pid that stay untouched.
+  - done: impl-1483 · 2026-10-30T12:22:26.005Z
 - [x] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
   - done: impl-1483 · 2026-10-30T12:14:36.372Z
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
@@ -134,3 +134,20 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Full source2 not clear,A-14353. Earlier M1/M2/M3 corrected: final resolved artifact/relative path fences, shared pre-owned lifecycle, captured native birth/cwd authority with inside/outside controls. Sole remaining M4/M5 are classification and production cancellation regression. C3A14335 honestly records historical native effects unknown, not none; no finding against qualified audit. A14349 local summary only; no reviewer execution/live-copy rerun or current configured proof. Consolidated fixes/fresh exact-head source review before verification.
 
 Criteria: C1 failed (Copied unfinished zero-exit records can be turned into passing history; seal classification and nonisolated cancellation behavior need correction before runtime verification.).
+
+### impl-1483 · 2026-10-30T12:22:05.925Z
+
+M4/M5 correction: seal now classifies completion before clearing recovery fields; code0 records needing reporting, cleanup, accounting or terminal state become explicit unavailable infrastructure outcomes. Completed historical outcomes and row counts remain. #inspectJob waits only on a requested job's isolated native-ownership admission, preserving ordinary cancellation when unrelated constructor reap/status is held. Red: unavailable marker undefined instead of infrastructure; cancel hit bounded executor operation deadline. Green: all 23 touched measure-memory.test.ts tests pass locally (darwin arm64 Node v24.21.0, 5788.244833ms), with real unrelated LocalExecutor.status held until after requested durable cancellation receipt. No browser/live-copy probe/full local suite. No dev merge since source1; awaiting final typecheck/lint before pushed source3.
+
+### rev-32 · 2026-10-30T12:25:12.651Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1483-source3
+commit: 18c9b98919be9023f6aaf7357f033473d3ddbc1d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source3 clear, A-14361. M4 original completion classification forces unavailable infrastructure outcome for every unfinished code0 variant while retaining completed history. M5 per-job isolated ownership admission preserves requested cancellation while unrelated actual LocalExecutor.status/reap remains held; durable cancelled/code143 control retains cleanup. Earlier M1–M3 path/artifact/native authority/lifecycle corrections retained. A-14358 is local macOS claimant summary (23/23/typecheck/lint advisory), not original configured runtime proof. C3 A-14335 retains historical native-effect unknowns, not none. Exact unchanged head may submit mode-free configured verification; C1–C3 final settlement awaits original same-head evidence. No Reviewer workloads.

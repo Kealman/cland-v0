@@ -2,8 +2,8 @@
 id: T-1456
 kind: task
 title: The merge queue checks queued members against each other at enqueue
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1227
 branch: t/T-1456-the-merge-queue-checks-queued-members
 created: 2026-10-30T05:44:57.388Z
-updated: 2026-10-30T12:18:52.945Z
+updated: 2026-10-30T12:26:01.243Z
+closed: 2026-10-30T12:26:01.243Z
 ---
 
 ## Summary
@@ -81,3 +82,7 @@ Criteria: C1 verified.
 ### coord · 2026-10-30T12:18:52.945Z
 
 Enqueued at ee8383f99 with an explicit shared-defect exception (rule 7). Coordinator verify all 5551cab1 (A-14352): 5,706 passed, one failure, web/test/phone-asks.test.ts "a second phone context answers, closing the first sheet and retaining its outcome until Inbox departure". The same identity fails alone at dev d1bfc19dc (T-1469 landing; impl-1464 solo receipt A-14350), which this head contains, and identically on T-1464 (A-14344) and T-1482 (A-14347). T-1456 touches no Web or inbox code. The implementer's mode-free run cfe7dd7a at this head was green. The fix item for the dev defect is being filed now.
+
+### coord · 2026-10-30T12:26:01.243Z
+
+Merged e73dc4b00327651b21d4177d722c0142270264b9 onto dev.

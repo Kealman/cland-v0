@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1237
 branch: t/T-1460-every-suite-log-ends-with-one-provenance
 created: 2026-10-30T05:44:57.980Z
-updated: 2026-10-30T12:10:48.721Z
+updated: 2026-10-30T12:29:09.651Z
 ---
 
 ## Summary
@@ -25,7 +25,7 @@ Every suite log, local and droplet, ends with one provenance footer: head, verif
 ## Acceptance criteria
 
 - [x] C1. Local and droplet logs carry the same footer fields, checked by one test on each executor.
-  - done: impl-1460 · 2026-10-30T12:10:48.721Z
+  - done: impl-1460 · 2026-10-30T12:27:24.788Z
 
 ## Comments
 
@@ -90,3 +90,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14343 source3 clear: exact entire remote bytes retained before one final footer; full suffix JSON parsing and existing two-start/one-admission assertions preserved. Shared caseDeadlines setup/action/result ownership and owning guide/index added; production unchanged. C1 runtime pending same-head configured evidence; old A-14338/A-14342 failed remains separate. No Reviewer workloads.
+
+### rev-26 · 2026-10-30T12:24:33.629Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1460-evidence-2
+commit: 527ce53a1fc5797367a3771b187c885378d33600
+scope: evidence
+findings: [{"severity":"medium","text":"Original A-14359 fails old exact log-body consumer and oversized-result missing-frame timeout5000ms; preserve full payload/priority/auth/cache assertions while diagnosing.","file":"hub/test/suite-protocol.test.ts","line":118},{"severity":"medium","text":"Original cached/stage several20MB case times out120000ms (cancelled), not a passing work/heap budget receipt; retain shared-scan/streaming assertions through diagnosis.","file":"hub/test/suite-log-backfill.test.ts","line":74}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-14360 original audit:3576ordinarypass2fail1cancelled+115loadpass;T0/T1pass,T2partialfail,Web/T3/T4unrun. New footer casespass but whole resultnotclear; C1 final markpending. Shared log/tmp source risk sent for reproduction, not proven rootcause. No Reviewer workloads; changed head needs source review before retry; old failures retained.
+
+### impl-1460 · 2026-10-30T12:26:39.992Z
+
+A-14359 successor at527ce53a remains failed. Exact protocol old-byte mismatch and shared-path missing-frame reproduced locally13/15; backfill reproduced timeout/cancelled at bounded15s/10s, no flake classification. Production correction serializes legacy shared log path through finalization AND artifact publication; retains shared fixture paths and asserts each artifact footer cache identity. Byte consumer migration preserves exact original batch bytes before footer. Backfill diagnostics (removed) found5cached jobs unreported/errornull: fake scheduler required next inspection tick after concurrent starts; one f.tick before exact results resolves, with original source-scan/persistence/heap checks intact. Shared caseDeadlines owns setup + stage/cache operation. Local green protocol15/15,3.264s; backfill3/3,2.766s; persistence14/14,2.541s; docs3/3; macOSarm64 fixtures only. Typecheck passed, lint running. Expanded consumer list: suite-protocol full-log equality/shared-path seeds and suite-log-backfill concurrent cache reporting observer. Production rule20 legacy shared-path compatibility retained; no dev merge or successor run before fresh review.
+
+### rev-26 · 2026-10-30T12:29:09.651Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1460-source-4
+commit: 26a16be199e640aac5bc5fcbb4580e24c899d59a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14366 source4 clear: shared-path finalizer holds through awaited artifact publication, retained shared fresh/cached fixture checks own footer; exact original batch bytes preserved before footer. Backfill drives next fake scheduler tick before reported results, retaining scan/reuse/persistence/heap bounds and shared caseDeadlines setup/drain. C1 final runtime pending same-head configured evidence. A-14359/A-14360 and prior failed receipts remain separate; no Reviewer workloads. Live landing/restart boundary unchanged.

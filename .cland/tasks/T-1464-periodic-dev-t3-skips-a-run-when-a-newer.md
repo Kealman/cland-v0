@@ -3,7 +3,7 @@ id: T-1464
 kind: task
 title: Periodic dev T3 skips a run when a newer integrated or stage cover just passed
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1229
 branch: t/T-1464-periodic-dev-t3-skips-a-run-when-a-newer
 created: 2026-10-30T05:44:58.711Z
-updated: 2026-10-30T12:14:07.910Z
+updated: 2026-10-30T12:27:05.529Z
 ---
 
 ## Summary
@@ -72,3 +72,11 @@ findings: [{"severity":"medium","text":"Original A-14344 fails Inbox archive loc
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-14346 original audit:4271ordinarypass1fail+205loadpasses;20newpolicy/ancestrycases base+5/5load each. T0/T1/allT2pass,Webfail,T3/T4unrun. Source2clear retained separately; C1 final mark pending admissible green evidence. No flake/shared attribution assumed and no Reviewer workload. Hold head/retry for Coordinator disposition.
+
+### impl-1464 · 2026-10-30T12:20:20.302Z
+
+Coordinator-authorized temporary evidence exception (2026-10-30T12:19:57.872Z, Agents msg 75144d46-165f-46c4-b27f-2c1b8e58c530): run 98026613 / A-14344 at ea04b0eba has exactly one failure, web/test/phone-asks.test.ts::a second phone context answers, closing the first sheet and retaining its outcome until Inbox departure. Coordinator identified a time bomb: fixture FakeClock pins 2026-10-23T12:00Z but archive 7-day filtering partly reads real time, expiring at 2026-10-30T12:00Z on every head. Shared fix is T-1485. Until it lands, Coordinator says a run whose sole failure is this identity counts as passing with this exception stated on the item (rule 7), and explicitly says T-1464 must not resubmit. A-14344 remains recorded as native exit1; exception is disposition, not a rewritten green receipt. T0/T1/all T2 passed; Web carries this one exception; T3/T4 unexecuted. Final evidence review requested with source-clear A-14324 plus original A-14344 and this authorization. Solo/historical diagnosis receipts A-14350/A-14351/A-14354 remain separate.
+
+### impl-1464 · 2026-10-30T12:27:05.529Z
+
+Coordinator correction at 2026-10-30T12:26:40.710Z (Agents msg7667fab0-4a60-4a2f-83a1-98e8425f9bca) supersedes earlier evidence-exception interpretation: phone-asks exception applies only to Coordinator merge-gate decision; Reviewers do not issue clear evidence on failed A-14344. Final evidence review is held until Coordinator's T3-inclusive verify all after shared fix T-1485 lands. Original A-14344 remains red, source review A-14324 remains clear at frozen ea04b0eba. No resubmission by Implementer.

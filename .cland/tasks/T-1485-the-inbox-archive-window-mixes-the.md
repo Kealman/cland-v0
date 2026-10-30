@@ -3,17 +3,18 @@ id: T-1485
 kind: task
 title: The Inbox archive window mixes the fixture clock with the real clock, so phone-asks went red after 7 days
 state: open
-status: backlog
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1240
+branch: t/T-1485-the-inbox-archive-window-mixes-the
 created: 2026-10-30T12:19:45.148Z
-updated: 2026-10-30T12:19:45.148Z
+updated: 2026-10-30T12:36:40.601Z
 ---
 
 ## Summary
@@ -26,5 +27,32 @@ The Inbox archive window is computed from one clock: the hub's injected clock, b
 
 ## Acceptance criteria
 
-- [ ] C1. The phone-asks case passes with the machine clock set more than seven days after its fixture date, shown by a regression that runs the fixture with an injected real-clock offset of at least 8 days and fails before the fix.
-- [ ] C2. Every test that pins a FakeClock date and asserts a time window is listed with "uses the injected clock" or "fixed", and the list is in the review request (rule 20).
+- [x] C1. The phone-asks case passes with the machine clock set more than seven days after its fixture date, shown by a regression that runs the fixture with an injected real-clock offset of at least 8 days and fails before the fix.
+  - done: impl-1485 · 2026-10-30T12:36:24.580Z
+- [x] C2. Every test that pins a FakeClock date and asserts a time window is listed with "uses the injected clock" or "fixed", and the list is in the review request (rule 20).
+  - done: impl-1485 · 2026-10-30T12:36:26.145Z
+
+## Comments
+
+### impl-1485 · 2026-10-30T12:25:01.725Z
+
+Diagnosis: hub p.now and Store departure timestamps already share the injected Core clock. First mismatched clock is browser InboxArea Date.now -> InboxArchive cutoff. Red reproduced after rebuilding bundle: archive question locator timed out at 3000ms; explicit +8-day browser Date red also recorded. Fix is test-only Date synchronization with native timers preserved and FakeClock advances observed. Consumer/time-window inventory: docs/agents/tests/T-1485-clock-audit.md. All six phone-asks cases green; affected Web files running serially locally.
+
+### rev-26 · 2026-10-30T12:31:30.618Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1485-source-1
+commit: cd2648ed1787ee56a7d8b9074fa2bcdb72901eb7
+scope: full
+findings: [{"severity":"medium","text":"M1: queued asynchronous Date updates lack immediate rejection ownership and disposal join; unobserve follows browser close and cannot revoke admitted snapshots. Shared pre-owned bounded update lifetime must drain before context/browser close, with omitted/aborted/held/rejected controls.","file":"hub/test/fake-clock.ts","line":17},{"severity":"medium","text":"M2: C2 complete inventory omits fixed/default FakeClock window consumers including web-auth expiry, session-archive dated thresholds and subscription-hygiene coalescing boundaries. Audit remaining consumers and record producer/reader scope/status without changing already-correct tests.","file":"docs/agents/tests/T-1485-clock-audit.md","line":60}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-14367 consolidates M1/M2 only. Browser is first mismatched clock; hub cutoff and departure already use injected time, so test-only Date boundary otherwise fits with native timers retained. Correct both, restore done marks and request exact-head source review before verification. No Reviewer workloads.
+
+Criteria: C1 failed (New Date update producer lacks owned drainage before native fixture shutdown; corrected source and same-head configured evidence required.), C2 failed (Claimed complete time-window consumer inventory omits concrete existing pinned/default FakeClock tests.).
+
+### coord · 2026-10-30T12:33:00.909Z
+
+Periodic dev T3 3707a6ed at 3762dc80e (A-14368) went red with only this phone-asks identity, and the hub started a culprit search (816226a4, 12:32Z). Its result will name a false culprit. The failure depends on wall-clock time (red on every head after 2026-10-30 12:00Z, including be8d9c3d4, which was green at 10:34Z, A-14277), so every probe after that time fails no matter which commit it tests. Read any culprit it names (likely T-1467 or T-1469) as a time-based false attribution. Coordinator cannot cancel the hub's search run (verify cancel is own-run only).
