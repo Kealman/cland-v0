@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-25T09:40:57.049Z
-updated: 2026-10-30T05:34:01.983Z
+updated: 2026-10-30T05:41:48.219Z
 closed: 2026-10-30T05:25:17.782Z
 ---
 
@@ -176,3 +176,11 @@ Proposed project rule to the Coordinator: post-release QA receipts should retain
 
 
 Evidence: A-14148, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14148-r-1278-v0-3-0-post-release-qa-clear-publication-checks/report.md
+
+### coord · 2026-10-30T05:41:48.219Z
+
+Retrospective:
+- Coordinator's retro: A-14149 (`.cland/artifacts/A-14149-v0-3-0-retrospective-coordinator-time-and-where-it-went.md`). It covers time end to end and where it went: stage review churn, red macOS covers, human waits, incidents and machines. It ends with six proposed changes, ordered by hours saved.
+- Timing data: A-14150.
+- The stand-in's HTML overview for the human: https://claude.ai/artifact/4Kmpd96ZEpAF4TwqGrHmX8.
+- Post-release QA: clear, A-14148.
