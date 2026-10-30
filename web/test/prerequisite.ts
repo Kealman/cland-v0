@@ -8,11 +8,14 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 
+import { reportWebReadiness } from '../../hub/src/web-readiness.ts';
+
 const packageRoot = fileURLToPath(new URL('../../node_modules/playwright-core/', import.meta.url));
 export const browserCache = join(packageRoot, '.local-browsers');
 export type WebPrerequisite = { available: true; executablePath: string } | { available: false; reason: string };
 
 export async function webPrerequisite(): Promise<WebPrerequisite> {
+  await reportWebReadiness(fileURLToPath(new URL('../../', import.meta.url)));
   let browsers: { browsers: Array<{ name: string; revision: string }> };
   try { browsers = JSON.parse(await readFile(join(packageRoot, 'browsers.json'), 'utf8')); }
   catch (error) {

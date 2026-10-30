@@ -129,6 +129,10 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     for (const lease of leases) await lease.publish();
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     const hasWeb = suites.some(args => args.some(arg => arg.startsWith('web/test/')));
+    if (hasWeb) {
+      const { reportWebReadiness } = await import('../src/web-readiness.ts');
+      await reportWebReadiness(holder.worktree!, line => process.stdout.write(line + '\n'));
+    }
     const webAvailable = hasWeb && await webPhaseAvailable(async () => {
       const prerequisite = await import(pathToFileURL(join(holder.worktree!, 'web/test/prerequisite.ts')).href) as { webPrerequisite: () => Promise<WebPrerequisite> };
       return prerequisite.webPrerequisite();

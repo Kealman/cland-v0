@@ -946,6 +946,16 @@ a hub run, use `measure-history-storage.ts` on its fresh disposable backup and
 publish only aggregate field/row sizes. Existing role clauses cover both flows;
 add no permission lines.
 
+## Packaging and Web prerequisite reports
+
+`npm run test:lint` includes report-only install-shaped CLI imports and site test
+dependency checks (`node hub/test/lint-prerequisites.ts --help`). Read their findings
+as advisory evidence. Web runners and standalone probes report source-stamped
+web/dist and resolvable node_modules before existing build/availability handling;
+missing prerequisites supply no new refusal or skip during this rollout.
+Use the disposable controls in docs/agents/tests/hub-test-prerequisite-guards.test.ts.md;
+no local full suite or browser is needed to diagnose these reports.
+
 ## Repository auto-maintenance configuration
 
 Init/update write local `gc.auto=0` and `maintenance.auto=false` for the common

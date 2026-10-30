@@ -22,6 +22,15 @@ the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installe
 not provide. T-427 records matching diagnostics on both clean projects and
 planted strict-option/import errors before the switch.
 
+### Packaging and prerequisite reports
+
+`npm run test:static` includes `node hub/test/lint-prerequisites.ts`: CLI runtime
+imports run from a disposable production-shaped copy; site tests' transitive
+package imports are compared with site/package.json. Findings are report-only.
+Web runner/probe readiness also reports a missing/stale bundle or unresolved
+dependencies before existing repair/availability handling. No new skip or refusal
+ships in this rollout. See the prerequisite-guards and web-bundle per-file notes.
+
 ## This repository's verification commands
 
 This repository records these `[verification]` values in `.cland/config.toml`:
