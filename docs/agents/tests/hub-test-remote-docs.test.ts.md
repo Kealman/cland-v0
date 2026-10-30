@@ -42,3 +42,19 @@ wording cannot return. No platform calls or browser are involved in these guards
 
 The chat guard keeps typed ask-card answers Telegram-only. Discord typed replies
 are topic messages; its buttons/modal and mapped voice replies answer asks.
+
+
+## Site prebuild guards
+
+The T1 entry in `hub/test/tiers.json` also imports
+`site/test/onboarding-claims.test.ts`. Every mode-free task selection includes
+this wrapper through whole T1, including docs-only and site-only changes; the
+site prebuild still runs both guards directly. The task-selection regression
+checks the prebuild test inventory against the wrapper imports.
+
+Onboarding keeps T-1274's accepted and rejected sentences unchanged. A condition
+must qualify the committing Aide: current root Git write access or a harness
+that can write the root. A later access condition does not excuse an
+unconditional claim. Check each Aide subject separately: a conditional first
+subject cannot excuse an unconditional second subject on the same line. A colon ends the subject clause, so the Coordinator's
+commit is not attributed to an earlier mention of the Aide.

@@ -6,7 +6,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, matchesGlob } from 'node:path';
-import { taskSuiteSelection, taskDurationSelection, describeSelection, tierSuiteSelection, WEB_SMOKE, type SuiteSelection } from '../src/suite-selection.ts';
+import { taskSuiteSelection, taskDurationSelection, describeSelection, tierSuiteSelection, chooseSuiteMode, WEB_SMOKE, type SuiteSelection } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { packageSuitePlan } from './run-suite.ts';
@@ -219,5 +219,19 @@ test('npm test preserves the legacy entry point plan for every supplied selectio
     assert.deepEqual(newPlan.lockDirs, [locks.hub, locks.nvim]);
     assert.ok(newPlan.phases.length);
     assert.ok(newPlan.phases.every(phase => phase.resource === 'free' ? phase.workers === 1 : phase.workers === 3));
+  }
+});
+
+
+test('mode-free docs and site selections include every site prebuild guard', async t => {
+  const f = fixture(t);
+  const wrapper = await fs.readFile(new URL('./remote-docs.test.ts', import.meta.url), 'utf8');
+  const guards = await fs.readdir(new URL('../../site/test/', import.meta.url));
+  for (const path of ['docs/agents/session-permissions.md', 'site/src/content/docs/docs/quickstart.md']) {
+    const selection = taskSuiteSelection({ mode: chooseSuiteMode([path]), files: [path], reason: 'diff' }, 't/T-1480', 'auto', true);
+    assert.ok((await f.plan(selection)).includes('hub/test/remote-docs.test.ts'), path);
+    for (const guard of guards.filter(file => file.endsWith('.test.ts'))) {
+      assert.ok(wrapper.includes(`'../../site/test/${guard}'`), `${guard} runs through the T1 wrapper`);
+    }
   }
 });

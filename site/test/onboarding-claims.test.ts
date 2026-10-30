@@ -12,19 +12,25 @@ const repo = resolve(site, '..');
 const read = (path: string) => readFileSync(resolve(repo, path), 'utf8');
 
 // A line where the Aide commits passes only when the Aide's own clause says it
-// cannot commit at the root, or makes the commit conditional on a harness that
-// can write the root. A token such as `workspace-write`, `Coordinator`, `no
+// cannot commit at the root, or makes the commit conditional on current root Git
+// write access or a harness that can write the root. A token such as `workspace-write`, `Coordinator`, `no
 // extra writable roots` or a later clause about root commits excuses nothing.
 const noRootCommit = /\bAide\b[^.;\n]{0,80}\b(?:cannot|can't|can not) commit at the (?:project )?root/i;
 const capableHarness = /\bAide\b[^.;\n]{0,80}\bharness[^.;\n]{0,40}\bcan write the (?:project )?root/i;
+// Qualify the committing subject itself, never a later condition on the line.
+const rootWriteAccess = /\bAide with current root Git write access commits?\b/i;
 // `commits` as a noun ("root commits cannot", "Git commits need") is not a claim.
-const aideCommitVerb = /\bAide\b[^.;\n]{0,80}\bcommits?\b(?!\s+(?:cannot|can't|need|needs|remain|remains|are|is|stay|stays)\b)/i;
+const aideCommitVerb = /\bAide\b[^.;:\n]{0,80}\bcommits?\b(?!\s+(?:claim|cannot|can't|need|needs|remain|remains|are|is|stay|stays)\b)/i;
 
 /** A line that has the Aide committing at the root is stale unless the Aide's
  * own clause states the generated policy that keeps it out of it. */
 export function aideCommitClaims(text: string): string[] {
   return text.split('\n').map(line => line.trim())
-    .filter(line => aideCommitVerb.test(line) && !noRootCommit.test(line) && !capableHarness.test(line));
+    .filter(line => line.split(/(?=\bAide\b)/i).some(clause => {
+      const claim = aideCommitVerb.exec(clause);
+      return claim !== null && !noRootCommit.test(clause) && !capableHarness.test(clause)
+        && rootWriteAccess.exec(clause)?.index !== claim.index;
+    }));
 }
 
 function textFiles(dir: string, extensions: Set<string>): string[] {
@@ -59,6 +65,20 @@ test('an unconditional Aide commit claim is detected', () => {
   assert.deepEqual(aideCommitClaims('An Aide whose harness can write the root commits and publishes that work itself.'), []);
   assert.deepEqual(aideCommitClaims('An Aide on workspace-write has no extra roots; root-level Git commits need another policy.'), []);
   assert.deepEqual(aideCommitClaims('The workspace-write Aide has no extra roots, so root commits cannot write `.git/index.lock`.'), []);
+});
+
+test('current root Git write access qualifies only the Aide committing clause', () => {
+  assert.deepEqual(aideCommitClaims('The other hits for an Aide commit claim are consistent.'), []);
+  assert.deepEqual(aideCommitClaims('Aide has no extra writable roots: the Coordinator commits and publishes at the'), []);
+  assert.deepEqual(aideCommitClaims('An Aide with current root Git write access commits and publishes itself;'), []);
+  for (const line of [
+    'An Aide with current root Git write access commits and publishes itself; the Aide commits the onboarding on dev.',
+    'The Aide commits on dev; an Aide with current root Git write access commits too.',
+    'The Aide commits on dev; current root Git write access is required.',
+    'The Aide commits on dev, and an Aide with current root Git write access reviews it.',
+    'An Aide without current root Git write access commits on dev.',
+    'An Aide with no current root Git write access commits on dev.',
+  ]) assert.deepEqual(aideCommitClaims(line), [line]);
 });
 
 test('the site and docs agree on who commits the onboarding at the root', () => {
