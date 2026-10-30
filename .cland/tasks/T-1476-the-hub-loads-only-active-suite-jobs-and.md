@@ -2,8 +2,8 @@
 id: T-1476
 kind: task
 title: The hub loads only active suite jobs and summaries at startup
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1224
 branch: t/T-1476-the-hub-loads-only-active-suite-jobs-and
 created: 2026-10-30T07:54:04.502Z
-updated: 2026-10-30T11:42:02.436Z
+updated: 2026-10-30T11:50:36.690Z
+closed: 2026-10-30T11:50:36.690Z
 ---
 
 ## Summary
@@ -26,6 +27,7 @@ At startup the hub reads every archived suite job from hub.db (3,308 rows, 885 M
 - [x] C1. Hub startup reads only active or recoverable suite jobs in full, and bounded summary rows for finished ones. A finished job's full record is read by id on demand, and every existing consumer of suite history (selection, durations, culprit search, reports, `verify queue`, web and Neovim views) is listed in the item and migrated or shown unaffected (rule 20).
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
   - done: impl-1476 · 2026-10-30T10:57:25.667Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence3 · 2026-10-30T11:43:53.392Z · commit d45333e0537c8cc0be8a490c5fb726295207dc24
 - [x] C2. The decoded jobs no longer retain their source JSON strings alongside the parsed objects.
   - done: impl-1476 · 2026-10-30T08:08:53.653Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-source2 · 2026-10-30T08:23:24.478Z · commit ce11b0942526737921343413b4dff3e2e202d81f
@@ -34,12 +36,15 @@ At startup the hub reads every archived suite job from hub.db (3,308 rows, 885 M
   - verified: rev-32 [reviewer] · run rev-20261030-1476-delta1 · 2026-10-30T09:30:31.107Z · commit 2bc3f440505648792e05b2ec1a017fa76f01d721
   - verified: rev-32 [reviewer] · run rev-20261030-1476-delta2 · 2026-10-30T10:17:42.619Z · commit d51049e4722eb33d2fb4ae60925becfcdaafeb86
   - verified: rev-32 [reviewer] · run rev-20261030-1476-delta3 · 2026-10-30T10:58:36.784Z · commit d45333e0537c8cc0be8a490c5fb726295207dc24
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence3 · 2026-10-30T11:43:53.392Z · commit d45333e0537c8cc0be8a490c5fb726295207dc24
 - [x] C3. On a T-1467-style scratch copy of this project, the startup heap after the suite-history stage drops by at least 2 GiB against A-14160's 3,567 MiB checkpoint, with the same probe and machine, and the per-stage table is published.
   - done: impl-1476 · 2026-10-30T08:08:54.200Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence3 · 2026-10-30T11:43:53.392Z · commit d45333e0537c8cc0be8a490c5fb726295207dc24
 - [x] C4. A test with a synthetic history of at least 3,000 large finished jobs asserts a bounded number of rows and bytes read at startup (a work-count guard, rule 23).
   - done: impl-1476 · 2026-10-30T08:08:54.661Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence3 · 2026-10-30T11:43:53.392Z · commit d45333e0537c8cc0be8a490c5fb726295207dc24
 
 ## Comments
 
@@ -170,3 +175,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source delta3 clear, A-14298; four-file Coordinator-authorized T3 consumer/probe correction from reviewed d51049e. Positive pre-startup Store observers require1645 bounded summaries/0full hydration/0full-history reads and single checkpoint0full records; original frame/snapshot/item/explorer/hang limits unchanged. Memory probe separately observes summaries; owning guides and tier consumer inventory match. Production suite-history bytes unchanged from c51, C2source refreshed. A-14292 remains full-run red, local A-14297 two-case green is partial macOS only. C1/C4 current-head runtime await Coordinator successor verify all; C3 prior-head numeric proof remains labelled, not relabelled as current. No reviewer execution or head mutation.
 
 Criteria: C2 verified.
+
+### rev-32 · 2026-10-30T11:43:53.392Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1476-evidence3
+commit: d45333e0537c8cc0be8a490c5fb726295207dc24
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear; C1–C4 verified, A-14310. Current-head Coordinator all58041460/A-14308 parsed5712passes,8explicit platform/prerequisite skips,0failed/cancelled/unmatched;T0–T3/Web complete,noT4. All12 persistence cases plus8new×5load pass;3000largeworkguard max2.299952s. Stage-cache originalclient pass1.039515s;corrected T3scale9.509171s has1645summaries/1252303B/0full hydration/onecheckpoint0fulljobs with unchanged budgets. C2source unchanged. C3 explicitly carried from c51/A-14214 under Coordinator27fdfd12, reduction2677.93MiB againstA14160; no exact current-head numeric measurement claimed, separate integrated live memory belongsR1465. A-14292/earlierreds retained;hostgate/browser/report-onlywarnings and all8skips detailedartifact. No reviewer reruns/live changes.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-30T11:50:36.690Z
+
+Merged 7e14975b9dc2f36ef1643ed2729f969f3fbc26d9 onto dev.
