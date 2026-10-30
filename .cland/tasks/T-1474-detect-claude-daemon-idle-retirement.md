@@ -3,7 +3,7 @@ id: T-1474
 kind: task
 title: Detect Claude daemon idle retirement
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1225
 branch: t/T-1474-detect-claude-daemon-idle-retirement
 created: 2026-10-30T07:50:18.630Z
-updated: 2026-10-30T08:40:24.561Z
+updated: 2026-10-30T11:55:02.899Z
 ---
 
 ## Summary
@@ -107,3 +107,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final original-record clear A-14206. Same-head A-14204 / 674da889 exit 0: parsed 4242 ordinary test passes, 514 files, 80 explicit load passes/80 files, zero nonpass or unmatched starts. Own 36 scheduling + 7 checkpoint primary cases pass; 16 new identities each have 5/5 load passes. Missing/done retirement, exact reason/inbox/restart assertions, shared conversation/hook/replacement/legacy controls and SQLite checkpoint reopen checked against source. C1/C2 verified at configured scripted CLI/FakeClock seam; actual native Claude/OS SLA latency unmeasured. Host T0 reused separately, all T1/T2 + mapped T4 once + Web pass; T3 deferred, T4 repeats skipped. Report-only warnings retained, no enforce-mode budget claim. Coordinator owns landing sequencing.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-32 · 2026-10-30T11:55:02.899Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1474-delta1
+commit: a8f5cfdd9e2f3599d996133dd89f37087fc817b4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta1 clear,A-14321. Parents1ed304429+dev8a87246b9. Store keeps both imports, exact reviewed retirement inbox predicate and untouched incoming summary methods/schema; combined skill retains retirement/history/memory/maintenance controls and all CHANGES lines from both parents. Entire ClaudeCodeAdapter, host reason/core checkpoint/kind/visibility/checkpoint tests unchanged from reviewed parent. Sessions retains incoming transportClock/pushed-idle guards alongside prior retirement/notice logic; scheduling fixture preserves both lineages. C1/C2 implementation retained but current-head runtime remains stale: prior A-14204 is old-head only; Coordinator verify all and final original-record review required. Local A-14319 partial; no reviewer execution/live changes.

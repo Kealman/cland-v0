@@ -3,17 +3,18 @@ id: T-1482
 kind: task
 title: "Landing page: the feature carousel becomes a grid of all features"
 state: open
-status: backlog
+status: review
 size: S
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1238
+branch: t/T-1482-landing-page-the-feature-carousel
 created: 2026-10-30T11:51:19.056Z
-updated: 2026-10-30T11:51:19.056Z
+updated: 2026-10-30T11:56:45.174Z
 ---
 
 ## Summary
@@ -26,10 +27,14 @@ A visitor who scrolls to "Built for shipping, not demos" sees every feature at o
 
 ## Acceptance criteria
 
-- [ ] C1. The features section of the landing page renders every entry of its feature list as a card in a CSS grid, in the order fixed in this item, with no carousel track, arrows, counter, dots or carousel script left in the page.
-- [ ] C2. Each card shows the number, title, text and "Learn more" link only and keeps its `feature-<id>` anchor; the grid is two columns from the site's desktop breakpoint and one column below it.
-- [ ] C3. A "Learn more" click sends a GoatCounter event named `feature-<id>`, and the FAQ and footer wording says the website counts visits and link clicks with no cookies or personal data.
-- [ ] C4. The site builds (`npm run build` in site/), the docs link check passes and the source-boundary test that T-1479 extended still passes at the final head.
+- [x] C1. The features section of the landing page renders every entry of its feature list as a card in a CSS grid, in the order fixed in this item, with no carousel track, arrows, counter, dots or carousel script left in the page.
+  - done: impl-1482 · 2026-10-30T11:56:30.207Z
+- [x] C2. Each card shows the number, title, text and "Learn more" link only and keeps its `feature-<id>` anchor; the grid is two columns from the site's desktop breakpoint and one column below it.
+  - done: impl-1482 · 2026-10-30T11:56:30.325Z
+- [x] C3. A "Learn more" click sends a GoatCounter event named `feature-<id>`, and the FAQ and footer wording says the website counts visits and link clicks with no cookies or personal data.
+  - done: impl-1482 · 2026-10-30T11:56:30.909Z
+- [x] C4. The site builds (`npm run build` in site/), the docs link check passes and the source-boundary test that T-1479 extended still passes at the final head.
+  - done: impl-1482 · 2026-10-30T11:56:31.286Z
 
 ## Publication
 
@@ -40,3 +45,13 @@ The site goes out through `cland publish` after an ask to the human, as for ever
 - The `slides` list and the `#features` section of site/src/pages/index.astro; site/src/components/Screenshot.astro and Diagram.astro keep their carousel-specific props until nothing uses them.
 - docs/brand/ for the wording rules; site/src/content/docs/docs/features.md lists every feature with its docs link.
 - The reviewer's thread: Sam Vale, "Drop your landing page", X, 2026-10-27.
+
+## Comments
+
+### impl-1482 · 2026-10-30T11:52:41.889Z
+
+Consumer inventory before changing the landing list: site/src/pages/index.astro owns list/render/script/styles; site/test/remote-docs.test.ts reads remote entry by id/href and remains compatible; site prebuild onboarding-claims test reads public source; screenshot inventory site/SCREENSHOTS.md names carousel placements and will be updated. Shared Screenshot/Diagram props remain available; hero/workbench and docs consumers stay unchanged. No hub wire/schema/persisted contract changes. Adding focused source regressions for C1–C4.
+
+### impl-1482 · 2026-10-30T11:56:45.174Z
+
+Implemented at 5c7b396165397c4937721a5da2cc3cfcb729f760; all four criteria done. Evidence A-14323. Consumer inventory amendment: after landing migration, Screenshot frame and Diagram compact had zero remaining Astro/MDX callers, so removed their obsolete props and frame CSS; default hero/workbench/docs rendering retained. Source request delivered to Reviewer. No per-item QA required (qaPolicy none). Awaiting verdict before one mode-free verification.
