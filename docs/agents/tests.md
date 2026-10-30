@@ -2170,3 +2170,14 @@ A serving receipt precedes requests, each has a 60-second bound, and a failed
 request is recorded before continuing. Shutdown completes before root removal.
 Publish the output as an artifact with head/tree and platform. This is diagnostic
 measurement, not suite evidence; local runs require cover-quiet admission.
+
+### Verification log provenance
+
+Hub verification logs on local and droplet executors end with a `suite provenance`
+JSON record after collection and derived reports. Read its admitted head/tree,
+executor/platform, occasion, browser binary/version and skip reasons when citing
+evidence. Null facts are unknown or unexecuted; null occasion is ordinary. A cache
+footer names its original run and retains the original observations. The browser
+version-only probe proves no Web test execution. Missing skip reasons are reported
+by `skipReasonCheck` in report mode and do not fail a run. Legacy candidates may
+have no browser receipt; report that absence explicitly.

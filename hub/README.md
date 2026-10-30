@@ -7503,6 +7503,29 @@ report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
 
+### Suite provenance footer (T-1460)
+
+After final local or droplet collection, every hub verification log ends in one
+`suite provenance` JSON record. It names the admitted `head`, verification `tree`,
+`executor`, measured `platform`, `occasion`, candidate-reported browser `binary`
+and `version`, and recorded skip reasons. Null means unknown or unexecuted;
+null occasion means an ordinary request. A browser version probe is metadata,
+not proof that Web tests passed. The candidate runner invokes only the pinned
+test binary with `--version` in an isolated environment, without a GUI.
+
+Cache reuse carries `cached` original-run provenance, preserves original machine
+and browser observations, and does not claim fresh execution. Finalization streams
+the completed log into an atomic replacement, removing predecessor/shard footers;
+report retries keep one footer. Legacy candidates without browser receipts show
+null browser fields. The skip-reason check is **report mode**: a missing reason
+increments `skipReasonCheck.missing` and never changes exit status or admission.
+Existing skip, timing, progress and summary records remain compatible.
+
+Legacy receipts may share a log path. Provenance finalization serializes that
+path through artifact publication, so each artifact captures its own admitted
+head/cache footer before another receipt can replace it. Independent paths
+continue concurrently; the collector joins pending finalization before teardown.
+
 ### Telegram album transcripts
 
 Eligible audio members of a Telegram album use the configured speech provider

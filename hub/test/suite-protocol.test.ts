@@ -115,7 +115,10 @@ test('each lead can attach the batch log named in its member topic', async t => 
     const history = await f.ui.request({ type: 'topic.history', topic });
     const sent = (history.value as { messages: TopicMessage[] }).messages.find(m => m.text === 'Batch evidence for review')!;
     assert.equal(sent.artifacts?.[0]?.id, id);
-    assert.equal(await readFile(sent.artifacts![0]!.path, 'utf8'), log);
+    const retained = await readFile(sent.artifacts![0]!.path, 'utf8');
+    const footerAt = retained.lastIndexOf('\nsuite provenance ');
+    assert.equal(retained.slice(0, footerAt), log, 'all original batch bytes retained');
+    assert.equal(JSON.parse(retained.slice(footerAt + '\nsuite provenance '.length)).head, 'a'.repeat(40));
     const listed = await f.ui.request({ type: 'artifact.list', topic });
     assert.ok((listed.value as { artifacts: Artifact[] }).artifacts.some(a => a.id === id));
   }
@@ -211,6 +214,9 @@ test('oversized results keep priority summaries for fresh and cached receipts', 
     assert.doesNotMatch(message.text, /^test lint (?:tier|finding):/m);
     assert.ok(message.text.includes(`Log ${artifact.id}`));
     const retained = await readFile(artifact.path, 'utf8');
+    assert.equal(retained.split('suite provenance ').length - 1, 1, 'one final footer per shared-path publication');
+    const footer = JSON.parse(retained.slice(retained.lastIndexOf('\nsuite provenance ') + '\nsuite provenance '.length));
+    assert.equal(footer.cached?.run ?? null, id === 'cached' ? 'original' : null, 'artifact captures its own receipt before next shared-path rewrite');
     for (const line of missing) assert.ok(retained.includes(line));
   }
 });

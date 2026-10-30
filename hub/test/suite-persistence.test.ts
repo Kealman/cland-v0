@@ -1,7 +1,7 @@
 // T1: durable suite history and inspection use an isolated store and fake time.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -10,6 +10,7 @@ import { Suites, releaseT3Cover, type SuiteJob } from '../src/hub/suites.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 
 async function fixture(t: test.TestContext, count: number, reported: boolean, options: { job?: Partial<SuiteJob>; onJob?: (job: Readonly<SuiteJob>) => void } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'suite-persistence-'));
@@ -246,4 +247,37 @@ test('archived two-shard Linux stage summaries preserve their cover after restar
   t.after(() => restored.close());
   assert.deepEqual(restored.stageCovers(), ['original', 'cached'].map(id => ({ id, head: 'head', tree: 'tree', platform: 'Linux droplet' })));
   assert.deepEqual(restored.stageMissing('tree'), ['macOS']);
+});
+
+for (const executor of ['local', 'droplet'] as const) test(`${executor} suite log ends with one complete provenance footer`, async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('isolated suite setup', async () => {
+    const { suiteUnit } = await import('./suite-unit-fixture.ts');
+    return suiteUnit(run.fixtures, { executor });
+  });
+  const job = await run.wait('admitted suite', () => f.launch({ executor }));
+  const finished = await run.wait('completed reported suite', () => f.finish(job.id, 0, 'suite browser {"binary":"/fixture/chrome-headless-shell","version":"Chromium 150.0"}\nsuite skip {"file":"platform.test.ts","name":"platform case","reason":"requires Linux"}\nsuite skip {"file":"missing.test.ts","name":"missing reason","reason":"test marked skip without a reason"}\n# tests 2\n# pass 2\n'));
+  const log = await run.wait('finalized suite log', () => readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8'));
+  const footers = log.trimEnd().split('\n').filter(line => line.startsWith('suite provenance '));
+  assert.equal(footers.length, 1);
+  assert.equal(log.trimEnd().split('\n').at(-1), footers[0]);
+  const footer = JSON.parse(footers[0]!.slice('suite provenance '.length));
+  assert.equal(footer.head, 'a'.repeat(40));
+  assert.equal(footer.tree, 'd'.repeat(40));
+  assert.equal(footer.executor, executor);
+  assert.equal(footer.platform.os, executor === 'local' ? 'darwin' : 'linux');
+  assert.equal(footer.occasion, null);
+  assert.deepEqual(footer.browser, { binary: '/fixture/chrome-headless-shell', version: 'Chromium 150.0' });
+  assert.equal(footer.skips[0].reason, 'requires Linux');
+  assert.equal(footer.skipReasonCheck.mode, 'report');
+  assert.equal(footer.skipReasonCheck.missing, 1);
+  assert.equal(finished!.outcome!.code, 0, 'missing skip reason is advisory');
+  const cached = await run.wait('cached admission', () => f.launch({ executor }));
+  assert.equal(cached.cached?.run, job.id);
+  await run.wait('reported cached suite', () => f.result(cached.id));
+  const cachedLog = await run.wait('finalized cached log', () => f.log(cached.id));
+  assert.equal(cachedLog.split('suite provenance ').length - 1, 1, 'cache replaces original footer');
+  const cachedFooter = JSON.parse(cachedLog.trimEnd().split('\n').at(-1)!.slice('suite provenance '.length));
+  assert.equal(cachedFooter.cached.run, job.id);
+  assert.equal(cachedFooter.browser.version, 'Chromium 150.0');
 });

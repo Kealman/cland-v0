@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { aggregateSuiteLogs, readSuiteEvidence } from '../src/suite-log.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 
 test('concurrent admissions stream each retained log once and reuse durable proofs', async t => {
   const f = await suiteUnit(t, { machineReceiptsOnly: true,
@@ -73,66 +74,71 @@ test('concurrent admissions stream each retained log once and reuse durable proo
 });
 
 test('cached and stage admissions share derived evidence from several 20 MB logs', async t => {
-  const f = await suiteUnit(t, { machineReceiptsOnly: true });
-  f.candidate.branch = 'dev';
-  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
-  const first = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
-  await f.finish(first.id);
-  const original = (await f.suites.receipt(first.id)).job;
-  const jobs = [];
-  for (let i = 0; i < 3; i++) {
-    const path = join(f.root, `stage-${i}.log`);
-    const file = await fs.open(path, 'w');
-    const noise = ('x'.repeat(1023) + '\n').repeat(1024);
-    try { for (let mb = 0; mb < 20; mb++) await file.write(noise); }
-    finally { await file.close(); }
-    await fs.appendFile(path, 'suite timing {"file":"hub/test/example.test.ts","name":"old","seconds":0.1}\n# tests 1\n# pass 1\n');
-    const artifact = f.store.registerArtifact(id => ({ id, title: `Stage ${i}`, kind: 'file', path, creator: 'hub', time: f.clock.now().toISOString(), topic: 'unit-topic', status: 'shared' }), () => {});
-    const job = { ...original, sequence: i, id: `stage-${i}`, artifact: artifact.id, log: path, occasion: 'stage' as const };
-    delete job.cached;
-    delete job.timingIdentities;
-    jobs.push(job);
-  }
-  await f.reopen(jobs);
-  const paths = new Set(jobs.map(job => job.log)), reads = new Map<string, number>();
-  let peakHeap = process.memoryUsage().heapUsed;
-  const before = peakHeap;
-  const readFile = fs.readFile, createReadStream = streams.createReadStream;
-  t.mock.method(fs, 'readFile', (async (...args: Parameters<typeof fs.readFile>) => {
-    assert.ok(!paths.has(String(args[0])), 'admission never decodes the whole source log');
-    return readFile(...args);
-  }) as typeof fs.readFile);
-  t.mock.method(streams, 'createReadStream', (...args: Parameters<typeof streams.createReadStream>) => {
-    const path = String(args[0]), stream = createReadStream(...args);
-    if (paths.has(path)) {
-      reads.set(path, (reads.get(path) ?? 0) + 1);
-      stream.on('data', () => { peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed); });
+  const run = caseDeadlines(t);
+  const f = await run.wait('isolated stage setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }));
+  await run.wait('cached and stage proof receipts', async () => {
+    f.candidate.branch = 'dev';
+    f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+    const first = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
+    await f.finish(first.id);
+    const original = (await f.suites.receipt(first.id)).job;
+    const jobs = [];
+    for (let i = 0; i < 3; i++) {
+      const path = join(f.root, `stage-${i}.log`);
+      const file = await fs.open(path, 'w');
+      const noise = ('x'.repeat(1023) + '\n').repeat(1024);
+      try { for (let mb = 0; mb < 20; mb++) await file.write(noise); }
+      finally { await file.close(); }
+      await fs.appendFile(path, 'suite timing {"file":"hub/test/example.test.ts","name":"old","seconds":0.1}\n# tests 1\n# pass 1\n');
+      const artifact = f.store.registerArtifact(id => ({ id, title: `Stage ${i}`, kind: 'file', path, creator: 'hub', time: f.clock.now().toISOString(), topic: 'unit-topic', status: 'shared' }), () => {});
+      const job = { ...original, sequence: i, id: `stage-${i}`, artifact: artifact.id, log: path, occasion: 'stage' as const };
+      delete job.cached;
+      delete job.timingIdentities;
+      jobs.push(job);
     }
-    return stream;
+    await f.reopen(jobs);
+    const paths = new Set(jobs.map(job => job.log)), reads = new Map<string, number>();
+    let peakHeap = process.memoryUsage().heapUsed;
+    const before = peakHeap;
+    const readFile = fs.readFile, createReadStream = streams.createReadStream;
+    t.mock.method(fs, 'readFile', (async (...args: Parameters<typeof fs.readFile>) => {
+      assert.ok(!paths.has(String(args[0])), 'admission never decodes the whole source log');
+      return readFile(...args);
+    }) as typeof fs.readFile);
+    t.mock.method(streams, 'createReadStream', (...args: Parameters<typeof streams.createReadStream>) => {
+      const path = String(args[0]), stream = createReadStream(...args);
+      if (paths.has(path)) {
+        reads.set(path, (reads.get(path) ?? 0) + 1);
+        stream.on('data', () => { peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed); });
+      }
+      return stream;
+    });
+    syncBuiltinESMExports();
+    t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+    for (let i = 0; i < jobs.length; i++) {
+      await f.reopen(jobs.slice(0, i + 1));
+      const callers = await Promise.all(Array.from({ length: 6 }, () => f.launch({ mode: 'all', integrated: true, occasion: 'epic' })));
+      for (const caller of callers) {
+        assert.equal(caller.cached?.run, jobs[i]!.id);
+        assert.deepEqual(f.status(caller.id).selection?.loadGateBaseline, { run: jobs[i]!.id, tests: ['hub/test/example.test.ts::old'] });
+      }
+      await f.suites.settled();
+    }
+    const observed = [...reads.values()];
+    const repeat = await Promise.all(Array.from({ length: 6 }, () => f.launch({ mode: 'all', integrated: true, occasion: 'epic' })));
+    // Drive the next scheduler inspection after concurrent cached admissions.
+    await f.tick();
+    await Promise.all(repeat.map(job => f.result(job.id)));
+    assert.deepEqual([...reads.values()], observed, 'repeated admissions reuse stage and cached reporting evidence');
+    await f.reopen();
+    const dry = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, integrated: true, occasion: 'epic', dryRun: true }, () => {});
+    assert.ok('dryRun' in dry);
+    assert.deepEqual(dry.selection.loadGateBaseline, { run: jobs[2]!.id, tests: ['hub/test/example.test.ts::old'] });
+    assert.deepEqual([...reads.values()], observed, 'stage identities survive store reopen');
+    assert.ok([...reads.values()].every(count => count === 2), `one stage scan and one shared reporting scan: ${JSON.stringify([...reads])}`);
+    assert.equal(reads.size, 3);
+    assert.ok(peakHeap - before < 96 * 1024 * 1024, `heap growth ${peakHeap - before} stays below concurrent whole-log copies`);
   });
-  syncBuiltinESMExports();
-  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  for (let i = 0; i < jobs.length; i++) {
-    await f.reopen(jobs.slice(0, i + 1));
-    const callers = await Promise.all(Array.from({ length: 6 }, () => f.launch({ mode: 'all', integrated: true, occasion: 'epic' })));
-    for (const caller of callers) {
-      assert.equal(caller.cached?.run, jobs[i]!.id);
-      assert.deepEqual(f.status(caller.id).selection?.loadGateBaseline, { run: jobs[i]!.id, tests: ['hub/test/example.test.ts::old'] });
-    }
-    await f.suites.settled();
-  }
-  const observed = [...reads.values()];
-  const repeat = await Promise.all(Array.from({ length: 6 }, () => f.launch({ mode: 'all', integrated: true, occasion: 'epic' })));
-  await Promise.all(repeat.map(job => f.result(job.id)));
-  assert.deepEqual([...reads.values()], observed, 'repeated admissions reuse stage and cached reporting evidence');
-  await f.reopen();
-  const dry = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, integrated: true, occasion: 'epic', dryRun: true }, () => {});
-  assert.ok('dryRun' in dry);
-  assert.deepEqual(dry.selection.loadGateBaseline, { run: jobs[2]!.id, tests: ['hub/test/example.test.ts::old'] });
-  assert.deepEqual([...reads.values()], observed, 'stage identities survive store reopen');
-  assert.ok([...reads.values()].every(count => count === 2), `one stage scan and one shared reporting scan: ${JSON.stringify([...reads])}`);
-  assert.equal(reads.size, 3);
-  assert.ok(peakHeap - before < 96 * 1024 * 1024, `heap growth ${peakHeap - before} stays below concurrent whole-log copies`);
 });
 
 

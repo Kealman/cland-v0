@@ -1,3 +1,4 @@
+import { appendSuiteProvenance } from '../suite-provenance.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps } from '../verification-plan.ts';
@@ -1432,13 +1433,16 @@ export class Suites {
         job.timingIdentities = [...new Set(timingReceipts(await logEvidence()).map(test => `${test.file}::${test.name}`))].sort();
       }
       this.#save(job);
-      if (job.parentRun) { job.reported = true; job.error = null; this.#save(job); return; }
-      if (!job.cached) this.#cacheEvidence(job.id, await logEvidence());
-      await this.#report(job, id => {
-        if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
-        job.artifact = id; this.#save(job);
+      await appendSuiteProvenance(job.log, job, await logEvidence(), async () => {
+        evidence = undefined;
+        if (job.parentRun) { job.reported = true; job.error = null; this.#save(job); return; }
+        if (!job.cached) this.#cacheEvidence(job.id, await logEvidence());
+        await this.#report(job, id => {
+          if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
+          job.artifact = id; this.#save(job);
+        });
+        job.reported = true; job.error = null; this.#save(job);
       });
-      job.reported = true; job.error = null; this.#save(job);
     } catch (error) {
       job.error = error instanceof Error ? error.message : String(error);
       if (job.cleaned && /^forbidden:/.test(job.error)) job.reportFailedPermanently = true;

@@ -339,6 +339,7 @@ T-1469 source review M1/M2: Document complete transport-clock replay and shared 
 
 T-1459: Document repository auto-maintenance provisioning and disposable native-fetch/doctor coverage.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
+T-1460: Document final local/droplet provenance, unknown/browser/cache facts and report-only missing skip reasons.
 T-1458: Document report-only packaging/site import guards and shared Web readiness reports.
 T-1458 source1: Shared import-edge policy and owned smoke child lifecycle controls are described in the owning test notes.
 2026-10-30 · T-1474 merge delta: combine retirement and retained-history guidance on T-1476 summaries.

@@ -32,3 +32,15 @@ stageMissing must report only macOS. The summary SQL qualifies meta.value inside
 json_each so the inner table's value column cannot shadow the archived record.
 The unchanged native component restart/cache regression remains in
 `hub/test/suite-close-component.test.ts`.
+
+The local and scripted-droplet footer cases each finish an admitted run and await
+its durable reported state before inspecting the final raw log. They check one
+terminal footer, head/tree, measured platform, ordinary occasion, browser facts,
+skip reasons and advisory missing-reason counts without changing exit zero.
+Each reuses the cache and checks replacement of the original footer plus retained
+browser/original-run provenance. These are scheduler/transport fixture tests,
+not real local-worker or cloud/browser execution measurements.
+Setup, admission, reported completion and cache observations use the shared
+`caseDeadlines` owner, each with its own bound. The proxied fixture hooks drain
+registered operations before closing the scheduler/store and removing the root;
+a deadline cannot detach an observer from that cleanup owner.

@@ -135,7 +135,13 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     }
     const webAvailable = hasWeb && await webPhaseAvailable(async () => {
       const prerequisite = await import(pathToFileURL(join(holder.worktree!, 'web/test/prerequisite.ts')).href) as { webPrerequisite: () => Promise<WebPrerequisite> };
-      return prerequisite.webPrerequisite();
+      const result = await prerequisite.webPrerequisite();
+      if (result.available) {
+        // Version-only invocation, with the runner's isolated environment; no GUI.
+        const version = await promisify(execFile)(result.executablePath, ['--version'], { cwd: root, env: runnerFixtureEnvironment(root!, process.env), timeout: 5000, maxBuffer: 4096 }).then(value => value.stdout.trim(), () => null);
+        process.stdout.write(`suite browser ${JSON.stringify({ binary: result.executablePath, version })}\n`);
+      }
+      return result;
     }, line => process.stdout.write(line + '\n'));
     const readsInstalledBundle = suites.some(args => args.some(arg => installedBundleReaders.some(file => matchesGlob(join(holder.worktree!, file), resolve(holder.worktree!, arg)))));
     if ((webAvailable || readsInstalledBundle) && existsSync(join(holder.worktree!, 'web/build.ts'))) {

@@ -978,6 +978,16 @@ worktrees inherit common config unless explicit Git overrides supersede it.
 Do not apply configuration to the live project as a test. Existing role clauses
 cover this flow without adding permission lines.
 
+## Verification log provenance
+
+Read the final `suite provenance` record when citing a hub verification log on
+local or droplet. Name its head/tree, executor/platform, occasion and browser
+binary/version; null means unknown or unexecuted, and cache metadata names the
+original run. The version-only browser probe is not Web execution proof. Missing
+skip reasons remain report-only and never alter the exit status. See
+`docs/agents/tests.md#verification-log-provenance`. Existing role clauses cover
+this flow; no additional permission line is needed.
+
 ## Browser fixture wall time
 
 For a hub FakeClock with browser time windows, use the Date-only synchronization
