@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { join, matchesGlob } from 'node:path';
+import { TypeScriptUnavailableError } from './typescript-capability.ts';
 import { treeSources } from './git-tree-sources.ts';
 import { touchesMachineResources } from './test-lint.ts';
 import { suiteLimits } from './suite-limits.ts';
@@ -203,7 +204,10 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
       lintDurationManifest(manifest, { source: durationSource, owners: await durationOwners(ownerCwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
       await lintDurationIdentities(manifest, path => paths.includes(path) && PATTERNS.some(pattern => matchesGlob(path, pattern)) ? source(path) : Promise.resolve(undefined));
     }
-    catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
+    catch (error) {
+      if (error instanceof TypeScriptUnavailableError) throw error;
+      throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]);
+    }
   }
   if (paths.includes(QUARANTINE_MANIFEST)) {
     try { lintQuarantineManifest(JSON.parse(await source(QUARANTINE_MANIFEST))); }
@@ -231,7 +235,10 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
         catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
       });
     }
-  } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
+  } catch (error) {
+    if (error instanceof TypeScriptUnavailableError) throw error;
+    throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]);
+  }
   try { await readQuarantineManifest(cwd); }
   catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }
 }

@@ -8,6 +8,7 @@ import { lintHubShards, lintHubShardTree, shardRefusalLocations, ShardManifestEr
 import { planTierReport, type TierPlan } from '../suite-tier-report.ts';
 import { testLintPolicy, TestLintError } from '../test-lint-policy.ts';
 import { fetchSuiteDev } from '../suite-dev-fetch.ts';
+import { TypeScriptUnavailableError } from '../typescript-capability.ts';
 import { durationBase } from '../suite-duration-context.ts';
 
 export class SuiteAdmissionError extends Error {
@@ -37,6 +38,7 @@ export async function lintSuiteCandidate(cwd: string, at: string, env: NodeJS.Pr
     const findings = await testLintPolicy(cwd, { head: at, env });
     if (findings.length) throw new TestLintError(findings);
   } catch (error) {
+    if (error instanceof TypeScriptUnavailableError) throw new SuiteAdmissionError(error);
     const provenance = immutable ? `HEAD ${at}` : 'worktree';
     const source = immutable
       ? async (file: string) => (await promisify(execFile)('git', ['show', `${at}:${file}`], { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout

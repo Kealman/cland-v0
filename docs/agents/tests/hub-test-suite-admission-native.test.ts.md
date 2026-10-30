@@ -35,3 +35,7 @@ inspection control pre-registers gate release and client destruction/close befor
 setup, and releases/joins in finally when an entered/close observation fails. An
 early injected observation failure proves that inspection has settled before the
 control returns. Both controls retain final positive closure assertions.
+
+The capability error retains its type through duration validation and receives no
+source provenance or location suffix. Source lint refusals retain those lines,
+covered by `suite-preflight.test.ts`; wire codes and fields remain unchanged.

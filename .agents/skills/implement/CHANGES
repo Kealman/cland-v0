@@ -369,3 +369,5 @@ T-1433 M1: Include native workbench consumers and sentinel-like filenames in alb
 T-1433 M1 follow-up: Preserve labelled surviving album sections after oversized-peer filtering.
 
 T-1453: Under docs/help conflict waiver retain local preflight alongside periodic T3 fresh-cover guidance and combined help/frozen rows.
+
+T-1490: Preserve typed compiler capability refusals without source provenance decoration.

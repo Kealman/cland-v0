@@ -1081,7 +1081,9 @@ after an oversized peer is refused. No role permission changes.
 
 For compiler-backed duration identity or test-lint admission, preserve the shared
 lazy capability boundary in `hub/src/typescript-capability.ts`. A pruned install
-refuses with a single line naming TypeScript unavailable and the unknown check;
+refuses with a single line naming TypeScript unavailable and the unknown check.
+Preserve `TypeScriptUnavailableError` through duration validation; only source
+findings receive provenance and location lines at admission;
 use a source install with development dependencies for verification. Missing
 compiler capability is no passing evidence. Keep TypeScript dev-only and ordinary
 startup compiler-free. The native installed CLI fixture is documented in

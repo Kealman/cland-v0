@@ -7620,3 +7620,12 @@ installation with development dependencies for those checks. Projects without
 these manifests do not need the compiler for admission. The shared lazy compiler
 loader runs only when a check needs syntax analysis; ordinary hub and CLI startup
 do not load it. Existing admission error codes and policies are unchanged.
+
+### Compiler capability refusal formatting
+
+When a source verification check needs TypeScript and an installed runtime has
+pruned development dependencies, admission refuses with one line naming the
+unavailable compiler and unknown check. This capability refusal has no source
+location or provenance suffix. Source lint findings continue to include their
+HEAD/worktree provenance and locations; result codes and fields are unchanged.
+Use a source installation with development dependencies to run these checks.
