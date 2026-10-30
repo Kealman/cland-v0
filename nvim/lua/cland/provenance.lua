@@ -20,10 +20,22 @@ local function has_recording(message)
   end
   return false
 end
+local function labelled(artifact, body)
+  if type(artifact) ~= 'table' or type(artifact.title) ~= 'string' then return false end
+  local heading = '🎤 ' .. artifact.title
+  return body:sub(1, #heading + 1) == heading .. '\n'
+    or body:sub(1, #heading + #': transcription failed (') == heading .. ': transcription failed ('
+end
 function M.voice(message)
   local body = message.text or ''
-  if message.fromKind ~= 'human' or not M.remote(message.via) or body:sub(1, #'🎤 ') ~= '🎤 '
-    or not has_recording(message) then return nil, body end
+  if message.fromKind ~= 'human' or not M.remote(message.via) or body:sub(1, #'🎤 ') ~= '🎤 ' then return nil, body end
+  -- Match filename headings after accepted-file filtering, including legacy artifact fields.
+  if labelled(message.artifact, body) then return nil, body end
+  for _, artifact in ipairs(type(message.artifacts) == 'table' and message.artifacts or {}) do
+    if labelled(artifact, body) then return nil, body end
+  end
+  if not has_recording(message) then return nil, body end
+  if type(message.artifacts) == 'table' and #message.artifacts > 1 then return nil, body end
   local transcript = body:sub(#'🎤 ' + 1)
   if transcript == 'nothing recognised' then return '🎤 nothing recognised', '' end
   if transcript == 'not transcribed' or transcript:sub(1, #'not transcribed: ') == 'not transcribed: ' then

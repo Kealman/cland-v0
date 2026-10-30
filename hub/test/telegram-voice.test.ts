@@ -209,9 +209,9 @@ for (const kind of ['audio', 'video_note'] as const) test(`Telegram ${kind} over
 });
 
 
-test('Telegram two-audio album stays one message with both original files and no transcript', async t => {
+test('Telegram two-audio album transcribes both original files in labelled album order', async t => {
   const f = await fixture(t);
-  const speech = await fakeSpeech(t);
+  const speech = await fakeSpeech(t, [{ body: { text: 'first track' } }, { body: { text: 'second track' } }]);
   f.owner.close(() => speech.close());
   setSecret(f.root, 'speech.elevenlabs_key', 'fictional-speech-key');
   await control(f.fake.url, 'media', { items: [1, 2].map(n => ({ kind: 'audio', media_group_id: 'audio-album', duration: 10,
@@ -222,9 +222,29 @@ test('Telegram two-audio album stays one message with both original files and no
   await f.clock.advance(2_000);
   await f.drive(until(() => f.state.get('media.identity:101:1') === 'completed' && f.state.get('media.identity:101:2') === 'completed', { what: 'whole audio album completed', timeoutMs: 2_000 }));
   const messages = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
-  assert.deepEqual(messages.map(m => m.text), ['album caption']);
+  assert.deepEqual(messages.map(m => m.text), ['🎤 track-1.mp3\nfirst track\n\n🎤 track-2.mp3\nsecond track\n\nalbum caption']);
   assert.deepEqual(messages[0]!.artifacts!.map(a => a.title), ['track-1.mp3', 'track-2.mp3']);
   assert.deepEqual(await Promise.all(messages[0]!.artifacts!.map(a => readFile(a.path))), [Buffer.from('track 1'), Buffer.from('track 2')]);
-  assert.equal(speech.requests.length, 0);
+  assert.deepEqual(speech.requests.map(r => r.file), [1, 2].map(n => ({ bytes: Buffer.from(`track ${n}`), mime: 'audio/mpeg', filename: `track-${n}.mp3` })));
+  await speech.close(); await f.clean(ui, hub);
+});
+
+test('Telegram audio album keeps transcribing after one file fails', async t => {
+  const f = await fixture(t);
+  const speech = await fakeSpeech(t, [{ status: 402 }, { body: { text: 'second track' } }]);
+  f.owner.close(() => speech.close());
+  setSecret(f.root, 'speech.elevenlabs_key', 'fictional-speech-key');
+  await control(f.fake.url, 'media', { items: [1, 2].map(n => ({ kind: 'audio', media_group_id: 'audio-album', duration: 10,
+    caption: n === 1 ? 'album caption' : '', file_name: `track-${n}.mp3`, mime_type: 'audio/mpeg', content: Buffer.from(`track ${n}`).toString('base64') })) });
+  const hub = await f.start({ CLAND_TELEGRAM_API_ROOT: f.fake.url, CLAND_ELEVENLABS_API_ROOT: speech.url });
+  const ui = await connectUi(t, hub.discovery);
+  await until(() => f.state.get('telegram.offset') === '3', { what: 'both album items durably received', timeoutMs: 2_000 });
+  await f.clock.advance(2_000);
+  await f.drive(until(() => f.state.get('media.identity:101:1') === 'completed' && f.state.get('media.identity:101:2') === 'completed', { what: 'whole audio album completed', timeoutMs: 2_000 }));
+  const messages = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
+  assert.deepEqual(messages.map(m => m.text), ['🎤 track-1.mp3: transcription failed (quota)\n\n🎤 track-2.mp3\nsecond track\n\nalbum caption']);
+  assert.deepEqual(messages[0]!.artifacts!.map(a => a.title), ['track-1.mp3', 'track-2.mp3']);
+  assert.deepEqual(await Promise.all(messages[0]!.artifacts!.map(a => readFile(a.path))), [Buffer.from('track 1'), Buffer.from('track 2')]);
+  assert.deepEqual(speech.requests.map(r => r.file), [1, 2].map(n => ({ bytes: Buffer.from(`track ${n}`), mime: 'audio/mpeg', filename: `track-${n}.mp3` })));
   await speech.close(); await f.clean(ui, hub);
 });

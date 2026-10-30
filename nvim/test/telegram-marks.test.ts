@@ -25,10 +25,12 @@ test('native Telegram voice marks, audio, text and approval outcome render in Ne
     assert.match(text, /voice-\d+\.ogg/);
     assert.match(text, /Native voice transcript/);
     assert.match(text, /you[^\n]*via Telegram[^\n]*\nNative phone text(?:\n|$)/, 'the native text row names its own source');
-    assert.equal(text.split('🎤').length - 1, 6, 'three header marks and three literal typed markers');
+    assert.equal(text.split('🎤').length - 1, 9, 'three standalone marks, three typed markers and three album headings');
+    assert.match(text, /\n🎤 not transcribed: track-1\.mp3\nAlbum first transcript\n\n🎤 track-2\.mp3: transcription failed \(quota\)/, 'album sections remain literal body text');
     assert.match(text, /\n🎤 Typed caption/);
     assert.match(text, /\n🎤 nothing recognised/);
     assert.match(text, /\n🎤 Typed phone text/);
+    assert.match(text, /\n🎤 not transcribed: survivor\.mp3\nSurviving transcript(?:\n|$)/, 'surviving album heading stays literal');
     await c.input('<Esc> N'); await c.input('A');
     await c.waitScreen(s => s.includes('approved once') && s.includes('via Telegram'), 'native approval archive outcome');
     assert.match((await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)")).join('\n'), /approved once.*via Telegram/);

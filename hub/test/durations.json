@@ -8350,7 +8350,6 @@
     "hub/test/telegram-voice.test.ts::Telegram audio transcription admission preserves caption and bytes": 0.106867,
     "hub/test/telegram-voice.test.ts::Telegram document transcription admission preserves caption and bytes": 0.096571,
     "hub/test/telegram-voice.test.ts::Telegram long voice echo retains the whole transcript in bounded native parts": 0.130814,
-    "hub/test/telegram-voice.test.ts::Telegram two-audio album stays one message with both original files and no transcript": 0.106204,
     "hub/test/telegram-voice.test.ts::Telegram unknown voice echo cannot hold later input across restart": 0.224124,
     "hub/test/telegram-voice.test.ts::Telegram video transcription admission preserves caption and bytes": 0.112047,
     "hub/test/telegram-voice.test.ts::Telegram video_note over the live duration cap stays a plain attachment": 0.106934,

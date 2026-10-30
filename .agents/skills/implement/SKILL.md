@@ -980,3 +980,14 @@ Date observation cleanup still disposes native transports after a drain failure;
 register `guardDirectoryRemoval` to retain the fixture root until writers settle.
 Use `clockControl` for held-write probes so setup, abort, release and joining are
 owned before launch, with separate bounded setup and effect observations.
+
+## Telegram album speech
+
+For album transcription, use the production-frame/fake Bot API and speech cases
+in `docs/agents/tests/hub-test-telegram-voice.test.ts.md`. Keep one General upload,
+ordered filename-labelled transcript sections, per-file failure isolation and the
+first caption. Reuse `voiceNote` and `transcribes`; preserve standalone text,
+native ingress maps and the legacy receipt shape. Preserve filename headings in
+both workbench bodies; exercise the shared native Telegram marks fixture,
+including a filename beginning `not transcribed: ` and a single surviving file
+after an oversized peer is refused. No role permission changes.

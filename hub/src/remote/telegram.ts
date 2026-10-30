@@ -508,6 +508,7 @@ export class TelegramRemote implements Remote {
     }
     const files: Array<{ name: string; mime: string }> = [];
     const payload: Buffer[] = [];
+    const transcripts: string[] = [];
     for (const item of input.items ?? [input]) {
       const file = item.file!;
       const refuse = (text: string) => this.#commandReply({ update_id: 0, message: { message_id: Number(item.message), date: item.date, chat: { id: Number(item.chat), type: 'private' } } }, [plainCommandReply(text)]);
@@ -522,9 +523,18 @@ export class TelegramRemote implements Remote {
         continue;
       }
       try {
-        const native = await this.#api.getFile({ file_id: file.fileId }, { signal: this.#abort.signal });
-        if (!native.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
-        const bytes = await this.#api.download(native.file_path, Math.floor(limit * 1024 * 1024), this.#abort.signal);
+        const fetch = async (signal: AbortSignal) => {
+          const native = await this.#api.getFile({ file_id: file.fileId }, { signal });
+          if (!native.file_path) throw new TelegramError('getFile', 400, 'file unavailable');
+          return this.#api.download(native.file_path, Math.floor(limit * 1024 * 1024), signal);
+        };
+        const result = input.items && transcribes(file, maxSeconds)
+          ? await voiceNote({ fetch, provider: this.#polling!.speech ?? null, clock: this.#clock,
+            signal: this.#abort.signal, message: item.message, filename: file.name, mime: file.mime,
+            duration: file.duration, language: this.#polling!.speechSettings?.language }) : null;
+        const bytes = result ? result.bytes : await fetch(this.#abort.signal);
+        if (result) transcripts.push(result.transcript ? `🎤 ${file.name}\n${result.transcript}`
+          : `🎤 ${file.name}: transcription failed (${result.failure})`);
         if (!admitted()) return;
         store.set(failureKey, null);
         files.push({ name: file.name, mime: file.mime }); payload.push(bytes);
@@ -545,7 +555,7 @@ export class TelegramRemote implements Remote {
     try {
       await this.#inbound!.upload({ topic: reference ? 'general' : reply?.topic ?? 'general',
         ...(reply?.message && !reference ? { replyTo: reply.message } : {}),
-        caption: `${reference ? reference + ' ' : ''}${input.caption}${input.late ? `\n\n(${input.late})` : ''}`, files }, ingress, payload, input.items?.map(item => item.message));
+        caption: `${reference ? reference + ' ' : ''}${[...transcripts, input.caption].filter(Boolean).join(transcripts.length ? '\n\n' : '')}${input.late ? `\n\n(${input.late})` : ''}`, files }, ingress, payload, input.items?.map(item => item.message));
     } catch (error) {
       if (this.#abort.signal.aborted || fatal(error)) throw error;
       if (!admitted()) return;

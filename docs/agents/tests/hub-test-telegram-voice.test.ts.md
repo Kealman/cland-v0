@@ -39,8 +39,11 @@ T-1389 admission cases exercise audio/video-note duration at the inclusive 600 s
 boundary, literal filenames/MIME/bytes and captions, plus video/audio-document
 negative controls. Refusals wait for durable media completion before checking
 one native line, zero getFile/provider calls and empty General. Live reload lowers
-the cap to 30 s and 31 s audio/video notes stay plain attachments. Grouped files
-retain the existing attachment/album path.
+the cap to 30 s and 31 s audio/video notes stay plain attachments. Grouped eligible audio files retain one upload with ordered, filename-labelled
+transcript sections and the first caption. The two-audio success and first-file
+quota cases assert literal General text, both original artifact bytes and exact
+provider MIME/name/byte order; quota must not stop the second file. Ordinary
+photo albums keep the attachment path.
 
 Whole-note controls observe native speech requests and the injected scheduler's
 Retry-After receipt before advancing retries. A 429 then success uses two attempts;

@@ -343,3 +343,7 @@ T-1458 source1: Shared import-edge policy and owned smoke child lifecycle contro
 - T-1485 source review: bound and join Date writers before native cleanup; expand the hub clock inventory.
 - T-1485 source review 2: retain roots on missing Date drainage, preserve native disposal, and pre-own bounded fault controls.
 - T-1485 verification: keep the clock audit in tracker comments/artifacts, outside indexed per-test guides.
+
+T-1433: Document the Telegram album speech seam and single-upload/per-file failure contract.
+T-1433 M1: Include native workbench consumers and sentinel-like filenames in album regression guidance.
+T-1433 M1 follow-up: Preserve labelled surviving album sections after oversized-peer filtering.

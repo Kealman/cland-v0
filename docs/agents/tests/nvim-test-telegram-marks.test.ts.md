@@ -14,3 +14,15 @@ recording inference uses the artifact extension/generated audio/video-note name.
 The typed marker without an attachment stays literal too. Setup is pre-owned
 through pacingOwner/startHub before workbench acquisition; omitted/aborted
 receipt drainage controls live in hub/test/telegram-marks-setup.test.ts.
+
+The native two-audio album includes a first filename beginning `not transcribed: `
+and a second-member quota failure. Independent literal body assertions keep both
+filename headings in place; the standalone success/empty/quota and typed-caption
+controls remain. The fixture waits for durable admission before advancing the
+injected two-second album quiet window, then for every member's completion.
+
+A second native album has one sentinel-named audio and a declared 21 MiB peer.
+The fake allocates no oversized buffer. Observe both durable completions and the
+native refusal, assert no extra speech call, and retain the surviving heading in
+the actual body. Filename-heading matching precedes standalone failure parsing;
+attachment count alone does not identify an album after filtering.

@@ -2333,8 +2333,9 @@ Standalone audio files and video notes also transcribe when their declared durat
 is within `[speech] max_seconds` (default 600, live on reload). Audio retains its
 sender MIME and filename; video notes use `video/mp4` and
 `video-note-<message id>.mp4`. Their caption follows the transcript on a second
-line. Longer audio/video notes, grouped attachments, videos and documents remain
-plain artifacts with captions and make no speech request.
+line. Longer audio/video notes, videos and documents remain plain artifacts
+with captions and make no speech request. Eligible album audio uses the
+[album transcript format](#telegram-album-transcripts).
 Voice notes exceeding the duration cap are refused before `getFile`, as are
 recordings with a declared size above Telegram's 20 MiB download cap (or the
 configured artifact limit if lower). The refusal is one chat line and posts
@@ -7483,3 +7484,18 @@ reading remains explicitly unavailable without suppressing the stop receipt. Sam
 report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
+
+### Telegram album transcripts
+
+Eligible audio members of a Telegram album use the configured speech provider
+and duration cap, with one 90-second download/transcription deadline per file.
+General receives one message with every accepted file and transcript sections in
+album order. Each section starts with `🎤 <file name>` on its own line; failures
+read `🎤 <file name>: transcription failed (<cause>)` and do not stop later files.
+The first non-empty caption follows the sections. Provider-off, missing-key and
+empty results retain the file with a failure section. Over-cap or duration-less
+audio remains an ordinary attachment. Standalone recordings keep their existing
+format. Both workbenches preserve filename-labelled album sections as body text,
+including when only one file survives size/download filtering; standalone
+recording markers still move to their headers. Native album
+mappings and durable ingress receipts remain unchanged.

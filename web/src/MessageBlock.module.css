@@ -16,6 +16,7 @@
 .state { margin-left: auto; display: flex; gap: 8px; }
 .header time { font: 11px var(--mono); }
 .body { margin: 4px 0 0; }
+.literal { white-space: pre-wrap; }
 .message[data-role="human"], .message[data-role="aide"] { background: var(--human-band); }
 .message[data-role="human"] .header strong { color: var(--role-human); }
 .message[data-role="aide"] .gutter { background: none; border-left: 3px dashed var(--role-aide); }

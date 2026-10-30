@@ -17,7 +17,14 @@ test('native Telegram voice marks, audio, text and approval outcome render in Ch
     for (const message of messages.filter(m => m.fromKind === 'human')) {
       const row = page.locator(`[data-message-id="${message.id}"]`);
       await row.getByText('via Telegram', { exact: true }).waitFor();
-      if (message.artifacts?.some(a => a.title.startsWith('voice-'))) {
+      if (message.artifacts?.length === 2) {
+        assert.equal(await row.locator('[data-voice-mark]').count(), 0, 'album headings stay in the body');
+        assert.equal(await row.locator('[data-message-body]').innerText(), '🎤 not transcribed: track-1.mp3\nAlbum first transcript\n\n🎤 track-2.mp3: transcription failed (quota)');
+        assert.match(await row.innerText(), /track-2\.mp3/);
+      } else if (message.artifacts?.some(a => a.title === 'not transcribed: survivor.mp3')) {
+        assert.equal(await row.locator('[data-voice-mark]').count(), 0);
+        assert.equal(await row.locator('[data-message-body]').innerText(), '🎤 not transcribed: survivor.mp3\nSurviving transcript');
+      } else if (message.artifacts?.some(a => a.title.startsWith('voice-'))) {
         const mark = message.text.includes('not transcribed') ? '🎤 not transcribed' : message.text.includes('nothing recognised') ? '🎤 nothing recognised' : '🎤';
         await row.locator('header [data-voice-mark]').waitFor({ timeout: 1000 });
         assert.equal(await row.locator('[data-voice-mark]').innerText(), mark);

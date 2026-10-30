@@ -31,7 +31,7 @@ export async function telegramMarks(t: TestContext, options: { drainClock?: impo
   const native = fakeTelegramFixture(t, { clock });
   owner.close(() => native.close(), { startupOnly: true });
   const fake = await native.start();
-  const speech = await fakeSpeech(t, [{ body: { text: 'Native voice transcript' } }, { body: { text: '' } }, { status: 402 }]);
+  const speech = await fakeSpeech(t, [{ body: { text: 'Native voice transcript' } }, { body: { text: '' } }, { status: 402 }, { body: { text: 'Album first transcript' } }, { status: 402 }, { body: { text: 'Surviving transcript' } }]);
   owner.close(() => speech.close());
   const prepare = async (root: string) => {
     await mkdir(join(root, '.cland'), { recursive: true });
@@ -59,6 +59,22 @@ export async function telegramMarks(t: TestContext, options: { drainClock?: impo
       const updates = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [{ kind, caption, file_name: 'plain.txt', content: Buffer.from('synthetic attachment').toString('base64') }] });
       await drive(until(() => state.get(`media.identity:101:${updates[0]!.message!.message_id}`) === 'completed', { what: 'non-recording caption committed', timeoutMs: 2000 }));
     }
+    const album = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [
+      { kind: 'audio', media_group_id: 'marks-album', duration: 10, file_name: 'not transcribed: track-1.mp3', mime_type: 'audio/mpeg', content: Buffer.from('album one').toString('base64') },
+      { kind: 'audio', media_group_id: 'marks-album', duration: 10, file_name: 'track-2.mp3', mime_type: 'audio/mpeg', content: Buffer.from('album two').toString('base64') },
+    ] });
+    await until(() => album.every(u => state.get(`media.identity:101:${u.message!.message_id}`) === 'stored'), { what: 'album members durably admitted', timeoutMs: 2000 });
+    await clock.advance(2000);
+    await drive(until(() => album.every(u => state.get(`media.identity:101:${u.message!.message_id}`) === 'completed'), { what: 'native album upload committed', timeoutMs: 2000 }));
+    const surviving = await control<import('../src/remote/telegram-api.ts').TgUpdate[]>(fake.url, 'media', { items: [
+      { kind: 'audio', media_group_id: 'surviving-album', duration: 10, file_name: 'not transcribed: survivor.mp3', mime_type: 'audio/mpeg', content: Buffer.from('survivor').toString('base64') },
+      { kind: 'audio', media_group_id: 'surviving-album', duration: 10, file_name: 'oversized.mp3', file_size: 21 * 1024 * 1024 },
+    ] });
+    await until(() => surviving.every(u => state.get(`media.identity:101:${u.message!.message_id}`) === 'stored'), { what: 'surviving album admitted', timeoutMs: 2000 });
+    await clock.advance(2000);
+    await drive(until(() => surviving.every(u => state.get(`media.identity:101:${u.message!.message_id}`) === 'completed'), { what: 'surviving album completed', timeoutMs: 2000 }));
+    assert.equal(speech.requests.length, 6, 'oversized member never reaches speech');
+    assert.ok((await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages.some(m => m.text?.includes('oversized.mp3 is 21 MB')), 'native oversized refusal is sent');
     const launched = await ui.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer' });
     assert.equal(launched.ok, true, launched.error);
     const approval = `${(launched.value as { process: { sessionId: string } }).process.sessionId}:marks`;
@@ -74,7 +90,7 @@ export async function telegramMarks(t: TestContext, options: { drainClock?: impo
       return inbox.archive.some(r => r.id === approval && r.outcome?.via === 'telegram');
     }, { what: 'native approval outcome committed', timeoutMs: 2000 }));
     const messages = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
-    assert.deepEqual(messages.filter(m => m.fromKind === 'human').map(m => m.text), ['🎤 Native voice transcript', '🎤 nothing recognised', '🎤 not transcribed: quota', 'Native phone text', '🎤 Typed phone text', '🎤 Typed caption', '🎤 nothing recognised']);
+    assert.deepEqual(messages.filter(m => m.fromKind === 'human').map(m => m.text), ['🎤 Native voice transcript', '🎤 nothing recognised', '🎤 not transcribed: quota', 'Native phone text', '🎤 Typed phone text', '🎤 Typed caption', '🎤 nothing recognised', '🎤 not transcribed: track-1.mp3\nAlbum first transcript\n\n🎤 track-2.mp3: transcription failed (quota)', '🎤 not transcribed: survivor.mp3\nSurviving transcript']);
     return { messages, approval };
   };
   const startHub = (root: string, env: Record<string, string>, options: import('./harness.ts').ProjectHubOptions = {}, setup: Parameters<typeof owner.start>[3] = {}) =>

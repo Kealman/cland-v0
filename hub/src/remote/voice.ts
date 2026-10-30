@@ -18,6 +18,7 @@ export async function voiceNote(options: {
     const bytes = await options.fetch(signal);
     const downloaded = clock.now().getTime();
     let transcript: string | undefined;
+    let failure: string | undefined;
     let text: string;
     let line: string;
     try {
@@ -27,12 +28,14 @@ export async function voiceNote(options: {
         ...(options.duration === undefined ? {} : { durationSec: options.duration }), signal },
       { clock, deadlineMs: 90_000 - (downloaded - start) });
       transcript = result.text.trim() || undefined;
+      if (!transcript) failure = 'empty';
       text = result.text.trim() ? `🎤 ${result.text.trim()}` : '🎤 nothing recognised';
       const duration = Math.floor(options.duration ?? result.durationSec ?? 0);
       line = `${text}\n${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')} · download ${((downloaded - start) / 1000).toFixed(1)} s · transcription ${((clock.now().getTime() - downloaded) / 1000).toFixed(1)} s · ${options.provider.name}`;
     } catch (error) {
       options.signal.throwIfAborted();
       const kind = error instanceof SpeechError ? error.kind : 'unavailable';
+      failure = kind;
       text = kind === 'not-configured' ? '🎤 not transcribed' : `🎤 not transcribed: ${kind}`;
       line = kind === 'not-configured' ? options.provider
         ? options.provider.name === 'command'
@@ -40,6 +43,6 @@ export async function voiceNote(options: {
           : 'Transcription needs a key. Run cland secret set speech.elevenlabs_key, then cland hub reload'
         : 'Transcription is off ([speech] provider)' : text;
     }
-    return { bytes, mime, name, text, line, transcript };
+    return { bytes, mime, name, text, line, transcript, failure };
   } finally { clock.clearTimeout(timer); }
 }

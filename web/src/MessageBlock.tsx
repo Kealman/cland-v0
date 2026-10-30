@@ -58,7 +58,7 @@ export function MessageBlock({ message, connection, showTopic = false }: { messa
         {!phone && delivery}
         <time dateTime={message.ts}>{new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
       </header>}
-      {card ? <AskCard id={message.id} topic={message.topic} card={card} connection={connection} sender={message.from} since={message.ts} /> : verdict?.result !== 'clear' && <div data-message-body className={s.body}><MarkdownBody text={voice.body} /></div>}
+      {card ? <AskCard id={message.id} topic={message.topic} card={card} connection={connection} sender={message.from} since={message.ts} /> : verdict?.result !== 'clear' && <div data-message-body className={s.body}>{voice.literal ? <span className={s.literal}>{voice.body}</span> : <MarkdownBody text={voice.body} />}</div>}
       {verdict?.result === 'not clear' && <div className={s.criteria}>{criteria}</div>}
       {artifacts.length > 0 && <div className={s.artifacts}>{artifacts.map(artifact => <InlineArtifact key={artifact.id} artifact={connection.artifacts?.find(row => row.id === artifact.id) ?? artifact} connection={connection} />)}</div>}
       {phone && !folded && <div className={s.delivery}>{delivery}</div>}
