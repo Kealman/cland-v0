@@ -86,9 +86,11 @@
       "A-13725",
       "A-13729",
       "A-14104",
-      "A-14109"
+      "A-14109",
+      "A-14131",
+      "A-14135"
     ],
-    "commit": "59ea5191e7d186d655f0a545186b871ab431db96"
+    "commit": "3e15caf47526a10c79dff01e4c637e9913f641bd"
   },
   "budget": {
     "testSeconds": 5,
@@ -8591,7 +8593,27 @@
     "web/test/events.test.ts::phone Events tap filters select hub categories and survive reload at 390×844 with touch": 2.758851,
     "web/test/inbox.test.ts::own Inbox read outcome survives delta-first delivery": 1.587475,
     "web/test/inbox.test.ts::own Inbox read outcome survives reply-first delivery": 1.48081,
-    "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": 10.410087
+    "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": 10.410087,
+    "hub/test/claude-code-schedule.test.ts::scripted Claude frame results skip native process ownership probes": 0.220546,
+    "hub/test/codex-native.test.ts::Codex reconciles a delivered Approve when the matching item completes declined": 0.10776,
+    "hub/test/codex-native.test.ts::Codex reconciles a delivered Deny when the resolved command later executes": 0.109539,
+    "hub/test/discord-cards.test.ts::Discord history commits a bounded group before native feedback": 0.46535,
+    "hub/test/discord-cards.test.ts::Discord history commits a bounded group before native feedback and recovers staged attempts": 0.412326,
+    "hub/test/discord-cards.test.ts::Discord history reply chain retains exact mapped hub replies and topic": 0.273439,
+    "hub/test/process-cleanup.test.ts::default FrameClient accounts a real child and cleanup reaps it before removing its root": 1.129076,
+    "hub/test/process-cleanup.test.ts::FrameClient native control cleanup joins close with aborted readiness": 0.052472,
+    "hub/test/process-cleanup.test.ts::FrameClient native control cleanup joins close with omitted readiness": 0.047328,
+    "hub/test/suite-timeouts.test.ts::native stdio census proves a writer and refuses changed birth": 0.276727,
+    "hub/test/suite-timeouts.test.ts::native stdio census recovers a detached stderr-only writer after the other endpoint closes": 0.884485,
+    "hub/test/suite-timeouts.test.ts::native stdio census recovers a detached stdout-only writer after the other endpoint closes": 0.709318,
+    "hub/test/suite-timeouts.test.ts::single-channel automatic teardown retains the root on incomplete disposal until recovery": 0.300131,
+    "hub/test/suite-timeouts.test.ts::single-channel writer owner drains aborted readiness before root removal": 0.264985,
+    "hub/test/suite-timeouts.test.ts::single-channel writer owner drains omitted readiness before root removal": 0.241875,
+    "hub/test/suite-timeouts.test.ts::single-channel writer owner retains its root after incomplete stop until explicit recovery": 0.271758,
+    "hub/test/telegram-approvals.test.ts::Telegram corrects a Codex deny approval after its first outcome edit is delivered": 0.132775,
+    "hub/test/telegram-approvals.test.ts::Telegram corrects a Codex deny approval after its first outcome edit is held": 0.137754,
+    "hub/test/telegram-approvals.test.ts::Telegram corrects a Codex once approval after its first outcome edit is delivered": 0.125902,
+    "hub/test/telegram-approvals.test.ts::Telegram corrects a Codex once approval after its first outcome edit is held": 0.125078
   },
   "allow": {
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
