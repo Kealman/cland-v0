@@ -33,7 +33,10 @@ test('the mod respawns an expired bridge and injects once the hub serves again',
   });
   let discovery: { socket: string; secret: string } | undefined;
   let ui: FrameClient;
+  const bridgeArgs: string[][] = [];
+  const signalArgs: string[][] = [];
   let spawns = 0;
+  let bridged = 0;
   let expiries = 0;
   let retryMs: number | undefined;
   const prompts: string[] = [];
@@ -42,7 +45,8 @@ test('the mod respawns an expired bridge and injects once the hub serves again',
     env: { get: async key => env[key] }, settings: { read: async () => ({}) },
     clock: { sleep: ms => { retryMs = ms; return sleep(ms); } },
     process: {
-      spawn: () => {
+      spawn: ({ argv }) => {
+        bridgeArgs.push(argv);
         spawns++;
         return (async function* () {
           if (!discovery) {
@@ -63,13 +67,16 @@ test('the mod respawns an expired bridge and injects once the hub serves again',
             while ((nl = buffer.indexOf('\n')) >= 0) {
               const line = buffer.slice(0, nl);
               buffer = buffer.slice(nl + 1);
-              if (JSON.parse(line).type === 'welcome') socket.write(`${JSON.stringify({ type: 'session.bridge', id: 'bridge', session: 'impl' })}\n`);
+              const frame = JSON.parse(line) as { type: string; id?: string; ok?: boolean };
+              if (frame.type === 'result' && frame.id === 'bridge' && frame.ok) bridged++;
+              if (frame.type === 'welcome') socket.write(`${JSON.stringify({ type: 'session.bridge', id: 'bridge', session: 'impl' })}\n`);
               yield { stream: 'stdout', text: `${line}\n` };
             }
           }
         })();
       },
       run: async (argv, options) => {
+        signalArgs.push(argv);
         assert.ok(['injected', 'mod-turn-start'].includes(argv[3]!));
         return ui.request({ type: 'session.signal', session: 'impl', event: argv[3], payload: JSON.parse(options.stdin) });
       },
@@ -117,4 +124,17 @@ test('the mod respawns an expired bridge and injects once the hub serves again',
   assert.equal(spawns, 3, 'one session.start recovers after both expired children');
   assert.equal(prompts.filter(text => text.includes(id)).length, 1);
   assert.ok(prompts.some(text => text.includes('delivery after the long outage')));
+  // A native re-exec may retain the stable session env while restoring generation only from settings.
+  env.CLAND_SESSION_ID = process.sessionId;
+  engine.settings.read = async () => ({ env: { ...env, CLAND_LAUNCH_ID: 'reexec-settings-generation' } });
+  await start(engine, {}, async event => event);
+  await eventually('re-exec bridge admission receipt', () => bridged === 2 || undefined);
+  const invocation = bridgeArgs.at(-1)!;
+  assert.equal(invocation[invocation.indexOf('--launch') + 1], 'reexec-settings-generation');
+  const beforeSignals = signalArgs.length;
+  await turnStart!(engine, { text: 'generation propagation', turnId: 'reexec' }, async event => event);
+  await eventually('re-exec hook invocation captured', () => signalArgs.length === beforeSignals + 1 || undefined);
+  const hook = signalArgs.at(-1)!;
+  assert.equal(hook[hook.indexOf('--launch') + 1], 'reexec-settings-generation');
+
 });

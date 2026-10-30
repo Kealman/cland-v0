@@ -1,5 +1,6 @@
 // T3: native welcome ordering, held transport and process exit publication.
 // Subscribed UI frames at the transport boundary: presence, process rows and coalesced usage.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, connectWsUi, eventually, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, withDiscoveredPid } from './harness.ts';
@@ -76,20 +77,21 @@ test('process rows publish launch, model, role, rename, exit and stop; usage bur
     const usage = await ui.waitFor((f) => f.type === 'session.usage' && f.sessionId === p.sessionId);
     baseline.set(p.sessionId, (usage.usage as SessionUsage).total?.outputTokens ?? 0);
   }
+  const identities = new Map(await Promise.all(processes.map(async p => [p.sessionId, await claudeLaunchIdentity(fake, p.name)] as const)));
   const mark = ui.frames.length;
   // One burst for two launches: neither session can suppress the other's trailing update.
-  await Promise.all(processes.flatMap((p) => Array.from({ length: 20 }, () => ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-turn-complete', payload: { usage: { output_tokens: 2 } } }))));
+  await Promise.all(processes.flatMap((p) => Array.from({ length: 20 }, () => ui.request({ type: 'session.signal', session: p.name, launch: identities.get(p.sessionId)!.launchId, event: 'mod-turn-complete', payload: { usage: { output_tokens: 2 } } }))));
   for (const p of processes) {
     await ui.waitFor((f) => f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).total?.outputTokens === (baseline.get(p.sessionId) ?? 0) + 40);
     assert.equal(ui.frames.slice(mark).filter((f) => f.type === 'session.usage' && f.sessionId === p.sessionId).length, 1, 'twenty reports coalesced to latest totals');
   }
   const impl = processes[1]!;
-  await ui.request({ type: 'session.signal', session: impl.name, launch: impl.sessionId, event: 'session-start', payload: { model: 'changed-model' } });
+  await ui.request({ type: 'session.signal', session: impl.name, launch: identities.get(impl.sessionId)!.launchId, event: 'session-start', payload: { model: 'changed-model' } });
   await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === impl.sessionId && row(f).model === 'changed-model');
   await ui.request({ type: 'role.set', session: impl.name, role: 'qa' });
   await ui.waitFor((f) => f.type === 'session.process' && row(f).sessionId === impl.sessionId && row(f).role === 'qa');
   const coord = processes[0]!;
-  const spoke = await spawnSpoke({ cwd: root, discover: true, name: coord.name, sessionId: coord.sessionId, role: 'coordinator' });
+  const spoke = await spawnSpoke({ cwd: root, discover: true, name: coord.name, ...identities.get(coord.sessionId)!, sessionId: coord.sessionId, role: 'coordinator' });
   t.after(() => spoke.close());
   await spoke.waitForPresence([coord.name]);
   const renamed = await spoke.call<{ ok: boolean; error?: string }>('rename', { name: 'renamed-coord' });

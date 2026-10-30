@@ -1,3 +1,4 @@
+import { launchGenerationKey, launchOwnerKey } from './launch-generation.ts';
 import { processIdentityAsync } from '../process-identity.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
@@ -48,7 +49,7 @@ import { processStarted } from './processes.ts';
 import { endProcess } from '../system-processes.ts';
 import { turnError } from './turn-error.ts';
 import { claudeWindows } from '../accounts/limits.ts';
-import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type LaunchPolicy, type Permissions, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type Permissions, type ResumeResult, type ResumeOptions, type SpawnRequest } from './contract.ts';
 
 
 
@@ -214,6 +215,7 @@ const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_COD
 
 export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly harness = CLAUDE_CODE;
+  readonly relaunchStopsProcess = true;
   readonly capabilities = CLAUDE_CODE_CAPABILITIES;
   readonly clauseAtSpawn = CLAUDE_CODE_CLAUSE_AT_SPAWN;
   readonly #host: AdapterHost;
@@ -225,6 +227,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #configDir: string;
   #closed = false;
   #closing: Promise<void> | undefined;
+  readonly #nativeInspections = new Map<string, Promise<import('./contract.ts').NativeJobInspection>>();
   readonly #commands = new Set<{ cancel: () => void; settled: Promise<void> }>();
   readonly #directories = new Map<string, DirectorySchedule>();
   readonly #stopGraceMs: number;
@@ -240,7 +243,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   /** Watched processes by session id. */
   readonly #watched = new Map<string, HarnessProcess>();
   /** The mod's bridge of each session: where inject frames go. */
-  readonly #bridges = new Map<string, (frame: InjectFrame) => boolean>();
+  readonly #bridges = new Map<string, { send: (frame: InjectFrame) => boolean; generation: string | null }>();
   readonly #pending = new Map<string, Pending>();
   readonly #prompts = new Map<string, Map<string, Prompt>>();
   /** Running totals and the last usage the mod reported, by session id. */
@@ -250,7 +253,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   /** Directory-confirmed launches; an initial discovery miss is not retirement. */
   readonly #listed = new Set<string>();
   #hookRevision = 0;
-  readonly #activity = new Map<string, number>();
+  readonly #activity = new Map<string, { revision: number; pendingIdentity?: true }>();
   #timer: ClockTimer | null = null;
 
   constructor(host: AdapterHost, options: ClaudeCodeOptions = {}) {
@@ -387,12 +390,25 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return d.agentsFlight;
   }
 
+  /** Current evidence needs a new invocation after this boundary, not completion of an older query. */
+  async #agentsAfterCurrent(p: HarnessProcess, resumed: Resumed, authorize: () => void, boundary: 'stop' | 'hook'): Promise<AgentEntry[] | null> {
+    const earlier = this.#directory(p).agentsFlight;
+    if (earlier) {
+      this.#host.log({ event: boundary === 'stop' ? 'harness-stop-await-query' : 'harness-hook-await-query', session: p.name, harnessId: p.harnessId });
+      await earlier;
+    }
+    resumed(authorize);
+    // Any flight admitted while the earlier one drained was invoked after this
+    // evidence request, and is safe to share. Otherwise this invokes that new query.
+    return this.#agents(p, resumed, true);
+  }
+
   /** The entry of this session: by its session id, else its background id. A pid is only a match for an entry
    *  that names no session of its own — pids are reused, and a reused one belongs to another session. */
   #find(entries: AgentEntry[], p: Pick<HarnessProcess, 'sessionId' | 'harnessSessionId' | 'harnessId' | 'pid'>): AgentEntry | undefined {
     return (
-      entries.find((e) => e.sessionId === (p.harnessSessionId ?? p.sessionId)) ??
       (p.harnessId ? entries.find((e) => e.id === p.harnessId) : undefined) ??
+      entries.find((e) => e.sessionId === (p.harnessSessionId ?? p.sessionId)) ??
       (p.pid !== null ? entries.find((e) => e.pid === p.pid && e.sessionId === undefined && e.id === undefined) : undefined)
     );
   }
@@ -412,7 +428,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. `worktree`:
    *  the session's own task worktree, where the harness's own worktrees are refused. */
   async #sessionFlags(name: string, role: string | null, sessionId: string, cwd: string, worktree: string | null, files: LaunchFiles, launchToken?: string): Promise<string[]> {
+    const launchId = randomUUID();
     const spokeEnv: Record<string, string> = {
+      CLAND_LAUNCH_ID: launchId,
       CLAND_HUB_FILE: this.#host.discoveryFile,
       CLAND_SESSION_ID: sessionId,
       CLAND_SESSION_NAME: name,
@@ -427,10 +445,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const hooks: Record<string, unknown[]> = {};
     for (const [hookEvent, event] of Object.entries(HOOK_EVENTS)) {
       // The Bash guard is synchronous: exit 2 refuses the tool. Signals stay async.
-      hooks[hookEvent] = [{ ...(hookEvent === 'PreToolUse' ? { matcher: 'Bash' } : {}), hooks: [{ type: 'command', command: this.#hookCommand(event, name, sessionId), ...(hookEvent === 'PreToolUse' ? {} : { async: true }), timeout: 10 }] }];
+      hooks[hookEvent] = [{ ...(hookEvent === 'PreToolUse' ? { matcher: 'Bash' } : {}), hooks: [{ type: 'command', command: this.#hookCommand(event, name, launchId), ...(hookEvent === 'PreToolUse' ? {} : { async: true }), timeout: 10 }] }];
     }
     // not async: its exit status is the refusal
-    if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, sessionId)} --worktree ${sq(worktree)}`, timeout: 10 }] }];
+    if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, launchId)} --worktree ${sq(worktree)}`, timeout: 10 }] }];
     const configuredIsolation = await Promise.all(['settings.json', 'settings.local.json'].map(async file => {
       try {
         const settings = JSON.parse(await readFile(join(cwd, '.claude', file), 'utf8'));
@@ -441,11 +459,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       hooks,
       ...(configuredIsolation.some(Boolean) ? {} : { worktree: { bgIsolation: BG_ISOLATION } }),
       // what the mod reads to find its session and the hub
-      env: { DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}), CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
+      env: { CLAND_LAUNCH_ID: launchId, DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}), CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
     };
     // --bg does not retain the launcher's environment. Private settings survive native re-exec;
     // the command line carries only paths, never the session credential.
-    const directory = sessionRunDirectory(dirname(this.#host.discoveryFile), sessionId);
+    const directory = join(sessionRunDirectory(dirname(this.#host.discoveryFile), sessionId), launchId);
     await files.directory(directory, 0o700);
     const mcpFile = join(directory, 'mcp.json');
     const settingsFile = join(directory, 'settings.json');
@@ -453,7 +471,16 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     await writeFile(mcpFile, JSON.stringify(mcp), { mode: 0o600 });
     await files.file(settingsFile);
     await writeFile(settingsFile, JSON.stringify(settings), { mode: 0o600 });
+    this.#setGeneration(sessionId, launchId);
     return ['--mcp-config', mcpFile, '--settings', settingsFile, '--plugin-dir', MOD_DIR];
+  }
+
+  #setGeneration(sessionId: string, generation: string): void {
+    if (this.#host.launchGeneration) this.#host.launchGeneration(sessionId, generation);
+    else {
+      this.#host.adapterState?.write(launchGenerationKey(sessionId), generation);
+      if (generation) this.#host.adapterState?.write(launchOwnerKey(generation), sessionId);
+    }
   }
 
   /** The background id `claude --bg` printed (`claude attach <id>`). */
@@ -466,6 +493,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const files = new LaunchFiles(resumed);
       let launched: HarnessProcess | undefined;
       let backgroundStarted = false;
+      const previousGeneration = this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
       try {
         const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
         // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
@@ -516,6 +544,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         // A successful --bg can own a child even when its output has no parsed id.
         // A failed stop leaves its private files intact with the watched process.
         if (launched && (backgroundStarted || launched.harnessId || launched.pid !== null)) yield* wait(this.stop(launched, resumed));
+        this.#setGeneration(p.sessionId, previousGeneration ?? '');
         yield* wait(files.rollback());
         throw err;
       }
@@ -524,6 +553,29 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
     return this.#launch({ account: request.account ?? null, accountEnv: { ...this.#inheritedEnv(), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+  }
+
+  nativeSessionHint(p: HarnessProcess, result?: import('./contract.ts').NativeJobInspection): void {
+    if (result?.kind === 'unavailable') return;
+    this.#noteActivity(p.sessionId, result === undefined);
+  }
+
+  #noteActivity(sessionId: string, pendingIdentity = false): void {
+    this.#activity.set(sessionId, { revision: ++this.#hookRevision, ...(pendingIdentity ? { pendingIdentity: true as const } : {}) });
+  }
+
+  duplicateHarness(p: HarnessProcess, nativeId: string): Promise<import('./contract.ts').NativeJobInspection> {
+    const key = JSON.stringify([p.sessionId, p.harnessId, p.startedAt, this.#host.adapterState?.read(launchGenerationKey(p.sessionId)), nativeId]);
+    const existing = this.#nativeInspections.get(key);
+    if (existing) return existing;
+    const work = this.#agentsAfterCurrent(p, untimed, () => {}, 'hook').then(entries => {
+      const other = entries?.find(e => e.sessionId === nativeId && e.id && e.id !== p.harnessId);
+      const own = entries?.find(e => e.id === p.harnessId);
+      if (own && other?.id) return { kind: 'duplicate' as const, job: { id: other.id, pid: other.pid ?? null } };
+      return own?.sessionId === nativeId ? { kind: 'same-job' as const } : { kind: 'unavailable' as const };
+    }).finally(() => { this.#nativeInspections.delete(key); });
+    this.#nativeInspections.set(key, work);
+    return work;
   }
 
   attachCommand(p: HarnessProcess): string {
@@ -535,18 +587,28 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   /** The mod's bridge for a session connected; returns its disconnect. */
   bridge(p: HarnessProcess, send: (frame: InjectFrame) => boolean): () => void {
-    this.#bridges.set(p.sessionId, send);
+    const bridge = { send, generation: this.#host.adapterState?.read(launchGenerationKey(p.sessionId)) ?? null };
+    this.#bridges.set(p.sessionId, bridge);
     return () => {
-      if (this.#bridges.get(p.sessionId) === send) this.#bridges.delete(p.sessionId);
+      if (this.#bridges.get(p.sessionId) === bridge) this.#bridges.delete(p.sessionId);
     };
   }
 
+  #currentBridge(p: HarnessProcess) {
+    const bridge = this.#bridges.get(p.sessionId);
+    if (bridge && bridge.generation !== (this.#host.adapterState?.read(launchGenerationKey(p.sessionId)) ?? null)) {
+      this.#bridges.delete(p.sessionId);
+      return undefined;
+    }
+    return bridge;
+  }
+
   hasBridge(p: HarnessProcess): boolean {
-    return this.#bridges.has(p.sessionId);
+    return this.#currentBridge(p) !== undefined;
   }
 
   inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
-    const send = this.#bridges.get(p.sessionId);
+    const send = this.#currentBridge(p)?.send;
     if (!send) return Promise.reject(new Error('the cland mod of this session is not connected (the inbox socket is not used: its message format is undocumented)'));
     const key = `${p.sessionId}:${message.id}`;
     const existing = this.#pending.get(key);
@@ -583,7 +645,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const watched = p && this.#watched.get(p.sessionId);
     if (watched && typeof payload.session_id === 'string' && payload.session_id) watched.harnessSessionId = payload.session_id;
     const meaning = interpret(event, payload);
-    if (watched && meaning.state) this.#activity.set(watched.sessionId, ++this.#hookRevision);
+    if (watched && meaning.state) this.#noteActivity(watched.sessionId);
     if (p && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
       this.#markSignedOut(p, at);
       meaning.state = 'unknown';
@@ -653,6 +715,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   unwatch(sessionId: string): void {
     this.#unwatch(sessionId);
     this.#bridges.delete(sessionId);
+    for (const [key, pending] of this.#pending) if (key.startsWith(`${sessionId}:`)) {
+      this.#pending.delete(key);
+      this.#clock.clearTimeout(pending.timer);
+      pending.reject(new Error('native launch ended before turn confirmation'));
+    }
   }
 
   #clearMissing(sessionId: string): void {
@@ -709,6 +776,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             this.#host.log({ event: 'claude-observation-stale', session: p.name, reason: 'launch-replaced' });
             continue;
           }
+          // The same activity owner distinguishes unproven conversation changes
+          // from ordinary hooks, which must still allow verified PID discovery.
+          if (this.#activity.get(p.sessionId)?.pendingIdentity) {
+            changedIdentity.add(p.sessionId);
+            continue;
+          }
           const entry = entries ? this.#find(entries, p) : undefined;
           if (conversations.has(p.sessionId) && conversations.get(p.sessionId) !== p.harnessSessionId && entry?.sessionId !== p.harnessSessionId) {
             changedIdentity.add(p.sessionId);
@@ -720,7 +793,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
           const job = entries ? this.#job(entries, p) : undefined;
           const matchingDone = job?.status === 'done';
           // Newer hooks fence terminal/state authority, not independently verified PID acquisition.
-          const newerHook = (this.#activity.get(p.sessionId) ?? 0) > d.observationRevision;
+          const newerHook = (this.#activity.get(p.sessionId)?.revision ?? 0) > d.observationRevision;
           if (newerHook) changedIdentity.add(p.sessionId);
           const replacing = missingSince !== undefined && at - missingSince < this.#reexecGraceMs;
           // Native discovery can omit a live job; retain its PID for reconnect and explicit stop.
@@ -739,7 +812,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             const identity = await this.#processIdentity(entry.pid);
             // A stop, relaunch or shutdown while probing cannot acquire the old launch's PID.
             if (this.#closed || this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId)) continue;
-            if (p.harnessSessionId !== nativeId || p.pid !== previousPid || p.harnessId !== observed.job) {
+            if (p.harnessSessionId !== nativeId || p.pid !== previousPid || p.harnessId !== observed.job || this.#activity.get(p.sessionId)?.pendingIdentity) {
               // A hook or watch replacement advanced the identity during the native probe.
               // Reconcile it on the next bounded poll before any grace-expiry exit.
               changedIdentity.add(p.sessionId);
@@ -754,7 +827,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             this.#clearMissing(p.sessionId);
             this.#host.recordPid(p.sessionId, entry.pid, started, entry.sessionId, identity);
           }
-          if ((this.#activity.get(p.sessionId) ?? 0) <= d.observationRevision) this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
+          if ((this.#activity.get(p.sessionId)?.revision ?? 0) <= d.observationRevision) this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
         }
       }));
       for (const p of [...this.#watched.values()]) {
@@ -776,8 +849,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     let ended = false;
     try {
       let stopped = false;
+      let attempted = false;
       const cliStop = async () => {
         if (p.harnessId) {
+          attempted = true;
           resumed(authorize);
           try {
             const r = await this.#run(['stop', p.harnessId], p.cwd, p);
@@ -792,24 +867,34 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       };
       if (p.pid === null) {
         await cliStop();
-        if (!stopped) throw new Error(`could not stop "${p.name}": \`claude stop\` failed and its pid is unknown; it is still watched`);
       } else {
         let reason = '';
-        if (!await endProcess(p, (entry) => {
+        const endedProcess = await endProcess(p, (entry) => {
           if (typeof entry.reason === 'string') reason = entry.reason;
           this.#host.log({ ...entry, harness: this.harness, session: p.name });
-        }, this.#stopGraceMs, cliStop, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched${reason ? ` (${reason})` : ''}`);
+        }, this.#stopGraceMs, cliStop, { env: this.#processEnv, resumed, authorize, allowReused: p.status === 'exited' });
+        if (!attempted) await cliStop();
+        if (!endedProcess) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched${reason ? ` (${reason})` : ''}`);
+      }
+      if (!stopped) {
+        // OS exit cannot settle a supervised native job: its daemon can respawn it.
+        // A failed stop is releasable only after a fresh successful job listing
+        // positively confirms the captured job absent.
+        const entries = p.harnessId ? await this.#agentsAfterCurrent(p, resumed, authorize, 'stop') : null;
+        if (!entries || entries.some(entry => entry.id === p.harnessId)) {
+          throw new Error(`could not stop "${p.name}": native job stop is unconfirmed; it is still watched`);
+        }
       }
       ended = true;
     } finally {
       resumed(() => {
-        if (ended) this.#unwatch(p.sessionId);
+        if (ended) this.unwatch(p.sessionId);
         this.#stopping.delete(p.sessionId);
       });
     }
   }
 
-  async resume(p: HarnessProcess, options: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: ResumeOptions = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       // Pre-T-603 unpinned rows froze the bookkeeping fallback as an explicit profile,
@@ -828,6 +913,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
           return { found: false, reason: 'recorded pid is gone (Claude directory is signed out)' };
         }
         return { found: true, process: { ...p, status: 'running' }, state: 'unknown' };
+      }
+      if (options.relaunch) {
+        yield* wait(this.stop(p, resumed, options.authorize));
+        const current = resumed(() => options.stopped?.()) ?? p;
+        const process = yield* wait(this.#launch({ ...current }, true, current.effort ?? null, resumed, options.launchToken, options.authorize, options.policy?.permissions ?? null));
+        return { found: true, process, state: 'unknown' };
       }
       const previous = d.agentsVersion;
       let entries = (yield* wait(this.#agents(p, resumed))) ?? [];
@@ -857,17 +948,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         return { found: true, process, state: stateOfAgent(entry) };
       }
       this.#unwatch(p.sessionId);
-      if (!options.relaunch) {
-        // A directory miss or an unavailable start probe is not proof of exit. A contradictory native
-        // identity at this PID *is* proof that it is not ours, even with a same-second start stamp.
-        const conflicting = entries.some(e => e.pid === p.pid && e !== entry && (e.sessionId !== undefined || e.id !== undefined));
-        const readStarted = entry && p.pid === pid ? async () => identity : this.#processStarted;
-        const alive = !conflicting && (yield* wait(processAlive(p, resumed, this.#processEnv, readStarted)));
-        return { found: false, reason: entry ? 'listed by claude agents, but its process identity could not be verified' : 'not listed by claude agents --json', alive };
-      }
-      yield* wait(this.stop(p, options.resumed));
-      const process = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv, name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, options.launchToken, options.authorize ?? (() => {}), options.policy?.permissions ?? null));
-      return { found: true, process, state: 'unknown' };
+      // A directory miss or an unavailable start probe is not proof of exit. A contradictory native
+      // identity at this PID *is* proof that it is not ours, even with a same-second start stamp.
+      const conflicting = entries.some(e => e.pid === p.pid && e !== entry && (e.sessionId !== undefined || e.id !== undefined));
+      const readStarted = entry && p.pid === pid ? async () => identity : this.#processStarted;
+      const alive = !conflicting && (yield* wait(processAlive(p, resumed, this.#processEnv, readStarted)));
+      return { found: false, reason: entry ? 'listed by claude agents, but its process identity could not be verified' : 'not listed by claude agents --json', alive };
     }).call(this), options.resumed ?? untimed);
   }
 
@@ -892,7 +978,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#pending.clear();
     const commands = [...this.#commands];
     for (const command of commands) command.cancel();
-    if (commands.length) this.#closing = Promise.all(commands.map(command => command.settled)).then(() => {});
+    const drains = [...commands.map(command => command.settled), ...this.#nativeInspections.values()].map(work => work.then(() => {}, () => {}));
+    if (drains.length) this.#closing = Promise.all(drains).then(() => {});
     return this.#closing;
   }
 }

@@ -1,4 +1,5 @@
 // T3: real worker launch and CLI stop enforce live-subtree authority and reparenting.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +23,7 @@ test('Lead launches and stops only sessions serving its live subtree', async t =
   assert.equal(launched.ok, true);
   // Wait for the native MCP spoke before connecting the observer.
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === launched.process.sessionId);
-  const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
+  const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', ...(await claudeLaunchIdentity(fake, 'lead-1')), sessionId: launched.process.sessionId, assignRole: false });
   t.after(() => lead.close());
   const stop = (name: string) => clandWithEnv(root, { CLAND_SESSION_NAME: 'lead-1', CLAND_SESSION_ID: launched.process.sessionId }, 'session', 'stop', name);
   await lead.waitForPresence(['coord', 'lead-1']);

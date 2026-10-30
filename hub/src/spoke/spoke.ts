@@ -404,6 +404,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
       cwd,
       ...(name ? { name } : {}),
       ...(launchToken ? { launchToken } : {}),
+      ...(env.CLAND_LAUNCH_ID ? { launchId: env.CLAND_LAUNCH_ID } : {}),
       ...(role ? { role } : {}),
     },
   });

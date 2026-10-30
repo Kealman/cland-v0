@@ -98,3 +98,19 @@ from the custom table; built-in clause text stays unchanged.
 
 Staff custom sessions manually. Automatic custom pools and hierarchy roles are
 outside this capability. See the [worked example](../../site/src/content/docs/docs/crew.md#add-a-custom-role).
+
+
+Claude Code relaunch retains the cland session and conversation, invokes native
+`claude stop` on the previous job id even for an exited row, and writes a fresh
+launch generation into private settings/MCP files. Generated rows require their current generation on spokes, hooks and bridges,
+including after credential identity resolution. Rotation revokes existing spokes
+and bridges before replacement traffic can reach them. A failed native job stop
+keeps the row supervised until native stop or fresh job absence is confirmed. Legacy rows keep their previous wire shape until their
+next launch; no role permission changes are needed. Duplicate native jobs produce
+one Agents notice with both job ids and known PIDs.
+
+
+The native adapter declares relaunch stop ownership explicitly; generic adapters
+retain Sessions' outer-stop boundary. A positive adapter stop receipt is persisted
+before replacement. An unconfirmed adapter-owned stop leaves the original running
+row, role and task claim intact, and cannot be reported as harness exit.

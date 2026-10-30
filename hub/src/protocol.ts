@@ -369,6 +369,8 @@ export type Hello = {
   name?: string;
   /** Proves this hello belongs to a particular pending launch; supplied through CLAND_LAUNCH_TOKEN. */
   launchToken?: string;
+  /** Public per-process generation; absent for older clients. */
+  launchId?: string;
   /** The role the session asks for (`CLAND_ROLE`). A project's hub honours it only for a session it launched for
    *  that role; otherwise the role is the one the human assigned (`role.set`), and a session with none is refused. */
   role?: string;
@@ -460,6 +462,7 @@ export function isHello(f: Record<string, unknown>): f is Hello {
     typeof f.cwd === 'string' &&
     (f.name === undefined || typeof f.name === 'string') &&
     (f.launchToken === undefined || typeof f.launchToken === 'string') &&
+    (f.launchId === undefined || typeof f.launchId === 'string') &&
     (f.role === undefined || typeof f.role === 'string')
   );
 }

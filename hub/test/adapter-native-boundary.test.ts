@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
@@ -351,8 +351,10 @@ for (const existing of [false, true]) test(`ClaudeCodeAdapter: partial private s
   const before = existing ? await Promise.all(files.map(async file => ({ content: await fsp.readFile(file), mode: (await fsp.stat(file)).mode }))) : [];
   const native = fsp.writeFile;
   let fired = false;
+  let failedDirectory = '';
   t.mock.method(fsp, 'writeFile', async (...args: unknown[]) => {
-    if (!fired && String(args[0]) === files[1]) {
+    if (!fired && String(args[0]).startsWith(`${directory}/`) && String(args[0]).endsWith('/settings.json')) {
+      failedDirectory = dirname(String(args[0]));
       fired = true;
       await Reflect.apply(native, fsp, [args[0], 'partial settings', ...args.slice(2)]);
       throw new Error('planted partial private settings failure');
@@ -362,6 +364,8 @@ for (const existing of [false, true]) test(`ClaudeCodeAdapter: partial private s
   syncBuiltinESMExports();
   await guarded(async () => { await assert.rejects(f.adapter.spawn({ ...f.request, sessionId }), /planted partial private settings failure/); });
   assert.equal(fired, true);
+  assert.notEqual(failedDirectory, directory, 'the injected write belongs to a new immutable generation');
+  assert.equal(await fsp.access(failedDirectory).then(() => true, () => false), false, 'partial generation removed before rejection');
   assert.equal(f.children.length, 0, 'private staging fails before the native launch');
   assert.deepEqual(await fsp.readFile(join(directory, 'credential.json')), credential);
   assert.deepEqual(await fsp.readFile(join(peer, 'credential.json')), peerCredential);

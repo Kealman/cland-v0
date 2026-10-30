@@ -16,6 +16,7 @@ import { parseRoles } from '../src/roles/config.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 import { installedHarnesses } from '../src/doctor/harnesses.ts';
 import { FakeClock } from './fake-clock.ts';
+import { eventually } from './harness.ts';
 
 test('Claude launch settings defer to either project settings file', { timeout: 2000 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-claude-settings-'));
@@ -56,7 +57,7 @@ test('Claude launch settings defer to either project settings file', { timeout: 
       assert.deepEqual(settings.worktree, row.fallback ? { bgIsolation: 'none' } : undefined, row.name);
       assert.ok(settings.hooks.SessionStart, 'hooks survive');
       assert.deepEqual(settings.hooks.PreToolUse, [{ matcher: 'Bash', hooks: [{
-        type: 'command', command: "'/fixture/node' '/fixture/cland' 'hook' 'literal-rm' '--session' 'plain' '--launch' '" + settings.env.CLAND_SESSION_ID + "' '--hub-file' '" + host.discoveryFile + "'", timeout: 10,
+        type: 'command', command: "'/fixture/node' '/fixture/cland' 'hook' 'literal-rm' '--session' 'plain' '--launch' '" + settings.env.CLAND_LAUNCH_ID + "' '--hub-file' '" + host.discoveryFile + "'", timeout: 10,
       }] }], 'launch injects the same synchronous Bash guard');
       assert.equal(settings.env.CLAND_SESSION_NAME, 'plain');
       if (row.settings !== undefined) assert.equal(await readFile(settingsFile, 'utf8'), row.settings);
@@ -234,6 +235,7 @@ test('Claude relaunch repairs a pre-T-603 default-directory row without changing
     sessionId: 'cland-session', harnessSessionId: 'native-conversation', startedAt: '2026-10-01T00:00:00.000Z', status: 'exited',
   };
   const cases = [
+    { name: 'gone pid', process: { ...legacy, pid: 2147483647 }, inherited: undefined, expected: undefined, repair: true },
     { name: 'legacy default', process: legacy, inherited: undefined, expected: undefined, repair: true },
     { name: 'normalized default path', process: { ...legacy, accountEnv: { CLAUDE_CONFIG_DIR: '/fixture/home/.claude/.' } }, inherited: undefined, expected: undefined, repair: true },
     { name: 'named account at default path', process: { ...legacy, account: 'explicit-default' }, inherited: undefined, expected: '/fixture/home/.claude', repair: false },
@@ -258,7 +260,10 @@ test('Claude relaunch repairs a pre-T-603 default-directory row without changing
       assert.equal(bg.length, 1, row.name);
       assert.equal(bg[0]!.args[bg[0]!.args.indexOf('--resume') + 1], 'native-conversation');
       assert.ok(calls.some(c => c.args[0] === 'agents'), 'discovery reaches the fake CLI');
-      assert.ok(calls.some(c => c.args[0] === 'stop'), 'stale background handle is stopped');
+      const stopIndex = calls.findIndex(c => c.args[0] === 'stop');
+      assert.ok(stopIndex >= 0, 'stale background handle is stopped');
+      assert.equal(calls[stopIndex]!.args[1], 'old-background');
+      assert.ok(stopIndex < calls.findIndex(c => c.args[0] === '--bg'), 'native stop precedes replacement launch');
       assert.ok(calls.every(c => c.env.CLAUDE_CONFIG_DIR === row.expected), row.name);
     } finally { adapter.close(); }
   }
@@ -305,7 +310,14 @@ test('Claude background settings carry only their own shell credential through l
     for (const name of ['one', 'two']) {
       const credential = `fixture-${name}-credential`;
       const launched = await adapter.spawn({ name, cwd: root, role: 'implementer', model: null, launchToken: credential });
-      await adapter.resume(launched, { relaunch: true, launchToken: credential });
+      const resumed = await adapter.resume(launched, { relaunch: true, launchToken: credential });
+      assert.equal(resumed.found, true);
+      const bg = calls.filter(args => args[0] === '--bg' && args[args.indexOf('--name') + 1] === name);
+      assert.notEqual(bg[0]![bg[0]!.indexOf('--settings') + 1], bg[1]![bg[1]!.indexOf('--settings') + 1]);
+      assert.notEqual(bg[0]![bg[0]!.indexOf('--mcp-config') + 1], bg[1]![bg[1]!.indexOf('--mcp-config') + 1]);
+      const settings = await Promise.all(bg.map(args => readFile(args[args.indexOf('--settings') + 1]!, 'utf8').then(bytes => JSON.parse(bytes))));
+      assert.notEqual(settings[0].env.CLAND_LAUNCH_ID, settings[1].env.CLAND_LAUNCH_ID);
+      assert.equal(settings[0].env.CLAND_SESSION_ID, settings[1].env.CLAND_SESSION_ID);
       for (const args of calls.filter(args => args[0] === '--bg' && args[args.indexOf('--name') + 1] === name)) {
         assert.equal(args.some(arg => arg.includes(credential)), false, 'credentials never enter argv');
         const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
@@ -315,4 +327,151 @@ test('Claude background settings carry only their own shell credential through l
       }
     }
   } finally { adapter.close(); }
+});
+
+test('Claude duplicate inspection requires two native job identities and shares concurrent native reads', async t => {
+  let calls = 0;
+  let entries = [{ id: 'own', sessionId: 'original', pid: 101 }, { id: 'other', sessionId: 'foreign', pid: 202 }];
+  t.mock.method(cp, 'execFile', (_bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: null, stdout: string, stderr: string) => void) => {
+    assert.equal(args[0], 'agents');
+    calls++;
+    queueMicrotask(() => callback(null, JSON.stringify(entries), ''));
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '', cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), env: { HOME: '/fixture' } });
+  t.after(() => adapter.close());
+  const process: HarnessProcess = { name: 'coord', harness: 'claude-code', role: null, model: null, cwd: '/fixture', pid: 101, harnessId: 'own', sessionId: 'stable', harnessSessionId: 'original', startedAt: '', status: 'running' };
+  adapter.watch(process);
+  const pair = await Promise.all([adapter.duplicateHarness(process, 'foreign'), adapter.duplicateHarness(process, 'foreign')]);
+  assert.deepEqual(pair, [{ kind: 'duplicate', job: { id: 'other', pid: 202 } }, { kind: 'duplicate', job: { id: 'other', pid: 202 } }]);
+  assert.equal(calls, 1);
+  entries = [{ id: 'own', sessionId: 'cleared', pid: 101 }];
+  assert.deepEqual(await adapter.duplicateHarness(process, 'cleared'), { kind: 'same-job' }, '/clear alone is not a second job');
+  entries = [];
+  assert.deepEqual(await adapter.duplicateHarness(process, 'foreign'), { kind: 'unavailable' }, 'missing captured job is not proof of a safe conversation change');
+});
+
+test('Claude relaunch retains the native job fence after failed stop and awaits held stop settlement', async t => {
+  for (const pid of [null, 2147483647]) for (const stop of ['nonzero', 'throw', 'held', 'absent'] as const) await t.test(`${pid === null ? 'exited row' : 'gone PID'}: ${stop}`, async t => {
+    const root = await mkdtemp(join(tmpdir(), 'cland-claude-stop-receipt-'));
+    const calls: string[][] = [];
+    let release: (() => void) | undefined;
+    let ownedAdapter: ClaudeCodeAdapter | undefined;
+    let work: ReturnType<ClaudeCodeAdapter['resume']> | undefined;
+    t.after(async () => {
+      release?.();
+      await work?.catch(() => {});
+      await ownedAdapter?.close();
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+      await rm(root, { recursive: true, force: true });
+    });
+    t.mock.method(cp, 'execFile', (_bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
+      calls.push(args);
+      if (args[0] === 'stop') {
+        if (stop === 'throw') throw new Error('synthetic native stop transport failure');
+        if (stop === 'held') { release = () => { release = undefined; callback(null, '', ''); }; return; }
+        queueMicrotask(() => callback({ code: 1 }, '', 'synthetic native stop failure'));
+      } else queueMicrotask(() => callback(null, args[0] === 'agents' ? JSON.stringify(stop === 'absent' ? [] : [{ id: 'old-job', sessionId: 'native' }]) : args[0] === '--bg' ? 'claude attach abcdef12' : '', ''));
+    });
+    syncBuiltinESMExports();
+    const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '', cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+    const adapter = ownedAdapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), agentsMs: 0, env: { HOME: root } });
+    const process: HarnessProcess = { name: 'coord', harness: 'claude-code', role: null, model: null, cwd: root, pid, harnessId: 'old-job', sessionId: 'stable', harnessSessionId: 'native', startedAt: '', status: 'exited' };
+    let stopReceipts = 0;
+    work = adapter.resume(process, { relaunch: true, stopped: () => {
+      stopReceipts++;
+      assert.equal(calls.some(c => c[0] === '--bg'), false, 'stop receipt precedes replacement');
+    } });
+    if (stop === 'held') {
+      await eventually('held native stop entered', () => release ? true : undefined);
+      assert.equal(calls.some(c => c[0] === '--bg'), false, 'no replacement before native stop callback');
+      assert.equal(stopReceipts, 0);
+      release!();
+      assert.equal((await work).found, true);
+      assert.equal(calls.filter(c => c[0] === '--bg').length, 1);
+      assert.equal(stopReceipts, 1);
+    } else if (stop === 'absent') {
+      assert.equal((await work).found, true, 'fresh successful listing confirms the old job absent');
+      assert.equal(stopReceipts, 1);
+      assert.ok(calls.findIndex(c => c[0] === 'agents') < calls.findIndex(c => c[0] === '--bg'));
+    } else {
+      await assert.rejects(work, /native job stop is unconfirmed/);
+      assert.equal(stopReceipts, 0);
+      assert.equal(calls.some(c => c[0] === '--bg'), false, 'failed stop retains the daemon job fence');
+    }
+  });
+});
+
+test('Claude bridge use fences its captured generation and old disconnect cannot remove a new bridge', async t => {
+  const state = new Map<string, string>();
+  const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '', cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, adapterState: { read: key => state.get(key) ?? null, write: (key, value) => { state.set(key, value); } } };
+  const adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), env: { HOME: '/fixture' } });
+  t.after(() => adapter.close());
+  const process: HarnessProcess = { name: 'coord', harness: 'claude-code', role: null, model: null, cwd: '/fixture', pid: null, harnessId: 'job', sessionId: 'stable', harnessSessionId: 'native', startedAt: '', status: 'running' };
+  const old: string[] = [], current: string[] = [];
+  const oldDisconnect = adapter.bridge(process, frame => { old.push(frame.message); return true; });
+  const message: import('../src/protocol.ts').Message = { id: 'input', from: 'human', fromKind: 'human', via: 'hub', to: ['coord'], text: 'generation input', ts: '2026-10-30T00:00:00Z' };
+  state.set('claude-launch:stable', 'new-generation');
+  assert.equal(adapter.hasBridge(process), false);
+  await assert.rejects(adapter.inject(process, message, null), /mod of this session is not connected/);
+  assert.deepEqual(old, []);
+  adapter.bridge(process, frame => { current.push(frame.message); return true; });
+  oldDisconnect();
+  assert.equal(adapter.hasBridge(process), true);
+  const receipt = adapter.inject(process, message, null);
+  adapter.confirm(process, message.id);
+  await receipt;
+  assert.deepEqual(current, [message.id]);
+  assert.deepEqual(old, []);
+});
+
+test('failed native stop cannot use a held pre-stop empty snapshot as fresh captured-job absence', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-claude-post-stop-'));
+  const calls: string[][] = [];
+  const logs: Array<Record<string, unknown>> = [];
+  let releaseEarlier: (() => void) | undefined;
+  let listCount = 0;
+  let jobListed = false;
+  let inspection: ReturnType<ClaudeCodeAdapter['duplicateHarness']> | undefined;
+  let resuming: ReturnType<ClaudeCodeAdapter['resume']> | undefined;
+  let adapter: ClaudeCodeAdapter | undefined;
+  t.after(async () => {
+    releaseEarlier?.();
+    await inspection?.catch(() => {});
+    await resuming?.catch(() => {});
+    await adapter?.close();
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await rm(root, { recursive: true, force: true });
+  });
+  t.mock.method(cp, 'execFile', (_bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
+    calls.push(args);
+    if (args[0] === 'agents') {
+      const snapshot = JSON.stringify(jobListed ? [{ id: 'old-job', sessionId: 'native' }] : []);
+      if (++listCount === 1) releaseEarlier = () => { releaseEarlier = undefined; callback(null, snapshot, ''); };
+      else queueMicrotask(() => callback(null, snapshot, ''));
+    } else if (args[0] === 'stop') queueMicrotask(() => callback({ code: 1 }, '', 'synthetic failed native stop'));
+    else throw new Error(`unexpected replacement command ${args[0]}`);
+  });
+  syncBuiltinESMExports();
+  const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '', cli: '', spoke: '', log: e => { logs.push(e); }, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), env: { HOME: root } });
+  const process: HarnessProcess = { name: 'coord', harness: 'claude-code', role: null, model: null, cwd: root, pid: null, harnessId: 'old-job', sessionId: 'stable', harnessSessionId: 'native', startedAt: '', status: 'exited' };
+  adapter.watch(process);
+  inspection = adapter.duplicateHarness(process, 'foreign');
+  await eventually('pre-stop native snapshot captured', () => releaseEarlier ? true : undefined);
+  jobListed = true;
+  resuming = adapter.resume(process, { relaunch: true });
+  const refused = assert.rejects(resuming, /native job stop is unconfirmed/);
+  await eventually('failed stop observes the earlier query boundary', () => logs.some(e => e.event === 'harness-stop-await-query') || undefined);
+  assert.equal(calls.some(c => c[0] === '--bg'), false);
+  releaseEarlier!();
+  await inspection;
+  await refused;
+  assert.equal(listCount, 2, 'absence proof invokes a new native query after the failed stop');
+  assert.equal(calls.some(c => c[0] === '--bg'), false, 'old empty result never authorizes replacement');
+  assert.equal(logs.some(e => e.event === 'harness-stop-failed'), true);
 });

@@ -319,6 +319,9 @@ T-410 source4: Use one fenced root owner and exercise all registered automatic c
 - T-1436 M1: keep history replies serial between ordinary-text groups and prove exact mapped topic/reply identity through native history.
 Verifier routing, Inbox read races, remote docs, Claude Code crash, both remotes, pinned tracker, lost lifecycle headers, paged open summaries and suite workers, one stage-close docs commit (T-1426, T-1430, T-1443, T-1350, T-1442, T-1421, T-1437, T-1248, T-1420)
 
+T-1471: Document Claude per-launch generation fencing, native stop after PID exit, legacy row compatibility and duplicate-job receipts.
+T-1471 source review M1–M5: Document resolved and existing-transport generation fencing, positive native stop/absence and owned fail-closed native inspection.
+T-1471 source2 M3: Require absence proof from a native query invoked after failed stop, draining earlier shared queries first.
 2026-10-30 · T-1474: Claude retirement receipts and durable inbox remedy guidance.
 2026-10-30 · T-1474 review: captured-job and same-conversation hook fences.
 T-1476: document suite archive summary/by-id recovery checks and measurement scope.
@@ -370,6 +373,12 @@ T-1453: Resolve authorized T-1458 dev merge retaining both local preflight and a
 T-1433: Document the Telegram album speech seam and single-upload/per-file failure contract.
 T-1433 M1: Include native workbench consumers and sentinel-like filenames in album regression guidance.
 T-1433 M1 follow-up: Preserve labelled surviving album sections after oversized-peer filtering.
+T-1471 merged T-1474/T-1469: Consolidate lifecycle guidance under one section; extend the sole native activity/observation owner for pending identity, preserve independent PID discovery and use transportClock for deferred hooks. Record legacy upgrade and re-exec propagation controls.
+T-1471 integrated stop receipt: preserve controller row/role/claim on unconfirmed adapter-owned stop; persist positive stop and reread row before replacement; release the single activity pending marker on stateless positive inspection.
+
+- T-1471: Route new Claude component regressions through shared pre-owned full setup, observation drainage and fixture removal barriers; link omitted/aborted controls.
+
+- T-1471: Require explicit recorded native launch identity for supplemental fixture spokes/hooks/bridges and per-generation rollback fault injection, preserving absent/legacy controls.
 
 T-1453: Under docs/help conflict waiver retain local preflight alongside periodic T3 fresh-cover guidance and combined help/frozen rows.
 

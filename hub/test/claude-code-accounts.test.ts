@@ -228,7 +228,11 @@ test('a signed-out account has one directory notice and event while another acco
     return await readFile(join(f.dirs.b, 'agents-started'), 'utf8').catch(() => undefined);
   });
   await writeFile(join(f.dirs.b, 'logged-out'), '');
-  const signal = { type: 'session.signal', session: b.name, launch: b.sessionId, event: 'turn-end', payload: { hook_event_name: 'StopFailure', error: 'authentication_failed' } };
+  const launchCall = (await f.calls()).findLast(call => call.args[0] === '--bg' && call.args[call.args.indexOf('--name') + 1] === b.name);
+  assert.ok(launchCall);
+  const settings = JSON.parse(await readFile(launchCall.args[launchCall.args.indexOf('--settings') + 1]!, 'utf8'));
+  assert.equal(typeof settings.env.CLAND_LAUNCH_ID, 'string');
+  const signal = { type: 'session.signal', session: b.name, launch: settings.env.CLAND_LAUNCH_ID, event: 'turn-end', payload: { hook_event_name: 'StopFailure', error: 'authentication_failed' } };
   for (let i = 0; i < 2; i++) assert.equal((await f.ui.request(signal)).ok, true);
   // A CLI child admitted before the latch may only reach its call log afterwards.
   // Drain that known child rather than guessing at its startup time with a sleep.

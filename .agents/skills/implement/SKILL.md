@@ -937,7 +937,34 @@ guide owns process-kill coverage; apply throughput thresholds in the external
 measurement probe, not as wall-clock assertions in suite tests. No role clause
 or CLI permission is added.
 
-## Claude retirement and retained history
+
+## Claude lifecycle
+
+For Claude Code launch identity changes, use the settings/environment,
+sealed frame and native lifecycle seams linked in
+`docs/agents/tests/hub-test-claude-code-sessions-lifecycle.test.ts.md`.
+Keep stable session/conversation ids separate from `CLAND_LAUNCH_ID`. Relaunch
+needs a native stop or captured-job absence from a query invoked after the failed
+stop, including after PID exit; drain earlier shared queries before that proof.
+Require generation after resolved admission identity, revoke existing
+spokes/bridges at rotation, and preserve legacy rows without generation metadata.
+Native inspection distinguishes duplicate, positively same job and unavailable;
+only same-job proof permits `/clear`. Supplemental native fixture spokes, hooks
+and bridges explicitly use `claudeLaunchIdentity` from
+`hub/test/claude-launch-fixture.ts` to read their recorded immutable settings;
+never infer a generation inside transport helpers or alter omitted/legacy
+controls. Partial-settings fault injection targets the new generation directory. Join deferred checks on shutdown and fence
+them against newer hooks, generation and lifecycle changes. Use the single
+`#hookRevision`/`#activity` and directory observation owner for both retirement
+and pending native-identity inspection; ordinary same-conversation hooks retain
+independent verified PID acquisition. New component regressions compose the
+shared pre-registered acquisition/observation owner through
+`hub/test/claude-component-fixture.ts`; follow its
+[setup cancellation and removal controls](../../../docs/agents/tests/hub-test-claude-component-fixture.test.ts.md).
+Bound full setup separately, join late clients/spokes and observations, and keep
+a successful-drain guard on root removal. Existing role clauses
+cover these boundaries; add no clause lines.
+
 
 For Claude daemon retirement, use the fake-clock/native-CLI seam in
 `docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`. Only fresh successful
@@ -948,6 +975,8 @@ allowing verified late PID discovery. Recheck the captured job after native
 identity probes before publishing a PID. Keep the `coordinator-retired` inbox kind compatible with generic message clients,
 key its remedy by session and native job, and retain restart, reconnect and
 failed-query controls. No role-clause or command changes are needed.
+
+## Retained history and hub memory
 
 For startup history changes, use the suite summary/by-id and recovery controls
 in `docs/agents/tests/hub-test-suite-persistence.test.ts.md` and the journal's

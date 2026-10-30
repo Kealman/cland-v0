@@ -14,8 +14,8 @@
 //   session.signal  {session?, sessionId?, launch?, event, at?, payload?} → {applied, state?}   clients only (`cland hook`)
 //   session.bridge  {session, launch?}                         → {bridged: true}, then `inject` frames  clients only
 //
-// `launch` is the cland session id the launch gave the session's hooks and mod: a signal or bridge of an
-// earlier launch under the same name is ignored or refused.
+// `launch` is the native launch generation given to the hooks and mod (legacy rows use the cland session id).
+// Generated rows require it; an absent/earlier generation is refused after resolving the durable owner.
 import { AccountLimited } from '../accounts/limits.ts';
 import type { HubFrame } from '../protocol.ts';
 import type { InjectFrame } from './contract.ts';

@@ -2,6 +2,7 @@
 // Deferred eligibility uses FakeClock; permission permutations are T1 in account-permissions.test.ts.
 // The early first-turn hit is driven by the sessionless launcher's hub/report brief;
 // the fake must consume that brief before publishing the native launch response.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { accountBinaries, accountClaude, accountCodex } from './account-fixture-env.ts';
@@ -150,7 +151,7 @@ test('Claude hard StopFailure and OpenCode quota mark; overloaded and the two re
     assert.equal((await account(f.ui, p.account!)).limited, undefined);
   }
   const reset = new Date(f.clock.now().getTime() + 120_000).toISOString();
-  assert.equal((await f.ui.request({ type: 'session.signal', session: claude.name, launch: claude.sessionId, event: 'mod-measure', payload: { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: reset }] } })).ok, true);
+  assert.equal((await f.ui.request({ type: 'session.signal', session: claude.name, launch: (await claudeLaunchIdentity(f.claude, claude.name)).launchId, event: 'mod-measure', payload: { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: reset }] } })).ok, true);
   await send(f.ui, claude.name, 'hit the usage limit');
   assert.equal((await eventually('Claude limited', async () => (await account(f.ui, 'claude-b')).limited)).resetsAt, reset);
   await send(f.ui, oc.name, 'hit the usage limit');
@@ -292,7 +293,7 @@ test('an expired full reading cannot lift a new hard hit while its after-hit pol
   await idle(f.ui, p.name);
   const expired = new Date(f.clock.now().getTime() - 60_000).toISOString();
   const future = new Date(f.clock.now().getTime() + 120_000).toISOString();
-  await f.ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-measure', payload: { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: expired }] } });
+  await f.ui.request({ type: 'session.signal', session: p.name, launch: (await claudeLaunchIdentity(f.claude, p.name)).launchId, event: 'mod-measure', payload: { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: expired }] } });
   await f.clock.advance(1000);
   await eventually('expired cached window published', async () => (await account(f.ui, 'claude-b')).windows.some(w => w.resetsAt === expired) || undefined);
   await writeFile(join(f.root, 'claude-b', 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [{ kind: 'session', percent: 100, resets_at: future }] } }));

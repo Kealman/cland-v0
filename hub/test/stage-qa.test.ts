@@ -1,5 +1,6 @@
 // T3: residual stage QA rules: native Git ancestry failures and daemon receipt recovery remain here; the end-to-end core is scenarios/stage-close.test.ts.
 import test from 'node:test';
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -180,7 +181,7 @@ test('stage QA requests obey the same Lead subtree boundary as ordinary QA reque
   const sessionId = (launched.value as { process: { sessionId: string } }).process.sessionId;
   // Wait for the native MCP spoke before connecting the observer.
   await f.ui.waitFor(f => f.type === 'session.usage' && f.sessionId === sessionId);
-  const lead = await spawnSpoke({ discover: true, cwd: f.root, name: 'lead-one', sessionId, assignRole: false }); t.after(() => lead.close());
+  const lead = await spawnSpoke({ discover: true, cwd: f.root, name: 'lead-one', ...(await claudeLaunchIdentity(f.fake!, 'lead-one')), sessionId, assignRole: false }); t.after(() => lead.close());
   for (const suffix of ['', ' stage Stage 1']) {
     const outside = await lead.call<{ ok: boolean; reason?: string }>('send', { to: ['qa-one'], text: `qa request ${other.id}${suffix}\nRead the brief.` });
     assert.equal(outside.ok, false); assert.match(outside.reason ?? '', /subtree/);

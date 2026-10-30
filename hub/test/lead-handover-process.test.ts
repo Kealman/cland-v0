@@ -1,4 +1,5 @@
 // T3: crash after the durable handover commit recovers one node without changing another.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
@@ -21,7 +22,7 @@ async function setup(t: TestContext) {
     const r = await coord.call<Result & { process: { sessionId: string } }>('session.launch', { name, role: item ? 'lead' : 'implementer', harness: 'claude-code', ...(item ? { item } : {}) });
     assert.equal(r.ok, true, r.error);
     await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === r.process.sessionId);
-    const s = await spawnSpoke({ cwd: root, discover: true, name, assignRole: false, sessionId: r.process.sessionId });
+    const s = await spawnSpoke({ cwd: root, discover: true, name, ...(await claudeLaunchIdentity(fake, name)), assignRole: false, sessionId: r.process.sessionId });
     t.after(() => s.close());
     return { s, ...r.process };
   };

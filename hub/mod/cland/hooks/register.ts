@@ -10,7 +10,7 @@
 //           are posted as `cland hook mod-turn-start` / `mod-turn-complete`, the latter with the turn's usage.
 //
 // Its configuration is the session's environment, set by the adapter through `--settings` (`env`):
-// CLAND_SESSION_NAME, CLAND_HUB_FILE, CLAND_NODE, CLAND_CLI, and CLAND_SESSION_ID: the launch this session is,
+// CLAND_SESSION_NAME, CLAND_HUB_FILE, CLAND_NODE, CLAND_CLI, and CLAND_LAUNCH_ID: the native launch this session is,
 // which every signal and the bridge name (the hub ignores an earlier launch under the same name).
 import type { EngineInterface as Engine, Register } from 'claude-code';
 
@@ -25,7 +25,8 @@ async function readConfig($: Engine): Promise<Config | null> {
   let hubFile: string | undefined = await $.env.get('CLAND_HUB_FILE');
   let node: string | undefined = await $.env.get('CLAND_NODE');
   let cli: string | undefined = await $.env.get('CLAND_CLI');
-  let launch: string | undefined = await $.env.get('CLAND_SESSION_ID');
+  let launch: string | undefined = await $.env.get('CLAND_LAUNCH_ID');
+  const legacyLaunch: string | undefined = await $.env.get('CLAND_SESSION_ID');
   if (!name || !hubFile || !node || !cli || !launch) {
     // the variables `--settings` declared, read from the settings when the process environment lacks them
     const settings = await $.settings.read();
@@ -34,8 +35,9 @@ async function readConfig($: Engine): Promise<Config | null> {
     hubFile ||= env.CLAND_HUB_FILE;
     node ||= env.CLAND_NODE;
     cli ||= env.CLAND_CLI;
-    launch ||= env.CLAND_SESSION_ID;
+    launch ||= env.CLAND_LAUNCH_ID ?? env.CLAND_SESSION_ID;
   }
+  launch ||= legacyLaunch;
   return name && hubFile && node && cli ? { name, hubFile, node, cli, launch: launch ?? null } : null;
 }
 

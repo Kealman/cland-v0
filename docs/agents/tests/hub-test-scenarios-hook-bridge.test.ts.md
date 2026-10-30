@@ -29,3 +29,5 @@ in the resource assertion's failure message; successful runs print no stacks.
 Run standalone with `node --test hub/test/scenarios/hook-bridge.test.ts`.
 Linux evidence comes from mode-free task verification on the droplet executor
 with two workers; local Darwin results are separate evidence.
+
+The separately spawned real bridge carries --launch from the exact recorded native settings via claudeLaunchIdentity. It retains that generation through hub restart. Preserve attached/reattached receipts, positive query and bridge PID reap, and live native-parent assertions.

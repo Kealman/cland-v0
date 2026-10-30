@@ -103,6 +103,14 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/approval-restart.test.ts`](../../../hub/test/approval-restart.test.ts) | [Notes](hub-test-approval-restart.test.ts.md) |
 | [`hub/test/ask-outcomes.test.ts`](../../../hub/test/ask-outcomes.test.ts) | [Notes](hub-test-ask-outcomes.test.ts.md) |
 | [`hub/test/claude-code-accounts.test.ts`](../../../hub/test/claude-code-accounts.test.ts) | [Notes](hub-test-claude-code-accounts.test.ts.md) |
+| [`hub/test/claude-component-fixture.test.ts`](../../../hub/test/claude-component-fixture.test.ts) | [Notes](hub-test-claude-component-fixture.test.ts.md) |
+| [`hub/test/account-limited.test.ts`](../../../hub/test/account-limited.test.ts) | [Notes](hub-test-account-limited.test.ts.md) |
+| [`hub/test/aide.test.ts`](../../../hub/test/aide.test.ts) | [Notes](hub-test-aide.test.ts.md) |
+| [`hub/test/inbox-requests.test.ts`](../../../hub/test/inbox-requests.test.ts) | [Notes](hub-test-inbox-requests.test.ts.md) |
+| [`hub/test/lead-handover-process.test.ts`](../../../hub/test/lead-handover-process.test.ts) | [Notes](hub-test-lead-handover-process.test.ts.md) |
+| [`hub/test/lead-permissions-process.test.ts`](../../../hub/test/lead-permissions-process.test.ts) | [Notes](hub-test-lead-permissions-process.test.ts.md) |
+| [`hub/test/lead-routing-process.test.ts`](../../../hub/test/lead-routing-process.test.ts) | [Notes](hub-test-lead-routing-process.test.ts.md) |
+| [`hub/test/session-holds.test.ts`](../../../hub/test/session-holds.test.ts) | [Notes](hub-test-session-holds.test.ts.md) |
 | [`hub/test/claude-code-schedule.test.ts`](../../../hub/test/claude-code-schedule.test.ts) | [Notes](hub-test-claude-code-schedule.test.ts.md) |
 | [`hub/test/scenarios/hook-bridge.test.ts`](../../../hub/test/scenarios/hook-bridge.test.ts) | [Notes](hub-test-scenarios-hook-bridge.test.ts.md) |
 | [`hub/test/cli.test.ts`](../../../hub/test/cli.test.ts) | [Notes](hub-test-cli.test.ts.md) |
@@ -344,6 +352,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/orphan-servers-perf.test.ts`](../../../hub/test/orphan-servers-perf.test.ts) | [Notes](hub-test-orphan-servers-perf.test.ts.md) |
 
 | [`nvim/test/events.test.ts`](../../../nvim/test/events.test.ts) | [Notes](nvim-test-events.test.ts.md) |
+| [`hub/test/claude-code-sessions.test.ts`](../../../hub/test/claude-code-sessions.test.ts) | [Notes](hub-test-claude-code-sessions.test.ts.md) |
 | [`hub/test/agents-checkpoint.test.ts`](../../../hub/test/agents-checkpoint.test.ts) | [Notes](hub-test-agents-checkpoint.test.ts.md) |
 | [`hub/test/suite-persistence.test.ts`](../../../hub/test/suite-persistence.test.ts) | [Notes](hub-test-suite-persistence.test.ts.md) |
 | [`hub/test/measure-memory.test.ts`](../../../hub/test/measure-memory.test.ts) | [Notes](hub-test-measure-memory.test.ts.md) |
@@ -355,6 +364,7 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/web-bundle.test.ts`](../../../hub/test/web-bundle.test.ts) | [Notes](hub-test-web-bundle.test.ts.md) |
 | [`hub/test/prerequisite-process.test.ts`](../../../hub/test/prerequisite-process.test.ts) | [Notes](hub-test-prerequisite-process.test.ts.md) |
 | [`hub/test/merge-policy.test.ts`](../../../hub/test/merge-policy.test.ts) | [Notes](hub-test-merge-policy.test.ts.md) |
+| [`hub/test/mod-bridge.test.ts`](../../../hub/test/mod-bridge.test.ts) | [Notes](hub-test-mod-bridge.test.ts.md) |
 | [`hub/test/executor-prepare-retry.test.ts`](../../../hub/test/executor-prepare-retry.test.ts) | [Notes](hub-test-executor-prepare-retry.test.ts.md) |
 | [`hub/test/freshness.test.ts`](../../../hub/test/freshness.test.ts) | [Notes](hub-test-freshness.test.ts.md) |
 

@@ -85,6 +85,7 @@ export type SpokeOptions = {
   discover?: boolean;
   sessionId?: string;
   launchToken?: string;
+  launchId?: string;
   cwd?: string;
   keepaliveMs?: number;
   /** How long a request waits for the hub's reply (CLAND_HUB_REQUEST_TIMEOUT_MS). */
@@ -133,6 +134,7 @@ async function spokeEnvironment(options: SpokeOptions): Promise<Record<string, s
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
   if (options.launchToken) env.CLAND_LAUNCH_TOKEN = options.launchToken;
+  if (options.launchId) env.CLAND_LAUNCH_ID = options.launchId;
   return accountFixtureEnvironment(env);
 }
 
@@ -730,11 +732,11 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
 }
 
 /** Validation duplicates use the existing dispatcher boundary; their family keeps a socket proof. */
-export async function dispatcherUi(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>, root: string): Promise<FrameClient> {
+export async function dispatcherUi(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>, root: string, observeProcesses = rememberResultProcesses): Promise<FrameClient> {
   let receive = (_line: string) => {};
   let open = true;
   const conversation = dispatcher.open({ send: frame => receive(`${JSON.stringify(frame)}\n`), close: () => { open = false; }, isOpen: () => open }, { authenticated: true, edge: 'socket' });
-  const ui = frameClient(line => conversation.receive(line.trimEnd()), fn => { receive = fn; }, () => { if (open) { open = false; conversation.closed(); } }, root);
+  const ui = frameClient(line => conversation.receive(line.trimEnd()), fn => { receive = fn; }, () => { if (open) { open = false; conversation.closed(); } }, root, observeProcesses);
   onCleanup(t, () => ui.close());
   ui.send({ type: 'hello', protocol: 2, client: 'ui' });
   const welcome = await ui.waitFor(frame => frame.type === 'welcome' || frame.type === 'error');

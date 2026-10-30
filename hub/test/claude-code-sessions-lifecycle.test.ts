@@ -354,3 +354,24 @@ test('a held Claude hook is reaped before fixture removal after a pre-release fa
     } finally { await cleanup(); }
   }, error => error === failure);
 });
+
+test('Claude relaunch stops the previous native job after its PID has exited', { skip: NO_PS }, async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  const first = await projectHub(t, root, fake.env);
+  const ui = await connectUi(t, first.discovery);
+  const launched = await launch(ui, 'coord', { role: 'coordinator' });
+  await presentAs(ui, 'coord', 'idle');
+  const discovered = await withDiscoveredPid(ui, launched);
+  await killDaemon(discovered.pid);
+  await eventually('old native PID reaped', () => !pidAlive(discovered.pid) || undefined);
+  const result = await ui.request({ type: 'session.resume', session: 'coord', relaunch: true }, 30_000);
+  assert.equal(result.ok, true, result.error);
+  await presentAs(ui, 'coord', 'idle');
+  const replacement = await withDiscoveredPid(ui, await harness(ui, 'coord'));
+  assert.notEqual(replacement.pid, discovered.pid);
+  const jobs = (await fake.sessions()).filter(s => s.name === 'coord');
+  assert.equal(jobs.length, 1, 'native job listing contains exactly one live coordinator');
+  const calls = (await readFile(join(fake.home, 'calls.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[] });
+  assert.ok(calls.some(c => c.args[0] === 'stop' && c.args[1] === discovered.harnessId), 'native stop receipt names the previous job');
+});

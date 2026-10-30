@@ -10,6 +10,7 @@ import { setImmediate as yieldIO } from 'node:timers/promises';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost, HarnessProcess, InjectFrame } from '../src/adapters/contract.ts';
 import type { Inbox, Message } from '../src/protocol.ts';
@@ -19,6 +20,8 @@ import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { cardWebOwner } from './telegram-card-web-fixture.ts';
 import { connectUi, inProcessSpoke, projectHub, tempProject, until, frameClient, type FrameClient } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { claudeComponentOwner } from './claude-component-fixture.ts';
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 
 function cli(t: TestContext) {
   const calls: Array<{ args: string[]; configDir: string | undefined; env: NodeJS.ProcessEnv }> = [];
@@ -190,7 +193,7 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
   let scheduleWrites = 0;
   let polls = 0;
   const owner = ownedTransport ? pacingOwner(t) : undefined;
-  const open = async () => {
+  const open = async (ownedSetup = false) => {
     const hubOptions = { clock, ...(ownedTransport ? { transportClock: clock } : {}), probes: 'fake', adapters: [(host) => {
       const adapterHost: AdapterHost = { ...host,
         signal: (id, signal) => { if (signal.source === 'poll') polls++; host.signal(id, signal); },
@@ -202,6 +205,10 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
       const adapter = new ClaudeCodeAdapter(adapterHost, { clock, bin: 'fixture-claude', pollMs: 5000, ...(reexecGraceMs === null ? {} : { reexecGraceMs }), ...(pidAlive ? { pidAlive } : {}), processStarted, env: fixtureEnvironment(root, {}, { CLAUDE_CONFIG_DIR: directory, DISABLE_AUTOUPDATER: '0' }) });
       return adapter;
     }] } satisfies import('./harness.ts').ProjectHubOptions;
+    if (ownedSetup) {
+      const setup = claudeComponentOwner(t, root, clock, hubOptions);
+      return { ...await setup.start(), owner: setup };
+    }
     const hub = owner ? await owner.start(root, {}, clock, { hubOptions }) : await projectHub(t, root, {}, hubOptions);
     // Owned replay setup uses the synchronous production dispatcher edge; no
     // native socket acquisition can outlive setup before registration.
@@ -221,19 +228,21 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
       ui = await connectUi(t, hub.discovery, 'ui', () => {});
     }
     await receipt(ui.request({ type: 'subscribe' }));
-    return { hub, ui };
+    return { hub, ui, owner: undefined };
   };
+  const identity = (p: HarnessProcess) => claudeLaunchIdentity({ calls: async () => native.calls }, p.name);
+
   async function records(ui: Awaited<ReturnType<typeof connectUi>>) {
     await receipt(ui.request({ type: 'hub.status', flushLogs: true }));
     return completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line) as { event: string });
   }
-  async function nextPoll() {
+  async function nextPoll(signal?: AbortSignal) {
     const before = polls;
     // Callers have observed recovery input acceptance. Cover the 30s agents slot
     // plus at most one 5s liveness tick, then await its signal with time fixed.
     await clock.advance(35_000);
-    const deadline = performance.now() + 10_000;
-    while (polls === before && performance.now() < deadline) await yieldIO();
+    await until(() => signal?.aborted || polls > before, { what: 'production poll state receipt', timeoutMs: 10_000 });
+    signal?.throwIfAborted();
     assert.ok(polls > before, 'production poll state receipt');
   }
   async function queryCompleted(after: number) {
@@ -241,7 +250,7 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
     while (scheduleWrites === after && performance.now() < deadline) await yieldIO();
     assert.ok(scheduleWrites > after, 'shared query persisted its completion receipt');
   }
-  return { native, root, clock, directory, open, records, nextPoll, queryCompleted, get polls() { return polls; }, get scheduleWrites() { return scheduleWrites; } };
+  return { native, root, clock, directory, open, records, nextPoll, queryCompleted, identity, get polls() { return polls; }, get scheduleWrites() { return scheduleWrites; } };
 }
 
 for (const pushed of [true, false]) test(`Claude busy poll after 37 seconds respects pushed idle: ${pushed}`, async t => {
@@ -259,13 +268,13 @@ for (const pushed of [true, false]) test(`Claude busy poll after 37 seconds resp
   if (pushed) {
     const args = f.native.calls.find(call => call.args[0] === '--bg')!.args;
     const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
-    const spoke = await inProcessSpoke(t, { cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN });
+    const spoke = await inProcessSpoke(t, { cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN, launchId: settings.env.CLAND_LAUNCH_ID });
     await spoke.waitForPresence([p.name]);
   }
   const bridge = await web.start(ui);
-  assert.equal((await bridge.request({ type: 'session.bridge', session: p.name, launch: p.sessionId })).ok, true);
+  assert.equal((await bridge.request({ type: 'session.bridge', session: p.name, launch: (await f.identity(p)).launchId })).ok, true);
   if (pushed) {
-    const idle = await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-turn-complete', payload: {} });
+    const idle = await ui.request({ type: 'session.signal', session: p.name, launch: (await f.identity(p)).launchId, event: 'mod-turn-complete', payload: {} });
     assert.equal(idle.ok, true, idle.error);
     assert.equal(await state(), 'idle');
   } else assert.equal(await state(), 'unknown');
@@ -354,15 +363,15 @@ test('Claude re-exec bridge acknowledgement without a model turn remains unconfi
   const p = (launched.value as { process: HarnessProcess }).process;
   const args = f.native.calls.find(call => call.args[0] === '--bg')!.args;
   const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
-  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN });
+  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN, launchId: settings.env.CLAND_LAUNCH_ID });
   const first = await peer();
   await first.waitForPresence([p.name]);
   const signal = async (event: string, payload: object) => {
-    const result = await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event, payload });
+    const result = await ui.request({ type: 'session.signal', session: p.name, launch: (await f.identity(p)).launchId, event, payload });
     assert.equal(result.ok, true, result.error);
   };
   const bridge = await connectUi(t, hub.discovery, 'mod-bridge');
-  assert.equal((await bridge.request({ type: 'session.bridge', session: p.name, launch: p.sessionId })).ok, true);
+  assert.equal((await bridge.request({ type: 'session.bridge', session: p.name, launch: (await f.identity(p)).launchId })).ok, true);
   const clause = await bridge.waitFor(frame => frame.type === 'inject') as InjectFrame;
   await signal('mod-turn-start', { text: clause.text });
   await ui.request({ type: 'hub.status', flushLogs: true });
@@ -372,7 +381,7 @@ test('Claude re-exec bridge acknowledgement without a model turn remains unconfi
   const second = await peer(); // Same launch identity, replacement spoke and bridge after re-exec.
   await second.waitForPresence([p.name]);
   const replacement = await connectUi(t, hub.discovery, 'mod-bridge');
-  assert.equal((await replacement.request({ type: 'session.bridge', session: p.name, launch: p.sessionId })).ok, true);
+  assert.equal((await replacement.request({ type: 'session.bridge', session: p.name, launch: (await f.identity(p)).launchId })).ok, true);
   await signal('mod-turn-complete', {});
   const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: 'accepted by the replacement mod, never run' });
   assert.equal(sent.ok, true, sent.error);
@@ -405,7 +414,7 @@ for (const [role, reconnectAt, identity] of [['implementer', 5000, 'known'], ['c
   const settings = JSON.parse(await readFile(launchArgs[launchArgs.indexOf('--settings') + 1]!, 'utf8'));
   const credential = settings.env.CLAND_LAUNCH_TOKEN as string;
   assert.equal(typeof credential === 'string' && credential.length > 0, true);
-  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'impl', assignRole: false, sessionId: launched.sessionId, launchToken: credential });
+  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'impl', assignRole: false, sessionId: launched.sessionId, launchToken: credential, launchId: settings.env.CLAND_LAUNCH_ID });
   const first = await peer();
   await first.waitForPresence(['impl']);
   const made = await ui.request({ type: 'task.create', title: 'Re-exec work', size: 'S', assignee: 'impl' });
@@ -417,7 +426,7 @@ for (const [role, reconnectAt, identity] of [['implementer', 5000, 'known'], ['c
   assert.notEqual(nativeId, launched.sessionId, 'native and cland identities are distinct');
   if (identity === 'hook') {
     f.native.sessions[0]!.sessionId = nativeId;
-    const signalled = await ui.request({ type: 'session.signal', session: 'impl', launch: launched.sessionId, event: 'session-start', at: f.clock.now().getTime(), payload: { session_id: nativeId } });
+    const signalled = await ui.request({ type: 'session.signal', session: 'impl', launch: (await f.identity(launched)).launchId, event: 'session-start', at: f.clock.now().getTime(), payload: { session_id: nativeId } });
     assert.equal(signalled.ok, true, signalled.error);
   }
   if (identity === 'discovery') {
@@ -493,7 +502,7 @@ for (const probeIdentity of ['known', 'unavailable', 'query']) test(`a newer hoo
   const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
   assert.equal(result.ok, true, result.error);
   const launched = (result.value as { process: HarnessProcess }).process;
-  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: launched.sessionId });
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: launched.sessionId, ...await f.identity(launched) });
   await peer.waitForPresence(['coord']);
   const made = await ui.request({ type: 'task.create', title: 'Probe work', size: 'S', assignee: 'coord' });
   assert.equal(made.ok, true, made.error);
@@ -513,7 +522,7 @@ for (const probeIdentity of ['known', 'unavailable', 'query']) test(`a newer hoo
     else await receipt(probeEntered);
     await f.clock.advance(2000);
     f.native.sessions[0] = { ...f.native.sessions[0]!, sessionId: newNative, pid: 91003 };
-    const hook = await ui.request({ type: 'session.signal', session: 'coord', launch: launched.sessionId, event: 'session-start', at: f.clock.now().getTime(), payload: { session_id: newNative } });
+    const hook = await ui.request({ type: 'session.signal', session: 'coord', launch: (await f.identity(launched)).launchId, event: 'session-start', at: f.clock.now().getTime(), payload: { session_id: newNative } });
     assert.equal(hook.ok, true, hook.error);
     await f.clock.advance(3000); // The original 30-second missing-PID grace expires while the probe is held.
     release();
@@ -547,7 +556,7 @@ for (const outcome of ['death', 'reconnect-first', 'shutdown'] as const) test(`d
   const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
   assert.equal(result.ok, true, result.error);
   const launched = (result.value as { process: HarnessProcess }).process;
-  const peer = () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: launched.sessionId });
+  const peer = async () => inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: launched.sessionId, ...await f.identity(launched) });
   const first = await peer();
   await first.waitForPresence(['coord']);
   if (outcome === 'reconnect-first') {
@@ -596,7 +605,7 @@ test('a different native session cannot inherit a dead Claude session by reusing
   const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
   assert.equal(launched.ok, true, launched.error);
   const p = (launched.value as { process: HarnessProcess }).process;
-  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId, ...await f.identity(p) });
   await peer.waitForPresence(['coord']);
   alive.delete(91001);
   f.native.sessions[0] = { id: p.harnessId!, sessionId: 'another-native-conversation', pid: 91002, status: 'idle' };
@@ -630,10 +639,10 @@ test('a signed-out Claude directory stays quiet across store reopen and recovers
   const input = await receipt(ui.waitFor(frame => frame.type === 'message' && (frame.message as { from: string; text: string }).from === 'sender' && (frame.message as { text: string }).text === 'waiting input'));
   const inputId = (input.message as { id: string }).id;
   const push = (frame: { type: string } & Record<string, unknown>) => receipt(ui.request({ ...frame, at: clock.now().getTime() }));
-  const start = { type: 'session.signal', session: 'running', launch: running.sessionId, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } };
+  const start = { type: 'session.signal', session: 'running', launch: (await f.identity(running)).launchId, event: 'turn-start', payload: { prompt_id: 'auth-turn', ids: [inputId] } };
   await push(start);
   native.loggedOut = true;
-  const signal = { type: 'session.signal', session: 'running', launch: running.sessionId, event: 'turn-end', payload: { prompt_id: 'auth-turn', hook_event_name: 'StopFailure', error: 'authentication_failed' } };
+  const signal = { type: 'session.signal', session: 'running', launch: (await f.identity(running)).launchId, event: 'turn-end', payload: { prompt_id: 'auth-turn', hook_event_name: 'StopFailure', error: 'authentication_failed' } };
   for (let i = 0; i < 2; i++) assert.equal((await push(signal)).ok, true);
   await receipt(ui.waitFor(frame => frame.type === 'message' && (frame.message as { kind?: string }).kind === 'claude-signed-out'));
   const failure = `signed out: ${directory}; see the Agents notice`;
@@ -692,7 +701,7 @@ test('a signed-out Claude directory stays quiet across store reopen and recovers
   assert.ok(native.agents().length > before, 'polling resumes after the explicit success');
   assert.ok(!native.calls.some(c => ['auth', 'doctor'].includes(c.args[0] ?? '')));
   const recoveredProcess = (recovered.value as { process: HarnessProcess }).process;
-  const again = { ...signal, session: 'recovered', launch: recoveredProcess.sessionId };
+  const again = { ...signal, session: 'recovered', launch: (await f.identity(recoveredProcess)).launchId };
   await push(again);
   const latched = native.agents().length;
   await push({ ...again, payload: { hook_event_name: 'StopFailure', error: 'server_error' } });
@@ -723,7 +732,7 @@ for (const retirement of ['missing', 'done'] as const) test(`Claude retirement $
   const result = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
   assert.equal(result.ok, true, result.error);
   const p = (result.value as { process: HarnessProcess }).process;
-  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId, ...await f.identity(p) });
   await peer.waitForPresence(['coord']);
   const exited = ui.waitFor(frame => frame.type === 'session.process' && (frame.process as HarnessProcess)?.status === 'exited');
   const began = f.clock.now().getTime();
@@ -745,7 +754,7 @@ for (const retirement of ['missing', 'done'] as const) test(`Claude retirement $
   const reopened = await f.open();
   const saved = (await reopened.ui.request({ type: 'inbox.list' })).value as Inbox;
   assert.equal(saved.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 1);
-  const reconnected = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  const reconnected = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId, ...await f.identity(p) });
   await reconnected.waitForPresence(['coord']);
   const cleared = (await reopened.ui.request({ type: 'inbox.list' })).value as Inbox;
   assert.equal(cleared.messages.filter(m => m.text.includes('cland session resume coord --relaunch')).length, 0);
@@ -805,7 +814,7 @@ for (const outcome of ['missing', 'done'] as const) test(`a newer same-conversat
   const launch = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
   assert.equal(launch.ok, true, launch.error);
   const p = (launch.value as { process: HarnessProcess }).process;
-  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId });
+  const peer = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', assignRole: false, sessionId: p.sessionId, ...await f.identity(p) });
   await peer.waitForPresence(['coord']);
   const made = await ui.request({ type: 'task.create', title: 'Held retirement ownership', size: 'S' });
   assert.equal(made.ok, true, made.error);
@@ -817,7 +826,7 @@ for (const outcome of ['missing', 'done'] as const) test(`a newer same-conversat
   try {
     await f.clock.advance(30_000);
     await receipt((async () => { while (!f.native.pending.length) await yieldIO(); })());
-    const hook = await ui.request({ type: 'session.signal', session: 'coord', launch: p.sessionId, event: 'tool-done', at: f.clock.now().getTime(), payload: { session_id: p.harnessSessionId } });
+    const hook = await ui.request({ type: 'session.signal', session: 'coord', launch: (await f.identity(p)).launchId, event: 'tool-done', at: f.clock.now().getTime(), payload: { session_id: p.harnessSessionId } });
     assert.equal(hook.ok, true, hook.error);
     const writes = f.scheduleWrites;
     for (const finish of f.native.pending.splice(0)) finish();
@@ -918,7 +927,7 @@ test('an absent Claude directory row cannot retire a known live PID', async t =>
   const host: AdapterHost = { ...base, exited: id => { exits.push(id); }, adapterState: {
     read: key => base.adapterState!.read(key), write: (key, value) => {
       base.adapterState!.write(key, value);
-      if (JSON.parse(value).entries?.length === 0) persisted();
+      if (key.startsWith('claude-poll:') && JSON.parse(value).entries?.length === 0) persisted();
     },
   } };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
@@ -995,4 +1004,77 @@ for (const probe of ['birth', 'identity'] as const) test(`a replaced Claude job 
     assert.deepEqual(publications, [], 'old native identity cannot publish into the replacement job');
     assert.equal(p.pid, null);
   } finally { release(); }
+});
+
+
+test('upgrade restart adopts persisted legacy Claude rows without generation on spoke hook and bridge', async t => {
+  const f = await component(t, () => true);
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  let { hub, ui, owner } = await f.open(true);
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: HarnessProcess }).process;
+  const args = f.native.calls.find(call => call.args[0] === '--bg')!.args;
+  const settings = JSON.parse(await readFile(args[args.indexOf('--settings') + 1]!, 'utf8'));
+  ui.close();
+  await owner!.dispose();
+  // A fixture copy of the pre-generation persisted shape, with the old native job still alive.
+  const db = new DatabaseSync(join(f.root, '.cland/hub.db'));
+  try {
+    db.prepare('delete from meta where key = ?').run(`claude-launch:${p.sessionId}`);
+    db.prepare('delete from meta where key = ?').run(`claude-launch-owner:${settings.env.CLAND_LAUNCH_ID}`);
+    assert.equal(db.prepare('select value from meta where key = ?').get(`claude-launch:${p.sessionId}`), undefined);
+  } finally { db.close(); }
+  ({ hub, ui, owner } = await f.open(true));
+  const peer = await owner!.spoke({ cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN });
+  const bridge = await owner!.client(hub);
+  const clauseReceipt = owner!.frame(bridge, frame => frame.type === 'inject');
+  const attached = await bridge.request({ type: 'session.bridge', session: p.name });
+  assert.equal(attached.ok, true, attached.error);
+  const clause = await clauseReceipt as InjectFrame;
+  const confirm = await ui.request({ type: 'session.signal', session: p.name, event: 'mod-turn-start', payload: { text: clause.text } });
+  assert.equal((confirm.value as { applied: boolean }).applied, true);
+  await ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-turn-complete' });
+  const received = owner!.observe(async signal => {
+    await until(() => signal.aborted || peer.events.some(e => e.params.content.includes('legacy coordinator stays reachable after upgrade')), { what: 'legacy spoke receives human input', timeoutMs: 5_000 });
+    signal.throwIfAborted();
+  });
+  const injected = owner!.frame(bridge, frame => frame.type === 'inject' && typeof frame.text === 'string' && frame.text.includes('legacy coordinator stays reachable after upgrade'));
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: 'legacy coordinator stays reachable after upgrade' });
+  assert.equal(sent.ok, true, sent.error);
+  const id = (sent.value as { message: Message }).message.id;
+  const input = await injected as InjectFrame;
+  assert.equal(input.message, id);
+  await received;
+  const delivered = owner!.frame(ui, frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected');
+  await ui.request({ type: 'session.signal', session: p.name, event: 'mod-turn-start', payload: { text: input.text } });
+  await delivered;
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(rows.processes[0]!.sessionId, p.sessionId);
+  assert.equal(rows.processes[0]!.harnessId, p.harnessId);
+  assert.equal(rows.processes[0]!.role, 'coordinator');
+  assert.equal(bridge.frames.filter(frame => frame.type === 'inject' && frame.message === id).length, 1);
+});
+
+
+test('positive same-job inspection on a stateless hook releases the pending native fence', async t => {
+  const f = await component(t, () => true);
+  f.native.knownPid = true;
+  f.native.pid = 91001;
+  const { ui, owner } = await f.open(true);
+  const launched = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: HarnessProcess }).process;
+  const nativeId = `cleared-${p.harnessSessionId}`;
+  f.native.sessions[0]!.sessionId = nativeId;
+  const changed = owner!.frame(ui, frame => frame.type === 'session.process' && (frame.process as HarnessProcess).harnessSessionId === nativeId);
+  const hook = await ui.request({ type: 'session.signal', session: p.name, launch: (await f.identity(p)).launchId, event: 'subagent-start', payload: { session_id: nativeId, agent_id: 'synthetic-agent' } });
+  assert.equal(hook.ok, true, hook.error);
+  await changed;
+  await owner!.observe(signal => f.nextPoll(signal));
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcess[] };
+  assert.equal(rows.processes[0]!.harnessSessionId, nativeId);
+  assert.equal(rows.processes[0]!.pid, 91001);
+  assert.equal(rows.processes[0]!.status, 'running');
 });

@@ -8615,6 +8615,13 @@
     "hub/test/telegram-approvals.test.ts::Telegram corrects a Codex once approval after its first outcome edit is held": 0.125078
   },
   "allow": {
+    "hub/test/claude-code-sessions-lifecycle.test.ts::Claude relaunch stops the previous native job after its PID has exited": {
+      "seconds": 8.967,
+      "owner": "E-880",
+      "added": "2026-10-30",
+      "expires": "2026-11-06",
+      "reason": "T-1471 keeps two real native launches, observed old-PID reap, explicit previous-job stop and exactly one live native job. A-14603 at 3bc380c2e on Linux x64 c-8 lon1 Node24.21.0: ordinary 5.182492985 s; five passing load samples 5.558342759, 5.977673096, 5.953064235, 5.298225241 and 4.793166403 s. Cap rounds 1.5x the worst passing sample upward to milliseconds. Coordinator decision a4d16807 approves E-880 ownership and seven-day expiry. No assertions, timeouts, file-level or blanket budgets change."
+    },
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
       "seconds": 4.98,
       "owner": "E-880",

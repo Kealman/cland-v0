@@ -1,3 +1,4 @@
+import { launchGenerationKey, launchOwnerKey, earlierLaunch } from './launch-generation.ts';
 import { COORDINATOR_RETIRED } from '../hub/retirement.ts';
 import { processIdentityAsync } from '../process-identity.ts';
 import { removeSessionRunDirectory, writeSessionCredential } from '../../../shared/session-credential.ts';
@@ -105,6 +106,9 @@ export class Sessions {
   #servingAt: number | null = null;
   readonly #table: ProcessTable;
   readonly #root: string;
+  readonly #nativeChecks = new Set<Promise<void>>();
+  /** Hook/lifecycle admission sequencing for deferred callbacks; native I/O freshness lives in the adapter. */
+  readonly #frameRevisions = new Map<string, number>();
   readonly #log: LogFn;
   readonly #pushTrustMs: number;
   readonly #usageEventMs: number;
@@ -291,6 +295,7 @@ export class Sessions {
 
   /** Reserve synchronously; queued operations re-read the row by its stable identity after admission. */
   #lifecycleSlot(identity: string): { ready: Promise<void> | undefined; release: () => void } {
+    this.#frameRevisions.set(identity, (this.#frameRevisions.get(identity) ?? 0) + 1);
     const ready = this.#lifecycle.get(identity);
     let done!: () => void;
     const tail = new Promise<void>(resolve => { done = resolve; });
@@ -481,6 +486,11 @@ export class Sessions {
       root: this.#root,
       durableLaunchRecovery: true,
       log: this.#log,
+      launchGeneration: (id, generation) => {
+        this.#frameRevisions.set(id, (this.#frameRevisions.get(id) ?? 0) + 1);
+        this.#core.rotateLaunchGeneration(id, generation);
+        this.#adapters.get('claude-code')?.unwatch?.(id);
+      },
       adapterState: { read: key => this.#core.store.meta(key), write: (key, value) => this.#core.store.setMeta(key, value) },
       limitHit: (sessionId, hit) => this.#limitHit(sessionId, hit),
       approvalRequested: (sessionId, request) => this.#core.inbox.requestApproval(sessionId, request),
@@ -1425,32 +1435,36 @@ export class Sessions {
     };
     let r: ResumeResult;
     let nativeEntered = false;
+    let nativeStopped = false;
+    const stopped = () => resumed(() => {
+      this.#table.update(row().name, { status: 'stopped' });
+      nativeStopped = true;
+      this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
+      p = row();
+      return p;
+    });
     try {
       let resuming: Promise<ResumeResult>;
-      if (relaunch && p.status === 'running') {
+      if (relaunch && p.status === 'running' && !adapter.relaunchStopsProcess) {
         await adapter.stop(p, resumed, authorizeResume);
-        resumed(() => {
-          this.#table.update(row().name, { status: 'stopped' });
-          this.#log({ event: 'session-stopped', session: row().name, harness: p.harness, relaunching: true });
-          p = row();
-        });
+        stopped();
         await provision();
         resuming = resumed(() => {
           authorizeResume();
           nativeEntered = true;
-          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness, relaunch) });
+          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), ...(adapter.relaunchStopsProcess ? { stopped } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness, relaunch) });
         });
       } else {
         await provision();
         resuming = resumed(() => {
           authorizeResume();
           nativeEntered = true;
-          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness, relaunch) });
+          return adapter.resume(p, { ...(launchToken ? { launchToken } : {}), ...(adapter.relaunchStopsProcess ? { stopped } : {}), relaunch, resumed, authorize: authorizeResume, policy: this.#launchPolicy(p.role, p.harness, relaunch) });
         });
       }
       r = await resuming;
     } catch (cause) {
-      if (!nativeEntered || cause instanceof AccountLimited || cause instanceof ToolForbidden) {
+      if (!nativeEntered || (relaunch && adapter.relaunchStopsProcess && !nativeStopped) || cause instanceof AccountLimited || cause instanceof ToolForbidden) {
         resumed(() => {
           if (reservation && desiredRole) this.#core.releaseLaunchRole(name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
         });
@@ -1574,11 +1588,11 @@ export class Sessions {
 
   // ---------------------------------------------------------------- signals from inside the session
 
-  /** Find the process a hook or the mod speaks for: by its launch (the cland session id; the row may have been
+  /** Find the process a hook or the mod speaks for: by its launch generation (legacy: the cland session id; the row may have been
    *  renamed since), else by the cland name it was launched with, else the harness's session id. */
   #signalled(session: string | undefined, sessionId: string | undefined, launch?: string): HarnessProcess | null {
-    const byLaunch = launch ? this.#table.bySessionId(launch) : null;
-    if (byLaunch && byLaunch.sessionId === launch) return byLaunch;
+    const byLaunch = launch ? this.#table.bySessionId(this.#core.store.meta(launchOwnerKey(launch)) || launch) : null;
+    if (byLaunch) return byLaunch;
     const byName = session ? this.#table.get(session) : null;
     if (byName) return byName;
     return sessionId ? this.#table.bySessionId(sessionId) : null;
@@ -1588,7 +1602,13 @@ export class Sessions {
    * `cland hook <event>` posted a signal: a state, the model, usage, a confirmed inject. A signal for a session
    * the hub did not launch is logged and ignored (its state stays `unknown`).
    */
-  signal(frame: SignalFrame): { applied: boolean; state?: SessionState; buffered?: true } {
+  signal(frame: SignalFrame): { applied: boolean; error?: string; state?: SessionState; buffered?: true } {
+    return this.#hookSignal(frame, false);
+  }
+
+  #hookSignal(frame: SignalFrame, checkedNative: boolean): { applied: boolean; error?: string; state?: SessionState; buffered?: true } {
+    if (this.#closed) return { applied: false };
+    if (frame.at === undefined) frame = { ...frame, at: this.#transportClock.now().getTime() };
     const launching = frame.session !== undefined ? this.#launching.get(frame.session) : undefined;
     if (launching) {
       launching.push(frame);
@@ -1599,9 +1619,12 @@ export class Sessions {
       this.#log({ event: 'signal-unmatched', session: frame.session ?? null, hookEvent: frame.event });
       return { applied: false };
     }
-    if (frame.launch !== undefined && frame.launch !== p.sessionId) {
-      this.#log({ event: 'signal-other-launch', session: p.name, hookEvent: frame.event });
-      return { applied: false };
+    if (!checkedNative) this.#frameRevisions.set(p.sessionId, (this.#frameRevisions.get(p.sessionId) ?? 0) + 1);
+    const generation = this.#core.store.meta(launchGenerationKey(p.sessionId));
+    if ((generation || frame.launch !== undefined) && frame.launch !== (generation || p.sessionId)) {
+      this.#inspectNative(p, frame, false);
+      this.#log({ event: 'signal-other-launch', session: p.name, hookEvent: frame.event, error: earlierLaunch });
+      return { applied: false, error: earlierLaunch };
     }
     const adapter = this.adapter(p.harness);
     const payload = frame.payload ?? {};
@@ -1621,7 +1644,14 @@ export class Sessions {
     }
     // the harness's own conversation id, as its hooks carry it (a `/clear` starts a new one)
     const harnessSessionId = typeof payload.session_id === 'string' ? payload.session_id : null;
-    if (harnessSessionId && harnessSessionId !== (p.harnessSessionId ?? p.sessionId)) this.#table.update(p.name, { harnessSessionId });
+    if (harnessSessionId && harnessSessionId !== (p.harnessSessionId || p.sessionId)) {
+      if (frame.at! < (this.#lastAt.get(p.sessionId) ?? 0)) return { applied: false, state: this.#core.sessionState(p.sessionId) };
+      if (adapter.duplicateHarness && p.harnessSessionId && !checkedNative) {
+        this.#inspectNative(p, frame, true);
+        return { applied: false, buffered: true };
+      }
+      this.#table.update(p.name, { harnessSessionId });
+    }
     const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? this.#transportClock.now().getTime());
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     this.#recordHarness(p, meaning);
@@ -1643,6 +1673,45 @@ export class Sessions {
     if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent || meaning.usage || meaning.rateLimits) };
     const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? this.#transportClock.now().getTime(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
+  }
+
+  #inspectNative(p: HarnessProcess, frame: SignalFrame, apply: boolean): void {
+    const nativeId = frame.payload?.session_id;
+    const adapter = this.adapter(p.harness);
+    if (typeof nativeId !== 'string' || nativeId === p.harnessSessionId || !adapter.duplicateHarness || p.status !== 'running' || this.#lifecycle.has(p.sessionId)) return;
+    if (apply) adapter.nativeSessionHint?.(p);
+    const generation = this.#core.store.meta(launchGenerationKey(p.sessionId));
+    const revision = this.#frameRevisions.get(p.sessionId);
+    const captured = { ...p };
+    let outcome = 'superseded';
+    const inspect = adapter.duplicateHarness;
+    const work = Promise.resolve().then(() => this.#closed ? { kind: 'unavailable' as const } : inspect.call(adapter, captured, nativeId)).then(result => {
+      if (this.#closed) return;
+      const current = this.#table.bySessionId(captured.sessionId);
+      if (!current || current.status !== 'running' || current.archivedAt || this.#lifecycle.has(captured.sessionId)
+        || current.harnessId !== captured.harnessId || current.pid !== captured.pid || current.startedAt !== captured.startedAt
+        || current.harnessSessionId !== captured.harnessSessionId || this.#frameRevisions.get(captured.sessionId) !== revision
+        || this.#core.store.meta(launchGenerationKey(captured.sessionId)) !== generation) return;
+      outcome = result.kind;
+      if (result.kind === 'duplicate') {
+        if (apply) adapter.nativeSessionHint?.(current, result);
+        this.#noticeDuplicate(current, result.job);
+      } else if (apply && result.kind === 'same-job') {
+        adapter.nativeSessionHint?.(current, result);
+        this.#hookSignal(frame, true);
+      } else if (result.kind === 'unavailable') this.#log({ event: 'duplicate-harness-unavailable', session: current.name });
+    }).catch(error => { outcome = 'failed'; if (!this.#closed) this.#log({ event: 'duplicate-harness-check-failed', session: captured.name, error: String(error) }); })
+      .finally(() => this.#log({ event: 'native-job-inspection', sessionId: captured.sessionId, job: captured.harnessId, outcome }));
+    this.#nativeChecks.add(work);
+    void work.then(() => this.#nativeChecks.delete(work), () => this.#nativeChecks.delete(work));
+  }
+
+  #noticeDuplicate(p: HarnessProcess, other: { id: string; pid: number | null }): void {
+    const key = `duplicate-harness:${p.sessionId}:${p.harnessId}:${other.id}`;
+    if (this.#core.store.meta(key)) return;
+    this.#core.store.setMeta(key, 'noticed');
+    this.#log({ event: 'duplicate-harness', session: p.name, job: p.harnessId, pid: p.pid, otherJob: other.id, otherPid: other.pid });
+    this.#core.noticeInTopic('agents', { kind: 'duplicate-harness', text: `${p.name}: duplicate harness jobs ${p.harnessId} (pid ${p.pid ?? 'unknown'}) and ${other.id} (pid ${other.pid ?? 'unknown'})` });
   }
 
   #recordHarness(p: HarnessProcess, report: { model?: string; subagent?: { id?: string; type?: string; model?: string } }): void {
@@ -1850,9 +1919,10 @@ export class Sessions {
         disconnect?.();
       };
     }
-    const byLaunch = launch !== undefined ? this.#table.bySessionId(launch) : null;
-    const p = byLaunch && byLaunch.sessionId === launch ? byLaunch : this.#process(session);
-    if (launch !== undefined && launch !== p.sessionId) throw new Error(`this bridge belongs to an earlier launch of "${session}"`);
+    const byLaunch = launch !== undefined ? this.#table.bySessionId(this.#core.store.meta(launchOwnerKey(launch)) || launch) : null;
+    const p = byLaunch ?? this.#process(session);
+    const generation = this.#core.store.meta(launchGenerationKey(p.sessionId));
+    if ((generation || launch !== undefined) && launch !== (generation || p.sessionId)) throw new Error(`this bridge ${earlierLaunch} of "${session}"`);
     const adapter = this.adapter(p.harness);
     if (!adapter.bridge) throw new Error(`the ${p.harness} adapter takes no bridge`);
     const disconnect = adapter.bridge(p, send);
@@ -2056,7 +2126,7 @@ export class Sessions {
     for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
-    const drain = [...adapterDrains, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
+    const drain = [...adapterDrains, ...this.#nativeChecks, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
     const finish = () => { if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed'); };
     if (drain.length) return Promise.all(drain.map(work => work.catch(() => {}))).then(finish);
     finish();

@@ -1,4 +1,5 @@
 // T3: native harness launch, shell stop/resume and settings-hook pipe lifecycle.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -18,7 +19,7 @@ test('an Aide launches any role through its tool and runs launch, stop and resum
   assert.equal(launched.ok, true, launched.error);
   const aideProcess = (launched.value as { process: HarnessProcessView }).process;
   await clauseAnswered(ui, 'aide-1');
-  const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', sessionId: aideProcess.sessionId, assignRole: false });
+  const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', ...(await claudeLaunchIdentity(fake, 'aide-1')), sessionId: aideProcess.sessionId, assignRole: false });
   t.after(() => aide.close());
   await aide.waitForPresence(['aide-1']);
   const coord = await aide.call<{ ok: boolean; process: HarnessProcessView }>('session.launch', { name: 'coord', role: 'coordinator', harness: 'claude-code' });

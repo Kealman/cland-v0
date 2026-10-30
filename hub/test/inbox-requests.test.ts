@@ -1,4 +1,5 @@
 // T3: native command approval receipt enters and leaves the inbox.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cland, connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
@@ -30,7 +31,7 @@ test('asks and a fake harness command approval wait with ages, then journal each
     const status = await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' });
     return status.sessions.some(s => s.name === 'worker' && s.state === 'idle') || undefined;
   });
-  await ok(ui, { type: 'session.signal', session: 'worker', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash', approvalCommand: 'git status' } });
+  await ok(ui, { type: 'session.signal', session: 'worker', launch: (await claudeLaunchIdentity(fake, 'worker')).launchId, event: 'permission', at: Date.now(), payload: { tool_name: 'Bash', approvalCommand: 'git status' } });
   const before = await ok<Inbox>(ui, { type: 'inbox.list' });
   assert.equal(before.needsYou, 4);
   assert.deepEqual(before.asks.map(row => row.id), [c.ask, b.ask, a.ask]);
@@ -40,7 +41,7 @@ test('asks and a fake harness command approval wait with ages, then journal each
   await ok(ui, { type: 'topic.answer', ask: a.ask, text: 'Yes' });
   await ok(ui, { type: 'topic.resolve', topic });
   await ok(ui, { type: 'topic.close', topic: cancelledTopic });
-  await ok(ui, { type: 'session.signal', session: 'worker', event: 'tool-done', at: Date.now(), payload: {} });
+  await ok(ui, { type: 'session.signal', session: 'worker', launch: (await claudeLaunchIdentity(fake, 'worker')).launchId, event: 'tool-done', at: Date.now(), payload: {} });
   assert.equal((await ok<Inbox>(ui, { type: 'inbox.list' })).needsYou, 0);
   // A repeated snapshot must not write a second departure.
   const archive = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });

@@ -139,3 +139,37 @@ keeping the watched object, conversation and previous PID. Both tests observe
 the stale-identity receipt, assert no PID publication, and keep the PID unknown.
 Publication rechecks the captured native job id after both identity awaits;
 positive same-job newer-hook discovery remains covered separately.
+
+T-1471 generated-launch peers carry CLAND_LAUNCH_ID read from the exact recorded
+settings file; hooks/bridges carry that same generation. The native query race
+retains its original PID/conversation/role/claim assertions. A persisted upgrade
+control reopens a fixture in the pre-generation metadata shape, then uses an
+old-shaped spoke, hook and bridge to deliver/confirm one human input while
+retaining the job and Coordinator role. This legacy control passed before the
+consumer corrections: absence compatibility already worked in the product.
+Generated rows continue to refuse omitted/earlier generations.
+
+
+After T-1474 integration, native freshness uses its single #hookRevision/#activity
+owner and directory observationRevision/observedLaunches. The pending-identity
+marker on that record blocks stale native PID adoption before inspection, while
+ordinary hooks preserve the late-PID controls. Positive inspection clears the
+marker even for a stateless subagent hook; its red-first control observes the
+persisted conversation change, then requires the next production poll receipt.
+The raw adapter-state observer parses only its claude-poll records, leaving
+public generation values unparsed. Newly landed generated peers carry the exact
+saved generation; persisted legacy controls deliberately omit it.
+
+The legacy upgrade and stateless-hook controls use `claudeComponentOwner` from
+`hub/test/claude-component-fixture.ts`. It composes the shared pre-registered
+`pacingOwner` acquisition/observation owner and dispatcher UI. A separate setup
+bound includes hub startup, welcome and subscription. Each reopened hub has its
+own owner, and late spoke/client acquisition stays owned through disposal.
+Frame observations are armed before their trigger and cancelled/joined at stop;
+root-removal guards join every owner before fixture deletion. The omitted and
+aborted setup controls are in
+[claude-component-fixture.test.ts](hub-test-claude-component-fixture.test.ts.md).
+Keep the final delivery id, one-injection count, stable job/role and positive
+native-poll assertions. The dispatcher UI's optional process observer defaults
+to native ownership discovery for existing callers; these invented-PID
+components explicitly disable that observer.

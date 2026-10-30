@@ -1,3 +1,4 @@
+import { launchGenerationKey, launchOwnerKey, earlierLaunch } from '../adapters/launch-generation.ts';
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
 import { mergeHumanMarks } from './human-marks.ts';
 import type { AnswerAttribution, HumanMessageKind, RemoteVia } from '../protocol.ts';
@@ -107,6 +108,8 @@ type DefaultItem = Pick<ItemSummary, 'id' | 'state' | 'parent' | 'claim'>;
 type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; verdict?: Pick<Verdict, 'verdict' | 'result' | 'run'>; ready?: boolean; severity?: 'warn'; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' | 'moved' };
 
 export type Connection = {
+  /** Native generation captured by this admitted connection; absent for legacy rows. */
+  launchId?: string;
   name: string;
   cwd: string;
   sessionId: string;
@@ -1389,9 +1392,16 @@ export class HubCore {
       }
       hello = { ...hello, name: hello.name ?? launchIdentity.name, sessionId: launchIdentity.sessionId };
     }
+    const generation = this.#store.meta(launchGenerationKey(hello.sessionId));
+    if (generation && hello.launchId !== generation) return { ok: false, code: 'name-in-use', message: `this spoke ${earlierLaunch}` };
     // The session id is the stable identity; a hello with the unknown id identifies nobody.
     const identified = hello.sessionId !== UNKNOWN_SESSION;
-    const held = identified ? this.connectionOf(hello.sessionId) : undefined;
+    let held = identified ? this.connectionOf(hello.sessionId) : undefined;
+    if (held && !this.isCurrent(held)) {
+      this.disconnect(held);
+      held.close(`this spoke ${earlierLaunch}`);
+      held = undefined;
+    }
     const live = held !== undefined && (hello.name === undefined || hello.name === held.name) ? held : undefined;
     if (live) {
       // Another spoke of a session that is connected, under the session's name or asking for none: it joins it.
@@ -1450,6 +1460,7 @@ export class HubCore {
       cwd: hello.cwd,
       sessionId: hello.sessionId,
       connectedAt: this.#now().toISOString(),
+      ...(hello.launchId ? { launchId: hello.launchId } : {}),
       // The status line belongs to the session under its name: a reconnect of the same session is the same
       // work. Another session claiming the name, or a name unseen for longer than the queue's TTL, inherits
       // no line.
@@ -1789,7 +1800,8 @@ export class HubCore {
 
   /** Whether this connection still holds its session's name (a takeover or a close ends that). */
   isCurrent(connection: Connection): boolean {
-    return this.#live.get(connection.name) === connection;
+    const generation = this.#store.meta(launchGenerationKey(connection.sessionId));
+    return this.#live.get(connection.name) === connection && (!generation || connection.launchId === generation);
   }
 
   presence(processes: HarnessProcessView[] = []): Presence[] {
@@ -2043,6 +2055,19 @@ export class HubCore {
     this.asks.renamed(c.sessionId);
     this.#publishTopics();
     return { ok: true, name: to };
+  }
+
+  /** Persist before revocation; stale buffered frames lose authority synchronously. */
+  rotateLaunchGeneration(sessionId: string, generation: string): void {
+    this.#store.transaction(() => {
+      this.#store.setMeta(launchGenerationKey(sessionId), generation);
+      if (generation) this.#store.setMeta(launchOwnerKey(generation), sessionId);
+    });
+    const connection = this.connectionOf(sessionId);
+    if (connection) {
+      this.disconnect(connection);
+      connection.close(`this spoke ${earlierLaunch}`);
+    }
   }
 
   /** Close a session's socket; its spoke reconnects with a fresh hello. */
@@ -2637,6 +2662,7 @@ export class HubCore {
   }
 
   #sendTo(c: Connection, message: Message): boolean {
+    if (!this.isCurrent(c)) return false;
     if (message.fromKind === 'human' && this.sessionState(c.sessionId) === 'busy') return false;
     if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return false;
     if (isHeldDelivery(message)) return false;

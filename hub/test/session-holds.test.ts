@@ -1,4 +1,5 @@
 // T3: real hub restart, verifier SIGKILL and native early-first-turn pending work.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +24,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   const processRow = (launch.value as { process: HarnessProcessView }).process;
   // Wait for the native MCP spoke before connecting the observer.
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === processRow.sessionId);
-  let rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, role: 'reviewer' });
+  let rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, ...(await claudeLaunchIdentity(fake, processRow.name)), sessionId: processRow.sessionId, role: 'reviewer' });
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['coord-pending', processRow.name]);
   const row = async () => ((await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] }).processes.find(p => p.name === processRow.name)!;
@@ -49,7 +50,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   // Only the native spoke can now make the reviewer present. Reattach the observer after it,
   // since restart reconnects the two spokes independently and deliveries go to the newest.
   await coord.waitForPresence(['coord-pending', processRow.name]);
-  rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, sessionId: processRow.sessionId, assignRole: false });
+  rev = await spawnSpoke({ discover: true, cwd: root, name: processRow.name, ...(await claudeLaunchIdentity(fake, processRow.name)), sessionId: processRow.sessionId, assignRole: false });
   await rev.waitForPresence(['coord-pending', processRow.name]);
   assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: ids[1] })).ok, true);
   assert.equal((await row()).pending, undefined);
@@ -69,7 +70,7 @@ test('delivered verifier requests persist across restart and clear on hold, verd
   const dying = (death.value as { process: HarnessProcessView }).process;
   // Wait for the native MCP spoke before connecting the observer.
   await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === dying.sessionId);
-  const next = await spawnSpoke({ discover: true, cwd: root, name: dying.name, sessionId: dying.sessionId, assignRole: false });
+  const next = await spawnSpoke({ discover: true, cwd: root, name: dying.name, ...(await claudeLaunchIdentity(fake, dying.name)), sessionId: dying.sessionId, assignRole: false });
   onCleanup(t, () => next.close());
   await next.waitForPresence(['coord-pending', dying.name]);
   await coord.call('send', { to: [dying.name], text: `qa request ${ids[0]}` });

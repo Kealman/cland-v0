@@ -24,6 +24,12 @@ export type Capabilities = {
   states: Record<Exclude<SessionState, 'unknown'>, Reliability>;
 };
 
+/** A native query only authorizes a conversation change on a positive same-job receipt. */
+export type NativeJobInspection =
+  | { kind: 'duplicate'; job: { id: string; pid: number | null } }
+  | { kind: 'same-job' }
+  | { kind: 'unavailable' };
+
 /** A harness process the hub launched: a row of the process table (`./processes.ts`). */
 export type HarnessProcess = {
   /** The cland session name. */
@@ -164,6 +170,8 @@ export type AdapterHost = {
   log: (entry: Record<string, unknown>) => void;
   /** Project-local durable adapter state, in hub.db's meta table. */
   adapterState?: { read: (key: string) => string | null; write: (key: string, value: string) => void };
+  /** Persist generation and revoke previously admitted transports before native launch. */
+  launchGeneration?: (sessionId: string, generation: string) => void;
   /** A native harness report (state, model or sub-agent start); hook reports use `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
   /** Native request id, scoped by the hub to this session. Returns true after admission (including deduped history).
@@ -210,14 +218,29 @@ export type ResumeResult = { found: true; process: HarnessProcess; state: Sessio
   alive?: boolean;
 };
 
+export type ResumeOptions = {
+  launchToken?: string;
+  relaunch?: boolean;
+  authorize?: () => void;
+  policy?: LaunchPolicy;
+  resumed?: Resumed;
+  /** Positive native stop receipt, before replacement; only adapters owning relaunch stop call this. */
+  stopped?: () => HarnessProcess | void;
+};
+
 export interface HarnessAdapter {
   readonly harness: string;
   readonly capabilities: Capabilities;
   /** The launch's first turn carries the role's clause (`SpawnRequest.clause`). */
   readonly clauseAtSpawn?: boolean;
+  /** resume(relaunch) owns the native stop receipt; otherwise Sessions stops a running row first. */
+  readonly relaunchStopsProcess?: boolean;
   /** Launch a session; resolves once the harness process runs, with its process-table row.
    * Recheck authorize after preparation, immediately before process creation and native first-turn admission. */
   spawn(request: SpawnRequest, resumed?: Resumed, authorize?: () => void): Promise<HarnessProcess>;
+  /** Fence a candidate identity; release only on a positive inspection result (including stateless hooks). */
+  nativeSessionHint?(p: HarnessProcess, result?: NativeJobInspection): void;
+  duplicateHarness?(p: HarnessProcess, nativeId: string): Promise<NativeJobInspection>;
   /** The command a terminal runs to attach to the live session (a string, so a UI re-runs it intact). */
   attachCommand(process: HarnessProcess): string;
   /**
@@ -259,7 +282,7 @@ export interface HarnessAdapter {
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own
    * conversation id, under `policy` (its role's launch defaults as they are now).
    */
-  resume(process: HarnessProcess, options?: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed }): Promise<ResumeResult>;
+  resume(process: HarnessProcess, options?: ResumeOptions): Promise<ResumeResult>;
   /** The hub stops: timers end and transient CLI children drain before completion.
    * The harness session processes keep running (they outlive the hub). */
   close(): void | Promise<void>;

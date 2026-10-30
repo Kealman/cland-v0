@@ -4,11 +4,13 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { AdapterHost, NativeJobInspection } from '../src/adapters/contract.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import { realClock } from '../src/hub/clock.ts';
 import { FakeClock } from './fake-clock.ts';
+import { claudeComponentOwner } from './claude-component-fixture.ts';
 import { fakeHarness, type FakeHarness } from './fakes/harness.ts';
-import { connectUi, eventually, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { connectUi, eventually, inProcessSpoke, projectHub, tempProject, type FrameClient, type SpokeOptions } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 type Harness = HarnessProcessView;
 type Status = { sessions: Array<{ name: string; sessionId: string; state: string }>; harnesses: Harness[] };
@@ -23,11 +25,13 @@ const harness = async (ui: FrameClient, name: string): Promise<Harness> => {
   return h;
 };
 const hubLog = (root: string) => readFile(join(root, '.cland/log/hub.log'), 'utf8');
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, ownedSetup = false) {
   const root = await tempProject(t);
   const clock = new FakeClock();
   let fake!: FakeHarness;
-  const { discovery } = await projectHub(t, root, {}, { clock, adapters: [(host, clock) => {
+  let hostState!: AdapterHost;
+  const hubOptions = { clock, adapters: [(host, clock) => {
+    hostState = host;
     // Only interpretation needs the production adapter's bounded prompt history; no native methods run.
     const interpreter = new ClaudeCodeAdapter(host, { clock, bin: 'unused-claude', env: { HOME: root } });
     fake = fakeHarness('claude-code', { host, clock });
@@ -35,9 +39,12 @@ async function fixture(t: TestContext) {
     const close = fake.close.bind(fake);
     fake.close = () => { interpreter.close(); close(); };
     return fake;
-  }] });
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
+  }] } satisfies import('./harness.ts').ProjectHubOptions;
+  const owner = ownedSetup ? claudeComponentOwner(t, root, clock, hubOptions) : undefined;
+  const hub = owner ? (await owner.start()).hub : await projectHub(t, root, {}, hubOptions);
+  const { dispatcher } = hub;
+  const ui = owner ? (await owner.actual).ui : await connectUi(t, hub.discovery);
+  if (!owner) await ui.request({ type: 'subscribe' });
   const launch = async (name: string, extra: Record<string, unknown> = {}) => {
     const result = await ui.request({ type: 'session.launch', name, ...extra });
     assert.equal(result.ok, true, result.error);
@@ -50,8 +57,9 @@ async function fixture(t: TestContext) {
     assert.equal(result.ok, true, result.error);
     return result;
   };
-  const peer = (name: string, process: Harness) => inProcessSpoke(t, { cwd: root, discover: true, name, assignRole: false, sessionId: process.sessionId, launchToken: fake.spawns.findLast(s => s.name === name)!.launchToken! });
-  return { root, ui, clock, fake, launch, signal, peer };
+  const connectPeer = owner ? owner.spoke : (options: SpokeOptions) => inProcessSpoke(t, options);
+  const peer = (name: string, process: Harness) => connectPeer({ cwd: root, discover: true, name, assignRole: false, sessionId: process.sessionId, launchToken: fake.spawns.findLast(s => s.name === name)!.launchToken! });
+  return { root, ui, clock, fake, launch, signal, peer, host: hostState, dispatcher };
 }
 
 test('in-process Claude signal order drops an older Stop arriving after the next turn start regardless of elapsed time', async t => {
@@ -208,4 +216,160 @@ for (const rename of [false, true]) test(rename
   assert.equal((await harness(ui, rename ? 'pool-1' : 'coord')).state, 'idle');
   assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.ok((await hubLog(f.root)).includes(`"event":"injected","id":"${id}"`));
+});
+
+test('Claude launch generation fences joined spokes, hooks and bridges and reports duplicate native jobs once', async t => {
+  const { HubCore } = await import('../src/hub/core.ts');
+  const { Sessions } = await import('../src/adapters/sessions.ts');
+  const { ProcessTable } = await import('../src/adapters/processes.ts');
+  const { launchGenerationKey } = await import('../src/adapters/launch-generation.ts');
+  const core = new HubCore({ clock: new FakeClock(), env: {} });
+  const table = new ProcessTable();
+  const logs: Array<Record<string, unknown>> = [];
+  const sessions = new Sessions({ core, table, root: '/virtual', log: e => { logs.push(e); } });
+  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  const fake = fakeHarness('claude-code');
+  const process = await fake.spawn({ name: 'coord', role: 'coordinator', model: null, cwd: '/virtual' });
+  sessions.register(Object.assign(fake, { duplicateHarness: async () => ({ kind: 'duplicate' as const, job: { id: 'second-job', pid: 202 } }) }));
+  table.put({ ...process, harnessId: 'first-job', pid: 101 });
+  const hello = { type: 'hello' as const, protocol: 2, sessionId: process.sessionId, cwd: '/virtual', name: 'coord' };
+  assert.equal(core.hello(hello, () => true).ok, true, 'previous wire shape works on a legacy row');
+  core.store.setMeta(launchGenerationKey(process.sessionId), 'new-generation');
+  assert.equal(core.hello({ ...hello, launchId: 'new-generation' }, () => true).ok, true);
+  const refused = core.hello({ ...hello, launchId: 'old-generation' }, () => true);
+  assert.equal(refused.ok, false);
+  if (!refused.ok) assert.match(refused.message, /belongs to an earlier launch/);
+  assert.equal(core.hello(hello, () => true).ok, false, 'legacy spoke cannot join a newly fenced row');
+  assert.throws(() => sessions.bridge('coord', () => true, 'old-generation'), /belongs to an earlier launch/);
+  for (let i = 0; i < 2; i++) {
+    assert.equal(sessions.signal({ session: 'coord', launch: 'old-generation', event: 'session-start', payload: { session_id: 'other-native' } }).applied, false);
+  }
+  await eventually('durable duplicate notice', () => core.topicHistory('agents').messages.some(m => m.text.includes('second-job')) || undefined);
+  assert.equal(logs.filter(e => e.event === 'duplicate-harness').length, 1);
+  const notices = core.topicHistory('agents').messages.filter(m => m.text.includes('second-job'));
+  assert.equal(notices.length, 1);
+  assert.match(notices[0]!.text, /first-job \(pid 101\).*second-job \(pid 202\)/);
+  assert.equal(table.get('coord')!.harnessSessionId, process.harnessSessionId, 'stale hook cannot change the native identity');
+});
+
+test('actual Claude frames require resolved generation and revoke old connected spokes on rotation', async t => {
+  const f = await fixture(t);
+  Object.assign(f.fake, { bridge: () => () => {} });
+  const launched = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const credential = f.fake.spawns[0]!.launchToken!;
+  const openSpoke = async (generation?: string, anonymous = false) => {
+    const frames: import('../src/protocol.ts').HubFrame[] = [];
+    let open = true;
+    const conversation = f.dispatcher.open({ send: frame => frames.push(frame), close: () => { open = false; }, isOpen: () => open }, { authenticated: true, edge: 'ws' });
+    t.after(() => conversation.closed());
+    conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, name: 'coord', sessionId: anonymous ? 'unknown' : launched.sessionId, cwd: f.root, launchToken: credential, ...(generation ? { launchId: generation } : {}) }));
+    await eventually('actual spoke hello outcome', () => frames.find(frame => frame.type === 'welcome' || frame.type === 'error'));
+    return { frames, conversation, isOpen: () => open };
+  };
+  assert.equal((await f.ui.request({ type: 'session.bridge', session: 'coord' })).ok, true, 'legacy bridge allows omitted generation');
+  assert.equal((await f.ui.request({ type: 'session.signal', session: 'coord', event: 'turn-end' })).ok, true, 'legacy hook allows omitted generation');
+  // Anonymous credential binding still exists until the first accepted spoke.
+  f.host.launchGeneration!(launched.sessionId, 'first-generation');
+  for (const generation of [undefined, 'old-generation']) {
+    const denied = await openSpoke(generation, true);
+    assert.match(JSON.stringify(denied.frames), /belongs to an earlier launch/);
+    assert.equal(denied.isOpen(), false);
+  }
+  const first = await openSpoke('first-generation', true);
+  assert.ok(first.frames.some(frame => frame.type === 'welcome'));
+  for (const generation of [undefined, 'old-generation']) {
+    const denied = await openSpoke(generation);
+    assert.match(JSON.stringify(denied.frames), /belongs to an earlier launch/);
+    for (const type of ['session.signal', 'session.bridge']) {
+      const result = await f.ui.request({ type, session: 'coord', event: 'turn-end', ...(generation ? { launch: generation } : {}) });
+      assert.match(JSON.stringify(result), /belongs to an earlier launch/);
+      if (type === 'session.signal') assert.equal((result.value as { applied: boolean }).applied, false);
+      else assert.equal(result.ok, false);
+    }
+  }
+  assert.equal((await f.ui.request({ type: 'session.bridge', session: 'coord', launch: 'first-generation' })).ok, true);
+  f.host.launchGeneration!(launched.sessionId, 'second-generation');
+  assert.equal(first.isOpen(), false);
+  first.conversation.receive(JSON.stringify({ type: 'send', id: 'old-tool', topic: 'general', to: ['coord'], text: 'forbidden-old-generation' }));
+  const queued = await f.ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'queued-new-generation' });
+  assert.equal(queued.ok, true);
+  const message = (queued.value as { message: { id: string } }).message.id;
+  assert.equal(first.frames.some(frame => frame.type === 'deliver' && frame.id === message), false);
+  const second = await openSpoke('second-generation');
+  await eventually('new generation receives queued message', () => second.frames.some(frame => frame.type === 'deliver' && frame.id === message) || undefined);
+  first.conversation.closed();
+  const probe = await f.ui.request({ type: 'session.bridge', session: 'coord', launch: 'second-generation' });
+  assert.equal(probe.ok, true, probe.error);
+  const history = await f.ui.request({ type: 'topic.history', topic: 'general' });
+  assert.doesNotMatch(JSON.stringify(history), /forbidden-old-generation/);
+  assert.equal(second.isOpen(), true, 'delayed old disconnect cannot evict the replacement');
+  assert.equal(second.frames.filter(frame => frame.type === 'deliver' && frame.id === message).length, 1);
+});
+
+test('deferred native inspections fence unknown results and join captured lifecycle ownership', async t => {
+  for (const scenario of ['unavailable', 'throw', 'newer-hook', 'stop', 'relaunch', 'close', 'same-job', 'old-launch-stop'] as const) await t.test(scenario, async t => {
+    const { HubCore } = await import('../src/hub/core.ts');
+    const { Sessions } = await import('../src/adapters/sessions.ts');
+    const { ProcessTable } = await import('../src/adapters/processes.ts');
+    const { launchGenerationKey } = await import('../src/adapters/launch-generation.ts');
+    const root = await tempProject(t);
+    const clock = new FakeClock();
+    const core = new HubCore({ clock, env: {} });
+    const table = new ProcessTable();
+    const logs: Array<Record<string, unknown>> = [];
+    const sessions = new Sessions({ core, table, root, log: e => { logs.push(e); } });
+    const result = Promise.withResolvers<NativeJobInspection>();
+    let closed = false;
+    t.after(async () => { result.resolve({ kind: 'unavailable' }); if (!closed) await sessions.close(); table.close(); core.close(); core.store.close(); });
+    const fake = fakeHarness('claude-code', { clock });
+    let entered = false;
+    sessions.register(Object.assign(fake, { duplicateHarness: () => { entered = true; return result.promise; } }));
+    const process = await fake.spawn({ name: 'coord', role: null, model: null, cwd: root });
+    table.put(process);
+    core.store.setMeta(launchGenerationKey(process.sessionId), 'current');
+    sessions.signal({ session: 'coord', launch: scenario === 'old-launch-stop' ? 'old' : 'current', event: 'session-start', payload: { session_id: 'changed' } });
+    await eventually('native query started before lifecycle action', () => entered || undefined);
+    assert.equal(table.get('coord')!.harnessSessionId, process.harnessSessionId, 'held query grants no identity');
+    let drain: Promise<void> | undefined;
+    let drained = false;
+    if (scenario === 'newer-hook') sessions.signal({ session: 'coord', launch: 'current', event: 'turn-start', payload: { session_id: process.harnessSessionId } });
+    if (scenario === 'stop' || scenario === 'old-launch-stop') await sessions.stop('coord');
+    if (scenario === 'relaunch') await sessions.resume('coord', true);
+    if (scenario === 'close') {
+      closed = true;
+      drain = Promise.resolve(sessions.close()).then(() => { drained = true; });
+      await Promise.resolve();
+      assert.equal(drained, false, 'close joins the held native inspection before releasing storage');
+    }
+    if (scenario === 'throw') result.reject(new Error('synthetic native query failure'));
+    else result.resolve(scenario === 'unavailable' ? { kind: 'unavailable' } : scenario === 'same-job' ? { kind: 'same-job' } : { kind: 'duplicate', job: { id: 'foreign', pid: 202 } });
+    await eventually('native inspection completion receipt', () => logs.some(e => e.event === 'native-job-inspection') || undefined);
+    if (drain) await drain;
+    assert.equal(table.get('coord')!.harnessSessionId, scenario === 'same-job' ? 'changed' : process.harnessSessionId);
+    assert.equal(logs.filter(e => e.event === 'duplicate-harness').length, 0, 'superseded/unknown inspections produce no duplicate notice');
+    assert.doesNotMatch(JSON.stringify(core.topicHistory('agents')), /foreign/);
+    if (scenario === 'close') assert.equal(drained, true);
+  });
+});
+
+test('an adapter-owned relaunch with unconfirmed native stop retains its running row role and claim', async t => {
+  const f = await fixture(t, true);
+  const p = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const peer = await f.peer('coord', p);
+  const made = await f.ui.request({ type: 'task.create', title: 'Retained through uncertain native stop', size: 'S', assignee: 'coord' });
+  assert.equal(made.ok, true, made.error);
+  const id = (made.value as { item: { id: string } }).item.id;
+  assert.equal((await peer.call<{ ok: boolean }>('task.claim', { id })).ok, true);
+  Object.assign(f.fake, { relaunchStopsProcess: true, resume: async () => { throw new Error('synthetic native job stop is unconfirmed'); } });
+  const result = await f.ui.request({ type: 'session.resume', session: p.name, relaunch: true });
+  const row = await harness(f.ui, p.name);
+  assert.equal(row.status, 'running', 'unconfirmed stop must not publish native exit or release supervision');
+  assert.equal(row.role, 'coordinator');
+  assert.equal(row.sessionId, p.sessionId);
+  assert.equal(row.harnessId, p.harnessId);
+  const viewed = await f.ui.request({ type: 'task.view', item: id });
+  assert.equal((viewed.value as { item: { claim: { sessionId: string } } }).item.claim.sessionId, p.sessionId);
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? '', /native job stop is unconfirmed/);
+  assert.equal(f.fake.spawns.length, 1, 'no replacement was spawned');
 });

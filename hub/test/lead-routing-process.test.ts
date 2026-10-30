@@ -1,4 +1,5 @@
 // T3: SIGKILL of a real harness PID proves death notification and inherited routing.
+import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import test from 'node:test';
 import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
@@ -25,8 +26,8 @@ test('long idle and death climb from item to epic to release; stopped Leads leav
     assert.equal(launched.ok, true, launched.error);
   }
   await coord.waitForPresence(['coord', 'release-lead', 'lead-1', 'impl']);
-  for (const [session, owner] of [['impl', 'lead-1'], ['lead-1', 'release-lead'], ['release-lead', 'coord']]) {
-    for (const event of ['turn-start', 'turn-end']) assert.equal((await ui.request({ type: 'session.signal', session, event, payload: {}, at: clock.now().getTime() })).ok, true);
+  for (const [session, owner] of [['impl', 'lead-1'], ['lead-1', 'release-lead'], ['release-lead', 'coord']] as const) {
+    for (const event of ['turn-start', 'turn-end']) assert.equal((await ui.request({ type: 'session.signal', session, launch: (await claudeLaunchIdentity(fake, session)).launchId, event, payload: {}, at: clock.now().getTime() })).ok, true);
     await clock.advance(800);
     const idle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · ${session} idle 1 min`);
     assert.deepEqual((idle.message as Message).to, [owner]);

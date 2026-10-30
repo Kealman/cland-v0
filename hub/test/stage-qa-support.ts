@@ -68,5 +68,5 @@ export async function fixture(t: test.TestContext, gated = false, count = 3, lau
     });
   };
   const verdict = (result = 'clear', extra: Record<string, unknown> = {}) => qa.call<{ ok: boolean; error?: string; item?: ItemView }>('task.comment', { id: epic.id, verdict: 'qa', result, stage: 'Stage 1', run: `stage-${result}`, ...extra });
-  return { root, stop: async () => { if ('stop' in hub) await hub.stop(); else assert.equal((await cland(root, 'hub', 'stop')).code, 0); }, get ui() { return ui; }, get rev() { return rev; }, get qa() { return qa; }, epic, items, plan, set, read, land, verdict, gate, failAncestry };
+  return { root, fake, stop: async () => { if ('stop' in hub) await hub.stop(); else assert.equal((await cland(root, 'hub', 'stop')).code, 0); }, get ui() { return ui; }, get rev() { return rev; }, get qa() { return qa; }, epic, items, plan, set, read, land, verdict, gate, failAncestry };
 }

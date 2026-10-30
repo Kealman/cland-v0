@@ -3820,7 +3820,7 @@ Codex's confirmed `Selected model is at capacity.` failure retries after 30, 60 
 | `attachCommand(process)` | The command, as a string, that attaches a terminal to the live session; the harness's own. |
 | `inject(process, message, topic)` | Hands the message to the session as a turn. Resolves when the harness confirmed the turn (stage `injected`). Rejects when there is no way in or no confirmation in time: the message then stays `delivered`, the hub logs `inject-unconfirmed` and retries at the session's next transition to `idle`, when its in-session connection comes back, or when the adapter's own connection to the session comes back (`host.reconnected`, state change or not). Rejects with `InjectUncertain` when the request reached the harness and its answer never came: the delivery is `uncertain` and only `session.retry` sends it again. |
 | the state stream | Push signals from inside the session go to the hub as `session.signal` frames and the adapter's `interpret` turns them into states. The adapter's own poll and its liveness check report through its host. |
-| `stop(process)`, `resume(process, {relaunch})` | Stop through the harness; a stop that cannot confirm the process gone fails and leaves it watched. Re-find a process after a hub restart by the harness's own ids (a pid alone never: it may have been reused), or start it again on its own conversation (`relaunch`). The session layer stops a process that still runs before a relaunch, keeping the row's role: `cland session resume <name> --relaunch` always ends with a new harness process on the same conversation, and without `--relaunch` a live session is only re-found. |
+| `stop(process)`, `resume(process, {relaunch})` | Stop through the harness; a stop that cannot confirm the process gone fails and leaves it watched. Re-find a process after a hub restart by the harness's own ids (a pid alone never: it may have been reused), or start it again on its own conversation (`relaunch`). The session layer stops a process that still runs before a relaunch, keeping the row's role, unless the adapter explicitly owns that stop through `relaunchStopsProcess` (Claude Code). Claude Code also invokes `claude stop <previous harnessId>` for a stopped/exited row or a missing PID before launching its replacement: `cland session resume <name> --relaunch` always ends with a new harness process on the same conversation, and without `--relaunch` a live session is only re-found. |
 | `close()` | End supervision at hub shutdown; returns `void` or a promise that the session layer awaits before closing its process table. Claude cancels transient CLI calls with SIGKILL and drains their `execFile` callbacks, clearing native command deadlines. The session layer rejects resume results arriving after closure, including identity probes, before restarting supervision or publishing a process row. Established harness sessions continue running. |
 
 The capability table declares the optional capabilities (`history`, `usage`, `setModel`, `approvalRelay`) and each state signal as `reliable`, `heuristic` or `none`. What is `none` is never emulated. `session.list` returns every adapter's table.
@@ -7506,6 +7506,56 @@ malformed/truncated replies, disappeared descriptors and deadline expiry grant n
 new ownership. The existing incomplete-cleanup warning remains if EOF is absent;
 unidentifiable processes survive and the queue moves on. This is local worker
 cleanup; droplet cancellation retains its executor-owned release path.
+
+
+### Claude Code launch generations
+
+Each Claude Code launch/relaunch writes private settings and MCP files under its
+stable session run directory in a fresh UUID subdirectory. `CLAND_SESSION_ID`
+continues to identify the cland session; `CLAND_LAUNCH_ID` identifies this native
+launch. Hooks and the mod bridge carry that generation in `--launch`; spokes
+carry the optional `hello.launchId`. The current generation and its stable owner
+are persisted in adapter state before native launch. An earlier generation is
+refused with “belongs to an earlier launch”, including omitted generation fields
+and credential-bound anonymous hellos after their stable identity is resolved.
+Rotation revokes already admitted spokes synchronously and removes bridge ownership;
+spoke authority, outbound delivery and bridge use also check the captured generation. Legacy rows without a recorded generation keep the previous
+session-id hook/bridge and hello shapes until their next launch.
+
+A mismatching native `session_id` triggers a shared native job query. Two distinct
+listed job ids produce one `duplicate-harness` log and Agents notice naming both
+job ids and PIDs (unreported PIDs say unknown); the foreign hook cannot overwrite
+the row. A conversation change is accepted as `/clear` only when a successful native query
+positively identifies the captured job with that conversation. Unavailable queries
+remain fenced. Deferred inspections capture the job, PID, generation, row lifecycle
+and hook revision; newer facts or lifecycle work supersede them, and shutdown joins
+all inspections before storage closes. Native observation freshness has one
+owner: `#hookRevision`/`#activity` and the directory observation revision/launch
+witnesses. An unproven conversation hint sets a pending marker on that activity
+record; positive same-job or duplicate inspection clears it, including stateless
+hooks. Ordinary same-conversation activity still permits independently verified
+PID acquisition.
+Relaunch always uses native stop for the previous Claude job, even if its recorded
+PID is gone, while OS termination retains native identity and descendant checks.
+A failed stop permits replacement only after a fresh successful listing confirms
+the captured job absent; that query must be invoked after the failed stop. Any
+earlier in-flight query drains first and cannot supply this absence proof.
+Failed/unavailable confirmation retains supervision. Adapter-owned relaunch
+reports its positive stop through `ResumeOptions.stopped`; Sessions persists that
+stopped row before replacement and returns the latest row to the adapter. An
+error before this receipt preserves the prior row, role and claim.
+
+Claude native re-exec keeps its generation: cland supplies immutable settings and
+MCP paths on every spawn/fresh/relaunch/account-selected launch, while plain
+resume only re-finds that job. The mod resolves generation from its environment,
+then saved settings, before falling back to a legacy session id. Thus a partially
+restored environment cannot mask a settings generation. Generated launches set
+`DISABLE_AUTOUPDATER=1`; a supported native re-exec restores the same launch
+files and generation. A native process that loses those files must be relaunched
+through cland before it can claim a generated session. A hub upgrade does not mint a generation for
+an already-running legacy row. `session retry` resends on the admitted bridge
+and starts no process; account usage probes strip all CLAND variables and do not
+join as sessions.
 
 ### Suite archive startup memory
 
