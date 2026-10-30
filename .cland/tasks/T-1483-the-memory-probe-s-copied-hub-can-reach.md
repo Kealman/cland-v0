@@ -3,7 +3,7 @@ id: T-1483
 kind: task
 title: The memory probe's copied hub can reach live suite paths and recovery state
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: R-1465
 blocked_by: []
 regression_of: T-1467
 found_by: review
-topic: null
-branch: null
+topic: topic-1239
+branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T11:57:15.271Z
+updated: 2026-10-30T11:57:52.147Z
 ---
 
 ## Summary

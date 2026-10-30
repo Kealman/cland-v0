@@ -3,8 +3,9 @@ id: T-1460
 kind: task
 title: Every suite log ends with one provenance footer
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1237
 branch: t/T-1460-every-suite-log-ends-with-one-provenance
 created: 2026-10-30T05:44:57.980Z
-updated: 2026-10-30T11:53:00.678Z
+updated: 2026-10-30T11:57:56.431Z
 ---
 
 ## Summary
@@ -23,7 +24,8 @@ Every suite log, local and droplet, ends with one provenance footer: head, verif
 
 ## Acceptance criteria
 
-- [ ] C1. Local and droplet logs carry the same footer fields, checked by one test on each executor.
+- [x] C1. Local and droplet logs carry the same footer fields, checked by one test on each executor.
+  - done: impl-1460 · 2026-10-30T11:57:48.371Z
 
 ## Comments
 

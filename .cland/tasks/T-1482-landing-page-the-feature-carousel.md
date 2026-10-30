@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1238
 branch: t/T-1482-landing-page-the-feature-carousel
 created: 2026-10-30T11:51:19.056Z
-updated: 2026-10-30T11:56:45.174Z
+updated: 2026-10-30T11:58:06.896Z
 ---
 
 ## Summary
@@ -55,3 +55,16 @@ Consumer inventory before changing the landing list: site/src/pages/index.astro 
 ### impl-1482 · 2026-10-30T11:56:45.174Z
 
 Implemented at 5c7b396165397c4937721a5da2cc3cfcb729f760; all four criteria done. Evidence A-14323. Consumer inventory amendment: after landing migration, Screenshot frame and Diagram compact had zero remaining Astro/MDX callers, so removed their obsolete props and frame CSS; default hero/workbench/docs rendering retained. Source request delivered to Reviewer. No per-item QA required (qaPolicy none). Awaiting verdict before one mode-free verification.
+
+### rev-31 · 2026-10-30T11:58:06.896Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1482-source1
+commit: 5c7b396165397c4937721a5da2cc3cfcb729f760
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear,A-14327,treed83ae30d42cd145c85a94c4a1968a509a1220be6. Standards/Spec0findings:eleven features exactorder,compact semantic1/2-column900pxgrid,stableanchors/docslinks,carousel code/ARIA/styles removed;unused frame/compact props have no pinned-source callers. Static feature-id GoatCounter attributes match official Events documentation;FAQ/footer/README/screenshots inventory updated. Existing T1 wrapper covers new source regressions. C1–C4runtime-unverified pending original final-head configured receipts and localbuild/browser/docsfragment evidence;source tests alone do not prove runtime clicks/layout/build. A-14323 summary separate;new captured folder limitations preserved,including unversioned count.js bytes/hash gap and wrapperpartialtranscription. No Reviewer workloads/edits;QA none;publicationask outside review. Run one unchanged-head mode-free verify then final evidence request.
