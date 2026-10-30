@@ -14,7 +14,7 @@ tap = "Kealman/homebrew-tap"
 
 [publish]
 # Exact paths or directory/** prefixes eligible for out-of-release publication.
-allow_paths = ["site/**","docs/brand/**","README.md","LICENSE",".github/workflows/pages.yml"]
+allow_paths = ["site/**","docs/brand/**","README.md","LICENSE",".github/workflows/pages.yml","docs/agents/tests/hub-test-roles-clauses.test.ts.md"]
 
 [setup]
 # Missing harnesses declined in setup; --install <harness> runs their installer.
