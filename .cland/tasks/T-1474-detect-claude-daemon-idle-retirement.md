@@ -3,7 +3,7 @@ id: T-1474
 kind: task
 title: Detect Claude daemon idle retirement
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1225
 branch: t/T-1474-detect-claude-daemon-idle-retirement
 created: 2026-10-30T07:50:18.630Z
-updated: 2026-10-30T08:21:25.413Z
+updated: 2026-10-30T08:40:24.561Z
 ---
 
 ## Summary
@@ -27,8 +27,10 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 
 - [x] C1. When a hub-launched Claude Code job disappears from `claude agents --json`, or its job reports `done`, while the row is running, the hub logs `harness-exited` with reason `retired` within 60 s.
   - done: impl-1474 · 2026-10-30T08:20:02.523Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1474-evidence1 · 2026-10-30T08:40:23.156Z · commit 1ed304429a5c0f156cccc7583347ed9571bdd87e
 - [x] C2. A retired Coordinator gets one human inbox entry with the relaunch command within 2 min.
   - done: impl-1474 · 2026-10-30T08:02:09.680Z
+  - verified: rev-32 [reviewer] · run rev-20261030-1474-evidence1 · 2026-10-30T08:40:23.156Z · commit 1ed304429a5c0f156cccc7583347ed9571bdd87e
 
 ## Comments
 
@@ -90,3 +92,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source3 clear, A-14185. M1–M5 corrections inspected: exact native job matching, per-query hook freshness, General/Agents checkpoint isolation, owning guide index row, and native-query captured object/job identity across shared flights. New object/in-place replacement controls require stale observation and later fresh live poll. C1/C2 remain runtime-unverified; local scripted/FakeClock evidence excludes native SLA/configured suite proof. Configured mode-free verification may proceed at this unchanged head, followed by original-record final evidence review.
+
+### rev-32 · 2026-10-30T08:40:23.156Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1474-evidence1
+commit: 1ed304429a5c0f156cccc7583347ed9571bdd87e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record clear A-14206. Same-head A-14204 / 674da889 exit 0: parsed 4242 ordinary test passes, 514 files, 80 explicit load passes/80 files, zero nonpass or unmatched starts. Own 36 scheduling + 7 checkpoint primary cases pass; 16 new identities each have 5/5 load passes. Missing/done retirement, exact reason/inbox/restart assertions, shared conversation/hook/replacement/legacy controls and SQLite checkpoint reopen checked against source. C1/C2 verified at configured scripted CLI/FakeClock seam; actual native Claude/OS SLA latency unmeasured. Host T0 reused separately, all T1/T2 + mapped T4 once + Web pass; T3 deferred, T4 repeats skipped. Report-only warnings retained, no enforce-mode budget claim. Coordinator owns landing sequencing.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-1467
 kind: task
 title: Measure what holds the hub's memory at startup and at rest
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1221
 branch: t/T-1467-measure-what-holds-the-hub-s-memory-at
 created: 2026-10-30T06:38:36.583Z
-updated: 2026-10-30T08:22:50.326Z
+updated: 2026-10-30T08:42:19.215Z
 ---
 
 ## Summary
@@ -36,10 +36,14 @@ Context: hub 88459 (v0.3.0) held 3.0 GB RSS 80 s after start on this project (ab
 
 - [x] C1. The script runs a sealed hub on a scratch copy of the live .cland state, never the live hub, stops it at readiness, and records RSS, heap and external memory at a checkpoint after each startup stage (journal read, each history replay, tracker, artifact index, subscriptions, inbox) with record counts; a guard stop leaves a stop receipt.
   - done: impl-1467 · 2026-10-30T08:22:50.200Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-1 · 2026-10-30T08:42:19.075Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
 - [x] C2. A sampling heap profile of startup attributes allocations to call stacks, and an artifact names the top allocation sites by size per startup stage.
   - done: impl-1467 · 2026-10-30T07:53:00.270Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-1 · 2026-10-30T08:42:19.075Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
 - [x] C3. The artifact proposes a fix per dominant startup allocator with an estimated saving; retained-at-rest analysis and the RSS budget are deferred to the fix tickets.
   - done: impl-1467 · 2026-10-30T07:53:00.637Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-source-3 · 2026-10-30T08:26:37.908Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
+  - verified: rev-26 [reviewer] · run rev-20261030-1467-evidence-1 · 2026-10-30T08:42:19.075Z · commit d4d9f479ab5380438ebe724644be6e9857961fab
 
 ## Comments
 
@@ -84,3 +88,33 @@ finding_counts: {"high":0,"medium":2,"low":0}
 A-14183 consolidated source2: M1/M2 resolved; M3a/M3b final receipt failure paths remain. Preserve A-14160 completed c8defa34d measurement, A-14157/58 partial history and A-14167 SQL-only storage/consumer addendum. No new live-scale measurement requested. Isolated red/green controls then exact pushed-head source review before configured verification; no Reviewer execution.
 
 Criteria: C1 failed (Final receipt can precede failed-write settlement or be skipped by a refused final system reading.).
+
+### rev-26 · 2026-10-30T08:26:37.908Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1467-source-3
+commit: d4d9f479ab5380438ebe724644be6e9857961fab
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14194 source3 clear: remaining M3a/M3b resolved; supervisor final receipt follows complete native/write/observer drainage, unavailable final sysctl preserves incomplete stopped outcome. C3 allocation/reader proposals and estimated savings established from A-14160/A-14167 with retention/RSS/at-rest limits. C1/C2 final runtime evidence pending. No new live-scale run requested; original completed c8defa34d and partial143 history remain separately attributed. Read-only Reviewer audit.
+
+Criteria: C3 verified.
+
+### rev-26 · 2026-10-30T08:42:19.075Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1467-evidence-1
+commit: d4d9f479ab5380438ebe724644be6e9857961fab
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14210 final original-record audit clear: c4f557d5/A-14208 has4239 ordinary passes+75 separately scoped load passes elsewhere; all14 changedT3 memory controls pass once/no repetitions. C1-C3 verified across exact-head controls/source and explicitly historical c8defa34d startup sampling A-14160 plus SQL addendum A-14167. Original partial/red histories, report-only budgets/ratchet/missing baseline, host gate reuse, platform/browser and allocation-versus-retention/RSS limits preserved. No new live-scale run/Reviewer workload; remainingT3/T4 unrun. Coordinator owns enqueue/restart/integrated gates.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,7 +3,7 @@ id: T-1469
 kind: task
 title: Claude Code poll must not turn a pushed idle into busy
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1226
 branch: t/T-1469-probe
 created: 2026-10-30T07:50:08.613Z
-updated: 2026-10-30T08:16:29.179Z
+updated: 2026-10-30T08:35:09.892Z
 ---
 
 ## Summary
@@ -27,10 +27,13 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 
 - [x] C1. A Claude Code session whose last push signal is idle stays idle when `claude agents --json` reports `status: busy` for it.
   - done: impl-1469 · 2026-10-30T08:00:03.151Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1469-evidence-1 · 2026-10-30T08:35:09.748Z · commit 0e4e1b87643220261273efa18ce2a885776df26f
 - [x] C2. A poll busy still applies to a launch that has sent no push signal yet (state `unknown`).
   - done: impl-1469 · 2026-10-30T08:00:03.284Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1469-evidence-1 · 2026-10-30T08:35:09.748Z · commit 0e4e1b87643220261273efa18ce2a885776df26f
 - [x] C3. A test replays idle hook → poll busy 37 s later → human send and asserts outcome `delivered` and one inject frame.
   - done: impl-1469 · 2026-10-30T08:09:26.665Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1469-evidence-1 · 2026-10-30T08:35:09.748Z · commit 0e4e1b87643220261273efa18ce2a885776df26f
 
 ## Comments
 
@@ -69,3 +72,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14180: Standards and Spec source clear; M1 complete transport Clock/default forwarding and M2 owned setup/buffered exact-id observation resolved. C1-C3 runtime verification remains pending configured evidence at this exact frozen head. Local A-14174 summary retained with platform and negative-control limits. No Reviewer execution. Coordinator owns T-1471 second-landing resolution and any later merge-delta review.
+
+### rev-26 · 2026-10-30T08:35:09.748Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1469-evidence-1
+commit: 0e4e1b87643220261273efa18ce2a885776df26f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14202 final original-record audit of2c1e711b/A-14200:4230 ordinary +20 separately scoped load passes; four named replay/setup cases each base pass plus5/5 scoped repetitions. C1-C3 verified with inspected delivered/id/count/state assertions. T0/T1/allfallbackT2/Web and selectedT4 base once complete; noT4 repetitions, remainingT3/T4 unrun. Report-only advisories/host gate reuse/platform/browser provenance retained; no Reviewer execution. Source/head unchanged, Coordinator owns enqueue and integrated gates.
+
+Criteria: C1 verified, C2 verified, C3 verified.

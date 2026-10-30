@@ -3,7 +3,7 @@ id: T-1477
 kind: task
 title: The hub selects startup journal history without reading the whole file
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1222
 branch: t/T-1477-the-hub-selects-startup-journal-history
 created: 2026-10-30T07:54:04.775Z
-updated: 2026-10-30T08:16:14.281Z
+updated: 2026-10-30T08:31:45.169Z
 ---
 
 ## Summary
@@ -25,12 +25,16 @@ At startup the hub reads the whole journal (374 MB, 1.1 M lines on this project)
 
 - [x] C1. Startup journal selection never holds the whole file in one string. It streams complete lines in bounded chunks, or resumes from a durable checkpoint, and produces the same selected records as today on a recorded journal fixture.
   - done: impl-1477 · 2026-10-30T08:12:18.140Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1477-final1 · 2026-10-30T08:31:44.731Z · commit c6daab985cdb0faf03b6ef5d9db0a86f2b32eb3f
 - [x] C2. Concurrent readers of the startup history share one scan.
   - done: impl-1477 · 2026-10-30T08:00:35.375Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1477-final1 · 2026-10-30T08:31:44.732Z · commit c6daab985cdb0faf03b6ef5d9db0a86f2b32eb3f
 - [x] C3. On the T-1467 scratch copy, the heap at the journal-read checkpoint drops by at least 500 MiB against A-14160's 743.7 MiB, same probe and machine.
   - done: impl-1477 · 2026-10-30T08:00:35.912Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1477-final1 · 2026-10-30T08:31:44.732Z · commit c6daab985cdb0faf03b6ef5d9db0a86f2b32eb3f
 - [x] C4. A test with a journal of at least 300 MB of synthetic lines asserts peak bytes held for the selection stay under a fixed bound (a work-count guard, rule 23).
   - done: impl-1477 · 2026-10-30T08:00:36.011Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1477-final1 · 2026-10-30T08:31:44.732Z · commit c6daab985cdb0faf03b6ef5d9db0a86f2b32eb3f
 
 ## Comments
 
@@ -69,3 +73,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear, A-14179; Standards/Spec zero remaining findings. M1 heading, M2 all-sink early log drainage, M3 captured parity provenance resolved. M4 now pre-owns typed direct acquisition, nonrejecting tagged observer, stop/stopped join of unexpected late success and single fenced root disposal. Actual queued JSON/lock assertions retained; late-success cleanup source-audited, not claimed exercised. Source2 M4 A-14175 was delivered but not saved as a verdict because failed:[] was invalid; this exact-head review resolves it. Runtime C1–C4 remain unverified pending original configured evidence; C3 remains accepted precommit same-Mac stage-only A-14163/A-14169 attribution, not measured at successor. No Reviewer executions; QA none. Configured verification may proceed at this unchanged head.
+
+### rev-31 · 2026-10-30T08:31:44.732Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1477-final1
+commit: c6daab985cdb0faf03b6ef5d9db0a86f2b32eb3f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear, A-14198; source3 A-14179 retained. Exact-head configured f9aefa18/A-14197:4231 ordinary+105 separate load-gate passing identities,0 nonpass. T0/T1/all fallback T2/Web complete;T3/T4 absent. C1 recorded-subset+constructed parity,C2 shared Promise/append/failure,C4>=300MiB/<1MiB input accounting each base+5extra pass. Native log/lock cleanup controls base+5extra pass. C3 verified from separately attributed Coordinator-accepted precommit same-Mac journal-stage A-14163/A-14169 versus A-14160:743.702→61.019MiB heap,682.682MiB less; unchanged reader through final head. Not a final-head/Linux memory run,retained-after-GC/RSS or later-stage result. Scale base2.194s,max2.393s;T1.5s advisory exceeded,report-only budgets/lint124/60 retained;0 static refusals. Host gate290a3047 reused,not remote repeated;browser CHS156/v1248. No Reviewer workloads;QA none. All C1–C4 verified;configured final clear,broader integrated cover remains Coordinator-owned.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
