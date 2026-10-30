@@ -3,7 +3,7 @@ id: T-1480
 kind: task
 title: The site onboarding guard rejects the Aide's conditional root commit and blocks every site build
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: R-1465
 blocked_by: []
 regression_of: T-1275
 found_by: review
-topic: null
-branch: null
+topic: topic-1234
+branch: t/T-1480-the-site-onboarding-guard-rejects-the
 created: 2026-10-30T10:20:12.069Z
-updated: 2026-10-30T10:20:12.069Z
+updated: 2026-10-30T10:21:20.467Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ The site builds on dev again, and the guard still rejects every unconditional "t
 
 - [ ] C1. `site/test/onboarding-claims.test.ts` passes on dev with session-permissions.md stating the Aide's conditional commit, and T-1274's unconditional fixture sentences are still rejected.
 - [ ] C2. The site's prebuild guard tests run in a suite tier that every `cland verify` selects when docs or site files change, shown by a planted unconditional claim failing a mode-free verify selection dry run.
+
+## Comments
+
+### impl-1480 · 2026-10-30T10:21:20.467Z
+
+Intent audit: T-1274 source reviews explicitly preserve conditional capable-harness commits while refusing unconditional clauses; T-1275 source/final reviews require current-policy root access plus existing role/tool grants. I will teach the guard the existing exact current-root-Git-write-access conditional rather than change correct policy prose. Existing fixtures remain unchanged. Consumer inventory: aideCommitClaims is exported only in site/test/onboarding-claims.test.ts; site/package.json test/prebuild runs both onboarding-claims and remote-docs tests. Add a T1 hub test entry importing both guards, with a discovery assertion that every prebuild *.test.ts stays included; existing suite-shards planner, tiers lint, task selection and runner consume it as an ordinary hub T1 file. No production wire/schema/policy change; no new gate (existing prebuild checks get existing T1 cadence).

@@ -3,8 +3,9 @@ id: T-1456
 kind: task
 title: The merge queue checks queued members against each other at enqueue
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1227
 branch: t/T-1456-the-merge-queue-checks-queued-members
 created: 2026-10-30T05:44:57.388Z
-updated: 2026-10-30T10:18:47.582Z
+updated: 2026-10-30T10:22:52.534Z
 ---
 
 ## Summary
@@ -22,7 +23,8 @@ At enqueue, the queue runs merge-tree against already queued heads, and a drop n
 
 ## Acceptance criteria
 
-- [ ] C1. Enqueueing a branch that conflicts with a queued member is refused at once, naming that member and the files.
+- [x] C1. Enqueueing a branch that conflicts with a queued member is refused at once, naming that member and the files.
+  - done: impl-1456 · 2026-10-30T10:21:22.440Z
 
 ## Comments
 

@@ -3,8 +3,9 @@ id: T-1459
 kind: task
 title: Turn Git auto-maintenance off in the repository configuration
 state: open
-status: in progress
+status: review
 size: XS
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1228
 branch: t/T-1459-turn-git-auto-maintenance-off-in-the
 created: 2026-10-30T05:44:57.843Z
-updated: 2026-10-30T10:18:09.773Z
+updated: 2026-10-30T10:21:27.507Z
 ---
 
 ## Summary
@@ -22,7 +23,8 @@ Set `gc.auto=0` and `maintenance.auto=false` in the live repo and territory conf
 
 ## Acceptance criteria
 
-- [ ] C1. cland init/update writes both keys, doctor reports them, and a plain `git fetch` in a worktree starts no maintenance.
+- [x] C1. cland init/update writes both keys, doctor reports them, and a plain `git fetch` in a worktree starts no maintenance.
+  - done: impl-1459 · 2026-10-30T10:21:00.907Z
 
 ## Comments
 
