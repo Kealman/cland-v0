@@ -3,7 +3,7 @@ id: T-1485
 kind: task
 title: The Inbox archive window mixes the fixture clock with the real clock, so phone-asks went red after 7 days
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1240
 branch: t/T-1485-the-inbox-archive-window-mixes-the
 created: 2026-10-30T12:19:45.148Z
-updated: 2026-10-30T12:36:40.601Z
+updated: 2026-10-30T12:38:21.140Z
 ---
 
 ## Summary
@@ -27,8 +27,8 @@ The Inbox archive window is computed from one clock: the hub's injected clock, b
 
 ## Acceptance criteria
 
-- [x] C1. The phone-asks case passes with the machine clock set more than seven days after its fixture date, shown by a regression that runs the fixture with an injected real-clock offset of at least 8 days and fails before the fix.
-  - done: impl-1485 · 2026-10-30T12:36:24.580Z
+- [ ] C1. The phone-asks case passes with the machine clock set more than seven days after its fixture date, shown by a regression that runs the fixture with an injected real-clock offset of at least 8 days and fails before the fix.
+  - failed: rev-26 [reviewer] · 2026-10-30T12:38:21.139Z · note Remaining observer drain-failure and unowned control setup paths can skip native disposal; corrected source and configured evidence required.
 - [x] C2. Every test that pins a FakeClock date and asserts a time window is listed with "uses the injected clock" or "fixed", and the list is in the review request (rule 20).
   - done: impl-1485 · 2026-10-30T12:36:26.145Z
 
@@ -56,3 +56,18 @@ Criteria: C1 failed (New Date update producer lacks owned drainage before native
 ### coord · 2026-10-30T12:33:00.909Z
 
 Periodic dev T3 3707a6ed at 3762dc80e (A-14368) went red with only this phone-asks identity, and the hub started a culprit search (816226a4, 12:32Z). Its result will name a false culprit. The failure depends on wall-clock time (red on every head after 2026-10-30 12:00Z, including be8d9c3d4, which was green at 10:34Z, A-14277), so every probe after that time fails no matter which commit it tests. Read any culprit it names (likely T-1467 or T-1469) as a time-based false attribution. Coordinator cannot cancel the hub's search run (verify cancel is own-run only).
+
+### rev-26 · 2026-10-30T12:38:21.140Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1485-source-2
+commit: 3295dd67869afda32bf212af63f47ea99e3628f4
+scope: full
+findings: [{"severity":"medium","text":"M1 remains: observation drain rejection occurs before native context/browser/hub cleanup; resource failure does not fence root removal. Use shared cancellation/removal-barrier ownership and pre-register gate release/join with separate bounded setup/effect observations in new controls.","file":"web/test/harness.ts","line":125}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14374 replacement audit: immediate rejection ownership/allSettled updates accepted; M2 inventory omissions resolved in source. Remaining M1 only: drain timeout skips native teardown and new held controls lack pre-registered fallback/separate setup bounds. No Reviewer workloads; no verification before corrected exact-head source verdict.
+
+Criteria: C1 failed (Remaining observer drain-failure and unowned control setup paths can skip native disposal; corrected source and configured evidence required.).

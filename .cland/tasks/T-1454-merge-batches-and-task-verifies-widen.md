@@ -3,7 +3,7 @@ id: T-1454
 kind: task
 title: Merge batches and task verifies widen test selection for sibling-merge interactions
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: R-1465
 blocked_by:
   - T-1456
   - T-1476
-topic: null
-branch: null
+topic: topic-1241
+branch: t/T-1454-merge-batches-and-task-verifies-widen
 created: 2026-10-30T05:44:57.061Z
-updated: 2026-10-30T10:18:29.707Z
+updated: 2026-10-30T12:37:48.079Z
 ---
 
 ## Summary

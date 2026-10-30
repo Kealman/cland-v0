@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T12:25:12.651Z
+updated: 2026-10-30T12:37:45.640Z
 ---
 
 ## Summary
