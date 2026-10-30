@@ -3,17 +3,17 @@ id: T-1456
 kind: task
 title: The merge queue checks queued members against each other at enqueue
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1227
+branch: t/T-1456-the-merge-queue-checks-queued-members
 created: 2026-10-30T05:44:57.388Z
-updated: 2026-10-30T10:16:24.194Z
+updated: 2026-10-30T10:17:46.671Z
 ---
 
 ## Summary

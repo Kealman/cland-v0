@@ -3,17 +3,17 @@ id: T-1479
 kind: task
 title: Landing page and README name Telegram and Discord remote control
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1231
+branch: t/T-1479-landing-page-and-readme-name-telegram
 created: 2026-10-30T10:14:48.049Z
-updated: 2026-10-30T10:14:48.049Z
+updated: 2026-10-30T10:18:01.387Z
 ---
 
 ## Summary

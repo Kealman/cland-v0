@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1224
 branch: t/T-1476-the-hub-loads-only-active-suite-jobs-and
 created: 2026-10-30T07:54:04.502Z
-updated: 2026-10-30T10:16:56.389Z
+updated: 2026-10-30T10:17:42.619Z
 ---
 
 ## Summary
@@ -32,6 +32,7 @@ At startup the hub reads every archived suite job from hub.db (3,308 rows, 885 M
   - verified: rev-32 [reviewer] · run rev-20261030-1476-source3 · 2026-10-30T08:41:43.378Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
   - verified: rev-32 [reviewer] · run rev-20261030-1476-delta1 · 2026-10-30T09:30:31.107Z · commit 2bc3f440505648792e05b2ec1a017fa76f01d721
+  - verified: rev-32 [reviewer] · run rev-20261030-1476-delta2 · 2026-10-30T10:17:42.619Z · commit d51049e4722eb33d2fb4ae60925becfcdaafeb86
 - [x] C3. On a T-1467-style scratch copy of this project, the startup heap after the suite-history stage drops by at least 2 GiB against A-14160's 3,567 MiB checkpoint, with the same probe and machine, and the per-stage table is published.
   - done: impl-1476 · 2026-10-30T08:08:54.200Z
   - verified: rev-32 [reviewer] · run rev-20261030-1476-evidence2 · 2026-10-30T09:28:03.663Z · commit c51f9984b2c2fe4025c206b08d3733ed1c8af09e
@@ -132,5 +133,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merge delta source clear A-14224. Task suite-history production/test/probe/guide bytes unchanged from cleared c51f9984b; landed T-1477 journal/daemon/tests match dev parent exactly. Manual SKILL merge coherently retains both boundaries and measurement/checkpoint/slot requirements; CHANGES/README/index preserve both. C2 source verification refreshed; no new-head runtime or numeric memory proof inferred. Prior A-14220/A-14214/A-14221 remain predecessor evidence, not relabelled. Coordinator-owned merged-head full T3-inclusive verify-all replaces another Implementer mode-free run, with original-record final settlement after receipt and explicit C3 predecessor carry provenance.
+
+Criteria: C2 verified.
+
+### rev-32 · 2026-10-30T10:17:42.619Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1476-delta2
+commit: d51049e4722eb33d2fb4ae60925becfcdaafeb86
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Second merge delta source clear A-14239. Suite-history task bytes unchanged from c51f9984b/prior delta; imported T-1467/T-1469 runtime/test/probe files match dev parent. SKILL and README conflict resolutions retain both contracts and measurement plan/slot/sealing/swap/IPC/native-close/aggregate-only controls without duplicate advice; CHANGES preserves provenance. C2 source verification refreshed; C1/C4 new-head runtime and explicit predecessor C3 carry remain for final evidence. No exact merged-head suite/memory pass inferred. Coordinator-owned T3-inclusive verify-all replaces another Implementer mode-free run.
 
 Criteria: C2 verified.

@@ -3,17 +3,17 @@ id: T-1464
 kind: task
 title: Periodic dev T3 skips a run when a newer integrated or stage cover just passed
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: R-1465
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1229
+branch: t/T-1464-periodic-dev-t3-skips-a-run-when-a-newer
 created: 2026-10-30T05:44:58.711Z
-updated: 2026-10-30T10:16:25.870Z
+updated: 2026-10-30T10:17:52.845Z
 ---
 
 ## Summary
