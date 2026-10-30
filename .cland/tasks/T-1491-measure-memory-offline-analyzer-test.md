@@ -2,8 +2,8 @@
 id: T-1491
 kind: task
 title: measure-memory offline analyzer test exceeds its 5 s T3 budget on Linux droplets
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: droplet
 topic: topic-1249
 branch: t/T-1491-measure-memory-offline-analyzer-test
 created: 2026-10-30T16:38:55.247Z
-updated: 2026-10-30T17:01:19.545Z
+updated: 2026-10-30T17:07:36.270Z
+closed: 2026-10-30T17:07:36.270Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14600 original-record audit clear. A-14599/d75c1165 exact source2 head Linux droplet nativeexit0,4333 ordinary+125load pass/0adverse. Exact analyzer finish/timing pass2.915283907s,all15memory identities once,no duration budget line; committed7.925s owner/date/reason and retained native V8 ownership proof established. C1/C2 verified. T0/T1/T2/changedT3/Web complete,remainingT3/T4unrun; reusedremotehosttypecheck and report-only diagnostics retained. New sample below5s is not performance-improvement proof. No Reviewer workloads.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-30T17:07:36.270Z
+
+Merged 9f96de0db160b2fb0bd8b90aa4da9d25bd404fcb onto dev.

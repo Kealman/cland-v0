@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1223
 branch: t/T-1471-one-harness-process-per-claude-code
 created: 2026-10-30T07:50:17.744Z
-updated: 2026-10-30T16:12:38.051Z
+updated: 2026-10-30T17:09:23.493Z
 ---
 
 ## Summary
