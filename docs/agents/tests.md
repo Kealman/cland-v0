@@ -469,6 +469,12 @@ Coordinator/item lead without blocking enqueue. Due means all task children
 closed, last ticket landed on dev and no hub QA demo verdict (stage QA excluded).
 Use the sealed public merge/topic-history seam in `hub/test/merge-queue.test.ts`;
 inject Git history and seed lease/landing receipts in the disposable root.
+Queued-member conflict admission uses the native Git/public merge-frame seam in
+[merge-policy.test.ts](tests/hub-test-merge-policy.test.ts.md). With queued
+members present, it checks dev first, then FIFO-applied pinned members and names
+the member/head and conflict paths. Dev conflicts retain their rebase path.
+Demo diagnostics remain advisory.
+
 Damaged lease/history evidence must keep enqueue successful and post
 `merge-demo-warning-unavailable`; scope read-error handling to diagnostic reads,
 preserving authorization, lane and freshness refusals.

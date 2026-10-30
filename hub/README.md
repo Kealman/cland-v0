@@ -5647,6 +5647,19 @@ and final review/QA verdicts. `queued <n>` is a FIFO position, not a landing.
 Changes wholly in the documentation/tracker allowlist still land immediately;
 skills and role configuration go through the queue.
 
+#### Queued member conflict preflight
+
+With `[merge] queue = true`, enqueue with existing members checks the candidate against dev, then
+against the pinned queued heads applied onto dev in FIFO order, using Git
+merge-tree and temporary commit objects. A conflict refuses enqueue as
+`merge-conflict`, naming the queued item, branch, pinned head and actual files.
+The existing FIFO, refs and checkout remain intact. A batch conflict from a
+retained queue or a later dev change uses the same pinned-member diagnosis in
+its drop notice. Conflicts with dev itself
+retain the instruction to rebase on dev. Re-enqueue excludes the item's own
+previous entry. This conflict refusal leaves the advisory demo warning and batch verification
+requirements in effect.
+
 Enqueue posts an advisory `merge-demo-warning` to the candidate's item topic
 (Agents when it has none), addressed to the Coordinator and candidate's item
 lead. It names each overlapping open epic and the exact files from its landed

@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
 import type { MergeQueueEntry } from '../protocol.ts';
 import { MergeError } from '../merge.ts';
-import { requireMergeWorktree, mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, type MergeTreeFacts } from '../territory.ts';
+import { requireMergeWorktree, mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, mergeConflictFiles, type MergeTreeFacts } from '../territory.ts';
 import { committedTreeOrThrow } from '../verification-tree.ts';
 import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
+import { checkQueuedMerge } from './merge-queue-preflight.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
 
 /** Git/object and immutable-tree reads, replaceable by an in-process repository provider. */
@@ -41,7 +42,7 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
   const base = pinnedBase ?? await git(['rev-parse', 'refs/heads/dev']);
   let head = base;
   const budgetLines: string[] = [];
-  for (const entry of members) {
+  for (const [index, entry] of members.entries()) {
     try {
       const tip = await git(['rev-parse', `refs/heads/${entry.branch}`]);
       if (tip !== entry.head) throw new MergeError('merge-changed', `queued task branch changed during preparation; prepared head ${entry.head}, current head ${tip}`);
@@ -49,7 +50,13 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
       let tree: string;
       try { tree = (await git(['merge-tree', '--write-tree', '--name-only', '-z', head, tip])).split('\0')[0]!; }
       catch (error) {
-        if (error instanceof TerritoryGitError && error.code === 1) throw new MergeError('merge-conflict', `rebase ${entry.branch} on dev`);
+        if (error instanceof TerritoryGitError && error.code === 1) {
+          // Reuse enqueue's immutable FIFO diagnosis for retained queues and
+          // conflicts exposed by a new dev base. Never blame dev for a peer.
+          await checkQueuedMerge(base, tip, entry.branch, entry.item, members.slice(0, index), git);
+          const files = mergeConflictFiles(error.stdout);
+          throw new MergeError('merge-conflict', `rebase ${entry.branch} on dev; conflicts: ${files.join(', ')}`, files);
+        }
         throw error;
       }
       budgetLines.push(...gateMergeTree(await repository.facts(tree, tip, head)));

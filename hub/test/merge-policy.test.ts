@@ -329,3 +329,31 @@ test('queue-enabled reviewed documentation lands immediately with its review rec
   assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, []);
   assert.equal((await value<{ item: { state: string } }>(ui, { type: 'task.view', item: work.id })).item.state, 'closed');
 });
+
+test('enqueue refuses a conflicting queued member immediately with its item and files', async t => {
+  const { root, ui, rev } = await project(t, true);
+  const first = await task(ui, 'First parser', 'parser.txt');
+  const second = await task(ui, 'Second parser', 'parser.txt');
+  await writeFile(join(second.path, 'parser.txt'), 'other parser\n');
+  git(second.path, 'commit', '-qam', 'Conflicting parser');
+  await review(rev, first.id);
+  await review(rev, second.id);
+  assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: first.id })).queued, 1);
+  const before = await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' });
+  const response = await refused(ui, root, second.id, 'merge-conflict', ['parser.txt']);
+  assert.ok(response.error?.includes(first.id), response.error);
+  assert.ok(response.error?.includes(git(first.path, 'rev-parse', 'HEAD')), response.error);
+  assert.doesNotMatch(response.error ?? '', /rebase .* on dev/);
+  assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, before.entries);
+  const clean = await task(ui, 'Independent code', 'other.txt');
+  await review(rev, clean.id);
+  assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: clean.id })).queued, 2);
+  const later = await task(ui, 'Later conflict', 'other.txt');
+  await writeFile(join(later.path, 'other.txt'), 'conflicts with the second member\n');
+  git(later.path, 'commit', '-qam', 'Later conflict');
+  await review(rev, later.id);
+  const laterResponse = await refused(ui, root, later.id, 'merge-conflict', ['other.txt']);
+  assert.ok(laterResponse.error?.includes(clean.id), laterResponse.error);
+  // Repeating the queued request must not merge its own changes twice.
+  assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: clean.id })).queued, 2);
+});

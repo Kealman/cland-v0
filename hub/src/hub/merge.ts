@@ -3,6 +3,7 @@ import type { DependencyInstall } from '../protocol.ts';
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
 import type { Git } from '../tracker/verdict-git.ts';
+import { checkQueuedMerge } from './merge-queue-preflight.ts';
 import { requireMergeWorktree } from '../territory.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
 import type { LogFn } from '../log.ts';
@@ -180,6 +181,8 @@ export class TaskMerges {
           if (!queuedCandidate && this.queue?.enabled() && override === undefined) {
             const candidate = await this.queue.candidate(checked, resumed);
             if (refusedOverridePaths(candidate.files).length) {
+              await checkQueuedMerge(candidate.baseTip, candidate.head, checked.branch!, checked.id, this.queue.entries(),
+                (args, input) => this.#git(this.tracker.root, args, false, input, this.#env));
               const validateLane = await this.#laneHold(checked, candidate.files, candidate.baseTip, resumed);
               const warnings = await this.queue.demoWarnings(candidate.files, candidate.baseTip, resumed);
               await this.tracker.refreshFreshness(resumed);

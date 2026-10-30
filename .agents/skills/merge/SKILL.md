@@ -71,3 +71,13 @@ Report the returned commit and cleanup status in the item's topic. If cleanup ke
 A rollback retains an exact inverse-patch receipt; re-landing the work is a separate item. Attribute the receipt under rule 17 (A-8634 R13; T-970).
 
 If the result says `merged, follow-up failed: <step>`, the returned commit has already landed. Repair the named rollback, checkout, publish, close, release, topic or cleanup failure and retry `merge` for the same item. Checkout recovery preserves staged and untracked work; reconcile any changed index before retrying it. The hub verifies its durable prepared landing against Git and completes the remaining steps without creating another commit, including after a hub restart.
+
+## Queued member conflicts
+
+For queue-enabled code changes, enqueue checks pinned queued heads applied onto
+dev in FIFO order. A `merge-conflict` names the queued item/head and conflict
+files; route it to that item's responsible lead to coordinate the overlapping
+changes. Batch drop notices for retained queues use the same diagnosis.
+Dev conflicts retain the rebase-on-dev instruction. A refusal changes
+neither the existing queue nor refs/checkouts; obtain fresh review for any source
+fix before verification and retry. No additional role permission is needed.

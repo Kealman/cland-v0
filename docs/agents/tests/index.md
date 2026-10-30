@@ -347,3 +347,4 @@ Shared procedures: [Running tests](../tests.md). Each document is named after it
 | [`hub/test/suite-persistence.test.ts`](../../../hub/test/suite-persistence.test.ts) | [Notes](hub-test-suite-persistence.test.ts.md) |
 | [`hub/test/measure-memory.test.ts`](../../../hub/test/measure-memory.test.ts) | [Notes](hub-test-measure-memory.test.ts.md) |
 | [`hub/test/journal-subagents.test.ts`](../../../hub/test/journal-subagents.test.ts) | [Notes](hub-test-journal-subagents.test.ts.md) |
+| [`hub/test/merge-policy.test.ts`](../../../hub/test/merge-policy.test.ts) | [Notes](hub-test-merge-policy.test.ts.md) |

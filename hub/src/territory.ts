@@ -354,6 +354,13 @@ export class TerritoryGitError extends Error {
   constructor(message: string, stdout: string, code: number | string | null | undefined) { super(message); this.stdout = stdout; this.code = code; }
 }
 
+/** Conflict paths from merge-tree --write-tree --name-only -z, before its message records. */
+export function mergeConflictFiles(stdout: string): string[] {
+  const parts = stdout.split('\0').slice(1);
+  const end = parts.indexOf('');
+  return end < 0 ? [] : parts.slice(0, end);
+}
+
 export function territoryGitAsync(cwd: string, args: string[], marked = false, input?: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
   return new Promise((resolvePromise, reject) => {
     const child = execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' } }, (err, stdout, stderr) => {
@@ -745,8 +752,7 @@ export async function squashTask(
   } catch (err) {
     tree = resumed(() => {
       if (!(err instanceof TerritoryGitError) || err.code !== 1) throw err;
-      const parts = err.stdout.split('\0').slice(1);
-      const files = parts.slice(0, parts.indexOf(''));
+      const files = mergeConflictFiles(err.stdout);
       throw new MergeError('merge-conflict', `rebase ${branch} on ${base}; conflicts: ${files.join(', ')}`, files);
     });
   }

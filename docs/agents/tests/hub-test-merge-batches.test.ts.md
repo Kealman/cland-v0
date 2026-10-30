@@ -65,3 +65,10 @@ follow-up reason separately from the report error. With the sink still failed,
 tick again or reopen the Store; then recover it and observe exactly one delivery
 and settlement without rerunning the green suite. The durable notice obligation
 is independent of candidate cleanup and the batch record.
+
+Queued conflict recovery (T-1456) seeds the controller's persisted batch and
+injects immutable Git merge-tree receipts. The real prepareMergeBatch and
+BatchRefusal/drop boundary must name the pinned preceding member/head and
+parser.txt. The true-dev variant retains rebase-on-dev and actual paths. Both
+variants drop only the conflicting request and retain the other pinned entries;
+no native worker or repository mutation is used.

@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { MergeError } from '../src/merge.ts';
+import { TerritoryGitError } from '../src/territory.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -1201,4 +1202,36 @@ test('batch refuses a bare project before reading refs or writing candidate obje
     code: 'merge-bare', message: "merge-bare: core.bare=true in project root /scratch/project; inspect the shared Git config, then restore the worktree with git -C '/scratch/project' config --local core.bare false before retrying",
   });
   assert.deepEqual(calls, [['rev-parse', '--is-bare-repository']]);
+});
+
+for (const devConflict of [false, true]) test(`persisted batch conflict drop names ${devConflict ? 'dev recovery' : 'the pinned queued member and paths'}`, async t => {
+  const { f, entries, boundary, runner, dropped } = await fixture(t);
+  const first = entries[0]!, second = entries[1]!;
+  const conflict = () => new TerritoryGitError('native merge conflict', 'conflicted-tree\0parser.txt\0\0', 1);
+  const git: BatchRepository['git'] = async args => {
+    if (args[0] === 'rev-parse') return args[1] === '--is-bare-repository' ? 'false'
+      : args[1] === 'refs/heads/dev' ? 'dev-base' : entries.find(e => `refs/heads/${e.branch}` === args[1])!.head;
+    if (args[0] === 'merge-tree') {
+      const left = args.at(-2), right = args.at(-1);
+      if (right === second.head && (devConflict || left !== 'dev-base')) throw conflict();
+      return `tree-${right}\0`;
+    }
+    if (args[0] === 'commit-tree') return `commit-${args[1]}`;
+    throw new Error(`unexpected Git mutation: ${args[0]}`);
+  };
+  boundary.build = (id, members, base) => prepareMergeBatch(f.root, id, members, {}, {
+    git, facts: async () => ({ context: null, workers: 1 }), identity: async () => 'candidate-tree',
+    checkout: boundary.checkout, remove: boundary.cleanup,
+  }, base);
+  await runner.tick();
+  assert.equal(dropped.length, 1);
+  assert.ok(dropped[0]!.startsWith(`${second.item}: merge-conflict:`));
+  assert.match(dropped[0]!, /parser.txt/);
+  if (devConflict) assert.ok(dropped[0]!.includes(`rebase ${second.branch} on dev`));
+  else {
+    assert.ok(dropped[0]!.includes(first.item), dropped[0]);
+    assert.ok(dropped[0]!.includes(first.head), dropped[0]);
+    assert.doesNotMatch(dropped[0]!, /rebase .* on dev/);
+  }
+  assert.deepEqual(entries.map(e => e.item), [first.item, 'T-3']);
 });
