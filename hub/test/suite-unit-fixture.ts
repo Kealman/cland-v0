@@ -110,6 +110,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     const artifact = store.registerArtifact(id => ({ id, title: job.id, kind: 'file', path: job.log, creator: 'hub', time: clock.now().toISOString(), topic: job.topic, status: 'shared' }), () => {});
     checkpoint(artifact.id); reports.push(structuredClone(job)); publish();
   }, { clock, durationContext, candidate: {
+    git: async () => '', // Synthetic candidates have no sibling Git delta.
     isAncestor: async (_cwd, ancestor, descendant) => ancestry.some(pair => pair[0] === ancestor && pair[1] === descendant),
     head: async () => candidate.head,
     tree: async () => candidate.tree,

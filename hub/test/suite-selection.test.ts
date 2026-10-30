@@ -305,7 +305,7 @@ test(`adding ${form} in a nested Neovim test widens selection at admission`, asy
 }
 
 for (const [form, source] of [
-  ['import', "import '../../hub/src/shared.ts';"],
+  ['import', "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../../hub/src/shared.ts'; test('Web sibling interaction executed', () => assert.equal(value, 2));"],
   ['named re-export', "export { X } from '../../hub/src/shared.ts';"],
   ['star re-export', "export * from '../../hub/src/shared.ts';"],
 ] as const) {
@@ -806,4 +806,352 @@ test('a remote fixture diff retains the T4 harness self-tests', async t => {
     assert.ok(!plan.some(phase => phase.targets.includes(file)), `${file} waits for an occasion`);
     assert.ok(occasion.some(phase => phase.targets.includes(file)), `${file} stays in occasion verification`);
   }
+});
+
+test('interacting branches add importing T2 and Web files to a batch plan', async t => {
+  const { root, git } = await gitFixture(t);
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await mkdir(join(root, 'web/test'), { recursive: true });
+  await writeFile(join(root, 'hub/src/shared.ts'), 'export const value = 1;');
+  await writeFile(join(root, 'hub/test/interaction.test.ts'), "import '../src/shared.ts';");
+  await writeFile(join(root, 'web/test/interaction.test.ts'), "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../../hub/src/shared.ts'; test('Web sibling interaction executed', () => assert.equal(value, 2));");
+  await writeFile(join(root, 'hub/test/unrelated.test.ts'), '// whole-phase addition');
+  await writeFile(join(root, 'web/test/unrelated.test.ts'), '// whole-phase addition');
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/test/unrelated.test.ts': 'T2', 'web/test/unrelated.test.ts': 'Web',
+    'hub/test/interaction.test.ts': 'T2', 'web/test/interaction.test.ts': 'Web',
+  } }));
+  await git('add', '.'); await git('commit', '-m', 'baseline');
+  await git('checkout', '-b', 't/test-owner');
+  await writeFile(join(root, 'hub/test/interaction.test.ts'), "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/shared.ts'; test('T2 sibling interaction executed', () => assert.equal(value, 2));");
+  await git('add', '.'); await git('commit', '-m', 'test owner');
+  const member = await git('rev-parse', 'HEAD');
+  await git('checkout', '-b', 't/module-owner', 'HEAD^');
+  await writeFile(join(root, 'hub/src/shared.ts'), 'export const value = 2;');
+  await git('add', '.'); await git('commit', '-m', 'module owner');
+  const sibling = await git('rev-parse', 'HEAD');
+  await git('merge', '--no-edit', 't/test-owner');
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const baseline = { mode: 'full' as const, files: [], reason: 'batch', tiers: ['T1', 'T3'] as Array<'T1' | 'T3'>, web: 'none' as const };
+  const report = await batchInteractionSelection(root, baseline, [member, sibling], git);
+  assert.deepEqual(report.tiers, ['T1', 'T3']); assert.equal(report.web, 'none');
+  assert.deepEqual(report.batchInteraction?.files, ['hub/test/interaction.test.ts', 'web/test/interaction.test.ts']);
+  assert.deepEqual(report.batchInteraction?.phases, ['T2', 'Web']);
+  assert.equal(report.batchInteraction?.mode, 'report');
+  assert.deepEqual((await packageShards(root, report.mode, undefined, report)).flatMap(phase => phase.targets), []);
+  const selected = await batchInteractionSelection(root, baseline, [member, sibling], git, undefined, 'run');
+  assert.ok(selected.tiers?.includes('T2'));
+  assert.equal(selected.web, 'all');
+  assert.deepEqual(selected.interactionTests, ['hub/test/interaction.test.ts', 'web/test/interaction.test.ts']);
+  assert.match(selected.reason, /sibling-merge importers/);
+  const plan = await packageShards(root, selected.mode, undefined, selected);
+  for (const file of selected.interactionTests!) assert.ok(plan.some(phase => phase.targets.includes(file)), file);
+  const { NODE_TEST_CONTEXT: _testContext, ...childBase } = process.env;
+  const execution = replayChild(t, root, ['--test', '--test-reporter=tap', ...plan.flatMap(phase => phase.targets)], fixtureEnvironment(root, childBase));
+  let receipt: { stdout: string; stderr: string } | undefined, rejected: unknown;
+  void execution.result.then(value => { receipt = value; }, error => { rejected = error; });
+  const executed = await eventually('batch generated-plan native-close execution receipt', () => { if (rejected) throw rejected; return receipt; }, 10_000);
+  assert.match(executed.stdout, /T2 sibling interaction executed/);
+  assert.match(executed.stdout, /Web sibling interaction executed/);
+});
+
+test('task verify keeps tests from a merged landing and maps clause and web area guards', async t => {
+  const { root, git } = await gitFixture(t);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await mkdir(join(root, 'hub/src/roles'), { recursive: true });
+  await mkdir(join(root, 'web/src/areas'), { recursive: true });
+  await mkdir(join(root, 'web/test'), { recursive: true });
+  const manifest = { version: 1 as const, tests: { 'hub/test/landed.test.ts': 'T2' as const, 'hub/test/roles.test.ts': 'T3' as const, 'web/test/area-slots.test.ts': 'Web' as const } };
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest(manifest));
+  for (const file of Object.keys(manifest.tests)) await writeFile(join(root, file), '// baseline');
+  await git('add', '.'); await git('commit', '-m', 'baseline'); await git('push', 'origin', 'HEAD:dev');
+  await git('checkout', '-b', 'landing');
+  await writeFile(join(root, 'hub/test/landed.test.ts'), '// landing regression');
+  await git('add', '.'); await git('commit', '-m', 'landing regression'); await git('push', 'origin', 'HEAD:dev');
+  await git('checkout', 't/T-214');
+  await writeFile(join(root, 'hub/src/roles/clause.ts'), '// clause');
+  await writeFile(join(root, 'web/src/areas/example.ts'), '// area');
+  await git('add', '.'); await git('commit', '-m', 'own changes');
+  await git('merge', '--no-edit', 'landing');
+  const selection = await selectPackageSuite(root, 'auto', fixtureEnvironment(root, process.env));
+  assert.deepEqual(selection.interactionTests, ['hub/test/landed.test.ts', 'hub/test/roles.test.ts', 'web/test/area-slots.test.ts']);
+  assert.equal(selection.web, 'all');
+  assert.ok(sameSuiteSelection({ mode: 'full', files: [], reason: 'old hub' }, { mode: 'full', files: [], reason: 'old hub' }));
+  assert.equal(sameSuiteSelection({ mode: 'full', files: [], reason: 'old hub' }, { mode: 'full', files: [], reason: 'new', interactionTests: ['hub/test/landed.test.ts'] }), false);
+});
+
+test('immutable import graph shares reads, follows helpers and bounds incomplete scans', async () => {
+  const { importingTestsFromSource } = await import('../src/suite-interactions.ts');
+  const sources: Record<string, string> = {
+    'test/a.ts': "import './helper.ts';",
+    'test/b.ts': "export * from './helper.ts';",
+    'test/helper.ts': "import './a.ts'; export * from '../src/module.ts';",
+    'src/module.ts': 'export const value = 1;',
+    'test/types.ts': "import type { Value } from '../src/module.ts';",
+  };
+  const { selectionFromEnv } = await import('../src/suite-selection.ts');
+  assert.deepEqual(selectionFromEnv({ CLAND_SUITE_SELECTION: JSON.stringify({ mode: 'full', files: [], reason: 'legacy receipt' }) }), { mode: 'full', files: [], reason: 'legacy receipt' });
+  const reads = new Map<string, number>();
+  const selected = await importingTestsFromSource(['src/module.ts'], ['test/a.ts', 'test/b.ts', 'test/types.ts'], async path => {
+    reads.set(path, (reads.get(path) ?? 0) + 1); return sources[path];
+  });
+  assert.deepEqual(selected, ['test/a.ts', 'test/b.ts']);
+  assert.equal(reads.get('test/helper.ts'), 1);
+  await assert.rejects(importingTestsFromSource(['other.ts'], ['missing.ts'], async () => undefined), /missing import source/);
+  await assert.rejects(importingTestsFromSource(['other.ts'], ['large.ts'], async () => 'x'.repeat(2 * 1024 * 1024 + 1)), /byte budget/);
+});
+
+for (const [name, source] of [
+  ['computed import', 'const target = "./shared.ts"; await import(target);'],
+  ['literal-prefix import', 'const name = "shared.ts"; await import("./" + name);'],
+  ['createRequire alias', 'import { createRequire as factory } from "node:module"; const load = factory(import.meta.url); load("./shared.ts");'],
+  ['eval-like code', 'eval("load()");'],
+  ['Function constructor', 'new Function("load()");'],
+] as const) test(`graph scan reports incomplete for ${name}`, async t => {
+  const { importingTestsFromSource, importingTests } = await import('../src/suite-import-graph.ts');
+  const dir = await mkdtemp(join(tmpdir(), 'cland-graph-unknown-'));
+  ownDirectory(t, dir);
+  await mkdir(join(dir, 'hub/test'), { recursive: true });
+  await writeFile(join(dir, 'hub/test/probe.test.ts'), source);
+  await writeFile(join(dir, 'hub/test/shared.ts'), 'export const value = 1;');
+  await assert.rejects(importingTestsFromSource(['hub/test/shared.ts'], ['hub/test/probe.test.ts'], async path => readFile(join(dir, path), 'utf8').catch(() => undefined)), /incomplete import graph/);
+  await assert.rejects(importingTests(dir, ['hub/test/shared.ts'], ['hub/test/probe.test.ts']), /incomplete import graph/);
+});
+
+for (const failure of ['unavailable', 'over-limit']) test(`task history ${failure} retains and executes hidden process tests through final planning`, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-history-fallback-'));
+  ownDirectory(t, root);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  const tests = { 'hub/test/hidden-process.test.ts': 'T3', 'hub/test/hidden-soak.test.ts': 'T4' } as const;
+  for (const file of Object.keys(tests)) await writeFile(join(root, file), `import test from 'node:test'; test(${JSON.stringify(file + ' executed')}, () => {});`);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  const { taskInteractionSelection } = await import('../src/suite-interactions.ts');
+  const { taskDurationSelection, tierSuiteSelection } = await import('../src/suite-selection.ts');
+  const { pinVerificationPlan } = await import('../src/verification-plan.ts');
+  const broad = await taskInteractionSelection(root, { mode: 'full', files: [], reason: 'own diff' }, 'dev', async () => {
+    if (failure === 'unavailable') throw new Error('injected history unavailable');
+    return Array.from({ length: 1001 }, (_, n) => `merge-${n}`).join('\n');
+  });
+  const selected = taskDurationSelection(taskSuiteSelection(broad, 't/T-214', 'auto', true), new Map(Object.entries(tests)));
+  const commands = pinVerificationPlan({ prepare: '', check: '', test: '', tiers: { T1: 'unit', T2: 'component', T3: 'process', T4: 'soak' } }, { branch: 't/T-214', mode: 'auto', selection: selected, queueEnabled: true });
+  assert.deepEqual(commands.plan?.map(step => step.name), ['T1', 'T2', 'T3', 'T4']);
+  const files: string[] = [];
+  for (const tier of ['T3', 'T4'] as const) files.push(...(await packageShards(root, selected.mode, undefined, tierSuiteSelection(selected, tier))).flatMap(phase => phase.targets));
+  assert.deepEqual(files.sort(), Object.keys(tests).sort());
+  const { NODE_TEST_CONTEXT: _context, ...base } = process.env;
+  const work = replayChild(t, root, ['--test', '--test-reporter=tap', ...files], fixtureEnvironment(root, base));
+  let receipt: { stdout: string; stderr: string } | undefined, rejected: unknown;
+  void work.result.then(value => { receipt = value; }, error => { rejected = error; });
+  const result = await eventually('hidden process native-close execution receipt', () => { if (rejected) throw rejected; return receipt; }, 10_000);
+  for (const file of Object.keys(tests)) assert.ok(result.stdout.includes(`${file} executed`));
+});
+
+for (const source of ['const target = "../src/shared.ts"; import(target);', 'const target = "../src/shared.ts"; require(target);', 'import "unresolved-package";']) test(`batch unknown import widens conservatively: ${source}`, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-batch-unknown-'));
+  ownDirectory(t, root);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await mkdir(join(root, 'web/test'), { recursive: true });
+  const tests = { 'hub/test/unknown.test.ts': 'T2', 'web/test/retained.test.ts': 'Web' } as const;
+  await writeFile(join(root, 'hub/test/unknown.test.ts'), source);
+  await writeFile(join(root, 'web/test/retained.test.ts'), '// no imports');
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const selected = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'batch', tiers: ['T1', 'T3'], web: 'none' }, ['member'], async () => 'hub/src/shared.ts\0', undefined, 'run');
+  assert.match(selected.reason, /fallback:.*incomplete import graph/);
+  assert.deepEqual(selected.tiers, ['T1', 'T2', 'T3']);
+  assert.equal(selected.web, 'none');
+  const phases = await packageShards(root, selected.mode, undefined, selected);
+  assert.deepEqual(phases.flatMap(phase => phase.targets).sort(), ['hub/test/unknown.test.ts']);
+});
+
+test('parsed template substitutions and plain literals retain precise static edges', async t => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const ordinary = 'const message = `${key} must have a fixture default`;';
+  assert.deepEqual(await importingTestsFromSource(['src/shared.ts'], ['test/plain.ts'], async () => ordinary), []);
+  const plain = 'const message = `fixture default`;';
+  assert.deepEqual(await importingTestsFromSource(['src/shared.ts'], ['test/plain.ts'], async () => plain), []);
+  const sources: Record<string, string> = { 'test/importer.ts': plain + 'import "../src/shared.ts";', 'src/shared.ts': 'export const value = 1;' };
+  assert.deepEqual(await importingTestsFromSource(['src/shared.ts'], ['test/importer.ts'], async path => sources[path]), ['test/importer.ts']);
+  await assert.rejects(importingTestsFromSource(['src/shared.ts'], ['test/importer.ts'], async () => 'import(`../src/${name}.ts`)'), /incomplete import graph/);
+  const root = await mkdtemp(join(tmpdir(), 'cland-batch-template-'));
+  ownDirectory(t, root);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/plain.test.ts'), ordinary);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/plain.test.ts': 'T2' } }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const selected = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'batch', tiers: ['T1', 'T3'], web: 'none' }, ['member'], async () => 'src/unrelated.ts\0', undefined, 'run');
+  assert.deepEqual(selected.tiers, ['T1', 'T3']);
+  assert.equal(selected.web, 'none');
+  assert.doesNotMatch(selected.reason, /fallback/);
+});
+
+for (const expression of ['(await import("../src/shared.ts")).value', 'require("../src/shared.ts").value']) test(`template loading expression cannot hide an interaction: ${expression}`, async t => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const source = 'const text = `value ${' + expression + '}`;';
+  const files: Record<string, string> = { 'hub/test/importer.test.ts': source, 'hub/src/shared.ts': 'export const value = 1;' };
+  assert.deepEqual(await importingTestsFromSource(['hub/src/shared.ts'], ['hub/test/importer.test.ts'], async file => files[file]), ['hub/test/importer.test.ts']);
+  const root = await mkdtemp(join(tmpdir(), 'cland-template-loader-'));
+  ownDirectory(t, root);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  for (const [file, text] of Object.entries(files)) await writeFile(join(root, file), text);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/importer.test.ts': 'T2' } }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const selected = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'batch', tiers: ['T1', 'T3'], web: 'none' }, ['member'], async () => 'hub/src/shared.ts\0', undefined, 'run');
+  assert.ok(selected.tiers?.includes('T2'));
+  assert.ok((await packageShards(root, selected.mode, undefined, selected)).some(phase => phase.targets.includes('hub/test/importer.test.ts')));
+});
+
+test('quoted regex syntax cannot hide a static import from graph or batch selection', async t => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const source = 'const a = /"/; import "../src/shared.ts"; const b = /"/;';
+  const files: Record<string, string> = { 'hub/test/importer.test.ts': source, 'hub/src/shared.ts': 'export const value = 1;' };
+  assert.deepEqual(await importingTestsFromSource(['hub/src/shared.ts'], ['hub/test/importer.test.ts'], async file => files[file]), ['hub/test/importer.test.ts']);
+  const root = await mkdtemp(join(tmpdir(), 'cland-regex-loader-'));
+  ownDirectory(t, root);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await mkdir(join(root, 'hub/src'), { recursive: true });
+  for (const [file, text] of Object.entries(files)) await writeFile(join(root, file), text);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/importer.test.ts': 'T2' } }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const selected = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'batch', tiers: ['T1', 'T3'], web: 'none' }, ['member'], async () => 'hub/src/shared.ts\0', undefined, 'run');
+  assert.doesNotMatch(selected.reason, /fallback/);
+  assert.ok(selected.tiers?.includes('T2'));
+  assert.ok((await packageShards(root, selected.mode, undefined, selected)).some(phase => phase.targets.includes('hub/test/importer.test.ts')));
+});
+
+for (const [name, source, outcome] of [
+  ['CR line comment', '// comment\rimport "../src/shared.ts";', 'edge'],
+  ['Unicode line separator', '// comment\u2028import "../src/shared.ts";', 'edge'],
+  ['Unicode paragraph separator', '// comment\u2029import "../src/shared.ts";', 'edge'],
+  ['BOM', '\ufeffimport "../src/shared.ts";', 'edge'],
+  ['non-ASCII identifier', 'const café = 1;', 'empty'],
+  ['NUL', 'const x = 1;\0'],
+  ['DEL', 'const x = 1;\x7f'],
+  ['unsupported control', '\x0bimport "../src/shared.ts";', 'edge'],
+  ['unterminated single string', "const x = 'text"],
+  ['unterminated double string', 'const x = "text'],
+  ['newline in quoted string', 'const x = "a\nb";'],
+  ['escaped string', 'const x = "a\\nb";', 'empty'],
+  ['unterminated template', 'const x = `text'],
+  ['tagged template', 'tag`text`;', 'empty'],
+  ['unterminated block comment', '/* text'],
+  ['hashbang', '#!/usr/bin/env node\nimport "../src/shared.ts";', 'edge'],
+  ['HTML comment or JSX', '<!-- text\nimport "../src/shared.ts";'],
+  ['computed loading', 'globalThis["ev" + "al"]("code");'],
+  ['indirect constructor', 'factory.constructor("code")();'],
+  ['absolute specifier', 'import "/local.ts";'],
+  ['file specifier', 'import "file:///local.ts";'],
+  ['data specifier', 'import "data:text/javascript,code";'],
+  ['bare package specifier', 'import "unresolved-package";'],
+] as const) test(`parser graph boundary ${name}: ${outcome ?? "unknown"}`, async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const scan = () => importingTestsFromSource(['hub/src/shared.ts'], ['hub/test/importer.test.ts'], async () => source);
+  if (outcome) assert.deepEqual(await scan(), outcome === 'edge' ? ['hub/test/importer.test.ts'] : []);
+  else await assert.rejects(scan(), /incomplete import graph/);
+});
+
+test('unsupported traversed extension cannot prove independence', async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const sources: Record<string, string> = { 'test/importer.ts': 'import "./other.asset";', 'test/other.asset': 'unknown loader' };
+  await assert.rejects(importingTestsFromSource(['src/shared.ts'], ['test/importer.ts'], async path => sources[path]), /incomplete import graph/);
+});
+
+test('supported closed strings LF comments and constant templates retain static graph edges', async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const sources: Record<string, string> = {
+    'test/importer.ts': '// " inert import fake\n/* " inert block */\nconst text = "ordinary text"; const other = `constant`; import "../src/shared.ts";',
+    'src/shared.ts': 'export const value = 1;',
+  };
+  assert.deepEqual(await importingTestsFromSource(['src/shared.ts'], ['test/importer.ts'], async path => sources[path]), ['test/importer.ts']);
+});
+
+test('TypeScript parser unavailability stays unknown and widens only the candidate phases', async t => {
+  const { graphImportSpecifiers } = await import('../src/suite-import-parser.ts');
+  const missing = async () => { throw new Error('synthetic installed CLI missing compiler'); };
+  await assert.rejects(graphImportSpecifiers('import "./shared.ts";', 'test.ts', missing), /TypeScript parser unavailable/);
+  const root = await mkdtemp(join(tmpdir(), 'cland-parser-missing-'));
+  ownDirectory(t, root);
+  await mkdir(join(root, 'hub/test'), { recursive: true }); await mkdir(join(root, 'web/test'), { recursive: true });
+  const tests = { 'hub/test/component.test.ts': 'T2', 'hub/test/process.test.ts': 'T3', 'hub/test/soak.test.ts': 'T4', 'web/test/browser.test.ts': 'Web' } as const;
+  for (const file of Object.keys(tests)) await writeFile(join(root, file), '// fixture');
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const selected = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'batch', tiers: ['T1'], web: 'none' }, ['member'], async () => 'hub/src/module.ts\0', async () => graphImportSpecifiers('', 'test.ts', missing), 'run');
+  assert.deepEqual(selected.tiers, ['T1', 'T2']);
+  assert.equal(selected.web, 'all');
+  const files = (await packageShards(root, selected.mode, undefined, selected)).flatMap(phase => phase.targets).sort();
+  assert.deepEqual(files, ['hub/test/component.test.ts', 'web/test/browser.test.ts']);
+  assert.match(selected.reason, /TypeScript parser unavailable/);
+});
+
+test('TypeScript graph parser resolves escaped literal, import-equals, require and template import edges', async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  for (const source of ['import "../src/sh\\u0061red.ts";', 'import dep = require("../src/shared.ts");', 'require("../src/shared.ts");', 'const text = `outer ${`inner ${(await import("../src/shared.ts")).value}`}`;']) {
+    const files: Record<string, string> = { 'test/importer.ts': source, 'src/shared.ts': 'export const value = 1;' };
+    assert.deepEqual(await importingTestsFromSource(['src/shared.ts'], ['test/importer.ts'], async file => files[file]), ['test/importer.ts']);
+  }
+});
+
+for (const [name, specifier, version, field, external] of [
+  ['registry dependency', 'pkg', '^1.2.3', 'dependencies', true],
+  ['scoped subpath', '@scope/pkg/sub', '~1.0.0', 'devDependencies', true],
+  ['optional dependency', 'pkg/sub', 'latest', 'optionalDependencies', true],
+  ['peer dependency', 'pkg', '>=1 <3', 'peerDependencies', true],
+  ['undeclared dependency', 'other', '^1.0.0', 'dependencies', false],
+  ['file dependency', 'pkg', 'file:../local', 'dependencies', false],
+  ['link dependency', 'pkg', 'link:../local', 'dependencies', false],
+  ['workspace dependency', 'pkg', 'workspace:*', 'dependencies', false],
+  ['Git dependency', 'pkg', 'git+https://example.invalid/pkg', 'dependencies', false],
+  ['path dependency', 'pkg', '../local', 'dependencies', false],
+] as const) test(`candidate external proof: ${name}`, async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const packageName = specifier.startsWith('@') ? '@scope/pkg' : 'pkg';
+  const files: Record<string, string> = { 'test/importer.ts': `import ${JSON.stringify(specifier)};`, 'package.json': JSON.stringify({ [field]: { [packageName]: version } }) };
+  const scan = () => importingTestsFromSource(['src/shared.ts'], ['test/importer.ts'], async file => files[file]);
+  if (external) assert.deepEqual(await scan(), []);
+  else await assert.rejects(scan(), /incomplete import graph/);
+});
+
+test('candidate external proof resolves root declarations but rejects a local workspace name and nearer local override', async () => {
+  const { importingTestsFromSource } = await import('../src/suite-import-graph.ts');
+  const files: Record<string, string> = {
+    'web/test/importer.ts': 'import "pkg/sub"; import "fs/promises";',
+    'web/package.json': '{"name":"web"}',
+    'package.json': '{"dependencies":{"pkg":"^1.0.0"}}',
+  };
+  const scan = () => importingTestsFromSource(['src/shared.ts'], ['web/test/importer.ts'], async file => files[file]);
+  assert.deepEqual(await scan(), []);
+  files['web/package.json'] = '{"dependencies":{"pkg":"file:../local"}}';
+  await assert.rejects(scan(), /incomplete import graph/);
+  files['web/package.json'] = '{"name":"web"}';
+  files['package.json'] = '{"dependencies":{"pkg":"^1.0.0"},"workspaces":["packages/local"]}';
+  files['packages/local/package.json'] = '{"name":"pkg"}';
+  await assert.rejects(scan(), /incomplete import graph/);
+});
+
+test('bounded createRequire literals are edges while escaping handles stay unknown and dispatch remains ordinary', async () => {
+  const { graphImportSpecifiers } = await import('../src/suite-import-parser.ts');
+  const prefix = 'import { createRequire } from "node:module"; ';
+  assert.deepEqual(await graphImportSpecifiers(prefix + 'createRequire(import.meta.url)("pkg");'), ['pkg', 'node:module']);
+  assert.deepEqual(await graphImportSpecifiers(prefix + 'const req = createRequire(import.meta.url); req("pkg");'), ['node:module', 'pkg']);
+  for (const suffix of ['const req = createRequire(import.meta.url); pass(req);', 'const req = createRequire(import.meta.url); req(name);', 'const req = createRequire(import.meta.url); req.resolve("pkg");']) await assert.rejects(graphImportSpecifiers(prefix + suffix), /incomplete import graph/);
+  assert.deepEqual(await graphImportSpecifiers('adapters[x](event); ops[name]();'), []);
+});
+
+test('a file graph unknown adds that file without the other T2 or Web files', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-unknown-file-'));
+  ownDirectory(t, root);
+  const tests = { 'hub/test/unknown.test.ts': 'T2', 'hub/test/unrelated.test.ts': 'T2', 'web/test/unrelated.test.ts': 'Web' } as const;
+  for (const file of Object.keys(tests)) { await mkdir(join(root, file, '..'), { recursive: true }); await writeFile(join(root, file), file.includes('unknown') ? 'import(target);' : '// no imports'); }
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  const { batchInteractionSelection } = await import('../src/suite-interactions.ts');
+  const selected = await batchInteractionSelection(root, { mode: 'full', files: [], reason: 'batch', tiers: ['T1'], web: 'none' }, ['member'], async () => 'hub/src/module.ts\0', undefined, 'run');
+  assert.deepEqual(selected.tiers, ['T1', 'T2']); assert.equal(selected.web, 'none');
+  assert.deepEqual(selected.interactionTests, ['hub/test/unknown.test.ts']);
+  assert.deepEqual((await packageShards(root, selected.mode, undefined, selected)).flatMap(phase => phase.targets), ['hub/test/unknown.test.ts']);
+  assert.equal(sameSuiteSelection({ ...selected, batchTests: { T2: [] } }, selected), false);
+  const { selectionFromEnv } = await import('../src/suite-selection.ts');
+  assert.deepEqual(selectionFromEnv({ CLAND_SUITE_SELECTION: JSON.stringify(selected) }), selected);
 });

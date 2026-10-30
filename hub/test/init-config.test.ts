@@ -158,11 +158,11 @@ test('tracker config accepts peer levels and rejects malformed, duplicate and co
 });
 
 test('merge queue defaults off and round-trips an explicitly enabled boolean', () => {
-  assert.deepEqual(defaultConfig('scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
-  assert.deepEqual(parseConfig('', 'scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(defaultConfig('scratch').merge, { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(parseConfig('', 'scratch').merge, { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
   const configured = parseConfig('[merge]\nqueue = true\n', 'scratch');
-  assert.deepEqual(configured.merge, { queue: true, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
-  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { queue: true, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(configured.merge, { batchInteraction: 'report', queue: true, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { batchInteraction: 'report', queue: true, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
   for (const invalid of ['"true"', '1', '[]']) {
     assert.throws(() => parseConfig(`[merge]\nqueue = ${invalid}`, 'scratch', {}, { strict: true }), /merge.queue must be a boolean/);
   }
@@ -232,4 +232,23 @@ test('coverage pointer retention defaults to ten and round-trips a positive conf
   for (const value of ['0', '-1', '1.5', '"3"']) {
     assert.throws(() => parseConfig(`[verification]\ncoverage_map_retention = ${value}`, 'scratch', {}, { strict: true }), /verification.coverage_map_retention.*positive integer/);
   }
+});
+
+test('batch interaction defaults report and round-trips explicit run through the consumer parser', async t => {
+  const { configKeys } = await import('../src/init/config-set.ts');
+  assert.ok(configKeys().includes('merge.batch_interaction'));
+  const root = mkdtempSync(join(tmpdir(), 'cland-batch-interaction-setting-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  provisionConfig(new Report(root), path, root);
+  assert.equal(setConfigValue(root, path, 'merge.batch_interaction', 'run', {}), 'run');
+  const before = readFileSync(path, 'utf8');
+  assert.throws(() => setConfigValue(root, path, 'merge.batch_interaction', 'invalid', {}), /merge.batch_interaction/);
+  assert.equal(readFileSync(path, 'utf8'), before);
+  for (const mode of ['report', 'run'] as const) {
+    const config = parseConfig(`[merge]\nbatch_interaction = "${mode}"`, 'fixture', {}, { strict: true });
+    assert.equal(parseConfig(renderConfig(config), 'fixture').merge.batchInteraction, mode);
+  }
+  for (const value of ['"other"', 'true', '1']) assert.throws(() => parseConfig(`[merge]\nbatch_interaction = ${value}`, 'fixture', {}, { strict: true }), /merge.batch_interaction/);
 });

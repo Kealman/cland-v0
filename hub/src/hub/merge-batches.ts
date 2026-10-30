@@ -174,7 +174,7 @@ export class MergeBatches {
     if (batch.reportedRun !== job.id) {
       const tiers = job.selection?.tiers?.join(', ') || 'unavailable';
       const steps = verificationStepResults(evidence.log).map(step => `${verificationStepLabel(step.name)}: exit ${step.code}; duration ${step.seconds} s`);
-      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
+      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(evidence.job.selection?.batchInteraction ?? 'unavailable')}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       batch.reportedRun = job.id; this.#save(batch);
     }
     const requiredSteps: VerificationStep['name'][] = evidence.job.commands?.check === '' ? [] : ['check'];

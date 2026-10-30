@@ -21,7 +21,7 @@ export type ProjectConfig = {
   publish: { allowPaths: string[] };
   release: { webBundle: boolean; homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
-  merge: { queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
+  merge: { batchInteraction: 'report' | 'run'; queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
   verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
@@ -42,7 +42,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   publish: { allowPaths: ['site/**', 'docs/brand/**', 'README.md', 'LICENSE', '.github/workflows/pages.yml'] },
   release: { webBundle: false, homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
-  merge: { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
+  merge: { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
   verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
@@ -147,6 +147,8 @@ queue = ${c.merge.queue}
 # Maximum reviewed heads in one batch.
 batch = ${c.merge.batch}
 batch_tiers = ${JSON.stringify(c.merge.batchTiers)}
+# Report proposed sibling-import additions; run executes them.
+batch_interaction = ${JSON.stringify(c.merge.batchInteraction)}
 # Start a partial batch after this wait from its oldest request.
 batch_wait = "${c.merge.batchWaitMs / 1000}s"
 
@@ -320,6 +322,10 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   if (typeof merge.queue === 'boolean') c.merge.queue = merge.queue;
   accepts('merge.batch', merge.batch, Number.isSafeInteger(merge.batch) && Number(merge.batch) > 0, 'a positive integer');
   if (Number.isSafeInteger(merge.batch) && Number(merge.batch) > 0) c.merge.batch = Number(merge.batch);
+  if (merge.batch_interaction !== undefined) {
+    if (merge.batch_interaction !== 'report' && merge.batch_interaction !== 'run') throw new Error('merge.batch_interaction must be report or run');
+    c.merge.batchInteraction = merge.batch_interaction;
+  }
   if (merge.batch_tiers !== undefined) {
     if (!Array.isArray(merge.batch_tiers) || !merge.batch_tiers.length || merge.batch_tiers.some(tier => !['T1', 'T2', 'T3', 'T4'].includes(tier)) || new Set(merge.batch_tiers).size !== merge.batch_tiers.length) throw new Error('merge.batch_tiers must be a nonempty array of unique T1, T2, T3 or T4 tiers');
     c.merge.batchTiers = merge.batch_tiers;

@@ -1,3 +1,5 @@
+import { importSpecifiers } from './suite-imports.ts';
+import { taskInteractionSelection } from './suite-interactions.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
@@ -11,14 +13,15 @@ import { durationAllowanceOwner } from './suite-durations.ts';
 import { selectWebRepetitionFiles, newWebFiles } from './web-repetitions.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
-export type SuiteSelection = { webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { batchInteraction?: { mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export const diagnosticTestFile = (file: string): boolean => /^(?!.*(?:^|\/)\.\.\/)(hub\/(test|src)|nvim\/test|web\/test)\/.*\.test\.ts$/.test(file);
 
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 /** Task rules/components plus a bounded changed-file process duration sample. */
 export function taskSuiteSelection(selection: SuiteSelection, branch: string, requested: SuiteRequest, queueEnabled: boolean): SuiteSelection {
-  if (!queueEnabled || !branch.startsWith('t/') || requested === 'all') return selection;
+  if (!queueEnabled || !branch.startsWith('t/') || requested === 'all'
+    || selection.mode === 'full' && selection.soak && selection.tiers?.join(',') === 'T1,T2,T3,T4') return selection;
   const fallback = selection.mode === 'full' || selection.mode === 'hub-only';
   const { nvimTests: _nvimTests, ...whole } = selection;
   return { ...(fallback ? whole : selection), mode: selection.mode === 'hub-only' ? 'full' : selection.mode,
@@ -88,12 +91,15 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
     const omitted = items.length - shown.length;
     return `${JSON.stringify(shown)}${omitted ? `; ${omitted} more (${items.length} total; full list in log)` : ''}`;
   };
-  return `mode ${selection.mode}; ${selection.reason}${selection.fallback && selection.fallback !== selection.reason ? `; ${selection.fallback}` : ''}; deciding files ${list(selection.files)}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.nvimTests ? `; Neovim tests ${list(selection.nvimTests)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
+  return `mode ${selection.mode}; ${selection.reason}${selection.fallback && selection.fallback !== selection.reason ? `; ${selection.fallback}` : ''}; deciding files ${list(selection.files)}${selection.interactionTests ? `; interaction tests ${list(selection.interactionTests)}` : ''}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.nvimTests ? `; Neovim tests ${list(selection.nvimTests)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
 }
 
 /** Cache receipts are reusable only for identical effective package/test sets. */
 export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
-  return JSON.stringify(previous?.durationCheck) === JSON.stringify(selection.durationCheck)
+  return previous?.batchInteraction?.mode === selection.batchInteraction?.mode
+    && JSON.stringify(previous?.batchTests) === JSON.stringify(selection.batchTests)
+    && JSON.stringify(previous?.interactionTests) === JSON.stringify(selection.interactionTests)
+    && JSON.stringify(previous?.durationCheck) === JSON.stringify(selection.durationCheck)
     && JSON.stringify(previous?.webRepetitionFiles) === JSON.stringify(selection.webRepetitionFiles)
     && previous?.web === selection.web
     && JSON.stringify(previous?.tiers) === JSON.stringify(selection.tiers)
@@ -124,7 +130,7 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
     if (['hub/src/test-lint-policy.ts', 'hub/src/hub/suite-candidate.ts'].includes(path)) return full(`suite infrastructure ${path}`);
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
-    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-load-diagnostics.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-dev-fetch.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/src/suite-test-identities.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
+    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-load-diagnostics.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-interactions.ts', 'hub/src/suite-import-graph.ts', 'hub/src/suite-imports.ts', 'hub/src/suite-import-parser.ts', 'hub/src/suite-import-externals.ts', 'hub/src/suite-import-errors.ts', 'hub/src/suite-dev-fetch.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/src/suite-test-identities.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
   }
   if (paths.some(path => path.startsWith('web/'))) return full('mixed web and non-web paths');
   const nvim = paths.filter(path => path.startsWith('nvim/')).length;
@@ -139,34 +145,7 @@ export function chooseSuiteMode(paths: readonly string[], nvimHubImports: readon
   return chooseSuite(paths, nvimHubImports).mode;
 }
 
-// Tokenize comments and strings as units so examples in either cannot become imports.
-// Covers static imports, re-exports and literal dynamic imports. Unresolved
-// template imports fail closed rather than hiding a possible shared dependency.
-export function importSpecifiers(source: string): string[] {
-  const tokens = source.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|[\w$]+|[^\s]/g)?.filter(token => !token.startsWith('//') && !token.startsWith('/*')) ?? [];
-  const specifiers: string[] = [];
-  const literal = (token: string | undefined) => {
-    if (!token || !/^["'`]/.test(token)) return undefined;
-    if (token.startsWith('`') && token.includes('${')) throw new Error('interpolated dynamic import cannot be resolved safely');
-    return token.slice(1, -1).replace(/\\(["'`\\])/g, '$1');
-  };
-  for (let i = 0; i < tokens.length; i++) {
-    const reexport = tokens[i] === 'export' && ['*', '{', 'type'].includes(tokens[i + 1] ?? '');
-    if ((tokens[i] !== 'import' && !reexport) || tokens[i - 1] === '.') continue;
-    // A default binding named `type` is a value (`import type from ...`).
-    if (tokens[i + 1] === 'type' && tokens[i + 2] !== 'from' && tokens[i + 2] !== '=') continue;
-    // Inline type specifiers leave an empty import/export that executes the module.
-    let specifier = literal(tokens[i + 1]);
-    if (tokens[i + 1] === '(') specifier = literal(tokens[i + 2]);
-    else if (!specifier && tokens[i + 1] !== '.') {
-      for (let j = i + 1; j < tokens.length && tokens[j] !== ';' && tokens[j] !== 'import'; j++) {
-        if (tokens[j] === 'from') { specifier = literal(tokens[j + 1]); break; }
-      }
-    }
-    if (specifier) specifiers.push(specifier);
-  }
-  return specifiers;
-}
+export { importSpecifiers } from './suite-imports.ts';
 
 /** Runtime hub dependencies, attributed to each Neovim test through its helpers. */
 export async function nvimHubImporters(cwd: string, files?: readonly string[]): Promise<Record<string, string[]>> {
@@ -253,7 +232,8 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
       return { mode: 'full', files, reason: fallback };
     }
   };
-  const selection = await select();
+  let selection = await select();
+  if (task && dev && requested !== 'all') selection = await taskInteractionSelection(cwd, selection, dev, git);
   if (dev && !fallback) {
     selection.fetchedDev = dev;
     try { selection.webRepetitionFiles = await selectWebRepetitionFiles(selection.files, dev, git); }
@@ -288,6 +268,15 @@ export function selectionFromEnv(env: NodeJS.ProcessEnv = process.env): SuiteSel
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (!value || typeof value !== 'object' || !Object.hasOwn(value, 'mode') || !['full', 'hub-only', 'hub-selected', 'nvim-only', 'web-only'].includes(String(value.mode)) || !Object.hasOwn(value, 'files') || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !Object.hasOwn(value, 'reason') || typeof value.reason !== 'string') throw new Error('invalid suite selection');
   if (value.mode === 'hub-selected' && (!Object.hasOwn(value, 'tests') || !Array.isArray(value.tests) || !value.tests.length || !value.tests.every(file => typeof file === 'string' && /^hub\/(?:src|test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected hub tests');
+  if (Object.hasOwn(value, 'batchInteraction')) {
+    const report = value.batchInteraction as Record<string, unknown> | null;
+    if (!report || !['report', 'run'].includes(String(report.mode)) || typeof report.reason !== 'string' || !Array.isArray(report.phases) || !report.phases.every(tier => tier === 'T2' || tier === 'Web') || report.files !== null && (!Array.isArray(report.files) || !report.files.every(file => typeof file === 'string' && diagnosticTestFile(file)))) throw new Error('invalid batch interaction report');
+  }
+  if (Object.hasOwn(value, 'batchTests')) {
+    const mask = value.batchTests;
+    if (!mask || typeof mask !== 'object' || Array.isArray(mask) || Object.entries(mask).some(([tier, files]) => !['T2', 'Web'].includes(tier) || !Array.isArray(files) || !files.every(file => typeof file === 'string' && diagnosticTestFile(file) && (tier === 'Web' ? file.startsWith('web/') : !file.startsWith('web/'))))) throw new Error('invalid batch test selection');
+  }
+  if (Object.hasOwn(value, 'interactionTests') && (!Array.isArray(value.interactionTests) || !value.interactionTests.every(file => typeof file === 'string' && diagnosticTestFile(file)))) throw new Error('invalid interaction tests');
   if (Object.hasOwn(value, 'nvimTests') && (!Array.isArray(value.nvimTests) || !value.nvimTests.length || !value.nvimTests.every(file => typeof file === 'string' && /^nvim\/test\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected Neovim tests');
   if (Object.hasOwn(value, 'durationCheck')) {
     const check = value.durationCheck as Record<string, unknown> | null;

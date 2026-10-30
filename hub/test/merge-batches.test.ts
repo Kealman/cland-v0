@@ -1133,9 +1133,9 @@ test('a cancelled member waits for its running worker before rebuilding the rema
 
 
 test('merge batch configuration preserves defaults and explicit wait policy', () => {
-  assert.deepEqual(parseConfig('', 'batch').merge, { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(parseConfig('', 'batch').merge, { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
   const config = parseConfig('[merge]\nqueue=true\nbatch=2\nbatch_wait="30s"', 'batch');
-  assert.deepEqual(parseConfig(renderConfig(config), 'batch').merge, { queue: true, batch: 2, batchWaitMs: 30_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(parseConfig(renderConfig(config), 'batch').merge, { batchInteraction: 'report', queue: true, batch: 2, batchWaitMs: 30_000, batchTiers: ['T1', 'T3'] });
   for (const batch of ['0', '-1', '1.5', '"3"']) assert.throws(() => parseConfig(`[merge]\nbatch=${batch}`, 'batch', {}, { strict: true }), /positive integer/);
   for (const invalid of ['[]', '["T5"]', '["T1","T1"]', '"T1"']) assert.throws(() => parseConfig(`[merge]\nbatch_tiers=${invalid}`, 'batch'), /batch_tiers/);
   for (const role of [null, 'coordinator', 'qa', 'implementer']) assert.throws(() => authorizeVerifyOccasion(role, 'batch'), /hub-owned/);
@@ -1166,6 +1166,8 @@ for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured ti
   await f.finish(job.id); await runner.tick();
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
   assert.equal(reports[0]!.split('; ').find(field => field.startsWith('tiers ')), tiers ? 'tiers T1' : 'tiers T1, T3');
+  assert.match(reports[0]!, /batch interaction.*\"mode\":\"report\"/);
+  assert.match(reports[0]!, /\"files\":\[\]/);
 });
 
 test('merge batches form and land while periodic culprit search awaits its runner', async t => {

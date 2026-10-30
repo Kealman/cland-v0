@@ -1,3 +1,4 @@
+import { batchInteractionSelection } from '../suite-interactions.ts';
 import { appendSuiteProvenance } from '../suite-provenance.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
@@ -508,6 +509,7 @@ export class Suites {
         ...(webDiagnostic ? { web: 'all' as const, ...(files.every(file => file.startsWith('web/')) ? { tiers: [] } : {}) } : {}),
         ...(nvimTests?.length ? { nvimTests } : {}) }
       : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
+    if (runner && input.batch && !input.batch.diagnostic && !pinned) selection = await batchInteractionSelection(input.cwd, selection, input.batch.members.map(member => member.head), async (...args) => { if (!this.#candidate.git) throw new Error('candidate Git delta boundary unavailable'); return this.#candidate.git(input.cwd, args); }, undefined, config?.merge.batchInteraction ?? 'report');
     const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);
     if (!runner && commands.tiers && commandSelection.tiers) selection = { ...selection, tiers: commandSelection.tiers };
     if (pinned) selection = structuredClone(pinned.selection ?? selection);

@@ -343,6 +343,13 @@ T-1459: Document repository auto-maintenance provisioning and disposable native-
 
 T-1453: Resolve authorized dev merge by retaining local preflight and repository auto-maintenance guidance together without changing either policy.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
+
+T-1454: Describe additive sibling-importer and merged-landing selection, bounds, evidence and fallback.
+T-1454 source1: Unsupported runtime edges report unknown; history failure retains full process execution through task planning.
+T-1454 source3: Apply Coordinator soundness bar: unsupported executable forms widen conservatively; precision is optional.
+T-1454 source4: Unsupported executable slash syntax is unknown before token-based dependency inference.
+T-1454 final: Lazy TypeScript AST graph, immutable registry proof and phase-contained batch unknown fallback replace hand graph tokenization; legacy tokenizer unchanged.
+T-1454 rule27: batch_interaction defaults report, explicit run executes; task widening stays active and batch results retain exact proposals.
 T-1460: Document final local/droplet provenance, unknown/browser/cache facts and report-only missing skip reasons.
 T-1458: Document report-only packaging/site import guards and shared Web readiness reports.
 T-1458 source1: Shared import-edge policy and owned smoke child lifecycle controls are described in the owning test notes.

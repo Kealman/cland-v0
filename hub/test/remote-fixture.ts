@@ -129,6 +129,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   const manifest = { version: 1 as const, source: { artifacts: [], commit: candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
   const durationContext: DurationBudgetContext = { manifest, tiers: {}, base: { manifest: structuredClone(manifest), tiers: {}, retained: [], sources: {} } };
   const facts: SuiteCandidate = {
+    git: async () => '', // Synthetic candidates have no sibling Git delta.
     head: async () => candidate.head,
     tree: async () => candidate.tree,
     inspect: async (_cwd, mode) => {

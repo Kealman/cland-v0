@@ -33,6 +33,7 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
   let inspectBarrier = async () => {};
   let immutableCheck = async (_head: string) => {};
   const candidate: SuiteCandidate = {
+    git: async () => '', // Synthetic candidates have no sibling Git delta.
     head: async () => facts.head, tree: async cwd => trees.get(cwd) ?? facts.tree,
     inspect: async (cwd, mode) => {
       await captureBarrier();

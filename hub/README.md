@@ -7515,6 +7515,49 @@ report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
 
+## Additive interaction selection (T-1454)
+
+For cland-runner candidates, `[merge] batch_interaction = "report"` defaults to
+recording proposed additions without changing configured batch tiers or Web.
+Explicit `"run"` executes those additions. Existing or generated configs omitting
+the key inherit report; config set/reload uses the same parser. Task-verify
+widening remains active. Changing the batch default to run is a separate item
+based on recorded batch lines. No role permissions or clause lines are added.
+
+Merge batches compare pinned member heads with the
+prepared candidate and follow runtime imports through helpers and re-exports.
+Importing or individually unknown T2/Web graphs add those files, retaining
+configured batch tiers. Only unavailable scan machinery or phase-wide read/byte
+budgets add the whole affected T2/Web phase. Per-file traversal exhaustion adds
+that file. Unknown batch graphs never add unrelated T3/T4. Task verifies retain test
+files hidden by first-parent dev merges plus roles/area guards. Unavailable or
+over-limit task history retains full T1–T4/Web through final command planning.
+
+The graph lazily uses TypeScript's parser, separately from the legacy tokenizer.
+Literal import/export, import-equals, require and dynamic-import edges are
+resolved, including calls in templates and escaped literals. Non-literal module
+specifiers, escaping loaders, eval/Function/vm forms, parse errors, unavailable
+TypeScript and unsupported source extensions remain unknown. Bounded direct
+createRequire(import.meta.url)(literal) calls and const handles used only in
+direct literal calls use the same resolution; other uses remain unknown.
+
+Built-ins are external. A bare package is external only when an ancestor
+candidate package.json declares a registry dependency (including dev, optional
+and peer entries). The nearest declaring ancestor wins; workspace package names,
+workspace/file/link/Git/path specs and undeclared names remain unknown. Candidate
+manifests use the same immutable source reader; no live node_modules proof is
+used. Missing browser/runtime support still determines whether Web actually runs.
+
+Selection reasons name importer triggers and phase fallback causes;
+interactionTests lists every added file; optional batchTests masks execute the
+selected T2/Web files while preserving already configured whole phases. Legacy receipts
+without that optional field remain readable; cache reuse requires the same set.
+Shared graph reads are bounded at 20,000 reads, 32 MiB total, 2 MiB per file and
+200,000 traversals per file; each parser walk is bounded at 200,000 nodes. Task history
+accepts at most 1,000 merges, scanning 1,001 to detect overflow. This adds no
+pass/fail gate or role permission. New precision claims require measurement of
+both direct syntax and transitive graph unknowns on a disposable source copy.
+
 ### Local verify admission preflight
 
 For projects containing `hub/test/run-suite.ts`, `cland verify` (including

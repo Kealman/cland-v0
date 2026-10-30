@@ -48,6 +48,7 @@ export async function lintSuiteCandidate(cwd: string, at: string, env: NodeJS.Pr
 
 /** Build facts at admission; scheduler rules do not own Git or package discovery. */
 export interface SuiteCandidate {
+  git?(cwd: string, args: string[]): Promise<string>;
   isAncestor?(cwd: string, ancestor: string, descendant: string): Promise<boolean>;
   head(cwd: string): Promise<string>;
   tree(cwd: string, head?: string): Promise<string | null>;
@@ -62,6 +63,7 @@ export function suiteCandidate(env: NodeJS.ProcessEnv): SuiteCandidate {
   const head = (cwd: string) => git(cwd, ['rev-parse', 'HEAD']);
   const tree = (cwd: string, at?: string) => candidateTree(cwd, at, env);
   return {
+    git: (cwd, args) => promisify(execFile)('git', ['-c', 'gc.auto=0', ...args], { cwd, env, timeout: 10_000, maxBuffer: 8 * 1024 * 1024 }).then(result => result.stdout),
     head, tree,
     isAncestor: (cwd, ancestor, descendant) => promisify(execFile)('git', ['-c', 'gc.auto=0', 'merge-base', '--is-ancestor', ancestor, descendant], { cwd, env, timeout: 30_000 }).then(() => true, () => false),
     async inspect(cwd, mode, workers, projectTest, fetchDev = false, historicalProbe = false) {

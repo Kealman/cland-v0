@@ -254,10 +254,21 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
       if (targets.length) phases.push({ name: `${prefix === 'hub/' ? 'hub' : 'Neovim'} changed duration`, targets, resource: 'machine', workers: options.workers ?? (await suiteLimits(cwd, options.executor)).workers });
     }
   }
+  if (coverage?.batchTests) {
+    const assignments = await readTierAssignments(cwd);
+    for (const phase of phases) {
+      const files: string[] = [];
+      for await (const file of glob(phase.targets, { cwd })) {
+        const tier = assignments?.get(file);
+        if (tier !== 'T2' || !coverage.batchTests.T2 || coverage.batchTests.T2.includes(file)) files.push(file);
+      }
+      phase.targets = files;
+    }
+  }
   const webFiles = [...await readTierAssignments(cwd) ?? []].filter(([, tier]) => tier === 'Web').map(([file]) => file).sort();
   if (webFiles.length && coverage?.web !== 'none' && (!selection || selection.nvim)) {
     const full = coverage?.web === 'all' || coverage?.web !== 'smoke' && (mode === 'full' || mode === 'web-only');
-    const web: SuiteShard = { name: full ? 'Web' : 'Web smoke', targets: full ? webFiles : WEB_SMOKE.filter(file => webFiles.includes(file)), resource: 'machine', workers: options.executor === 'droplet' ? 4 : 2 };
+    const web: SuiteShard = { name: full ? 'Web' : 'Web smoke', targets: (full ? webFiles : WEB_SMOKE.filter(file => webFiles.includes(file))).filter(file => !coverage?.batchTests?.Web || coverage.batchTests.Web.includes(file)), resource: 'machine', workers: options.executor === 'droplet' ? 4 : 2 };
     const index = phases.findIndex(phase => phase.name.startsWith('Neovim'));
     phases.splice(index < 0 ? phases.length : index, 0, web);
   }
