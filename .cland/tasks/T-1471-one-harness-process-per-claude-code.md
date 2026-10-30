@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1223
 branch: t/T-1471-one-harness-process-per-claude-code
 created: 2026-10-30T07:50:17.744Z
-updated: 2026-10-30T17:09:23.493Z
+updated: 2026-10-30T17:27:33.496Z
 ---
 
 ## Summary
@@ -26,9 +26,9 @@ Root cause: A-14159 (deaf-bridge RCA, 2026-10-30). Epic E-1468.
 ## Acceptance criteria
 
 - [x] C1. `session resume --relaunch` on a Claude Code row runs `claude stop <previous harnessId>` even when the recorded pid is gone or the row is `exited`.
-  - done: impl-1471 · 2026-10-30T15:43:51.179Z
+  - done: impl-1471 · 2026-10-30T17:25:20.416Z
 - [x] C2. Each launch writes its own settings and MCP files with a new launch id; a spoke, hook or bridge carrying an earlier launch id is refused with "belongs to an earlier launch".
-  - done: impl-1471 · 2026-10-30T15:43:51.294Z
+  - done: impl-1471 · 2026-10-30T17:25:20.520Z
 - [x] C3. A second spoke whose hooks carry a different harness session id than the row logs `duplicate-harness` and posts one Agents notice naming both job ids and pids.
   - done: impl-1471 · 2026-10-30T15:43:51.407Z
 
@@ -150,3 +150,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source6 delta clear: remaining M1 resolved by shared cleanup emergency release/join registered before owner/writer, already-aborted handling, immediately caught setup/removal promises with original assertions retained. Only control test/guide changed; production and all prior semantic controls unchanged. No Reviewer execution; A-14556 intermediate/local and final request receipts retain exact-head limits. C1–C3 runtime-unverified; b103e729/A-14211 remains failed. Lead may report ready for Coordinator verify all at frozen3bc380c2e; no duplicate task submission.
+
+### rev-26 · 2026-10-30T17:10:52.839Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1471-evidence-2
+commit: 3bc380c2e008f1fc4e13b3e119ff3b7410a2e15d
+scope: evidence
+findings: [{"severity":"medium","text":"A-14603 has13 actual T3 regressions across11 files: settings rollback Missing expected rejection, earlier-launch spoke refusals breaking native presence/holds/roles, missing bridge/events and account/inbox receipts. Preserve exact assertions and reproduce/correct each; original nativeexit1 cannot clear under shared-duration exception.","file":"hub/test/adapter-native-boundary.test.ts","line":339},{"severity":"medium","text":"Separate task-owned hard duration gate: native relaunch case5.182492985s>5s despite assertion pass;5/5load samples up to5.977673096s. Resolve via speed or existing reasoned measured allowance policy; shared T-1491 covers a different identity.","file":"hub/test/claude-code-sessions-lifecycle.test.ts"}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-14604 original evidence audit:5351ordinarypass/13fail/5skip plus300loadpass; no unfinished/unpaired test. T0/T1/T2green,T3red,Web/T4unrun. Exact failure excerpts and positive task controls retained in audit; no root-cause/flake/shared clearance. Coordinatorb51299c6 assigns all13 regressions and requires reproduce/fix/source review before Coordinator all. C3 final unverified. No Reviewer workloads; prior failed originals remain failed.
+
+Criteria: C1 failed (Native relaunch assertion passes but its own5.182s>5s hard duration gate blocks final acceptance.), C2 failed (Full T3 generation/settings/bridge/native consumer regression evidence has13 actual failures and needs correction.).
+
+### coord · 2026-10-30T17:11:24.170Z
+
+Record correction (Coordinator, on rev-26's behalf; the hub lets Reviewer comments carry only verdicts). The not-clear evidence-2 verdict at 3bc380c2e cites "A-14604" in its prose. The authoritative audit is **A-14606** ("T-1471 full original evidence not clear: thirteen failures and relaunch budget"), over suite 575b154a / A-14603. A-14604 belongs to T-1462's host-gate failure. Counts, head, findings and verdict are unchanged.
+
+### impl-1471 · 2026-10-30T17:18:28.272Z
+
+Full575b154a regressions reproduced singly on original3bc380c2e: all13 across11 files match original errors (A-14609). Consumer corrections: account-limited measure hooks, inbox approval hooks, Lead idle hooks and session-event hooks carry generation read explicitly from recorded native --settings; supplemental Aide/Lead/verifier/rename spokes and standalone scenario bridge carry exact native launch identity. Shared claudeLaunchIdentity is opt-in; no transport auto-adoption, missing/legacy/previous-generation controls unchanged. stage-qa-support adds only access to its existing optional fake; only stage-qa.test.ts and scenarios/stage-close.test.ts consume it, scenario unaffected. Rollback fault injection now hits settings.json inside the new generation, asserts fault fires/no native child/new generation removed, and retains earlier flat file bytes/modes, owned credential and peer credential assertions. Native/process counts and semantic tests not removed. Searches by launch/session.signal/session.bridge/--launch/CLAND_LAUNCH_ID/settings path and spawnSpoke cover production, all test tiers and docs/skills; remaining stable-id hooks in account-coalescing, subscriptions, subscription-hygiene, nvim-sessions-rules, session-model and scripted lifecycle are legacy/fake adapters with no generation, intentionally unchanged. Native generated launch paths already audited A-14222 remain unchanged. Exact native relaunch allowance8.967s approved a4d16807, allsix A-14603 samples, E-880 owner/dates and two-real-launch reason retained; no assertion/timeout/broad-budget changes. Fresh source review precedes Coordinator replacement verify all.
+
+### rev-26 · 2026-10-30T17:27:33.496Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1471-source-7
+commit: aeca6321867912172e41b65f6f99fdbe34133f6e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source7 clear: explicit shared recorded-settings reader migrates all13 failed native consumers; rollback fault hits immutable generation and preserves original native/credential/peer/bytes assertions plus failed-generation removal. No transport inference, negative-control relaxation or own production generation/freshness change. Clean authorized dev merge preserves task seams. Coordinatora4d16807 exact8.967s allowance matches six original samples/openE-880/Oct30–Nov6, no baseline/budget/assertion/timeout change. Local A-14609/A-14610 summaries report171pass/1Linuxskip, not configured Linux proof; original A-14603/A-14606 remain failed. C1–C3 final runtime pending Coordinator all at frozen aeca63218; no Reviewer workloads.

@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T16:46:46.549Z
+updated: 2026-10-30T18:17:16.574Z
 ---
 
 ## Summary
@@ -31,14 +31,16 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
 
 - [x] C1. A probe on a copy whose suite jobs carry live absolute paths and an unfinished running job starts, reaches readiness and stops without reading, writing or signalling anything outside its scratch root, shown by a fixture with a planted outside path and pid that stay untouched.
   - done: impl-1483 · 2026-10-30T16:35:02.155Z
-- [x] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
-  - done: impl-1483 · 2026-10-30T16:35:02.233Z
+- [ ] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
+  - failed: rev-26 [reviewer] · 2026-10-30T17:47:11.216Z · note Replacement all run has four actual native cancellation/setup cleanup failures; isolation safety must coexist with legitimate owned-descendant cleanup.
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
   - done: impl-1483 · 2026-10-30T12:04:33.106Z
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-5 · 2026-10-30T14:34:06.813Z · commit b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-8 · 2026-10-30T16:38:41.422Z · commit e0fac046c69240b44fefe7d532b156d495f99309
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-9 · 2026-10-30T16:46:46.549Z · commit d9f1825882a6c21ed2fdbfb7ca6e2d4c1d73f873
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-source-10 · 2026-10-30T18:09:01.105Z · commit ecaca79b6c06e49ae3d98b27a8eb44f9daa5f39a
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-source-11 · 2026-10-30T18:17:16.574Z · commit f1b80367ef94768e754774b8980ed739914a263d
 
 ## Comments
 
@@ -290,5 +292,66 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta clear: all three suites imports retained, selection/periodic/provenance compose reviewed recovery fences and prior rooted protocol seeds; own safety/native tests unchanged. A-14595 corrects A-14594 tested tree to exactf2ff0bb3; e983d433 is later untested dev merge-tree, not execution. Local serial support remains Darwin summary, not configured all. C3 qualified A-14335 refreshed; C1/C2 pending Coordinator all at frozend9f182588. Old failed originals retained, no Reviewer workload. Report ready for Coordinator all; no duplicate task verify.
+
+Criteria: C3 verified.
+
+### rev-26 · 2026-10-30T17:47:11.216Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-evidence-2
+commit: d9f1825882a6c21ed2fdbfb7ca6e2d4c1d73f873
+scope: evidence
+findings: [{"severity":"medium","text":"A-14612 has three missing native cancellation cleanup/result receipts (two detached-child cases at83, running lock-runner at215) plus suite-timeouts setup-failure surviving PID assertion at166. Preserve original native reaping/root/order assertions and outside-group refusal; diagnose and correct target-scope/birth/cwd cleanup compatibility before new source review.","file":"hub/test/suite-cancel.test.ts","line":23}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14613 original evidence2 not clear:5448ordinarypass/4fail/5skip+625loadpass,T0–T2green,T3red,Web/T4unrun. No hard duration-budget line. Memory31/system55base and four previous restart failures now pass, but do not clear new native failures. Coordinator77cc015b assigns all4; singly reproduce/fix without weakening native/outside-group controls, fresh source review before Coordinator all. C1 final unverified,C3 qualified historical audit unchanged. No Reviewer workload; failed originals retained.
+
+Criteria: C2 failed (Replacement all run has four actual native cancellation/setup cleanup failures; isolation safety must coexist with legitimate owned-descendant cleanup.).
+
+### impl-1483 · 2026-10-30T17:53:17.850Z
+
+A-14612 actual failure output: three cancellation result waits 'not within15000ms'; setup fault 'hung fixture PID174106 survived setup failure'. All four reproduced locally serially before fix (setup locally timed out waiting nested exit). Minimal fix confirmed exact controls green: fresh native launch owns actual ancestry, unlike copied recovery. Contract consumer search covers SuiteLaunchAuthority/isolatedSuiteSignalTargets across hub/shared/web/nvim/qa/skills: only LocalExecutor and native memory controls consume new optional transient proof; existing endProcess option/wire/Store shapes unchanged. WeakMap keys exact Lease; original worker PID/native birth must match and #leases current identity must match. Per-target stable native identities retained; only real observed parent ancestry extends captured births, never group number. Restore/replacement do not populate map; release clears settled grant. Five real native controls cover fresh detached cleanup, JSON restored outside refusal, restored-owned positive cleanup, old/new replaced lease refusal, and PID reuse under /tmp/cland-suite-foreign-*; gone-leader control rejects unseen group member and old native birth. Original four restart tests and outside refusal retained. Docs/skill own sections updated, no role lines or permission change; no dev merge or verify.
+
+### impl-1483 · 2026-10-30T18:07:03.368Z
+
+Evidence2 correction pushed ecaca79b6c06e49ae3d98b27a8eb44f9daa5f39a, tree636e4debe56ad5addf7e54289c6c3ecf28dcb993. A-14614 records exact four red reproductions then final memory37/system56/cancel8/timeouts19/legacy1/muted1 green, darwin arm64 Node24.21.0; typecheck0/lint0(report124/60, refusals0), no local full/browser/probe. Launch authority is exact-current-Lease/native-birth WeakMap state populated only by own #start, extended only by observed native ancestry, cleared on release; copied/restored/replaced leases and PID reuse inherit none. Six mandatory controls include restored-owned positive and concurrent restore, plus gone-leader unseen-group/old-birth refusal. Concurrent replacement red attempted guarded outside STOP; fixed after-await and synchronous binding checks, including scoped CONT (new red Missing expected rejection now green). Native callback/omitted-hook compatibility retained. Original four restart cases and current four cleanup failures unchanged and green locally. All prior failed remote artifacts stay failed, C1/C2 configured proof pending; C3A14335 qualified unknowns unchanged. No dev merge since source9.
+
+### rev-26 · 2026-10-30T18:09:01.105Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-10
+commit: ecaca79b6c06e49ae3d98b27a8eb44f9daa5f39a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source10 clear in accompanying audit. Nonpersisted exact-lease/native-birth authority extends only verified ancestry for fresh descendants; restored/replaced/reused/group-only paths retain cwd/birth fence. Post-await and synchronous per-signal/CONT authorization closes replacement gap; no generic tmp grant or native assertion relaxation. Original four recovery/current four cleanup files unchanged. A-14614 local Darwin memory37/system56/cancel8/timeouts19 plus filtered legacy/muted passes is source support, not configured Linux. C1/C2 final pending Coordinator all at frozen ecaca79b6; C3 qualified historical audit refreshed. Old failed originals retained; no Reviewer workloads.
+
+Criteria: C3 verified.
+
+### impl-1483 · 2026-10-30T18:12:48.107Z
+
+Coordinator8c08fe5c rule11 merge against pinned dev11061592a: retained isolated ownership/unavailable-file admissions and Promise.all before renamed local.reconcile; no old local.reap call remains. README retains both isolation and Executor interface sections. LocalExecutor auto-merge changes only T-373 lifecycle imports/typed not-applicable prepare+provider reap/reconcile rename; our WeakMap, native ancestry scope, post-await and pre-signal authority guards and cancel/release #end routes unchanged. New branch-only memory control mock migrated LocalExecutor.prototype reap→reconcile; global field/function search found no other old local.reap/mock calls. Reconcile still only status/checkpoints; destructive work remains shared #end through cancellation and both release paths. Typecheck0/lint0(report124/60, refusals0); serial requested controls underway. No verification or extra merge.
+
+### impl-1483 · 2026-10-30T18:16:46.796Z
+
+Authorized reconcile merge pushed f1b80367ef94768e754774b8980ed739914a263d, actual tested tree26f3abf109e4367479e494f3177814d2e96dbc11 (parents source10 ecaca79b6 + pinned dev11061592a). A-14616: isolated admissions precede local.reconcile, branch-only mock migrated, README both sections kept. Auto-merged scope/final authorization and cancel/release #end routing unchanged; reconcile only status/checkpoints, public provider reap remains not-applicable. Typecheck then lint0(report124/60, zero refusals), then serial cancel8/timeouts19/original restart1+2+1/liveness4/system56/memory37 all pass, darwin arm64 Node24.21.0, no browser/probe/full local/load. Counts not additive where repeated filtered cases. No configured verification yet; old failed receipts remain failed, C1/C2 pending, C3A14335 qualified unknowns unchanged.
+
+### rev-26 · 2026-10-30T18:17:16.574Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-11
+commit: f1b80367ef94768e754774b8980ed739914a263d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14617 merge delta clear: isolated ownership/report admissions join before local.reconcile; no old local.reap call. Typed prepare/reap and fixture recovery mock match T-373. Source10 WeakMap authority/scope/final authorize preserved through cancel/both release paths; reconcile only status/checkpoints. Both README sections retained, original native assertions unchanged. A-14616 local Darwin targeted/static support only; C1/C2 await Coordinator all at frozenf1b80367. C3 qualified audit refreshed, failed originals retained; no Reviewer workload.
 
 Criteria: C3 verified.

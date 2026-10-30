@@ -2,8 +2,8 @@
 id: T-1462
 kind: task
 title: The hub confirms a merge-delta review when the dev merge is conflict-free and disjoint
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1242
 branch: t/T-1462-the-hub-confirms-a-merge-delta-review
 created: 2026-10-30T05:44:58.381Z
-updated: 2026-10-30T16:41:37.555Z
+updated: 2026-10-30T18:33:27.449Z
+closed: 2026-10-30T18:33:27.449Z
 ---
 
 ## Summary
@@ -25,7 +26,8 @@ v0.3.0 had 64 merge-delta re-reviews on 41 tasks, caused only by dev moving unde
 ## Acceptance criteria
 
 - [x] C1. A conflict-free dev merge produces a durable hub-recorded delta assessment (disjoint or overlapping, with rename endpoints, deletions and the dependency rule it applied), shown on the item; in this rollout the assessment is report-only and the Reviewer's merge-delta verdict is still required (rule 27).
-  - done: impl-1462 · 2026-10-30T14:43:16.159Z
+  - done: impl-1462 · 2026-10-30T17:12:34.225Z
+  - verified: rev-34 [reviewer] · run rev-34-20261030-1462-final · 2026-10-30T18:27:04.768Z · commit fcb37858b181f8dbe4e0ce3846635c30b4d6f90c
 
 ## Comments
 
@@ -119,3 +121,48 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14587: authorized dev/help merge delta clear. Assessment/freshness runtime and native controls unchanged from59e90c7c1; five shared scanner files exactly cleared19db19fa3. Manual help conflicts preserve incoming report/run and existing advisory line; complete MERGE/SUITE strings match frozen rows, only own MERGE row differs from dev. Matching local text1/1+5/5+2/2 remains targeted evidence. C1 runtime-unverified; source-ready for Coordinator-owned verify-all per40757f55, no prior full green/waiver claim.
+
+### rev-34 · 2026-10-30T17:10:32.828Z
+
+verdict: review
+result: not clear
+by: rev-34 [reviewer]
+run: rev-34-20261030-1462-evidence1
+commit: e381b2a85f3cf7677d2654a89751d71a42f3492e
+scope: evidence
+findings: [{"severity":"medium","text":"M4: original verify-all host typecheck fails TS2300 duplicate importSpecifiers at lines1/13 after automatic dev merge. No droplet/tests ran. Remove duplicate with both call sites retained, perform Coordinator-requested targeted checks and fresh source delta review before new-head verify-all.","file":"hub/src/suite-selection.ts","line":13}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14605 audits original dd49d778/A-14604: T0 exit1/1.776s, actual TS2300 quoted. Source5 delta audit missed the duplicate; local help tests did not cover compilation. No runtime/browser/remote platform evidence; counts remain unavailable, not pass/zero. C1 stays unverified, no behavior failure inferred. Follow Coordinator b1e0308f exact correction/review workflow; failed original retained.
+
+### rev-34 · 2026-10-30T17:13:11.796Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261030-1462-source6
+commit: fcb37858b181f8dbe4e0ce3846635c30b4d6f90c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source6 one-line correction clear: duplicate later import removed; top import, public reexport and runtime nvim importer all resolve shared suite-imports. Whole-commit diff has no other changes. A-14607 preserves exact local TS2300 red and corrected typecheck/lint/selection158/158; parent A-14604/A-14605 remains failed host-only evidence. C1 runtime-unverified; source-ready for Coordinator new-head verify-all perb1e0308f.
+
+### rev-34 · 2026-10-30T18:27:04.768Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261030-1462-final
+commit: fcb37858b181f8dbe4e0ce3846635c30b4d6f90c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14619 independently audits original Coordinator all b1759c3a/A-14618 at source6 head:5883 ordinary passes/8skips,585 load passes,zero failures. All14 task identities ordinary+5/5 each(70 task load); exact durable assessment/path/dependency/patch-id/no-verdict assertions and held/failing advisory isolation pass. C1 verified. T0/allT1/allT2/all configuredT3/Web completed; noT4 phase, skipped Mac sandbox/caffeinate and real-OpenCode controls remain unexecuted. Host typecheck reused, not repeated remotely; report-only timing/lint/ratchet and successful-object capture limits retained. Parent A-14604/A-14605 remains failed host-only history; current fresh run passes corrected head.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-30T18:33:27.449Z
+
+Merged 497d43dbebf9c178d1130b060c1ef58e67bca231 onto dev.
