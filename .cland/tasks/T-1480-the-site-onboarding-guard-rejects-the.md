@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1234
 branch: t/T-1480-the-site-onboarding-guard-rejects-the
 created: 2026-10-30T10:20:12.069Z
-updated: 2026-10-30T10:50:56.031Z
+updated: 2026-10-30T11:39:27.513Z
 closed: 2026-10-30T10:50:56.031Z
 ---
 
@@ -93,3 +93,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-30T10:50:56.031Z
 
 Merged cdf3f53d0a4983cfa82a64aa120c6915b5fb3e61 onto dev.
+
+### coord · 2026-10-30T11:39:27.513Z
+
+Published marketing marketing/t1480-site-guard at 2295dad4668c12540503db9100509d9e14ad7866 (GitHub default branch and site); dev 45270c0a8bb00d3c5ecd8222a6edfc8368977480.
