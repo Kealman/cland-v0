@@ -3,7 +3,7 @@ id: T-1487
 kind: task
 title: A role-addressed review request stays queued while reviewers are idle
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1254
 branch: t/T-1487-a-role-addressed-review-request-stays
 created: 2026-10-30T13:33:21.942Z
-updated: 2026-10-30T21:06:52.817Z
+updated: 2026-10-30T22:24:06.007Z
 ---
 
 ## Summary
@@ -25,10 +25,10 @@ A review request sent to the role `reviewer` was queued and never assigned for 4
 
 ## Acceptance criteria
 
-- [x] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
-  - done: impl-1487 · 2026-10-30T21:05:27.965Z
+- [ ] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
+  - failed: rev-31 [reviewer] · 2026-10-30T22:24:06.007Z · note Retained pre-upgrade owned launch first-input with NULL admission loses pending reservation on completion or acceptance.
 - [x] C2. A queued request that stays unassigned past the bound posts one Agents notice naming the request, the idle verifiers and why each was not chosen.
-  - done: impl-1487 · 2026-10-30T21:05:28.035Z
+  - done: impl-1487 · 2026-10-30T22:22:26.356Z
 
 ## Comments
 
@@ -152,3 +152,51 @@ Source4 clear A-14691, Standards0/Spec0 findings. A-14688 M1 resolved: trusted h
 ### impl-1487 · 2026-10-30T21:06:52.817Z
 
 Source4 clear A-14691 at c6b043908a8cbace3c6ebf7622f96276d936f9d6. Reported ready for Coordinator verify all at frozen reviewed head. Fresh fetch origin/dev2b487a3250ca3a8202240bcad0d1d67681299efe; merge-tree exit1 identifies sole prospective conflict .agents/skills/implement/SKILL.md. Task worktree clean/pushed; no post-review dev merge under rule11. Coordinator informed and decides frozen-head verify vs authorized dev merge then fresh review. Prior run/evidence1 remain red at079b65a13; no green/full-runtime claim.
+
+### rev-31 · 2026-10-30T22:17:35.598Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-evidence2
+commit: c6b043908a8cbace3c6ebf7622f96276d936f9d6
+scope: evidence
+findings: [{"severity":"medium","text":"M1: recipient-kind early return rejects an authorized named QA-prefixed request to an existing reviewer before updating its local pending entry; unchanged native session-holds:40 times out. Preserve local named any-kind compatibility, gate global supersession separately, and reconcile wrong-kind control per Coordinator9fa26c9c.","file":"hub/src/hub/core.ts","line":1900},{"severity":"medium","text":"M2: recordLaunchBrief/completeCarriedBrief bypass both admission producers; native first-turn delivered brief receives no receipt and pending is undefined at unchanged session-holds:94. Capture trusted launch admission at the owned producer without trusting arbitrary hub notice prose.","file":"hub/src/hub/core.ts"}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence2 not clear A-14713. Original77b2fd90/A-14712 exit1 at frozen source4:5492 ordinary passes,2 failures,5 skips,195 extra load passes;5687 pass count includes repetitions. T0/T1/T2 exit0,T3 red,Web unrun,T4 absent. Original failures and exact source audited; prior human admission fix remains source-sound but misses named local compatibility and launch producer. Coordinator9fa26c9c resolves local-vs-global policy and trusted launch admission; retain both native assertions. C2 final runtime pending. Fresh source review after scheduled focused corrections, then Coordinator-owned full retry. Old failed receipts retained; no Reviewer workloads.
+
+Criteria: C1 failed (Two original native session-holds consumers fail: authorized named cross-kind pending replacement and trusted native first-turn pending reservation.).
+
+### impl-1487 · 2026-10-30T22:22:26.221Z
+
+Source5 522bed3e912b1e11eafa2fc9765304a61494e7e7 pushed; no dev merge. Coordinator decision 9fa26c9c separates authorized named local pending replacement (including cross-kind QA→Reviewer) from matching-role global supersession. Source4 native session-holds reproduced singly red: newer prefixed request timeout at line40 and first-turn pending undefined at line94. Both original assertions/producers remain unchanged (git diff c6b043908 against session-holds empty). Local replacement now captures authorized cross-kind requests, global accepted receipt is written only by matching role. recordLaunchBrief and deliverReuseBrief atomically record trusted owned-producer admission before native delivery; completeCarriedBrief consumes it. Added carried and pool-reuse durable injection controls; source4 red reproduced for each (undefined pending); reconciled wrong-kind control checks local pending plus independently preserved real verifier reservation. Rule20 consumer inventory extension: adapters/sessions.ts #resolveBrief/#spawnLaunch/#reuse → recordLaunchBrief/completeCarriedBrief/deliverReuseBrief, T3 session-holds restart/hold/verdict/stop/death and native-first-turn; unchanged brief composition/name reservation paths use the same owned producers. No wire/role/tool changes.
+Final source5 macOS arm64 local four files singly: native session-holds 2/2, routing 33/33, computed 4/4, inbox 8/8 (47 focused cases); root typecheck and lint pass (0 refusals, 123 report-only findings; known prerequisite advisory retained). No browser/local full suite/remote retry. Prior Linux A-14712 at c6b043908 remains red: 5,492 ordinary passes, 2 failures, 5 skips +195 load passes; T0/T1/T2 pass, T3 red, Web unrun/T4 absent. Source5 runtime/full evidence pending fresh source review then Coordinator run.
+
+### rev-31 · 2026-10-30T22:23:22.536Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-source5
+commit: 522bed3e912b1e11eafa2fc9765304a61494e7e7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source5 clear A-14717, Standards0/Spec0. A-14713 M1/M2 resolved per Coordinator9fa26c9c: authorized named cross-kind requests update local pending; matching-kind gates global supersession only. Reconciled negative explicitly retains independent real-verifier reservation assertion. Owned launch/reuse producers capture admission transactionally before delivery/completion; ordinary hub notices gain no trust. Sessions authorization/pool checks retained. Original native session-holds file unchanged; added T2 carried/reuse controls observe durable injection plus independent pending/session identity. Prior human/legacy/agent negatives and queue/checkpoint/heartbeat boundaries unchanged. A-14716 local47focused/typecheck/lint summaries remain scoped, not configured proof. C1/C2 runtime pending; previous failed A-14712/A-14713 and A-14687/A-14688 retained. Report ready for Coordinator-owned verify all at exact frozen head, then original-record evidence review. No Reviewer workloads.
+
+### rev-31 · 2026-10-30T22:24:06.007Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-source5-supplement
+commit: 522bed3e912b1e11eafa2fc9765304a61494e7e7
+scope: full
+findings: [{"severity":"medium","text":"M1: pre-upgrade owned launch brief retains NULL admission plus durable deliveries.launch_brief, but migration recognizes only human or agent sender identity. Hub-owned brief is persisted denied on later acceptance, losing legitimate pending work. Recover trusted ownership tied to message/recipient/launch with reopen control; keep arbitrary hub notices/cancelled or wrong-owner launches and explicit denied0 untrusted.","file":"hub/src/hub/core.ts","line":1905}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source5 supplement A-14718 supersedes clear A-14717/runrev-20261030-1487-source5 recorded concurrently with Implementer95102d46. Current producer receipts and local/global fix remain sound, but legacy owned hub brief migration is missing; source confirmed via Store remember/activate/launchBriefs and NULL branch. No new Reviewer execution/red result claimed; isolated reopen control pending from Implementer. Full retry explicitly held; fresh source review after correction. C2 runtime pending; prior failed runtime receipts retained.
+
+Criteria: C1 failed (Retained pre-upgrade owned launch first-input with NULL admission loses pending reservation on completion or acceptance.).

@@ -2,8 +2,8 @@
 id: T-1478
 kind: task
 title: Find and fix the hub's memory growth at rest, and add a memory budget report
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1235
 branch: t/T-1478-find-and-fix-the-hub-s-memory-growth-at
 created: 2026-10-30T07:54:04.924Z
-updated: 2026-10-30T21:47:09.141Z
+updated: 2026-10-30T22:28:17.687Z
+closed: 2026-10-30T22:28:17.687Z
 ---
 
 ## Summary
@@ -25,11 +26,17 @@ The live hub grew from 4.4 GB to 6.7 GB footprint in 75 minutes with the crew id
 ## Acceptance criteria
 
 - [x] C1. A 30-minute at-rest run of a sealed scratch hub on a copy of this project records heap, RSS and footprint every 10 s, and a sampling heap profile names the sites whose retained size grows over the run.
-  - done: impl-1478 · 2026-10-30T21:46:51.837Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1478-evidence-2 · 2026-10-30T22:10:13.085Z · commit aa8e5ecdf0333cbcb134b76709dbf47332b2d3aa
+  - done: impl-1478 · 2026-10-30T22:12:08.127Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1478-source-7 · 2026-10-30T22:21:35.577Z · commit 0c2236271361ed3123a6fca41f5aeb440593fe41
 - [x] C2. Each growing site found is fixed or filed with its evidence, and the at-rest slope after the fixes is published next to the before slope, same probe and machine.
-  - done: impl-1478 · 2026-10-30T21:46:52.135Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1478-evidence-2 · 2026-10-30T22:10:13.085Z · commit aa8e5ecdf0333cbcb134b76709dbf47332b2d3aa
+  - done: impl-1478 · 2026-10-30T22:12:08.246Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1478-source-7 · 2026-10-30T22:21:35.577Z · commit 0c2236271361ed3123a6fca41f5aeb440593fe41
 - [x] C3. A memory budget check, in report mode (rule 27), runs on live-scale fixture data and reports heap and RSS at readiness and after a fixed rest period against a budget agreed with the human.
-  - done: impl-1478 · 2026-10-30T21:46:52.811Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1478-evidence-2 · 2026-10-30T22:10:13.085Z · commit aa8e5ecdf0333cbcb134b76709dbf47332b2d3aa
+  - done: impl-1478 · 2026-10-30T22:12:08.716Z
+  - verified: rev-26 [reviewer] · run rev-20261030-1478-source-7 · 2026-10-30T22:21:35.577Z · commit 0c2236271361ed3123a6fca41f5aeb440593fe41
 
 ## Comments
 
@@ -149,3 +156,41 @@ A-14694: intermediate interpretation only clear; no criteria verified/final read
 ### impl-1478 · 2026-10-30T21:46:20.837Z
 
 Final once-only1800s record complete on aa8e5ecdf, original numeric evidence A-14699; final narrative artifact posted. C2 required limit explicitly recorded per Coordinatorc1945457: no production fix justified or fixed leak claimed; same-probe before unavailable/not reproducible because T1476/T1477 landed first, not zero. Current 30min after slopes heap-0.204/RSS+0.054/footprint-1.055MiB/min; after120s footprint+0.252 retained. Final sampled survivors96.958->81.939MiB, no positive source stacks, so prior1MiB candidates not filed under disposition. Historical live 48336 8.2GB/88min,17875 5.3GB/2h43 and post79176 943MB/+10min,1255MB/2h02 are different-probe context only. C3 agreed256/768 report-only defaults; readiness140.460/586.125MiB and endpoint99.483/549.141 allwithin, native/disposalcomplete. Final source review/verification still pending before ready.
+
+### rev-26 · 2026-10-30T22:10:13.085Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1478-evidence-2
+commit: aa8e5ecdf0333cbcb134b76709dbf47332b2d3aa
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14710: C1/C2/C3 verified at ORIGINAL aa8e5ecdf only: actual1800.578s/182Mac samples/profile/immutable endpoint/native-disposal proof plus configured6946de51/A-14709 native0,4869ordinary+125loadpasses,5657IDsallpaired. T0/T1/allT2/selected23T3/Web0;remainingT3/T4unexecuted. C2 c1945457 disposition preserves unavailable same-probe-before/different-probe live context/no fixed-leak claim; no positive final sampled stack, slow positiveRSS/footprint caveats retained. Human-agreed256/768report-only actual fourwithin; automatic exit-profile unavailable separate from validstageprofiles. Source6clear remains baseline. Lead39bd1213 proposed docs-conflict merge NOT cleared: hold final readiness for new pushed-head delta/waiver; no old-run relabelling.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1478 · 2026-10-30T22:19:52.003Z
+
+Docs-conflict waiver supplement A-14714: pinned merged head0c2236271/tree9c35956f6; both-tree literal text, phrase, reader and identifier inventories,67 candidate dispositions,28 single-file native code0 receipts/337passes/0skips on local macOS arm64 Node24.21.0, no browser/fullsuite. Original configured verify and1800s measurement remain predecessor aa8 evidence A-14709/A-14710; no relabelling. Fresh fetchdev aa73012f/merge-tree clean exact candidate tree; own source diff empty. Exact-head Reviewer delta settlement pending.
+
+### rev-26 · 2026-10-30T22:21:35.577Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1478-source-7
+commit: 0c2236271361ed3123a6fca41f5aeb440593fe41
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14715: exact docs-conflict delta clear; C1–C3 carried under standing d4eb4f30/active rule6. Both README sections retained, own probe/helper/analyzer unchanged, imported production matches dev. A-14714 closes waiver evidence gap: independently reproduced67-file union/39 scoped unaffected dispositions,28 original nonoverlapping native closes0/null,337passes0adverse,hashes/scan valid. Predecessor actual1800s Mac/A14699 and configured6946de51/A14709 remain labelled aa8, final auditA14710; no merged-head measurement/full-run claim. C2 unavailable same-probe-before/different-probe live context/no fixed leak, slow positive RSS/footprint, valid stage versus unavailable automatic profile and report-only256/768 limits retained. Final readiness permitted by waiver; lead reports exact SHA/fresh conflict check to Coordinator.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-30T22:28:17.687Z
+
+Merged e410380a8ebff06662f6718f56e8609517f7cfaa onto dev.
