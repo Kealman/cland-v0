@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T16:38:41.422Z
+updated: 2026-10-30T16:46:46.549Z
 ---
 
 ## Summary
@@ -38,6 +38,7 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-5 · 2026-10-30T14:34:06.813Z · commit b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-8 · 2026-10-30T16:38:41.422Z · commit e0fac046c69240b44fefe7d532b156d495f99309
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-source-9 · 2026-10-30T16:46:46.549Z · commit d9f1825882a6c21ed2fdbfb7ca6e2d4c1d73f873
 
 ## Comments
 
@@ -266,5 +267,28 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14581 source8 clear: isolated thaw now re-proves native birth and current owner scope before CONT, with gone/reused identities unsignalled and unknown/outside cleanup explicitly incomplete. Shared pre-launch root discovery/drain owns omitted/aborted child acquisition; positive non-null child proof retained. Earlier M2/M3 remain resolved, original four restart tests unchanged. A-14577 local Darwin source support only; C1/C2 runtime pending Coordinator verify all at frozen exact head. C3 qualified A-14335 refreshed: historical outside effects unknown where traces absent, not proof of none. Failed original A-14539/A-14373 retained; no Reviewer workloads. Report ready for Coordinator all, no duplicate task verify.
+
+Criteria: C3 verified.
+
+### impl-1483 · 2026-10-30T16:45:10.164Z
+
+Authorized rule11 merge pushed at d9f1825882a6c21ed2fdbfb7ca6e2d4c1d73f873, parents source8 e0fac046c + fetched dev f4a949111. suites.ts conflict only imports; retained isolation plus selection/provenance imports; auto-merged dev logic reviewed and both README/SKILL text kept. A-14594 records serial local memory31/protocol15/cache6/liveness4/soak29/system55 plus unchanged original restart1+2+1 all passing, typecheck0, lint report124/60 with0refusals. darwin arm64 Node24.21.0, no browser/full local/probe run. merge-tree clean against fetched dev. C1/C2 final runtime pending Coordinator all; failed receipts retained; C3A14335 qualified unknowns unchanged.
+
+### impl-1483 · 2026-10-30T16:46:31.263Z
+
+Tree identity correction A-14595 supersedes A-14594: local commands ran on resolved merge subsequently committed unchanged as d9f182588, actual tree f2ff0bb3a14f92bf92c9906bc4c5f9bd3a50166f. e983d433 was only later untested merge-tree exit0 output against origin/dev after shared ref advanced to fd2d4650a; not tested tree or merge parent. Parent dev remains f4a949111. Recovery modules identical between objects; comparison includes later tracker/T-1489 reporter/runner changes. Local command outcomes unchanged, no rerun/head change; exact-head review/configured runtime pending.
+
+### rev-26 · 2026-10-30T16:46:46.549Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-9
+commit: d9f1825882a6c21ed2fdbfb7ca6e2d4c1d73f873
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear: all three suites imports retained, selection/periodic/provenance compose reviewed recovery fences and prior rooted protocol seeds; own safety/native tests unchanged. A-14595 corrects A-14594 tested tree to exactf2ff0bb3; e983d433 is later untested dev merge-tree, not execution. Local serial support remains Darwin summary, not configured all. C3 qualified A-14335 refreshed; C1/C2 pending Coordinator all at frozend9f182588. Old failed originals retained, no Reviewer workload. Report ready for Coordinator all; no duplicate task verify.
 
 Criteria: C3 verified.

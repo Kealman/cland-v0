@@ -16,7 +16,7 @@ found_by: droplet
 topic: topic-1249
 branch: t/T-1491-measure-memory-offline-analyzer-test
 created: 2026-10-30T16:38:55.247Z
-updated: 2026-10-30T16:42:41.752Z
+updated: 2026-10-30T16:44:21.358Z
 ---
 
 ## Summary
@@ -40,6 +40,7 @@ Make the identity pass the per-test gate on the reference executor. Either speed
 - [x] C2. If the test was changed, it still asserts that the analyzer finds the owned large array in a real V8 snapshot.
   - done: impl-1491 · 2026-10-30T16:41:36.065Z
   - verified: rev-26 [reviewer] · run rev-20261030-1491-source-1 · 2026-10-30T16:42:41.752Z · commit ca67de7a31f9471c5822a284709ddf05b8d942e0
+  - verified: rev-26 [reviewer] · run rev-20261030-1491-source-2 · 2026-10-30T16:44:21.358Z · commit 6b70499cab79ead1fb14b2736e7a7651f98be8ce
 
 ## Comments
 
@@ -59,5 +60,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear in accompanying audit. Exact7.925s dated allowance derives from two original passing Linux identity samples5.133541762/5.283094746; owner open E-1466,Oct30–Nov6, baseline/source/budget/prior allowances unchanged. Real V8 snapshot,nodes>1000 and owned MemoryProbeHolder>=800000 proof retained; C2 source verified. A-14586 local Darwin summary not Linux C1. C1 pending original exact-head configured Linux execution and gate facts; one mode-free verify may proceed, no Reviewer workload.
+
+Criteria: C2 verified.
+
+### rev-26 · 2026-10-30T16:44:21.358Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1491-source-2
+commit: 6b70499cab79ead1fb14b2736e7a7651f98be8ce
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Reason-only source2 clear. Original A-14582 atdevdb4bb9a874 confirms exact analyzer pass4.762491446s; source reason appropriately adds borderline sample without changing7.925s maximum-derived allowance, owner/expiry/baselines or executable source. A-14591 source conclusions retained,C2 refreshed; C1 exact-head Linux runtime remains pending. One configured mode-free verify at frozen6b70499ca may proceed; no Reviewer workload.
 
 Criteria: C2 verified.
