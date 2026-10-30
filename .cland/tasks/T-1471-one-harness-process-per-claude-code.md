@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1223
 branch: t/T-1471-one-harness-process-per-claude-code
 created: 2026-10-30T07:50:17.744Z
-updated: 2026-10-30T16:04:29.297Z
+updated: 2026-10-30T16:12:38.051Z
 ---
 
 ## Summary
@@ -124,3 +124,29 @@ Integrated source review at 4c3ece4db: Standards M1 remains in three new tests; 
 ### impl-1471 · 2026-10-30T16:00:26.323Z
 
 Source4 M1 correction in progress: shared claudeComponentOwner composes pacingOwner+dispatcherUi before acquisition, bounds hub/welcome/subscription setup, tracks late clients/spokes and frame/native-poll observations, and guards root removal until drainage. Omitted/aborted readiness controls preserve actual stopped-hub + retained-root + admitted-observation completion receipts. Production source unchanged from 4c3ece4db. dispatcherUi gains only an optional process-observer argument; default and all existing 3-argument consumers remain unchanged (sessionDispatcherUi wrapper, CLI/role/tracker/release/merge/heartbeat/permissions component callers); invented-PID Claude fixtures explicitly disable native PID discovery. New helper clients: schedule legacy/stateless cases and sessions uncertain-stop case. No wire/client contract change.
+
+### rev-26 · 2026-10-30T16:06:28.263Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1471-source-5
+commit: 283e84a748f8627f4cbba236d87f354f741d2a25
+scope: delta
+findings: [{"severity":"medium","text":"Remaining M1: held writer is admitted before release/join cleanup is installed; welcome assertion outside try/finally can strand released.promise while owner.dispose joins it. Pre-register release+join before writer admission, handle already-aborted signal, and immediately catch/own remove() before waiting for guard entry. Preserve root-retention/drain assertions (rules9/12).","file":"hub/test/claude-component-fixture.test.ts","line":26}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source5 ownership migration reviewed: production unchanged; three semantic cases now use shared pre-owned acquisition/observation/removal composition. New helper controls retain a failure-path cleanup gap (remaining M1), detailed in source5 audit. Metadata/tier/consumer compatibility correct; no additional Spec blocker identified. Local helper2/sessions20/schedule46 qualify only their reported Darwin occasion. C1–C3 runtime pending; prior failed configured receipt remains failed. Corrected-head source review precedes Coordinator verify all.
+
+### rev-26 · 2026-10-30T16:12:38.051Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1471-source-6
+commit: 3bc380c2e008f1fc4e13b3e119ff3b7410a2e15d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source6 delta clear: remaining M1 resolved by shared cleanup emergency release/join registered before owner/writer, already-aborted handling, immediately caught setup/removal promises with original assertions retained. Only control test/guide changed; production and all prior semantic controls unchanged. No Reviewer execution; A-14556 intermediate/local and final request receipts retain exact-head limits. C1–C3 runtime-unverified; b103e729/A-14211 remains failed. Lead may report ready for Coordinator verify all at frozen3bc380c2e; no duplicate task submission.

@@ -3,7 +3,7 @@ id: T-1483
 kind: task
 title: The memory probe's copied hub can reach live suite paths and recovery state
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ found_by: review
 topic: topic-1239
 branch: t/T-1483-the-memory-probe-s-copied-hub-can-reach
 created: 2026-10-30T11:57:15.271Z
-updated: 2026-10-30T16:05:07.664Z
+updated: 2026-10-30T16:38:41.422Z
 ---
 
 ## Summary
@@ -30,13 +30,14 @@ A probe or fixture hub started on a copy of a live project can reach nothing out
 ## Acceptance criteria
 
 - [x] C1. A probe on a copy whose suite jobs carry live absolute paths and an unfinished running job starts, reaches readiness and stops without reading, writing or signalling anything outside its scratch root, shown by a fixture with a planted outside path and pid that stay untouched.
-  - done: impl-1483 · 2026-10-30T12:22:26.005Z
-- [ ] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
-  - failed: rev-26 [reviewer] · 2026-10-30T15:55:15.587Z · note A-14539 full run fails four legitimate restart-recovery cases; isolation ownership compatibility requires correction before final acceptance.
+  - done: impl-1483 · 2026-10-30T16:35:02.155Z
+- [x] C2. A hub with isolated verification refuses recovery actions on a stored path outside its root and names the job, while finished history keeps its row count.
+  - done: impl-1483 · 2026-10-30T16:35:02.233Z
 - [x] C3. The audit of today's live-copy probe runs is recorded on this item: each run, whether it reached suite recovery, and any outside path or pid it touched, or "none" with the evidence it rests on.
   - done: impl-1483 · 2026-10-30T12:04:33.106Z
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-4 · 2026-10-30T13:42:31.899Z · commit 4b89bd99fd492047c96043de80da4222348b8256
   - verified: rev-26 [reviewer] · run rev-20261030-1483-source-5 · 2026-10-30T14:34:06.813Z · commit b5cd1bc5f68a46a10df26b73cf0c4fc8a3c8a9d7
+  - verified: rev-26 [reviewer] · run rev-20261030-1483-source-8 · 2026-10-30T16:38:41.422Z · commit e0fac046c69240b44fefe7d532b156d495f99309
 
 ## Comments
 
@@ -214,3 +215,56 @@ A-14539 follow-up: exact four T3 restart cases reproduced red serially with orig
 ### impl-1483 · 2026-10-30T16:05:07.664Z
 
 Contract inventory for T3 correction: new additive CLAND_TEST_OWNED_ROOT produced by shared fixtureEnvironment after final overlay; read only through shared/fixture-roots.ts by suite path, resolved evidence and native cwd guards. accountFixtureEnvironment/projectHub/startDaemon/runCland/runnerFixtureEnvironment reseal via that builder; no copied root allowlist, no generic TMPDIR/HOME-parent grant. Old env shape without grant falls back to project root, covered by fixture-environment.test.ts. isolatedSuiteProcessOwned now returns positive owned/native identity proof or refusal; only Suites constructor consumes it, migrated and persists legacy birth in restored lease before further action. Positive native exit permits existing report/receipt handling, never authorizes a new live signal. Outside terminal pending reports are rebound to new hub-owned unavailable log/result files; Store/archive/wire shapes stay unchanged and all artifact/evidence consumers remain behind shared root guard. Four original T3 cases unchanged; no debug marker remains. No dev merge or verification submission.
+
+### rev-26 · 2026-10-30T16:12:01.467Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-6
+commit: 4e475d7095984fa522e76b05c2b18fbd3f69f6e3
+scope: full
+findings: [{"severity":"high","text":"M1: Positive absent/zombie leader returns owned:true but restores original PID/lease; LocalExecutor.release can signal surviving group members without owned-cwd proof. Separate report-only absence from per-target live signal authority. Add owned disposable gone-leader/outside-descendant control, retain original in-owned-child recovery and refusal proofs.","file":"hub/src/hub/suite-isolation.ts","line":76},{"severity":"medium","text":"M2: Outside terminal report classification precedes optional legacy state normalization. Old outcome+reported:false+state-absent row is silently sealed reported:true instead of publishing unavailable notice. Derive effective state once before classification; preserve old-shape/no-outside-I/O control.","file":"hub/src/hub/suites.ts","line":275},{"severity":"medium","text":"M3: Outside-log control raw sessionUi acquisition is not pre-owned/joined or separately bounded; closer only sees assigned ui and misses late client. Compose existing shared fixture/client owner and removal guard; retain actual report, zero-outside-I/O and sentinel assertions.","file":"hub/test/measure-memory.test.ts","line":555}]
+finding_counts: {"high":1,"medium":2,"low":0}
+
+Source6 full correction audit in attached artifact: original four T3 controls unchanged/red→green locally; shared sealed owned-root grant relevant and no generic tmp grant. Remaining high M1 signal authority plus medium M2 legacy shape and M3 fixture ownership block clearance. No new configured/CPU/browser/probe evidence, prior A-14539 remains failed. C3 qualified historical audit remains separate. Correct/push/exact source review before Coordinator verify all.
+
+Criteria: C1 failed (Gone-leader recovery still grants live outside descendant signal authority through LocalExecutor cleanup.), C2 failed (Legacy terminal rows without state miss required unavailable reporting; recovery correction needs positive per-target safety.).
+
+### impl-1483 · 2026-10-30T16:19:25.406Z
+
+Source6 M1–M3 contract inventory/correction: ProcessEndOptions adds optional canSignalTargets(targets,snapshot) async owner-scope callback before each signal phase; LocalExecutor is sole opt-in, for isolated env only. Existing callers hub/src/{fixture-processes,suite-command,adapters/codex,adapters/opencode,adapters/claude-code,adapters/launch-files,orphans}.ts omit it and retain previous options shape; tests system-processes/suite-timeouts/claude-code-sessions-lifecycle exercise old default. No persisted/wire/probe/QA schema migration. LocalExecutor cancel, release leader and surviving group-row paths all share one #end boundary. Shared suite-isolation validates native identities + builder-owned cwd of entire captured tree and same-group members; no gone-leader authority. Native control red was guarded outside signal attempt, green rejection before any product signal with same outside child birth; owned cleanup follows. Existing four original restart cases pass unchanged with fence. suiteRecoveryState now single default shared by constructor and outside-report classification; state-omitted old-shape control red5000ms now green. Report control uses bounded owner-observed existing dispatcher client acquisition, closes late aborted client and joins setup. Original remote A-14539 remains failed; no verify/dev merge.
+
+### rev-26 · 2026-10-30T16:25:40.377Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-7
+commit: e01c34e10fea01f367fc0bb4e58a0d67b492d662
+scope: full
+findings: [{"severity":"high","text":"Remaining M1: thaw directly sends SIGCONT without canSignalTargets/native-birth scope and explicitly permits unobserved PID reuse. Preserve old omitted-hook behavior but fence isolated thaw too; unknown/reused/outside proof must retain/fail cleanup. Add frozen-target reuse/unavailable/outside thaw control.","file":"hub/src/system-processes.ts","line":264},{"severity":"medium","text":"M4: Native control owns outside child only after ready/receipt; omitted/failed receipt lets leader exit0 while unrefed child remains and emergency closer is no-op. Pre-own group/descendant fallback before launch/ready, cover omitted/aborted acquisition, and require non-null childIdentity before unchanged-birth claim.","file":"hub/test/measure-memory.test.ts","line":585}]
+finding_counts: {"high":1,"medium":1,"low":0}
+
+Source7: original TERM/STOP/KILL descendant path now shares LocalExecutor target scope; M2 legacy state and M3 dispatcher acquisition resolved. Remaining high M1 thaw bypass plus medium M4 missing-ready child cleanup/non-null native proof, detailed in attached audit. Existing original four recovery cases unchanged, local29memory/51system cases reported only Darwin source support, no new configured run. C1/C2 final runtime pending, C3 qualified historical unchanged; A-14539 stays failed. Correct/push/source review before Coordinator all.
+
+Criteria: C1 failed (Isolated thaw still bypasses owner scope via direct SIGCONT; native control lifetime/positive-proof correction remains.).
+
+### impl-1483 · 2026-10-30T16:32:30.920Z
+
+Source7 remaining M1/M4 corrected without changing original recovery tests. Isolated thaw now re-proves captured birth, fresh owner-scope snapshot and final birth before SIGCONT; proven old identity gone/reused receives no signal; unknown/outside retains target and throws explicit incomplete-thaw. Omitted-hook callers use prior best-effort thaw. Injected red controls: reuse got forbidden CONT; unavailable/outside missed expected rejection. All four new thaw controls now green, full system-processes55/55. Native outside-group fixture registers shared root discovery/drain before producer launch; stops producer before sweep and handles no child handle/readiness. Normal, omitted-ready, aborted acquisition green; positive non-null child birth required before comparisons. No new ProcessEndOptions shape beyond existing canSignalTargets; same optional hook covers recovery CONT. Existing call sites lacking hook unchanged, tested by full old process suite. No verify/dev merge; final local checks before exact-head source8.
+
+### rev-26 · 2026-10-30T16:38:41.422Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261030-1483-source-8
+commit: e0fac046c69240b44fefe7d532b156d495f99309
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14581 source8 clear: isolated thaw now re-proves native birth and current owner scope before CONT, with gone/reused identities unsignalled and unknown/outside cleanup explicitly incomplete. Shared pre-launch root discovery/drain owns omitted/aborted child acquisition; positive non-null child proof retained. Earlier M2/M3 remain resolved, original four restart tests unchanged. A-14577 local Darwin source support only; C1/C2 runtime pending Coordinator verify all at frozen exact head. C3 qualified A-14335 refreshed: historical outside effects unknown where traces absent, not proof of none. Failed original A-14539/A-14373 retained; no Reviewer workloads. Report ready for Coordinator all, no duplicate task verify.
+
+Criteria: C3 verified.

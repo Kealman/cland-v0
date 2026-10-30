@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1242
 branch: t/T-1462-the-hub-confirms-a-merge-delta-review
 created: 2026-10-30T05:44:58.381Z
-updated: 2026-10-30T14:44:57.384Z
+updated: 2026-10-30T16:41:37.555Z
 ---
 
 ## Summary
@@ -102,3 +102,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14445: final scanner delta clear, sole M3 resolved. Five scanner source files exactly match Coordinator-posted19db19fa3 / owner rev-32 A-14437; no batch/config/dev uptake. Lazy AST graph produces sound literal edges or unknown, and adapter does not suppress incompleteness. Own native expectations/docs align; assessment/freshness isolation unchanged. C1 remains runtime-unverified; source-ready for Coordinator-owned verify-all under0a78fe37. Local26/26+101/101 and earlier unchanged controls retain attribution; no configured result yet.
+
+### impl-1462 · 2026-10-30T16:40:26.607Z
+
+Authorized post-T-1454 dev merge pushed e381b2a85. Only help-row conflicts usage.ts/commands.json, both descriptions preserved. A-14584 records matching tests1/1+5/5+2/2, exact scanner parity19db19fa3, unchanged assessment runtime and clean merge-tree against fetcheddevf4a949111. Named rev-34 delta review requested; configured runtime remains pending Coordinator verify-all after clear. No prior full green claimed for T-1462.
+
+### rev-34 · 2026-10-30T16:41:37.555Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261030-1462-source5
+commit: e381b2a85f3cf7677d2654a89751d71a42f3492e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14587: authorized dev/help merge delta clear. Assessment/freshness runtime and native controls unchanged from59e90c7c1; five shared scanner files exactly cleared19db19fa3. Manual help conflicts preserve incoming report/run and existing advisory line; complete MERGE/SUITE strings match frozen rows, only own MERGE row differs from dev. Matching local text1/1+5/5+2/2 remains targeted evidence. C1 runtime-unverified; source-ready for Coordinator-owned verify-all per40757f55, no prior full green/waiver claim.

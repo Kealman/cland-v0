@@ -2,8 +2,8 @@
 id: T-1454
 kind: task
 title: Merge batches and task verifies widen test selection for sibling-merge interactions
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1241
 branch: t/T-1454-merge-batches-and-task-verifies-widen
 created: 2026-10-30T05:44:57.061Z
-updated: 2026-10-30T16:04:43.700Z
+updated: 2026-10-30T16:37:58.562Z
+closed: 2026-10-30T16:37:58.562Z
 ---
 
 ## Summary
@@ -29,6 +30,7 @@ Merge batches add the T2 and Web files that import modules another landing chang
   - done: impl-1454 · 2026-10-30T14:32:58.240Z
   - verified: rev-32 [reviewer] · run rev-20261030-1454-evidence1 · 2026-10-30T15:36:22.100Z · commit 1b208941fc2fd57e114d02ebc6ff4f6d77d66db3
   - verified: rev-32 [reviewer] · run rev-20261030-1454-evidence2 · 2026-10-30T16:04:43.130Z · commit 20c6b99d30bd836d02903a940ac2800a41948d20
+  - verified: rev-32 [reviewer] · run rev-20261030-1454-evidence3 · 2026-10-30T16:30:47.904Z · commit dd83277cf2e4fe8261df3561d5e798e9d5e84807
 
 ## Comments
 
@@ -202,3 +204,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Executed-head evidence2 clear A-14550/rawA14547 b393a187. Phase terminal totals4469passes/0adverse; structured4474 includes5unpaired duplicateT4finish-only rows22687–22691 excluded, matchedcases4469. All158selectiononce, C1actualgeneratedplanpass.352s, configordinary+5load; T4oneparent/10nestedmatched, Webcomplete. T0/T1/T2/changedT3/T4guard/Web all exit0, no integrated/all. NO provenancefooter: claimant corrected; Coordinatorbebae419 confirmsoldhostinghub17875/pendingrestart64; browser proof from real suitebrowser, tree from staticGit, no inventedfooterfields. Hostgate reused; reportonlywarnings retained. C1 refreshed onlyat20c6b99d3; Coordinatora9737fee requires T1453merge/freshsource+verify/evidence before readiness. Priorreceiptsretainheads. NoReviewerexecution.
 
 Criteria: C1 verified.
+
+### rev-32 · 2026-10-30T16:10:34.421Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-delta3
+commit: dd83277cf2e4fe8261df3561d5e798e9d5e84807
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta3 clear A-14560. Candidate.git/isAncestor and bothfixture callbacks retained; comparedtodev only taskgitport/stub additions, preflight/inspect/periodicskip matchincomingdev. Batchmasks coexistwith separate locationformatter, scannerfivefiles exact19db19fa3; help/frozen/docs bothparents retained, diffcheck0. A14555 localtargeted claims not configuredcurrenthead. Separate T1453/T1484 errorformat/preflight fixture risk routedCoordinator, not T1454criterionfinding. PredecessorA14547/A14550 stays predecessor-only withcount/footerlimits. C1runtime stale pending requiredfreshmodefree verify+originalfinal review perCoordinatora9737fee. No Reviewerexecution.
+
+### rev-32 · 2026-10-30T16:30:47.904Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261030-1454-evidence3
+commit: dd83277cf2e4fe8261df3561d5e798e9d5e84807
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence3 clear A-14572/rawA-14570 b82c9698. Matched4489ordinary test/516file passes,115separate load test/file passes,0adverse. Raw4494finish rows include5unpaired duplicateT4finish-only rows23540–23544 excluded; terminal phase totals4489 agree. C1 actual generated-plan execution pass.4745s under report-default/explicit-run policy; all158selection identities once; configordinary+5load. T0/T1/allfallbackT2/changedT3/selectedT4guard/Web exit0; remainingT3/otherT4 absent, not integrated/all. NO provenancefooter; old-host limitation retained, browser/head from realrawrecords, tree staticGit. Hosttypecheck reused; Web4workers; lint/budget/ratchet reportonly with incompletebase. T1490 pruned-compiler cases unselected/no fix proof. Priorreceipts retain their heads/count/footer limits. C1 refreshed onlyatdd83277cf. No Reviewer execution.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-30T16:37:58.562Z
+
+Merged 4b186887074664adced35eb537946ec71d011b0e onto dev.
