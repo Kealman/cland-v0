@@ -1,0 +1,4 @@
+{"ts": "2026-10-08T18:56:13.078Z", "event": "hub-started"}
+{"ts": "2026-10-08T18:56:13.131Z", "event": "audit"}
+{"ts": "2026-10-08T18:57:35.409Z", "event": "role-clause", "agentsNotice": "recorded-checkpoint", "id": "E-1"}
+{"ts": "2026-10-13T20:03:10.022Z", "event": "subagent-launched", "item": "T-1"}

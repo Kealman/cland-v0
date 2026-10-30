@@ -1,0 +1,27 @@
+{
+  "source": "T-1477 sanitized T-1467-probe scratch copy, 2026-10-30 journal-stage run (A-14163 manifest)",
+  "sourceBytes": 374511049,
+  "rows": [
+    {
+      "line": 1,
+      "event": "hub-started",
+      "agentsNotice": false
+    },
+    {
+      "line": 3,
+      "event": "audit",
+      "agentsNotice": false
+    },
+    {
+      "line": 30,
+      "event": "role-clause",
+      "agentsNotice": true
+    },
+    {
+      "line": 166597,
+      "event": "subagent-launched",
+      "agentsNotice": false
+    }
+  ],
+  "sanitization": "Retained ts/event, normalized item/id, replaced checkpoint identity, removed all other fields. No text/credentials/account data. Selected in source file order."
+}

@@ -921,3 +921,9 @@ legacy optional callbacks, nonce fences and final durable assertions. The restar
 guide owns process-kill coverage; apply throughput thresholds in the external
 measurement probe, not as wall-clock assertions in suite tests. No role clause
 or CLI permission is added.
+
+For startup journal selection, use the bounded input-work and prior synchronous
+selection controls in `docs/agents/tests/hub-test-journal-subagents.test.ts.md`.
+Keep one in-flight scan per path, preserve escaped/unterminated records and leave
+CLI/wire shapes unchanged. Live-scale memory probes require a Coordinator slot;
+name the checkpoint and unexecuted later stages. Existing role clauses suffice.

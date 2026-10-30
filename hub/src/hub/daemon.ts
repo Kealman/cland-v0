@@ -42,7 +42,7 @@ import { CrewFile, crewSummary } from '../crew.ts';
 import { RulebookFile } from '../rules/file.ts';
 import { ProjectConfiguration } from './configuration.ts';
 import { readProjectConfig } from '../init/config.ts';
-import { Journal, journalPath, readJournal, eventRow, type JournalOpen, type JournalRecord } from './journal.ts';
+import { Journal, journalPath, readStartupJournal, eventRow, type JournalOpen, type JournalRecord } from './journal.ts';
 import { agentsRecord, replayAgentsRecord } from './agents-topic.ts';
 import { idleNotifyMs } from './inbox.ts';
 import { RequestGuard } from './budget.ts';
@@ -130,11 +130,26 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     if (starting || String(entry.event).startsWith('orphan-sweep-') || entry.event === 'orphan-ended' || entry.event === 'orphan-preserved') fatalLog(entry);
     else processJournal!.write(entry as { event: string } & Record<string, unknown>);
   });
+  // Available before domain-journal acquisition, including a failed read.
+  const closeProcessLogs = async () => {
+    const failures: unknown[] = [];
+    try { await processJournal?.close(); } catch (error) { failures.push(error); }
+    try { await options.flushLog?.(); } catch (error) { failures.push(error); }
+    if (failures.length === 1) throw failures[0];
+    if (failures.length) throw new AggregateError(failures, 'process log drainage failed');
+  };
   let startupStep: { step: string; started: number } | undefined = { step: 'reading startup journal', started: performance.now() };
   processLog({ event: 'hub-startup-step', step: startupStep.step, pid: process.pid });
   // The lock excludes another writer. New lifecycle notices are held by
   // agentsRecord, and new subagent records are indexed by Journal.write.
-  let startupHistory = readJournal(journalPath(l.dir), { startupOnly: true });
+  let startupHistory: JournalRecord[];
+  try { startupHistory = await readStartupJournal(journalPath(l.dir)); }
+  catch (error) {
+    try { await closeProcessLogs(); }
+    catch (cleanup) { throw new AggregateError([error, cleanup], 'startup journal read failed', { cause: error }); }
+    finally { lock.release(); }
+    throw error;
+  }
   const journal = new Journal(journalPath(l.dir), () => clock.now(), { history: startupHistory, log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
   let hub!: HubBase;
@@ -165,8 +180,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const closeLogs = async () => {
     let failure: unknown;
     try { await journal.close(); } catch (err) { failure = err; }
-    try { await processJournal?.close(); } catch (err) { failure ??= err; }
-    try { await options.flushLog?.(); } catch (err) { failure ??= err; }
+    try { await closeProcessLogs(); } catch (err) { failure ??= err; }
     if (failure) throw failure;
   };
   journal.write({ event: 'hub-started', pid: process.pid, version: VERSION, root, starter: options.starter ?? { client: 'other', parentPid: process.ppid, cwd: process.cwd() } });

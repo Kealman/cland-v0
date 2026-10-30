@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { EventKind, EventRow, EventsPage } from '../protocol.ts';
 import type { LogEntry, LogFn } from '../log.ts';
 import type { RequestGuard, Resumed } from './budget.ts';
@@ -466,6 +466,76 @@ function* startupLines(text: string): Generator<string> {
     candidate.lastIndex = end + 1;
     yield text.slice(start, end);
   }
+}
+
+/** Work accounting, excluding selected decoded objects and runtime allocator overhead.
+ * peakBufferedBytes conservatively includes chunk, fragments, joined line and
+ * UTF-16 decoding (up to twice the UTF-8 byte count). */
+export type StartupJournalStats = { bytesRead: number; peakBufferedBytes: number };
+const startupScans = new Map<string, Promise<JournalRecord[]>>();
+const STARTUP_CHUNK_BYTES = 64 * 1024;
+
+/** One scan per absolute path while in flight; no retained-history result cache.
+ * Memory is proportional to the longest complete line plus selected records,
+ * never to unrelated journal history. A final unterminated line is still read,
+ * matching the synchronous reader. */
+export function readStartupJournal(path: string, stats?: StartupJournalStats): Promise<JournalRecord[]> {
+  const key = resolve(path);
+  const active = startupScans.get(key);
+  if (active) return active;
+  const pending = scanStartupJournal(key, stats).finally(() => startupScans.delete(key));
+  startupScans.set(key, pending);
+  return pending;
+}
+
+async function scanStartupJournal(path: string, stats?: StartupJournalStats): Promise<JournalRecord[]> {
+  let file;
+  try { file = await open(path, 'r'); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+  const records: JournalRecord[] = [];
+  const chunk = Buffer.alloc(STARTUP_CHUNK_BYTES);
+  let parts: Buffer[] = [], held = 0;
+  const account = (bytes: number) => {
+    if (stats) stats.peakBufferedBytes = Math.max(stats.peakBufferedBytes, 4 * (STARTUP_CHUNK_BYTES + bytes));
+  };
+  const accept = (bytes: Buffer) => {
+    for (const line of startupLines(bytes.toString('utf8'))) {
+      let record: JournalRecord;
+      try { record = JSON.parse(line) as JournalRecord; } catch { continue; }
+      if (record && (typeof record.agentsNotice === 'string' || STARTUP_EVENTS.has(record.event))) records.push(record);
+    }
+  };
+  try {
+    // Freeze the prefix so appends cannot turn selection into an endless scan.
+    const { size } = await file.stat();
+    let position = 0;
+    while (position < size) {
+      const { bytesRead } = await file.read(chunk, 0, Math.min(chunk.length, size - position), position);
+      if (!bytesRead) break;
+      position += bytesRead;
+      if (stats) stats.bytesRead += bytesRead;
+      account(held + bytesRead);
+      let start = 0;
+      for (let i = 0; i < bytesRead; i++) {
+        if (chunk[i] !== 10) continue;
+        const end = chunk.subarray(start, i);
+        if (parts.length) {
+          accept(Buffer.concat([...parts, end], held + end.length));
+          parts = []; held = 0;
+        } else accept(end);
+        start = i + 1;
+      }
+      if (start < bytesRead) {
+        const suffix = Buffer.from(chunk.subarray(start, bytesRead));
+        parts.push(suffix); held += suffix.length;
+      }
+    }
+    if (held) { account(held); accept(Buffer.concat(parts, held)); }
+    return records;
+  } finally { await file.close(); }
 }
 
 /** `10m`, `2h`, `3d`, `30s` back from `now`; an ISO date as given; null when it is neither. */

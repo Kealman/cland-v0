@@ -21,3 +21,16 @@ startup error as the cause of an AggregateError and still releases the lock.
 The abandoned-observation control omits both native-open receipts. Its resource
 cleanup observes both descriptors closed while the root still exists; the final
 cleanup check observes root removal with those same descriptors closed.
+
+For early journal-read failure, a scratch journal directory triggers native
+EISDIR before domain-journal acquisition. The direct serveProject seam is needed
+to hold the injected flushLog callback that projectHub owns internally. Arm the
+barrier before startup, wait at most two seconds for its entry, and observe the
+lock file while it is held. Release only after proving rejection is pending;
+write/read the drainage receipt and assert lock removal after rejection. Cover
+both successful flush and a flush error, preserving the original read error as
+AggregateError.cause. Cleanup owns acquisition before launch, releases the barrier and joins startup;
+any unexpected or late successful daemon is stopped and its stopped receipt is
+joined. The same bounded disposal guards root removal, retaining the directory
+on incomplete disposal. The expected-failure observer returns an outcome without
+an unobserved rejection. These T2 tests start no process, Git probe or browser.

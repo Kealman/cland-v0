@@ -1897,6 +1897,17 @@ including `rule`, have palette filters.
 
 ## The Agents record, the journal and hygiene
 
+At startup, `readStartupJournal` reads the journal's frozen file-size prefix in
+64 KiB chunks and decodes complete lines, preserving plan events, subagent
+launches and Agents checkpoints in file order. Concurrent calls for the same
+absolute path share one in-flight scan; completion or failure releases it, so a
+later startup sees new appends. The input working set depends on the longest
+line, plus the selected decoded replay records, rather than unrelated retained
+history. There is no new line-size limit or persistent cache. Malformed lines
+are skipped and a final unterminated JSON record remains eligible, as before.
+The synchronous `hub journal`/doctor reader and wire records are unchanged.
+
+
 **Agents** (spec 4.5, decision #7) is the project's record of what agents do with each other. Every message a session sends to other sessions lands there; one that names another topic is written there and referenced in Agents by an `agent-message` notice (below), its text not repeated. So does every lifecycle event, as a hub notice: a message `from` `hub`, `fromKind` `hub`, addressing nobody, with a `kind` and its facts in `detail`.
 
 | `kind` | When |
