@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1231
 branch: t/T-1479-landing-page-and-readme-name-telegram
 created: 2026-10-30T10:14:48.049Z
-updated: 2026-10-30T11:23:21.417Z
+updated: 2026-10-30T11:35:22.672Z
 closed: 2026-10-30T11:23:21.417Z
 ---
 
@@ -88,3 +88,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
 ### coord · 2026-10-30T11:23:21.417Z
 
 Merged 062e6c48a1ec882f3bf470e778a910bc8b1e5895 onto dev.
+
+### coord · 2026-10-30T11:35:22.672Z
+
+Published marketing marketing/t1479-remotes at 871f09864e8503e64c91896731538abde211aa1d (GitHub default branch and site); dev 793fd5096bca64b65b47d9c2046f1d007362825d.
