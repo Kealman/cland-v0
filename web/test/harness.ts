@@ -10,18 +10,21 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from 'playwright-core';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
 import { clandWithEnv, projectHub, tempProject, type ProjectHubOptions } from '../../hub/test/harness.ts';
-import { onCleanup, ownProcess, captureProcess } from '../../hub/test/process-cleanup.ts';
+import { onCleanup, ownProcess, captureProcess, guardDirectoryRemoval } from '../../hub/test/process-cleanup.ts';
 import { until } from '../../hub/test/until.ts';
 import { browserCache, webPrerequisite } from './prerequisite.ts';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
+import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { decodeTerminalQr } from '../../hub/test/qr-decode.ts';
 
 const traces = fileURLToPath(new URL('../test-results/', import.meta.url));
 // Multiple fixtures in this worker share the PID and output directory.
 let traceSerial = 0;
+const manualPageClocks = new WeakSet<Page>();
 
 /** Leave a minute of install-to-pause headroom while preserving the exact target. */
 export async function pausePageClock(page: Page, time: Date): Promise<void> {
+  manualPageClocks.add(page);
   await page.clock.install({ time: new Date(time.getTime() - 60_000) });
   await page.clock.pauseAt(time);
 }
@@ -98,8 +101,34 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
   };
   const cleanupProcess = ownProcess(undefined, child.pid);
   let browser: Awaited<ReturnType<typeof chromium.connect>> | undefined;
+  const clockPages = new Set<Page>();
+  const observation = options.clock instanceof FakeClock ? options.clock.observeTime(async time => {
+    const results = await Promise.allSettled([...clockPages].filter(page => !page.isClosed() && !manualPageClocks.has(page))
+      .map(page => page.clock.setFixedTime(time)));
+    const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+    if (errors.length) throw new AggregateError(errors, 'browser Date updates failed');
+  }) : undefined;
+  async function syncPageClock(page: Page) {
+    if (!options.clock || manualPageClocks.has(page)) return;
+    clockPages.add(page);
+    if (observation) {
+      observation.enqueue(options.clock.now());
+      await observation.drain();
+      observation.throwIfFailed();
+    } else await page.clock.setFixedTime(options.clock.now());
+  }
+  async function releasePageClocks(pages: Page[]) {
+    for (const page of pages) clockPages.delete(page);
+    await observation?.drain();
+  }
+  guardDirectoryRemoval(root, async () => { await observation?.drain(); });
   let closing: Promise<void> | undefined;
-  const close = () => closing ??= (async () => {
+  let closeReported = false;
+  const close = () => (closing ??= (async () => {
+    // Close admission and join every admitted Date write before native teardown.
+    observation?.stop();
+    const drainageErrors: unknown[] = [];
+    try { await observation?.drain(); } catch (error) { drainageErrors.push(error); }
     let before: number[] = [];
     try { before = await census(); } finally {
       const killGuard = setTimeout(() => { void server.kill().catch(() => {}); }, 5000);
@@ -117,7 +146,15 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
     t.diagnostic(`Web fixture census: browser group ${child.pid}; before ${before.length}; after 0; scratch hub stopped`);
     // A stopped receipt alone is not closed sockets/discovery: prove both edges refuse.
     await assert.rejects(askHubFrame(hub.discovery, { type: 'web.link' }, 500, {}));
-  })();
+    // Transport closure cancels native protocol writes; observe their actual settlement.
+    await observation?.drain();
+    observation?.throwIfFailed();
+    if (drainageErrors.length) throw new AggregateError(drainageErrors, 'Date drainage was incomplete before native cancellation');
+  })()).catch(error => {
+    if (closeReported) return;
+    closeReported = true;
+    throw error;
+  });
   onCleanup(t, close);
   assert.equal(identity?.group, child.pid, 'Headless Shell owns its process group');
   assert.match(child.spawnfile, /(?:chrome-headless-shell|headless_shell)/);
@@ -169,6 +206,7 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
       const requests: string[] = [];
       context.on('request', request => requests.push(request.url()));
       const page = await context.newPage();
+      await syncPageClock(page);
       await beforeNavigate?.(page);
       await page.goto(url, { waitUntil: 'load' });
       if (device.phone) await pageUntil(page, () => document.querySelector('nav[aria-label="Phone areas"]')?.children.length === 5, 'five rendered phone slots');
@@ -188,7 +226,11 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
           tracePaths.push(path);
           t.diagnostic(`Web failure trace: ${path}`);
         }
-      } finally { await context.close(); }
+      } finally {
+        try { await releasePageClocks(context.pages()); }
+        finally { await context.close(); }
+        await observation?.drain();
+      }
     }
     assert.equal(browser!.contexts().length, 0, 'context explicitly closed');
   }
@@ -197,5 +239,5 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
     await hub.stopped;
     hub = await (options.startHub ?? ((root, env, options) => projectHub(t, root, env, options)))(root, options.env ?? {}, hubOptions);
   };
-  return { root, get fakes() { return hub.fakes; }, get hub() { return hub; }, restartHub, browser, server, close, pageCase, tracePaths };
+  return { root, get fakes() { return hub.fakes; }, get hub() { return hub; }, restartHub, browser, server, close, pageCase, syncPageClock, releasePageClocks, dateObservation: observation, tracePaths };
 }

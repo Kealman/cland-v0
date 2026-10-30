@@ -52,6 +52,7 @@ test('Accounts profile excludes a second browser context sign-in on the same hub
     try {
       const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
       const second = await secondContext.newPage();
+      await fixture.syncPageClock(second);
       await second.goto(url);
       await second.getByRole('button', { name: 'Accounts', exact: true }).click();
       const secondProfile = second.getByRole('region', { name: 'Profile', exact: true });
@@ -70,7 +71,7 @@ test('Accounts profile excludes a second browser context sign-in on the same hub
       for (const record of sessions) assert.ok(!(await firstProfile.textContent())?.includes(record.id), 'browser identities are not exposed');
       assert.ok(frames.some(frame => frame.type === 'web.session'));
       assert.equal(frames.filter(frame => frame.type === 'web.sessions' || frame.type === 'web.revoke').length, 0);
-    } finally { await secondContext.close(); }
+    } finally { try { await fixture.releasePageClocks(secondContext.pages()); } finally { await secondContext.close(); } }
   }, page => { page.on('websocket', socket => socket.on('framesent', event => frames.push(JSON.parse(String(event.payload))))); });
 });
 

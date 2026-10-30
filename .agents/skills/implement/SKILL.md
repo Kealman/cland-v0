@@ -955,3 +955,18 @@ Use the disposable init/update/doctor/native-fetch seams in
 worktrees inherit common config unless explicit Git overrides supersede it.
 Do not apply configuration to the live project as a test. Existing role clauses
 cover this flow without adding permission lines.
+
+## Browser fixture wall time
+
+For a hub FakeClock with browser time windows, use the Date-only synchronization
+in `web/test/harness.ts`; extra pages call `fixture.syncPageClock(page)` before
+navigation, and release their Date writers with `releasePageClocks` before
+native close. Native browser timers keep running. `advance` joins Date updates;
+follow a `block` jump with `advance(0)` when its browser receipt is needed.
+Use `pausePageClock` for explicit test-owned browser time. Record clock audits as item comments and hub artifacts; keep per-test guide
+directories limited to their indexed test guides.
+
+Date observation cleanup still disposes native transports after a drain failure;
+register `guardDirectoryRemoval` to retain the fixture root until writers settle.
+Use `clockControl` for held-write probes so setup, abort, release and joining are
+owned before launch, with separate bounded setup and effect observations.

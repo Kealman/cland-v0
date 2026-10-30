@@ -1619,3 +1619,22 @@ approval sheets. Its native modal dialog owns focus and background inertness;
 maps physical Escape to `sheet-close` through the shell's single dispatcher.
 Fields in a sheet declare that context for Escape while keeping normal typing.
 Close and scrim taps dismiss only; sheets have no swipe action.
+
+### Fixture wall clocks
+
+With an injected hub clock, `webFixture.pageCase` sets browser Date from that
+clock before navigation. A `FakeClock` observer updates enrolled pages after
+`advance`; `block` queues the update and `advance(0)` joins it. Browser timers
+keep running: synchronization uses Playwright `setFixedTime`, not timer pausing.
+Extra pages and independent contexts call `fixture.syncPageClock(page)` before
+navigation. `pausePageClock` opts that page into explicit test-owned time instead.
+Without a supplied clock, browser Date keeps its native behavior.
+
+Before closing extra pages/contexts, call `fixture.releasePageClocks(pages)`.
+This closes their update admission and joins pending Date writes. Fixture and
+page-case teardown perform the same drain before native close. Each Date
+observation owns rejections immediately, retains failures and continues later
+updates; `advance` or teardown reports previously unreported failures. A missing
+five-second drain receipt records an incomplete outcome while native teardown
+cancels transport writes. An independent removal guard retains the scratch root
+until those writes actually settle.

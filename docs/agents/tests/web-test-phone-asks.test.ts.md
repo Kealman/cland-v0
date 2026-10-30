@@ -10,3 +10,11 @@ rule, and thread Answer opening the same sheet. Build first; run phone*, inbox,
 asks, key-contexts and palette targeted before mode-free verification. A new
 passing Web identity reaching four seconds on any platform needs the dated,
 reasoned E-880 allowance described below before verification.
+
+## Archive wall clock regression (T-1485)
+
+The independent-phone settlement case sets browser Date eight days ahead of the
+hub fixture, proves that offset, then enrolls the page in `syncPageClock`. The
+original archive row wait fails before synchronization and passes afterwards.
+Extra contexts enroll their pages before navigation. Keep the exact outcome,
+departure, leave and archive receipts. No production archive policy changes.

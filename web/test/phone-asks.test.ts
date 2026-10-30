@@ -167,6 +167,7 @@ test('a second phone context answers, closing the first sheet and retaining its 
     try {
       const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
       const second = await secondContext.newPage();
+      await fixture.syncPageClock(second);
       await second.goto(url);
       await second.locator('nav[aria-label="Phone areas"]').waitFor();
       assert.notDeepEqual(await first.context().cookies(), await secondContext.cookies(), 'independent signed-in contexts');
@@ -193,8 +194,14 @@ test('a second phone context answers, closing the first sheet and retaining its 
       assert.equal(await folded.count(), 0, 'leaving the Inbox removes settled rows');
       await first.locator('[data-inbox-archive-toggle]').tap();
       await first.getByRole('list', { name: 'Inbox archive', exact: true }).getByText('Which change should we make on the phone?', { exact: false }).waitFor();
-    } finally { await secondContext.close(); }
-  }, page => { page.on('websocket', socket => socket.on('framereceived', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'inbox' && frame.inbox.departures?.some((row: { id: string }) => row.id === fixture.id)) departed = true; })); }, { phone: true });
+    } finally { try { await fixture.releasePageClocks(secondContext.pages()); } finally { await secondContext.close(); } }
+  }, async page => {
+    // Simulate a machine/browser wall clock eight days ahead of the hub fixture.
+    await page.clock.setFixedTime(new Date(fixture.clock.now().getTime() + 8 * 86_400_000));
+    assert.equal(await page.evaluate(() => Date.now()), fixture.clock.now().getTime() + 8 * 86_400_000);
+    await fixture.syncPageClock(page);
+    page.on('websocket', socket => socket.on('framereceived', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'inbox' && frame.inbox.departures?.some((row: { id: string }) => row.id === fixture.id)) departed = true; }));
+  }, { phone: true });
 });
 
 test('phone thread asks offer Answer and open the same sheet for free answers', async t => {

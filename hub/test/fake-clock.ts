@@ -1,11 +1,24 @@
 // Deterministic hub scheduling without replacing global timers used by real sockets/journal I/O.
 import { setImmediate as yieldIO } from 'node:timers/promises';
+import { until } from './until.ts';
 import type { Clock, ClockTimer } from '../src/hub/clock.ts';
 
 type Timer = ClockTimer & { due: number; order: number; callback: () => void; interval: number | null };
 
 export class FakeClock implements Clock {
   #time: number;
+  readonly #observers = new Set<TimeObservation>();
+
+  /** Register the owner before admitting writes; rejected updates remain owned facts. */
+  observeTime(update: (time: Date) => Promise<void>): TimeObservation {
+    const observation = new TimeObservation(update, () => this.#observers.delete(observation));
+    this.#observers.add(observation);
+    return observation;
+  }
+
+  #changed(): void {
+    for (const observer of this.#observers) observer.enqueue(this.now());
+  }
   #order = 0;
   #advancing = false;
   readonly #timers = new Set<Timer>();
@@ -39,6 +52,7 @@ export class FakeClock implements Clock {
   block(ms: number): void {
     if (!Number.isFinite(ms) || ms < 0) throw new Error('block needs a finite non-negative duration');
     this.#time += ms;
+    this.#changed();
   }
 
   /** Run each due callback at its deadline, including work it schedules. Callers still await their
@@ -61,7 +75,48 @@ export class FakeClock implements Clock {
         await yieldIO();
       }
       this.#time = Math.max(this.#time, target);
+      this.#changed();
+      await Promise.all([...this.#observers].map(observer => observer.drain()));
+      for (const observer of this.#observers) observer.throwIfFailed();
       await yieldIO();
     } finally { this.#advancing = false; }
+  }
+}
+
+/** One bounded observation owner. Its tail never rejects, including when nobody advances. */
+export class TimeObservation {
+  readonly errors: unknown[] = [];
+  #tail = Promise.resolve();
+  #pending = 0;
+  #closed = false;
+  #reported = 0;
+  readonly #update: (time: Date) => Promise<void>;
+  readonly #unregister: () => void;
+  constructor(update: (time: Date) => Promise<void>, unregister: () => void) {
+    this.#update = update;
+    this.#unregister = unregister;
+  }
+  enqueue(time: Date): void {
+    if (this.#closed) return;
+    this.#pending++;
+    this.#tail = this.#tail.then(() => this.#update(time)).catch(error => {
+      this.errors.push(error);
+    }).finally(() => { this.#pending--; });
+  }
+  async drain(options: { clock?: Clock; timeoutMs?: number } = {}): Promise<void> {
+    await until(() => this.#pending === 0, { ...options, what: 'clock Date writers drained', timeoutMs: options.timeoutMs ?? 5000 });
+  }
+  throwIfFailed(): void {
+    const errors = this.errors.slice(this.#reported);
+    this.#reported = this.errors.length;
+    if (errors.length) throw new AggregateError(errors, 'browser Date updates failed');
+  }
+  stop(): void {
+    this.#closed = true;
+    this.#unregister();
+  }
+  close(): Promise<void> {
+    this.stop();
+    return this.drain();
   }
 }

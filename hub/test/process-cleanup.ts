@@ -241,6 +241,17 @@ function runMarkers(rows: ProcessRow[]): Map<number, string> {
 
 type DirectoryOptions = { beforeRemove?: CleanupStep; removeTimeoutMs?: number };
 const directories = new Map<string, { device: number; inode: number } & DirectoryOptions>();
+const removalGuards = new Map<string, Set<CleanupStep>>();
+/** Attach a positive writer-drain barrier even when another helper registered the root. */
+export function guardDirectoryRemoval(path: string, guard: CleanupStep): void {
+  const root = realpathSync(path);
+  let guards = removalGuards.get(root);
+  if (!guards) { guards = new Set(); removalGuards.set(root, guards); }
+  guards.add(guard);
+}
+async function guardRemoval(root: string): Promise<void> {
+  for (const guard of removalGuards.get(root) ?? []) await guard();
+}
 let self: ProcessRow | undefined;
 let inspectedSelf = false;
 // A worker with no children needs no OS identity. Native cleanup still captures
@@ -508,7 +519,7 @@ function installSignals(): void {
       }
       // A project's hub may also write into the worker's account fixture. Stop
       // writers in every root before removing even the first directory.
-      for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) await identity.beforeRemove?.();
+      for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) { await guardRemoval(dir); await identity.beforeRemove?.(); }
       for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) await removeDirectory(dir, identity.removeTimeoutMs);
     })().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
   });
@@ -558,12 +569,13 @@ export function ownDirectory(t: TestContext | undefined, path: string, options: 
   directories.set(root, identity); directoryProcesses.set(root, new Set()); installSignals();
   const cleanup = async () => {
     if (directoryStillOwned(root, identity)) {
+      await guardRemoval(root);
       await options.beforeRemove?.();
       const identities = new Set([...(directoryProcesses.get(root) ?? []), ...(t ? contextProcesses.get(t) ?? [] : [])]);
       await cleanupOwnedProcesses([...identities]);
       await removeDirectory(root, options.removeTimeoutMs);
     }
-    directories.delete(root); directoryProcesses.delete(root);
+    directories.delete(root); directoryProcesses.delete(root); removalGuards.delete(root);
   };
   if (t) cleanupSteps(t).directories.push(cleanup);
   return cleanup;

@@ -336,3 +336,8 @@ T-1469 source review M1/M2: Document complete transport-clock replay and shared 
 
 T-1459: Document repository auto-maintenance provisioning and disposable native-fetch/doctor coverage.
 T-1476: retain landed memory-probe controls beside combined suite/journal startup guidance after merging T-1467 and T-1469.
+
+- T-1485: document Date-only browser fixture synchronization and extra-page enrollment.
+- T-1485 source review: bound and join Date writers before native cleanup; expand the hub clock inventory.
+- T-1485 source review 2: retain roots on missing Date drainage, preserve native disposal, and pre-own bounded fault controls.
+- T-1485 verification: keep the clock audit in tracker comments/artifacts, outside indexed per-test guides.

@@ -21,3 +21,25 @@ before fixture roots are removed. The parent retains its explicit disconnected
 browser and zero process-exit assertions. Two real browser lifecycles are needed
 here because the regression concerns trace output shared by separate fixtures,
 rather than two contexts from a single fixture.
+
+## Injected browser Date (T-1485)
+
+`fixture Date follows hub jumps while native browser timers keep running` asserts
+Date equality at navigation, after an advance, after an eight-day block followed
+by `advance(0)`, and after reload. A native zero-delay timeout publishes a DOM
+receipt before the clock advances; the test waits for that receipt.
+
+The omitted/aborted observation controls in `hub/test/clock.test.ts` and held or
+rejected native Date writes in this Web file prove admission closes and all
+admitted writes drain before page/browser teardown. An omitted drain negative
+control fails the unit's aborted-setup disposal assertion. The shared fixture
+retains errors while updating other contexts and reports each failure once.
+Drainage is bounded at five seconds; native disposal runs even after an initial
+drain failure, then observes actual settlement. An independent directory guard
+keeps the root while drainage remains incomplete.
+
+`clockControl` registers cancellation/release/join before launching page work.
+It separates 1s setup observations from 5s effect observations; controls include
+missing receipts, actual abort, held/rejected writes and native disposal after
+drain failure. The actual root-removal timeout/negative control lives at T2 in
+`hub/test/fixture-endpoints.test.ts`.

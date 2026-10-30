@@ -22,3 +22,11 @@ requests. Omitted/aborted readiness controls retain the actual serving hub, join
 its stopped receipt, assert empty observations/timers, then remove the root
 through the same disposal barrier. projectHub's resource check proves native
 resources and listeners drained at final cleanup.
+
+## Date observation root guard
+
+The Date drain timeout case uses a separate fake deadline clock and an actual
+scratch root. Its removal attempt must fail while the writer is held and leave
+the root present; release and a completed drain then permit removal. A planted
+missing guard fails with Missing expected rejection. `clockControl` registers
+gate release/join before launch and supplies independent setup/effect bounds.

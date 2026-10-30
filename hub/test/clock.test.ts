@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { clockControl } from './clock-control.ts';
 import { FakeClock } from './fake-clock.ts';
 import { until } from './until.ts';
 import { remoteWaits } from './remote-clock.ts';
@@ -204,4 +205,56 @@ test('FakeClock delivers a blocked interval once at wakeup and schedules its nex
   assert.deepEqual(ticks, [3000]);
   await clock.advance(1000);
   assert.deepEqual(ticks, [3000, 4000]);
+});
+
+test('Date observation closes omitted setup and joins an aborted held update before disposal', async t => {
+  const control = clockControl(t);
+  const clock = new FakeClock();
+  const omitted = clock.observeTime(async () => { assert.fail('no admitted update'); });
+  await omitted.close();
+  const entered = Promise.withResolvers<void>();
+  let updated = false;
+  const owner = clock.observeTime(async () => { entered.resolve(); await control.gate; updated = true; });
+  clock.block(1);
+  await control.setup(entered.promise);
+  let closed = false;
+  const closing = owner.close().then(() => { closed = true; });
+  await Promise.resolve();
+  try {
+    assert.equal(closed, false, 'aborted setup cannot dispose its writer before receipt');
+    clock.block(1); // admission is closed even while the prior write is held
+  } finally { control.release(); }
+  await control.join(closing);
+  assert.equal(updated, true);
+  assert.equal(closed, true);
+});
+
+test('Date observation owns block rejection immediately and continues later admitted updates', async () => {
+  const clock = new FakeClock();
+  const failure = new Error('planted Date writer rejection');
+  let writes = 0;
+  const owner = clock.observeTime(async () => { if (++writes === 1) throw failure; });
+  clock.block(1);
+  clock.block(1);
+  await owner.drain();
+  assert.equal(writes, 2, 'a rejected update does not poison later updates');
+  assert.deepEqual(owner.errors, [failure]);
+  await owner.close();
+});
+
+
+test('missing or aborted Date setup releases and joins its pre-owned writer', async t => {
+  for (const mode of ['missing', 'aborted']) {
+    const control = clockControl(t), setupClock = new FakeClock();
+    let writerStopped = false;
+    const writer = control.track(control.gate.then(() => { writerStopped = true; }));
+    const abort = new AbortController();
+    const setup = control.setup(new Promise<void>(() => {}), setupClock, abort.signal);
+    const result = assert.rejects(setup, mode === 'missing' ? /setup receipt missing/ : /actual setup abort/);
+    if (mode === 'missing') await setupClock.advance(1000);
+    else abort.abort(new Error('actual setup abort'));
+    await result;
+    await control.join(writer);
+    assert.equal(writerStopped, true, mode);
+  }
 });

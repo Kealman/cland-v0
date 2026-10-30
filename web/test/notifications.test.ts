@@ -210,6 +210,7 @@ test('one browser shares switch changes between its open tabs', async t => {
   const fixture = await notificationFixture(t);
   await fixture.pageCase(t, async (page, origin) => {
     const second = await page.context().newPage();
+    await fixture.syncPageClock(second);
     try {
       await second.goto(origin);
       const secondSwitch = await profileSwitch(second, 'Needs you', true);
@@ -218,7 +219,7 @@ test('one browser shares switch changes between its open tabs', async t => {
       await secondSwitch.click();
       await changed;
       assert.equal(await firstSwitch.getAttribute('aria-checked'), 'false');
-    } finally { await second.close(); }
+    } finally { try { await fixture.releasePageClocks([second]); } finally { await second.close(); } }
   }, stub);
 });
 

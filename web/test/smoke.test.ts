@@ -2,6 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm } from 'node:fs/promises';
+import { clockControl } from '../../hub/test/clock-control.ts';
+import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { webFixture, pageUntil } from './harness.ts';
 
 test('the web shell uses a one-time edge link, strict CSP and isolated browser fixtures', async t => {
@@ -58,4 +60,92 @@ test('the web shell uses a one-time edge link, strict CSP and isolated browser f
   await fixture.close();
   assert.equal(fixture.browser.isConnected(), false, 'browser disconnected after explicit cleanup');
   assert.equal(fixture.server.process().exitCode, 0, 'Headless Shell process reaped');
+});
+
+
+test('fixture Date follows hub jumps while native browser timers keep running', async t => {
+  const clock = new FakeClock();
+  const fixture = await webFixture(t, { clock });
+  await fixture.pageCase(t, async page => {
+    assert.equal(await page.evaluate(() => Date.now()), clock.now().getTime());
+    await page.evaluate(() => { setTimeout(() => { document.documentElement.dataset.timerReceipt = 'fired'; }); });
+    await pageUntil(page, () => document.documentElement.dataset.timerReceipt === 'fired', 'native timer receipt');
+    await clock.advance(1000);
+    assert.equal(await page.evaluate(() => Date.now()), clock.now().getTime());
+    clock.block(8 * 86_400_000);
+    await clock.advance(0);
+    assert.equal(await page.evaluate(() => Date.now()), clock.now().getTime());
+    await page.reload();
+    assert.equal(await page.evaluate(() => Date.now()), clock.now().getTime());
+  });
+});
+
+
+test('aborted page work drains held Date updates before closing its context', async t => {
+  const control = clockControl(t);
+  const clock = new FakeClock();
+  const fixture = await webFixture(t, { clock });
+  const entered = Promise.withResolvers<void>();
+  let pageClosed = false, updateFinished = false;
+  const marker = new Error('planted body failure after block');
+  const running = control.track(fixture.pageCase(t, async page => {
+    page.once('close', () => { pageClosed = true; assert.equal(updateFinished, true); });
+    const native = page.clock.setFixedTime.bind(page.clock);
+    t.mock.method(page.clock, 'setFixedTime', async (time: Parameters<typeof native>[0]) => {
+      entered.resolve();
+      await control.gate;
+      await native(time);
+      updateFinished = true;
+    });
+    clock.block(1);
+    await control.setup(entered.promise);
+    throw marker;
+  }));
+  const outcome = assert.rejects(running, error => error === marker);
+  try {
+    await control.setup(entered.promise);
+    assert.equal(pageClosed, false, 'held Date writer still owns the live page');
+  } finally { control.release(); }
+  await control.join(outcome);
+  assert.equal(updateFinished, true);
+  assert.equal(pageClosed, true);
+});
+
+test('rejected Date update retains its error and still updates the other enrolled page', { timeout: 10_000 }, async t => {
+  const clock = new FakeClock();
+  const fixture = await webFixture(t, { clock });
+  await fixture.pageCase(t, async page => {
+    const context = await fixture.browser.newContext();
+    try {
+      await context.addCookies(await page.context().cookies());
+      const second = await context.newPage();
+      await fixture.syncPageClock(second);
+      await second.goto(page.url());
+      const failure = new Error('planted setFixedTime rejection');
+      t.mock.method(page.clock, 'setFixedTime', async () => { throw failure; });
+      await assert.rejects(clock.advance(1), error => error instanceof AggregateError &&
+        error.errors.some(error => error instanceof AggregateError && error.errors.includes(failure)));
+      assert.equal(await second.evaluate(() => Date.now()), clock.now().getTime(), 'other page update completed');
+    } finally { try { await fixture.releasePageClocks(context.pages()); } finally { await context.close(); } }
+  });
+  await fixture.close();
+  assert.equal(fixture.browser.isConnected(), false);
+  assert.equal(fixture.server.process().exitCode, 0);
+});
+
+
+test('Date drainage failure still disposes native browser and hub resources', async t => {
+  const fixture = await webFixture(t, { clock: new FakeClock() });
+  const incomplete = new Error('planted incomplete Date drainage');
+  const observation = fixture.dateObservation!;
+  const drain = observation.drain.bind(observation);
+  let attempts = 0;
+  t.mock.method(observation, 'drain', async () => {
+    if (++attempts === 1) throw incomplete;
+    await drain();
+  });
+  const closing = fixture.close();
+  await assert.rejects(closing, error => error instanceof AggregateError && error.errors.includes(incomplete));
+  assert.equal(fixture.browser.isConnected(), false);
+  assert.equal(fixture.server.process().exitCode, 0);
 });

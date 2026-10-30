@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile, mkdtemp, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ownDirectory } from './process-cleanup.ts';
+import { clockControl } from './clock-control.ts';
+import { existsSync } from 'node:fs';
+import { ownDirectory, guardDirectoryRemoval, onCleanup } from './process-cleanup.ts';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
@@ -122,3 +124,35 @@ for (const messenger of ['discord', 'telegram'] as const) {
     });
   }
 }
+
+test('actual Date drain timeout fences root removal until the writer settles', async t => {
+  const control = clockControl(t), clock = new FakeClock(), drainClock = new FakeClock();
+  const root = await mkdtemp(join(tmpdir(), 'date-drain-'));
+  const remove = ownDirectory(undefined, root);
+  const entered = Promise.withResolvers<void>();
+  const observation = clock.observeTime(async () => { entered.resolve(); await control.gate; });
+  onCleanup(t, async () => { control.release(); await observation.close(); await remove(); });
+  guardDirectoryRemoval(root, () => observation.drain({ clock: drainClock, timeoutMs: 10 }));
+  clock.block(1);
+  await control.setup(entered.promise);
+  // Observe until's actual load-scaled deadline instead of re-deriving its policy.
+  const armed = Promise.withResolvers<number>();
+  const schedule = drainClock.setTimeout.bind(drainClock);
+  t.mock.method(drainClock, 'setTimeout', (callback: () => void, ms: number) => {
+    const timer = schedule(callback, ms);
+    armed.resolve(ms);
+    return timer;
+  });
+  let deadline = 0;
+  const removing = assert.rejects(remove(), error => error instanceof Error &&
+    error.message === `clock Date writers drained: not within ${deadline} ms`);
+  deadline = await control.setup(armed.promise);
+  t.diagnostic(`Date drain effective deadline ${deadline} ms`);
+  await drainClock.advance(deadline);
+  await removing;
+  assert.equal(existsSync(root), true, 'incomplete writer keeps its actual root');
+  control.release();
+  await control.join(observation.close());
+  await remove();
+  assert.equal(existsSync(root), false, 'positive drain permits removal');
+});

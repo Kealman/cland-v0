@@ -109,6 +109,7 @@ test('an answer in one browser context folds a second context thread and Inbox t
     try {
       const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
       const second = await context.newPage();
+      await fixture.syncPageClock(second);
       let departed = false;
       second.on('websocket', socket => socket.on('framereceived', event => {
         const frame = JSON.parse(String(event.payload));
@@ -145,7 +146,7 @@ test('an answer in one browser context folds a second context thread and Inbox t
       await departure;
       await second.getByRole('button', { name: 'Fold Asks and approvals', exact: true }).focus();
       assert.equal(await cards.locator('[data-ask-outcome]').count(), 2);
-    } finally { await context.close(); }
+    } finally { try { await fixture.releasePageClocks(context.pages()); } finally { await context.close(); } }
   }, page => {
     const answers = new Set<string>();
     page.on('websocket', socket => {
@@ -174,6 +175,7 @@ test('a refused competing answer recovers the winner and answering from Inbox ma
     try {
       const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
       const winner = await context.newPage();
+      await fixture.syncPageClock(winner);
       await winner.goto(url);
       await winner.getByRole('button', { name: 'Inbox', exact: true }).click();
       await winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
@@ -192,7 +194,7 @@ test('a refused competing answer recovers the winner and answering from Inbox ma
       assert.match(await card.innerText(), /2 Change.*human/s);
       assert.equal(await card.getByRole('alert').count(), 0, 'winner replaces the lost answer');
       assert.equal(await card.locator('time').getAttribute('datetime'), '2026-10-23T12:00:00.250Z');
-    } finally { await context.close(); }
+    } finally { try { await fixture.releasePageClocks(context.pages()); } finally { await context.close(); } }
   }, async page => {
     await page.routeWebSocket('**/ws', route => {
       const server = route.connectToServer();
@@ -338,6 +340,7 @@ test('a refused answer recovers its durable outcome beyond the seven-day archive
     try {
       const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
       const winner = await context.newPage();
+      await fixture.syncPageClock(winner);
       await winner.goto(url);
       await winner.getByRole('button', { name: 'Inbox', exact: true }).click();
       await winner.getByRole('list', { name: 'Inbox objects', exact: true }).locator(`[data-object-id="${id}"]`).click();
@@ -367,7 +370,7 @@ test('a refused answer recovers its durable outcome beyond the seven-day archive
       assert.ok(releaseDrawer, 'the initial drawer read never completed before recovery');
       assert.equal(await loser.locator('[data-drawer-area="Inbox"] [role="log"]').getAttribute('data-loaded'), 'false');
       releaseDrawer();
-    } finally { await context.close(); }
+    } finally { try { await fixture.releasePageClocks(context.pages()); } finally { await context.close(); } }
   }, async page => {
     await page.routeWebSocket('**/ws', route => {
       const server = route.connectToServer();
