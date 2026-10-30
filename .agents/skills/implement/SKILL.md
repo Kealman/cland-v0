@@ -925,5 +925,16 @@ or CLI permission is added.
 For startup journal selection, use the bounded input-work and prior synchronous
 selection controls in `docs/agents/tests/hub-test-journal-subagents.test.ts.md`.
 Keep one in-flight scan per path, preserve escaped/unterminated records and leave
-CLI/wire shapes unchanged. Live-scale memory probes require a Coordinator slot;
-name the checkpoint and unexecuted later stages. Existing role clauses suffice.
+CLI/wire shapes unchanged.
+
+For hub memory investigations, use `hub/test/measure-memory.ts --plan` before a
+Coordinator-granted local measurement slot. Follow
+`docs/agents/tests/hub-test-measure-memory.test.ts.md`: sparse artifact bodies,
+sealed child, independent swap supervisor, startup-only coarse allocation
+sampling and per-stage counts. Name each checkpoint and any unexecuted later
+stages; require the IPC stop outcome plus native close. Publish aggregate
+analysis only, distinguish sampled allocation from retained size/RSS, and delete
+any raw snapshots by literal path before review. For payload attribution without
+a hub run, use `measure-history-storage.ts` on its fresh disposable backup and
+publish only aggregate field/row sizes. Existing role clauses cover both flows;
+add no permission lines.

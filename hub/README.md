@@ -7393,3 +7393,23 @@ malformed/truncated replies, disappeared descriptors and deadline expiry grant n
 new ownership. The existing incomplete-cleanup warning remains if EOF is absent;
 unidentifiable processes survive and the queue moves on. This is local worker
 cleanup; droplet cancellation retains its executor-owned release path.
+
+### Offline memory measurement
+
+`node hub/test/measure-memory.ts --help` describes the manual Mac startup probe.
+`--plan --source PROJECT` inventories a read-only copy plan; `--run` requires a
+Coordinator measurement slot and about 1–2 minutes. It measures a sealed embedded
+hub on disposable live-scale state, with sparse artifact bodies, generated config,
+fake adapters/probes and no clients. Preparation runs in the supervisor before
+launching the measured child with coarse Node heap sampling. It records one-second
+memory/RSS, startup-stage checkpoints/counts and sampled source stacks, then stops
+at readiness. No rest phase or full snapshots run. Load/swap preflight and a
+30-second swap supervisor request graceful stop over IPC; the worker persists
+its stop outcome and the supervisor records native exit/pipe close. Shared
+owners cancel and join setup, profile/write work and bounded IPC drainage; a
+captured-process fallback records an incomplete outcome if graceful stop stalls.
+The final supervisor receipt follows all owned writes; a refused final system
+reading remains explicitly unavailable without suppressing the stop receipt. Sampling estimates are
+report-only; this sets no memory budget. The SQL-only companion
+`node hub/test/measure-history-storage.ts --help` describes disposable-copy row
+and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).

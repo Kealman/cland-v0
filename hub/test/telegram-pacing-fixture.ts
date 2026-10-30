@@ -6,7 +6,7 @@ import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { Clock } from '../src/hub/clock.ts';
 
 /** Own resources before acquisition, including setup whose serving receipt is lost. */
-export function pacingOwner(t: TestContext) {
+export function pacingOwner(t: TestContext, options: { setupTimeoutMs?: number } = {}) {
   let db: Store | undefined;
   const hubs = new Set<Awaited<ReturnType<typeof projectHub>>>();
   const acquiring = new Set<Promise<Awaited<ReturnType<typeof projectHub>>>>();
@@ -65,7 +65,7 @@ export function pacingOwner(t: TestContext) {
       const signal = AbortSignal.any([abort.signal, t.signal, ...(setup.signal ? [setup.signal] : [])]);
       const ready = Promise.withResolvers<Awaited<ReturnType<typeof projectHub>>>();
       // Arm the setup observer before even invoking actual native acquisition.
-      const observed = within(abortable(ready.promise, signal), 1_000, setup.clock,
+      const observed = within(abortable(ready.promise, signal), options.setupTimeoutMs ?? 1_000, setup.clock,
         () => new Error('Telegram pacing fixture setup receipt deadline reached'));
       observing.add(observed);
       void observed.then(() => observing.delete(observed), () => observing.delete(observed));

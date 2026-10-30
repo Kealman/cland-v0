@@ -130,3 +130,9 @@ terminal when only the older lanes have drained. The four generated
 capturing the original waiter orders. Keep the card guide's live held-publication
 drop control as well: limiting reconciliation must still settle that old waiter
 without waiting for stop.
+
+The shared `pacingOwner` keeps a one-second setup receipt deadline by default.
+Manual startup probes may pass `{ setupTimeoutMs }` at owner construction;
+existing one-argument callers retain the original deadline and disposal order.
+The memory-producer controls exercise that opt-in without changing messenger
+settings, production wire fields or persisted records.
