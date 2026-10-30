@@ -203,7 +203,7 @@ export async function seedPlanStageCover(root: string, head: string) {
   const store = new Store(join(root, '.cland/hub.db'));
   const base: SuiteJob = { id: `mac-${head}`, mode: 'all', cwd: root, topic: 'general', to: [], actor: null, head, tree: 'f'.repeat(40), branch: 'dev', integrated: true,
     executor: 'local', occasion: 'stage', selection: { mode: 'full', reason: 'historical stage cover', files: [], soak: true, loadGate: true },
-    log: '', result: '', gate: '', pid: null, started: null, outcome: { code: 0, cause: '' }, artifact: null, reported: true, error: null,
+    log: join(root, 'historical-suite.log'), result: join(root, 'historical-result.json'), gate: join(root, 'historical-ready'), pid: null, started: null, outcome: { code: 0, cause: '' }, artifact: null, reported: true, error: null,
     state: 'finished', finished: '2026-10-16T12:00:00Z', platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'fixture' } };
   const linux: SuiteJob = { ...base, id: `linux-${head}`, executor: 'droplet', platform: { ...base.platform!, os: 'linux' } };
   linux.shards = [1, 2].map(index => ({ ...linux, id: `${linux.id}-${index}`, parentRun: linux.id }));

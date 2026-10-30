@@ -81,7 +81,7 @@ test('930-job legacy history serves status within the component bound during a s
   const history: SuiteJob[] = Array.from({ length: 930 }, (_, index) => ({
     id: `history-${index}`, executor: index % 2 ? 'local' : 'droplet', mode: 'auto', cwd: root,
     topic: 'general', to: [], actor: null, head: 'a'.repeat(40), branch: 'fixture',
-    log: '', result: '', gate: '', pid: null, started: null, outcome: { code: 0, cause: '' },
+    log: join(root, 'historical-suite.log'), result: join(root, 'historical-result.json'), gate: join(root, 'historical-ready'), pid: null, started: null, outcome: { code: 0, cause: '' },
     artifact: null, reported: index >= 6, error: index < 6 ? 'forbidden: artifact.create (a session with no role has no tools)' : null,
     cleaned: true, state: 'finished', finished: clock.now().toISOString(),
     selection: { mode: 'hub-only', files: ['x'.repeat(9000)], reason: 'historical job payload' },

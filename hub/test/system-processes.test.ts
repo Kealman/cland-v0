@@ -794,3 +794,69 @@ assert.deepEqual(rows, []);
 assert.equal(listings.length, termAt, 'kill(pid, 0) already confirms every captured PID absent');
 `);
 });
+
+test('optional owner scope sees the captured descendants before TERM while previous options retain termination', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420100)];
+const scopes = [];
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
+  canSignalTargets: async (targets, snapshot) => {
+    scopes.push(targets.map(row => row.pid));
+    assert.ok(snapshot.some(row => row.pid === process.pid));
+    return false;
+  }
+}), false);
+assert.deepEqual(scopes, [[420100, 420101]]);
+assert.deepEqual(signals, [], 'scope refusal precedes the leader TERM and any forwarded group effect');
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true);
+assert.ok(signals.some(signal => signal.pid === 420100 && signal.signal === 'SIGTERM'));
+assert.equal(rows.length, 0, 'previous options shape still settles the captured tree');
+`);
+});
+
+for (const failure of ['reuse', 'unavailable', 'outside-scope'] as const) {
+  test(`isolated recovery thaw refuses ${failure} frozen targets without CONT`, async () => {
+    await probe(`
+rows = [row(420100, 1, 420100)];
+onSignal = (_pid, signal) => signal === 'SIGTERM' ? false : undefined;
+const options = { canSignalTargets: async () => {
+  if (!rows.some(row => row.state === 'T')) return true;
+  if (${JSON.stringify(failure)} === 'reuse') { rows[0].micros = 900002; tableOutput = 'unavailable snapshot'; }
+  if (${JSON.stringify(failure)} === 'unavailable') nativeFailure = 'missing';
+  return false;
+} };
+${failure === 'reuse' ? "assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), false);" : "await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), /thaw.*incomplete/);"}
+assert.ok(signals.some(signal => signal.signal === 'SIGSTOP'));
+assert.equal(signals.some(signal => signal.signal === 'SIGCONT'), false);
+assert.equal(signals.some(signal => signal.signal === 'SIGKILL'), false);
+assert.equal(rows[0].state, 'T', 'unknown or outside target remains retained rather than signalled');
+`);
+  });
+}
+
+test('isolated recovery thaw resumes a matching in-scope frozen target', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+onSignal = (_pid, signal) => signal === 'SIGTERM' ? false : undefined;
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
+  canSignalTargets: async () => true,
+  canSignal: current => !current.some(row => row.pid === 420100 && row.state === 'T')
+}), false);
+assert.deepEqual(signals.map(signal => signal.signal), ['SIGTERM', 'SIGSTOP', 'SIGCONT']);
+assert.equal(rows[0].state, 'S');
+`);
+});
+
+test('isolated thaw rechecks synchronous ownership after awaited scope and birth probes', async () => {
+  await probe(`
+rows = [row(420100, 1, 420100)];
+onSignal = (_pid, signal) => signal === 'SIGTERM' ? false : undefined;
+await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
+  canSignalTargets: async () => true,
+  canSignal: current => !current.some(row => row.pid === 420100 && row.state === 'T'),
+  authorize: () => { if (rows.some(row => row.state === 'T')) throw new Error('ownership revoked during cleanup'); }
+}), /thaw.*incomplete/);
+assert.deepEqual(signals.map(signal => signal.signal), ['SIGTERM', 'SIGSTOP']);
+assert.equal(rows[0].state, 'T', 'revoked ownership retains the captured stopped process');
+`);
+});

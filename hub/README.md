@@ -7600,6 +7600,35 @@ report-only; this sets no memory budget. The SQL-only companion
 `node hub/test/measure-history-storage.ts --help` describes disposable-copy row
 and payload-size inspection without starting a hub. See [measurement controls and analysis](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
 
+
+### Copied probe suite recovery isolation
+
+The memory probe seals its SQLite backup before starting the embedded hub:
+absolute suite strings and relative path fields become scratch placeholders; execution/recovery capabilities
+(PIDs, leases, shards, locks, commands, host gates and config) and pending executor
+metadata and suite artifact IDs are excluded. Copied artifact index paths become scratch placeholders and redirects/entries are removed, preserving index rows. Finished archive rows remain one-for-one, with active and
+archive counts in manifest.sealing. Unfinished copied runs (including code 0 awaiting reporting, cleanup or accounting) are unavailable, never passing evidence; completed historical outcomes are retained. This changes copied execution-plan payload attribution.
+Fixture hubs identified by CLAND_TEST_ORPHAN_ROOT refuse stored suite paths outside their project and the sealed builder’s CLAND_TEST_OWNED_ROOT scratch allocation before restoration, including nested lease/shard paths and symlink escapes,
+with verification-recovery-refused naming the job. Full archive hydration is also
+sealed. Final resolved artifact evidence paths are fenced before native reads. Live recovered PIDs require a stable native birth and owned cwd. Legacy ps-start receipts bind to that observation before restoration and persist the native birth. An observed dead worker may recover its pending report; it gains no live signal authority. Before each LocalExecutor signal phase, the optional endProcess owner-scope callback validates every recovered live tree/group member against native birth and owned cwd. Other termination callers keep the prior behaviour. Outside log/result/gate capabilities remain refused: a terminal pending report (including the legacy state-omitted shape) publishes “log unavailable (outside isolated root)” from newly created hub-owned files as unavailable infrastructure evidence. The shared fixture-roots policy grants no generic system temp directory and older environments grant only the project. Cancellation waits only for the requested job’s isolated admission, not unrelated constructor reaping. Production recovery without that fixture isolation is unchanged. See
+[the memory controls](../docs/agents/tests/hub-test-measure-memory.test.ts.md).
+
+
+Isolated recovery thaw (`SIGCONT`) also requires the captured native birth and
+fresh owner scope. Unknown or outside proof retains the frozen target and reports
+incomplete cleanup; a proven exited/reused identity receives no recovery signal.
+Callers without the optional owner-scope callback keep their previous thaw policy.
+
+Fresh local launches keep a nonpersisted authority bound to the exact lease and
+captured native leader birth. The signal fence can extend that authority only
+through positively observed native ancestry, retaining captured child births
+across leader exit so owned detached children in nested phase roots can drain.
+Restore, copied/replaced leases, PID reuse and a group number alone grant none
+of that authority; those targets still require the recovery cwd/birth fence.
+Lease binding is rechecked after awaited scope proof and at the native signal
+boundary. No generic temporary-directory grant is added. The original cancellation and
+setup-failure cleanup controls and native no-inherited-authority cases must pass
+alongside outside-group refusal and ordinary restart recovery.
 ### Executor lifecycle interface
 
 All nine operations, including `prepare` and `reap`, are declared on `Executor`.

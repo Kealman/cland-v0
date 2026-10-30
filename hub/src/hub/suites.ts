@@ -1,3 +1,4 @@
+import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
 import { batchInteractionSelection } from '../suite-interactions.ts';
 import { appendSuiteProvenance } from '../suite-provenance.ts';
 import { suiteAuthor } from './suite-author.ts';
@@ -13,7 +14,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { aggregateSuiteLogs, readSuiteEvidence, retainedLoadProofs, suiteEvidence, suiteLogLines } from '../suite-log.ts';
 import { appendFile, copyFile, mkdir, readFile, writeFile, rename, rm, stat, open } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
 import { clandRunner, verificationCommands, recordedCommands } from '../verification-commands.ts';
@@ -215,6 +216,7 @@ export class Suites {
   #periodic: Promise<void> | null = null;
   #nextDevT3Check = 0;
   readonly #inspecting = new Map<string, Promise<void>>();
+  readonly #isolatedAdmissions = new Map<string, Promise<void>>();
   #landedIdentities: Promise<string[]> | undefined;
   readonly #stageReads = new Map<string, Promise<string[]>>();
   readonly #evidence = new Map<string, string>();
@@ -266,6 +268,22 @@ export class Suites {
     for (const job of active) this.#summaries.delete(job.id);
     this.#jobs = [...history.map(entry => entry.job).filter(job => !active.some(current => current.id === job.id)), ...active];
     this.#savedActive = store.meta(KEY) ?? '';
+    const unavailableReports: SuiteJob[] = [];
+    if (this.#env.CLAND_TEST_ORPHAN_ROOT === root) {
+      this.#jobs = this.#jobs.map(job => {
+        if (!outsideSuitePath(root, job, '', this.#env)) return job;
+        options.log?.({ event: 'verification-recovery-refused', id: job.id, reason: 'stored suite path outside isolated root' });
+        this.#summaries.delete(job.id);
+        if (suiteRecoveryState(job) === 'finished' && job.outcome && !job.reported) {
+          const report = isolatedUnavailableReport(job, root, this.#clock.now().toISOString());
+          unavailableReports.push(report);
+          return report;
+        }
+        const sealed = sealSuiteJob(job, root);
+        sealed.error = `isolated verification refused recovery for ${job.id}: stored path outside root`;
+        return sealed;
+      });
+    }
 
     this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log, options.waitClock ?? this.#clock);
     this.#local = new LocalExecutor(this.#locks(), (lease, worker) => {
@@ -277,15 +295,19 @@ export class Suites {
       this.#save(job);
     }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); }, options.env, options.compatibility, options.log);
     this.#droplet = new DropletExecutor(root, store, options.log, options.env, options.projectConfig, { ...options.dropletServices, clock: this.#clock });
+    const isolatedRestores: SuiteJob[] = [];
     for (const [index, job] of this.#jobs.entries()) {
       job.sequence ??= index;
       this.#order.set(job.id, job.sequence);
       if (job.cleaned && job.error?.startsWith('forbidden:')) job.reportFailedPermanently = true;
       job.executor ??= 'local';
-      job.state ??= job.outcome || job.reported ? 'finished' : 'running';
+      job.state ??= suiteRecoveryState(job);
       const summary = this.#summaries.has(job.id);
       if (!summary && job.state !== 'queued' && !job.config && options.projectConfig) job.config = options.projectConfig();
-      if (!summary && job.executor === 'local' && !job.cached && !job.reported && job.state !== 'queued') job.lease = this.#local.restore(runRef(job), job, job.lease);
+      if (!summary && job.executor === 'local' && !job.cached && !job.reported && job.state !== 'queued') {
+        if (this.#env.CLAND_TEST_ORPHAN_ROOT === root && job.pid) isolatedRestores.push(job);
+        else job.lease = this.#local.restore(runRef(job), job, job.lease);
+      }
       // T-232 stores the worker's ps start identity and exit receipt. Recover a
       // second-resolution estimate without replacing the identity used for cleanup.
       let timingChanged = false;
@@ -306,7 +328,40 @@ export class Suites {
     this.#jobs.sort((a, b) => a.sequence! - b.sequence!);
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
-    this.#reaping = this.#local.reconcile().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
+    const local = this.#local, environment = this.#env;
+    const admissions = isolatedRestores.map(job => {
+      const admission = (async () => {
+        const ownership = await isolatedSuiteProcessOwned(root, job, environment);
+        if (ownership.owned) {
+          job.lease = local.restore(runRef(job), { ...job, ...(ownership.identity ? { identity: ownership.identity } : {}) }, job.lease);
+        } else {
+          const sealed = sealSuiteJob(job, root);
+          sealed.error = `isolated verification refused recovery for ${job.id}: native process ownership outside root or unavailable`;
+          options.log?.({ event: 'verification-recovery-refused', id: job.id, reason: 'native process ownership outside root or unavailable' });
+          // Keep references captured by an early cancellation fenced too.
+          for (const key of Object.keys(job)) Reflect.deleteProperty(job, key);
+          Object.assign(job, sealed);
+        }
+        this.#save(job);
+      })();
+      this.#isolatedAdmissions.set(job.id, admission);
+      return admission;
+    });
+    for (const job of unavailableReports) {
+      const preparation = (async () => {
+        isolatedSuiteEvidencePath(root, job.id, job.log, environment);
+        isolatedSuiteEvidencePath(root, job.id, job.result, environment);
+        await mkdir(dirname(job.log), { recursive: true });
+        isolatedSuiteEvidencePath(root, job.id, job.log, environment);
+        isolatedSuiteEvidencePath(root, job.id, job.result, environment);
+        await writeFile(job.log, 'log unavailable (outside isolated root)\n', { mode: 0o600 });
+        await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished }), { mode: 0o600 });
+      })();
+      this.#isolatedAdmissions.set(job.id, preparation);
+      admissions.push(preparation);
+    }
+    this.#reaping = (admissions.length ? Promise.all(admissions).then(() => local.reconcile()) : local.reconcile())
+      .catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
     // Seed durable slots for a queue read that precedes the first tick. This never
     // gates a tick: an extra await here would delay inspection on a fake clock.
     this.#refreshLeases();
@@ -376,7 +431,8 @@ export class Suites {
     if (announce && moved) this.#options.onJob?.(job);
   }
   #full(job: SuiteJob): SuiteJob {
-    return this.#summaries.has(job.id) ? (JSON.parse(this.#store.suiteJob(job.id)!) as { job: SuiteJob }).job : job;
+    const full = this.#summaries.has(job.id) ? (JSON.parse(this.#store.suiteJob(job.id)!) as { job: SuiteJob }).job : job;
+    return this.#env.CLAND_TEST_ORPHAN_ROOT === this.#root && outsideSuitePath(this.#root, full, '', this.#env) ? sealSuiteJob(full, this.#root) : full;
   }
   /** Latest submission by item or branch, reconstructed once at startup and maintained on saves. */
   latest(item: string, branch: string | null): VerifyResult | null {
@@ -706,8 +762,7 @@ export class Suites {
       // Backfill retained pre-upgrade receipts once; future runs store proof at reporting.
       const full = this.#full(job);
       if (!full.loadProofs) {
-        const artifact = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
-        full.loadProofs = await retainedLoadProofs(artifact?.path ?? job.log).catch(() => []);
+        full.loadProofs = await retainedLoadProofs(this.#evidencePath(job)).catch(() => []);
         this.#save(full);
       }
       for (const identity of full.loadProofs) known.add(identity);
@@ -725,10 +780,9 @@ export class Suites {
     if (!stage.timingIdentities) {
       let pending = this.#stageReads.get(stage.id);
       if (!pending) {
-        const artifact = stage.artifact ? this.#store.resolveArtifact(stage.artifact) : null;
         pending = (async () => {
           const known = new Set<string>();
-          for await (const line of suiteLogLines(artifact?.path ?? stage.log)) {
+          for await (const line of suiteLogLines(this.#evidencePath(stage))) {
             if (line.startsWith('suite timing ')) for (const test of timingReceipts(line)) known.add(`${test.file}::${test.name}`);
           }
           stage.timingIdentities = [...known].sort();
@@ -1230,7 +1284,9 @@ export class Suites {
     }
   }
 
-  #inspectJob(job: SuiteJob): Promise<void> {
+  async #inspectJob(job: SuiteJob): Promise<void> {
+    const admission = this.#isolatedAdmissions.get(job.id);
+    if (admission) await admission;
     const pending = this.#inspecting.get(job.id);
     if (pending) return pending;
     if (this.#closed || job.reported || job.reportFailedPermanently || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
@@ -1534,18 +1590,21 @@ export class Suites {
    * Bound retained reports independently of the durable receipt history. In-flight
    * scans stay shared even when the completed-report cache rotates.
    */
+  #evidencePath(job: Readonly<SuiteJob>): string {
+    const artifact = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
+    const path = artifact?.path ?? job.log;
+    return this.#env.CLAND_TEST_ORPHAN_ROOT === this.#root ? isolatedSuiteEvidencePath(this.#root, job.id, path, this.#env) : path;
+  }
   evidence(job: Readonly<SuiteJob>): Promise<string> {
     const source = job.cached ? this.#jobs.find(source => source.id === job.cached!.run) ?? job : job;
     const cached = this.#evidence.get(source.id);
     if (cached !== undefined) return Promise.resolve(this.#cacheEvidence(source.id, cached));
     let pending = this.#evidenceReads.get(source.id);
     if (!pending) {
-      const artifact = source.artifact ? this.#store.resolveArtifact(source.artifact) : null;
-      pending = readSuiteEvidence(artifact?.path ?? source.log).catch(error => {
+      pending = Promise.resolve().then(() => readSuiteEvidence(this.#evidencePath(source))).catch(error => {
         // A cache copy is durable evidence even after its original log expires.
         if (source.id === job.id) throw error;
-        const copy = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
-        return readSuiteEvidence(copy?.path ?? job.log);
+        return readSuiteEvidence(this.#evidencePath(job));
       }).then(text => this.#cacheEvidence(source.id, text)).finally(() => { this.#evidenceReads.delete(source.id); });
       this.#evidenceReads.set(source.id, pending);
     }
@@ -1666,6 +1725,7 @@ export class Suites {
 
   /** Observe completion of already admitted I/O; does not tick or advance time. */
   async settled(): Promise<void> {
+    await this.#reaping;
     await this.#soaking; await this.#periodic;
     await this.#checking;
     await Promise.allSettled(this.#launchWork);

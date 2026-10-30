@@ -56,7 +56,7 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
   const started = 'Sat Oct 17 12:00:00 2026';
   await writeFile(join(root, 'held-lock/holder.json'), JSON.stringify({ pid: process.pid, started, since: clock.now().toISOString(), token: 'hand', worktree: '/hand/worktree' }));
   const log = join(root, 'suite.log'); await writeFile(log, logText);
-  const base: SuiteJob = { id: 'cover-0', mode: 'all', cwd: root, topic: 'general', to: [], actor: null, head: 'a'.repeat(40), branch: 'dev', log, result: '', gate: '', pid: null, started: null,
+  const base: SuiteJob = { id: 'cover-0', mode: 'all', cwd: root, topic: 'general', to: [], actor: null, head: 'a'.repeat(40), branch: 'dev', log, result: join(root, 'result.json'), gate: join(root, 'ready'), pid: null, started: null,
     outcome: { code: 1, cause: '' }, artifact: null, reported: true, error: null, state: 'finished', cleaned: true, integrated: true, executor: 'local', platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'none' },
     cover: { status: 'red', cause: 'test-failure', tests: ['hub/test/planned-stage.test.ts::stage landing query budget'] } };
   const store = new Store(join(root, '.cland/hub.db')); store.setMeta('suite-jobs', JSON.stringify(make(base))); store.close();

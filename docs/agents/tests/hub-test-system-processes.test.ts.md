@@ -82,3 +82,31 @@ different birth. Unavailable native proof cannot pass the rejection assertion.
 On macOS this exercises the native Perl probe; Linux reads procfs. A negative
 control replacing only the default identity observer with an unavailable result
 must fail that rejection. No signal is sent to the observed process.
+The optional canSignalTargets owner-scope callback receives the captured tree and
+current native snapshot before each signal phase, including before a leader TERM
+can forward to its group. The production-frame probe keeps a refusal with zero
+signals and a previous-options positive termination control. Only isolated
+LocalExecutor cleanup opts in; all other callers retain the previous options
+shape. The native gone-leader/outside-group case and in-owned-child recovery live
+in measure-memory.test.ts and the unchanged suite-cancel restart regression.
+
+
+With canSignalTargets present, recovery SIGCONT also needs matching captured native
+birth, a fresh in-scope snapshot and another birth check after the callback.
+Positive exit/reuse drops only the old frozen identity; unknown or outside proof
+retains the target and throws an explicit incomplete-thaw error. Injected reuse,
+unavailable and outside-scope controls require no CONT/KILL, while the matching
+in-scope control resumes. Omitted-hook callers retain the old best-effort thaw;
+the existing unavailable/reuse/CONT regressions remain unchanged.
+
+
+Fresh local launches keep a nonpersisted authority bound to the exact lease and
+captured native leader birth. The signal fence can extend that authority only
+through positively observed native ancestry, retaining captured child births
+across leader exit so owned detached children in nested phase roots can drain.
+Restore, copied/replaced leases, PID reuse and a group number alone grant none
+of that authority; those targets still require the recovery cwd/birth fence.
+Lease binding is rechecked after awaited scope proof and at the native signal
+boundary. No generic temporary-directory grant is added. The original cancellation and
+setup-failure cleanup controls and native no-inherited-authority cases must pass
+alongside outside-group refusal and ordinary restart recovery.

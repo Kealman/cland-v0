@@ -1,3 +1,4 @@
+import { FIXTURE_OWNED_ROOT } from '../shared/fixture-roots.ts';
 // Pure environment boundary shared by worker fixtures, child launches and manual probes.
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { withoutExecutorCredentials } from '../shared/executor-credentials.ts';
@@ -48,7 +49,7 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
     } catch { /* Never include caller input in the error. */ }
     throw new Error(`fixture ${key} requires an explicit loopback HTTP API root`);
   }
-  return withoutExecutorCredentials({ ...env, HOME: join(root, 'home'), GIT_CONFIG_GLOBAL: join(root, 'home', '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
+  return withoutExecutorCredentials({ ...env, [FIXTURE_OWNED_ROOT]: resolve(root), HOME: join(root, 'home'), GIT_CONFIG_GLOBAL: join(root, 'home', '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
 }
 
 /** Deliberate product path inputs, distinct from inherited environment extras. */

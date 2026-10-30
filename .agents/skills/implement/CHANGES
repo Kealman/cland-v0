@@ -349,6 +349,9 @@ T-1476: retain landed memory-probe controls beside combined suite/journal startu
 T-1462: Document report-only durable merge-delta comments, conservative dependency facts and unchanged Reviewer workflow/freshness.
 T-1462 source M1/M2: document independent advisory settlement/drainage and explicit unknown unsupported runtime imports.
 
+T-1483: document copied probe sealing, seed ordering and saved-output recovery audit.
+T-1483 review: document resolved artifact path fencing and native PID ownership proof.
+T-1483 source2 review: unfinished code-0 records remain unavailable; cancellation waits only on per-job isolated admission.
 T-1454: Describe additive sibling-importer and merged-landing selection, bounds, evidence and fallback.
 T-1454 source1: Unsupported runtime edges report unknown; history failure retains full process execution through task planning.
 T-1454 source3: Apply Coordinator soundness bar: unsupported executable forms widen conservatively; precision is optional.
@@ -366,6 +369,9 @@ T-1458 source1: Shared import-edge policy and owned smoke child lifecycle contro
 - T-1485 source review: bound and join Date writers before native cleanup; expand the hub clock inventory.
 - T-1485 source review 2: retain roots on missing Date drainage, preserve native disposal, and pre-own bounded fault controls.
 - T-1485 verification: keep the clock audit in tracker comments/artifacts, outside indexed per-test guides.
+T-1483 T3 recovery review: distinguish dead-report recovery from live signals, legacy birth binding and sealed scratch-root grants.
+T-1483 source6 review: fence every live cleanup tree/group member, share legacy state default, and own report-client acquisition.
+T-1483 source7 review: isolated CONT needs native/scope proof; pre-own native fixture root discovery before child readiness.
 - T-373: document neutral executor prepare/reap options, local recovery seam and compatibility proof.
 
 T-1453: Resolve authorized T-1458 dev merge retaining both local preflight and advisory packaging/Web prerequisites skill and help text.
@@ -384,3 +390,6 @@ T-1453: Under docs/help conflict waiver retain local preflight alongside periodi
 
 T-1490: Preserve typed compiler capability refusals without source provenance decoration.
 - T-1451: link synthetic Claude fallback liveness injection and the T3 native-default control.
+
+T-1483 evidence2: exact-lease native launch authority permits observed owned descendants in phase roots; restore, replacement and reuse retain recovery fences.
+T-1483 source correction: recheck launch lease after asynchronous scope proof and at each native signal; cover concurrent restore.

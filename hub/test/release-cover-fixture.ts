@@ -9,7 +9,7 @@ export function recordReleaseCover(root: string, head: string, tree: string, ove
   const job: SuiteJob = { id, mode: 'all', cwd: root, topic: 'general', to: ['coordinator'], actor: null,
     head, tree, branch: 'dev', executor: 'droplet',
     integrated: true, occasion: 'dev-t3', selection: { mode: 'full', tiers: ['T3'], files: [], reason: 'fixture receipt' },
-    log: join(root, '.cland/run/release-cover.log'), result: '', gate: '', pid: null, started: null,
+    log: join(root, '.cland/run/release-cover.log'), result: join(root, '.cland/run/release-cover-result.json'), gate: join(root, '.cland/run/release-cover-ready'), pid: null, started: null,
     outcome: { code: 0, cause: 'completed' }, state: 'finished', artifact: 'A-fixture', reported: true, error: null, ...overrides };
   const store = existing ?? new Store(join(root, '.cland/hub.db'));
   try {

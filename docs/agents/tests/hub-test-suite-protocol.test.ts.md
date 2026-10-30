@@ -12,6 +12,14 @@ writer preservation use the real native lifecycle seam in
 `suite-recovery.test.ts` (T3). Cancellation and next-run admission stay in
 `suite-cancel.test.ts` (T3). Keep their final root/lock and descendant assertions.
 
+
+Recovered synthetic suite records carry explicit scratch-owned log/result/gate
+paths, including finished and queued records whose tests never open those files.
+An empty path resolves against the runner cwd; isolated recovery correctly refuses
+it rather than treating it as an absent capability. Keep the original report,
+queue, cached-content and accounting assertions when changing fixture paths.
+The cache admission and stage/release cover seed helpers follow the same rule;
+the old outside-path and native-PID refusal controls remain in measure-memory.
 Provenance finalization preserves legacy rows that share one `job.log` path.
 The fresh/cached oversized-results case retains that shared path, every priority
 summary and all missing-baseline bytes, and checks that each published artifact

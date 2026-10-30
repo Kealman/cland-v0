@@ -35,6 +35,8 @@ export type ProcessEndOptions = {
   allowReused?: boolean;
   /** Recheck reservations and running process trees immediately before each signal. */
   canSignal?: (rows: SystemProcess[]) => boolean;
+  /** Optional owner scope for the captured tree and group, checked before each signal phase. */
+  canSignalTargets?: (targets: SystemProcess[], snapshot: SystemProcess[]) => Promise<boolean>;
   /** A shared deadline bounds a sweep, including each OS probe. */
   deadline?: number;
 };
@@ -202,8 +204,13 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
     const signal = async (kind: NodeJS.Signals, leaderOnly = false, snapshot?: SystemProcess[]): Promise<boolean> => {
       const deadline = kind === 'SIGSTOP' ? freezeDeadline : options.deadline;
       const current = snapshot ?? await inspect(deadline);
+      const captured = resumed(() => matching(current));
+      if (options.canSignalTargets && !await options.canSignalTargets(captured, current)) {
+        observe({ event: 'signal-refused', pid: p.pid, signal: kind, reason: 'live signal target outside owner scope or unavailable' });
+        return false;
+      }
       const targets = resumed(() => {
-        return matching(current).filter(row => (!leaderOnly || row.pid === leaderPid) &&
+        return captured.filter(row => (!leaderOnly || row.pid === leaderPid) &&
           (kind !== 'SIGSTOP' || frozen.get(row.pid)?.identity !== row.identity || !row.state.startsWith('T')));
       });
       for (const row of targets) {
@@ -254,19 +261,48 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
         await sleep(20);
       }
     };
-    const thaw = () => resumed(() => {
-      // Resume every PID we stopped unless its identity is confirmed gone, even if inspection failed.
-      // Unobserved reuse during inspection failure can CONT a replacement; this recovery tradeoff is explicit.
-      // TERM, STOP and KILL still require an immediately verified identity.
-      for (const pid of frozen.keys()) {
-        if (exited.has(pid)) { frozen.delete(pid); continue; }
-        try { process.kill(pid, 'SIGCONT'); frozen.delete(pid); }
-        catch (err) {
+    const thaw = async () => {
+      if (!options.canSignalTargets) {
+        // Preserve the ordinary recovery tradeoff for pre-existing callers.
+        resumed(() => {
+          for (const pid of frozen.keys()) {
+            if (exited.has(pid)) { frozen.delete(pid); continue; }
+            try { process.kill(pid, 'SIGCONT'); frozen.delete(pid); }
+            catch (err) {
+              if ((err as NodeJS.ErrnoException).code === 'ESRCH') frozen.delete(pid);
+              else observe({ event: 'process-thaw-failed', pid, error: String(err) });
+            }
+          }
+        });
+        return;
+      }
+      let failed = false;
+      for (const [pid, captured] of [...frozen]) {
+        const proof = async (): Promise<'same' | 'gone' | 'unknown'> => {
+          let nativeExited = false;
+          const identity = (await processIdentitiesAsync([pid], env, timeout(options.deadline, env), undefined, () => { nativeExited = true; })).get(pid) ?? null;
+          if (nativeExited || identity === null && !pidAlive(pid) || identity !== null && identity !== captured.identity) return 'gone';
+          return identity !== null && identity === captured.identity ? 'same' : 'unknown';
+        };
+        try {
+          const before = await proof();
+          if (before === 'gone') { frozen.delete(pid); continue; }
+          if (before !== 'same') throw new Error('native thaw identity unavailable');
+          const current = await systemProcesses(resumed, options.deadline, undefined, undefined, env);
+          const target = current.find(row => row.pid === pid);
+          if (!target?.identity || target.identity !== captured.identity) throw new Error('native thaw snapshot unavailable or changed');
+          if (!await options.canSignalTargets([target], current)) throw new Error('thaw target outside owner scope or unavailable');
+          const after = await proof();
+          if (after === 'gone') { frozen.delete(pid); continue; }
+          if (after !== 'same') throw new Error('native thaw identity unavailable after scope check');
+          resumed(() => { options.authorize?.(); process.kill(pid, 'SIGCONT'); frozen.delete(pid); });
+        } catch (err) {
           if ((err as NodeJS.ErrnoException).code === 'ESRCH') frozen.delete(pid);
-          else observe({ event: 'process-thaw-failed', pid, error: String(err) });
+          else { failed = true; observe({ event: 'process-thaw-failed', pid, error: String(err) }); }
         }
       }
-    });
+      if (failed) throw new Error('isolated process thaw incomplete; live target identity or scope unavailable');
+    };
     const incomplete = async (reason: string) => {
       let confirmed = true;
       try { await inspect(); } catch { confirmed = false; }
@@ -303,7 +339,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       await incomplete(err instanceof Error ? err.message : String(err));
       throw err;
     } finally {
-      if (frozen.size) thaw();
+      if (frozen.size) await thaw();
     }
   }
 }

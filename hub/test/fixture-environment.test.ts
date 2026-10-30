@@ -1,3 +1,4 @@
+import { fixtureOwnedRoots } from '../../shared/fixture-roots.ts';
 // T1: pure child-environment construction, no processes or machine state.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -101,4 +102,11 @@ test('deliberate Git excludes stay under the disposable project without opening 
   for (const excludesFile of ['/host', '../host', '/scratch/project/../../host', '/scratch/project-sibling']) {
     assert.throws(() => scratchGitEnvironment('/scratch/project', base, { excludesFile }), /disposable project: excludesFile/);
   }
+});
+
+test('fixture root grants come from the sealed builder rather than parent or overlay claims', () => {
+  const env = fixtureEnvironment('/scratch/owned', { CLAND_TEST_OWNED_ROOT: '/live/parent' }, { CLAND_TEST_OWNED_ROOT: '/live/overlay' });
+  assert.equal(env.CLAND_TEST_OWNED_ROOT, '/scratch/owned');
+  assert.deepEqual(fixtureOwnedRoots('/scratch/project', env), ['/scratch/project', '/scratch/owned']);
+  assert.deepEqual(fixtureOwnedRoots('/scratch/project', { HOME: '/live/home', TMPDIR: '/tmp' }), ['/scratch/project']);
 });

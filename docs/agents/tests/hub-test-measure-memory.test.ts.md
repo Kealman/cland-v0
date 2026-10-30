@@ -101,3 +101,88 @@ The streamed-journal control seeds one selected record beside unrelated/malforme
 lines and requires the durable selected-count/input-byte receipt before tracker,
 plus successful hub/native disposal. This preserves per-stage counts after the
 streaming-reader integration.
+
+
+## Copied suite recovery isolation
+
+Preparation seals the disposable database immediately after online backup, before
+any hub starts. It rewrites absolute strings and relative path fields in each suite record to a scratch
+placeholder, removes leases, shards, locks, commands, host gates and captured
+config and artifact IDs, clears PIDs and marks copied records terminal/reported/cleaned. Unfinished
+records receive an unavailable infrastructure outcome even if a worker already recorded code 0. Unreported, uncleaned, accounting-pending or nonterminal records are unfinished; only completed historical outcomes are retained. Archived
+rows remain one-for-one; manifest.sealing records activeRows and
+finishedHistoryRows. Pending verification and executor metadata are excluded. Copied artifact index rows retain their count but point at scratch placeholders, without redirect or entry capabilities.
+These exclusions change execution-plan payload attribution; compare historical
+measurements with that difference stated.
+
+Fixture hubs pass CLAND_TEST_ORPHAN_ROOT equal to their root. Suites refuses
+persisted paths outside its project and sealed fixture-owned scratch root before executor restoration, naming each refused job in
+verification-recovery-refused and its retained error. The shared guard checks
+nested shard/lease values and symlink ancestors as well as cwd/log/result/gate/
+locks; full archive hydration uses the same guard. Resolved artifact evidence paths (including redirects, cached fallback and both archived identity readers) are validated immediately before native reads. A live recovered PID requires a stable native birth and an observed cwd within those owned roots. Legacy rows bind their captured ps-start receipt to that observation and persist the new birth before action. Observed worker absence permits receipt/report recovery without granting a new live signal target; a pending report is not discarded because its worker exited. Inspection/cancellation waits only for that job’s isolated ownership admission, never an unrelated constructor reap; a held-unrelated-status control retains the requested durable cancel receipt. Owned native outside/inside controls retain final close receipts. The shared pacingOwner is registered before setup; disposal joins Suites before Store/root cleanup and retains file/signal observers through that boundary. Ordinary production recovery
+is unchanged. This is the item's required safety refusal, not a memory budget.
+The planted-path and native-authority controls cover backup sealing through readiness/stop and
+unprepared isolated scheduler refusal. They retain outside sentinel bytes and a
+live planted PID, plus row counts. Existing role clauses already cover this flow.
+
+
+Legacy empty paths are exercised in ordinary and isolated scheduler controls.
+Without the fixture isolation marker, the completed archive's original bytes,
+outcome and artifact remain unchanged and no refusal is emitted. With the marker,
+capabilities are refused while the archive count stays one. The preparation
+control also counts an empty-path legacy archive among its retained rows.
+Pre-start synthetic receipt helpers use explicit scratch paths even for unused
+result/gate fields; raw Store-only digest fixtures do not run recovery.
+
+
+The shared builder writes CLAND_TEST_OWNED_ROOT after every overlay. The policy
+in shared/fixture-roots.ts grants the hub project plus that scratch allocation
+(including its owned temp children); old environments grant only the project.
+It never derives a grant from the parent of HOME or the generic system TMPDIR.
+The same root policy fences persisted paths, resolved artifact evidence and native
+cwd observations. Parent/overlay root claims cannot replace the builder's root.
+An unfinished terminal report whose files are outside those roots publishes
+`log unavailable (outside isolated root)` as unavailable infrastructure evidence,
+using only newly created hub-owned log/result files. It never reads/copies the
+stored outside log, result or gate. The control observes the native stream/copy
+boundary and unchanged sentinel. The four original real restart tests in
+executor.test.ts, suite-cancel.test.ts and suite.test.ts retain their assertions.
+
+
+For a gone leader, the retained group does not grant signal authority. LocalExecutor
+supplies the optional endProcess target-scope callback; before each signal phase
+it validates stable native births and owned cwds for the recovered tree and every
+live same-group member. Other endProcess callers omit the callback and retain
+the previous options shape/behaviour. The detached memoryProducer option is used
+only by the disposable gone-leader/outside-descendant control; the shared owner
+captures before launch and observes producer close before cleanup. The outside
+child's identity stays unchanged and no product signal is attempted; fixture-owned
+cleanup follows the assertions. Keep the original killed-worker in-root child
+cleanup regression alongside this negative control.
+
+Outside-file report controls cover explicit terminal state and the previous
+persisted shape without state. Admission and reporting share suiteRecoveryState.
+Their dispatcher UI acquisition is observed and separately bounded before use;
+a late client after cancellation closes immediately and the owner joins acquisition
+before root removal. Keep the actual report, infrastructure outcome and zero
+outside stream/copy/read/open/access facts.
+
+
+The outside-group fixture pre-registers shared root-discovery cleanup before
+launch, stops its producer before sweeping and never depends on receiving the
+child handle. Normal, omitted-ready and aborted acquisition controls keep the
+root until all writers drain. Assert a positive non-null child native identity
+before unchanged-birth comparisons. Isolated recovery CONT follows the same
+owner scope and fresh identity fence; uncertain proof retains/fails cleanup.
+
+
+Fresh local launches keep a nonpersisted authority bound to the exact lease and
+captured native leader birth. The signal fence can extend that authority only
+through positively observed native ancestry, retaining captured child births
+across leader exit so owned detached children in nested phase roots can drain.
+Restore, copied/replaced leases, PID reuse and a group number alone grant none
+of that authority; those targets still require the recovery cwd/birth fence.
+Lease binding is rechecked after awaited scope proof and at the native signal
+boundary. No generic temporary-directory grant is added. The original cancellation and
+setup-failure cleanup controls and native no-inherited-authority cases must pass
+alongside outside-group refusal and ordinary restart recovery.

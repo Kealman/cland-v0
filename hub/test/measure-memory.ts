@@ -1,4 +1,5 @@
 /** Manual, report-only Mac memory probe. See --help. Never a suite benchmark. */
+import { sealMemoryDatabase } from './memory-seal.ts';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, lstat, copyFile, appendFile, writeFile, open, readFile } from 'node:fs/promises';
@@ -52,7 +53,7 @@ export async function copyTree(source: string, target: string, sparse = false, d
   return { files: 1, bytes: info.size };
 }
 
-async function prepareCopy(source: string, root: string): Promise<void> {
+export async function prepareCopy(source: string, root: string): Promise<void> {
   const state = join(root, '.cland');
   await mkdir(state, { mode: 0o700 });
     const copied: Record<string, unknown> = {};
@@ -62,12 +63,13 @@ async function prepareCopy(source: string, root: string): Promise<void> {
     }
     const db = new DatabaseSync(join(resolve(source), '.cland/hub.db'), { readOnly: true });
     try { await backup(db, join(state, 'hub.db'), { rate: 256 }); } finally { db.close(); }
-    await writeFile(join(root, 'manifest.json'), JSON.stringify({ copied, scriptSha256: createHash('sha256').update(await readFile(import.meta.filename)).digest('hex'), platform: process.platform, arch: process.arch, node: process.version,  exclusions: 'artifact body bytes (same-size sparse placeholders); live config/crew/roles/secrets/accounts/territory/worktrees; fake adapters, account and Git probes; no connected clients; snapshot GC pauses; no browser', source: resolve(source) }, null, 2));
+    const sealing = sealMemoryDatabase(join(state, 'hub.db'), root);
+    await writeFile(join(root, 'manifest.json'), JSON.stringify({ copied, sealing, scriptSha256: createHash('sha256').update(await readFile(import.meta.filename)).digest('hex'), platform: process.platform, arch: process.arch, node: process.version,  exclusions: 'suite recovery/artifact capabilities, artifact-index paths/redirects/entries and absolute/relative persisted suite paths (finished history row count retained); artifact body bytes (same-size sparse placeholders); live config/crew/roles/secrets/accounts/territory/worktrees; fake adapters, account and Git probes; no connected clients; snapshot GC pauses; no browser', source: resolve(source) }, null, 2));
 }
 
 const args = process.argv.slice(2);
 if (args.includes('--help')) {
-  console.log(`Usage: node --max-old-space-size=8192 hub/test/measure-memory.ts --source PROJECT --run\nMac only; requires a Coordinator measurement slot. Copies tasks, sparse artifact placeholders (no bodies), journal and log plus a consistent SQLite backup to a private disposable root. Never reads secrets.toml or account config. Generated config disables remotes and verification. Fake adapters/probes exclude live harnesses, accounts, Git and external network. Startup only: one-second process samples, replay-stage checkpoints/counts and 1 MiB sampling heap profiles; stops at readiness. No full snapshots or rest phase. Preflight: load1 <=8, swap <=80%; every 30s request graceful stop over IPC above 90% swap, own and join setup/profile/sample writes, await hub stop and persist outcome before native exit/pipe closure. A bounded captured-process fallback records incomplete drainage. Approximately 1-2 minutes including copy. Private raw profiles remain in the printed scratch root; publish aggregate allocation sites only. Use --plan --source PROJECT for a dry inventory. No automatic budget enforcement.`);
+  console.log(`Usage: node --max-old-space-size=8192 hub/test/measure-memory.ts --source PROJECT --run\nMac only; requires a Coordinator measurement slot. Copies tasks, sparse artifact placeholders (no bodies), journal and log plus a consistent SQLite backup to a private disposable root. Never reads secrets.toml or account config. Preparation seals copied suite paths, PIDs, leases, shards and unfinished recovery; isolated recovery uses sealed owned roots and labels outside logs unavailable without reading them; manifest retains active/archive row counts. Generated config disables remotes and verification. Fake adapters/probes exclude live harnesses, accounts, Git and external network. Startup only: one-second process samples, replay-stage checkpoints/counts and 1 MiB sampling heap profiles; stops at readiness. No full snapshots or rest phase. Preflight: load1 <=8, swap <=80%; every 30s request graceful stop over IPC above 90% swap, own and join setup/profile/sample writes, await hub stop and persist outcome before native exit/pipe closure. A bounded captured-process fallback records incomplete drainage. Approximately 1-2 minutes including copy. Private raw profiles remain in the printed scratch root; publish aggregate allocation sites only. Use --plan --source PROJECT for a dry inventory. No automatic budget enforcement.`);
 } else if (args.includes('--plan')) {
   const source = resolve(args[args.indexOf('--source') + 1]!);
   const root = await mkdtemp(join(tmpdir(), 'cland-memory-plan-'));

@@ -14,7 +14,7 @@ export type MemoryClose = { code: number | null; signal: string | null; pid: num
 export function requestMemoryStop(child: ChildProcess): void {
   if (child.connected) child.send({ type: 'memory-stop' }, () => {});
 }
-export function memoryProducer(t: TestContext, root: string, args: string[], stopMs = 10_000) {
+export function memoryProducer(t: TestContext, root: string, args: string[], stopMs = 10_000, options: { detached?: boolean } = {}) {
   const owner = pacingOwner(t);
   const ready = Promise.withResolvers<void>();
   void ready.promise.catch(() => {});
@@ -53,7 +53,7 @@ export function memoryProducer(t: TestContext, root: string, args: string[], sto
   beforeDirectories(t, dispose);
   // Register the owner and its native-close disposer before spawn.
   const start = () => {
-    child = spawn(process.execPath, args, { cwd: root, env: fixtureEnvironment(root, process.env, { NODE_TEST_CONTEXT: undefined }), stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+    child = spawn(process.execPath, args, { cwd: root, env: fixtureEnvironment(root, process.env, { NODE_TEST_CONTEXT: undefined }), detached: options.detached ?? false, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
     stopPid = ownProcess(undefined, child.pid);
     const redact = remoteRedactor();
     const capture = () => {

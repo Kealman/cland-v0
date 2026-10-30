@@ -38,7 +38,7 @@ for (const receipt of [
     id: 'original', mode: 'all', cwd: root, topic: 'general', to: [], actor: null,
     head, tree, branch: 'dev', integrated: true, selection,
     commands: { prepare: '', check: '', test: 'true' }, workers: 4,
-    log, result: '', gate: '', pid: null, started: null,
+    log, result: join(root, 'result.json'), gate: join(root, 'ready'), pid: null, started: null,
     outcome: { code: 0, cause: 'executed' }, artifact: artifact.id,
     reported: true, error: null, state: 'finished', cleaned: true,
     finished: clock.now().toISOString(), occasion: receipt.occasion, executor: receipt.executor,

@@ -1038,6 +1038,28 @@ worktrees inherit common config unless explicit Git overrides supersede it.
 Do not apply configuration to the live project as a test. Existing role clauses
 cover this flow without adding permission lines.
 
+
+## Copied memory probe suite recovery (T-1483)
+
+Use prepareCopy before starting a copied-state measurement hub; its backup seal
+must precede synthetic streaming job seeding. Preserve manifest.sealing row counts
+and disclose excluded suite execution/recovery payloads in memory comparisons. A copied code-0 worker outcome is unavailable until reporting, cleanup and accounting have all completed.
+Preparation also seals artifact-index paths and redirects. Fixture isolated verification validates final resolved evidence paths and requires stable native birth/owned cwd for live recovered PIDs, including a positively bound legacy ps-start receipt. An observed dead worker may recover its report without new signal authority; LocalExecutor still validates every live recovered tree/group signal target against native identity and owned cwd before signalling, including recovery SIGCONT (unknown proof retains/fails cleanup); outside files remain unavailable and are never read. The sealed fixture builder grants its scratch allocation alongside the project root; older environments grant only the project.
+Never bypass that refusal to recover live jobs. Audit past effects from saved
+outputs only and label absent file/signal traces unknown. Existing role clauses
+cover this flow without new lines.
+
+Fresh local launches keep a nonpersisted authority bound to the exact lease and
+captured native leader birth. The signal fence can extend that authority only
+through positively observed native ancestry, retaining captured child births
+across leader exit so owned detached children in nested phase roots can drain.
+Restore, copied/replaced leases, PID reuse and a group number alone grant none
+of that authority; those targets still require the recovery cwd/birth fence.
+Lease binding is rechecked after awaited scope proof and at the native signal
+boundary. No generic temporary-directory grant is added. The original cancellation and
+setup-failure cleanup controls and native no-inherited-authority cases must pass
+alongside outside-group refusal and ordinary restart recovery.
+
 ## Additive interaction selection (T-1454)
 
 For cland-runner candidates, `[merge] batch_interaction = "report"` defaults to
