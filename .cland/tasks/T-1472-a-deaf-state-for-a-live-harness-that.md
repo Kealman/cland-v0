@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1256
 branch: t/T-1472-a-deaf-state-for-a-live-harness-that
 created: 2026-10-30T07:50:18.206Z
-updated: 2026-10-30T23:49:56.605Z
+updated: 2026-10-31T00:54:59.912Z
 ---
 
 ## Summary
@@ -28,13 +28,13 @@ The existing `inject-stalled` alert is the wrong signal today. After each hub re
 ## Acceptance criteria
 
 - [x] C1. A running session with a human delivery queued, or a delivery acked but not injected, for over 5 min while its pid is alive shows `deaf` in `cland session list`, `hub.status` and the workbench.
-  - done: impl-1472 · 2026-10-30T23:48:45.715Z
+  - done: impl-1472 · 2026-10-31T00:52:34.063Z
 - [x] C2. On entering `deaf`, the hub posts one Agents notice and one human inbox entry naming the session, the oldest held message id and the recovery command; for the Coordinator, also one General line.
-  - done: impl-1472 · 2026-10-30T23:48:45.830Z
+  - done: impl-1472 · 2026-10-31T00:52:34.181Z
 - [x] C3. The `deaf` mark and its inbox entry clear on the session's next `injected` event.
-  - done: impl-1472 · 2026-10-30T23:48:45.955Z
+  - done: impl-1472 · 2026-10-31T00:52:34.483Z
 - [x] C4. A replayed id the session already confirmed, or one followed by a later `injected` for the same session, raises no `inject-stalled` or `deaf` alert and no human inbox entry. Shown by a restart fixture that replays a confirmed id while fresh deliveries inject.
-  - done: impl-1472 · 2026-10-30T23:48:46.285Z
+  - done: impl-1472 · 2026-10-31T00:52:34.600Z
 
 ## Comments
 
@@ -96,3 +96,65 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14746: source3 clear, remaining M2/M4 closed. Real-test emergency release/join precedes deadline owners/admission with immediately owned assertion; held early-failure/closed-Store controls retained. Captured adapter/hook/launch identity atomically binds null recipient rows, refuses conflicting identities and clears exact episode after positive commit; legacy/reused-name controls retained. M1/M3/M5–M7/L1 remain closed; Coordinator21604701 stage-specific guidance without retry extension. C1–C4 done but runtime-unverified. Report ready for Coordinator verify all at frozen55db05668; no duplicate task verify or full-pass claim from local reports.
+
+### rev-26 · 2026-10-31T00:03:08.266Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261031-1472-evidence-1
+commit: 55db0566881eae36b45a9a899f39a3b49664ef06
+scope: evidence
+findings: [{"severity":"medium","text":"M8: new deaf inbox projection synchronously loads complete process views/pending facts; unchanged inbox-workload regression fails with33 pending reads for8deliveries/8views (limit26). Preserve assertion, derive per-session/incremental or bounded-timer facts without whole-presence work in delivery/view paths, then fresh source review.","file":"hub/src/hub/inbox.ts","line":306}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14754: originalabca20d3/A-14753 native1 not clear. Exact inbox-archive-workload.ts288 assertion33pendingreads exceeds26; Coordinatorc3e0fac8 classifies task-owned, not shared/flake.4702IDs paired;3704ordinarypass/1fail+285loadpasses;T0/T1green,T2partialred,T3/Web/T4unrun,browsernull. Own delivery20base+60load andCodex22base+10load pass but no final criteria clearance. C2failed, othersunverified. Follow production fix/unchanged guard/five targeted files/source review before successor full run.
+
+Criteria: C2 failed (New inbox projection breaks unchanged synchronous work-count guard:33 pending reads exceeds26 for8 deliveries/8 views.).
+
+### impl-1472 · 2026-10-31T00:07:26.501Z
+
+A-14753 full-run regression reproduced locally unchanged: '8 deliveries and 8 explicit views allow no synchronous whole-presence reads (33 pending reads)'. Coordinator c3e0fac8 classified own/not shared. One-variable keyed lookup replaced #rowOfName -> whole core.presence from the delivery subscriber; unchanged guard became17/16/8 pending reads over three bursts. Final correction moves candidate selection onto coalesced per-session policy timers and feeds inbox health from process projections (one startup seed), removing eager candidate/full-process reads from delivery/view/inbox rebuilds. Original guard unchanged. New positive-controlled SQL budget case fails against original HEAD (1 != 0 synchronous reads) and passes with0 synchronous +1 next tick +1 deadline query. Coordinator's five complete files ran singly: inbox8, inject21, Codex22, human-hold11, retry1 all pass on local darwin arm64 Node24.21.0. No dev merge and no new full submission; source review required after commit.
+
+### rev-26 · 2026-10-31T00:09:23.837Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1472-source-4
+commit: cdbc46a44aa1224e76435eb6c25a2cf826f625be
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14758: source4 clear, M8 closed. Keyed recipient lookup removes whole-presence delivery reads; candidate work only on coalesced per-session timer; inbox consumes cached process-event health with startup seed. Unchanged workload guard retained; positive SQLite case proves zero eager reads plus actual tick/deadline reads and oldest id. Prior identity/episode/replay/fencing controls retained, no policy/permission/wire change. C1–C4 done but runtime-unverified. Report ready for Coordinator verify all at frozencdbc46a44; prior A-14753 remains red, no duplicate task run.
+
+### rev-26 · 2026-10-31T00:45:03.820Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261031-1472-evidence-2
+commit: cdbc46a44aa1224e76435eb6c25a2cf826f625be
+scope: evidence
+findings: [{"severity":"medium","text":"Original full run fails Codex keep_context=false handoff: thread.turns>1 is true, expected false ('resumed history survives the native handoff'). Cause unclassified; preserve assertion/source and follow Coordinator serial task5 plus conditional scratch-dev5 comparison before production edits or flaky-rerun disposition.","file":"hub/test/session-native-lifecycle.test.ts","line":205}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14770: original14d3f0f6/A-14769 native1 not clear. Exact native handoff assertiontrue!=false, not timeout/budget.7078IDs paired;5568ordinarypass/1fail/5reasonedskip+430loadpasses. T0/T1/T2green,T3red,Web/T4unrun,browsernull. Original workload8/8,17/16/8reads and new SQL timer case pass; own21base+65load positives retained. All criteria runtime-unverified; no guessed cause/criterion failure. Coordinator2f095f1f classification before changes/retry; source4 remains source-only.
+
+### impl-1472 · 2026-10-31T00:51:43.332Z
+
+Own native pool regression confirmed by five serial complete session-native-lifecycle runs on unchanged cdbc46a44: each8pass/1fail at assertion205 true!=false (A-14772). Conditional dev comparison not needed. Minimized to native Codex keep_context=false case. Targeted removed probe showed same carried message repeatedly rejecting new captured sessionId because stored recipient was prior pool holder. Production fix: rememberLaunchBrief pins only never-attempted queued input to launch token with provisional null recipient; validated first native completion binds actual new identity. Ordinary conflicting-id refusal unchanged. Red-first memory launch-brief control failed oldSid!=null; after fix it passes with unrelated-launch/repeated-completion/no-replay assertions. Unchanged native assertion205 now passes; entire native file9/9 and five delivery files8/22/22/11/1 passed singly on macOS. Probe fully removed; no test assertion weakened or full retry submitted. Contract consumers searched: core.recordLaunchBrief; Store activateLaunchBriefs/launchBriefs/cancelLaunchBriefs; Sessions spawning/completion and injection tests. Launch pin and existing schema retained; no wire-shape change.
+
+### rev-26 · 2026-10-31T00:54:59.912Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1472-source-5
+commit: dcc7e9fe020b064f7decd070b0a38a984e3ca836
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14775: source5 clear. Never-attempted launch brief remains token-pinned/provisional until validated native first-turn receipt binds its new identity; ordinary conflicting-recipient guard and native lifecycle assertion205 unchanged. Exact launch activation/cancellation/completion consumers and shared test cleanup reviewed. Coordinator9d834920 own classification independently checked; A-14772 five serial reds and A-14774 targeted local correction remain distinct from full evidence. C1–C4 done, runtime-unverified. Report ready for Coordinator verify all at frozendcc7e9fe0; prior A-14753/A-14769 remain failed, no duplicate task verify.
