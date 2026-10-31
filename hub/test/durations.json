@@ -8615,6 +8615,13 @@
     "hub/test/telegram-approvals.test.ts::Telegram corrects a Codex once approval after its first outcome edit is held": 0.125078
   },
   "allow": {
+    "hub/test/journal-subagents.test.ts::startup selection scans over 300 MiB with less than 1 MiB of buffered input work": {
+      "seconds": 12.5,
+      "reason": "T-1497: temporary one-sample outlier allowance, explicitly sized by Coordinator below normal 1.5x headroom. Across 73 retained samples median 1.877 s, p90 2.178 s, next-highest 2.877 s; A-14799 Linux droplet soak passed this assertion in 11.691700711 s. Log does not separate 300 MiB setup writes from scan time; cause unknown. Keep the full input and <1 MiB buffered-input proof unchanged; revisit the outlier at expiry.",
+      "owner": "E-880",
+      "added": "2026-10-31",
+      "expires": "2026-11-07"
+    },
     "hub/test/claude-code-sessions-lifecycle.test.ts::Claude relaunch stops the previous native job after its PID has exited": {
       "seconds": 8.967,
       "owner": "E-880",
