@@ -1,6 +1,6 @@
 {
   "name": "cland",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A terminal IDE for running and coordinating AI coding-agent harnesses.",
   "type": "module",
