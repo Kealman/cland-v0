@@ -2,8 +2,8 @@
 id: T-1506
 kind: task
 title: Setup and doctor read connection states through a bounded readiness wait
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1270
 branch: t/T-1506-setup-and-doctor-read-connection-states
 created: 2026-10-31T08:18:54.524Z
-updated: 2026-10-31T15:30:59.665Z
+updated: 2026-10-31T17:44:32.884Z
+closed: 2026-10-31T17:44:32.884Z
 ---
 
 ## Summary
@@ -29,9 +30,13 @@ T-1502 found that `cland setup` read a paired remote's connection state as a sin
   - verified: rev-34 [reviewer] · run rev-34-20261031-1506-source3 · 2026-10-31T15:06:00.961Z · commit 7684bcaa9279e9038271d76ebc0879e75109df5b
   - verified: rev-34 [reviewer] · run rev-34-20261031-1506-final · 2026-10-31T15:23:25.698Z · commit 7684bcaa9279e9038271d76ebc0879e75109df5b
   - verified: rev-34 [reviewer] · run rev-34-20261031-1506-source4 · 2026-10-31T15:30:59.665Z · commit 0fa673066f0f7c4277c45798f85b246037f27169
+  - verified: rev-34 [reviewer] · run rev-34-20261031-1506-final2 · 2026-10-31T17:37:10.526Z · commit 0fa673066f0f7c4277c45798f85b246037f27169
+  - verified: rev-34 [reviewer] · run rev-34-20261031-1506-source5 · 2026-10-31T17:37:58.828Z · commit ce6a43316d7fbc46095143e52c6f119f4be64e2f
 - [x] C2. Each single-sample read that can see a transient state polls through the shared readiness helper from T-1502, within a bound. A test on fake clocks covers one transient-then-ready case and one past-the-bound case for each changed step.
   - done: impl-1506 · 2026-10-31T14:50:14.220Z
   - verified: rev-34 [reviewer] · run rev-34-20261031-1506-final · 2026-10-31T15:23:25.698Z · commit 7684bcaa9279e9038271d76ebc0879e75109df5b
+  - verified: rev-34 [reviewer] · run rev-34-20261031-1506-final2 · 2026-10-31T17:37:10.526Z · commit 0fa673066f0f7c4277c45798f85b246037f27169
+  - verified: rev-34 [reviewer] · run rev-34-20261031-1506-source5 · 2026-10-31T17:37:58.828Z · commit ce6a43316d7fbc46095143e52c6f119f4be64e2f
 
 ## Comments
 
@@ -132,3 +137,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear A-14943, treee3310695af910844844c927d62fa0eb515e223e7; parents reviewed7684bcaa9 + devb126dff13. Both documentation parents retained; relative to dev README/skill add only original item readiness sections. Every item production/help/frozen-fixture/test file byte-identical to reviewed parent; no automatic import overlap. No Standards/Spec findings; C1 refreshed. A-14942 local merged-head macOS typecheck and fivefiles69/69 limited checks, not a new configured run. ParentA-14927 and earlierfailedA-14908 remain attributed to their heads. C2 new-head runtime awaits Coordinator-planned verify-all; no Implementer suite requested. Reviewer read-only audit.
 
 Criteria: C1 verified.
+
+### rev-34 · 2026-10-31T17:37:10.526Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261031-1506-final2
+commit: 0fa673066f0f7c4277c45798f85b246037f27169
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Original Coordinator allb78a05c5/A-15016 audited in A-15017 at exact source4 head.6084 ordinary pass,8 explicit platform/tool skips,220 load pass (60item); all12 item identities1 ordinary+5load,maximum.563959481s. M1 native ownership controls/M2 unchanged help guard green. T0/allT1/allT2/allconfiguredT3/Web exit0; noT4. Committed treee3310695af910844844c927d62fa0eb515e223e7, prepared9fa3cec156d764144b15545554b197b2542e842b differs only1526 .cland paths. Linuxx64 c-8 lon1 Node24.21/Nvim.12.5, explicitCHS1248binary/version156.0.8078.4,uncached,occasionnull,skipreasonreport/missing0. Hosttypecheckreused,notremote. Lint/timing/T3Webwall/ratchetreport-only. C1/C2 refreshed. PriorA-14908 remains failed. Subsequent Coordinator-authorized docs merge needs separate delta audit; this verdict covers parent only.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-34 · 2026-10-31T17:37:58.828Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261031-1506-source5
+commit: ce6a43316d7fbc46095143e52c6f119f4be64e2f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final rule6 delta clear A-15019, treeda5871b6e76be76bade7b2c645fb2cee9d5a293e; parents full-run0fa673066+dev0aa0e762. Both documentation parents retained; item runtime/help/tests/owners unchanged. Frozen JSON only incoming MERGE_USAGE changed (equalsdev), item SETUP/DOCTOR unchanged; assertions retained. C1/C2 refreshed under Coordinator49673244 retained-code disposition: original b78a05c5/A-15016 at0fa673066 audited A-15017 (6084pass/8skips,12item1+5,T0–T3/Web,noT4) plus A-15018 successor local macOS typecheck0/fivefiles69/69. No successor full/browser execution claimed; no replacement suite requested. EarlierA-14908 remains failed separate. Read-only review, findings[].
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T17:44:32.884Z
+
+Merged 01f3b5b90c36db9390e99364b873d68271e75a29 onto dev.
