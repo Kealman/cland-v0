@@ -8,10 +8,10 @@ labels: []
 assignee: null
 parent: null
 blocked_by: []
-topic: null
+topic: topic-1267
 branch: null
 created: 2026-10-31T14:43:28.342Z
-updated: 2026-10-31T14:43:28.342Z
+updated: 2026-10-31T14:44:02.497Z
 ---
 
 ## Goal
