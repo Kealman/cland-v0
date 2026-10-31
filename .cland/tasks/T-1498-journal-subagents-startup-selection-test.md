@@ -8,14 +8,14 @@ size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-326
+parent: R-1523
 blocked_by: []
 regression_of: T-1497
 found_by: droplet
 topic: null
 branch: null
 created: 2026-10-31T04:01:18.312Z
-updated: 2026-10-31T04:01:18.312Z
+updated: 2026-10-31T14:43:37.275Z
 ---
 
 ## Summary
