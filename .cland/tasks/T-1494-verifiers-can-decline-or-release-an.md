@@ -2,8 +2,8 @@
 id: T-1494
 kind: task
 title: Verifiers can decline or release an accepted request without a verdict
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1283
 branch: t/T-1494-verifiers-can-decline-or-release-an
 created: 2026-10-30T19:25:12.366Z
-updated: 2026-10-31T19:38:29.831Z
+updated: 2026-10-31T20:56:00.466Z
+closed: 2026-10-31T20:56:00.466Z
 ---
 
 ## Summary
@@ -158,3 +159,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-15065 independently audits original A-15063/runff79485d at unchanged source5 head. C1 verified: Reviewer/QA exact receipt, one-line reason, pending clearance, requester delivery, no verdict, stale/other-identity fences; missing/null requester and four cleanup controls each one base+5 distinct sequential load passes. All four prior failed consumers now pass at3631/3699/6387/13939. 5125 complete matching pairs:4524ordinarytest/521file plus40loadtest/40loadfile passes, zero adverse/unpaired and six empty failure arrays. T0/T1/allfallbackT2 inclNeovim/selectedrolesT3four/selectedinboxverifierT4onebase/Web exit0; remaining T3/T4 unexecuted, T4repetitions skipped. Exact head/candidate provenance checked; candidate differs only1540excludedtracker/rules, Linuxx64 droplet Node24.21/Nvim0.12.5 actual isolated Shell1248 Chrome156.0.8078.4, cache/occasionnull/skips[]. Typecheck host reuse and report advisories qualified. Prior red A-15040/A-15053 retained. No reviewer workload; configured task evidence, not full integrated all-tier coverage.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-31T20:56:00.466Z
+
+Merged c05755231ad555ee3cc2f704e86ed2aeb06492ad onto dev.
