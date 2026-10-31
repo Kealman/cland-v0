@@ -2,8 +2,8 @@
 id: T-1508
 kind: task
 title: An uncertain Telegram gap notice blocks all outbound Telegram traffic indefinitely
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1266
 branch: t/T-1508-an-uncertain-telegram-gap-notice-blocks
 created: 2026-10-31T08:43:38.437Z
-updated: 2026-10-31T08:56:24.729Z
+updated: 2026-10-31T10:39:34.787Z
+closed: 2026-10-31T10:39:34.787Z
 ---
 
 ## Summary
@@ -33,12 +34,20 @@ Read-only from hub.db, hub #64:
 
 - [x] C1. When the gap notice's send ends uncertain, catch-up still completes. The gap line is never resent (the fence holds), its captured jobs settle as reported, the saved gap clears, and later General messages, notices and cards flow again. A test on a fake Telegram server reproduces the stuck state and fails before the fix.
   - done: impl-1508 · 2026-10-31T08:49:28.852Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-1 · 2026-10-31T09:13:34.705Z · commit 7d8c456cf23e943663da0f9f7794a496f0140983
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-2 · 2026-10-31T09:46:42.290Z · commit f19cf8f4ddc7b06e15b1596045fd0a7132426149
 - [x] C2. A hub that starts with this exact persisted state (an uncertain gap job with a saved `telegram.gap`) recovers on its own: after the first successful poll the queued card and new General messages are delivered. This is tested from a seeded hub.db state, not only from the live sequence.
   - done: impl-1508 · 2026-10-31T08:53:41.489Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-1 · 2026-10-31T09:13:34.705Z · commit 7d8c456cf23e943663da0f9f7794a496f0140983
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-2 · 2026-10-31T09:46:42.290Z · commit f19cf8f4ddc7b06e15b1596045fd0a7132426149
 - [x] C3. A catch-up failure logs a fixed, redacted reason class that names the failing step (gap, outbox resume, inbound recover or card catch-up) instead of the bare `catch-up incomplete`.
   - done: impl-1508 · 2026-10-31T08:49:29.804Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-1 · 2026-10-31T09:13:34.705Z · commit 7d8c456cf23e943663da0f9f7794a496f0140983
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-2 · 2026-10-31T09:46:42.290Z · commit f19cf8f4ddc7b06e15b1596045fd0a7132426149
 - [x] C4. When a remote stays offline because catch-up keeps failing for more than 5 minutes, an `offline` notice reaches General through the hub, not only through the stalled messenger, so the human learns about it from the workbench or the other remote. The notice is sent once per outage.
   - done: impl-1508 · 2026-10-31T08:49:29.874Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-1 · 2026-10-31T09:13:34.705Z · commit 7d8c456cf23e943663da0f9f7794a496f0140983
+  - verified: rev-26 [reviewer] · run rev-20261031-1508-evidence-2 · 2026-10-31T09:46:42.290Z · commit f19cf8f4ddc7b06e15b1596045fd0a7132426149
 
 ## Comments
 
@@ -90,3 +99,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14866: source3 clear; M1–M3 closed. Pairing captured once per uncertainty check, candidate lookup restricted to uncertain rows; 500-retained-row control retains <=3 total pairing-read budget plus final gap-clear/native-uncertain/no-send assertions. Legacy absent-userId and conflicting user/chat controls unchanged. Source1 diagnostics/timer and native replay fences retained. Independently read A-14864 7/7 and A-14865 11/11 original local named outputs; macOS Node24 per request, partial local evidence only. Request reports typecheck green and final lint running; finish existing static checks, then one mode-free configured verify at frozen head and original-record final evidence review. C1–C4 remain done/runtime-unverified. No integrated/live restart/full local coverage inferred.
+
+### rev-26 · 2026-10-31T09:13:34.705Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1508-evidence-1
+commit: 7d8c456cf23e943663da0f9f7794a496f0140983
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14869 independently audits original 882bb94f/A-14868 at unchanged source3-cleared head. All5277progress IDs pair without duplicates/missing/mismatches;4439ordinary test passes+160separate load-gate passes, no adverse outcomes. T0/T1/all fallbackT2 inclNeovim/Web completed;T3/T4unexecuted. Named live/current+legacy seeded gap recovery, exact unknown-attempt/no-resend fence, conflicting identities, fixed gap reason/one General outage notice and constant-pairing-work controls have base pass receipts; seven new/renamed identities each5/5additional load passes. C1–C4verified through reviewed assertions/source and original native receipts. Verification candidate tree e8872b5a differs from full Git tree e3d02adb only1509excluded tracker/rules paths; host typecheck reused, not repeated remotely. Linuxx64droplet c8lon1Node24.21/Nvim.12.5, actual isolatedHeadlessShell1248/Chrome156.0.8078.4; cache/occasionnull. Advisory lint/budgets and known installed-import incomplete report retained. No real Telegram/live restart/integrated/full-all claim; Coordinator-owned follow-on work remains separate. No source changes or new test execution by reviewer.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-26 · 2026-10-31T09:29:06.871Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1508-source-4
+commit: f19cf8f4ddc7b06e15b1596045fd0a7132426149
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14872: corrective source4 clear, no findings. Only failing-gap test/guide changed. Empty typed General history baseline precedes fake-clock trigger; bounded load-scaled shared observer now waits for durable recorded notice, retains exactly-one count after later failure poll, fixed-step/redaction/timer assertions. No production or replay-fence changes. Original all A-14870 is independently confirmed red at load repetition1 ('no frame matched within [redacted]...ms'), T2exit1, laterT3/Webunexecuted; not relabelled. Original A-14871 has ten complete local11/11file-alone outputs,110passes, limited provenance described. Finish existing static checks; one mode-free successor at frozen f19cf8f4 with exact corrected case5/5droplet load receipts, then final original-record review. C1–C4 remain runtime-unverified at new head; no prior-head green carry or integrated/live restart claim.
+
+### rev-26 · 2026-10-31T09:46:42.290Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1508-evidence-2
+commit: f19cf8f4ddc7b06e15b1596045fd0a7132426149
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14874 independently audits original successor928c0039/A-14873 at unchanged source4 head. All5277IDs pair without missing/duplicate/mismatched events:4439ordinary tests+160separate load-test passes, zero adverse outcomes. Corrected durable General outage case base18515→18548 pass and exact5distinct paired load finishes18862/19026/19095/19218/19320 pass; explicit5/5summary19323. C1live native fence/recovery, C2current+legacy seeded card/General/exactunknown attempt, C3fixed gap reason plus source-traced four wrappers, C4durable new exactly-one General notice all established. Conflict/work-budget controls retain assertions and5/5load. C1–C4verified. T0/T1/all fallbackT2inclNeovim/Web complete;T3/T4unexecuted. Candidate58c08bc differs Git e143050 only1509excluded tracker/rules paths; host typecheck reused. Linuxx64droplet c8lon1Node24.21/Nvim.12.5, actualHeadlessShell1248/Chrome156.0.8078.4. Report-only advisories retained; no real account/integrated/live restart coverage inferred. Original integrated A-14870 stays red, not relabelled; Coordinator follow-on all run remains separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-31T10:39:34.787Z
+
+Merged 294477b6c0af8029ef03d698cd0d0e5896ff1776 onto dev.
