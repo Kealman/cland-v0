@@ -25,7 +25,7 @@ Close the 0.3 line before 0.4 ("cland beyond one machine", map M-1511): ship the
   - Optional: T-1486, T-1493, T-1494, T-1495, T-953.
   - Left to 0.4: T-489 and T-1229. T-540 is closed as superseded by agent hosts.
 - Version 0.3.2: the human named it in that ask. The project version bump is its own item.
-- Release approval: the human, 2026-10-31 21:05Z via Telegram (remote-b78cdec6), on the conditions in the comment below.
+- Release approval: the human, 2026-10-31 21:05Z via Telegram (remote-b78cdec6), on the conditions recorded on R-1523: every item landed or closed, green release covers on a Linux droplet and macOS, and the dry-run notes shown before the release.
 
 0.3.2 closes the 0.3 line before 0.4, "cland beyond one machine". It ships a fix for the Telegram stall found after 0.3.1, and it fixes the bugs and debt that would get in the way of remote agent hosts: session event delivery, sockets, setup and doctor readiness, harness adapter versions, merge-queue landings and verifier routing. The human chose the scope on 2026-10-31 at 14:42Z (ask f9666976), taking both the must and the optional lists, and approved the release at 21:05Z via Telegram, on the conditions recorded on R-1523. Version 0.3.2 is the human's choice. The Coordinator `coord`, on Claude Code claude-opus-5-5, led. Implementers and Reviewers ran on Codex gpt-6.1-sol. Every landing went through the hub merge queue with an `Item:` trailer.
 
