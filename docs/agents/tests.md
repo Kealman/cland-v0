@@ -2312,6 +2312,15 @@ item must continue remaining phases after a successful rerun or rerun the cover
 tail before it can change the result. Native controls and policy cases:
 `docs/agents/tests/hub-test-load-gate-rerun.test.ts.md`.
 
+### Build guard tier inventory (report mode)
+
+`test:static` includes `node hub/test/lint-build-guard-tiers.ts`. It reports build
+and prebuild guard scripts absent from every verify tier, following npm aliases,
+workspace/prefix routing and eager tier-wrapper imports. Findings and incomplete
+inventory do not change exit status. See the [build guard guide](tests/hub-test-build-guard-tiers.test.ts.md)
+for supported syntax and the manual-review boundary. Guards still run during
+builds; the lint executes no package commands.
+
 ## Merge queue landing delivery
 
 Queued landings report their item, commit and batch to the requester and

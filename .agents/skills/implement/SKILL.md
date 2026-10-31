@@ -1327,3 +1327,13 @@ limits, print the policy line, and label observed interval maxima as sampled fac
 from readiness through rest (including selected streaming). Startup/shutdown are
 excluded; partial outcomes retain observed maxima without a completed endpoint.
 Existing role clauses cover this diagnostic; no permission line is added.
+
+## Build guard tier coverage (T-1505)
+
+When adding build or prebuild guards, keep a verify-tier entry or eager runtime
+import from an existing tier wrapper. Read the report-only build guard inventory
+in `test:static`; resolve orphan findings or record the reason in the item.
+Opaque/computed shell or script-hidden subprocess chains require manual review;
+no finding changes exit status. See
+`docs/agents/tests/hub-test-build-guard-tiers.test.ts.md`. Existing role clauses
+cover this flow; no permission line is added.
