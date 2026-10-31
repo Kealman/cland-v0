@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T18:01:13.596Z
+updated: 2026-10-31T18:03:31.028Z
 ---
 
 ## Destination
@@ -90,6 +90,8 @@ Round-3 decisions 5–9 are replaced by these.
 - [Prototype: login disks, snapshots and the login capacity rule](Q-1518): login disks work live (bind ~9 s, release ~10 s, ≈ $0.02–0.12 per login per month); keep the volume and detach at stop instead of snapshotting (DO rate limit, provider-enforced exclusive), snapshots as backups; bind during provisioning; release ends every process on the disk; one sudo helper; per-region logins; key logins only in the spawn env; capacity, waiting row, card, signed-out flow and hint all verified.
 
 - [The credential store decision per harness](Q-1520): disk logins keep their volume and detach at stop, snapshots as backups; Claude and Codex sign in per login over ssh -t with exclusive = true (Codex one login per account unless the human chooses otherwise), OpenCode and API keys as key logins; open points (token pickup after re-sign-in, volume reconciliation, exited on destroyed hosts) go to the first live run; `.cland/auth` under an `[auth]` secrets key with the ADR amendment; `cland login add/list/signin/remove/snapshot` plus web and messenger cards; minimal DOKS (free control plane, ~$12 node) to be used in the B cost table.
+
+- [The cut of 0.4: epics, lanes, crew, QA and build start](Q-1522): nine epics (Host interface and local host → SSH transport, host agent and git → providers, images and DigitalOcean → pools and scheduler → logins; users and sign-in modes in parallel; shape-B readiness after the first; workbenches, doctor, setup and docs after pools and logins; release last), ~60–70 tasks; crew as in 0.3 with QA on fake provider and transport and one live run with two real hosts; deferred to 0.4.x: Fly, shape B, OIDC, roles, serverless; build on the human's word.
 
 ### Amendments from research
 - Round-1 decision 6 and round-6 decision 1 (image audit, 2026-10-31): the host image and the Kubernetes image contain only what cland the tool needs on any project (Ubuntu with apt timers off, git, curl, ca-certificates, jq, lsof, procps, xz-utils, locales, the hub's exact Node version, the unprivileged runner user, sshd prelude and auth helper on agent hosts, the harness installers, build-essential and python3 as common defaults). Neovim and the Chromium runtime libraries are this project's own test needs and leave provision.sh; Neovim is never in an image or the Helm chart (the human's workbench stays a local client). A project-level root provisioning hook (`[verification] provision`, run once on the builder/image) is added so a project can install system packages its prepare cannot (prepare runs as runner without sudo); this project moves its Chromium libraries there. Audit facts: provision.sh:11-13 and :25-31; prepare.ts:31-40; the prototype's hosts.ts:441 reuses provision.sh.
