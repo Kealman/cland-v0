@@ -62,3 +62,15 @@ launch token matches that durable session credential may gain admission. The
 matrix retains ordinary hub notice, cancelled delivery, wrong owner and explicit
 0 controls; each checks its positive delivery stage and final pending result.
 The helper queries one indexed delivery and credential binding, never history.
+
+Pinned-head controls cover Reviewer and QA role sends and same/descendant/unrelated verdicts through the existing component fixture, with explicit Git facts and asynchronous ancestry receipts. A queued full-SHA request survives a stopped-writer restart before assignment; legacy pending projections remain unchanged in the existing restart matrix. No native Git or browser runs.
+
+Consolidated source-review controls seed NULL-admission short/duplicate Head prose only with writers stopped. Same/descendant covering verdicts and accepted requests followed by unrelated work must retire delayed named delivery, also across restart. The same-verdict restart control places proof beyond 40 unrelated receipts to exercise indexed paging; production pages cap each producer at 32 facts per deferred turn. Unknown/transient ancestry is retained separately while forward checkpoints advance.
+
+The seeded legacy matrix also includes a syntactically valid full-SHA Head line: retained NULL admission must stay unpinned, proving acknowledgement never invents an old request head.
+
+Source2 controls put exact covering verdict/request proof after 40 unavailable
+predecessors, keep unknown-only work pending, and allow request/covering objects
+or ancestry to become available later (running hub and reopen). Conservative
+Git facts resolve both objects and return a positive common base; unrelated
+controls return a distinct common base. Retry and forward pages each cap at 32.

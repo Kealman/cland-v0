@@ -76,7 +76,7 @@ import { Visibility, messageVerdict, type VisibilityOverrides, type Layer } from
 import { eventKey, type JournalRecord } from './journal.ts';
 import type { EventRow, EventsFilter } from '../protocol.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
-import { verifierRequest } from './verifier-request.ts';
+import { verifierRequest, VERIFICATION_PAGE_SIZE } from './verifier-request.ts';
 
 /** Attachments describe the committed message: sent prompts never publish stale draft metadata. */
 function messageArtifacts(artifacts?: Artifact[], mayChange: (a: Artifact) => boolean = () => true): Pick<Message, 'artifacts' | 'artifact'> {
@@ -599,10 +599,13 @@ export class HubCore {
   #journalRows: Array<{ row: EventRow; record: JournalRecord }> = [];
   #journalImmediate: NodeJS.Immediate | null = null;
   #closed = false;
+  readonly #verificationChecks = new Map<string, NodeJS.Immediate>();
 
   /** Stop deferred publications before the hub closes its store. */
   close(): void {
     this.#closed = true;
+    for (const immediate of this.#verificationChecks.values()) clearImmediate(immediate);
+    this.#verificationChecks.clear();
     this.#clients.clear();
     this.#modelRing.close();
     this.#rulebookUiUnsubscribe?.();
@@ -1881,12 +1884,59 @@ export class HubCore {
     return `verification-accepted:T-${idNumber(item)}:${kind}`;
   }
 
-  #verificationRetirement(item: string, kind: 'review' | 'qa', receipt: { messageId: string | null; admittedAt: string }): string | undefined {
+  #verificationCovers(item: string, head: string | undefined, commit: string | undefined): boolean {
+    return !head || !!commit && (head === commit || this.#items?.verificationContains?.(item, head, commit) === true);
+  }
+
+  #verificationRetirement(item: string, kind: 'review' | 'qa', receipt: { messageId: string | null; admittedAt: string; head?: string | undefined }): string | undefined {
+    if (receipt.head && receipt.messageId) {
+      const key = `verification-coverage:${receipt.messageId}`;
+      const raw = this.#store.meta(key);
+      const checkpoint = raw ? JSON.parse(raw) as { verdict: number; request: number; retry?: number; reason?: string } : { verdict: 0, request: 0 };
+      if (checkpoint.reason) return checkpoint.reason;
+      if (!this.#closed && !this.#verificationChecks.has(key)) {
+        const immediate = setImmediate(() => {
+          this.#verificationChecks.delete(key);
+          if (this.#closed) return;
+          // One bounded indexed page from each producer, outside startup/presence replies.
+          // Unresolved pairs retry separately, so forward pages can reach later exact proof.
+          let more = false;
+          const retry = this.#store.unresolvedVerification(receipt.messageId!, checkpoint.retry ?? 0);
+          for (const fact of retry) {
+            const covers = this.#items?.verificationContains?.(item, receipt.head!, fact.head);
+            if (covers === true) { checkpoint.reason = `covered by ${fact.source} at ${fact.at} commit ${fact.head}`; break; }
+            if (covers === false) this.#store.resolveVerificationCandidate(fact.order);
+          }
+          checkpoint.retry = retry.length === VERIFICATION_PAGE_SIZE ? retry.at(-1)!.order : 0;
+          for (const source of ['verdict', 'request'] as const) {
+            const facts = source === 'verdict' ? this.#items?.verificationFacts?.(item, kind, checkpoint.verdict) ?? []
+              : this.#store.verificationFacts(item, kind, checkpoint.request);
+            if (checkpoint.reason) break;
+            for (const fact of facts) {
+              const later = source === 'verdict' ? fact.at > receipt.admittedAt
+                : fact.requestSeq! > this.#store.messageSeq(receipt.messageId!);
+              const covers = !later || !fact.head ? false : fact.head === receipt.head ? true
+                : this.#items?.verificationContains?.(item, receipt.head!, fact.head);
+              if (covers === true) { checkpoint.reason = `covered by ${source} at ${fact.at} commit ${fact.head}`; break; }
+              if (covers === undefined && fact.head) this.#store.rememberUnresolvedVerification(receipt.messageId!, fact.head, fact.at, source);
+              checkpoint[source] = fact.order;
+            }
+            more ||= facts.length === VERIFICATION_PAGE_SIZE;
+            if (checkpoint.reason) break;
+          }
+          this.#store.setMeta(key, JSON.stringify(checkpoint));
+          if (checkpoint.reason) { this.#schedulePresence(); this.#drainVerifierRequests(); }
+          else if (more) this.#verificationRetirement(item, kind, receipt);
+        });
+        immediate.unref(); this.#verificationChecks.set(key, immediate);
+      }
+      return undefined;
+    }
     const verdict = this.#items?.lastVerifier?.(item, kind === 'review' ? 'reviewer' : 'qa');
-    if (verdict && verdict.at > receipt.admittedAt) return `superseded by ${this.#store.nameOfSession(verdict.sessionId) ?? verdict.sessionId} verdict at ${verdict.at}`;
+    if (verdict && verdict.at > receipt.admittedAt && this.#verificationCovers(item, receipt.head, verdict.commit)) return `superseded by ${this.#store.nameOfSession(verdict.sessionId) ?? verdict.sessionId} verdict at ${verdict.at}`;
     const stored = this.#store.meta(this.#acceptedVerificationKey(item, kind));
-    const accepted = stored ? JSON.parse(stored) as { messageId: string; admittedAt: string; sessionId: string } : undefined;
-    if (accepted && (receipt.messageId
+    const accepted = stored ? JSON.parse(stored) as { messageId: string; admittedAt: string; sessionId: string; head?: string } : undefined;
+    if (accepted && this.#verificationCovers(item, receipt.head, accepted.head) && (receipt.messageId
       ? accepted.messageId !== receipt.messageId && this.#store.messageSeq(accepted.messageId) > this.#store.messageSeq(receipt.messageId)
       : accepted.admittedAt > receipt.admittedAt)) {
       return `superseded by ${this.#store.nameOfSession(accepted.sessionId) ?? accepted.sessionId} request ${accepted.messageId} at ${accepted.admittedAt}`;
@@ -1907,7 +1957,7 @@ export class HubCore {
     const receiptKey = this.#verificationReceiptKey(session);
     const receiptRaw = this.#store.meta(receiptKey);
     // Upgrade legacy reservations without inferring their original admission time.
-    const receipt = receiptRaw ? JSON.parse(receiptRaw) as { messageId: string | null; admittedAt: string }
+    const receipt = receiptRaw ? JSON.parse(receiptRaw) as { messageId: string | null; admittedAt: string; head?: string }
       : { messageId: null, admittedAt: this.#now().toISOString() };
     if (!receiptRaw) this.#store.setMeta(receiptKey, JSON.stringify(receipt));
     const retired = this.#verificationRetirement(pending.item, pending.kind, receipt);
@@ -1920,10 +1970,12 @@ export class HubCore {
     return { ...pending, item: this.#items?.resolveId?.(pending.item) ?? pending.item };
   }
 
-  clearPendingVerification(name: string, item: string): void {
+  clearPendingVerification(name: string, item: string, verdict?: { verdict: string; commit?: string }): void {
     const id = this.sessionIdentity(`name:${name}`), key = `pending-verification:${id}`;
     const stored = this.#store.meta(key);
     if (!stored || !this.#sameItem((JSON.parse(stored) as PendingVerification).item, item)) return;
+    const pending = JSON.parse(stored) as PendingVerification;
+    if (verdict && (pending.kind !== verdict.verdict || !this.#verificationCovers(item, pending.head, verdict.commit))) return;
     this.#store.clearMeta(key);
     this.#store.clearMeta(`verification-receipt:${id}`);
     this.#schedulePresence();
@@ -1950,13 +2002,14 @@ export class HubCore {
         const permission = decide(role, role === null ? undefined : this.roleDefinition(role)?.permissions.tools ?? DEFAULT_PERMISSIONS[role], { tool: 'send', to: [connection.name], roleNames: this.roleNames() });
         admitted = !!(permission.ok && sender && topic && this.#verifierRequest(sender, role, message.text, topic));
       }
-      this.#store.admitVerification(message.id, admitted);
+      this.#store.admitVerification(message.id, admitted, false);
     }
     if (!admitted) return false;
     const item = this.#items?.resolveId?.(request.item) ?? null;
     if (!item || this.#items?.lead(item)?.state !== 'open' || this.#items?.get?.(item)?.status === 'ready') return false;
     const identity = this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id);
-    const receipt = { messageId: message.id, admittedAt: message.ts };
+    const head = this.#store.verificationHead(message.id);
+    const receipt = { messageId: message.id, admittedAt: message.ts, ...(head ? { head } : {}) };
     const retired = this.#verificationRetirement(item, request.kind, receipt);
     if (retired) {
       this.#store.setMeta(`verification-retired:${identity}`, `pending ${item} since ${receipt.admittedAt}, ${retired}`);
@@ -1964,6 +2017,7 @@ export class HubCore {
     }
     const matchingKind = connection.role === (request.kind === 'review' ? 'reviewer' : 'qa');
     if (matchingKind) {
+      this.#store.recordVerificationAcceptance(message, item, request.kind, head);
       // Global supersession requires matching work; an authorized cross-kind named request stays local.
       this.#store.setMeta(this.#acceptedVerificationKey(item, request.kind), JSON.stringify({ ...receipt, sessionId: identity }));
       for (const row of this.#live.values()) if (row.sessionId !== connection.sessionId) this.sessionPending(row);
@@ -1971,7 +2025,7 @@ export class HubCore {
     this.#store.setMeta(this.#verificationReceiptKey(connection), JSON.stringify(receipt));
     const key = `pending-verification:${identity}`;
     const pending = this.sessionHolds(connection).some(h => h.item === item)
-      ? null : JSON.stringify({ item, kind: request.kind });
+      ? null : JSON.stringify({ item, kind: request.kind, ...(head ? { head } : {}) });
     if (this.#store.meta(key) === pending) return false;
     if (pending === null) this.#store.clearMeta(key);
     else this.#store.setMeta(key, pending);
@@ -2976,7 +3030,7 @@ export class HubCore {
           : !permission.ok ? `${permission.reason}; restore send authority and send a fresh request`
           : !request ? `${queued.item} is closed, removed, or no longer led by the sender; send a fresh request from its current lead`
           : topic?.status === 'closed' ? 'request topic closed; send a fresh request in an open topic' : undefined;
-        if (!reason) reason = this.#verificationRetirement(queued.item, role === 'reviewer' ? 'review' : 'qa', { messageId: message.id, admittedAt: message.ts });
+        if (!reason) reason = this.#verificationRetirement(queued.item, role === 'reviewer' ? 'review' : 'qa', { messageId: message.id, admittedAt: message.ts, head: this.#store.verificationHead(message.id) });
         const name = !reason && request ? this.#requestVerifier(request.item, role, from!) : undefined;
         if (!reason && !name) {
           if (request && now - queued.queuedAt >= 1000) {
@@ -3010,7 +3064,7 @@ export class HubCore {
           if (reason) this.#store.dropVerifierRequest(message.id, role);
           else {
             // Legacy queued requests acquire the receipt only after the same authority recheck.
-            this.#store.admitVerification(message.id);
+            this.#store.admitVerification(message.id, true, false);
             const assigned = this.#store.assignVerifierRequest(message.id, role, name!);
             const selected = this.#live.get(name!)!;
             this.#store.setMeta(`verifier-request:T-${idNumber(queued.item)}:${role}`, JSON.stringify({ sessionId: selected.sessionId, at: this.#now().toISOString() }));

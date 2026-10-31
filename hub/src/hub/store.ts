@@ -18,7 +18,7 @@ import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxApproval, InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
 import { vacancyWarning } from './topics.ts';
-import { verifierRequest } from './verifier-request.ts';
+import { verifierRequest, VERIFICATION_PAGE_SIZE } from './verifier-request.ts';
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
@@ -102,6 +102,16 @@ create table if not exists messages (
   ts text not null,
   created_at integer not null
 );
+create table if not exists verification_unresolved (
+  id integer primary key, message_id text not null, head text not null,
+  at text not null, source text not null, unique(message_id, head)
+);
+create index if not exists verification_unresolved_page on verification_unresolved(message_id,id);
+create table if not exists verification_acceptances (
+  id integer primary key, message_id text unique not null, item text not null,
+  kind text not null, head text, at text not null, request_seq integer not null
+);
+create index if not exists verification_acceptance_item on verification_acceptances(item, kind, id);
 create table if not exists thread_runs (id text primary key, topic text not null, data text not null);
 create index if not exists thread_runs_topic on thread_runs(topic);
 create table if not exists thread_run_members (
@@ -211,6 +221,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   /** Eligibility at send time survives rebuilding derived runs after retention. Null: legacy, not projected yet. */
   { table: 'messages', column: 'run_eligible', type: 'integer' },
   { table: 'messages', column: 'verifier_admitted', type: 'integer' },
+  { table: 'messages', column: 'verifier_head', type: 'text' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
   /** The human/agent's kind, or the hub notice's kind (`role`: a clause or revocation). */
@@ -1219,8 +1230,38 @@ export class Store implements HygieneMemory {
   }
 
   /** Hub-owned authorization receipt, captured before sending; never inferred at acknowledgement. */
-  admitVerification(messageId: string, admitted = true): void {
-    this.#prepare('update messages set verifier_admitted = ? where id = ?').run(Number(admitted), messageId);
+  admitVerification(messageId: string, admitted = true, captureHead = true): void {
+    const head = admitted && captureHead ? verifierRequest(this.message(messageId)?.text ?? '')?.head : undefined;
+    this.#prepare('update messages set verifier_admitted = ?, verifier_head = ? where id = ? and verifier_admitted is not 1').run(Number(admitted), head ?? null, messageId);
+  }
+
+  recordVerificationAcceptance(message: Message, item: string, kind: 'review' | 'qa', head?: string): void {
+    this.#prepare(`insert or ignore into verification_acceptances(message_id,item,kind,head,at,request_seq) values (?,?,?,?,?,?)`)
+      .run(message.id, itemKey(item), kind, head ?? null, message.ts, this.messageSeq(message.id));
+  }
+
+  verificationFacts(item: string, kind: 'review' | 'qa', after: number): import('./verifier-request.ts').VerificationFact[] {
+    return (this.#prepare(`select id, head, at, request_seq from verification_acceptances
+      where item = ? and kind = ? and id > ? order by id limit ?`).all(itemKey(item), kind, after, VERIFICATION_PAGE_SIZE) as Row[])
+      .map(row => ({ order: row.id as number, head: row.head as string | null, at: row.at as string, requestSeq: row.request_seq as number }));
+  }
+
+  rememberUnresolvedVerification(messageId: string, head: string, at: string, source: 'verdict' | 'request'): void {
+    this.#prepare('insert or ignore into verification_unresolved(message_id,head,at,source) values (?,?,?,?)').run(messageId, head, at, source);
+  }
+
+  unresolvedVerification(messageId: string, after: number): Array<{ order: number; head: string; at: string; source: string }> {
+    return (this.#prepare(`select id,head,at,source from verification_unresolved
+      where message_id = ? and id > ? order by id limit ?`).all(messageId, after, VERIFICATION_PAGE_SIZE) as Row[])
+      .map(row => ({ order: row.id as number, head: row.head as string, at: row.at as string, source: row.source as string }));
+  }
+
+  resolveVerificationCandidate(order: number): void {
+    this.#prepare('delete from verification_unresolved where id = ?').run(order);
+  }
+
+  verificationHead(messageId: string): string | undefined {
+    return this.#prepare('select verifier_head from messages where id = ?').get(messageId)?.verifier_head as string | undefined ?? undefined;
   }
 
   verificationAdmitted(messageId: string): boolean | null {

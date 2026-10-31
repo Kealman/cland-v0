@@ -7,12 +7,19 @@
  * verifier resolution and queueing, and the Lead's subtree refusal, so those four cannot disagree
  * about whether a first line is a request.
  */
-export type VerifierRequest = { kind: 'review' | 'qa'; item: string };
+export type VerifierRequest = { kind: 'review' | 'qa'; item: string; head?: string };
 
 const REQUEST = /^(review|qa) request ((?:[A-Za-z]-)?[1-9]\d*)(?![0-9A-Za-z])/;
 
 export function verifierRequest(text: string): VerifierRequest | null {
   const match = REQUEST.exec(text);
   if (!match) return null;
-  return { kind: match[1] === 'review' ? 'review' : 'qa', item: match[2]! };
+  const fields = text.split('\n').filter(line => /^Head:/i.test(line));
+  const head = fields.length === 1 ? fields[0]?.match(/^Head: ([a-f0-9]{40}|[a-f0-9]{64})\s*$/i)?.[1]?.toLowerCase() : undefined;
+  return { ...(head ? { head } : {}), kind: match[1] === 'review' ? 'review' : 'qa', item: match[2]! };
 }
+
+/** One indexed coverage candidate; order is the producer's durable cursor. */
+export type VerificationFact = { order: number; head: string | null; at: string; requestSeq?: number };
+
+export const VERIFICATION_PAGE_SIZE = 32;

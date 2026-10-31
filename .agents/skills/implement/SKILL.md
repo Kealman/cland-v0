@@ -1197,8 +1197,9 @@ startup compiler-free. The native installed CLI fixture is documented in
 For a queued review/QA request, read its assignment/refusal notice and the single
 Agents diagnostic after 1000 ms of running hub clock. Idle verifiers can retain
 live work; the diagnostic names their exclusions and any retired stale pending
-receipt. A later same-kind verdict or another verifier accepting a newer request
-retires the old reservation. Wait for assignment rather than resending. For
+receipt. An unpinned request retires on a later same-kind verdict or newer accepted request.
+For a pinned request, retirement requires the same commit or proven descendant;
+unknown ancestry retains pending work. Wait for assignment rather than resending. For
 routing changes, retain delayed acceptance, supersession and legacy provenance
 controls in docs/agents/tests/hub-test-verifier-routing.test.ts.md. Keep admission
 authority (including trusted human input without a sender session and owned
@@ -1307,6 +1308,22 @@ For paired setup reruns, use the fake-clock runner seam in
 wait up to ten seconds for a loaded paired remote to reconnect. Retain the
 still-down and inactive-token controls; share readiness polling with Discord's
 post-reload path. No remote.status fields or role permissions change.
+
+## Pinned verifier builds
+
+Include a standalone `Head: <full-commit-sha>` line after the request line to pin
+the pushed build at admission. The optional pending.head survives queue/restart.
+Legacy requests without Head remain accepted with ordered retirement. Unrelated
+verdicts do not settle pinned work; ancestry is computed asynchronously. No new
+role clause lines or permissions are needed.
+
+Pinned coverage keeps earlier covering receipts when later work is unrelated.
+Background checks page indexed receipts and persist cursors/results, including
+delayed delivery and restart; do not replace them with a latest-only summary.
+
+Unavailable ancestry is queued separately from forward coverage scans: it must
+not hide later exact proof or become a durable negative when Git objects are
+missing. Keep bounded retry pages and recovery controls in the routing fixture.
 
 ## Merge queue landing reports
 

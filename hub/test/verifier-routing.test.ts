@@ -611,8 +611,8 @@ test('unrelated named request cannot supersede an authorized live reservation', 
   assert.deepEqual(await pending('rev-b'), { item: item.id, kind: 'review' });
 });
 
-for (const authorized of [true, false, 'human'] as const) {
-  test(`legacy ${authorized === 'human' ? 'human ' : ''}named request without admission receipt ${authorized ? 'reserves its authorized reviewer' : 'cannot reserve for an unrelated sender'}`, async t => {
+for (const authorized of [true, false, 'human'] as const) for (const detail of ['', 'Head: abc123', `Head: ${'a'.repeat(40)}`, `Head: ${'a'.repeat(40)}\nHead: ${'b'.repeat(40)}`]) {
+  test(`legacy ${authorized === 'human' ? 'human ' : ''}named request without admission receipt ${authorized ? 'reserves its authorized reviewer' : 'cannot reserve for an unrelated sender'}${detail ? ' (retained Head prose ' + detail.length + ')' : ''}`, async t => {
     const root = await tempProject(t);
     const clock = new FakeClock();
     const served = await projectHub(t, root, {}, { clock });
@@ -622,7 +622,7 @@ for (const authorized of [true, false, 'human'] as const) {
     await a.waitForEvent(e => e.params.meta?.kind === 'role');
     const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Legacy named review' });
     await a.close();
-    const text = `review request ${item.id}\nPre-upgrade named delivery`;
+    const text = `review request ${item.id}\n${detail}\nPre-upgrade named delivery`;
     if (authorized === 'human') {
       const human = await connectUi(t, served.discovery);
       assert.equal((await human.request({ type: 'topic.send', topic: 'general', to: ['rev-a'], text })).ok, true);
@@ -769,5 +769,246 @@ for (const variant of ['owned', 'ordinary hub', 'cancelled', 'wrong owner', 'den
     else core.completeCarriedBrief('fixture-launch', 'rev-id');
     assert.equal(core.topicHistory('agents').messages.find(m => m.id === id)?.stage, variant === 'cancelled' ? 'dropped' : variant === 'ordinary hub' ? 'delivered' : 'injected');
     assert.deepEqual(core.sessionPending(connection), variant === 'owned' ? { item: item.id, kind: 'review' } : undefined);
+  });
+}
+
+for (const role of ['reviewer', 'qa'] as const) {
+  test(`role-addressed ${role} request pins its explicit head before delivery`, async t => {
+    const f = await componentProject(t);
+    const coord = await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const peer = role === 'reviewer' ? f.rev : await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'qa-d', role, sessionId: 'qa-id' });
+    assert.equal((await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+    if (role === 'qa') assert.equal((await f.ui.request({ type: 'role.set', session: 'qa-d', role })).ok, true);
+    const item = await f.ticket();
+    const head = 'a'.repeat(40);
+    const kind = role === 'reviewer' ? 'review' : 'qa';
+    const text = `${kind} request ${item.id}\nHead: ${head}\nScope: source`;
+    await coord.call('send', { to: [role], text });
+    const history = async () => ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages;
+    await eventually('pinned request durably accepted', async () => (await history()).find(m => m.text === text)?.stage === 'delivered' || undefined);
+    const who = await coord.call<{ sessions: Array<{ name: string; pending?: unknown }> }>('who');
+    assert.deepEqual(who.sessions.find(s => s.name === (role === 'reviewer' ? 'rev' : 'qa-d'))?.pending, { item: item.id, kind, head });
+    await peer.waitForEvent(e => e.params.content === text);
+  });
+}
+
+for (const role of ['reviewer', 'qa'] as const) for (const relation of ['same', 'descendant', 'unrelated'] as const) {
+  test(`pinned ${role} request retirement requires a ${relation} verdict receipt`, async t => {
+    let comparisons = 0;
+    const f = await componentProject(t, { git: git => async (args, ...rest) => {
+      if (args[0] === 'merge-base' && (args[1] === '--is-ancestor' || args[1] === 'a'.repeat(40))) {
+        comparisons++;
+        return relation === 'descendant' ? (args.includes('--is-ancestor') ? '' : 'a'.repeat(40)) : 'c'.repeat(40);
+      }
+      return git(args, ...rest);
+    } });
+    const coord = await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'coord', sessionId: 'coord-id' });
+    assert.equal((await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+    const peer = role === 'reviewer' ? f.rev : await inProcessSpoke(t, { hub: f.hub, cwd: f.root, name: 'qa-d', sessionId: 'qa-id' });
+    if (role === 'qa') assert.equal((await f.ui.request({ type: 'role.set', session: 'qa-d', role })).ok, true);
+    const item = await f.ticket();
+    const head = 'a'.repeat(40), commit = relation === 'same' ? head : 'b'.repeat(40);
+    const kind = role === 'reviewer' ? 'review' : 'qa';
+    const text = `${kind} request ${item.id}\nHead: ${head}`;
+    await coord.call('send', { to: [role], text });
+    await peer.waitForEvent(e => e.params.content === text);
+    const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { head?: string } }> }>('who')).sessions.find(s => s.name === (role === 'reviewer' ? 'rev' : 'qa-d'))?.pending;
+    await eventually('pinned reservation persisted', async () => (await pending())?.head === head || undefined);
+    await f.clock.advance(1);
+    const verdict = await peer.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: kind, result: 'not clear', run: 'head-receipt', commit, ...(kind === 'review' ? { scope: 'full' } : {}) });
+    assert.equal(verdict.ok, true);
+    if (relation === 'unrelated') {
+      await pending();
+      await eventually('ancestry query completed', () => comparisons > 0 || undefined);
+      await f.tips.refresh();
+      assert.equal((await pending())?.head, head, 'unrelated verdict must retain the admitted build');
+    } else {
+      await eventually('matching build reservation retired', async () => (await pending()) === undefined || undefined);
+      assert.equal(await pending(), undefined);
+    }
+  });
+}
+
+test('queued explicit request head survives restart before verifier assignment', async t => {
+  const root = await tempProject(t);
+  const first = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Retain admitted build' });
+  const head = 'c'.repeat(40), text = `review request ${item.id}\nHead: ${head}`;
+  const sent = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text });
+  assert.equal(sent.outcomes[0]?.outcome, 'queued');
+  await coord.close();
+  await first.stop();
+  const next = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, next.discovery);
+  const back = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', assignRole: false, sessionId: 'coord-id' });
+  const peer = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-d', role: 'reviewer', sessionId: 'rev-id' });
+  await peer.waitForEvent(e => e.params.content === text);
+  await eventually('restarted request delivery persisted', async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages.find(m => m.text === text)?.stage === 'delivered' || undefined);
+  const who = await back.call<{ sessions: Array<{ name: string; pending?: unknown }> }>('who');
+  assert.deepEqual(who.sessions.find(s => s.name === 'rev-d')?.pending, { item: item.id, kind: 'review', head });
+});
+
+test('legacy free-text Head detail remains an accepted unpinned review request', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const peer = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-d', role: 'reviewer', sessionId: 'rev-id' });
+  await peer.waitForEvent(e => e.params.meta?.kind === 'role');
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Legacy prose compatibility' });
+  const text = `review request ${item.id}\nHead: abc123 (branch tip)\nScope: source`;
+  const sent = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text });
+  assert.equal(sent.outcomes[0]?.outcome, 'delivered');
+  await eventually('legacy prose request delivered', async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages.find(m => m.text === text)?.stage === 'delivered' || undefined);
+  const who = await coord.call<{ sessions: Array<{ name: string; pending?: unknown }> }>('who');
+  assert.deepEqual(who.sessions.find(s => s.name === 'rev-d')?.pending, { item: item.id, kind: 'review' });
+});
+
+for (const settlement of ['verdict', 'request'] as const) for (const restart of [false, true]) for (const relation of ['same', 'descendant'] as const) {
+  test(`delayed pinned review retains ${relation} covering ${settlement} before unrelated work${restart ? ' across restart' : ''}`, async t => {
+    const root = await tempProject(t), clock = new FakeClock();
+    const git = async (args: string[]) => args[0] === 'rev-parse' ? args.at(-1)!.replace(/\^\{commit\}$/, '')
+      : args[0] === 'for-each-ref' ? '' : args[0] === 'merge-base' && args.at(-1) === 'd'.repeat(40) ? 'a'.repeat(40) : null;
+    const first = await projectHub(t, root, {}, { clock, git });
+    let ui = await connectUi(t, first.discovery);
+    let coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const old = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+    const current = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+    await old.waitForEvent(e => e.params.meta?.kind === 'role');
+    await current.waitForEvent(e => e.params.meta?.kind === 'role');
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Monotonic head coverage' });
+    await old.close();
+    const head = 'a'.repeat(40), text = `review request ${item.id}\nHead: ${head}\nDelayed`;
+    await coord.call('send', { to: ['rev-a'], text });
+    await clock.advance(1);
+    // Covering proof beyond a page of unrelated immutable facts still settles after restart.
+    if (settlement === 'verdict' && restart && relation === 'same') for (let n = 0; n < 40; n++) {
+      const written = await current.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: `noise-${n}`, commit: 'b'.repeat(40) });
+      assert.equal(written.ok, true);
+    }
+    for (const commit of [relation === 'same' ? head : 'd'.repeat(40), 'b'.repeat(40)]) {
+      if (settlement === 'verdict') {
+        const written = await current.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: `coverage-${commit[0]}`, commit });
+        assert.equal(written.ok, true);
+      } else {
+        const newer = `review request ${item.id}\nHead: ${commit}\nNew request`;
+        await coord.call('send', { to: ['rev-b'], text: newer });
+        await current.waitForEvent(e => e.params.content === newer);
+      }
+      await clock.advance(1);
+    }
+    if (restart) {
+      await current.close(); await coord.close(); await first.stop();
+      const next = await projectHub(t, root, {}, { clock, git });
+      ui = await connectUi(t, next.discovery);
+      coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', assignRole: false, sessionId: 'coord-id' });
+    }
+    const back = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', assignRole: false, sessionId: 'a-id' });
+    await back.waitForEvent(e => e.params.content === text);
+    await eventually('delayed head request accepted', async () => ((await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 })).value as { messages: TopicMessage[] }).messages.find(m => m.text === text)?.stage === 'delivered' || undefined);
+    const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: unknown }> }>('who')).sessions.find(s => s.name === 'rev-a')?.pending;
+    await eventually('earlier covering receipt retires delayed request', async () => (await pending()) === undefined || undefined);
+    assert.equal(await pending(), undefined);
+  });
+}
+
+for (const settlement of ['verdict', 'request'] as const) for (const covered of [false, true]) {
+  test(`pinned review scans past 40 unavailable ${settlement} facts (${covered ? 'exact cover' : 'unknown only'})`, async t => {
+    const root = await tempProject(t), clock = new FakeClock();
+    let unavailable = 0;
+    const git = async (args: string[]) => {
+      if (args[0] === 'rev-parse') return args.at(-1)!.replace(/\^\{commit\}$/, '');
+      if (args[0] === 'for-each-ref') return '';
+      if (args[0] === 'merge-base') { unavailable++; throw new Error('fixture ancestry unavailable'); }
+      return null;
+    };
+    const f = await projectHub(t, root, {}, { clock, git });
+    const ui = await connectUi(t, f.discovery);
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+    const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+    await a.waitForEvent(e => e.params.meta?.kind === 'role');
+    await b.waitForEvent(e => e.params.meta?.kind === 'role');
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Forward coverage beside unavailable facts' });
+    await a.close();
+    const head = 'a'.repeat(40), text = `review request ${item.id}\nHead: ${head}\nOriginal`;
+    await coord.call('send', { to: ['rev-a'], text });
+    await clock.advance(1);
+    for (let n = 0; n < 40 + Number(covered); n++) {
+      const commit = n === 40 ? head : 'b'.repeat(40);
+      if (settlement === 'verdict') {
+        const result = await b.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: `fact-${n}`, commit });
+        assert.equal(result.ok, true);
+      } else {
+        const input = `review request ${item.id}\nHead: ${commit}\nFact ${n}`;
+        assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: ['rev-b'], text: input })).ok, true);
+        await eventually('newer request accepted', async () => ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages.find(m => m.text === input)?.stage === 'delivered' || undefined);
+      }
+    }
+    const back = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', assignRole: false, sessionId: 'a-id' });
+    await back.waitForEvent(e => e.params.content === text);
+    await eventually('original request delivery accepted', async () => ((await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 })).value as { messages: TopicMessage[] }).messages.find(m => m.text === text)?.stage === 'delivered' || undefined);
+    const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { head?: string } }> }>('who')).sessions.find(row => row.name === 'rev-a')?.pending;
+    await pending();
+    await eventually('unavailable ancestry observed', () => unavailable > 0 || undefined);
+    if (covered) {
+      await eventually('later exact receipt reached beyond unavailable page', async () => (await pending()) === undefined || undefined);
+      assert.equal(await pending(), undefined);
+    } else assert.equal((await pending())?.head, head, 'unavailable-only facts never retire the request');
+  });
+}
+
+for (const reopen of [false, true]) for (const missing of ['request', 'covering', 'ancestry'] as const) {
+  test(`missing descendant object (${missing}) remains retryable${reopen ? ' after hub reopen' : ' after object arrival'}`, async t => {
+    const root = await tempProject(t), clock = new FakeClock();
+    let available = true, misses = 0, admitDescendant = false;
+    const head = 'a'.repeat(40), descendant = 'd'.repeat(40);
+    const git = async (args: string[]) => {
+      if (args[0] === 'for-each-ref') return '';
+      if (args[0] === 'rev-parse') {
+        const ref = args.at(-1)!.replace(/\^\{commit\}$/, '');
+        if (missing !== 'ancestry' && ref === (missing === 'request' ? head : descendant) && !available) {
+          if (ref === descendant && admitDescendant) { admitDescendant = false; return ref; }
+          misses++; return null;
+        }
+        return ref;
+      }
+      if (args[0] === 'merge-base') {
+        if (!available) { misses++; return null; }
+        return args.includes('--is-ancestor') ? '' : head;
+      }
+      return null;
+    };
+    const first = await projectHub(t, root, {}, { clock, git });
+    let ui = await connectUi(t, first.discovery);
+    let coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    let a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+    const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+    await a.waitForEvent(e => e.params.meta?.kind === 'role');
+    await b.waitForEvent(e => e.params.meta?.kind === 'role');
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Git objects may arrive later' });
+    const text = `review request ${item.id}\nHead: ${head}`;
+    await coord.call('send', { to: ['rev-a'], text });
+    await a.waitForEvent(e => e.params.content === text);
+    const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { head?: string } }> }>('who')).sessions.find(row => row.name === 'rev-a')?.pending;
+    await eventually('original reservation persisted', async () => (await pending())?.head === head || undefined);
+    await clock.advance(1);
+    available = false; admitDescendant = true;
+    assert.equal((await b.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'descendant', commit: descendant })).ok, true);
+    await pending();
+    await eventually('missing object observed', () => misses > 0 || undefined);
+    assert.equal((await pending())?.head, head);
+    if (reopen) {
+      await a.close(); await b.close(); await coord.close(); await first.stop();
+      available = true;
+      const next = await projectHub(t, root, {}, { clock, git });
+      ui = await connectUi(t, next.discovery);
+      coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', assignRole: false, sessionId: 'coord-id' });
+      a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', assignRole: false, sessionId: 'a-id' });
+      await a.waitForEvent(e => e.params.meta?.kind === 'role');
+    } else available = true;
+    await eventually('arrived descendant object retires saved request', async () => (await pending()) === undefined || undefined);
+    assert.equal(await pending(), undefined);
   });
 }

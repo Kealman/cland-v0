@@ -46,7 +46,7 @@ export type SubscriptionRequest = (
 export type SessionHold = { item: string; role: 'item' | 'review' | 'qa'; heldAt?: string };
 
 // hub/src/protocol.ts
-export type PendingVerification = { item: string; kind: 'review' | 'qa' };
+export type PendingVerification = { item: string; kind: 'review' | 'qa'; head?: string };
 
 // hub/src/protocol.ts
 export type Presence = {

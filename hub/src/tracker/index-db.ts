@@ -1,3 +1,4 @@
+import { VERIFICATION_PAGE_SIZE } from '../hub/verifier-request.ts';
 // The tracker's index and claims: tables of their own in the hub's SQLite file, through a connection of
 // their own. The index is derived from the files and rebuilt from them at every start; claims are hub
 // state (a session's live hold on an item) and are never written to a file.
@@ -69,6 +70,7 @@ create table if not exists tracker_written_verdicts (
   at text not null,
   primary key (item_id, comment_key)
 );
+create index if not exists tracker_verification_coverage on tracker_written_verdicts(item_id, role, verdict);
 -- Last accepted plans survive an invalid hand save and a hub restart. Valid files replace them.
 create table if not exists tracker_plans (
   item_id text primary key,
@@ -540,13 +542,20 @@ export class TrackerIndex {
     return { verdicts: selected };
   }
 
+  verificationFacts(item: string, kind: 'review' | 'qa', after: number): import('../hub/verifier-request.ts').VerificationFact[] {
+    return (this.#db.prepare(`select rowid as cursor, commit_sha, at from tracker_written_verdicts
+      where item_id = ? and role = ? and verdict = ? and rowid > ? order by rowid limit ?`)
+      .all(this.#key(item), kind === 'review' ? 'reviewer' : 'qa', kind, after, VERIFICATION_PAGE_SIZE) as Row[])
+      .map(row => ({ order: row.cursor as number, head: row.commit_sha as string | null, at: row.at as string }));
+  }
+
   /** Routing affinity follows authenticated verifier writes, independent of edited comment headers. */
-  lastVerifier(item: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string } | null {
+  lastVerifier(item: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string; commit?: string } | null {
     item = this.#key(item);
-    const row = this.#db.prepare(`select session_id, at from tracker_written_verdicts
+    const row = this.#db.prepare(`select session_id, at, commit_sha from tracker_written_verdicts
       where item_id = ? and role = ? and verdict = ? order by rowid desc limit 1`)
       .get(item, role, role === 'reviewer' ? 'review' : 'qa') as Row | undefined;
-    return row ? { sessionId: row.session_id as string, at: row.at as string } : null;
+    return row ? { sessionId: row.session_id as string, at: row.at as string, ...(row.commit_sha ? { commit: row.commit_sha as string } : {}) } : null;
   }
 
   recordMerge(id: string, receipt: MergeReceipt): void {

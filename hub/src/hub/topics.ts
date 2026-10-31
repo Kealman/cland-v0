@@ -81,7 +81,9 @@ export type TopicItems = {
   /** Current indexed ownership, without file I/O: resolution and recording must not yield. */
   lead: (item: string) => { state: string; claim: Claim | null } | null;
   /** Durable verifier identity/order, never inferred from file-only verdict headers. */
-  lastVerifier?: (item: string, role: 'reviewer' | 'qa') => { sessionId: string; at: string } | null;
+  lastVerifier?: (item: string, role: 'reviewer' | 'qa') => { sessionId: string; at: string; commit?: string } | null;
+  verificationFacts?: (item: string, kind: 'review' | 'qa', after: number) => import('./verifier-request.ts').VerificationFact[];
+  verificationContains?: (item: string, head: string, commit: string) => boolean | undefined;
   provisionalSession: (name: string) => boolean;
   /** The item's normalized id (`T-12`), with the topic its file names (or null); throws why it cannot be bound. */
   check: (item: string) => { id: string; topic: string | null; state: string };
@@ -102,6 +104,8 @@ export function trackerItems(tracker: Tracker): TopicItems {
     ancestry: item => tracker.ancestry(item),
     lead: item => tracker.itemLead(item),
     lastVerifier: (item, role) => tracker.lastVerifier(item, role),
+    verificationFacts: (item, kind, after) => tracker.verificationFacts(item, kind, after),
+    verificationContains: (item, head, commit) => tracker.verificationContains(item, head, commit),
     provisionalSession: name => tracker.hasProvisionalSession(name),
     check: (item) => {
       const view = tracker.view(item);

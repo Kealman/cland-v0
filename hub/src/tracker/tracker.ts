@@ -2447,9 +2447,17 @@ export class Tracker {
   }
 
   /** The last authenticated verifier write, even when the item's comments have been edited. */
-  lastVerifier(id: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string } | null {
+  lastVerifier(id: string, role: 'reviewer' | 'qa'): { sessionId: string; at: string; commit?: string } | null {
     const writer = this.#index.lastVerifier(id, role);
     return writer ? { ...writer, sessionId: this.#identityOf(writer.sessionId) } : null;
+  }
+
+  verificationFacts(id: string, kind: 'review' | 'qa', after: number): import('../hub/verifier-request.ts').VerificationFact[] {
+    return this.#index.verificationFacts(id, kind, after);
+  }
+
+  verificationContains(id: string, head: string, commit: string): boolean | undefined {
+    return this.#fresh.contains(id, head, commit, true);
   }
 
   hasProvisionalSession(name: string): boolean { return this.#index.provisionalSessions().includes(`name:${name}`); }

@@ -60,7 +60,7 @@ export function isHeldDelivery(message: { kind?: string | undefined; detail?: Re
 
 /** Current work held by a session, with an Implementer's claim first. */
 export type SessionHold = { item: string; role: 'item' | 'review' | 'qa'; heldAt?: string };
-export type PendingVerification = { item: string; kind: 'review' | 'qa' };
+export type PendingVerification = { item: string; kind: 'review' | 'qa'; head?: string };
 
 export type Presence = {
   stateReason?: string;

@@ -18,7 +18,7 @@ export const TIP_CHECK_MS = 2000;
 /** How soon after a tracker change the tips are read again, ms (changes in a burst share one read). */
 const POKE_MS = 50;
 
-type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; demoTasks?: string[]; ids: Set<string> };
+type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; settledOnly?: boolean; demoTasks?: string[]; ids: Set<string> };
 type DeltaJob = { want: Want; baseTip: string; current: boolean };
 type Worker = { demo: boolean; working: boolean; promise: Promise<void> | null };
 
@@ -192,13 +192,14 @@ export class Freshness {
   }
 
   /** Immutable ancestry between a landing and a tested build, computed off the request path. */
-  contains(id: string, commit: string, tip: string): boolean | undefined {
+  contains(id: string, commit: string, tip: string, settledOnly = false): boolean | undefined {
     if (commit === tip) return true;
-    const key = `${commit} ${tip}   fixed`;
+    const key = `${commit} ${tip}   fixed${settledOnly ? ' settled' : ''}`;
+    if (settledOnly && this.#retries.has(key)) return undefined;
     const known = this.#results.get(key);
     if (known !== undefined) return known;
     if (!this.#stopped) {
-      const want = this.#wants.get(key) ?? { commit, tip, base: null, ancestry: true, ids: new Set<string>() };
+      const want = this.#wants.get(key) ?? { commit, tip, base: null, ancestry: true, settledOnly, ids: new Set<string>() };
       want.ids.add(id); this.#wants.set(key, want); this.#startWork();
     }
     return undefined;
@@ -360,8 +361,18 @@ export class Freshness {
   /** Compare the whole task diff, not just the last commit's patch, against each commit's own merge base. */
   async #compute(want: Want): Promise<boolean> {
     const resolved = await resolveCommit(this.#git, want.commit);
-    if (!resolved) return false;
+    if (!resolved) {
+      if (want.settledOnly) throw new Error('verification request commit unavailable');
+      return false;
+    }
     if (resolved === want.tip) return true;
+    if (want.settledOnly) {
+      const tip = await resolveCommit(this.#git, want.tip);
+      if (!tip) throw new Error('verification covering commit unavailable');
+      const base = await this.#git(['merge-base', resolved, tip]);
+      if (!base) throw new Error('verification ancestry unavailable');
+      return base === resolved;
+    }
     if (want.demoTasks) return (await epicDemoFreshness(this.#git, want.demoTasks, resolved, want.tip)).current;
     if (want.ancestry) return await this.#git(['merge-base', '--is-ancestor', resolved, want.tip]) !== null;
     if (!want.base) return false;
