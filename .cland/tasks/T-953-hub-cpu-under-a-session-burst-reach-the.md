@@ -3,7 +3,7 @@ id: T-953
 kind: task
 title: "Hub CPU under a session burst: reach the ≥50 % CPU target with presence/visibility batching (after T-768's statement cache)"
 state: open
-status: review
+status: backlog
 size: M
 labels:
   - needs-triage
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1277
 branch: t/T-953-hub-cpu-under-a-session-burst-reach-the
 created: 2026-10-20T09:44:48.962Z
-updated: 2026-10-31T16:41:12.193Z
+updated: 2026-10-31T16:42:47.132Z
 ---
 
 ## Summary
@@ -104,3 +104,7 @@ Quiet slot 16:35–16:40Z, one immutable snapshot of the live hub.db (1,279,545,
 - Three longer 20-round baseline attempts were incomplete; no CPU claims are taken from them.
 
 Coalescing status-origin presence cuts frames but costs more SQL work per request, so it fails the target. The real hotspot is `#bindProgress`, filed separately. T-953 goes back to Ideas (C-327) with this record. Branch t/T-953-… stays unmerged as reference; the measurement tooling on it can be reused.
+
+### impl-953 · 2026-10-31T16:42:15.805Z
+
+Final disposition per Coordinator 7ec2d31e: do not land; leave branch unmerged as reference, return item to Ideas C-327; hotspot follow-up T-1526. Branch t/T-953-hub-cpu-under-a-session-burst-reach-the, head 57c1d0c65f9548265d8100a4c4951fc6ba0dfbf2. Measurement tool lives at hub/test/presence-burst-measure.ts at that head, shared owner hub/test/presence-burst-fixture.ts; use --rounds 8 for the completed workload. Aggregate report/captures A-14988, durable folder /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14988-t-953-quiet-slot-cpu-comparison-and-profiles-target-not-reached (entry README.md). Single immutable 1,279,545,344-byte DB snapshot SHA256 61a3a9117353749f3f33d3851b59fe4ce58ea42b86dfd87eeeadf38759e2ce74; baseline/candidate 288 requests each, local Darwin arm64 Node24.21.0. CPU/request22.8912->28.3031ms (+23.6418%); SQL executions289318->399955; presence72->8. Both profiles dominated by Store.#bindProgress native SQLite run, with topic/inbox reads also present. No >=50% reduction; C1 remains unchecked/unverified. Three preceding20-round baseline attempts incomplete, not measurement passes. Start16:35:07Z pressure2/swap-outs80869535/load1=1.822754; end16:39:58Z pressure2/same swap-outs/load1=2.213867; Coordinator-waived level2, all abort guards clear, slot released. Raw DB/HOME/config/secrets excluded from artifact; declared aggregate outputs passed token/bearer scan with positive control. Source clear A-14979 and exact-head compatibility verify A-14985 (4450 pass) remain separate from failed performance target.
