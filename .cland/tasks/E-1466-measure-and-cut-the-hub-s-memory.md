@@ -2,7 +2,7 @@
 id: E-1466
 kind: epic
 title: Measure and cut the hub's memory footprint
-state: open
+state: closed
 criterion_seq: 3
 labels: []
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-1260
 branch: null
 created: 2026-10-30T06:38:36.448Z
-updated: 2026-10-31T04:01:28.716Z
+updated: 2026-10-31T06:05:07.812Z
+closed: 2026-10-31T06:05:07.812Z
 ---
 
 ## Goal
@@ -29,12 +30,15 @@ The hub's resident memory on this project drops from about 3 GB to a measured bu
 - [ ] C1. A measurement artifact names the top retainers of the hub's heap and its non-heap memory at startup and at rest on a scratch copy of the live project, with sizes and code paths.
   - verified: qa-677 [qa] · run qa-2026-10-30-677-1466 · 2026-10-30T22:54:19.892Z · commit 3cc3d62e8ed9c8142938e6746fa693453d304aa6
   - verified: qa-677 [qa] · run qa-2026-10-31-677-1466 · 2026-10-31T04:01:28.716Z · commit 7f0e3353b523efd4ca497d0a1d0e3fcef73f933d
+  - verified: qa-677 [qa] · run qa-2026-10-31-677-1466-2 · 2026-10-31T06:04:19.597Z · commit e5b310a7882d7354118984e7137e586b071b45e0
 - [ ] C2. The hub's RSS at rest on the same scratch copy falls to the budget agreed with the human after the measurement, shown before and after on the same machine.
   - verified: qa-677 [qa] · run qa-2026-10-30-677-1466 · 2026-10-30T22:54:19.892Z · commit 3cc3d62e8ed9c8142938e6746fa693453d304aa6
   - verified: qa-677 [qa] · run qa-2026-10-31-677-1466 · 2026-10-31T04:01:28.716Z · commit 7f0e3353b523efd4ca497d0a1d0e3fcef73f933d
+  - verified: qa-677 [qa] · run qa-2026-10-31-677-1466-2 · 2026-10-31T06:04:19.597Z · commit e5b310a7882d7354118984e7137e586b071b45e0
 - [ ] C3. A memory budget test runs on live-scale fixture data and reports the hub's heap and RSS at startup and at rest against the budget.
   - verified: qa-677 [qa] · run qa-2026-10-30-677-1466 · 2026-10-30T22:54:19.893Z · commit 3cc3d62e8ed9c8142938e6746fa693453d304aa6
   - verified: qa-677 [qa] · run qa-2026-10-31-677-1466 · 2026-10-31T04:01:28.716Z · commit 7f0e3353b523efd4ca497d0a1d0e3fcef73f933d
+  - verified: qa-677 [qa] · run qa-2026-10-31-677-1466-2 · 2026-10-31T06:04:19.597Z · commit e5b310a7882d7354118984e7137e586b071b45e0
 
 ## Plan
 
@@ -123,3 +127,39 @@ M5: all five children closed/done/landed with hub-sourced clear reviews. T-1478 
 Final freshness current:true at 03:58:55Z, final worktree clean/HEAD unchanged. Five PASS ledger rows. Positive-controlled secret scan passed; 45 published files byte-identical to scanned evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### qa-677 · 2026-10-31T06:04:19.597Z
+
+verdict: qa
+result: clear
+by: qa-677 [qa]
+run: qa-2026-10-31-677-1466-2
+commit: e5b310a7882d7354118984e7137e586b071b45e0
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Executor / surface | Result | Evidence |
+| --- | --- | --- | --- |
+| M1 / C1 | local macOS / hub-api | PASS, historical review rechecked | A-14831/M1-M2-recheck.json; A-14815/A-14729 originals |
+| M2 / C2 | local macOS / hub-api | PASS with comparison limitation | A-14831/M2-audit.log |
+| M3 / C3 | local macOS / hub-api | PASS | A-14831/M3-tests.log and M3-required-cases.json |
+| M4 / C3 | local macOS / hub-api | PASS | A-14831/M4-summary.json and numeric/native captures |
+| M5 | hub records / read-only Git | PASS, T-1478 waiver-qualified | A-14831/M5 audit/hub/plan/landings, delta.log |
+
+Findings: none (high/medium/low). Clear for C1, C2, C3 at e5b310a7882d7354118984e7137e586b071b45e0. New run qa-2026-10-31-677-1466-2; evidence A-14831, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-14831-e-1466-dod-at-e5b310a78-fresh-qa-57-passes-and-completed-memory-probe/report.md.
+
+M1/M2/M5 rechecked at the new head: original artifact/log hashes, current source names, five closed/done children, clear hub reviewer records and dev Item trailers. Original A-14699 numeric audit rerun, same endpoint/slopes. C2 limitation remains explicit: before is historical startup readiness on this Mac; no same-probe pre-fix at-rest before exists. This is the brief's accepted comparison, not proof of controlled same-probe at-rest reduction.
+
+M3 fresh node --test hub/test/measure-memory.test.ts:57/57, zero fail/cancel/skip/todo; all ten required generated names matched source and passing output. Node v24.21.0, Darwin arm64. Probe/test/budget/brief code unchanged from 7f0e3353; duration allowance remains7.925s through2026-11-06, owner/reason changed toE-880 (plus tracker records). No duration gate, full suite, Web/browser, real harness or remote ran in this QA. No demo lease; local droplet lifetime/cost not applicable.
+
+M4 ran once under the05:52–06:20Z slot: launch05:52:12.208Z, confirmed native close06:02:53.677Z code0/signal null, forced:false/incomplete:false. Worker complete/stopped, no write failures/guard stops.62 samples over601.154987s. Report-only heap/RSS MiB versus256/768: readiness125.245529/565.140625; completed rest130.783752/560.093750, all within. Observed rest maxima149.773186/588.296875 use boundaries and ten-second samples, not continuous peaks; readiness is outside that interval. Frozen endpoint matches budget bytes while hubRunning:true. Native level1 only, swap-outs unchanged80848688, max load1 3.978516 and allocated swap74.766797%. Droplet release cover and reported idle foreign orphan processes retained as context. Slot released after native close.
+
+M5 distinguishes T-1478 parent aa8e5ecdf green A-14709 from final0c2236271 targeted337 passes A-14714 and delta clear A-14715; not a full verify at final head. Both stages now closed on recorded Linux95712ae6/macOS22d726c2 cover pair at552255be. Historical phases/skips retained; historical droplet lifetime/cost unavailable in this audit, not zero. The Coordinator owns epic close.
+
+Final freshness.current:true at06:03:24Z; HEAD unchanged and worktree clean. Five PASS ledger rows. Positive-controlled publication scan passed; all47 published files byte-identical to scanned evidence.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-31T06:05:07.812Z
+
+Definition of done clear: qa-677 run qa-2026-10-31-677-1466-2 at e5b310a7882d7354118984e7137e586b071b45e0 (A-14831), C1–C3 verified. Memory at readiness: heap 125.2 MiB, RSS 565.1 MiB. At rest: heap 130.8 MiB, RSS 560.1 MiB, within the 256/768 MiB report-only budget. Both stages are closed and all task children are landed or closed. The measure-memory allowance was re-owned to E-880 (e5b310a78).
