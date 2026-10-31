@@ -2,7 +2,7 @@
 id: M-1511
 kind: map
 title: "cland beyond one machine: from the human's direction to spec v0.4, prototypes of agent hosts and credentials, and the epics"
-state: open
+state: closed
 labels:
   - wayfinder:map
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T18:03:31.028Z
+updated: 2026-10-31T18:23:30.844Z
+closed: 2026-10-31T18:23:30.844Z
 ---
 
 ## Destination
@@ -102,6 +103,10 @@ Round-3 decisions 5–9 are replaced by these.
 - Round-4 decision 2: a `disk` login keeps its volume and detaches at host stop; snapshots are backups and the source for non-exclusive readers (Q-1518).
 
 ## Not yet specified
+
+(none: the way is clear; the planning package is docs/spec/v0.4.md, the glossary and E-1531 … E-1539 under R-1530, committed 650fa8df4 and handed to the Coordinator on 2026-10-31)
+
+### Fog cleared during charting
 
 - The host agent protocol in detail (frames, auth, versioning against the hub) and how `local` degenerates to in-process.
 - Provider accounts and tokens for whichever second provider wins the price comparison (a HITL task once chosen).
