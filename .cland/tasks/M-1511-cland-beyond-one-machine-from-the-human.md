@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T17:21:58.484Z
+updated: 2026-10-31T17:24:26.150Z
 ---
 
 ## Destination
@@ -85,6 +85,8 @@ Round-3 decisions 5–9 are replaced by these.
 
 - [Shape B decisions after the Kubernetes research](Q-1521): Helm chart + GHCR multi-arch image published with releases; one-replica StatefulSet with PVC, host-identity lock; `kubernetes` host provider creating pods with the `outbound` transport; the web through Ingress + cert-manager, Neovim stays a local client via `cland attach-cluster` (port-forward to a loopback CLI listener); Secrets for secrets.toml and the DO token; PVC snapshots for backup; 0.4.0 carries only the B-safe hub changes, the rest in 0.4.x; first live B on DOKS.
 
+- [Web sign-in modes and users](Q-1527): `[auth] mode` single (unchanged) or users; a users table with user_id on messages, answers, approvals, pairings, web sessions and artifacts; invite links, passkeys plus password fallback, OIDC later; pairings per user, first answer wins with the answerer shown; one admin role with a roles table and journal user_id as the RBAC seam; its own epic in 0.4.0 parallel to hosts.
+
 ### Amendments from research
 - Round-1 decision 6 and round-6 decision 1 (image audit, 2026-10-31): the host image and the Kubernetes image contain only what cland the tool needs on any project (Ubuntu with apt timers off, git, curl, ca-certificates, jq, lsof, procps, xz-utils, locales, the hub's exact Node version, the unprivileged runner user, sshd prelude and auth helper on agent hosts, the harness installers, build-essential and python3 as common defaults). Neovim and the Chromium runtime libraries are this project's own test needs and leave provision.sh; Neovim is never in an image or the Helm chart (the human's workbench stays a local client). A project-level root provisioning hook (`[verification] provision`, run once on the builder/image) is added so a project can install system packages its prepare cannot (prepare runs as runner without sudo); this project moves its Chromium libraries there. Audit facts: provision.sh:11-13 and :25-31; prepare.ts:31-40; the prototype's hosts.ts:441 reuses provision.sh.
 
@@ -102,7 +104,6 @@ Round-3 decisions 5–9 are replaced by these.
 - Cost accounting for hosts in the spend ledger and the daily cap; what the human sees.
 - QA on fakes: a fake host provider and a fake SSH host in the test suite; the one live run before release.
 - Docs and site pages: hosts, pools, login, Kubernetes install.
-- Multi-user web sign-in graduated to its own ticket (the human, 2026-10-31).
 
 ## Out of scope
 

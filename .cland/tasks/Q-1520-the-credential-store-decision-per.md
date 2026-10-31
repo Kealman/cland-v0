@@ -5,7 +5,7 @@ title: The credential store decision per harness
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-1511
 blocked_by:
   - Q-1514
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T14:35:39.541Z
-updated: 2026-10-31T14:35:54.966Z
+updated: 2026-10-31T17:24:26.271Z
 ---
 
 ## Question
