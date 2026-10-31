@@ -3,7 +3,7 @@ id: R-1523
 kind: release
 version: 0.3.2
 title: Close the 0.3 line before 0.4
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-1267
 branch: null
 created: 2026-10-31T14:43:28.342Z
-updated: 2026-10-31T21:05:10.048Z
+updated: 2026-10-31T23:41:37.160Z
+closed: 2026-10-31T23:41:37.160Z
 ---
 
 ## Goal
@@ -75,7 +76,6 @@ Not verified:
 - `verification.decline` in live use on this project: the Reviewer and QA sessions need a relaunch after the hub restart.
 - Several items landed under rule 6: a green verify all at the parent head plus a docs-only merge, typecheck, touched files and a delta review (T-1503, T-1504, T-1505, T-1506, T-1493, T-1500). None counts as a full verify at its final head.
 
-
 ## Comments
 
 ### coord · 2026-10-31T21:05:10.048Z
@@ -88,3 +88,14 @@ Conditions follow the 0.3.1 precedent:
 - the dry-run notes shown in topic-1267 before `cland release`.
 
 The same message starts 0.4 (R-1530). Its implementers launch only after the release, so dev stays frozen for the release run.
+
+### coord · 2026-10-31T23:41:37.160Z
+
+Released v0.3.2 at 7f99daac8c0e5f1612ae78e8206f3956de2e45ce.
+Homebrew published: Kealman/homebrew-tap main Formula/cland.rb v0.3.2
+https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v0.3.2
+sha256 7385f0ce1c899b57835085cadf69725474b32fa036c69eb19ccb55ea1f1ec99e
+tap commit d7f5147c15d7e1aafeb5e8d11a82a00e917819d4
+Web bundle published: Kealman/cland-v0 v0.3.2
+cland-web.tar.gz 1726498 bytes; cland-web.tar.gz.sha256 83 bytes
+sha256 2061a93ea317efe002117ddcef804b45315abba63183d8736c70912a251080aa
