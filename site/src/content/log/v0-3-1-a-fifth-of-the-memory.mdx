@@ -96,21 +96,25 @@ The last task in scope landed at 03:31 UTC. The release went out at 08:07. A cle
 
 - **One byte.** The macOS full run went red on a test socket path of 105 bytes. macOS allows 104. The fix took 77 minutes to land, and then both full runs had to go again.
 - **A race on a slow machine.** The first release run went red on one test: re-running `cland setup` read the Discord remote's state once, while it was still reconnecting. That was a real bug, so it was fixed, not retried.
-- **A landing nobody heard about.** The merge queue landed that fix and told no one. The Coordinator found out from a heartbeat 38 minutes later. That one is filed for the next release.
+- **A landing nobody heard about.** The merge queue landed that fix and told no one. The Coordinator found out from a heartbeat 38 minutes later. v0.3.2 fixed that: a landing now reaches the session that queued the item and the item's owner at once.
 
-## Known issue
+## Fixed in 0.3.2
 
-After the release, the maintainer noticed that outbound Telegram had stopped: a send interrupted on the evening of October 30 left the Telegram remote stuck, and it sent nothing more. Discord and the workbench kept working. A fix is in progress, and until it ships, Discord is the remote to rely on.
+After the release, the maintainer noticed that outbound Telegram had stopped. On the evening of October 30 an interrupted "messages missed" line left the Telegram remote stuck for 13 hours, and it sent nothing more. Discord and the workbench kept working.
+
+v0.3.2, released on October 31 at 23:42 UTC, fixes it. That line is never resent, and Telegram recovers on its own. If a remote stays offline because its catch-up keeps failing, General is told, and the log names the step that failed. The fix has run on our own hub since the morning of October 31, so it has hours of live use, not weeks.
+
+0.3.2 closes the 0.3 line. It also makes `cland setup` and `cland doctor` wait for Discord and Telegram to settle before they report, lets a Reviewer or QA session decline a request with a reason, and clears the debt that would get in the way of 0.4. Its release runs passed 6,262 tests on Linux and 6,270 on macOS, with no failures.
 
 ## What we have not proven
 
 - The memory figures are single samples on one Mac. Hub memory on Linux, and on projects of other sizes, was not measured.
 - The memory budget is report-only, and one earlier probe saw a short spike above it at rest.
 - The delivery fixes were checked on fake clocks and fake harnesses, not against a real Claude daemon.
-- The OpenCode adapter has not been re-tested against OpenCode 2.2.
+- Since 0.3.2 the OpenCode adapter reads OpenCode 2.2.5's session and message formats, checked against recorded contracts. It has not been tested against a running OpenCode 2.2.
 
 ## What's next
 
-The Telegram fix comes first. After that: a landing that wakes whoever queued it, and two report-only checks from this release that switch to enforcing once their recorded results show what they would have caught. There is no date. Like every release, it ships when the maintainer says so.
+Next is 0.4, "cland beyond one machine": agent sessions on more than one machine. There is no date. Like every release, it ships when the maintainer says so.
 
 To upgrade: `brew upgrade cland`, or see the [install docs](/docs/install/).
