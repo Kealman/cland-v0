@@ -3,7 +3,7 @@ id: T-1498
 kind: task
 title: journal-subagents startup-selection test is slow on fresh occasion droplets (11.7 s soak, 13.8 s stage shard)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
@@ -13,9 +13,9 @@ blocked_by: []
 regression_of: T-1497
 found_by: droplet
 topic: null
-branch: null
+branch: t/T-1498-journal-subagents-startup-selection-test
 created: 2026-10-31T04:01:18.312Z
-updated: 2026-10-31T14:43:37.275Z
+updated: 2026-10-31T15:21:24.536Z
 ---
 
 ## Summary
