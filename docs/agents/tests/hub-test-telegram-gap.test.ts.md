@@ -14,8 +14,9 @@ zero missed messages never invoke the sender.
 
 `Telegram uncertain gap retains its captured ids and stable send key across
 reopening` rejects the send as unknown, retains the missed row, closes/reopens
-the store and requires the same send key. Only a successful native reconciliation
-may acknowledge the row and clear the captured gap. The native queue owns proof
+the store and requires the same send key. A callback rejection without a durable uncertain native job still retains
+the gap. A production durable uncertain native job instead settles captured
+rows and clears the summary without resending (covered at the fake API seam). The native queue owns proof
 and the unknown-delivery fence; the service never creates a new key on retry.
 
 The production frame and fake API seam remains
@@ -35,3 +36,12 @@ The missing-readiness and aborted-setup controls call it while the actual
 captured writer is held, then retain a joined rejected producer, closed Stores,
 missed terminal rows and zero behavior/setup timers. Directory cleanup follows
 this ownership receipt; it never substitutes for joining the writer.
+
+Conflicting retained user/chat controls keep the saved gap, missed captured
+source and exact unknown attempt unchanged. Legacy absent-userId jobs use the
+saved gap/current pairing identity at the production persisted-state seam.
+
+The retained-history work-budget control seeds 500 unrelated sent jobs and
+an uncertain gap. It counts at most three pairing reads per flush, independently
+of retained-row count, while requiring cleared bookkeeping and the native fence.
+The settlement check reads only uncertain rows, with one pairing snapshot.

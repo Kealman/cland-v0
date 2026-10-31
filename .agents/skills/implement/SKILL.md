@@ -205,7 +205,11 @@ recovery, annotate retained input before store/confirmation, and send a gap
 only above zero after input catch-up. Use
 `docs/agents/tests/hub-test-telegram-gap.test.ts.md` for source deduplication,
 held-send arrivals and stable-key recovery; acknowledge only the captured ids
-on the matching send receipt and preserve the unknown-delivery fence.
+on the matching send receipt or durable uncertain Telegram gap job. In the
+uncertain case clear the saved summary and continue catch-up, retaining the
+native job and unknown attempt without resending. Preserve fixed catch-up
+step diagnostics and one General offline notice during prolonged catch-up
+failure; the transport success alone must not cancel that timer.
 Keep recovery joins scoped to an active outage: a healthy command's next-poll
 confirmation must not await later ordinary queue work. Retain the existing
 command-priority/own-receipt regression when changing these hooks.

@@ -188,11 +188,11 @@ test('Telegram General arriving during a held gap stays missed until its own suc
   assert.equal(await f.fake.waitForPollClose(poll.id), poll.id);
 });
 
-test('Telegram uncertain native gap stays fenced across successful recovery polls', async t => {
+test('Telegram uncertain native gap recovers while its native send stays fenced', async t => {
   const f = await fixture(t);
   pair(f.root);
   const initial = f.fake.waitForPoll();
-  const { hub, ui } = await f.start();
+  const { hub, ui, status } = await f.start();
   const poll = await within(initial, 1_000);
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
   await control(f.fake.url, 'release-polls', {});
@@ -202,22 +202,23 @@ test('Telegram uncertain native gap stays fenced across successful recovery poll
   const accepted = f.fake.waitForRequest('sendMessage', row => String(row.params.text).startsWith('1 General messages missed since '));
   await f.clock.advance(10_000);
   await within(accepted, 1_000);
-  await f.waitRetry(2);
+  await until(() => facts(f.root).jobs.some(job => job.state === 'uncertain'), { what: 'durable uncertain gap', timeoutMs: 1_000 });
+  await until(() => facts(f.root).gap === null, { what: 'uncertain gap settled without replay', timeoutMs: 1_000 });
   const snapshot = facts(f.root);
   const gap = snapshot.jobs.find(job => (job.payload as { key?: string }).key)!;
   assert.equal(gap.state, 'uncertain');
-  assert.equal(snapshot.jobs.find(job => job.kind === 'general')!.state, 'missed');
-  assert.ok(snapshot.gap);
-  await f.clock.advance(1_000);
-  await f.waitRetry(3);
-  const later = facts(f.root);
-  assert.equal(later.gap, snapshot.gap);
-  assert.equal(later.jobs.filter(job => (job.payload as { key?: string }).key).length, 1);
-  assert.equal(later.jobs.find(job => job.id === gap.id)!.state, 'uncertain');
+  assert.equal(snapshot.jobs.find(job => job.kind === 'general')!.state, 'reported');
+  assert.equal(snapshot.gap, null);
   const native = await control<{ messages: Array<{ text: string }>; requests: Array<{ method: string }> }>(f.fake.url, 'state');
   assert.equal(native.messages.length, 1, 'accepted-but-unknown gap is never sent again');
   assert.equal(native.requests.filter(row => row.method === 'sendMessage').length, 1);
-  assert.equal((await ui.request({ type: 'hub.status' })).ok, true);
+  await f.clock.advance(1_000);
+  await until(async () => (await status()).connection === 'connected', { what: 'catch-up completed after uncertain gap', timeoutMs: 1_000 });
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'After uncertain gap' })).ok, true);
+  await until(() => facts(f.root).jobs.some(job => job.kind === 'general' && ['sent', 'queued'].includes(job.state)), { what: 'later General admitted', timeoutMs: 1_000 });
+  await f.clock.advance(1_000);
+  await until(() => facts(f.root).jobs.some(job => job.kind === 'general' && job.state === 'sent'), { what: 'later General delivered', timeoutMs: 1_000 });
+
   await hub.stop();
   assert.equal(await f.fake.waitForPollClose(poll.id), poll.id);
   assert.equal(f.clock.pending, 0);
@@ -290,5 +291,85 @@ test('Telegram membership kick during catch-up retains fatal reload recovery', a
   await hub.stop();
   assert.equal(await within(stopped, 1_000), active.id);
   assert.equal(await f.fake.waitForPollClose(poll.id), poll.id);
+  assert.equal(f.clock.pending, 0);
+});
+
+
+for (const legacy of [false, true]) test(`Telegram seeded ${legacy ? 'legacy ' : ''}uncertain gap recovers queued card and new General without another attempt`, async t => {
+  const f = await fixture(t);
+  const db = new Store(join(f.root, '.cland/hub.db'));
+  const now = f.clock.now().toISOString();
+  try {
+    const store = db.remotes.forMessenger('telegram');
+    store.setPairing(pairing);
+    store.set('telegram.outage', JSON.stringify({ since: now, reason: 'send failed', announced: false }));
+    const payload = (order: number, text: string, key?: string) => ({ telegram: true, ...(legacy ? {} : { userId: '101' }), admission: 'paired',
+      order, part: 0, method: 'sendMessage', params: { chat_id: '101', text }, ...(key ? { key } : {}),
+      mapping: { chatId: '101', topic: 'general', message: null, ask: null, approval: null } });
+    store.putOutbox({ id: 'source', kind: 'general', source: 'original', state: 'missed', payload: payload(1, 'missed'), created: now, updated: now });
+    store.putOutbox({ id: 'gap', kind: 'message', source: null, state: 'uncertain', payload: payload(2, '1 General messages missed since 13:20', 'saved-key'), created: now, updated: now });
+    store.putAttempt({ id: 'attempt', job: 'gap', at: now, outcome: 'unknown' });
+    store.set('telegram.gap', JSON.stringify({ chat: '101', user: '101', key: 'saved-key', text: '1 General messages missed since 13:20', jobs: ['source'] }));
+    store.putOutbox({ id: 'card', kind: 'card', source: null, state: 'queued', payload: payload(3, 'Queued card'), created: now, updated: now });
+    store.set('telegram.outbox.order', '3');
+  } finally { db.close(); }
+  const initial = f.fake.waitForPoll();
+  const { hub, ui, status } = await f.start();
+  await f.clock.advance(1_000);
+  const poll = await within(initial, 1_000);
+  await until(() => facts(f.root).jobs.find(job => job.id === 'card')?.state === 'sent', { what: 'seeded queued card durable delivery', timeoutMs: 1_000 });
+  assert.equal((await status()).connection, 'connected');
+  assert.equal(facts(f.root).gap, null);
+  assert.equal(facts(f.root).jobs.find(job => job.id === 'source')!.state, 'reported');
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'New after restart' })).ok, true);
+  await until(() => facts(f.root).jobs.some(job => job.kind === 'general' && ['queued', 'sent'].includes(job.state)), { what: 'new General admitted', timeoutMs: 1_000 });
+  await f.clock.advance(1_000);
+  await until(() => facts(f.root).jobs.some(job => job.kind === 'general' && job.state === 'sent'), { what: 'new General durable send', timeoutMs: 1_000 });
+  const check = new Store(join(f.root, '.cland/hub.db'));
+  try {
+    const store = check.remotes.forMessenger('telegram');
+    assert.deepEqual(store.attempts('gap'), [{ id: 'attempt', job: 'gap', at: now, outcome: 'unknown' }]);
+    assert.equal(store.outbox().find(job => job.id === 'gap')!.state, 'uncertain');
+  } finally { check.close(); }
+  const native = await control<{ messages: Array<{ text: string }> }>(f.fake.url, 'state');
+  assert.deepEqual(native.messages.map(row => row.text), ['Queued card', 'you · message\nNew after restart']);
+  const closed = f.fake.waitForPollClose(poll.id);
+  await hub.stop();
+  assert.equal(await within(closed, 1_000), poll.id);
+});
+
+test('Telegram failing gap logs a fixed step and posts one General offline notice during catch-up', async t => {
+  const f = await fixture(t);
+  const db = new Store(join(f.root, '.cland/hub.db'));
+  const now = f.clock.now().toISOString();
+  try {
+    const store = db.remotes.forMessenger('telegram');
+    store.setPairing(pairing);
+    store.set('telegram.outage', JSON.stringify({ since: now, reason: 'catch-up failed', announced: false }));
+    store.set('telegram.gap', JSON.stringify({ chat: '101', user: '101', key: 'dropped-key', text: 'gap', jobs: [] }));
+    store.putOutbox({ id: 'dropped', source: null, kind: 'message', state: 'dropped', created: now, updated: now,
+      payload: { telegram: true, userId: '101', key: 'dropped-key', order: 1, part: 0, method: 'sendMessage', params: { chat_id: '101', text: 'gap' } } });
+    store.set('telegram.outbox.order', '1');
+  } finally { db.close(); }
+  const { hub, ui } = await f.start();
+  await f.waitRetry(1);
+  assert.equal(f.logs.filter(row => row.event === 'telegram-poll-retry').at(-1)!.reason, 'catch-up failed: gap');
+  const notices = async () => {
+    const result = await ui.request({ type: 'topic.history', topic: 'general' }, 10_000);
+    assert.equal(result.ok, true, result.error);
+    return (result.value as { messages: TopicMessage[] }).messages.filter(message =>
+      message.topic === 'general' && message.text.startsWith('Telegram remote offline since'));
+  };
+  assert.deepEqual(await notices(), [], 'no durable offline notice before the outage threshold');
+  // Repeated successful polls still fail catch-up on the dropped keyed job.
+  // Their outage must produce a hub General notice independent of Telegram.
+  await f.clock.advance(300_001);
+  await until(async () => (await notices()).length > 0, { what: 'durable General offline notice after catch-up outage', timeoutMs: 10_000 });
+  await until(() => f.retries() >= 2, { what: 'continued catch-up failures', timeoutMs: 1_000 });
+  await f.clock.advance(1_000);
+  await until(() => f.retries() >= 3, { what: 'later catch-up failure', timeoutMs: 1_000 });
+  assert.equal((await notices()).length, 1, 'exactly one recorded General offline notice per outage');
+  assert.equal(JSON.stringify(f.logs).includes(TELEGRAM_TEST_TOKEN), false);
+  await hub.stop();
   assert.equal(f.clock.pending, 0);
 });

@@ -86,3 +86,52 @@ test('Telegram held gap aborted setup cancels and joins its writer before closin
   assert.equal(f.clock.pending, 0);
   assert.equal(f.setupClock.pending, 0);
 });
+
+
+for (const conflict of ['user', 'chat']) test(`Telegram uncertain gap with conflicting retained ${conflict} cannot settle captured jobs`, async t => {
+  const root = await tempProject(t);
+  const db = new Store(join(root, 'gap.db'));
+  try {
+    const store = db.remotes.forMessenger('telegram');
+    const clock = new FakeClock();
+    const now = clock.now().toISOString();
+    store.setPairing(pairing);
+    const saved = JSON.stringify({ chat: '101', user: '101', key: 'gap-key', text: 'gap', jobs: ['source'] });
+    store.set('telegram.gap', saved);
+    store.putOutbox({ id: 'source', source: 'original', kind: 'general', state: 'missed', created: now, updated: now,
+      payload: { telegram: true, userId: '101', params: { chat_id: '101' } } });
+    store.putOutbox({ id: 'gap', source: null, kind: 'message', state: 'uncertain', created: now, updated: now,
+      payload: { telegram: true, key: 'gap-key', ...(conflict === 'user' ? { userId: '202' } : {}), params: { chat_id: conflict === 'chat' ? '202' : '101' } } });
+    store.putAttempt({ id: 'unknown', job: 'gap', at: now, outcome: 'unknown' });
+    await assert.rejects(flushTelegramGap(store, clock, async () => { throw new Error('fenced native send'); }), /fenced native send/);
+    assert.equal(store.get('telegram.gap'), saved);
+    assert.equal(store.outbox().find(job => job.id === 'source')!.state, 'missed');
+    assert.equal(store.outbox().find(job => job.id === 'gap')!.state, 'uncertain');
+    assert.deepEqual(store.attempts('gap'), [{ id: 'unknown', job: 'gap', at: now, outcome: 'unknown' }]);
+  } finally { db.close(); }
+});
+
+test('Telegram uncertain gap uses constant pairing reads with unrelated retained history', async t => {
+  const root = await tempProject(t);
+  const db = new Store(join(root, 'gap.db'));
+  try {
+    const store = db.remotes.forMessenger('telegram');
+    const clock = new FakeClock();
+    const now = clock.now().toISOString();
+    store.setPairing(pairing);
+    store.set('telegram.gap', JSON.stringify({ chat: '101', user: '101', key: 'gap-key', text: 'gap', jobs: [] }));
+    store.transaction(() => {
+      for (let index = 0; index < 500; index++) store.putOutbox({ id: `retained-${index}`, source: null, kind: 'message', state: 'sent', created: now, updated: now,
+        payload: { telegram: true, params: { chat_id: '101' } } });
+      store.putOutbox({ id: 'gap', source: null, kind: 'message', state: 'uncertain', created: now, updated: now,
+        payload: { telegram: true, key: 'gap-key', params: { chat_id: '101' } } });
+    });
+    let reads = 0;
+    const read = store.pairing.bind(store);
+    store.pairing = () => { reads++; return read(); };
+    assert.equal(await flushTelegramGap(store, clock, async () => { assert.fail('unknown native effect stays fenced'); }), true);
+    assert.ok(reads <= 3, `${reads} pairing queries exceed the constant work budget`);
+    assert.equal(store.get('telegram.gap'), null);
+    assert.equal(store.outbox(['uncertain'])[0]!.id, 'gap');
+  } finally { db.close(); }
+});

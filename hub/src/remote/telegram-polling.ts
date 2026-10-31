@@ -3,6 +3,12 @@ import type { Clock } from '../hub/clock.ts';
 import type { RemoteStore } from './state.ts';
 import { TelegramError, type TelegramApi, type TgUpdate, type TgUpdateKind } from './telegram-api.ts';
 
+export type TelegramCatchUpStep = 'gap' | 'outbox resume' | 'inbound recover' | 'card catch-up';
+export class TelegramCatchUpError extends Error {
+  readonly step: TelegramCatchUpStep;
+  constructor(step: TelegramCatchUpStep) { super(`catch-up failed: ${step}`); this.step = step; }
+}
+
 export const TELEGRAM_ALLOWED_UPDATES: readonly TgUpdateKind[] = ['message', 'edited_message', 'callback_query', 'my_chat_member'];
 /** Resolve only when the handler's effects are durable. Cancellation must drain its writers. */
 export type TelegramUpdateHandler = {
@@ -127,7 +133,7 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
         options.offline?.(error instanceof TelegramError ? error.description : 'catch-up has no delivery receipt');
         const waiting = pause(clock, signal, 1_000);
         options.log?.({ event: 'telegram-poll-retry', delay: 1_000,
-          code: error instanceof TelegramError ? error.code : 0, reason: 'catch-up incomplete' });
+          code: error instanceof TelegramError ? error.code : 0, reason: error instanceof TelegramCatchUpError ? error.message : 'catch-up failed: unknown step' });
         await waiting;
       }
     }

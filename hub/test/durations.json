@@ -7895,7 +7895,6 @@
     "hub/test/telegram-catchup.test.ts::Telegram membership kick during catch-up retains fatal reload recovery": 0.106947,
     "hub/test/telegram-catchup.test.ts::Telegram retries interrupted inbound feedback without duplicating its stored human message": 0.261306,
     "hub/test/telegram-catchup.test.ts::Telegram ten-second outage marks retained input then sends one gap for three missed General posts": 0.122591,
-    "hub/test/telegram-catchup.test.ts::Telegram uncertain native gap stays fenced across successful recovery polls": 0.108348,
     "hub/test/telegram-commands.test.ts::Telegram command replay does not repeat a reply committed before its lost HTTP receipt": 0.148927,
     "hub/test/telegram-commands.test.ts::Telegram command replies obey the bot hold at ordinary priority and confirm their own durable result": 0.128361,
     "hub/test/telegram-commands.test.ts::Telegram inbox uses one long literal card while long status replies retain numbered literal parts": 0.15238,

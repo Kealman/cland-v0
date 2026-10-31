@@ -14,7 +14,7 @@ import type { RemoteConnection, HubFrame, HubStatus, Inbox } from '../protocol.t
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { TelegramApi, TelegramError, type TgUpdate } from './telegram-api.ts';
 import { TELEGRAM_COMMANDS, telegramHelp, telegramCommand, telegramStatus, commandParts, plainCommandReply } from './telegram-commands.ts';
-import { logUnhandledTelegramUpdate, pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
+import { TelegramCatchUpError, type TelegramCatchUpStep, logUnhandledTelegramUpdate, pollTelegram, type TelegramPollingOptions } from './telegram-polling.ts';
 import { flushTelegramGap } from './telegram-gap.ts';
 import { TelegramOutbox } from './telegram-outbox.ts';
 import { TelegramInbound } from './telegram-inbound.ts';
@@ -108,22 +108,28 @@ export class TelegramRemote implements Remote {
     this.#offlineTimer.unref();
   }
 
+  async #catchUpStep<T>(step: TelegramCatchUpStep, work: () => T | Promise<T>): Promise<T> {
+    try { return await work(); }
+    catch (error) { if (fatal(error)) throw error; throw new TelegramCatchUpError(step); }
+  }
+
   async #caughtUp(): Promise<boolean> {
     // Ordinary commands confirm their own settled job; later queue arrivals
     // must not turn each successful poll into a remote-wide drain barrier.
     if (this.#offline) {
-      await this.#outbox.resume();
-      await this.#inbound?.recover();
+      await this.#catchUpStep('outbox resume', () => this.#outbox.resume());
+      await this.#catchUpStep('inbound recover', () => this.#inbound?.recover());
     }
-    if (this.#polling && !await flushTelegramGap(this.#polling.store, this.#clock, (chat, text, key) =>
-      this.#outbox.send({ chat_id: chat, text, disable_notification: true, link_preview_options: { is_disabled: true } }, { key }))) return false;
+    const polling = this.#polling;
+    if (polling && !await this.#catchUpStep('gap', () => flushTelegramGap(polling.store, this.#clock, (chat, text, key) =>
+      this.#outbox.send({ chat_id: chat, text, disable_notification: true, link_preview_options: { is_disabled: true } }, { key })))) return false;
     const outage = this.#offline;
     if (outage) {
       this.#outbox.holdCards(false);
-      await this.#outbox.resume();
+      await this.#catchUpStep('outbox resume', () => this.#outbox.resume());
       if (!this.#recoveredAt || this.#abort.signal.aborted) return false; // Recovery was interrupted.
       if (Date.parse(this.#recoveredAt) - Date.parse(outage.since) > 150_000)
-        await this.#cards?.catchUp(await this.#request<Inbox>('inbox.list'), outage.since);
+        await this.#catchUpStep('card catch-up', async () => this.#cards?.catchUp(await this.#request<Inbox>('inbox.list'), outage.since));
       if (!this.#recoveredAt || this.#abort.signal.aborted) return false;
       this.#clock.clearTimeout(this.#offlineTimer);
       this.#offline = undefined;
@@ -372,7 +378,6 @@ export class TelegramRemote implements Remote {
           this.#outbox.setAvailable(true);
           if (this.#offline) {
             this.#recoveredAt ??= this.#lastInbound;
-            this.#clock.clearTimeout(this.#offlineTimer);
           }
         });
       // A media failure aborts polling too. Join that native poll before

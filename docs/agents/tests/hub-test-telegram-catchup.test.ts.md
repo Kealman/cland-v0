@@ -40,11 +40,21 @@ message through frames, and inspects both durable source rows. Only the first
 source becomes reported on that receipt; the second stays missed until its
 own paced gap succeeds. Keep both accepted native messages and final poll close.
 
-`Telegram uncertain native gap stays fenced across successful recovery polls`
+`Telegram uncertain native gap recovers while its native send stays fenced`
 commits the fake platform effect then disconnects its response. Subsequent
-successful zero-timeout polls must retain the same captured gap, one uncertain
-keyed outbox job and one native send. General remains missed, the hub serves,
-and no new job or attempt bypasses uncertainty.
+successful polls settle captured sources as reported and clear the saved gap,
+while retaining the uncertain keyed native job and exactly one gap send.
+Status reconnects and later General traffic has its own durable send.
+The seeded uncertain-gap tests (current and legacy absent-userId payloads) start from hub.db with a missed source, saved
+gap, unknown attempt and queued card; the first poll recovers the card and
+new General traffic without modifying or repeating the unknown attempt.
+The failing-gap test seeds a dropped keyed gap: repeated catch-up failures
+log the fixed gap step and post exactly one offline General notice across
+more than five fake-clock minutes. Read General history before the trigger,
+advance the fake clock, then wait up to ten load-scaled seconds for the recorded
+General message through topic.history; retain the final exactly-once count after
+another failed poll. A short-lived live frame is not the notice receipt. These assertions inspect durable rows
+and native messages independently of test exit status.
 
 The 401 and 403 gap controls retain missed sources and the captured gap, one
 fatal cause/fix in General, disabled status, no retry, no offline timer firing,

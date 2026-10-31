@@ -3093,7 +3093,12 @@ line, `Telegram remote offline since 13:20: <reason>`. Recovery writes
 posted. Shorter outages produce neither line. The gap and the mirrored recovery line
 use the same per-chat queue as ordinary sends, with silent notifications. Both
 General lines use the same `remoteNotice`
-boundary as fatal diagnostics. Stop drains the timer and pending native work.
+boundary as fatal diagnostics. Successful polls do not cancel the outage timer
+until catch-up completes: repeated catch-up failures still produce that one
+General notice. Retry diagnostics use fixed reason classes naming `gap`,
+`outbox resume`, `inbound recover` or `card catch-up`; unexpected callback
+failures use `unknown step`. Provider error text is never interpolated into
+these classes. Stop drains the timer and pending native work.
 
 Retained text reaches the normal human frame path with
 `(written on Telegram at 13:20; the hub was down until 13:24)` appended, using
@@ -3102,9 +3107,12 @@ the hub's local time. Telegram's formatting is still discarded, and stable
 native input identity preserves replay-safe delivery and reactions.
 The gap captures missed native General job ids, deduplicating split parts by
 source message. Its immutable send key and captured ids survive restart. Only
-the matching successful native send acknowledges those ids; a General source
+the matching successful native send, or a durable uncertain Telegram gap job, settles those ids as reported; a General source
 arriving during the send remains missed for the next gap. An uncertain native
-delivery stays fenced, never retried as a new gap. Zero missed sources send no
+delivery stays fenced, never retried as a new gap. For Telegram, the saved gap clears
+and recovery continues without claiming the informational line was delivered;
+the native job and its unknown attempt remain unchanged. This also applies on
+startup with a persisted uncertain gap. Zero missed sources send no
 line. A recovered transport admits feedback and gaps while General arrivals
 still count as missed until catch-up completes. If another source arrives
 during a held gap, another zero-timeout exchange settles its separate captured
