@@ -2,8 +2,8 @@
 id: T-1500
 kind: task
 title: Other Unix-socket test fixtures are not safe under a deep TMPDIR on macOS
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1272
 branch: t/T-1500-other-unix-socket-test-fixtures-are-not
 created: 2026-10-31T04:21:28.348Z
-updated: 2026-10-31T16:05:51.164Z
+updated: 2026-10-31T20:18:33.394Z
+closed: 2026-10-31T20:18:33.394Z
 ---
 
 ## Summary
@@ -26,6 +27,9 @@ T-1499 fixed the admission exchange socket, which exceeded macOS's 104-byte `sun
 - [x] C1. Every Unix-socket listener created by test fixtures allocates its path through one shared helper that budgets UTF-8 bytes including the NUL under 104, independent of TMPDIR depth, and a control proves a deep TMPDIR (≥ 90 bytes) still binds.
   - done: impl-1500 · 2026-10-31T14:50:46.362Z
   - verified: rev-26 [reviewer] · run rev-20261031-1500-evidence-2 · 2026-10-31T15:54:12.644Z · commit 6aaba7080ddc9ad1769f4b0cb119ca8c10f10646
+  - verified: rev-26 [reviewer] · run rev-20261031-1500-evidence-3 · 2026-10-31T19:23:31.780Z · commit 133a4da02b6f82618b624232402a5c58a3f01d2e
+  - verified: rev-26 [reviewer] · run rev-20261031-1500-evidence-4 · 2026-10-31T20:08:17.787Z · commit 133a4da02b6f82618b624232402a5c58a3f01d2e
+  - verified: rev-26 [reviewer] · run rev-20261031-1500-source-7 · 2026-10-31T20:11:37.596Z · commit 5af0807b4f4227462d3ec39ec99676bbe92028d7
 
 ## Comments
 
@@ -137,3 +141,65 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14971 authorized merge delta clear. Parents6aaba7080+715ad1cdc/tree23a5298c; cover-quiet combines portable allocation with incoming fixtureEnvironment/runner builder, synthetic sentinel actor/identity stripping and all acquisition/drain fences; only new sentinel endpoint migrated. Own helper/recovery/controls byte-identical source4; other importedcode matchesdev. Docssections/index retained,no markers. A14967raw24coverquietpasses/A14968raw59fileexit0 plusA14969Macprovenance/typechecklint summary staytargeted,notcurrentLinux/full. C1old-headverifiedA14962 remains6aaba; fresh runtime mark pending Coordinatorverifyall atmergeda46. OriginalA14947failed/localincomplete retained. Findings[],no duplicate taskverify or newdevmerge.
+
+### rev-26 · 2026-10-31T19:05:54.522Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-source-6
+commit: 133a4da02b6f82618b624232402a5c58a3f01d2e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-15052 full continuing source6 audit: all12 changed paths read. Best-effort resource/hub/directory/final-check ordering and aggregate errors restored; ownDirectory root/native/live-writer fences unchanged. Incomplete lifecycle control now uses explicit live-listener removal guard and retains positive shutdown/retention/removal assertions. Shared Node module is byte-identical to prior canonical helper; compatibility export remains, hub/Nvim import directly, no wire/browser barrel exposure. Docs/skill provenance aligned. Original A-15044 failed full run's three teardown outputs quoted and preserved; Web unexecuted. Local original red A-15047 and green A-15048/49/50 show61/19/5 passes/nativeexit0 with Mac provenance supplied by A-15051; static/build/typecheck/lint are qualified lead receipts, no reviewer workload. C1 old6aaba verification remains old/stale; fresh exact-head runtime evidence pending. No remaining Standards or Spec findings.
+
+### rev-26 · 2026-10-31T19:23:31.780Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-evidence-3
+commit: 133a4da02b6f82618b624232402a5c58a3f01d2e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-15060 audits original A-15059/run13bf81df at unchanged source6 head. C1 verified: native deep>=90UTF8 TMPDIR/path+NUL<104 and private ownership each base+5 distinct load passes; five lifecycle/retention/killed-allocator recovery cases plus native EADDRINUSE pass. 5156 complete matching progress pairs:4605ordinarytest/531file plus10loadtest/10loadfile passes, no adverse/unpaired, seven failure arrays[]. T0/T1/allfallbackT2 inclNeovim/selected11T3/oneT4base/Web exit0; remaining tiers unexecuted, T4repetitions skipped. All three prior A-15044 failed case identities ABSENT; their A-15048/49/50 Mac targeted receipts remain local, prior full run stays failed, Coordinator full rerun remains required after readiness. Exact Linuxx64 droplet head/candidate provenance checked; candidate differs only1526excludedtracker/rules, actual isolated Shell1248 Chrome156.0.8078.4, cache/occasionnull/skips[]. Typecheck host reuse, report-mode advisories retained. No reviewer workload or full-Linux-recovery claim.
+
+Criteria: C1 verified.
+
+### rev-26 · 2026-10-31T20:08:17.787Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-evidence-4
+commit: 133a4da02b6f82618b624232402a5c58a3f01d2e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-15067 independently audits Coordinator full e2a27cbb/A-15066 at exact source6 code head. All three A-15044 teardown failures now pass on Linux: unreadable-birth27571, every-resource/directory27627, suite-fixture child cleanup30203. C1 deepbind/private and five lifecycle cases each base+5 sequential load passes. 7197 complete matching pairs:6080ordinarytest passes/8explicit skips/724file passes; separate200loadtest/185loadfile passes, zero adverse/unpaired and six empty failure arrays. T0/T1/T2/T3/Web native exit0; no T4 phase. Eight skip identities/reasons exactly match provenance(macOS sandbox/caffeinate or missing OpenCode). Exact head/candidate tree checked as in A-15060, no cache, Linuxx64 droplet Node24.21/Nvim0.12.5, actual isolated Shell1248 Chrome156.0.8078.4; host typecheck reused. T3 ratchet2305.593 vs2303.646 and other overages retained as report-only, not gate passes. Prior full red, selected and Mac receipts retain limits. No reviewer workload. C1 verified/full Linux confirmation clear at this code head; any docs-only merge needs separate delta review.
+
+Criteria: C1 verified.
+
+### rev-26 · 2026-10-31T20:11:37.596Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-source-7
+commit: 5af0807b4f4227462d3ec39ec99676bbe92028d7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-15072 exact merge-delta clear under independently read Coordinator3afa16b7 authorization; e2a27cbb stands as full code run. Parents133a4da02+7bf54c8ac/tree00e9562f. Classified101 changed paths:96 matchdev, five composed docs/index/helper/tier files checked. Portable skill/README sections exact full-parent text, incoming sections retained/no markers. All75 own code paths match fullparent except expected legacyRemoteHub remoteStatus callback composition and additive tiers rows; canonical socket owner/cleanup/sweep/Nvim/lifecycle logic unchanged. Local A-15068/69/70 original61/19/5 passes/nativeexit0 and A-15071 Mac typecheck/static summary remain targeted, no merged-head full run claimed. C1 refreshed through explicit carry of A-15066/A-15067 at133a4da02:6080passes/8explainedskips,T0–T3/Web0,T4unexecuted, all three prior Linux failures passing. Prior red/selected/local limits and report ratchet growth retained. No findings or reviewer workloads.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-31T20:18:33.394Z
+
+Merged 07c18fb5949a71a723078aeae04f3eab35dcaaff onto dev.

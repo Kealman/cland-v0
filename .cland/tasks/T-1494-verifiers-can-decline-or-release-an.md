@@ -3,7 +3,7 @@ id: T-1494
 kind: task
 title: Verifiers can decline or release an accepted request without a verdict
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1283
 branch: t/T-1494-verifiers-can-decline-or-release-an
 created: 2026-10-30T19:25:12.366Z
-updated: 2026-10-31T18:59:09.771Z
+updated: 2026-10-31T19:38:29.831Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ Origin: impl-1487's T-1487 scope note (2026-10-30). Adding it means a role-tool 
 
 - [x] C1. A verifier declines an accepted request with a one-line reason; the pending reservation clears at once, the requester gets the reason, and the request is reassigned or returned without a verdict being recorded.
   - done: impl-1494 · 2026-10-31T18:46:35.227Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1494-evidence-3 · 2026-10-31T19:38:29.607Z · commit 7e13db9f41b8bc36dec52edc18f94ff545c7ade8
 
 ## Comments
 
@@ -112,3 +113,48 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-15043 records full continuing source4 audit. Exact three-file parent/head correction restores QA execution, beyond-brief check permissions and do-not-fix wording on its existing Work line while retaining decline/receipt/reason/no-verdict/separate-hold instructions. Original clause guards unchanged. Exhaustive tool fixture adds verification.decline request/reason and permitted Reviewer caller; tool-name equality and malformed required/unknown/type assertions remain intact. Owning guide aligned; A-15042 inventory checked. No remaining Standards or Spec findings. Earlier decline production/ownership corrections unchanged. C1 remains done and runtime unverified pending same-head configured evidence; failed A-15040 remains failed with T2 and later phases unexecuted. Local macOS 1/39/10 whole-file passes/typecheck/lint are implementer summaries, not configured/runtime proof. No reviewer workloads.
+
+### rev-26 · 2026-10-31T19:16:30.861Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261031-1494-evidence-2
+commit: 17f9bfed51b0981115e4e0591008d73884a78146
+scope: evidence
+findings: [{"severity":"medium","text":"Original A-15053 fails text.includes(reviewerList): the fixture embeds the old Reviewer tools literal without verification.decline. Migrate that owning list while retaining exact matching, edited-permission reload, grant/revocation and audit assertions; inventory other literal permission-list consumers.","file":"hub/test/permissions.test.ts","line":519}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-15054 original failed run44f206d1 audit: exact source-clear head, T0/T1exit0, T2nativeexit1, later T3/T4/Web unexecuted. Actual sole failure permissions.test.ts:520 assert.ok(text.includes(reviewerList)), false expected true; earlier built-in/default table equality passed. 5026 complete progress pairs: ordinary3837pass/1fail and427pass/1fail files; separate380loadtest/380loadfile passes. Eight own decline/identity/cleanup generated cases each have one base plus five distinct load passes, recorded by original line numbers; valid partial evidence only. C1 remains runtime unverified for final settlement, no behavior failure mark inferred from obsolete fixture literal. Linuxx64 droplet c8lon1 Node24.21/Nvim0.12.5, exact head, candidate differs only excluded tracker/rules, cache/occasion/browser null. Report advisories retained; no reviewer workloads. New source review before replacement run.
+
+### impl-1494 · 2026-10-31T19:21:00.281Z
+
+Closed the missed-consumer class before source5: searched every named role/tool table, grant/permission section, parser/template/tool registry and usage/doc/skill consumer across hub T1–T4, Nvim/web, shipped skill workflows and fixtures. A-15055 records assessment and exact per-file receipts; A-15056 retains raw source matches. T4 workload uses unchanged task.hold frames and has no independent tool table. Migrated permissions.test.ts exact literal reviewerList; kept literal-match/reload/grant/revocation/audit assertions. Corrected README Reviewer/QA permissions table. On local macOS Node24.21, 56 matching/owning test files ran one at a time: 636/636 passed, zero skip/fail/cancel/todo; includes native T3, isolated Chrome Headless Shell Web (version unrecorded), and Nvim. Typecheck/lint exit0 (122 advisory findings, no refusals). These targeted files are not a full suite. Pushed 7e13db9f41b8bc36dec52edc18f94ff545c7ade8; no post-source1 dev merge.
+
+### rev-26 · 2026-10-31T19:21:50.686Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1494-source-5
+commit: 7e13db9f41b8bc36dec52edc18f94ff545c7ade8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-15058 source5 full continuing audit: complete three-file diff migrates exact Reviewer permission literal, README table and owning guide; inclusion/replacement/reload/grant/revocation/audit assertions unchanged. No production or fixture owner change. A-15055/56 consumer inventory checked, including legacy grants, unchanged hold/projection/CLI/T3/T4 consumers and direct role-list literals. Parsed all56 A-15057 original local logs:636tests/pass, zero fail/cancel/skip/todo, consistent totals. Local macOS Node24.21 native/Nvim/isolated-Web targeted evidence, browser version explicitly unknown; not full configured proof. C1 remains done/runtime unverified; original failed A-15040/A-15053 and partial own-case receipts retain their heads/outcomes. No remaining Standards or Spec findings, no reviewer workloads. Exact-head configured result and final original-record audit remain required.
+
+### rev-26 · 2026-10-31T19:38:29.607Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1494-evidence-3
+commit: 7e13db9f41b8bc36dec52edc18f94ff545c7ade8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-15065 independently audits original A-15063/runff79485d at unchanged source5 head. C1 verified: Reviewer/QA exact receipt, one-line reason, pending clearance, requester delivery, no verdict, stale/other-identity fences; missing/null requester and four cleanup controls each one base+5 distinct sequential load passes. All four prior failed consumers now pass at3631/3699/6387/13939. 5125 complete matching pairs:4524ordinarytest/521file plus40loadtest/40loadfile passes, zero adverse/unpaired and six empty failure arrays. T0/T1/allfallbackT2 inclNeovim/selectedrolesT3four/selectedinboxverifierT4onebase/Web exit0; remaining T3/T4 unexecuted, T4repetitions skipped. Exact head/candidate provenance checked; candidate differs only1540excludedtracker/rules, Linuxx64 droplet Node24.21/Nvim0.12.5 actual isolated Shell1248 Chrome156.0.8078.4, cache/occasionnull/skips[]. Typecheck host reuse and report advisories qualified. Prior red A-15040/A-15053 retained. No reviewer workload; configured task evidence, not full integrated all-tier coverage.
+
+Criteria: C1 verified.
