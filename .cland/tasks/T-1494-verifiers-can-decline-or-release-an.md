@@ -3,7 +3,7 @@ id: T-1494
 kind: task
 title: Verifiers can decline or release an accepted request without a verdict
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
@@ -11,9 +11,9 @@ assignee: null
 parent: R-1523
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1494-verifiers-can-decline-or-release-an
 created: 2026-10-30T19:25:12.366Z
-updated: 2026-10-31T14:43:40.311Z
+updated: 2026-10-31T18:34:39.237Z
 ---
 
 ## Summary

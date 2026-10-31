@@ -2,8 +2,8 @@
 id: T-1493
 kind: task
 title: Pin the authoritative request head at verifier admission
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1269
 branch: t/T-1493-pin-the-authoritative-request-head-at
 created: 2026-10-30T19:25:08.372Z
-updated: 2026-10-31T15:35:16.780Z
+updated: 2026-10-31T18:34:24.480Z
+closed: 2026-10-31T18:34:24.480Z
 ---
 
 ## Summary
@@ -27,7 +28,9 @@ Origin: impl-1487's T-1487 scope note (2026-10-30). T-1487 kept the ordered-rece
 
 - [x] C1. A role-addressed review or QA request records the head it was admitted for, and pending retirement can compare a later verdict's commit with that head (same, descendant, or unrelated), with legacy text-only requests still accepted.
   - verified: rev-32 [reviewer] · run rev-20261031-1493-evidence1 · 2026-10-31T15:31:36.831Z · commit eb522d7bfb66b361bfcb5ff9c95dc7d375ebbce0
-  - done: impl-1493 · 2026-10-31T15:33:46.694Z
+  - verified: rev-32 [reviewer] · run rev-20261031-1493-evidence2 · 2026-10-31T18:22:38.468Z · commit a27fee4a29c4b44b065bf8597f63e669fc83c1c9
+  - done: impl-1493 · 2026-10-31T18:24:37.315Z
+  - verified: rev-32 [reviewer] · run rev-20261031-1493-delta2 · 2026-10-31T18:27:51.556Z · commit 8eb1b94324619e52b1f4ed6ee953ce148f2e8697
 
 ## Comments
 
@@ -125,3 +128,37 @@ Authorized merge delta source clear, A-14950. Tree 42c8d643eeba9f09ff90ad049210c
 ### impl-1493 · 2026-10-31T15:35:16.780Z
 
 Source-clear build handed to Coordinator for directed verify all: pushed a27fee4a29c4b44b065bf8597f63e669fc83c1c9, delta clear A-14950. Fresh origin/dev fetch b126dff13d3b2931dda67374cbfd5264350f6258; merge-tree exit 0 and tree 42c8d643eeba9f09ff90ad049210c75de4c1ad78, no conflicts; clean worktree. Merged-head local typecheck and 75/75 targeted routing tests pass. Merged-head full verification/final runtime evidence remain Coordinator-owned and pending; predecessor configured receipt A-14940 and final evidence A-14945 are not relabelled as merged-head results. No new mode-free verify. Claim retained until merge.
+
+### rev-32 · 2026-10-31T18:22:38.468Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1493-evidence2
+commit: a27fee4a29c4b44b065bf8597f63e669fc83c1c9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence2 clear, A-15023. Coordinator all 4b4a339d/A-15022 at exact delta-cleared a27fee4a2: 6,109 matched ordinary passes, eight reasoned skips, 722 file passes; separate 345 load tests/330 file envelopes; no unmatched/adverse facts. Routing 75 ordinary passes and all 37 new identities once plus five repetitions establish C1, including legacy authority, reviewer/QA pin/relations, restart, monotonic history, unavailable pages and object arrival/reopen. T0/T1/T2/T3/Web exit 0, no T4 phase. Footer candidate hash reproduced; Linux droplet/Headless Shell1248, host gate reused. Preserve report-only 4.11–4.32s arrival overruns, routing sum 30.67s vs30s (file envelope31.623553739s), T2 load tail147.50s, ratchet incomplete-base limit and eight macOS/OpenCode skips. No native ancestry or skipped-platform claim. C1 renewed only at a27fee4; later Coordinator45ffbd64 docs merge requires directed delta settlement without new all.
+
+Criteria: C1 verified.
+
+### rev-32 · 2026-10-31T18:27:51.556Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1493-delta2
+commit: 8eb1b94324619e52b1f4ed6ee953ce148f2e8697
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final delta2 clear, A-15026. Coordinator45ffbd64 explicitly carries full 4b4a339d/A-15022 at a27fee4a2 for unchanged item code, without new verify. Pin/parser/tracker/wire/test bytes unchanged; auto-merged T-1503 Core/Store notice helpers are isolated additions outside pinned blocks, manual conflicts only prose with sections retained. A-15025 original tool-return captures include native exits0 for typecheck, routing75/75 and exact memory-policy1/1; no full memory file/probe. Routing middle chunk is truncated (700/1506 tokens), current full case-level bytes unavailable; final75-pass completion survives and prior full named facts remain carry. C1 refreshed by authorized carry+current targeted completions+delta, not a current-head full run. Preserve full-run eight skips/no T4/report-only overruns/ratchet limits and injected/native boundaries.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-31T18:34:24.480Z
+
+Merged 6340692c0b0e98cab22eb2ebfe617568f86f0c33 onto dev.
