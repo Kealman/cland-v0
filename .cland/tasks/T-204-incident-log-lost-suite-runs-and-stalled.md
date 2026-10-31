@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-30T19:16:53.469Z
+updated: 2026-10-31T10:42:31.743Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -496,3 +496,7 @@ Incident, 2026-10-30: deliveries to coord were acknowledged but not injected for
 All seven were injected together at 19:16:12–13Z on hub 79176 (restart #64, serving 19:05:27Z). The restart itself did not release them; coord's role clause was injected at 19:05:49Z.
 
 Impact was low, because coord had handled each item through later direct reports and the content was acknowledgements. But a decision or question in this state would be lost for hours. The evidence is attached to T-1470 (E-1468) for scope.
+
+### human · 2026-10-31T10:42:31.743Z
+
+Hub restart #65 (stand-in, coord go, droplet gate waived by coord: only the periodic dev T3 3b0f7b3c on droplet 2ca5bb43 at the superseded f30d39fce was running): dev 4afa906a8, T-1508 Telegram outbound fix live (outbound Telegram stuck since 2026-10-30 21:25Z, human reported 08:41Z). Old hub 79176 stopped 10:40:43Z after 15.6 h, RSS 710 MB / footprint ~1.0 GB, peak footprint 1.65 GB over its life (pre-fix hub 17875 peaked 7.2 GB). New hub 74870 port 55929 web 56935, listening 10:40:51Z, serving 10:41:21Z, stop→serve 39 s, nice 0, 8 GB heap + DO token. Coord: bridge-connected 10:41:21Z → coordinator-filled → injected 10:41:45Z, one bridge. +50 s RSS 983 MB / footprint 1,022 MB. Queue empty, doctor 34 ok / 5 warn / 0 fail. Droplet 2ca5bb43 survived the restart.
