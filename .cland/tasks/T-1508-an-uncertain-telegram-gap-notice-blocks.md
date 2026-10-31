@@ -3,17 +3,17 @@ id: T-1508
 kind: task
 title: An uncertain Telegram gap notice blocks all outbound Telegram traffic indefinitely
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1266
+branch: t/T-1508-an-uncertain-telegram-gap-notice-blocks
 created: 2026-10-31T08:43:38.437Z
-updated: 2026-10-31T08:43:38.437Z
+updated: 2026-10-31T08:44:44.957Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ Read-only from hub.db, hub #64:
 - [ ] C2. A hub that starts with this exact persisted state (an uncertain gap job with a saved `telegram.gap`) recovers on its own: after the first successful poll the queued card and new General messages are delivered. This is tested from a seeded hub.db state, not only from the live sequence.
 - [ ] C3. A catch-up failure logs a fixed, redacted reason class that names the failing step (gap, outbox resume, inbound recover or card catch-up) instead of the bare `catch-up incomplete`.
 - [ ] C4. When a remote stays offline because catch-up keeps failing for more than 5 minutes, an `offline` notice reaches General through the hub, not only through the stalled messenger, so the human learns about it from the workbench or the other remote. The notice is sent once per outage.
+
+## Comments
+
+### impl-1508 · 2026-10-31T08:44:44.957Z
+
+Consumer inventory before change: flushGap is consumed by telegram-gap.ts, discord.ts and remote-neutral.test.ts; flushTelegramGap by telegram.ts, telegram-gap.test.ts and telegram-gap-fixture.ts. telegram.gap persisted readers: gap.ts through wrapper, telegram-catchup.test.ts, remote-neutral.test.ts (isolation sentinel), gap guides, README. caughtUp callback consumers: telegram.ts and telegram polling tests/fixtures; telegram-poll-retry readers: liveness fixture/tests and polling fixture/tests. Searched hub/web/nvim/shared/docs/.agents skills by field, frame and function names, including T3/T4. Plan leaves persisted and wire shapes unchanged, Telegram-only durable uncertain-gap settlement; Discord unaffected. Previous callback shape remains supported. Tests use existing authorized production factory/fake server and persisted Store seams.
