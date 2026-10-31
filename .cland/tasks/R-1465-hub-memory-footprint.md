@@ -3,7 +3,7 @@ id: R-1465
 kind: release
 version: 0.3.1
 title: Hub memory footprint
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-1262
 branch: null
 created: 2026-10-30T06:38:19.300Z
-updated: 2026-10-31T08:06:25.796Z
+updated: 2026-10-31T08:07:22.134Z
+closed: 2026-10-31T08:07:22.134Z
 ---
 
 ## Goal
@@ -173,3 +174,14 @@ Release conditions: evidence for the human's conditional approval (2026-10-30 14
 4. Dry-run notes are shown in topic-1262, as an artifact, at the release head.
 
 Informational: `npm run check:opencode` found OpenCode 2.2.5 against the tested 2.0.24, with 12 schema differences. Follow-up T-1501 does not block the release.
+
+### coord · 2026-10-31T08:07:22.134Z
+
+Released v0.3.1 at 4bdb12ffd56c67c161c8d4c43f4a3d30c9d75fbb.
+Homebrew published: Kealman/homebrew-tap main Formula/cland.rb v0.3.1
+https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v0.3.1
+sha256 9265fac0bccc3b1585ce3f54f4a89cab35ce1bdb215a7a64a50d8a44573304c5
+tap commit a477ebd4b89dd017db46dad29a1909322d653492
+Web bundle published: Kealman/cland-v0 v0.3.1
+cland-web.tar.gz 1726501 bytes; cland-web.tar.gz.sha256 83 bytes
+sha256 362147870114af190019c052541556c625646b9217796502c69600947a09bad0
