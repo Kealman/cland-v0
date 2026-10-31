@@ -5,6 +5,7 @@ title: "Invites: `cland user add` and the one-time invite link"
 state: open
 status: backlog
 size: S
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:51.739Z
-updated: 2026-10-31T23:47:55.719Z
+updated: 2026-10-31T23:52:16.282Z
 ---
 
 ## Summary
@@ -30,3 +31,4 @@ Hot files: new `hub/src/hub/invites.ts` (or within `users.ts`), `hub/src/hub/dis
 - [ ] C3. The invite token is stored only as a SHA-256 digest with its expiry, and appears in no log line, frame other than the minting result, or journal record.
 - [ ] C4. The invite check accepts an invite once within 24 hours (by the hub clock), and refuses a used, an expired or an unknown token with distinct reasons.
 - [ ] C5. `cland user invite <name>` replaces any open invite of that user, and the switch to users mode prints the first user's invite.
+- [ ] C6. `cland auth reset` revokes every open invite through T-1558's reset step, proven by a test that resets with an open invite and then refuses its token.

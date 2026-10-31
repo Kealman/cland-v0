@@ -5,6 +5,7 @@ title: Remote pairings belong to a user
 state: open
 status: backlog
 size: M
+criterion_seq: 8
 labels:
   - ready-for-agent
 assignee: null
@@ -15,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:53.485Z
-updated: 2026-10-31T23:47:59.037Z
+updated: 2026-10-31T23:52:17.496Z
 ---
 
 ## Summary
@@ -33,3 +34,4 @@ Hot files: `hub/src/remote/state.ts` (a new per-user pairings table; `remote_pai
 - [ ] C5. The pairing's journal record carries the paired user's id and the approving user's id, and never the code.
 - [ ] C6. The gateway's authority table and its refusals are unchanged, and the user of a remote input comes only from its pairing, never from the frame.
 - [ ] C7. In single mode pairing, replacement and inbound tests pass unchanged.
+- [ ] C8. `cland auth reset` keeps the first user's pairing per messenger and revokes the other users' pairings through T-1558's reset step (A-15078 A3), proven by a test.
