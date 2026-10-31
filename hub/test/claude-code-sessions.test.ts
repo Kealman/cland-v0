@@ -254,7 +254,7 @@ test('Claude launch generation fences joined spokes, hooks and bridges and repor
 
 test('actual Claude frames require resolved generation and revoke old connected spokes on rotation', async t => {
   const f = await fixture(t);
-  Object.assign(f.fake, { bridge: () => () => {} });
+  Object.assign(f.fake, { bridge: () => () => true });
   const launched = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
   const credential = f.fake.spawns[0]!.launchToken!;
   const openSpoke = async (generation?: string, anonymous = false) => {

@@ -1584,8 +1584,14 @@ export class HubCore {
     // a role clause first: what else waited is read under the role
     const hasClause = (m: Message) => this.#roleNotices.has(m.id) || m.digest?.some(note => this.#roleNotices.has(note.id));
     const ordered = [...notices.filter(hasClause), ...deliver.filter(hasClause), ...notices.filter(m => !hasClause(m)), ...deliver.filter(m => !hasClause(m))];
-    for (const message of ordered) this.#sendTo(connection, message);
-    if (deliver.length) this.#log({ event: 'flushed', session: name, count: deliver.length });
+    let sent = 0;
+    const heldReasons: Record<string, number> = {};
+    for (const message of ordered) {
+      const reason = this.#sendOutcome(connection, message);
+      if (reason === null) sent++;
+      else heldReasons[reason] = (heldReasons[reason] ?? 0) + 1;
+    }
+    if (ordered.length) this.#log({ event: 'flushed', session: name, count: deliver.length, sent, held: ordered.length - sent, heldReasons });
     this.#drainVerifierRequests();
   }
 
@@ -2760,13 +2766,19 @@ export class HubCore {
   }
 
   #sendTo(c: Connection, message: Message): boolean {
-    if (!this.isCurrent(c)) return false;
-    if (message.fromKind === 'human' && this.humanDeliveryBlocked(c.sessionId, message.id)) return false;
-    if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return false;
-    if (isHeldDelivery(message)) return false;
+    return this.#sendOutcome(c, message) === null;
+  }
+
+  /** Null means accepted by the spoke transport, not acknowledged or injected. */
+  #sendOutcome(c: Connection, message: Message): string | null {
+    if (!this.isCurrent(c)) return 'stale-connection';
+    if (message.fromKind === 'human' && this.humanDeliveryBlocked(c.sessionId, message.id)) return 'human-busy';
+    if (message.detail?.event === 'heartbeat' && this.sessionState(c.sessionId) !== 'idle') return 'heartbeat-not-idle';
+    if (isHeldDelivery(message)) return 'digest';
     if (message.kind !== 'role' && this.sessionState(c.sessionId) === 'idle') this.#store.bindTurnEvents(message.id, c.name);
     const clause = this.#roleNotices.get(message.id);
-    return clause ? c.deliverRole(message, clause) : c.deliver(this.#resolveAttachments(this.#store.deliveryMessage(message.id, c.name) ?? message));
+    const sent = clause ? c.deliverRole(message, clause) : c.deliver(this.#resolveAttachments(this.#store.deliveryMessage(message.id, c.name) ?? message));
+    return sent ? null : 'transport-rejected';
   }
 
   /** A session the hub has seen within the queue's own TTL — beyond it a name is history, not an addressee. */

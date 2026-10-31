@@ -483,6 +483,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       this.#host.adapterState?.write(launchGenerationKey(sessionId), generation);
       if (generation) this.#host.adapterState?.write(launchOwnerKey(generation), sessionId);
     }
+    this.#bridges.delete(sessionId);
   }
 
   /** The background id `claude --bg` printed (`claude attach <id>`). */
@@ -588,11 +589,13 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- inject
 
   /** The mod's bridge for a session connected; returns its disconnect. */
-  bridge(p: HarnessProcess, send: (frame: InjectFrame) => boolean): () => void {
+  bridge(p: HarnessProcess, send: (frame: InjectFrame) => boolean): () => boolean {
     const bridge = { send, generation: this.#host.adapterState?.read(launchGenerationKey(p.sessionId)) ?? null };
     this.#bridges.set(p.sessionId, bridge);
     return () => {
-      if (this.#bridges.get(p.sessionId) === bridge) this.#bridges.delete(p.sessionId);
+      const current = this.#bridges.get(p.sessionId) === bridge;
+      if (current) this.#bridges.delete(p.sessionId);
+      return current;
     };
   }
 
@@ -962,6 +965,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   close(): void | Promise<void> {
     if (this.#closed) return this.#closing;
     this.#closed = true;
+    this.#bridges.clear();
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);

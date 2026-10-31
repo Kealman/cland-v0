@@ -413,3 +413,7 @@ T-1473: preserve legacy no-uncertain-delivery refusal matching while appending s
 T-1478: Document explicit time-limited Coordinator used-swap waiver and shared quiet-machine stop conditions.
 T-1478: Correct quiet-slot pressure to native memorystatus level; retain transient counter/free percentage as context per Coordinator572bb1d0.
 T-1478: Configure agreed report-only256MiB heap/768MiB RSS defaults, ask53ad10db.
+T-1475: Document process-log bridge identities, stale closure and separate flush sent/held facts with legacy compatibility and the agreed test seam.
+T-1475 review: derive stale closure from native adapter disconnect receipt; cover generation/unwatch and pre-owned retained-log setup/drain controls.
+T-1475 source2: own full retained-log root/native-open acquisition and cancellation before writer construction; migrate Object.assign fake-harness disconnect consumer.
+T-1475 verification fix: disconnect uses captured native ownership without Store reads; generation and shutdown invalidate ownership while live; add late-close controls.

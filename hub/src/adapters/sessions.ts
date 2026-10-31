@@ -1947,11 +1947,12 @@ export class Sessions {
     const adapter = this.adapter(p.harness);
     if (!adapter.bridge) throw new Error(`the ${p.harness} adapter takes no bridge`);
     const disconnect = adapter.bridge(p, send);
-    this.#log({ event: 'bridge-connected', session });
+    const identity = { harnessId: p.harnessId, pid: p.pid };
+    this.#log({ event: 'bridge-connected', session, ...identity });
     this.#retry(p, undefined, true);
     return () => {
-      disconnect();
-      this.#log({ event: 'bridge-closed', session });
+      const current = disconnect();
+      this.#log({ event: current ? 'bridge-closed' : 'bridge-stale-closed', session, ...identity });
     };
   }
 

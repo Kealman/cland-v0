@@ -141,7 +141,7 @@ test('hub close drops a pending injection retry before closing its process table
   const { discovery, fakes, stop } = await projectHub(t, root, {}, { clock: new FakeClock(), log: entry => logs.push(entry) });
   const fake = fakes['claude-code']!;
   // The fake bridge provides the connection receipt; Sessions owns the retry it triggers.
-  Object.assign(fake, { bridge: () => () => {} });
+  Object.assign(fake, { bridge: () => () => true });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code', brief: 'Start work' });

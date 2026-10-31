@@ -1246,3 +1246,17 @@ uncertain delivery; older hubs require the id. Refusals retain the legacy
 Preserve attempted-unconfirmed recovery and the uncertain fence.
 Use the memory/fake-harness controls in
 `docs/agents/tests/hub-test-human-hold.test.ts.md`; no new role clause is needed.
+
+## Bridge and flush diagnostics (T-1475)
+
+Read bridge and flush records from the process log: `bridge-stale-closed` is an
+older bridge's disconnect (including generation invalidation/unwatch), classified
+by the native adapter's captured disconnect receipt. Generation/shutdown
+invalidations retire that owner while live; disconnect never reads storage.
+`harnessId`/`pid` are captured at connect.
+For `flushed`, cite `sent`, `held` and `heldReasons`; legacy `count` is pending
+candidates, and a transport send proves neither ack nor native injection.
+Older rows missing the new fields remain unknown. Use the memory/log and
+retained-row compatibility controls in
+`docs/agents/tests/hub-test-human-hold.test.ts.md`. These report facts only and
+change no delivery policy, command or role permission.

@@ -260,8 +260,11 @@ export interface HarnessAdapter {
   confirm(process: HarnessProcess, messageId: string): void;
   /** What a signal posted from inside the session (`cland hook <event>`, with the harness's payload) means. */
   interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess, at?: number): Interpretation;
-  /** An in-session bridge connected (the Claude Code mod): inject frames go to `send`. Returns its disconnect. */
-  bridge?(process: HarnessProcess, send: (frame: InjectFrame) => boolean): () => void;
+  /** An in-session bridge connected (the Claude Code mod): inject frames go to `send`. Returns its disconnect.
+   * The receipt is true only when this captured bridge was still current at disconnect,
+   * after generation and native ownership invalidation. False means stale.
+   * Disconnect uses captured native ownership and must not read persisted state. */
+  bridge?(process: HarnessProcess, send: (frame: InjectFrame) => boolean): () => boolean;
   /** Why a watched session's state is unknown, when discovery is suppressed. */
   stateReason?(process: HarnessProcess): string | null;
   /** Running totals and latest turn/step (only where `capabilities.usage` is not `none`). */

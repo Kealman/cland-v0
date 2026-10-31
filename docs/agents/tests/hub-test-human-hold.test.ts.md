@@ -40,3 +40,32 @@ exact queued (including the 60-second boundary), attempted delivered and injecte
 stages with admission ages. The previous message-id request and legacy reply
 remain covered alongside optional-id selection. This seam excludes native CLI
 and actual harness I/O.
+
+T-1475 observes bridge replacement and flush outcomes through the same memory
+Sessions/HubCore log callback, binding the production Claude bridge implementation.
+Closing an older, generation-invalidated or unwatched bridge reports stale closure;
+job identity stays pinned to connect even when the process row changes. Busy
+input and transport rejection retain queued delivery and report zero sent;
+idle recovery records transport acceptance without claiming ack or injection.
+An explicit Journal.write/readJournal round trip covers additive fields and
+legacy rows in a disposable project. The shared pre-registered pacing owner
+tracks the complete root/Journal acquisition before its first await and separately
+bounds acquisition, flush/read and native-close drainage. Cancellation fences
+writer construction after late root acquisition; acquired file handles close
+before directory removal. A pre-registered cleanup step owns late roots even
+when native acquisition finishes during teardown. Failed drainage retains the
+root. Omitted and aborted controls hold the actual root and native-open boundaries,
+assert acquisition settlement, no post-cancel writer construction, native file
+close where acquired, zero pending observers/timers and root removal. This
+is reader compatibility evidence: production bridge/flush events remain outside
+JOURNALLED. The seam excludes real native startup and transport latency.
+
+This file is T2: the retained-row controls now own filesystem resources through
+the shared process-cleanup owner; the delivery-policy cases still use memory.
+
+The generation invalidation control uses public host.launchGeneration with
+production unwatch, so revocation is observed at its native owner. Late-close
+controls close adapter and real memory storage before disconnect, and refuse all
+generation reads on a live disconnect. Keep both current/stale classifications
+and the no-storage-read assertion. Native registry shutdown invalidation makes
+late socket callbacks safe after the Store closes.

@@ -7882,3 +7882,26 @@ busy-to-idle/reconnect recovery and backoff remain in force. Uncertain deliverie
 keep the existing explicit operator replay path and never replay automatically.
 The message-id request and `{retried:true}` reply remain compatible with older
 hubs; omission of the id requires a hub with queued-input retry support.
+
+### Bridge and flush process-log diagnostics (T-1475)
+
+`bridge-connected` and `bridge-closed` in `.cland/log/hub.log` carry the
+connecting process row's `harnessId` (native job id) and `pid`, including null
+when unknown. A disconnect for a replaced bridge logs `bridge-stale-closed`;
+the adapter disconnect receipt also treats generation-invalidated or unwatched
+bridges as stale. It uses the native owner, without a second logging registry.
+Identity is captured on connect,
+so a later process-table update cannot attribute the old close to a newer job.
+Generation changes and adapter shutdown retire native bridge ownership while
+storage is live. Disconnect uses that captured native ownership only, without
+reading storage; late socket cleanup is safe after the Store closes.
+
+`flushed` keeps legacy `count` (pending delivery candidates) and adds `sent`,
+`held` and `heldReasons` (counts keyed by reason). Sent means the spoke transport
+accepted the frame; only `acked` and `injected` prove later delivery boundaries.
+Held reasons are `human-busy`, `heartbeat-not-idle`, `digest`,
+`stale-connection` and `transport-rejected`. Counts cover the ordered flush,
+including carried notices; digest-only notes filtered out by pendingFor are
+outside that flush. Older rows without these fields have unknown sent/held
+counts. These diagnostics remain process-log-only; they do not add journal
+lifecycle events or change delivery policy.
