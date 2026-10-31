@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T14:53:53.505Z
+updated: 2026-10-31T15:17:35.322Z
 ---
 
 ## Destination
@@ -60,6 +60,18 @@ The spec `docs/spec/v0.4.md` "cland v0.4: beyond one machine", its glossary entr
 8. The store lives in `.cland/auth/` encrypted with a key from `.cland/secrets.toml` (shape A) or on the hub's PVC with the key from a Kubernetes Secret (shape B); no object-storage backup in 0.4.
 9. Accounts bind to roles as today; a host receives the archives of the accounts of the roles placed on it; limited and signed-out marks act on launches regardless of host; no automatic rotation across accounts.
 
+### Round-4 decisions (logins as a resource, 2026-10-31, all accepted)
+
+Round-3 decisions 5–9 are replaced by these.
+
+1. **Login** is an abstraction: one sign-in to a harness, recorded in hub.db as `[logins.<name>]` with harness, account (the human's subscription), kind (`disk` for session logins, `key` for static keys), `exclusive` (true: at most one host at a time, the default for Claude and Codex; false: the snapshot may be mounted on several hosts, no write-back, the human's responsibility), provider and snapshot id, state (`creating`, `ready`, `in-use <host>`, `signed-out`), last successful sign-in. The Mac's own logins are outside cland.
+2. `disk` logins live on a small provider volume (about 1 GiB) mounted into the host; cland never reads its bytes. On host stop the volume is snapshotted (fresh tokens) and detached, the login becomes free; the last two snapshots are kept. DO Volumes, Fly Volumes, Kubernetes PVC per login (RWO gives exclusive naturally); providers without disks support `key` logins only.
+3. `cland login add <harness> [--name]` (also from the web and the remotes by card) boots or reuses a host, creates an empty login disk, opens the harness's own sign-in over `ssh -t` in the human's terminal (link and code in a card for the web and the phone), snapshots on success, marks `ready`. Logins can be created ahead of pool growth.
+4. A host needs one free login per harness of the roles placed on it; the scheduler picks it, creates the volume from the snapshot, mounts it, and releases it at stop. Effective pool capacity = min(max_hosts, free logins of the scarcest harness); a launch blocked on logins shows "waiting for a login <harness>" in the queue, the Coordinator sees it in Agents, the human gets a "not enough logins, create one?" card; `cland host status` and the workbench row show hosts and logins in use.
+5. A dead login reported by the harness (Claude `authentication_failed`, Codex `refresh_token_reused`/401, OpenCode `provider.auth`) marks the login `signed-out`, blocks new sessions on that host, and sends a "sign in again" card that re-runs the sign-in on the same host and disk. A second `signed-out` of one account within a day triggers the hint "this account seems to allow one sign-in: set exclusive or add an account".
+6. cland stores only metadata and snapshot ids for `disk` logins; `key` logins (OpenCode Go, API keys) are stored encrypted in `.cland/auth/` with the key from `.cland/secrets.toml`, entered by the human through stdin as `cland secret set` already does; an ADR amendment records that cland stores keys the human hands it but never reads a harness's session credentials.
+7. The credentials prototype (Q-1518) tests the disk mechanics with OpenCode and a fake harness, not copies of real logins; real accounts are signed in once each where production needs it (Claude during the host prototype's sizing; Codex at a moment the human picks with no Codex crew sessions running, then a day of watching the Mac).
+
 ## Decisions so far
 
 - [Host providers and their prices for agent hosts](Q-1513): DigitalOcean droplets first (reuses the executor's token, snapshot and ledger; destroy on idle, keep a snapshot or volume), Fly Machines second (stopped bills storage only, no systemd), Hetzner cheapest but unorderable, serverless 2–12× and without SSH; Mac footprint 250–550 MB per Claude session, 150–250 MB per Codex session; 2 vCPU/4 GB ≈ 3–4 sessions.
@@ -71,7 +83,7 @@ The spec `docs/spec/v0.4.md` "cland v0.4: beyond one machine", its glossary entr
 
 - Round-1 decision 11: StatefulSet, not Deployment.
 - Round-2 decision 2: the host agent and the harness supervision must not depend on systemd (Fly and pods have none); systemd where present, a plain supervisor otherwise.
-- Round-3 decision 5: reopened; see Q-1514 and Q-1520.
+- Round-3 decisions 5–9: replaced by round 4 (logins as a resource).
 
 ## Not yet specified
 

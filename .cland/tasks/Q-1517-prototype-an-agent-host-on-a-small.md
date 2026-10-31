@@ -5,7 +5,7 @@ title: "Prototype: an agent host on a small droplet with the hub tunnelled in"
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: M-1511
 blocked_by:
   - Q-1513
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T14:35:39.029Z
-updated: 2026-10-31T14:35:54.396Z
+updated: 2026-10-31T14:55:21.671Z
 ---
 
 ## Question

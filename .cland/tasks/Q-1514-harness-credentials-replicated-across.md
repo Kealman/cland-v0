@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:37.783Z
-updated: 2026-10-31T14:53:52.183Z
+updated: 2026-10-31T14:56:24.848Z
 closed: 2026-10-31T14:53:52.183Z
 ---
 
@@ -39,3 +39,9 @@ Research note: docs/research/harness-credentials.md on branch research/harness-c
 6. Decision table: Claude — copy no, setup-token works but terms question, API key allowed, login per host is the compliant default; Codex — copy one host at a time with write-back, no long-lived token on Pro, API key possible, device-auth login per host as fallback; OpenCode — static key copied.
 7. The host agent must check Claude liveness by pid: polling `claude agents --json` or `claude auth status` near expiry loses rotated tokens (#95822, open). Hosts carry no stray ANTHROPIC_API_KEY or CODEX_* variables; Codex needs cli_auth_credentials_store = "file". Dead-login signals per harness are in the note.
 8. Q-1518 settles: a per-host login surviving stop/start; setup-token in `--bg` via settings.json env if chosen; Codex refresh cadence, how a stale copy fails, device-auth end to end; one OpenCode key on two hosts.
+
+### human · 2026-10-31T14:56:24.848Z
+
+## Addendum (note amended, final 87db57e2)
+
+Codex correction: separate per-host logins of one ChatGPT account are not independent. openai/codex#17340 (0.128.0): one account on three hosts with their own auth.json, only the latest login keeps working, the others fail with "refresh token was already used". openai/codex#22577 (0.130.0): `codex logout`, and a plain `codex login` over existing credentials, signs out every machine and the browser sessions. So one Codex account = one login in use at one place at a time, and the human's Mac counts as a place; a crew account used on the Mac must not also go to a host; more places need a Platform API key or a second ChatGPT account, unless Q-1518 shows two logins coexist (test with a scratch account, never the crew's). `codex login status` only reads the stored credential, so a revoked login still reads as logged in until the next refresh or request. Claude additions: access token 8 h (#95822); a 4-machine fleet ran 3 machines on static setup-tokens without re-login while the rotating-login machine was forced to (#54443); a stale .credentials.json shadows CLAUDE_CODE_OAUTH_TOKEN (#68241, #81281), so a setup-token config dir holds no credentials file. Rules now 14. Codex column: copy one place at a time with write-back; no long-lived token on Pro; API key possible; login per host unsafe until Q-1518; recommendation one login pinned to one place, an API key or a second account for more places.
