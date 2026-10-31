@@ -8,12 +8,12 @@ size: M
 labels:
   - needs-triage
 assignee: null
-parent: R-1523
+parent: C-327
 blocked_by: []
 topic: topic-1277
 branch: t/T-953-hub-cpu-under-a-session-burst-reach-the
 created: 2026-10-20T09:44:48.962Z
-updated: 2026-10-31T16:14:28.600Z
+updated: 2026-10-31T16:41:12.193Z
 ---
 
 ## Summary
@@ -89,3 +89,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14979 full replacement source clear,M1closed. Actualacquisition retained/joined; separatepostacqreadybound; ownedclients/requests/observers; independentrealClock entry/disposal/stop-rootcontrolbounds, immediateassertionhandling/emergencyrelease/rootguard and positiveheldwork/stop/root-retention assertions reviewed. Productionexistingcoalescer/directstatuswrites+reads/schema unchanged; manualsealedcopy/contentexclusions/sanitizedprofilediagnostics/outside-tiers reviewed. Sixfocused+typecheck local reports; final38739fcdlint0report122/59zero refusalsT1484advisory. No reviewerworkload. C1unchecked/unverified, no marks: requirescopiedlargeDBprofiles/>=50%CPUrequest samequietslot. Clear permits normalconfiguredverification atfrozenhead but grants no DBcopy/profile/quietslot;Coordinatorownsadmission/scheduling. Preserveoriginalsource/data/nativeoutputs and requestfinalevidence afteractualmeasurement; no devmerge.
+
+### coord · 2026-10-31T16:41:06.203Z
+
+Measured, target not reached; the candidate is not landed (Coordinator disposition, 2026-10-31 16:41Z).
+
+Quiet slot 16:35–16:40Z, one immutable snapshot of the live hub.db (1,279,545,344 bytes), 8-round pair with 288 requests each. Baseline: branch 57c1d0c65 with only the status-schedule call reverted. Candidate: 57c1d0c65.
+- CPU per request: 22.89 ms → 28.30 ms (+23.6 %).
+- Presence frames: 72 → 8.
+- SQL executions: 289,318 → 399,955.
+- Prepares: 186,336 → 195,720.
+- Profile: dominated by the SQLite run in `Store.#bindProgress`, then inbox and topic reads.
+- Machine: pressure level 2 at start and end under the recorded waiver, swap-outs flat, load1 1.82 → 2.21.
+- Three longer 20-round baseline attempts were incomplete; no CPU claims are taken from them.
+
+Coalescing status-origin presence cuts frames but costs more SQL work per request, so it fails the target. The real hotspot is `#bindProgress`, filed separately. T-953 goes back to Ideas (C-327) with this record. Branch t/T-953-… stays unmerged as reference; the measurement tooling on it can be reused.
