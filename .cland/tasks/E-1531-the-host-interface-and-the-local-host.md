@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.207Z
-updated: 2026-10-31T18:22:54.846Z
+updated: 2026-10-31T23:48:11.861Z
 ---
 
 ## Goal
@@ -71,3 +71,40 @@ In a scratch project QA launches a Claude Code, a Codex and an OpenCode session,
 - Prototype, on `prototype/agent-host` at 7f7ecb0f: `hub/src/host/README.md` ("Hub changes outside this folder", decisions 8, 9, 15 and 16), the hub changes marked `PROTOTYPE (Q-1517)` in `hub/src/adapters/`.
 - Code: `hub/src/adapters/sessions.ts`, `processes.ts`, `claude-code.ts`, `codex.ts`, `opencode.ts`, `session-cwd.ts`; `hub/src/hub/worktrees.ts`; `hub/src/territory.ts`; `hub/src/hub/artifacts.ts` and `artifact-upload.ts`; `hub/src/process-identity.ts`; `hub/src/executor/executor.ts` (the interface style to mirror).
 - GLOSSARY: Host, Session (amended for v0.4); Adapter, Territory, Task branch.
+
+## Plan
+
+```yaml
+stages:
+  - name: the Host interface and the sessions layer
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1542
+        - T-1543
+        - T-1544
+  - name: adapters, worktrees, artifacts and the host column
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1545
+      - - T-1546
+        - T-1548
+      - - T-1547
+      - - T-1549
+        - T-1550
+      - - T-1551
+      - - T-1552
+        - T-1553
+  - name: routing by host, the territory branch and the boundary
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-1554
+        - T-1556
+      - - T-1555
+      - - T-1557
+```

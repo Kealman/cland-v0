@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-10-31T18:22:55.935Z
+updated: 2026-10-31T23:48:14.703Z
 ---
 
 ## Goal
@@ -72,3 +72,46 @@ In a scratch project in single mode QA checks the web link flow is unchanged. It
 - Items: R-1530; the map M-1511; Q-1527 §1 to §7; Q-1521 (why shape B needs it).
 - Code: `hub/src/hub/web-auth.ts`, `web-authority.ts`, `web-edge.ts`, `hub/src/hub/store.ts`, `asks.ts`, `inbox.ts`, `journal.ts`, `topics.ts`, `artifacts.ts`, `hub/src/remote/`, `hub/src/cli/web.ts`, `hub/src/init/config.ts`; `web/src/`; `docs/adr/0003-*.md` (the 2026-10-20 and 2026-10-21 amendments).
 - GLOSSARY: User, Sign-in mode (added for v0.4); Pairing, Remote, General (amended); Ask, Approval, Web workbench.
+
+## Plan
+
+```yaml
+stages:
+  - name: mode and identity
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1558
+        - T-1560
+      - - T-1559
+  - name: attribution and invites
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1561
+        - T-1564
+      - - T-1562
+        - T-1571
+      - - T-1563
+      - - T-1570
+      - - T-1565
+        - T-1569
+  - name: sign-in and pairing
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1566
+        - T-1567
+        - T-1568
+      - - T-1572
+  - name: remotes for every user
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-1573
+      - - T-1574
+```
