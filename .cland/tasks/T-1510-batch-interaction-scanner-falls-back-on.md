@@ -3,7 +3,7 @@ id: T-1510
 kind: task
 title: Batch interaction scanner falls back on every web test through web-readiness createRequire
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: R-1523
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1510-batch-interaction-scanner-falls-back-on
 created: 2026-10-31T10:40:20.317Z
-updated: 2026-10-31T14:43:36.318Z
+updated: 2026-10-31T16:58:09.174Z
 ---
 
 ## Summary

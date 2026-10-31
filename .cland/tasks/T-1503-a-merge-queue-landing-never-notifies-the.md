@@ -2,8 +2,8 @@
 id: T-1503
 kind: task
 title: A merge-queue landing never notifies the session that enqueued the item
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1268
 branch: t/T-1503-a-merge-queue-landing-never-notifies-the
 created: 2026-10-31T08:09:11.590Z
-updated: 2026-10-31T15:31:16.408Z
+updated: 2026-10-31T16:57:41.366Z
+closed: 2026-10-31T16:57:41.366Z
 ---
 
 ## Summary
@@ -32,9 +33,13 @@ When the merge queue lands an item, the Coordinator that enqueued it gets no del
 - [x] C1. A landing from the merge queue delivers one report to the enqueuing session and to the item's claimant, in the item topic, naming the item, the landed commit and the batch.
   - done: impl-1503 · 2026-10-31T15:00:47.366Z
   - verified: rev-26 [reviewer] · run rev-20261031-1503-evidence-1 · 2026-10-31T15:24:30.709Z · commit 2fcd2ffd8f3b62d23f8f94cf69746cddc5586baa
+  - verified: rev-26 [reviewer] · run rev-20261031-1503-evidence-2 · 2026-10-31T16:50:24.142Z · commit 4cd6434ce60f3249bbdc69fe31dd06e6b9dbb4e3
+  - verified: rev-26 [reviewer] · run rev-20261031-1503-source-5 · 2026-10-31T16:51:28.323Z · commit 8054bba9ce4dd467d93096f9c2e9db6c47762295
 - [x] C2. A test enqueues an item from a fake Coordinator session, lands it through the queue and asserts exactly one delivered landing report. Before the fix, the test asserts that none arrived.
   - done: impl-1503 · 2026-10-31T14:47:12.259Z
   - verified: rev-26 [reviewer] · run rev-20261031-1503-evidence-1 · 2026-10-31T15:24:30.709Z · commit 2fcd2ffd8f3b62d23f8f94cf69746cddc5586baa
+  - verified: rev-26 [reviewer] · run rev-20261031-1503-evidence-2 · 2026-10-31T16:50:24.142Z · commit 4cd6434ce60f3249bbdc69fe31dd06e6b9dbb4e3
+  - verified: rev-26 [reviewer] · run rev-20261031-1503-source-5 · 2026-10-31T16:51:28.323Z · commit 8054bba9ce4dd467d93096f9c2e9db6c47762295
 
 ## Comments
 
@@ -124,3 +129,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14944 authorized merge source delta clear. Parents2fcd2ffd8+b126dff13;tree2b3c7a156. Own production/test/help/frozen bytes identical to source3, all imported code/fixtures match dev exactly, README/implement sections preserved verbatim with no markers; shared guides compose both. No auto-merged task behavior change. Reviewer remerge-diff sandbox temp-dir failure explicitly disclosed; successful combined/parent byte comparisons establish delta. A-14941 local Mac typecheck/queue38/help26 summary remains targeted, not current Linux/all receipt. C1/C2 original-head verified A-14933 remain tied2fcd2ffd8; fresh runtime marks pending Coordinator-owned verify all at4cd6434ce per5606bfbb, no new task mode-free verify. Findings[].
+
+### rev-26 · 2026-10-31T16:50:24.142Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1503-evidence-2
+commit: 4cd6434ce60f3249bbdc69fe31dd06e6b9dbb4e3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14991 original A-14989/50a4e839 audit: 7184 complete matching pairs;6079 ordinary pass+8 explicit skips+722 file passes, separate195 load test+180 load file passes; zero adverse/unmatched/duplicates;6 failure arrays empty. Seven required landing/recovery cases each base1+distinct sequential load5/5, pinned assertions retained. C1/C2 verified at4cd6434. T0/T1/T2/T3/Web0,T4unrun;remote typecheck reused host. Linuxx64 dropletc8lon1 Node24.21/Nvim.12.5 actualShell1248Chrome156.0.8078.4,cache/occasionnull,8 exact skip identities/reasons matched;budget/ratchet/lintreportonly. Candidate tree3600f9 vsGit2b3c differs only1526excludedtracker/rules paths. No reviewer workloads; component sealedGit/fakeexecutor limit retained. New merge8054bba9 separate; Coordinatorf507f725 code-evidence carry disposition confirmed.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-31T16:51:28.323Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1503-source-5
+commit: 8054bba9ce4dd467d93096f9c2e9db6c47762295
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14992 authorized merge delta clear. Coordinatorf507f725 read directly: original50a4e839 stands for code. Own production/test/help/frozen/guide/CHANGES bytes identical tested4cd6434;21other imported nonmetadata/code paths match dev78b39d843 exactly. Only manual skill conflict retains landing+standing-owner sections verbatim; composed README/tests guidance preserve both. A-14990 localMac typecheck/queue38/help26 summary is targeted, not newLinux/full evidence. C1/C2 carried/verified at8054bba9 using independent original A-14991 audit of A-14989:6079pass/8explicit skips,T0–T3/Web0,T4unrun,7taskcasesbase+5load. No new-head full run claimed or requested; no reviewer workloads.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T16:57:41.366Z
+
+Merged 7c0752695705337fdc875132f644b25ad8c9e82c onto dev.
