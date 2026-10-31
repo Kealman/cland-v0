@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 27 -->
+<!-- cland: rule high-water 28 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -21,12 +21,12 @@ The Coordinator submits suites through cland verify and runs other commands that
 
 ## 3 One full suite at a time
 Scope: all
-Date: 2026-10-15
+Date: 2026-10-31
 Status: active
-Origin: memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/one-suite-at-a-time.md
-Reason: Concurrent suites spawn enough hubs, spokes and hook processes to starve the event loop, disconnect sessions and leave orphan daemons.
+Origin: message:general/b11733e1-431a-4495-b4b7-fc73d4d3079c
+Reason: Concurrent suites spawn enough hubs, spokes and hook processes to starve the event loop, disconnect sessions and leave orphan daemons. During the T-1478 slots a verify submission ran its host gate mid-measurement, and a guard described as "pressure level 0" was built on a transient counter and aborted a slot; rule batch 5 (A-14855) P3.
 
-On each machine, at most one full suite runs at a time. Submit suites through cland verify and let the runners manage their queue and machine lock; never wrap a current runner in the old manual mkdir lock. Deliberate machine-wide stress load takes the same exclusive capacity, and QA load measurements require a quiet machine. Targeted single-file runs do not require the suite lock, subject to the project’s load restrictions; remote runs use the hub’s configured machine slots.
+On each machine, at most one full suite runs at a time. Submit suites through cland verify and let the runners manage their queue and machine lock; never wrap a current runner in the old manual mkdir lock. Deliberate machine-wide stress load takes the same exclusive capacity, and QA load measurements require a quiet machine. A quiet slot also holds every `cland verify` submission from that machine, because its T0 host gate runs locally before a droplet takes over, and a machine-state gate names the exact OS metric and unit it reads (macOS: `kern.memorystatus_vm_pressure_level` 1/2/4, not `vm.memory_pressure`). Targeted single-file runs do not require the suite lock, subject to the project’s load restrictions; remote runs use the hub’s configured machine slots.
 
 ## 4 Verdicts go to the lead
 Scope: all
@@ -48,12 +48,12 @@ When a hub action is refused, stop that action and do not achieve the same outco
 
 ## 6 The batch-merge rule
 Scope: coordinator, lead
-Date: 2026-10-15
+Date: 2026-10-31
 Status: active
-Origin: memory:/Users/evgeniyivanov/.claude/projects/-Users-evgeniyivanov-Projects-cland-v0/memory/batch-merge-rule.md
-Reason: Serial full-suite waits delayed review-clear small changes for hours, while risky hub changes still exposed real regressions and repeated hot-file conflicts consumed additional reviews and suite runs.
+Origin: message:general/b11733e1-431a-4495-b4b7-fc73d4d3079c
+Reason: Serial full-suite waits delayed review-clear small changes for hours, while risky hub changes still exposed real regressions and repeated hot-file conflicts consumed additional reviews and suite runs. A docs-and-help-only conflict hid an auto-merged duplicate import that only the typecheck caught (T-1462, dd49d778); rule batch 5 (A-14855) P2.
 
-Small or Neovim-side deltas may merge under the batch rule when review is clear, required QA is clear, targeted tests pass and the merge is clean against freshly fetched dev; a Neovim-only item needs its own green Neovim run. Batch at most three items, then run a full integrated dev cover before restarting the hub. Hub changes to launch, ownership, storage, routing or the merge gate require their own pre-merge full suite. An integrated run may be skipped only when every item is Neovim-side and each passed at a head containing the current dev tip; every hub-side change must be covered by the latest full integrated run before restart. Fix forward or revert a red integrated result within an hour, keeping dev unreleasable until green, and record batch coverage on the affected items. Serialize items that share hot files. Before waiving a full verify after conflict resolution, require searches of both hub/test and nvim/test for all changed text and identifiers and runs of every matching test file; otherwise require full verification.
+Small or Neovim-side deltas may merge under the batch rule when review is clear, required QA is clear, targeted tests pass and the merge is clean against freshly fetched dev; a Neovim-only item needs its own green Neovim run. Batch at most three items, then run a full integrated dev cover before restarting the hub. Hub changes to launch, ownership, storage, routing or the merge gate require their own pre-merge full suite. An integrated run may be skipped only when every item is Neovim-side and each passed at a head containing the current dev tip; every hub-side change must be covered by the latest full integrated run before restart. Fix forward or revert a red integrated result within an hour, keeping dev unreleasable until green, and record batch coverage on the affected items. Serialize items that share hot files. Before waiving a full verify after conflict resolution, require `npm run typecheck` at the merged head, searches of both hub/test and nvim/test for all changed text and identifiers, and runs of every matching test file; otherwise require full verification.
 
 ## 7 Verify the head before merging
 Scope: coordinator, lead
@@ -235,12 +235,12 @@ Production state moves only on a positive receipt: an effect's durable identity,
 
 ## 26 Authority comes from the identity captured at admission
 Scope: implementer, reviewer
-Date: 2026-10-30
+Date: 2026-10-31
 Status: active
-Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
-Reason: A rename during native resume stranded the original reservation (T-1235); native request ids are unique only within one transport (T-1109); an approval key presented on an ask card must change nothing (T-1357). Rule batch 4 (A-14151) P7.
+Origin: message:general/b11733e1-431a-4495-b4b7-fc73d4d3079c
+Reason: A rename during native resume stranded the original reservation (T-1235); native request ids are unique only within one transport (T-1109); an approval key presented on an ask card must change nothing (T-1357). Rule batch 4 (A-14151) P7. The memory probe's copied hub could signal or reap from recovered state it never launched (T-1483, A-14612); rule batch 5 (A-14855) P4.
 
-Authorization, ownership and settlement decisions key on the durable identity captured at admission (pairing id, reservation key, session-scoped native request id, paired message mapping, the pinned item, head and enqueue time), validated before permission classification, and never on a display name, button text, caller-supplied actor field or frame data.
+Authorization, ownership and settlement decisions key on the durable identity captured at admission (pairing id, reservation key, session-scoped native request id, paired message mapping, the pinned item, head and enqueue time), validated before permission classification, and never on a display name, button text, caller-supplied actor field or frame data. Process signals and cleanup take the same authority from an observed launch bound to the exact owner, lease and native birth, never from serialized flags or group numbers. Recovery proves each signal target independently, and a new native ownership fence ships with a paired fresh-cleanup and no-inherited-authority regression.
 
 ## 27 A gate goes from report to enforce in its own item
 Scope: coordinator, lead, implementer, reviewer
@@ -250,3 +250,12 @@ Origin: message:general/5ac74bc5-8ea6-4a79-8bba-910c360358e8
 Reason: Gate switches needed replay proof, and an advisory notice quietly became a gate (T-1207; also T-683, T-915, T-919, T-923). Rule batch 4 (A-14151) P11.
 
 A new gate, budget or advisory check ships in report mode, where it feeds no exit status and blocks no operation; switching it to enforce is its own item, which replays every authorized platform and occasion log through the production checker and keeps the before-and-after failures and each bounded exception in one artifact.
+
+## 28 A pinned clock is pinned everywhere it is read
+Scope: implementer, reviewer
+Date: 2026-10-31
+Status: active
+Origin: message:general/b11733e1-431a-4495-b4b7-fc73d4d3079c
+Reason: The phone-asks fixture pinned 2026-10-23 while the browser computed a 7-day archive window from the real clock. At 12:00Z on 2026-10-30 every head went red with no code change, dev stayed red for 2.5 h, and a culprit search blamed an innocent landing (T-1485). Rule batch 5 (A-14855) P1.
+
+A test that fixes a date gives the same clock to every reader of time in its scope (the hub, the browser page's Date, file stamps, retention windows and expiries), or leaves all of them real. It never combines a fixed date with a window computed from the real clock. A fixture date that must age is set relative to the run's clock, and native timers keep running.
