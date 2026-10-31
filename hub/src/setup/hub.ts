@@ -6,7 +6,8 @@ import type { Pairing } from '../remote/state.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
 
 export type SetupHub = {
-  remotes?(): Promise<RemoteStatusResult>;
+  /** Optional read budget; old injected clients may ignore it and are still joined. */
+  remotes?(timeoutMs?: number): Promise<RemoteStatusResult>;
   pairings?(): Promise<InboxPairing[]>;
   approve?(messenger: RemoteVia, code: string): Promise<Pairing>;
   configure?(key: string, value: unknown): Promise<void>;
@@ -34,7 +35,7 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
   };
   return {
     running,
-    remotes: async () => await request({ type: 'remote.status' }) as RemoteStatusResult,
+    remotes: async timeoutMs => await request({ type: 'remote.status' }, timeoutMs ?? 3000) as RemoteStatusResult,
     pairings: async () => (await request({ type: 'inbox.list' }) as Inbox).pairings ?? [],
     approve: async (messenger, code) => (await request({ type: 'pairing.approve', messenger, code }) as { pairing: Pairing }).pairing,
     async configure(key, value) {

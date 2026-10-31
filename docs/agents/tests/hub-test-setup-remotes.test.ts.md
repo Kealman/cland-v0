@@ -35,3 +35,20 @@ scripted runner consumers must explicitly decline it where they focus on another
 step. The nonterminal Discord matrix covers token/enabled combinations without
 writes, while repeated declines retain the Discord secret/config/reload commands.
 The prior Telegram remote.status shape remains the compatibility control.
+
+Paired reruns for both messengers use the public setup steps with Node fake
+Date/setTimeout and an injected gateway. Initial status and each subsequent read
+use shared `until` observations owned by `caseDeadlines`, with separate setup
+and behaviour deadlines. The fake clock controls gateway recovery, never sleeps.
+Observe pending at 9,900 ms, timely recovery at 9,950 ms and still-down `open`
+at 10,000 ms. Emergency abort/release/join is registered on the real test context before
+`caseDeadlines` installs its pending-work drain and directory hooks. Both work
+and observations join before fixture removal. Omitted-observation timeout,
+distinct external abort and an assertion failure with an actual held status read
+prove root retention, native setup completion and final root removal. Retain final verdict assertions
+and the frozen inactive-token previous-wire control.
+
+Held last reads prove the remaining 50 ms native read budget, timeout/late-success
+refusal and abort drainage. SetupHub's optional timeout argument preserves old
+no-argument injected clients; those reads remain owned and joined. A cancellation
+joins the already admitted bounded status read before propagating its signal.

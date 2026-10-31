@@ -1281,3 +1281,11 @@ Older rows missing the new fields remain unknown. Use the memory/log and
 retained-row compatibility controls in
 `docs/agents/tests/hub-test-human-hold.test.ts.md`. These report facts only and
 change no delivery policy, command or role permission.
+
+## Setup reconnect readiness
+
+For paired setup reruns, use the fake-clock runner seam in
+`docs/agents/tests/hub-test-setup-remotes.test.ts.md`: both Discord and Telegram
+wait up to ten seconds for a loaded paired remote to reconnect. Retain the
+still-down and inactive-token controls; share readiness polling with Discord's
+post-reload path. No remote.status fields or role permissions change.

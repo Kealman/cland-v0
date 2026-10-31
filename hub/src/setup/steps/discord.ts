@@ -1,4 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
 import { basename, join } from 'node:path';
 import { parseConfig } from '../../init/config.ts';
 import { setConfigValue } from '../../init/config-set.ts';
@@ -7,6 +6,7 @@ import { resolveSecrets, secretFingerprint, setSecret, validateSecrets, validate
 import { Cancelled } from '../prompter.ts';
 import { setupHub } from '../hub.ts';
 import { pairRemote } from '../pairing.ts';
+import { waitForRemote } from '../readiness.ts';
 import type { SetupStep } from '../types.ts';
 
 const TOKEN = 'cland secret set discord.token';
@@ -25,7 +25,8 @@ export const discord: SetupStep = async ({ root, env, machine, hub: injected, in
     let token = resolveSecrets(root, env)['discord.token'];
     const client = injected ?? setupHub(root, env);
     const running = await client.running();
-    const status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'discord') : undefined;
+    let status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'discord') : undefined;
+    if (status?.pairing) status = await waitForRemote(client, 'discord', status, signal);
     if (token && enabled && status?.token.present && status.connection === 'connected' && status.pairing) return [{ name, verdict: 'ok', detail: `configured and paired; token ${secretFingerprint(token)}` }];
     fix = [!token ? TOKEN : '', !enabled ? ENABLE : '', RELOAD, token && enabled && !status?.pairing ? APPROVE : ''].filter(Boolean).join('; ');
     if (!interactive) return [{ name, verdict: !token && !enabled ? 'skip' : 'open', detail: `optional Discord remote${status?.botLink ? `; open ${status.botLink} and run /cland pair` : ''}`, fix }];
@@ -73,12 +74,7 @@ export const discord: SetupStep = async ({ root, env, machine, hub: injected, in
     signal?.throwIfAborted();
     await client.reload();
     // Reload completes configuration; the native gateway's READY/ACK arrives later.
-    const deadline = Date.now() + 10_000;
-    let after = (await client.remotes()).remotes.find(row => row.messenger === 'discord');
-    while (after?.token.present && after.connection === 'disconnected' && Date.now() < deadline) {
-      await delay(50, undefined, signal ? { signal } : undefined);
-      after = (await client.remotes()).remotes.find(row => row.messenger === 'discord');
-    }
+    const after = await waitForRemote(client, 'discord', (await client.remotes()).remotes.find(row => row.messenger === 'discord'), signal);
     if (!after?.token.present || after.connection !== 'connected') return [{ name, verdict: 'open', detail: 'Discord did not connect; check cland remote status', fix: RELOAD }];
     const detail = `enabled; token ${after.token.fingerprint}`;
     if (after.pairing) return [{ name, verdict: 'done', detail: `${detail}; paired` }];

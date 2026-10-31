@@ -5,6 +5,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setup } from '../src/setup/runner.ts';
+import { discord } from '../src/setup/steps/discord.ts';
+import { remotes } from '../src/setup/steps/remotes.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { until } from './until.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { scriptedPrompter } from './setup-prompter.ts';
@@ -21,8 +26,8 @@ function waitingPairing(code: string, messenger: 'telegram' | 'discord' = 'teleg
     since: '2026-10-27T00:00:00Z', expires: '2026-10-27T01:00:00Z', layer: 'now' };
 }
 
-function pairingFixture(t: test.TestContext) {
-  const f = fixture(t);
+function pairingFixture(t: test.TestContext, beforeRemove?: () => Promise<void>) {
+  const f = fixture(t, beforeRemove);
   const config = defaultConfig('Remote setup');
   config.speech.provider = '';
   config.remote.telegram.enabled = true;
@@ -40,9 +45,10 @@ function pairingFixture(t: test.TestContext) {
   return { ...f, client, approved };
 }
 
-function fixture(t: test.TestContext) {
+function fixture(t: test.TestContext, beforeRemove?: () => Promise<void>) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'setup-remotes-')));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const dispose = async () => { await beforeRemove?.(); rmSync(root, { recursive: true, force: true }); };
+  t.after(dispose);
   mkdirSync(join(root, '.cland'));
   const config = join(root, '.cland/config.toml');
   const settings = defaultConfig('Remote setup');
@@ -59,7 +65,7 @@ function fixture(t: test.TestContext) {
       harness: async id => ({ id, bin: id === 'opencode' ? '/fake/opencode' : null, version: [1, 0, 0], checks: [{ name: id, verdict: 'ok', detail: 'installed' }, { name: `${id} auth`, verdict: 'ok', detail: 'logged in' }] }),
     },
   };
-  return { root, config, options };
+  return { root, config, options, dispose };
 }
 
 test('untouched nonterminal Telegram is skip with exact setup commands and no writes', async t => {
@@ -325,4 +331,187 @@ test('declining Discord prints skip with commands and is offered again without w
     assert.equal(readFileSync(f.config, 'utf8'), before);
     assert.equal(existsSync(join(f.root, '.cland/secrets.toml')), false);
   }
+});
+
+// Compose shared case ownership; emergency release precedes the shared pending-work drain.
+function reconnectScope(t: test.TestContext) {
+  const abort = new AbortController();
+  const signal = AbortSignal.any([t.signal, abort.signal]);
+  const releases: Array<() => void> = [];
+  let work: Promise<unknown> = Promise.resolve();
+  let joined = true;
+  const dispose = async () => {
+    abort.abort(new Error('setup fixture disposed'));
+    for (const release of releases) release();
+    await within(work.catch(() => {}), 1000);
+  };
+  t.after(dispose);
+  const scope = caseDeadlines(t, { timeoutMs: 15000 });
+  return {
+    signal, fixtures: scope.fixtures, wait: scope.wait,
+    release: (release: () => void) => releases.push(release),
+    joined: () => joined,
+    observe: <T>(start: () => Promise<T>) => {
+      joined = false;
+      const native = Promise.resolve().then(() => { signal.throwIfAborted(); return start(); });
+      work = native;
+      void native.then(() => { joined = true; }, () => { joined = true; });
+      return scope.wait('setup operation', () => native);
+    },
+    receipt: (predicate: () => boolean, what: string) => scope.wait(what,
+      async () => {
+        await until(() => signal.aborted || predicate(), { what, timeoutMs: 1000, loadFactor: 1 });
+        signal.throwIfAborted();
+      }),
+    close: () => scope.wait('cancel and join setup', dispose),
+  };
+}
+
+for (const messenger of ['discord', 'telegram'] as const) for (const recovers of [true, false]) {
+  test(`paired nonterminal ${messenger} rerun waits for recovery within ten seconds (recovers=${recovers})`, { timeout: 5000 }, async t => {
+    const owner = reconnectScope(t);
+    const f = pairingFixture(owner.fixtures, owner.close);
+    const config = defaultConfig('Remote setup');
+    config.speech.provider = '';
+    config.remote.telegram.enabled = messenger === 'telegram';
+    config.remote.discord.enabled = messenger === 'discord';
+    writeFileSync(f.config, renderConfig(config));
+    writeFileSync(join(f.root, '.cland/secrets.toml'), messenger === 'telegram'
+      ? '[telegram]\ntoken="123456:made_up_setup_token_abcdefghijk"\n'
+      : '[discord]\ntoken="made_up_discord_setup_token"\n', { mode: 0o600 });
+    let reads = 0;
+    let connected = false;
+    f.client.remotes = async () => {
+      reads++;
+      return { remotes: [{ messenger, token: { present: true, fingerprint: 'fixture' },
+        pairing: { userId: '101', chatId: '101', guildId: null, name: 'Fixture human' },
+        connection: connected ? 'connected' : 'disconnected', reason: null,
+        lastInbound: null, lastOutbound: null, outboxDepth: 0, mute: false, botLink: null }] };
+    };
+    f.client.reload = async () => { throw new Error('rerun must not reload'); };
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'] });
+    let settled = false;
+    const result = owner.observe(() => (messenger === 'discord' ? discord : remotes)({ ...f.options, hub: f.client, signal: owner.signal }));
+    void result.then(() => { settled = true; }, () => { settled = true; });
+    await owner.receipt(() => reads === 1, 'initial status');
+    for (let tick = 0; tick < 198; tick++) {
+      t.mock.timers.tick(50);
+      await owner.receipt(() => reads === tick + 2, 'readiness status');
+    }
+    assert.equal(settled, false, 'a disconnected paired gateway stays pending before the bound');
+    if (recovers) connected = true;
+    t.mock.timers.tick(50);
+    if (!recovers) {
+      await owner.receipt(() => reads === 200, 'last in-budget status');
+      assert.equal(settled, false);
+      t.mock.timers.tick(50);
+    }
+    await owner.receipt(() => settled, 'final setup result');
+    assert.equal(settled, true, 'the final readiness receipt settles setup at the bound');
+    const line = (await result).find(row => row.name === `remote ${messenger}`)!;
+    assert.equal(line.verdict, recovers ? 'ok' : 'open');
+    assert.ok(reads > 1, 'readiness must be re-read after the initial disconnected receipt');
+    assert.ok(reads <= 201, 'readiness polling is bounded');
+    if (!recovers) assert.equal(line.fix, 'cland hub reload');
+  });
+}
+
+for (const outcome of ['late', 'timeout', 'abort'] as const) test(`paired reconnect joins held status read (${outcome})`, { timeout: 5000 }, async t => {
+  const owner = reconnectScope(t);
+  const f = pairingFixture(owner.fixtures, owner.close);
+  const status = (await f.client.remotes!()).remotes[0]!;
+  status.pairing = { userId: '101', chatId: '101', guildId: null, name: 'Fixture human' };
+  status.connection = 'disconnected';
+  let reads = 0;
+  let budget: number | undefined;
+  const held = Promise.withResolvers<{ remotes: typeof status[] }>();
+  owner.release(() => held.resolve({ remotes: [status] }));
+  f.client.remotes = async (timeoutMs?: number) => {
+    reads++;
+    if (reads < 200) return { remotes: [status] };
+    budget = timeoutMs;
+    return held.promise;
+  };
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'] });
+  let settled = false;
+  const result = owner.observe(() => remotes({ ...f.options, hub: f.client, signal: owner.signal }));
+  void result.then(() => { settled = true; }, () => { settled = true; });
+  await owner.receipt(() => reads === 1, 'initial status');
+  for (let tick = 0; tick < 199; tick++) {
+    t.mock.timers.tick(50);
+    await owner.receipt(() => reads === tick + 2, 'readiness read');
+  }
+  await owner.receipt(() => budget !== undefined, 'held readiness read');
+  // Always release the fake gateway, including assertion failures, before root disposal.
+  try {
+    assert.equal(budget, 50, 'native status read is capped by remaining readiness budget');
+    if (outcome === 'abort') {
+      const closing = owner.close();
+      assert.equal(settled, false, 'abort joins the admitted read before returning');
+      assert.equal(existsSync(f.root), true);
+      held.resolve({ remotes: [{ ...status, connection: 'connected' }] });
+      await closing;
+      await assert.rejects(result, /setup fixture disposed/);
+    } else {
+      t.mock.timers.tick(outcome === 'late' ? 51 : 50);
+      if (outcome === 'timeout') held.reject(new Error('native read deadline'));
+      else held.resolve({ remotes: [{ ...status, connection: 'connected' }] });
+      assert.equal((await result)[0]?.verdict, 'open', 'late success or deadline cannot report ok');
+    }
+  } finally {
+    held.resolve({ remotes: [status] });
+    await owner.close();
+  }
+  await f.dispose();
+  assert.equal(existsSync(f.root), false, 'root removed only after held read and setup join');
+});
+
+for (const failure of ['omitted', 'aborted', 'early-failure'] as const) test(`reconnect fixture drains after ${failure} observation`, { timeout: 5000 }, async t => {
+  const owner = reconnectScope(t);
+  const f = pairingFixture(owner.fixtures, owner.close);
+  const status = (await f.client.remotes!()).remotes[0]!;
+  status.pairing = { userId: '101', chatId: '101', guildId: null, name: 'Fixture human' };
+  status.connection = 'disconnected';
+  const held = Promise.withResolvers<{ remotes: typeof status[] }>();
+  owner.release(() => held.resolve({ remotes: [status] }));
+  const external = new AbortController();
+  let entered = false;
+  let observed = false;
+  f.client.remotes = async () => { entered = true; observed = failure !== 'omitted'; return held.promise; };
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'] });
+  const result = owner.observe(() => remotes({ ...f.options, hub: f.client,
+    signal: AbortSignal.any([owner.signal, external.signal]) }));
+  void result.catch(() => {});
+  await owner.receipt(() => entered, 'actual held status read');
+  assert.equal(existsSync(f.root), true, 'root retained while setup owns the held read');
+  assert.equal(owner.joined(), false);
+  const failurePath = async () => {
+    try {
+      if (failure === 'omitted') {
+        let armed = false;
+        const missing = owner.receipt(() => { armed = true; return observed; }, 'omitted status observation');
+        const rejected = assert.rejects(missing, /not within 1000 ms/);
+        await owner.receipt(() => armed, 'omitted observer armed');
+        t.mock.timers.tick(1000);
+        await rejected;
+      } else if (failure === 'aborted') {
+        external.abort(new Error('external setup cancellation'));
+        assert.equal(owner.joined(), false, 'cancelled read remains owned until release');
+        assert.equal(existsSync(f.root), true);
+        held.resolve({ remotes: [status] });
+        await assert.rejects(result, /external setup cancellation/);
+        assert.equal(existsSync(f.root), true, 'external cancellation joins before root disposal');
+      } else {
+        assert.fail('injected early assertion with held status work');
+      }
+    } finally {
+      // This is the same cleanup boundary registered before shared case drainage.
+      await f.dispose();
+    }
+  };
+  if (failure === 'early-failure') await assert.rejects(failurePath, /injected early assertion/);
+  else await failurePath();
+  await assert.rejects(result, failure === 'aborted' ? /external setup cancellation/ : /setup fixture disposed/);
+  assert.equal(owner.joined(), true, 'native setup completion observed before removal');
+  assert.equal(existsSync(f.root), false);
 });

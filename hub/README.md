@@ -3302,6 +3302,18 @@ numeric identity/code through the shared pairing helper. A paired rerun is
 `ok`, a decline `skip`; nonterminal untouched is `skip` and partial is `open`,
 with Discord secret/config/reload/approval commands. No token enters a frame.
 
+### Paired setup reruns during reconnect
+
+For Discord and Telegram, a rerun with a resolved token, enabled config and a
+loaded token/pairing waits up to ten seconds while remote status is disconnected,
+including without a terminal. A connected receipt reports `ok`; a gateway still
+down at the deadline reports `open`. Disabled or unloaded remotes do not wait.
+Setup does not reload or approve a pairing during this check. Status reads use
+the smaller of their normal three-second timeout and the remaining readiness
+budget; late connected replies cannot produce `ok`. Cancellation joins an admitted
+read before returning. Legacy injected clients that ignore the optional read
+budget are still joined; their late success remains ineligible.
+
 ### Telegram in setup
 
 After the hub and before the Aide, setup checks the resolved Telegram token,

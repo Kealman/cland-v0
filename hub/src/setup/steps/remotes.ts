@@ -6,6 +6,7 @@ import { resolveSecrets, secretFingerprint, setSecret, validateSecrets, validate
 import { Cancelled } from '../prompter.ts';
 import { setupHub } from '../hub.ts';
 import { pairRemote } from '../pairing.ts';
+import { waitForRemote } from '../readiness.ts';
 import type { SetupStep } from '../types.ts';
 
 const TOKEN = 'cland secret set telegram.token';
@@ -14,7 +15,7 @@ const RELOAD = 'cland hub reload';
 const APPROVE = 'cland remote approve telegram <code>';
 
 /** Telegram precedes the Discord and speech offers before the Aide takes the terminal. */
-export const remotes: SetupStep = async ({ root, env, machine, hub: injected, interactive, prompter, narrate }) => {
+export const remotes: SetupStep = async ({ root, env, machine, hub: injected, interactive, prompter, narrate, signal }) => {
   const name = 'remote telegram';
   let fix = [TOKEN, ENABLE, RELOAD].join('; ');
   try {
@@ -23,7 +24,8 @@ export const remotes: SetupStep = async ({ root, env, machine, hub: injected, in
     let token = resolveSecrets(root, env)['telegram.token'];
     const client = injected ?? setupHub(root, env);
     const running = await client.running();
-    const status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'telegram') : undefined;
+    let status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'telegram') : undefined;
+    if (status?.pairing) status = await waitForRemote(client, 'telegram', status, signal);
     if (token && enabled && status?.token.present && status.connection === 'connected' && status.pairing) return [{ name, verdict: 'ok', detail: `configured and paired; token ${secretFingerprint(token)}` }];
     fix = [!token ? TOKEN : '', !enabled ? ENABLE : '', RELOAD, token && enabled && !status?.pairing ? APPROVE : ''].filter(Boolean).join('; ');
     if (!interactive) return [{ name, verdict: !token && !enabled ? 'skip' : 'open', detail: `optional Telegram remote${status?.botLink ? `; open ${status.botLink} and press Start` : ''}`, fix }];
@@ -60,6 +62,7 @@ export const remotes: SetupStep = async ({ root, env, machine, hub: injected, in
     return [await pairRemote({ messenger: 'telegram', name, detail, link: after.botLink ?? 'the bot in Telegram', gesture: 'press Start', client, prompter })];
   } catch (error) {
     if (error instanceof Cancelled) throw error;
+    signal?.throwIfAborted();
     // Provider/parser errors may contain input; setup diagnostics keep only fixed reasons.
     return [{ name, verdict: 'fail', detail: 'Telegram setup could not complete; check config, secrets and cland remote status', fix }];
   }
