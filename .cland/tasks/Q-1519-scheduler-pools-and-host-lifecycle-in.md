@@ -5,7 +5,7 @@ title: Scheduler, pools and host lifecycle in detail
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-1511
 blocked_by:
   - Q-1517
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T14:35:39.288Z
-updated: 2026-10-31T14:35:54.647Z
+updated: 2026-10-31T17:03:48.767Z
 ---
 
 ## Question

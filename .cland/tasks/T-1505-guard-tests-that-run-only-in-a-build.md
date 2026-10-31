@@ -2,8 +2,8 @@
 id: T-1505
 kind: task
 title: Guard tests that run only in a build step also belong to a verify tier
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1278
 branch: t/T-1505-guard-tests-that-run-only-in-a-build
 created: 2026-10-31T08:18:54.391Z
-updated: 2026-10-31T16:57:33.883Z
+updated: 2026-10-31T17:06:14.326Z
+closed: 2026-10-31T17:06:14.326Z
 ---
 
 ## Summary
@@ -26,10 +27,12 @@ A guard test that runs only inside a build step, such as the site prebuild, is i
 - [x] C1. A static lint, run in `test:static` in report mode (rule 27), lists every test or guard script that a package build or prebuild step invokes but no verify tier selects.
   - done: impl-1505 · 2026-10-31T16:34:50.389Z
   - verified: rev-26 [reviewer] · run rev-20261031-1505-evidence-1 · 2026-10-31T16:57:33.770Z · commit 2ff6571ee30971df83e6126c955b21255c5a340a
+  - verified: rev-26 [reviewer] · run rev-20261031-1505-source-5 · 2026-10-31T16:59:45.608Z · commit 0505e6521a23af5bde0dea9760debacd147f5f4c
 - [x] C2. The site onboarding guard and any other orphan found are mapped to a tier, or recorded with a reason in the item.
   - done: impl-1505 · 2026-10-31T16:24:43.765Z
   - verified: rev-26 [reviewer] · run rev-20261031-1505-source-4 · 2026-10-31T16:34:38.035Z · commit 2ff6571ee30971df83e6126c955b21255c5a340a
   - verified: rev-26 [reviewer] · run rev-20261031-1505-evidence-1 · 2026-10-31T16:57:33.770Z · commit 2ff6571ee30971df83e6126c955b21255c5a340a
+  - verified: rev-26 [reviewer] · run rev-20261031-1505-source-5 · 2026-10-31T16:59:45.608Z · commit 0505e6521a23af5bde0dea9760debacd147f5f4c
 
 ## Comments
 
@@ -115,3 +118,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14994 original A-14993/844bf9f0 evidence clear:5344 complete matching pairs,4455ordinarytest+519file passes,separate185loadtest+185loadfile passes;zero adverse/missing/duplicate;4failure arrays empty. Nine required controls base+distinct sequential5/5load. Actual test:static70 invokes lint;96–97 conservative web/build.ts findings retained with item non-guard reason, T0exit0 proves advisory execution. C1 verified,C2source inventory retained. T0/T1/allfallbackT2inclNvim/Web0;T3/T4unrun;remote typecheck reusedhost188. Candidate323901ea vsGitc449fcc differs only1526excludedtracker/rulespaths. Linuxx64dropletc8lon1Node24.21/Nvim.12.5actualShell1248Chrome156.0.8078.4,cache/occasionnull,skips[];budget/lintreportmode. No reviewer workloads/new run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-31T16:59:45.608Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1505-source-5
+commit: 0505e6521a23af5bde0dea9760debacd147f5f4c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14998: authorized merge delta clear. Direct Coordinator messages 1be617db/cd5d8d3b authorize one merge after T-1503 plus targeted checks, no full verify. Eight own policy/test/CLI/manifest/package/guide/index/CHANGES paths unchanged from tested 2ff6571ee; nine imported paths match dev 7c0752695. Sole docs append conflict preserves both sections; skill/README retain exact additions. A-14997 local Mac nine cases/typecheck/test:static exit0 is targeted summary evidence. C1/C2 carried and refreshed using original 844bf9f0/A-14993 independently audited A-14994: 4455 ordinary passes, all nine controls base+5 load, T0/T1/all fallback T2/Web0, T3/T4 unrun. No new-head full pass claimed, no reviewer workload or new suite requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T17:06:14.326Z
+
+Merged a26adbb465233fed2e120d9242353b0d6ab81185 onto dev.

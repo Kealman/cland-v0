@@ -3,7 +3,7 @@ id: T-1507
 kind: task
 title: "Rule batch 5 doc edits: allowance owners, synthetic-PID fixtures, epic QA topics, memory probe guide"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: R-1523
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1507-rule-batch-5-doc-edits-allowance-owners
 created: 2026-10-31T08:18:54.756Z
-updated: 2026-10-31T14:43:38.790Z
+updated: 2026-10-31T17:06:28.217Z
 ---
 
 ## Summary
