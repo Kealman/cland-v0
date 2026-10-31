@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1267
 branch: null
 created: 2026-10-31T14:43:28.342Z
-updated: 2026-10-31T14:44:02.497Z
+updated: 2026-10-31T21:05:10.048Z
 ---
 
 ## Goal
@@ -26,3 +26,16 @@ Close the 0.3 line before 0.4 ("cland beyond one machine", map M-1511): ship the
   - Left to 0.4: T-489 and T-1229. T-540 is closed as superseded by agent hosts.
 - Version 0.3.2: the human named it in that ask. The project version bump is its own item.
 - Release approval: not yet given. Ask before the release as the release skill says.
+
+## Comments
+
+### coord · 2026-10-31T21:05:10.048Z
+
+The human, 2026-10-31 21:05Z via Telegram (General msg remote-b78cdec6): «Ок, дальше публикуй релиз, сообщи маркетингу и бери 0.4 дальше». Recorded as the human's release approval for 0.3.2. Version 0.3.2 is the human's choice (ask f9666976, 14:42Z).
+
+Conditions follow the 0.3.1 precedent:
+- every item landed or closed;
+- the release covers green on Linux droplet and on macOS local;
+- the dry-run notes shown in topic-1267 before `cland release`.
+
+The same message starts 0.4 (R-1530). Its implementers launch only after the release, so dev stays frozen for the release run.
