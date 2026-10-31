@@ -1,4 +1,5 @@
 // T2: rendered artifact buffers and the grid through the recorded stdio client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -673,7 +674,7 @@ test('recorded prompt drafts stay raw and ps and pa send exact saved Markdown by
     await c.input('<Space>'+key);
     await eventually('prompt send completion', async () => await c.lua("return require('cland.artifacts').get(...).status=='sent'",id) ? true : undefined);
     assert.equal(await readFile(path,'utf8'),text);
-    const received = await stubControl(join(root,'artifact-stub.sock'),{requests:true});
+    const received = await stubControl(fixtureSocketPath(root, 'artifact-stub.sock'),{requests:true});
     const sent = (received.requests as Record<string,unknown>[]).filter(f => f.type==='prompt.send' && f.artifact===id);
     assert.equal(sent.length,1);
     assert.equal(sent[0]!.attach,attach);

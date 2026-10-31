@@ -1,4 +1,5 @@
 // Shared T2/T4 explorer case: sealed recorded-client requests and rendered row identity.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { nvimOrSkip, startClient, type Client } from './stub-client.ts';
@@ -44,7 +45,7 @@ export const fixture: Scenario = { items: [
 
 export async function stub(t: TestContext, scenario = fixture, projectRoot?: string, centre: 'general' | 'explorer' = 'explorer', screenPollMs = 40) {
   const root = projectRoot ?? await tempProject(t);
-  const controlPath = `${root}/stub.sock`;
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath},{centre,screenPollMs});
   await c.rpc.request('nvim_ui_try_resize',200,50);
   if (scenario.holdSnapshots?.includes('task.list')) await c.waitScreen(s=>s.includes('hub: connected'),'connected with held item snapshot');

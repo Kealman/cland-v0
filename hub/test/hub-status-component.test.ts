@@ -1,6 +1,7 @@
 // T2: inspect/start use the real socket edge; fake time models expensive full status collection.
 // A small control-only hub isolates liveness from the daemon's unrelated project services.
 import test from 'node:test';
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHubBase } from '../src/hub/server.ts';
@@ -13,7 +14,7 @@ import { tempProject } from './harness.ts';
 import { assertStartupReplies } from './startup-replies-fixture.ts';
 
 async function fixture(t: test.TestContext, holdStatus?: () => void) {
-  const root = await tempProject(t), l = layout(root), clock = new FakeClock();
+  const root = await tempProject(t), l = { ...layout(root), socket: fixtureSocketPath(root, 'status.sock') }, clock = new FakeClock();
   const base = { pid: process.pid, port: 0, socket: l.socket, version: 'test', root, startedAt: clock.now().toISOString(), uptimeMs: 0 };
   let statusCalls = 0;
   const control = {

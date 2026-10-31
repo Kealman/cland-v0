@@ -1,4 +1,5 @@
 // T2: CLI refresh deadline on a held Unix frame; Node's fake timers advance without wall-clock waiting.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Socket } from 'node:net';
@@ -9,7 +10,7 @@ import { runAccount } from '../src/cli/account.ts';
 
 test('CLI refresh keeps a held poll alive beyond the ordinary three-second read deadline', { timeout: 5000 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'account-cli-'));
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const discovery = join(root, '.cland/hub.json');
   await mkdir(join(root, '.cland'));
   await writeFile(discovery, JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' }));

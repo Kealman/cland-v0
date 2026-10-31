@@ -1,4 +1,5 @@
 // T2: artifact screens replay recorded frames; persistence and send rules live in hub/test/nvim-artifacts-rules.test.ts.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
@@ -313,7 +314,7 @@ test('an older-page rendered artifact survives reconnect and visibility while de
   scene.scenario.artifactPageSize = 2;
   for (let n = 1; n <= 4; n++) await scene.create({ kind: 'note', title: `Retained note ${n}`, topic: 'general', ...(n === 2 ? {folder:true} : {}), content: `# Retained heading ${n}\nExact source ${n}` });
   const c = await scene.start();
-  const control = (frame: Record<string, unknown>) => stubControl(join(root, 'artifact-stub.sock'), frame);
+  const control = (frame: Record<string, unknown>) => stubControl(fixtureSocketPath(root, 'artifact-stub.sock'), frame);
   await eventually('startup artifact page', async () => await c.lua("return #require('cland.artifacts').entries") === 2 || undefined);
   await c.lua("require('cland.layout').show({kind='artifacts',id='general'},{insert=false})");
   await c.waitScreen(s => s.includes('Retained note 1'), 'older page installed');
@@ -327,10 +328,10 @@ test('an older-page rendered artifact survives reconnect and visibility while de
     if (refresh === 'reconnect') {
       scene.scenario.holdSnapshots = ['artifact.list'];
       await scene.reconnect();
-      const previous = await stat(join(root, 'artifact-stub.sock'));
+      const previous = await stat(fixtureSocketPath(root, 'artifact-stub.sock'));
       await c.lua("require('cland').client:stop(); require('cland').client:start()");
       await eventually('new control socket after reconnect', async () => {
-        const current = await stat(join(root, 'artifact-stub.sock')).catch(() => undefined);
+        const current = await stat(fixtureSocketPath(root, 'artifact-stub.sock')).catch(() => undefined);
         return current && current.ino !== previous.ino || undefined;
       });
     } else await control({emit:{type:'visibility',surface:'artifacts',target:'A-3',mode:'pin'}});

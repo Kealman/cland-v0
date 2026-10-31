@@ -1,4 +1,5 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { assertDefaultEventVisibility } from './visibility-events.ts';
@@ -161,7 +162,7 @@ test('artifact placement keeps the author role at publication across a later rol
   };
   let hub = await startHub({ ...options, store: new Store(join(root, 'hub.db')), readArtifact: async () => { entered.resolve(); await release.promise; return Buffer.from('Report notes'); } });
   t.after(() => hub.close());
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   let edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET, root });

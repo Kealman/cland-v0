@@ -1,4 +1,5 @@
 // Injected facts and storage seams shared by the plan/stage component migrations.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import type { TestContext } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
@@ -143,7 +144,7 @@ export async function planStageHub(t: TestContext, root: string, facts = new Pla
     });
     owners.push(() => hub.close());
     checkStarting();
-    const socket = join(root, 'plan-stage.sock');
+    const socket = fixtureSocketPath(root, 'plan-stage.sock');
     const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
     owners.push(() => edge.close());
     checkStarting();

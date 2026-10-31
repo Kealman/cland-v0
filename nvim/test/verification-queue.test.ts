@@ -1,4 +1,5 @@
 // The workbench's public protocol/render seam: a real headless client receiving hub frames.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -18,7 +19,7 @@ const idle: VerificationQueue = { version: 1, at: '2026-10-11T00:00:00Z', holder
 test('sessions queue line follows hub snapshots and events, including events racing a refresh', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const path = join(root, 'stub.sock');
+  const path = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, verification: idle }), CLAND_STUB_CONTROL: path });
   const control = (command: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const socket = createConnection(path); let text = '';

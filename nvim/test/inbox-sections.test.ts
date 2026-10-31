@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { localClock } from './local-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +21,7 @@ async function control(path: string, command: Record<string, unknown>): Promise<
   await stubControl(path, command);
 }
 for (const view of ['panel', 'full']) test(`${view} inbox shows four now sections, folds five rows and expands only the selected ask or command`, { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock');
   const topic = { id: 'general', title: 'General' };
   const scenario = {
     inbox: {
@@ -70,7 +71,7 @@ for (const view of ['panel', 'full']) test(`${view} inbox shows four now section
 });
 
 test('waiting ages advance on the local clock with no inbox request or hub frame', { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock');
   const now = Date.parse('2026-10-19T12:00:00Z');
   const since = new Date(now - 55000).toISOString();
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: { messages: [{ id: 'm', topic: { id: 'general', title: 'General' }, from: 'qa', text: 'Aging row', since, layer: 'now' }] } }) });
@@ -87,7 +88,7 @@ test('waiting ages advance on the local clock with no inbox request or hub frame
 });
 
 test('a rejected control projection reports the operation and leaves the control peer usable', { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path });
   await waitInitialSnapshots(c);
   // Invalid scripted configuration fails in both recorded replay and maintenance producers.

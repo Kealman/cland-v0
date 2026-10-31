@@ -106,7 +106,11 @@ export async function sweep(holder: Holder): Promise<void> {
   if (quarantined) return;
   await cleanupProcesses(initialRoot, anchors, line => process.stderr.write(`${line}\n`), holder.token, anchors, { discover: true });
   const root = await ownedRoot();
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    const { removeFixtureSockets } = await import('../../shared/fixture-sockets.ts');
+    await removeFixtureSockets(root);
+    await rm(root, { recursive: true, force: true });
+  }
 }
 
 async function liveTickets(queueDir: string, deadline?: number): Promise<Array<Holder & { queued: string }>> {

@@ -1,4 +1,5 @@
 // T2: screen permutations consume committed protocol frames through stub-client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -18,7 +19,7 @@ const bin = 'bin' in nvim ? nvim.bin : '';
 test('a push during the initial snapshot stays current, and Enter on a rule event selects that rule', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'));
-  const controlPath = join(root, 'control.sock');
+  const controlPath = fixtureSocketPath(root, 'control.sock');
   const rule: Rule = { number: 1, title: 'Snapshot rule', text: 'Initial text.', scope: 'all', date: '2026-10-15', status: 'active', origin: 'session:helper', reason: 'initial' };
   const live: Rule = { ...rule, number: 2, title: 'Live rule', text: 'Current text.' };
   const event = { id: 'rule-event', ts: new Date().toISOString(), kind: 'rule', glyph: '§', subject: { kind: 'rule', id: '2' }, text: 'rule 2 changed' };

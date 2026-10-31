@@ -1,4 +1,5 @@
 // T2: authenticated web and Unix-socket authority against an in-process hub.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
@@ -162,7 +163,7 @@ for (const type of ['push', 'sync']) {
     assert.match(refused.error!, /CLI and Neovim/);
     // A socket on a projectless hub proves admission without a Git subprocess.
     const base = createHubBase({ secret: 'fixture', clock: new FakeClock() });
-    const socket = join(root, 'projectless.sock');
+    const socket = fixtureSocketPath(root, 'projectless.sock');
     const edge = await createSocketEdge({ path: socket, dispatcher: base.dispatcher });
     onCleanup(t, async () => { await edge.close(); await base.close(); });
     const local = withCodes(await connectUi(t, { socket, secret: 'fixture' }));

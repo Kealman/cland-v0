@@ -1,5 +1,6 @@
 // T3 integration: the real CLI stays connected while role assignment reads configuration
 // beyond its 3 s discovery probe deadline. The deliberate 3.1 s delay needs a real CLI clock.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -25,7 +26,7 @@ test('role set CLI waits for a configuration read beyond the short socket probe 
   });
   await roles.start();
   const hub = createHubBase({ secret: 'test', roles });
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(async () => { await edge.close(); await hub.close(); await roles.stop(); });
   writeDiscovery(join(root, '.cland', 'hub.json'), { root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' });

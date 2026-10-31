@@ -1,4 +1,5 @@
 // T2: declined ask rendering through recorded frames, with no hub runtime.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -23,7 +24,7 @@ const msg = (id: string, role = 'coordinator', text = 'Question') => ({
 async function start(t: Parameters<typeof tempProject>[0], scenario: Scenario) {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'));
-  const control = join(root, 'control.sock');
+  const control = fixtureSocketPath(root, 'control.sock');
   const c = await startClient(t, bin, root, {
     HOME: join(root, 'home'), XDG_CONFIG_HOME: join(root, 'config'), XDG_CACHE_HOME: join(root, 'cache'), XDG_DATA_HOME: join(root, 'data'),
     GIT_CONFIG_GLOBAL: join(root, 'gitconfig'), GIT_CONFIG_NOSYSTEM: '1',

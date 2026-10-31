@@ -1,4 +1,5 @@
 // Shared differential oracle: ordinary T2 and extended T4 use identical fixtures and assertions.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
 import { mkdir } from 'node:fs/promises';
@@ -23,7 +24,7 @@ const msg = (id: string, role = 'coordinator', text = 'Taking T-58.') => ({
 async function start(t: TestContext, bin: string, scenario: Scenario) {
   const root = await tempProject(t, 'cland-thread-');
   await mkdir(join(root, '.git'));
-  const controlPath = join(root, 'stub.sock');
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, {
     TZ: 'UTC', CLAND_STUB_NOW: ts, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath,

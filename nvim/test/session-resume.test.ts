@@ -1,4 +1,5 @@
 // Resume keys, confirmations and palette actions at the headless Neovim/stub-hub seam.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -16,7 +17,7 @@ const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 test('r resumes stopped rows with an outcome, offers f/n/Esc, and Resume session is in the palette and Keys', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const path = join(root, 'stub.sock');
+  const path = fixtureSocketPath(root, 'stub.sock');
   const row = { name: 'old', label: 'old [Implementer]', role: 'implementer', harness: 'claude-code', model: 'claude-fake', sessionId: 'old-id', pid: null, cwd: root, status: 'stopped', state: 'unknown', startedAt: '2026-10-12T00:00:00Z', layer: 'now' };
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, processes: [row], resumeNotes: ['T-1 claim was not restored'], holdSnapshots: ['session.resume'] }), CLAND_STUB_CONTROL: path });
   const control = (command: Record<string, unknown>) => new Promise<{ requests?: Array<Record<string, unknown>> }>((resolve, reject) => {

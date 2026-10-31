@@ -26,10 +26,11 @@ test('cancelled scratch CLI closes before its directory is removed', async t => 
     import { pathToFileURL } from 'node:url';
     import { initIn, scratchMachine } from ${JSON.stringify(new URL('./init-machine.ts', import.meta.url).href)};
     import { beforeDirectories } from ${JSON.stringify(new URL('./process-cleanup.ts', import.meta.url).href)};
+    import { fixtureSocketPath } from ${JSON.stringify(new URL('../../test-support/socket-path.ts', import.meta.url).href)};
     const controller = new AbortController();
     test('held CLI', { signal: controller.signal }, async t => {
       const machine = await scratchMachine(t, { identity: true });
-      const socketPath = machine.root + '/ready.sock';
+      const socketPath = fixtureSocketPath(machine.root, 'ready.sock');
       const server = createServer();
       beforeDirectories(t, async () => {
         if (server.listening) await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

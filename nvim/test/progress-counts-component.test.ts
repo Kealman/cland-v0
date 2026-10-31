@@ -1,4 +1,5 @@
 // T2: real headless Neovim renders complete container counts while closed task pages are held.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
@@ -41,11 +42,11 @@ const fixture: Scenario = { summaryLists: true, items: [
 async function start(t: test.TestContext, scenario = fixture) {
   const root = await tempProject(t);
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio',
-    CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({...scenario,holdClosedPages:true}), CLAND_STUB_CONTROL: root+'/control.sock' });
+    CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({...scenario,holdClosedPages:true}), CLAND_STUB_CONTROL: fixtureSocketPath(root, 'control.sock') });
   await waitInitialSnapshots(c);
   await c.input('<Esc><Space>i');
   await c.lua("local l=require('cland.layout'); vim.api.nvim_win_set_width(l.win.left,90)");
-  return Object.assign(c,{control:(command:Record<string,unknown>)=>stubControl(root+'/control.sock',command)});
+  return Object.assign(c,{control:(command:Record<string,unknown>)=>stubControl(fixtureSocketPath(root, 'control.sock'),command)});
 }
 
 test('board fractions and header include closed children before loading closed rows', { skip }, async t => {

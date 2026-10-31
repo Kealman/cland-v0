@@ -1,4 +1,5 @@
 // T2: real hub frames, held owned filesystem I/O, no native harness processes.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -24,7 +25,7 @@ import type { HarnessProcessView } from '../src/protocol.ts';
 // role-bearing hello is guarded with no fixed-role substitution (T-1230 closed T-1220's exemption).
 async function credentialHub(t: import('node:test').TestContext, root: string) {
   const clock = new FakeClock();
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const env = fixtureEnvironment(root, process.env);
   await files.mkdir(join(root, '.cland'), { recursive: true });
   await files.writeFile(join(root, '.cland/roles.toml'), DEFAULT_ROLES_TOML);

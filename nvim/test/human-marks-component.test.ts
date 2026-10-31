@@ -1,4 +1,5 @@
 // T2: headless workbench exchanges recorded protocol frames with a second scripted frame peer.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
@@ -19,7 +20,7 @@ const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 test('C2: visiting events publishes the shared last look; a peer reading a topic clears its Neovim row', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const control = join(root, 'control.sock');
+  const control = fixtureSocketPath(root, 'control.sock');
   const c = await startClient(t, bin, root, {
     ...isolated(root), CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_CONTROL: control,
@@ -66,7 +67,7 @@ test('C3: legacy marks import once before their ui.json keys are removed', { ski
     sizes: {}, items_filter: 'board', plan_seen: { 'E-12': 'legacy-plan' },
     events: { filter: { warnings: true }, muted: [], last_look: old }, other_owner: { keep: true } };
   await writeFile(path, JSON.stringify(preferences));
-  const control = join(root, 'control.sock');
+  const control = fixtureSocketPath(root, 'control.sock');
   const env = { ...isolated(root), CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: control };
   const c = await startClient(t, bin, root, env);
   await waitInitialSnapshots(c);
@@ -116,7 +117,7 @@ test('marks startup without validated legacy keys never flushes pending preferen
     const path = join(root, '.cland/ui.json');
     if (content === 'directory') await mkdir(path);
     else if (content !== null) await writeFile(path, content);
-    const control = join(root, 'control.sock');
+    const control = fixtureSocketPath(root, 'control.sock');
     const c = await startClient(t, bin, root, { ...isolated(root), CLAND_HUB_TRANSPORT: 'stdio',
       CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: control,
       CLAND_STUB_SCENARIO_JSON: JSON.stringify({ holdSnapshots: ['marks.get'] }),
@@ -156,7 +157,7 @@ test('marks startup without validated legacy keys never flushes pending preferen
 test('marks.get replays a peer delta received before its held older response', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const control = join(root, 'control.sock');
+  const control = fixtureSocketPath(root, 'control.sock');
   const c = await startClient(t, bin, root, { ...isolated(root), CLAND_HUB_TRANSPORT: 'stdio',
     CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: control,
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ marks: { events: '2026-10-11T00:00:00.000Z', plans: {}, imported: true } }),

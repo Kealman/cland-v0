@@ -1,4 +1,5 @@
 // The queue's human-facing seam: hub frames, real keys and screenstring().
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { localClock } from './local-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,7 +20,7 @@ const idle: VerificationQueue = { version: 1, at: '2026-10-13T00:00:00Z', holder
 test('verify summary opens the ordered queue and ages locally; palette and keys expose the view', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const path = join(root, 'stub.sock');
+  const path = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, verification: idle }), CLAND_STUB_CONTROL: path });
   const emit = (queue: VerificationQueue) => new Promise<void>((resolve, reject) => {
     const socket = createConnection(path); let text = '';

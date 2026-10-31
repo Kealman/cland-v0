@@ -1,4 +1,5 @@
 // T2: artifact screens use owned files and scripted, recorded protocol frames.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import type { TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -15,7 +16,7 @@ const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 export async function artifactScreen(t: TestContext, root: string) {
   await mkdir(join(root, '.cland'), { recursive: true });
   const scenario: Scenario = { topics: ['general', 'agents'].map(id => ({ id, title: id === 'agents' ? 'Agents' : 'General', status: 'open', standing: true, createdAt: STUB_NOW, updatedAt: STUB_NOW })), messages: {}, artifacts: [] };
-  const path = join(root, 'artifact-scenario.json'), ctl = join(root, 'artifact-stub.sock');
+  const path = join(root, 'artifact-scenario.json'), ctl = fixtureSocketPath(root, 'artifact-stub.sock');
   let started = false, connected = true;
   const save = () => writeFile(path, JSON.stringify(scenario));
   const publish = async (events: Record<string, unknown>[] = []) => {

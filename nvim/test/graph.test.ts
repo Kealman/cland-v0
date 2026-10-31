@@ -1,4 +1,5 @@
 // The graph view at the Neovim/stub-hub frame boundary.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -29,7 +30,7 @@ const fixture: Scenario = { items: [
 async function start(t: TestContext, scenario = fixture) {
   const root = await mkdtemp(join(tmpdir(), 'cland-graph-'));
   ownDirectory(t, root); await mkdir(join(root, '.git'));
-  const controlPath = join(root, 'stub.sock');
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario), CLAND_STUB_CONTROL: controlPath });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);

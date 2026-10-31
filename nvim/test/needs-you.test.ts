@@ -1,4 +1,5 @@
 // T2: recorded protocol frames drive both inbox views; injected rules live in hub/test/nvim-needs-you-rules.test.ts.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -17,7 +18,7 @@ for (const scenario of cases) {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), `[visibility]\n${scenario.config}`);
     const topic = (id: string) => ({ id, title: id, status: 'open', standing: true, createdAt: STUB_NOW, updatedAt: STUB_NOW });
-    const controlPath = join(root, 'stub.sock');
+    const controlPath = fixtureSocketPath(root, 'stub.sock');
     const snapshot = { topics: [topic('general'), topic('agents'), topic('waiting')],
       processes: [{ name: 'worker', sessionId: 'worker-id', role: 'implementer', harness: 'claude-code', status: 'running', state: 'waiting for approval' }],
       inbox: { asks: [{ id: 'ask-1', question: 'Choose direction?', options: ['Continue'], free: true, from: 'coord', topic: topic('general'), ts: STUB_NOW }],

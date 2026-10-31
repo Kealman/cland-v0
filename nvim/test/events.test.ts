@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -20,7 +21,7 @@ const rows: EventRow[] = Array.from({ length: 401 }, (_, i) => ({ id: `row-${i}`
 test('Events view opens through the registry, groups days, pages, folds and follows live rows without losing selection', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const path = join(root, 'stub.sock');
+  const path = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { TZ: 'UTC', CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, events: rows, items: [{ id: 'T-1', title: 'Event subject', kind: 'task', state: 'open', status: 'in progress', labels: [], parent: null, blocked_by: [], body: 'Subject detail' }] }), CLAND_STUB_CONTROL: path });
   const control = (command: Record<string, unknown>) => new Promise<unknown>((resolve, reject) => {
     const socket = createConnection(path); let text = '';

@@ -1,6 +1,7 @@
 // T2: production Codex admission/reconciliation on a scripted in-process native connection.
 // Lifecycle comes from T-686's fake; socket peers and hub reports remain real. No binary or
 // elapsed-time wait. Native request replies and journal receipts bound every negative assertion.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
@@ -75,7 +76,7 @@ test('Codex retries an older app-server without excludeTurns and accepts its pre
 for (const outcome of ['large reply', 'payload limit'] as const) {
   test(`Codex WebSocket transport handles ${outcome} at the native frame boundary`, async t => {
     const root = await tempProject(t, 'cx-');
-    const path = join(root, 's');
+    const path = fixtureSocketPath(root, 's');
     const server = createServer();
     const peers = new WebSocketServer({ noServer: true });
     const sockets = new Set<Socket>();

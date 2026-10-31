@@ -1,4 +1,5 @@
 // T2: recorded crew snapshots and events; real CLI/reload/refusal rules live in hub/test/nvim-crew-rules.test.ts.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +9,7 @@ import { stubControl } from './stub-control.ts';
 const nvim = await nvimOrSkip(), skip = 'skip' in nvim ? nvim.skip : false, bin = 'bin' in nvim ? nvim.bin : '';
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 test('recorded frames: sessions header follows crew CLI and hand edits, retaining the last good summary on refusal and refresh', { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock');
   const crew = (size: number, leads: string) => ({ config: {}, summary: `rev pool ${size} · leads: ${leads}` });
   const initial = crew(1, 'none'), updated = crew(2, 'none'), hand = crew(2, 'epic');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ crew: initial }) });

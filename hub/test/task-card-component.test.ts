@@ -1,4 +1,5 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,7 +68,7 @@ test('a 65-row list reads no item files; a verify finishing reads one summary wi
     locks: [join(root, 'suite.lock'), join(root, 'nvim.lock')] },
     control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: '', uptimeMs: 0 }), stop() {} } });
   t.after(() => hub.close());
-  const socket = join(root, 'card.sock');
+  const socket = fixtureSocketPath(root, 'card.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET });

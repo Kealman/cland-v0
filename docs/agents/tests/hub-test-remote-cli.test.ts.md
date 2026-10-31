@@ -43,7 +43,10 @@ observers before binding. Its setup is abortable with a one-second injected-cloc
 deadline; close, peer streams and discovery writes drain under independent
 one-second live bounds through the same idempotent disposer. Missing-listening,
 aborted-setup and native-bind-error controls retain actual listening/closed,
-empty-peer and drained-writer receipts. The missing-receipt negative control
+empty-peer and drained-writer receipts. The bind-error control occupies the
+shared portable endpoint with a directory and requires native `EADDRINUSE`; it
+uses an existing disposable root so allocation succeeds before the bind fails.
+The missing-receipt negative control
 fails under its independent 1.5-second live bound if the setup deadline is removed.
 
 The name-collision rotation regression stores a new opaque token equal to the

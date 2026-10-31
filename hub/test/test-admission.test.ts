@@ -1,5 +1,6 @@
 // T2: admission's real socket boundary with a complete fake clock; no hub process
 // or elapsed-time wait is needed to delay the suite.slot answer beyond 3000 ms.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import './cover-quiet.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -66,7 +67,7 @@ test('a refused session receives one durable test-slot-available notice across d
 
 async function delayedHub(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'cland-admission-'));
-  const socketPath = join(root, 'hub.sock');
+  const socketPath = fixtureSocketPath(root, 'hub.sock');
   const sockets = new Set<Socket>();
   let received!: (reply: (ok?: boolean, error?: string) => void) => void;
   const request = new Promise<(ok?: boolean, error?: string) => void>(resolve => { received = resolve; });

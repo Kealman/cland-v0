@@ -2,6 +2,7 @@
 // integrated worker and the CLI, from startup before fixtures through worker
 // completion and slot release. The existing 25 ms barrier poll is unchanged;
 // T-684's lint baseline owns it.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,7 +53,7 @@ async function target(t: TestContext, cwd: string, module: string, env: NodeJS.P
 }
 
 function sentinel(t: TestContext, root: string, actors: unknown[]) {
-  const socketPath = join(root, 'sentinel.sock');
+  const socketPath = fixtureSocketPath(root, 'sentinel.sock');
   const sockets = new Map<Socket, Promise<unknown>>();
   const server = createServer(socket => {
     sockets.set(socket, new Promise<void>(resolve => socket.once('close', () => { sockets.delete(socket); resolve(); })));
@@ -250,7 +251,7 @@ test('targeted startup passes without a project hub or with an ordinary local ho
   const standalone = await target(t, root, harness, external(root));
   assert.equal(standalone.code, 0, standalone.stderr);
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, 'absent.sock'), secret: 'fixture', port: 1, pid: process.pid, version: 'fixture' }));
+  await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: fixtureSocketPath(root, 'absent.sock'), secret: 'fixture', port: 1, pid: process.pid, version: 'fixture' }));
   const absent = await target(t, root, harness, external(root));
   assert.equal(absent.code, 0, absent.stderr);
   const ordinary = await cover(t, false);
@@ -261,7 +262,7 @@ test('targeted startup passes without a project hub or with an ordinary local ho
 // The silent-hub deadline is covered with a fake clock at T2 in test-admission.test.ts.
 for (const behavior of ['closed', 'legacy-refusal', 'unsupported'] as const) test(`a connected ${behavior} project hub keeps targeted fixtures unstarted`, async t => {
   const root = await tempProject(t);
-  const socketPath = join(root, 'admission.sock');
+  const socketPath = fixtureSocketPath(root, 'admission.sock');
   const server = createServer(socket => {
     socket.setEncoding('utf8');
     let buffer = '';

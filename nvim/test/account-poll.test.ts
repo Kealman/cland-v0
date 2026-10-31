@@ -1,4 +1,5 @@
 // The workbench opens the real sessions panel; its normal hub client sends the frame.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -16,7 +17,7 @@ const stub = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 test('sessions-panel openings send account.poll once; redraws and closing do not', { skip }, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.git'), { recursive: true });
-  const path = join(root, 'control.sock');
+  const path = fixtureSocketPath(root, 'control.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, stub]), CLAND_STUB_CONTROL: path });
   const requests = () => new Promise<Array<{ type: string }>>((resolve, reject) => {
     const socket = createConnection(path);

@@ -1309,6 +1309,21 @@ wait up to ten seconds for a loaded paired remote to reconnect. Retain the
 still-down and inactive-token controls; share readiness polling with Discord's
 post-reload path. No remote.status fields or role permissions change.
 
+## Portable test socket paths (T-1500)
+
+Explicit test-owned Unix listeners and matching client lookups use
+`fixtureSocketPath` from `shared/fixture-sockets.ts` (the test-support path remains
+a compatibility export), keyed by disposable root
+and endpoint. Actual nodes live in private directories under disposable roots, reached through
+short symlink aliases. Both directory owners recover reciprocal root-owned alias
+records after positive native drainage, including killed allocating workers;
+recovery verifies targets and unlinks aliases without a global sweep. Hub teardown
+attempts every resource and directory, preserving all errors; only live-writer
+guards retain their root and socket directory. Keep the Node-only helper outside
+wire/browser barrels and verify static import boundaries plus the web build. Keep native close/drain barriers.
+See `docs/agents/tests/hub-test-fixture-socket-path.test.ts.md` for the deep TMPDIR
+native bind control. Production-selected paths remain production coverage.
+
 ## Pinned verifier builds
 
 Include a standalone `Head: <full-commit-sha>` line after the request line to pin

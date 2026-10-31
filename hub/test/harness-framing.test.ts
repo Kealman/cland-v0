@@ -1,4 +1,5 @@
 // T2: the harness clients' byte-stream seams, with no hub or child process.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { performance } from 'node:perf_hooks';
@@ -33,7 +34,7 @@ for (const chunkKiB of [64, 4]) test(`frameClient receives a 20 MiB frame in ${c
 
 async function socketPair(t: TestContext) {
   const root = await tempProject(t, 'cland-framing-');
-  const path = join(root, 'peer.sock');
+  const path = fixtureSocketPath(root, 'peer.sock');
   const server = createServer();
   let peer: Socket | undefined;
   let client: Awaited<ReturnType<typeof connectSocket>> | undefined;

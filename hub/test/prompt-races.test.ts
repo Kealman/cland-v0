@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm } from 'node:fs/promises';
@@ -18,7 +19,7 @@ for (const order of ['archive-first', 'send-first', 'delete-topic-first', 'delet
       control: { status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root, startedAt: new Date().toISOString(), uptimeMs: 0 }), stop: () => {} },
     });
     t.after(() => hub.close());
-    const socket = join(root, 'hub.sock');
+    const socket = fixtureSocketPath(root, 'hub.sock');
     const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
     t.after(() => edge.close());
     const ui = await connectUi(t, { socket, secret: TEST_SECRET });
@@ -67,7 +68,7 @@ test('artifact creation rechecks its topic after deferred file preparation and f
     control: { status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root, startedAt: new Date().toISOString(), uptimeMs: 0 }), stop: () => {} },
   });
   t.after(() => hub.close());
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET });

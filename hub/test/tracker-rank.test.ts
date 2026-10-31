@@ -14,6 +14,7 @@ import nativeFiles from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import files, { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { join } from 'node:path';
@@ -443,7 +444,7 @@ test('a failed high label removal retries without another rank write or a migrat
   onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
   onCleanup(t, () => hub.close());
-  const socket = join(root, '.cland', 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket, port: Number(new URL(hub.url).port), secret: TEST_SECRET, pid: process.pid, version: 'test' }));

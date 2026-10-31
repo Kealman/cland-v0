@@ -1,4 +1,5 @@
 // T2: item identities, authority and persistence use in-process hubs and spokes.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { sessionWsUi as connectWsUi, sessionClient, sessionUi as connectUi } from './session-credential-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -113,7 +114,7 @@ for (const change of ['claim', 'identity', 'close'] as const) {
       control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
     });
     onCleanup(t, () => hub.close());
-    const socket = join(root, 'hub.sock');
+    const socket = fixtureSocketPath(root, 'hub.sock');
     const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
     onCleanup(t, () => edge.close());
     const ui = await connectUi(t, { socket, secret: TEST_SECRET, root });

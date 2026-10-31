@@ -1,3 +1,4 @@
+import { removeFixtureSockets } from '../../shared/fixture-sockets.ts';
 import { processIdentities } from '../src/process-identity.ts';
 // Test-only ownership: registered groups for teardown; directory/ancestry discovery for phase recovery.
 import { execFileSync } from 'node:child_process';
@@ -548,6 +549,7 @@ export function ownProcess(t: TestContext | undefined, pid: number | undefined):
   return cleanup;
 }
 async function removeDirectory(root: string, timeoutMs = 0): Promise<void> {
+  await removeFixtureSockets(root);
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     try { await rm(root, { recursive: true, force: true }); return; }

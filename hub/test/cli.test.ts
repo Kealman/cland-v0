@@ -1,4 +1,5 @@
 // T2: the executable CLI is the subject; an in-process hub serves task headings.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Socket } from 'node:net';
@@ -85,7 +86,7 @@ test('task view headings include release versions once, including in a child anc
 
 test('task text output preserves an old-hub item without optional card fields', async t => {
   const root = await tempProject(t);
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' }));
   // Literal old-hub wire shape: deliberately no criteriaCounts, closed or verify.

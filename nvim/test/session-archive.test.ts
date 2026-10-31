@@ -1,4 +1,5 @@
 // Archive keys and projections through the headless client and the stub protocol.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -20,7 +21,7 @@ test('more shows the latest 20 stopped rows by stop time and the archived count 
   await mkdir(join(root, '.cland'), { recursive: true });
   const processes = Array.from({ length: 25 }, (_, i) => ({ name: `crew-${i + 1}`, sessionId: `id-${i + 1}`, role: 'implementer', harness: 'claude-code', status: 'stopped', startedAt: `2026-09-${String(25 - i).padStart(2, '0')}T00:00:00Z`, stoppedAt: `2026-10-${String(i + 1).padStart(2, '0')}T00:00:00Z` }));
   const archived = Array.from({ length: 180 }, (_, i) => ({ ...processes[0], name: `archived-${i}`, sessionId: `archived-id-${i}`, archived: true }));
-  const controlPath = join(root, 'stub.sock');
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, processes: [...processes, ...archived] }), CLAND_STUB_CONTROL: controlPath });
   const control = (command: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const socket = createConnection(controlPath); let text = '';

@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 // The Neovim client's seam: the real client (`nvim --clean -u nvim/init.lua`) headless with `--listen`,
@@ -117,7 +118,7 @@ export async function createClient(t: TestContext, bin: string, root: string, en
   if (!env.CLAND_COMMAND) await native!.isolateVerification(root);
   const dir = await mkdtemp(join(tmpdir(), 'cland-nv-'));
   if (native) native.ownDirectory(t, dir); else ownDirectory(t, dir);
-  const sock = join(dir, 'nvim.sock');
+  const sock = fixtureSocketPath(dir, 'nvim.sock');
   const base = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('NVIM')));
   // the restart snapshot lives under stdpath('state'): one per test
   const childEnv: Record<string, string> = { NVIM_APPNAME: 'cland-nvim', CLAND_ROOT: root, ...env };

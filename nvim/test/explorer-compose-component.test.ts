@@ -1,4 +1,5 @@
 // T2: screen permutations consume committed protocol frames through stub-client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createConnection } from 'node:net';
@@ -27,7 +28,7 @@ const fixture:Scenario = {items:[
 type Frame = {type:string;topic?:string;text?:string;to?:string[];item?:string;title?:string};
 
 async function start(t:test.TestContext, scenario=fixture) {
-  const root=await tempProject(t); const path=`${root}/stub.sock`;
+  const root=await tempProject(t); const path=fixtureSocketPath(root, 'stub.sock');
   const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:path},{centre:'explorer'});
   await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   await c.input('<Esc><Space>e');

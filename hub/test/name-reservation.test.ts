@@ -1,4 +1,5 @@
 // T2: reservation rules through native SQLite and real frames; fixture-owned faults.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -32,7 +33,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   let hubClosed = false;
   const closeHub = async () => { if (hubClosed) return; hubClosed = true; await hub.close(); };
   onCleanup(t, closeHub);
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET, root });
@@ -467,7 +468,7 @@ test('credentialed anonymous provenance survives pending cleanup and a hub resta
   assert.ok(f.table.pendingStops()[0]?.ownership?.sessionIds.includes(proven));
   assert.ok(f.table.pendingStops()[0]?.ownership?.sessionIds.includes('launched:target'));
   const r = await restartPending(t, f, true);
-  const client = await connectSocket(join(f.root, 'hub.sock'));
+  const client = await connectSocket(fixtureSocketPath(f.root, 'hub.sock'));
   onCleanup(t, () => client.close());
   client.send({ type: 'hello', protocol: 2, secret: TEST_SECRET, cwd: f.root, sessionId: 'unknown', name: 'target', launchToken: credential() });
   assert.equal((await client.next()).type, 'welcome');
@@ -1188,7 +1189,7 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
   onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, store: new Store(db, f.database.open), roles: fixedRoles(), clock: f.clock });
   onCleanup(t, () => hub.close());
-  const socket = join(f.root, 'hub.sock');
+  const socket = fixtureSocketPath(f.root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   const table = new ProcessTable(db, f.clock, f.database.open);

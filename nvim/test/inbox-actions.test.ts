@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createConnection } from 'node:net';
@@ -29,7 +30,7 @@ async function focus(c: Client, view: string) {
   else await c.lua("local layout=require('cland.layout'); if require('cland.state').S.ui.right~='inbox' then layout.right_panel('inbox') else vim.api.nvim_set_current_win(layout.win.right) end");
 }
 for (const view of ['panel', 'full']) test(`${view}: r replies to the selected row, d declines or reads one row, A toggles the seven-day archive`, { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock');
   const requestTopic = topic('review-topic'), messageTopic = topic('message-topic');
   const request = { id: 'request-1', topic: requestTopic, subject: 'T-1', request: 'review', from: 'impl', text: 'Review the build\nBody hidden', since: ts, ts };
   const inbox = {
@@ -88,7 +89,7 @@ for (const view of ['panel', 'full']) test(`${view}: r replies to the selected r
 });
 
 test('r on a message arms its exact reply, sending archives it as answered; empty inbox keeps the archive line', { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock'), messagesTopic = topic('message-topic');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock'), messagesTopic = topic('message-topic');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path,
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ topics: [topic('general'), topic('agents'), messagesTopic], inbox: { messages: [{ id: 'm', topic: messagesTopic, subject: messagesTopic.id, text: 'Answer me', from: 'qa', since: ts }] } }) });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected'); await focus(c, 'full');
@@ -104,7 +105,7 @@ test('r on a message arms its exact reply, sending archives it as answered; empt
 });
 
 test('r gives a free ask answer and failed row replies retain their draft and target', { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock'), replyTopic = topic('reply-topic');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock'), replyTopic = topic('reply-topic');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path,
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ topics: [topic('general'), topic('agents'), replyTopic], inbox: {
       asks: [{ id: 'ask', topic: replyTopic, question: 'Give an answer', options: [], free: true, from: 'coord', since: ts, ts }],
@@ -129,7 +130,7 @@ test('r gives a free ask answer and failed row replies retain their draft and ta
 });
 
 test('Enter on a recorded Claude Code approval requests attachment of that session', { skip }, async t => {
-  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'stub.sock');
   const record = { id: 'worker-id:episode-1', sessionId: 'worker-id', session: 'worker', harness: 'claude-code',
     label: 'worker [Implementer]', role: 'implementer', kind: 'command', subject: { command: 'echo review me' },
     command: 'echo review me', choices: [], answerIn: 'tui', attach: null, state: 'pending', since: ts };
@@ -155,7 +156,7 @@ const approvalRecord = (extra: Record<string, unknown> = {}) => ({
   choices: ['once', 'always', 'deny'], answerIn: 'hub', attach: null, state: 'pending', since: approvalTime, ...extra,
 });
 async function approvalClient(t: Parameters<typeof tempProject>[0], view: string, record = approvalRecord(), ageMs = 0) {
-  const root = await tempProject(t), path = join(root, 'approval.sock');
+  const root = await tempProject(t), path = fixtureSocketPath(root, 'approval.sock');
   const c = await startClient(t, bin, root, {
     CLAND_STUB_NOW: approvalTime, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_CONTROL: path, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ attach: {}, inbox: { approvals: [record] } }),

@@ -1,4 +1,5 @@
 // Shared T2 shell fixture: recorded stub frames and owned headless Neovim only.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import type { TestContext } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -87,7 +88,7 @@ export async function startShell(t: TestContext, edit: (s: Scenario) => void = (
   edit(scenario);
   const scenarioFile = join(dir, 'scenario.json');
   await writeFile(scenarioFile, JSON.stringify(scenario));
-  const controlPath = join(dir, 'ctl.sock');
+  const controlPath = fixtureSocketPath(dir, 'ctl.sock');
   const c = await startClient(t, bin, root, {
     CLAND_HUB_TRANSPORT: 'stdio',
     CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),

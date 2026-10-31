@@ -1,4 +1,5 @@
 // The vertical board at the Neovim/stub-hub frame boundary.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises';
@@ -30,7 +31,7 @@ const fixture: Scenario = {
 };
 async function start(t: TestContext, scenario = fixture, screenPollMs = 40) {
   const root = await mkdtemp(join(tmpdir(), 'cland-vboard-')); ownDirectory(t, root); await mkdir(join(root, '.git'));
-  const controlPath = join(root, 'stub.sock');
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath }, { screenPollMs });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);

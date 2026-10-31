@@ -1,5 +1,6 @@
 // T2: sealed CLI subprocesses against projectHub and the fake messenger boundary.
 import assert from 'node:assert/strict';
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import { cland, connectUi, projectHub, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
@@ -281,8 +282,10 @@ for (const failure of ['missing receipt', 'aborted setup'] as const) test(`older
 
 test('older-hub fixture reports a native bind error and disposes through its setup owner', async t => {
   const root = await tempProject(t);
-  const fixture = legacyRemoteHubFixture(t, join(root, 'absent'));
-  await assert.rejects(within(fixture.start(), 1500), /legacy hub listen failed: (ENOENT|EACCES)/);
+  const fixture = legacyRemoteHubFixture(t, root);
+  // Occupy the portable endpoint before listening, preserving a native bind failure.
+  await mkdir(fixtureSocketPath(root, 'legacy.sock'));
+  await assert.rejects(within(fixture.start(), 1500), /legacy hub listen failed: EADDRINUSE/);
   await within(fixture.dispose(), 1500);
   assert.equal(fixture.receipts().listening, false);
   assert.equal(fixture.receipts().peers, 0);

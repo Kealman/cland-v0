@@ -1,4 +1,5 @@
 // T2: admission and item cards use real frames with injected candidate facts and worker receipts.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { lintHubShards } from '../src/suite-shards.ts';
 import { test } from 'node:test';
@@ -74,7 +75,7 @@ test('Aide verification brief rows match runtime admission for the same commands
 test('verify materializes Agents defaults for a prior hub wire contract and preserves previews and overrides', async t => {
   const root = await tempProject(t, 'verify-prior-wire-');
   await mkdir(join(root, '.cland'));
-  const socket = join(root, 'prior.sock');
+  const socket = fixtureSocketPath(root, 'prior.sock');
   await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'prior' }));
   const peers = new Set<Socket>(), requests: Record<string, unknown>[] = [];
   const server = createServer(peer => {

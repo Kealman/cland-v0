@@ -1,4 +1,5 @@
 // T2: public recorded frames rendered by headless Neovim; no running hub or harness.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -13,7 +14,7 @@ const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 const ts = '2026-10-22T10:00:00.000Z';
 
 test('remote message and ask rows and Inbox outcomes name Telegram and Discord, retaining old outcomes', { skip }, async t => {
-  const root = await tempProject(t), control = join(root, 'control.sock');
+  const root = await tempProject(t), control = fixtureSocketPath(root, 'control.sock');
   const message = (id: string, text: string, via: string) => ({ id, from: 'human', fromKind: 'human', to: ['coord'], text, ts, topic: 'general', via });
   const outcome = { status: 'answered', text: 'Continue', by: 'human', at: ts, via: 'telegram' };
   const card = { question: 'Remote direction?', options: ['Continue'], free: true, state: 'answered', outcome };

@@ -1,4 +1,5 @@
 // Real hub frames and the daily job seam, with only filesystem/SQLite system boundaries faulted.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,7 +35,7 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
     control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
   });
   t.after(() => hub.close());
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   t.after(() => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET, root }, 'cli');
@@ -294,7 +295,7 @@ test('artifact subscriptions publish only after the existing artifact/post trans
   const f = await fixture(t);
   await f.ui.request({ type: 'subscribe' });
   await f.ui.request({ type: 'role.set', session: 'observer', role: 'reviewer' });
-  const socket = await connectSocket(join(f.root, 'hub.sock'));
+  const socket = await connectSocket(fixtureSocketPath(f.root, 'hub.sock'));
   t.after(() => socket.close());
   socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: 'observer-id', name: 'observer', cwd: f.root });
   assert.equal((await socket.next()).type, 'welcome');
@@ -324,7 +325,7 @@ test('event publication faults preserve reopened artifact bytes and the whole tu
   for (const [name, digest] of [['held', 'turn'], ['steered', 'now']] as const) {
     if (digest === 'now') table.put({ name, sessionId: `${name}-id`, harness: 'codex', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running', item: null });
     await f.ui.request({ type: 'role.set', session: name, role: 'reviewer' });
-    const socket = await connectSocket(join(f.root, 'hub.sock'));
+    const socket = await connectSocket(fixtureSocketPath(f.root, 'hub.sock'));
     t.after(() => socket.close());
     socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: `${name}-id`, name, cwd: f.root });
     assert.equal((await socket.next()).type, 'welcome');
@@ -354,7 +355,7 @@ test('failure recording the now group rolls back every recipient and their event
   for (const [name, digest] of [['held', 'turn'], ['steered', 'now']] as const) {
     if (digest === 'now') table.put({ name, sessionId: `${name}-id`, harness: 'codex', role: 'reviewer', model: null, cwd: f.root, pid: null, harnessId: null, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running', item: null });
     await f.ui.request({ type: 'role.set', session: name, role: 'reviewer' });
-    const socket = await connectSocket(join(f.root, 'hub.sock'));
+    const socket = await connectSocket(fixtureSocketPath(f.root, 'hub.sock'));
     t.after(() => socket.close());
     socket.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: TEST_SECRET, sessionId: `${name}-id`, name, cwd: f.root });
     assert.equal((await socket.next()).type, 'welcome');

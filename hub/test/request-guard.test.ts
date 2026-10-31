@@ -2,6 +2,7 @@
 // The hub's request path under a flood (T-67), from the incident's shape: a UI client sending `task.list` over and
 // over on a project of twenty items with verdicts. Another client is not held up beyond a matching baseline, the repeats are
 // answered from the previous answer and logged once, and a handler over the budget is logged as `slow-request`.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,7 +54,7 @@ test('waiting for async Git is a slow-answer with its own counter, without a slo
   // A lower answer threshold keeps this test fast; the loop budget stays at its production value.
   const hub = await startHub({ log, tracker, guard: { answerBudgetMs: 100 }, control: { status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root, startedAt: new Date().toISOString(), uptimeMs: 0 }), stop: () => {} } });
   onCleanup(t, () => hub.close());
-  const socket = join(root, 'hub.sock');
+  const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET }, 'waiting-ui');

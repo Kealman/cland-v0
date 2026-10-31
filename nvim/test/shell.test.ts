@@ -1,5 +1,6 @@
 // T3: terminal attachment/key transport, interruption, reconnect, editor restart and negative no-poll windows.
 // Screen permutations live in shell-component.test.ts; workbench owns the shared real-hub flow.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { ownDirectory } from '../../hub/test/process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -93,7 +94,7 @@ async function startShell(t: TestContext, edit: (s: Scenario) => void = () => {}
   edit(scenario);
   const scenarioFile = join(dir, 'scenario.json');
   await writeFile(scenarioFile, JSON.stringify(scenario));
-  const controlPath = join(dir, 'ctl.sock');
+  const controlPath = fixtureSocketPath(dir, 'ctl.sock');
   const c = await startClient(t, bin, root, {
     CLAND_HUB_TRANSPORT: 'stdio',
     CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),

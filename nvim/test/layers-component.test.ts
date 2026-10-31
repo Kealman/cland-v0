@@ -1,4 +1,5 @@
 // T2: screen permutations consume committed protocol frames through stub-client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -23,7 +24,7 @@ const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 async function start(t: TestContext, scenario: Scenario = {}) {
   const root = await tempProject(t, 'cland-layers-');
   await mkdir(join(root, '.git'));
-  const controlPath = join(root, 'stub.sock');
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const c = await startClient(t, bin, root, {
     CLAND_HUB_TRANSPORT: 'stdio',
     CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),

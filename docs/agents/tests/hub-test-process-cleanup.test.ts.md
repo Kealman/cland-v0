@@ -72,3 +72,10 @@ incomplete outcome with native exit/signal diagnostics. The shared owner also
 proves omitted and aborted readiness cleanup; each control observes a live child,
 then native close with the root present before removal. This guards the native default
 alongside the scripted Claude fixture's local observer opt-out.
+
+Private fixture socket directories are removed at the directory-removal boundary,
+after resource/hub drainage and native process cleanup. Every resource, directory
+and final check is attempted even after earlier errors; all errors are reported
+in order. Only a live-writer guard or an unverifiable native identity retains its
+owned root and sockets. An unrelated resource error does not retain drained roots. Native normal/killed-listener and live failed-drain retention controls
+are in `hub/test/fixture-socket-lifecycle.test.ts`.

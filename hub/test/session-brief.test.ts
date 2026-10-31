@@ -1,5 +1,6 @@
 // T3: native early-first-turn acknowledgement and owned-process stop after cancellation failure.
 // Launch ordering and replay at the frame and fake-harness seams; no private hub state is read.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -27,7 +28,7 @@ async function fixture(t: TestContext, root: string, options: { deferHello?: boo
     }
   };
   const hub = await startHub({ store: new Store(db), roles: fixedRoles(), log });
-  const socket = join(root, 'test.sock');
+  const socket = fixtureSocketPath(root, 'test.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   const table = new ProcessTable(db);
   const sessions = new Sessions({ core: hub.core, table, root, log });

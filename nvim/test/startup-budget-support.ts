@@ -1,4 +1,5 @@
 // T3-only support: a real headless Neovim consumes a production hub's socket responses.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createServer, createConnection, type Socket } from 'node:net';
@@ -166,7 +167,7 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
     server.close();
     await closed;
   });
-  const path = join(root, 'startup.sock');
+  const path = fixtureSocketPath(root, 'startup.sock');
   server.listen(path);
   await once(server, 'listening');
   await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ ...discovery, socket: path }));

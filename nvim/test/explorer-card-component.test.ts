@@ -1,4 +1,5 @@
 // T2: screen permutations consume committed protocol frames through stub-client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { nvimOrSkip, startClient, type Client } from './stub-client.ts';
@@ -56,7 +57,7 @@ const fixture: Scenario={coordinator:'coord',processes:[{name:'coord',role:'coor
 ],topics:[{id:'general',title:'General',status:'open',standing:true},{id:'topic-10',title:'Discuss task',item:'T-10',status:'open'}],messages:{general:[{id:'m-1',ts:new Date().toISOString(),from:'human',fromKind:'human',via:'spoke',to:['human'],topic:'general',kind:'report',text:'Work on T-11 here.'}]}};
 
 async function stub(t:test.TestContext,scenario=fixture,projectRoot?:string) {
-  const root=projectRoot??await tempProject(t), controlPath=root+'/stub.sock';
+  const root=projectRoot??await tempProject(t), controlPath=fixtureSocketPath(root, 'stub.sock');
   const c=await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath},{centre:'explorer'});
   await c.rpc.request('nvim_ui_try_resize',200,50); await waitInitialSnapshots(c);
   const control=(cmd:Record<string,unknown>)=>new Promise<{requests:Array<{type:string;item?:string}>}>((resolve,reject)=> {

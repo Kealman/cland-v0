@@ -7976,6 +7976,22 @@ outside that flush. Older rows without these fields have unknown sent/held
 counts. These diagnostics remain process-log-only; they do not add journal
 lifecycle events or change delivery policy.
 
+### Portable fixture socket recovery
+
+Explicit test listeners use `shared/fixture-sockets.ts` (the test-support path
+remains a compatibility export). This Node-only module is imported directly by
+hub recovery and Nvim, outside shared wire/browser barrels. Socket nodes live in
+private `.fixture-sockets` directories inside disposable roots; short `/tmp`
+symlink aliases keep the UTF-8 path plus NUL below 104 bytes on macOS. Reciprocal
+root-owned alias records precede alias creation. After native writer drainage,
+fixture owners and suite-lock recovery stream only the owned disposable tree,
+verify reciprocal targets, unlink aliases and remove the ordinary root. They do
+not sweep global prefixes or recursively remove external targets. Incomplete
+drainage retains a live writer's root and records through its removal guard. Hub
+teardown attempts every resource and directory even after earlier failures, then
+reports all errors; unrelated errors do not retain drained roots. This changes no command, setting, role
+permission or production hub socket placement.
+
 ## Pinned verifier request heads
 
 A review or QA request may include a standalone `Head: <full-commit-sha>` line

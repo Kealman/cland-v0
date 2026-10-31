@@ -22,3 +22,7 @@ legacy/closed-hub refusal, nested lifecycle workers and durable worker completio
 proof. The borrowed-lease child also runs from a disposable directory. Real
 suite workers retain runnerFixtureEnvironment for original pre-fixture admission;
 T-1525's tracker comment inventories all consumers and their isolation reasons.
+
+All explicit listeners, including the sentinel, allocate through
+`fixtureSocketPath`; portable aliases retain the sentinel's existing acquisition,
+peer-close and directory-removal fences.

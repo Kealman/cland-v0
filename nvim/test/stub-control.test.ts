@@ -1,4 +1,5 @@
 // T2 component: an in-process control peer closes or refuses the real socket exchange.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Socket } from 'node:net';
@@ -8,7 +9,7 @@ import { stubControl } from './stub-control.ts';
 
 async function peer(t: TestContext, answer: (socket: Socket) => void): Promise<string> {
   const root = await tempProject(t);
-  const path = join(root, 'control.sock');
+  const path = fixtureSocketPath(root, 'control.sock');
   const sockets = new Set<Socket>();
   const server = createServer(socket => {
     sockets.add(socket);

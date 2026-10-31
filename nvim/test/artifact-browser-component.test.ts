@@ -1,4 +1,5 @@
 // T2: screen permutations consume committed protocol frames through stub-client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
@@ -28,7 +29,7 @@ test('a refused ordinary send restores artifacts when an ask was armed while its
   const root = await tempProject(t);
   const path = join(root, 'pending.md');
   await writeFile(path, '# Pending');
-  const controlPath = join(root, 'stub.sock');
+  const controlPath = fixtureSocketPath(root, 'stub.sock');
   const control = (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
     const socket = createConnection(controlPath);
     let response = '';

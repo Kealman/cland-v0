@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { createServer } from 'node:net';
 import { parseConfig } from '../src/init/config.ts';
 import { phoneOrigin } from '../src/web-address.ts';
@@ -524,7 +525,7 @@ test('web --qr draws the LAN link from a recorded Unix frame fixture with scratc
   await writeFile(configPath, '[web]\nbind = "192.0.2.4"\n');
   const web = parseConfig(await readFile(configPath, 'utf8'), 'fixture').web;
   const url = `${phoneOrigin(web.bind, web.origin, 1234)}/auth?token=${'ab'.repeat(32)}`;
-  const socket = join(root, '.cland/qr.sock');
+  const socket = fixtureSocketPath(root, '.cland/qr.sock');
   const requests: Array<Record<string, unknown>> = [];
   const server = createServer(peer => {
     let buffer = '';

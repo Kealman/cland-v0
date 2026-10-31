@@ -1,3 +1,4 @@
+import { fixtureSocketPath } from '../../../test-support/socket-path.ts';
 import { createServer, type Socket } from 'node:net';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -22,7 +23,7 @@ const LEGACY_STATUS = { remotes: [{
 
 /** Own native receipts before listen, including failed or abandoned setup. */
 export function legacyRemoteHubFixture(t: TestContext, root: string, options: Options = {}) {
-  const socket = join(root, 'legacy.sock');
+  const socket = fixtureSocketPath(root, 'legacy.sock');
   const peers = new Map<Socket, Promise<void>>();
   const requests: string[] = [];
   const writes = new Set<Promise<unknown>>();

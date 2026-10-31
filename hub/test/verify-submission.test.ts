@@ -1,5 +1,6 @@
 // T2: the public verify CLI over a real socket and projectHub dispatcher. A held
 // response and complete fake clocks prove the deadline without a wall-clock wait.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,7 +73,7 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
     for (const socket of sockets) socket.destroy();
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   });
-  const socket = join(root, 'cli.sock');
+  const socket = fixtureSocketPath(root, 'cli.sock');
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(socket, resolve); });
   await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ ...hub.discovery, socket }));
   const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'submission-impl', CLAND_ROLE: 'implementer' };

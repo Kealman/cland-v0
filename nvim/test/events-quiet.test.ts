@@ -1,4 +1,5 @@
 // T2: screen permutations consume committed protocol frames through stub-client.
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
@@ -34,7 +35,7 @@ test('one row per verdict counts once in the live inbox, warnings view and saved
     text: `T-1 review ${result} · rev [reviewer] · run one-row-${result.replace(' ', '-')}`,
     glyph: result === 'not clear' ? '⚠' : '✓', ...(result === 'not clear' ? { warning: true } : {}),
   }));
-  const controlPath = join(root, 'control.sock');
+  const controlPath = fixtureSocketPath(root, 'control.sock');
   const control = (command: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
     const socket = createConnection(controlPath);
     socket.setEncoding('utf8'); socket.on('error', reject);
@@ -87,7 +88,7 @@ test('events keys, warning/dim presentation, independent mutes, last look and co
   });
   const note = join(root, 'note.md'); await writeFile(note, 'Note');
   const scenario = { inbox: {}, events: rows, items: [{ id: 'T-1', kind: 'task', title: 'Filter item', state: 'open', status: 'backlog', parent: null, blocked_by: [], labels: [] }], processes: [{ name: 'impl', sessionId: 'impl-id', status: 'stopped', state: 'unknown', harness: 'codex', cwd: root, pid: null }], artifacts: [{ id: 'A-1', kind: 'note', title: 'Filter artifact', path: note, topic: 'general', status: 'shared', creator: 'human', creatorKind: 'human', createdAt: ts }] };
-  const controlPath = join(root, 'control.sock');
+  const controlPath = fixtureSocketPath(root, 'control.sock');
   const control = (command: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
     const socket = createConnection(controlPath); socket.setEncoding('utf8'); socket.on('error', reject); socket.on('data', () => { socket.end(); resolve(); }); socket.write(JSON.stringify(command) + '\n');
   });
@@ -163,7 +164,7 @@ test('hidden and batched replacement chains retain the selected group and older 
   await mkdir(join(root, '.git'), { recursive: true });
   const ts = new Date().toISOString();
   const rows: EventRow[] = Array.from({ length: 401 }, (_, i) => ({ id: `row-${i}`, ts, kind: 'task', glyph: '⚑', subject: { kind: 'item', id: 'T-1' }, item: 'T-1', text: i ? `older event ${i}` : 'selected group', count: 1 }));
-  const controlPath = join(root, 'control.sock');
+  const controlPath = fixtureSocketPath(root, 'control.sock');
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: controlPath, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, events: rows, items: [{ id: 'T-1', title: 'Replacement subject', kind: 'task', state: 'open', status: 'backlog', parent: null, blocked_by: [], labels: [], body: 'Replacement detail' }] }) });
   const control = (command: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
     const socket = createConnection(controlPath); socket.setEncoding('utf8'); socket.on('error', reject); socket.on('data', () => { socket.end(); resolve(); }); socket.write(JSON.stringify(command) + '\n');
