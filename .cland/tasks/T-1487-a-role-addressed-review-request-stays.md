@@ -2,8 +2,8 @@
 id: T-1487
 kind: task
 title: A role-addressed review request stays queued while reviewers are idle
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: review
 topic: topic-1254
 branch: t/T-1487-a-role-addressed-review-request-stays
 created: 2026-10-30T13:33:21.942Z
-updated: 2026-10-30T22:32:44.164Z
+updated: 2026-10-31T00:01:26.982Z
+closed: 2026-10-31T00:01:26.982Z
 ---
 
 ## Summary
@@ -26,9 +27,13 @@ A review request sent to the role `reviewer` was queued and never assigned for 4
 ## Acceptance criteria
 
 - [x] C1. A role-addressed review request queued while at least one reviewer is idle, including one that just settled a verdict on the same item, is assigned within the queue's stated bound, shown by a fixture that reproduces the 12:38→12:43 sequence and fails before the fix.
-  - done: impl-1487 · 2026-10-30T22:31:34.442Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1487-final1 · 2026-10-30T23:49:02.679Z · commit 4c6f7d7ed7eb2c543270dab2259fb37f1bd21885
+  - done: impl-1487 · 2026-10-30T23:51:59.198Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1487-delta1 · 2026-10-30T23:54:30.753Z · commit 67b91c609112cb45fea0060f725323b0560e6d8c
 - [x] C2. A queued request that stays unassigned past the bound posts one Agents notice naming the request, the idle verifiers and why each was not chosen.
-  - done: impl-1487 · 2026-10-30T22:31:34.513Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1487-final1 · 2026-10-30T23:49:02.679Z · commit 4c6f7d7ed7eb2c543270dab2259fb37f1bd21885
+  - done: impl-1487 · 2026-10-30T23:51:59.270Z
+  - verified: rev-31 [reviewer] · run rev-20261030-1487-delta1 · 2026-10-30T23:54:30.753Z · commit 67b91c609112cb45fea0060f725323b0560e6d8c
 
 ## Comments
 
@@ -222,3 +227,42 @@ Source6 clear A-14726, Standards0/Spec0. A-14718 M1 resolved: NULL canonical hub
 ### impl-1487 · 2026-10-30T22:32:44.164Z
 
 Source6 clear A-14726 at4c6f7d7ed7eb2c543270dab2259fb37f1bd21885; reported ready for Coordinator verify all at frozen head. Fresh fetch origin/dev3cc3d62e8ed9c8142938e6746fa693453d304aa6; merge-tree exit1 shows sole SKILL.md conflict (core.ts/README/CHANGES auto-merge), prospective conflicted tree1c66c41ff1c1a68e94979620201dcf76832c2535. Worktree clean/pushed; no dev merge. Coordinator be566d70 authorizes one dev merge after green, keeping both skill sections then host/text checks and delta review. Final runtime evidence remains pending; prior failed receipts unchanged; claim retained.
+
+### rev-31 · 2026-10-30T23:49:02.679Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-final1
+commit: 4c6f7d7ed7eb2c543270dab2259fb37f1bd21885
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final1 clear A-14745 at source6 only. Independently audited original all33708249/A-14743:5940 ordinary passes,8 explicit prerequisite skips,230 distinct load passes,0 failures/cancellations/todos/duplicate or unmatched test ids. T0/T1/T2/T3/Web exit0,T4 absent. C1 exact12:38→12:43 same-item/delayed-settlement receipts and every19new routing identity base+5/5 pass; C2 exact request/idle-exclusion/one-notice Clock-bound case base+5/5, held-heartbeat independence and checkpoint reopen base+5/5 pass. All four previous consumer failures now ordinary pass unchanged, including native session-holds. Own new durations<3s. Linux/CHS156v1248, host typecheck reuse, eight macOS/OpenCode exclusions and report-only budget/lint retained; no production latency/all-platform claim. Old failed A-14687/A-14712 remain separate. Coordinatorb4e4b825 requires one dev merge and fresh delta review including auto-merged core plus named targeted original receipts; this exact-head final does not cover that future merge. No Reviewer workloads.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1487 · 2026-10-30T23:51:59.145Z
+
+Coordinator b4e4b825/be566d70 authorized single dev merge after green. Merged origin/dev ed8f53e997057995a4ae2876c3258459c30dee3e once into reviewed parent4c6f7d7ed, producing pushed merge67b91c609112cb45fea0060f725323b0560e6d8c (tree354514f2cee9403c3bad90bb38c835e2be903b39). Sole SKILL.md conflict resolved by concatenating complete task/dev sections; verifier diagnostics, held-delivery supervision and operator retry each retained once; CHANGES/README auto-merged. Code auto-merges include core human-delivery policy hook/gating and retryQueued, Store.retryCandidate/index, plus dev Sessions supervision. This is not docs-only. Original full33708249/A-14743 green is exact at4c6f7d7ed; final1 A-14745 verifies C1/C2 there but marks are stale at new head.
+Post-merge macOS local root typecheck passes, followed by files singly: session-holds2/2, routing38/38, computed4/4, inbox8/8, session-retry1/1, human-hold11/11 (64cases). Matching text/provenance files singly: test-docs3/3 and skill-provenance1/1. Worktree clean/pushed; merge-tree HEAD origin/dev exit0/tree354514f2. No merged-head full suite or Web runtime claimed. Delta review requested at67b91c609, explicitly covering auto-merged core/Store interactions and refreshing C1/C2 current marks using scoped original evidence.
+
+### rev-31 · 2026-10-30T23:54:30.753Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261030-1487-delta1
+commit: 67b91c609112cb45fea0060f725323b0560e6d8c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head delta1 clear A-14750, Standards0/Spec0; C1/C2 current verification settled per Coordinatorb4e4b825. Exact parents source6/full-green4c6f7d7ed + dev ed8f53e99, both complete skill sides retained. Personally audited code auto-merge: humanDeliveryCheck/#sendTo, retryQueued/retryCandidate and Sessions supervision/ack/injection interactions. Task admission/retirement/current and legacy launch helpers unchanged, no force-before-ack pending/global bypass. Original parent33708249/A-14743 remains parent-only full proof (final1A-14745); no merged-head full claimed. A-14749 retained verbatim command-output transcriptions/native exits confirm merged root typecheck, six files64/64 and docs/provenance4/4, no failed/skipped local cases; disclosed excerpt limits retained. No new Linux/browser/load proof at merged head. Ready report may cite parent green plus delta/targeted checks under Coordinator's explicit plan. Old failed receipts remain failed; no Reviewer workloads.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T00:01:26.982Z
+
+Merged c673342d31d01c3f232b8ac2ffe0592933c25abc onto dev.
