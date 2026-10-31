@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T14:35:06.562Z
+updated: 2026-10-31T14:53:53.505Z
 ---
 
 ## Destination
@@ -61,6 +61,17 @@ The spec `docs/spec/v0.4.md` "cland v0.4: beyond one machine", its glossary entr
 9. Accounts bind to roles as today; a host receives the archives of the accounts of the roles placed on it; limited and signed-out marks act on launches regardless of host; no automatic rotation across accounts.
 
 ## Decisions so far
+
+- [Host providers and their prices for agent hosts](Q-1513): DigitalOcean droplets first (reuses the executor's token, snapshot and ledger; destroy on idle, keep a snapshot or volume), Fly Machines second (stopped bills storage only, no systemd), Hetzner cheapest but unorderable, serverless 2–12× and without SSH; Mac footprint 250–550 MB per Claude session, 150–250 MB per Codex session; 2 vCPU/4 GB ≈ 3–4 sessions.
+- [Harness credentials replicated across hosts](Q-1514): no subscription login survives copying to concurrent hosts (rotating refresh tokens); Anthropic's terms bar storing or intermediating Claude.ai credentials, so round-3 decision 5 is reopened in Q-1520; compliant Claude default is a login per host over `ssh -t`; Codex Pro: a pinned copy with write-back or device-auth per host; OpenCode: copy the static key.
+- [SSH tunnel, git daemon and host-agent transport facts](Q-1515): one SSH ControlMaster per host owned by the hub with its own reconnect loop; every host endpoint a Unix socket (new spoke socket edge, git daemon --inetd per connection over a per-host socket, hub.sock, agent.sock); harnesses outside the host agent's cgroup; attach by a separate `ssh -t`; the territory guard env must be stripped from the daemon.
+- [Shape B: the hub in Kubernetes, requirements and costs](Q-1516): works with nine hub changes; cheapest k3s on one Hetzner CX33 (€8.99/month), DOKS $62, GKE ≈ $80–141; the hub is a one-replica StatefulSet (amends round-1 decision 11); the hub lock needs a host identity and heartbeat; the hub creates agent pods itself as a provider; web through Traefik + cert-manager (ingress-nginx retired); CLI and Neovim via `kubectl exec`.
+
+### Amendments from research
+
+- Round-1 decision 11: StatefulSet, not Deployment.
+- Round-2 decision 2: the host agent and the harness supervision must not depend on systemd (Fly and pods have none); systemd where present, a plain supervisor otherwise.
+- Round-3 decision 5: reopened; see Q-1514 and Q-1520.
 
 ## Not yet specified
 
