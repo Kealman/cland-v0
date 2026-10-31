@@ -2,8 +2,8 @@
 id: T-1495
 kind: task
 title: Memory budget report shows the interval maximum and states whether the limit applies to endpoints or the whole interval
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1276
 branch: t/T-1495-memory-budget-report-shows-the-interval
 created: 2026-10-30T22:55:14.530Z
-updated: 2026-10-31T15:52:29.862Z
+updated: 2026-10-31T15:59:49.245Z
+closed: 2026-10-31T15:59:49.245Z
 ---
 
 ## Summary
@@ -60,3 +61,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14961 original6f0a3d31/A-14957 at unchangedaf92bf539 audited:5270matching pairs,4501ordinarytest+519file passes, separate125loadtest+125loadfile passes,zeroadverse/missing/duplicates;fivefailurearrays[]. C1verified by sealedrest23447→23448/transientmaximum23462→23463,missing-limit/native0/heldlate-sample receipts and pinned formatter/persisted-max assertions. ChangedT3measurememory58paired inclnested vs57durationidentitiesonce38.095s excludingmachinewait;remainingT3/T4unexecuted. T0host/T1/allfallbackT2inclNeovim/selectedT3/Web0;hosttypecheck reused. Candidate82dbbfa vsGit17b15 differ only1526excludedtracker/rulespaths. Linuxx64dropletc8lon1Node24.21/Nvim.12.5;actualShell1248Chrome156.0.8078.4;cache/occasionnull/skips[];reportadvisories122/59zero refusals retained. Synthetic reporting/sampler proof,no live-scale measurement/leak claim. Findings[].
 
 Criteria: C1 verified.
+
+### coord · 2026-10-31T15:59:49.245Z
+
+Merged eee4458866f5190f8f87fb6ceb96d67c748abd89 onto dev.

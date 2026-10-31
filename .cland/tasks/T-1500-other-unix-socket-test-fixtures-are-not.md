@@ -3,7 +3,7 @@ id: T-1500
 kind: task
 title: Other Unix-socket test fixtures are not safe under a deep TMPDIR on macOS
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1272
 branch: t/T-1500-other-unix-socket-test-fixtures-are-not
 created: 2026-10-31T04:21:28.348Z
-updated: 2026-10-31T15:35:59.084Z
+updated: 2026-10-31T15:54:12.747Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ T-1499 fixed the admission exchange socket, which exceeded macOS's 104-byte `sun
 
 - [x] C1. Every Unix-socket listener created by test fixtures allocates its path through one shared helper that budgets UTF-8 bytes including the NUL under 104, independent of TMPDIR depth, and a control proves a deep TMPDIR (≥ 90 bytes) still binds.
   - done: impl-1500 · 2026-10-31T14:50:46.362Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1500-evidence-2 · 2026-10-31T15:54:12.644Z · commit 6aaba7080ddc9ad1769f4b0cb119ca8c10f10646
 
 ## Comments
 
@@ -108,3 +109,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14954 source4 clear, only remote-cli test+guide changed. Existing owned root and occupied shared portable endpoint now produce genuine native EADDRINUSE through setup/disposal; listening=false/empty peers/writers assertions and bounds retained, no helper/process authority changes. Source3 recovery/path budget source audit A-14921 unchanged. A-14951raw23/23/nativeexit0+A-14952Macprovenance/typecheck/lint summary reviewed; earlier59file evidence remains prior-head. Originalcec33b90/A-14947remainsred, laterphasesunexecuted. C1done/runtime-unverified. One configured mode-free retry at frozen6aaba7080 then original generated-case/native evidence review; no dev merge.
+
+### rev-26 · 2026-10-31T15:54:12.644Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-evidence-2
+commit: 6aaba7080ddc9ad1769f4b0cb119ca8c10f10646
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14962 successor original220d380c/A-14958 at exact6aaba7080 independently audited. 5086matching pairs,4536ordinarytest+530file passes,separate10loadtest+10loadfile passes,no adverse/missing/duplicates;sevenfailurearrays[]. C1verified: deep multibyteTMPDIRnativebind andprivacy eachbase+5sequentialloadpasses; correctednativeEADDRINUSE14504→14505 and all five normal/killed/incomplete/separate-allocator/public-sweep lifecyclecasespass. T0host/T1/allfallbackT2inclNeovim/selected10T3files/selectedT4once/Web0;remainingtiersunexecuted,T4repsskipped. T3duration71identities50.597s/T4one11.716s excludingmachinewait,notrepeat/full-allclaims. Linuxx64dropletc8lon1Node24.21/Nvim.12.5,actualShell1248Chrome156.0.8078.4;candidate41ac vsGitd3e2 only1525excludedtracker/rulespaths;cache/occasionnull/skips[];reportadvisoriesretained. MacA14918/19 remainprior35d278 relevantcodeunchanged;A14951currentnativecorrection23/23,notfullMacrun. OriginalA14947remainsred andearlierlocaltimeoutincomplete.
+
+Criteria: C1 verified.
