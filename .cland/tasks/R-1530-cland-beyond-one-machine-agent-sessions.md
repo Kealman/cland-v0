@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-10-31T18:23:30.372Z
+updated: 2026-10-31T18:33:55.436Z
 ---
 
 ## Goal
@@ -39,3 +39,7 @@ cland's agent sessions run beyond the human's machine: the hub stays on the Mac 
 The planning package of v0.4 is complete: docs/spec/v0.4.md (Status complete), the glossary's Hosts section and amended terms (commit 650fa8df4), and the nine epics E-1531 → E-1539 with their blocked-by and follows edges. Map M-1511 holds every decision (rounds 1–9, research Q-1513–Q-1516, prototypes Q-1517 and Q-1518, grillings Q-1519–Q-1522 and Q-1527). Research notes live on research/host-providers (359d08df), research/harness-credentials (87db57e2), research/host-transport (9aac93c0), research/kubernetes-shape (b7f82197); the prototype on prototype/agent-host (7f7ecb0f; hub/src/host/README.md with the host and login decisions). None of these branches is merged, ever; the build may read the prototype's code.
 
 Build order and lanes: E-1531 → E-1532 → E-1533 → E-1534 → E-1535 (hub lane, follows); E-1536 in parallel from the start; E-1538 after E-1531 in parallel; E-1537 after E-1534 and E-1535, its users stage after E-1536; E-1539 last. The Coordinator decides the crew and approves every plan; QA on the fake host provider and the fake transport; no real droplet, volume or key in tests; one live run with the human before the release (E-1539). The build starts on the human's word.
+
+### human · 2026-10-31T18:33:55.436Z
+
+Human decision (2026-10-31): the live run before the release happens on THIS project (cland/v0) with its real crew, as 0.3 did for the remotes; the host pool and the logins stay configured afterwards. The sandbox project serves the build's own tries before that. The spec §4 and E-1539 are updated accordingly.

@@ -21,7 +21,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T18:22:04.894Z
-updated: 2026-10-31T18:22:56.734Z
+updated: 2026-10-31T18:33:55.292Z
 ---
 
 ## Goal
@@ -32,7 +32,7 @@ v0.4, cland beyond one machine, ships from its release item. `cland release --it
 
 - **The demos** (spec §4). Every other epic of R-1530 closed on its QA demo with a clear verdict, each on the fake host provider and the fake transport in the suite.
 - **The integrated pass**, on the fakes: an `agents` pool of two fake hosts with Implementers and Reviewers on it and the Coordinator local; a waiting launch released by a login added from a remote card; a signed-out login signed in again from the web's hosts view while its host's sessions keep running; two users in users mode, one answering an ask from a remote and the other seeing the outcome in the web; a hub restart with both hosts busy; the hosts' sub-cap reached and the live hosts untouched.
-- **The live run** (§4), once, before the release, with the human, against a sandbox project on this Mac running the `dev` tip, never this project's hub (assumed in the spec, as in 0.3):
+- **The live run** (§4), once, before the release, with the human, on THIS project (cland/v0) with its real crew at the `dev` tip, as 0.3 did for the remotes (the human, 2026-10-31); the pool and the logins stay configured afterwards:
   - a real DigitalOcean `agents` pool with two hosts booted from a prepared pool image, with the boot-to-ready time recorded against the 60 to 90 s target;
   - a Claude Code login added from the phone through a card;
   - a Codex login added at a moment the human picks, with no Codex crew sessions running on the Mac, then a day of watching whether the Mac stays signed in;
@@ -68,7 +68,7 @@ Choices where the spec is silent, as in E-1314:
 
 QA runs the demo below on `dev`, playing the human's part on the fakes through the `cland` CLI, headless Chromium and a headless Neovim workbench, and joins the human for the live run on this Mac; it records a clear verdict on this epic with each checkbox verified by its id; the epic then closes, and the release follows it.
 
-In a scratch project on the fakes, QA runs the integrated pass above and reads each outcome in both workbenches and on the test messengers. With the human, QA then runs the live walk on two real DigitalOcean hosts against a sandbox project at the `dev` tip, records what the human sees and says, reads `cland host status` and the ledger's `hosts` entries, and lists the provider's droplets, volumes, snapshots and keys at the end. It reads the docs pages against the build. On `dev`, `cland task list --under R-1530 --state open --json` lists only this epic; QA reads the root `package.json` and the lockfile versions, R-1530's notes and `cland release --item R-1530 --dry-run` with version 0.4.0, and the latest full suites on that tip, on droplets and local on macOS, are green.
+In a scratch project on the fakes, QA runs the integrated pass above and reads each outcome in both workbenches and on the test messengers. With the human, QA then runs the live walk on two real DigitalOcean hosts on this project at the `dev` tip, records what the human sees and says, reads `cland host status` and the ledger's `hosts` entries, and lists the provider's droplets, volumes, snapshots and keys at the end. It reads the docs pages against the build. On `dev`, `cland task list --under R-1530 --state open --json` lists only this epic; QA reads the root `package.json` and the lockfile versions, R-1530's notes and `cland release --item R-1530 --dry-run` with version 0.4.0, and the latest full suites on that tip, on droplets and local on macOS, are green.
 
 - [ ] C1. Every other epic of R-1530 is closed on a clear QA verdict, and no open item other than this epic remains under R-1530.
 - [ ] C2. The integrated pass is clear on the fakes: a login added from a card releases a waiting launch, a signed-out login is signed in again with its sessions running, two users answer and see each other's outcomes, a restart with two busy hosts loses nothing, and the sub-cap stops new hosts only.
@@ -84,7 +84,7 @@ After the close, the Coordinator shows the dry run in an ask and runs `cland rel
 
 - **Standing rules.** Every artifact, item, commit and doc in English. Sub-agents never use the hub. Only `cland release` pushes to GitHub: commit on the task branch in its worktree, push it to `origin`, and reach `dev` only through `cland merge`. Suites run through `cland verify`. Items through `cland task` only.
 - **The release.** The Coordinator releases from its own shell through the `release` skill and never delegates it; `cland release --item R-1530` is the only push to GitHub in this build.
-- **The live run.** Only with the human, on this Mac, against a sandbox project (assumed in the spec), never this project's hub. The DigitalOcean token stays in the hub's environment and never reaches a host, a session, argv, a log line, an artifact or a verdict. Only the human signs in Claude Code and Codex; cland never copies or reads their logins. The Codex sign-in waits for the human's moment, with no Codex crew sessions running on the Mac, and its day of watching is recorded. The run's spend stays inside the project's daily cap and the hosts' sub-cap; the run checks the provider listing at the end.
+- **The live run.** Only with the human, on this project (cland/v0) with its real crew, the human's decision of 2026-10-31; the sandbox project serves the build's own tries before it. The DigitalOcean token stays in the hub's environment and never reaches a host, a session, argv, a log line, an artifact or a verdict. Only the human signs in Claude Code and Codex; cland never copies or reads their logins. The Codex sign-in waits for the human's moment, with no Codex crew sessions running on the Mac, and its day of watching is recorded. The run's spend stays inside the project's daily cap and the hosts' sub-cap; the run checks the provider listing at the end.
 - **ADRs.** 0004 (agents work on a local git territory): `cland release` is the one path from the territory to GitHub. 0002 (tracker files are the source of truth): the notes live in R-1530's file.
 - **Risks.**
   - A Codex sign-in on a host signs out the same account's other places, the Mac included; the human chooses the account and the moment, and the hint of "Logins" must appear if it happens.
