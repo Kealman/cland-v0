@@ -27,6 +27,12 @@ receipts without applying today's runtime check.
    - *Rescue (fallback, or a second opinion).* `/codex:rescue --background --fresh --model gpt-6-astra "Run the QA brief in qa/briefs/T-<n>.md exactly"`, then `/codex:status` and `/codex:result`. A rescue run reaches no hub socket: it returns the `runs.jsonl` lines and the verdict in its output. Recover the run's evidence and lines as "Recovering a rescue run" below says, and record the verdict with `task.comment` (`verdict` qa, `result`, `run` the rescue job id, `commit`), saying in the text that it came through `/codex:rescue`. That verdict shows as yours and **the merge gate does not count it** (decision D5): it informs, it does not clear.
 4. **Read findings escalated by the lead.** The verdict is `clear` only when every case in scope passed. A finding outside the item under test is a bug found aside: the Coordinator files it into the category Bugs (find its id with `cland task list --kind category`): `cland task create "<finding>" --parent C-<n> --label qa-found --label needs-triage --body-file -`, with the case id, the commit, the command and what it showed. Findings in the tested scope stay in its review/QA loop.
 
+## Epic QA request topic
+
+Send every epic QA request (after-stage or Definition of done) in a topic bound
+to the epic, never in Agents. Use its existing topic, or have the Coordinator
+create one before sending: QA can publish artifacts only where its request arrived.
+
 ## After-stage QA
 
 Keep conditional-check scope identical in the request and committed brief, stating whether missing authorization means out of scope or BLOCKED. Read stage member counts and other plan facts from `task plan show` at the run rather than hard-coding totals (A-9063 R3; E-416 stage 1, E-413 stage 1/T-1093).

@@ -12,8 +12,8 @@ controls take a few seconds. The native snapshot identity retains its real V8
 snapshot and 800000-byte owned-array assertion. T-1491 replays the passing Linux
 c-8 samples from A-14575 (5.133541762 s) and A-14539 (5.283094746 s) through the
 production duration checker. Its exact allowance is 7.925 s (1.5x the worst sample,
-rounded upward to milliseconds), owned by E-1466 through 2026-11-06; it does not
-replace any baseline or change the suite's duration policy.
+rounded upward to milliseconds), owned by E-880 through 2026-11-06, re-owned from E-1466 on 2026-10-31
+(e5b310a78); it does not replace any baseline or change the suite's duration policy.
 
 The manual Mac probe is separate:
 
@@ -48,8 +48,10 @@ write failures cannot skip hub shutdown or the durable incomplete outcome. A gua
 fixture SIGTERM cleanup handler, which can exit before the measurement's finally
 block. Synchronous startup work delays IPC handling until JavaScript yields.
 
-Copy/backup preparation happens before launching the measured child, so copy
-allocations cannot inflate its RSS. The allowlist copies tracker files, journal
+Prepare copied state in a separate process before the measured subject launches,
+so copy/backup allocations cannot inflate its RSS. Ensure the published
+startup-memory artifact records a digest of the measured startup files, binding
+the measurement to the exact prepared inputs. The allowlist copies tracker files, journal
 and logs; SQLite's read-only online backup preserves a consistent database.
 Artifact entries and sizes use sparse files, excluding all body bytes. The full
 artifact index remains in SQLite. Secret-shaped names, symlinks, secrets.toml,

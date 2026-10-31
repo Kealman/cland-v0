@@ -457,7 +457,7 @@ item, reason and expiry required below still govern manifest additions.
 - Prove persistence by reopening the store or tracker in-process, not by stopping and restarting a hub.
 - Prove a hub rule once through one real frame per tool or refusal family. Its duplicates call the dispatcher or tracker directly. Don't repeat a hub-side rule through each harness's fake.
 - A test proves one behaviour. A title with "and" twice is a finding. Permutations over inputs are a table inside one fixture, not a fixture per cell.
-- A new duration allowance carries a non-TODO reason, an open owner item, and UTC `added`/`expires` dates at most seven days apart (31 days for the configured legacy owner under D72); it lands with the test.
+- A new duration allowance carries a non-TODO reason, a standing container owner from the start (for example E-880), and UTC `added`/`expires` dates at most seven days apart (31 days for the configured legacy owner under D72); it lands with the test.
 - Before review, run typecheck and the touched files one at a time. Put each file's seconds into the review request.
 
 **When you move or split tests:**
@@ -860,6 +860,10 @@ example `<root>` for file-level `beforeEach`), while test bodies use their full
 nested names. No global async hook or per-test instrumentation is added.
 
 ### In-process harnesses
+
+Synthetic-PID T2 fixtures inject the complete liveness and identity observer,
+with a positively controlled child-launch guard from setup through shutdown.
+Native-default observer coverage stays in T3, using real process identities.
 
 Hub rules use `projectHub(t, root, env, { clock })` by default,
 with a `FakeClock`. It replaces Claude Code, Codex and OpenCode under their real
@@ -1647,6 +1651,11 @@ is checked in the live authoritative tracker, including linked worktrees. Planni
 close refuses while that project’s manifest still names it as an allowance owner;
 re-own the named entries to a standing container before closing, retaining dates and reasons.
 The close guard does nothing when the manifest is absent.
+
+An allowance names a standing container (for example E-880) as its owner from the start,
+with `added`, `expires` and a non-TODO reason. Admit it only after at least two
+recorded passing samples replay through the production checker; retain their
+run/head and log artifact references with the allowance evidence.
 
 `npm run test:tiers` and working-tree/immutable admission require a standing
 container owner: a category or an epic directly under a category. Tasks and
