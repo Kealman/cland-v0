@@ -123,7 +123,9 @@ third argument of `fixtureEnvironment` and the first argument of
 `runnerFixtureEnvironment(root, inherited)` instead: it filters the inherited base
 and retains only `CLAND_SUITE_*`, `CLAND_TEST_*`, `CLAND_LOAD_GATE_*`,
 `CLAND_COVERAGE_*`, hub admission FILE/URL/SECRET and session NAME/ID/ROLE/LAUNCH_TOKEN
-controls. HOME, XDG,
+controls. Children testing admission against an owned scratch hub instead use
+`fixtureEnvironment(root, inherited, explicitInputs)`; never carry a crew session
+identity into that hub. See [cover-quiet fixtures](tests/hub-test-cover-quiet.test.ts.md). HOME, XDG,
 Claude/Codex/fake profiles and executor state still come from the disposable root. A local
 const alias is accepted only when used directly as a native launch's `env`;
 mutating or escaping it requires an explicit exemption. Environment spreads after

@@ -4713,6 +4713,16 @@ the launch. The guard's `--inventory` lists each recognized call and its reason,
 with file/line diagnostics and no environment values. See
 [fixture isolation and guard scope](../docs/agents/tests.md#fixtures).
 
+### Scratch admission children (T-1525)
+
+A child testing cover admission against a disposable hub uses
+`fixtureEnvironment` with explicit owned hub/lease inputs. Inherited crew
+session identity is stripped along with inherited discovery paths. The runner
+builder still preserves original admission controls for real suite workers.
+The cover-quiet regression first observes synthetic identity at a scratch
+sentinel with the old builder, then proves the isolated child admits without it.
+No CLI, configuration or role permission changes apply.
+
 Its T0 copied-tracker guard syntax-scans hub/web/Neovim tests for literal E-/T-
 ids in callbacks copying `.cland/tasks`. Derive live ids from the copy; seeded
 rows carry a nearby `cland-allow-tracker-id` comment naming their seeding owner.

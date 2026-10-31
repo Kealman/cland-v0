@@ -1293,3 +1293,12 @@ For paired setup reruns, use the fake-clock runner seam in
 wait up to ten seconds for a loaded paired remote to reconnect. Retain the
 still-down and inactive-token controls; share readiness polling with Discord's
 post-reload path. No remote.status fields or role permissions change.
+
+## Scratch admission children (T-1525)
+
+When testing admission against a disposable hub, use `fixtureEnvironment` with
+explicit owned discovery and lease inputs. `runnerFixtureEnvironment` preserves
+crew session identity for original pre-fixture admission and real suite workers;
+it is unsuitable for redirecting that identity to an unrelated scratch hub.
+Keep a synthetic sentinel positive control; see
+`docs/agents/tests/hub-test-cover-quiet.test.ts.md`. No role clause changes apply.

@@ -2,17 +2,19 @@
 // integrated worker and the CLI, from startup before fixtures through worker
 // completion and slot release. The existing 25 ms barrier poll is unchanged;
 // T-684's lint baseline owns it.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { once } from 'node:events';
+import { within } from '../src/executor/droplet/deadline.ts';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
+import { createServer, type Socket } from 'node:net';
 import { connectUi, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { processStarted } from '../src/hub/lock.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { ownProcess, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import type { Holder } from '../src/suite-lock.ts';
 import { fixture } from './suite-fixture.ts';
 import { cacheRepository } from './suite-support.ts';
@@ -34,19 +36,122 @@ const nvimHarness = new URL('../../nvim/test/harness.ts', import.meta.url).href;
 const nvimFixture = new URL('../../nvim/test/fixture.ts', import.meta.url).href;
 const nvimStubClient = new URL('../../nvim/test/stub-client.ts', import.meta.url).href;
 const runner = new URL('./run-suite.ts', import.meta.url).href;
-async function target(t: TestContext, cwd: string, module: string, env: NodeJS.ProcessEnv = {}, code = "console.log('target reached')", testName?: string) {
+async function target(t: TestContext, cwd: string, module: string, env: NodeJS.ProcessEnv = {}, code = "console.log('target reached')", testName?: string, inherited: NodeJS.ProcessEnv = process.env) {
   const tmp = await tempProject(t);
-  const childEnv = { ...process.env, NODE_TEST_CONTEXT: '', TMPDIR: tmp, TMP: tmp, TEMP: tmp, ...env };
+  // Admission belongs to this test's scratch hub, never the parent crew session.
+  const childEnv = fixtureEnvironment(cwd, inherited, { NODE_TEST_CONTEXT: '', TMPDIR: tmp, TMP: tmp, TEMP: tmp, ...env });
   // Harness imports are pure; request their fixture explicitly. Package-runner
   // and lease targets retain their own admission boundary under test.
   const fixtureSetup = module === harness
     ? `const {tempProject} = await import(${JSON.stringify(harness)}); await tempProject(t);` : '';
   const result = await new Promise<{ code: number; stdout: string; stderr: string }>(resolve => {
-    const child = execFile(process.execPath, [...(testName ? [`--test-name-pattern=${testName}`] : []), '--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: runnerFixtureEnvironment(cwd, childEnv), timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
+    const child = execFile(process.execPath, [...(testName ? [`--test-name-pattern=${testName}`] : []), '--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
     ownProcess(t, child.pid);
   });
   return { ...result, tmp };
 }
+
+function sentinel(t: TestContext, root: string, actors: unknown[]) {
+  const socketPath = join(root, 'sentinel.sock');
+  const sockets = new Map<Socket, Promise<unknown>>();
+  const server = createServer(socket => {
+    sockets.set(socket, new Promise<void>(resolve => socket.once('close', () => { sockets.delete(socket); resolve(); })));
+    socket.on('error', () => {});
+    socket.setEncoding('utf8');
+    let buffer = '';
+    socket.on('data', chunk => {
+      buffer += chunk;
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const frame = JSON.parse(buffer.slice(0, nl)); buffer = buffer.slice(nl + 1);
+        if (frame.type === 'hello') socket.write(JSON.stringify({ type: 'welcome', protocol: 2 }) + '\n');
+        else if (frame.type === 'suite.slot') {
+          actors.push(frame.as ?? null);
+          socket.write(JSON.stringify({ type: 'result', id: frame.id, ok: true }) + '\n');
+        }
+      }
+    });
+  });
+  const abort = new AbortController();
+  let acquisition: Promise<unknown> | undefined;
+  let disposal: Promise<void> | undefined;
+  let drained = false;
+  const dispose = () => disposal ??= (async () => {
+    abort.abort(new Error('sentinel disposed'));
+    await acquisition?.catch(() => {});
+    const closed = new Promise<void>((resolve, reject) => server.close(error => {
+      if (error && (error as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING') reject(error);
+      else resolve();
+    }));
+    const peersClosed = [...sockets.values()];
+    for (const socket of sockets.keys()) socket.destroy();
+    await within(Promise.all([closed, ...peersClosed]), 5000, undefined,
+      () => new Error('incomplete sentinel disposal: native close missing; fixture retained'));
+    assert.equal(server.listening, false);
+    assert.equal(sockets.size, 0);
+    drained = true;
+  })();
+  beforeDirectories(t, dispose); // Resource-phase child drainage runs first.
+  guardDirectoryRemoval(root, dispose); // A missing close receipt retains storage.
+  return {
+    socketPath, dispose, drained: () => drained,
+    async listen(signal?: AbortSignal) {
+      abort.signal.throwIfAborted();
+      signal?.throwIfAborted();
+      const ready = once(server, 'listening', { signal: AbortSignal.any([
+        abort.signal, AbortSignal.timeout(5000), ...(signal ? [signal] : []),
+      ]) });
+      acquisition = ready;
+      try {
+        server.listen({ path: socketPath, signal: abort.signal });
+        await ready;
+      } catch (error) { await dispose(); throw error; }
+    },
+  };
+}
+
+for (const setup of ['omitted', 'aborted', 'listening'] as const) test(`sentinel drains ${setup} setup before directory removal`, async t => {
+  let owner: ReturnType<typeof sentinel> | undefined;
+  await t.test('owned setup', async child => {
+    const root = await tempProject(child);
+    owner = sentinel(child, root, []);
+    if (setup === 'aborted') await assert.rejects(owner.listen(AbortSignal.abort(new Error('setup aborted'))), /setup aborted/);
+    if (setup === 'listening') await owner.listen();
+  });
+  assert.equal(owner?.drained(), true, 'fixture cleanup observed native closure');
+});
+
+test('target children discard inherited crew identity after the sentinel observes the old environment', async t => {
+  const root = await tempProject(t);
+  const actors: unknown[] = [];
+  const owner = sentinel(t, root, actors);
+  await owner.listen();
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: owner.socketPath, secret: 'fixture', port: 1, pid: process.pid, version: 'fixture' }));
+  const inherited = fixtureEnvironment(root, process.env, {
+    ...external(root), CLAND_SESSION_NAME: 'sentinel-crew', CLAND_SESSION_ID: 'sentinel-id',
+    CLAND_ROLE: 'implementer', CLAND_LAUNCH_TOKEN: 'sentinel-credential', NODE_TEST_CONTEXT: '',
+  });
+  const admission = new URL('../../test-support/admission.ts', import.meta.url).href;
+  const source = `const {assertTestAdmission} = await import(${JSON.stringify(admission)}); await assertTestAdmission();`;
+  // Positive control: only synthetic credentials and the scratch sentinel exist here.
+  const control = await new Promise<{ code: number; stderr: string }>(resolve => {
+    const child = execFile(process.execPath, ['--input-type=module', '-e', source], {
+      cwd: root, env: runnerFixtureEnvironment(root, inherited), timeout: 15000,
+    }, (error, _stdout, stderr) => resolve({ code: error ? 1 : 0, stderr }));
+    ownProcess(t, child.pid);
+  });
+  assert.equal(control.code, 0, control.stderr);
+  assert.deepEqual(actors, [{ name: 'sentinel-crew', role: 'implementer', sessionId: 'sentinel-id', shell: true, credential: 'sentinel-credential' }]);
+  const result = await target(t, root, admission, external(root), `
+    for (const key of ['CLAND_SESSION_NAME', 'CLAND_SESSION_ID', 'CLAND_ROLE', 'CLAND_LAUNCH_TOKEN']) {
+      if (process.env[key] !== undefined) throw Error('inherited identity: ' + key);
+    }
+    await (await import(${JSON.stringify(admission)})).assertTestAdmission();
+  `, undefined, inherited);
+  assert.equal(result.code, 0, result.stderr + result.stdout);
+  assert.deepEqual(actors, [{ name: 'sentinel-crew', role: 'implementer', sessionId: 'sentinel-id', shell: true, credential: 'sentinel-credential' }, null]);
+});
 
 for (const entry of ['fixture', 'stub-client'] as const) test(`Neovim T2 ${entry} refuses cover-quiet at its actual entry before allocation or spawn`, async t => {
   const { root } = await cover(t);
@@ -188,7 +293,7 @@ test('borrowed package leases keep the integrated run identity for other project
   const { lock, lease } = await cover(t);
   const holder: Holder = { ...lease, since: new Date().toISOString() };
   // A fresh package process borrows and republishes the same compatibility fence.
-  const result = await target(t, process.cwd(), new URL('../src/suite-lock.ts', import.meta.url).href, { ...external('/no-project-hub'), CLAND_SUITE_LEASE: JSON.stringify({ ...lease, dirs: [lock] }) }, `const {borrowLease} = await import(${JSON.stringify(new URL('../src/suite-lock.ts', import.meta.url).href)}); const leases = await borrowLease([${JSON.stringify(lock)}], ${JSON.stringify(holder)}); if (!leases) throw Error('not borrowed');`);
+  const result = await target(t, await tempProject(t), new URL('../src/suite-lock.ts', import.meta.url).href, { ...external('/no-project-hub'), CLAND_SUITE_LEASE: JSON.stringify({ ...lease, dirs: [lock] }) }, `const {borrowLease} = await import(${JSON.stringify(new URL('../src/suite-lock.ts', import.meta.url).href)}); const leases = await borrowLease([${JSON.stringify(lock)}], ${JSON.stringify(holder)}); if (!leases) throw Error('not borrowed');`);
   assert.equal(result.code, 0, result.stderr);
   assert.equal(JSON.parse(await readFile(`${lock}.owner`, 'utf8')).integrated, 'cover-run');
 });
