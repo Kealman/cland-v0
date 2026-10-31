@@ -1,6 +1,6 @@
 # cland
 
-A terminal IDE for running and coordinating AI coding-agent harnesses. It is a single-user tool, one instance per project: one person drives many agent sessions from one place.
+A terminal IDE for running and coordinating AI coding-agent harnesses. It is one instance per project: one person drives many agent sessions from one place, or several people share the project's hub when it runs in the users sign-in mode.
 
 ## Sessions and roles
 
@@ -9,8 +9,8 @@ An external agent CLI program that cland runs and integrates, such as Claude Cod
 _Avoid_: agent tool, CLI agent, provider
 
 **Account**:
-A harness login a session runs under, named in the user-level registry by its directory (or database path), never by a secret.
-_Avoid_: credential, token, profile
+A harness subscription or login a session runs under. On the human's machine it is named in the user-level registry by its directory (or database path), never by a secret; on remote hosts its sign-ins are Logins.
+_Avoid_: credential, token, profile, login (one sign-in a host can use)
 
 **Limited account**:
 An account marked after a limit-hit signal, refusing new launches until its reset or `cland account clear`.
@@ -21,11 +21,8 @@ The harness the human talks to, on which the Aide runs; the human chooses it dur
 _Avoid_: default harness, main harness, preferred agent
 
 **Setup**:
-The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub, a remote if the human wants one, and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it reports open steps by default, but explicit options can authorise harness installation and folder-trust writes.
+The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub, the Sign-in mode, a remote and agent hosts if the human wants them, and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it reports open steps by default, but explicit options can authorise harness installation and folder-trust writes.
 _Avoid_: installer, onboarding (the Aide's conversation that follows)
-**Session**:
-One running interactive instance of a harness, with its own history and working state. A session has a name and at most one role.
-_Avoid_: agent, process, terminal, instance
 
 **Role**:
 A function a session performs in the project's process. A role is assigned to a session and can move to another session mid-project; it does not depend on the harness or the model.
@@ -68,7 +65,7 @@ _Avoid_: team (the harnesses use it for in-harness agents), staff, fleet, org ch
 
 **Pool**:
 A set of reusable sessions of one role, capped in size, from which a lead takes an idle member instead of launching a new session.
-_Avoid_: queue, farm, cluster
+_Avoid_: queue, farm, cluster, host pool (the machines sessions run on)
 
 **Event**:
 A change the hub announces: a session's state, a task's status, claim, verdict or criterion, a topic's wait, a usage threshold, an artifact. Delivered to subscribed sessions like a message, digested at the next turn by default.
@@ -123,6 +120,48 @@ _Avoid_: driver, integration, supervisor, wrapper
 The hub's edge that serves the remotes: it mirrors General and the needs-you rows into them and turns what the human sends back into messages, answers and approvals, with no wider authority than those. It connects out to the messengers and accepts no connection from them.
 _Avoid_: bot (the messenger's account the gateway drives), bridge, relay, connector, integration
 
+## Hosts
+
+**Host**:
+A Linux machine on which the hub runs sessions, several at a time; the human's own machine is the local host. A session runs on one host for its life, and the hub reaches every host through the same operations.
+_Avoid_: agent machine, worker, node, runner (the user the image creates), executor (where verification runs), droplet (one provider's machine)
+
+**Host agent**:
+The cland process on a remote host that starts the harnesses, keeps the host's process table and carries the hub's file and git actions there. Sessions outlive it, and the hub restarts it without ending them.
+_Avoid_: daemon, supervisor, sidecar, spoke (a session's own connection to the hub)
+
+**Host provider**:
+Where remote hosts come from: it creates, prepares, reports and deletes them, declares their prices and limits, and gives their login disks. DigitalOcean is the first.
+_Avoid_: cloud, backend, executor (where verification runs), driver
+
+**Host pool**:
+A named set of hosts of one provider, size and region, kept between a smallest and a largest number of hosts; a role is placed on one pool or runs locally.
+_Avoid_: pool alone (a crew's reusable sessions), cluster, fleet, node group
+
+**Slot**:
+A host's capacity for sessions, counted in weight: a session takes the weight of its harness, and a host takes a launch only while its free weight and memory allow.
+_Avoid_: seat, session count, capacity unit, lane (an ordered list of items)
+
+**Waiting launch**:
+A session launch the hub holds because no host can take it yet, shown as a status line with its current reason, such as waiting for a host or for a login, until it is placed or cancelled.
+_Avoid_: queue alone (the merge and verification queues), pending session, ask (a question to the human)
+
+**Tunnel**:
+The one connection the hub keeps to a remote host, owned by the hub and re-established by it, over which a host's sessions reach the hub and the territory and the hub reaches the host agent. SSH carries it in 0.4.
+_Avoid_: VPN, mesh, bridge, port forward, link
+
+**Login**:
+One sign-in to a harness that the hub can give to a host: of one harness and one account, held on a login disk or as a key, used by at most one host unless marked otherwise, and either ready, in use, or signed out. The logins on the human's own machine are not cland's.
+_Avoid_: credential, token, account (the subscription it belongs to), session (a running harness), auth
+
+**Login disk**:
+A login's own small provider volume, mounted into the host that uses the login and kept between uses; cland never reads what the harness writes on it.
+_Avoid_: credential store, auth volume, home directory, archive
+
+**Key login**:
+A login made of a static key the human hands to cland, stored encrypted and given to a session only in its environment, on any number of hosts at once.
+_Avoid_: secret (the hub's own tokens in the secrets file), API token alone, key file
+
 ## Chat
 
 **Topic**:
@@ -130,7 +169,7 @@ A thread in the human's chat with agents. A topic has a title, a status (open, w
 _Avoid_: thread, channel, conversation, chat
 
 **General**:
-The standing topic every project has for free conversation with the Coordinator; it is bound to no unit of work. The gateway mirrors it both ways into the project's remotes.
+The standing topic every project has for free conversation with the Coordinator; it is bound to no unit of work. The gateway mirrors it both ways into the project's remotes, to every paired User in the users sign-in mode, and the hub posts its lines about hosts and logins there.
 _Avoid_: lobby, main chat, default channel
 
 **Agents topic**:
@@ -149,15 +188,24 @@ _Avoid_: prompt, poll, question dialog, request
 A message to the human that asks for an act of theirs: a review, a QA run or a handover. It waits in the inbox until the human answers, gives the verdict or declines it.
 _Avoid_: ask (that is a question or an approval), ping, mention
 
+**User**:
+A person who may use the hub, in the users sign-in mode: an identity with a name and a role, recorded on everything the person sends, answers, approves, pairs or creates. In the single mode the one human is the only user.
+_Avoid_: account (a harness login), member, operator (a later role), the human (the single mode's one identity)
+
+**Sign-in mode**:
+How the web workbench admits people, chosen at Setup: single, one human with one-time links as before, or users, where each person has a User and signs in with a passkey or a password.
+_Avoid_: auth mode alone, login mode, login (a harness sign-in), multi-tenant
+
 ## Remotes
 
 **Remote**:
-A messenger chat paired with the project, from which the human follows General and answers away from the workbench: a Telegram remote is the human's private chat with the project's bot, a Discord remote one channel of the human's own server. A project has at most one remote per messenger, and what the human sends there arrives as the human's own, marked with where it came from.
+A messenger chat paired with the project, from which a person follows General and answers away from the workbench: a Telegram remote is a private chat with the project's bot, a Discord remote one channel of the human's own server. In the single sign-in mode a project has at most one remote per messenger; in the users mode one per User and messenger. What a person sends there arrives as their own, marked with where it came from.
 _Avoid_: bot, channel (Discord's word for where a remote lives), mirror, mobile client, integration
 
 **Pairing**:
-The link between a remote and the project's human, made when the human approves, in Neovim or the terminal, the one-time code the bot gave them in the chat. It knows the human by the messenger's ids, never by a name, and a new pairing replaces the old one.
+The link between a remote and one person of the project, made when the human, or an admin in the users sign-in mode, approves in Neovim or the terminal the one-time code the bot gave in the chat. It knows the person by the messenger's ids, never by a name, and belongs to one User; a new pairing of that User and messenger replaces the old one.
 _Avoid_: login, linking, registration, allow-list, subscription (a session's standing request for events)
+
 
 **Remote card**:
 An ask or an approval shown in a remote as a message with buttons. The first answer from anywhere wins, and every copy of the card turns into its outcome.
@@ -295,7 +343,8 @@ _Avoid_: blocked by, after, depends on
 ## Verification
 
 **Executor**:
-Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor; a remote machine is held through a [Lease](#lease).
+Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor; a remote machine is held through a [Lease](#lease). An executor never runs sessions: that is a Host's.
+_Avoid_: host (where sessions run), runner, CI
 
 **Tier**:
 One of four classes of runtime tests, from isolated unit rules to long-running soak checks. T0 names the static checks that precede them.
@@ -323,4 +372,5 @@ _Avoid_: batch, cover, stage close
 
 <a id="lease"></a>
 **Lease**:
-The hub's durable record of one remote machine, written before its creation and held until its deletion is confirmed.
+The hub's durable record of one remote machine, a verification droplet or a Host, written before its creation and held until its deletion is confirmed. A lease has a deadline at which a watchdog deletes the machine even without the hub; a Host's lease is renewed while it is in use.
+_Avoid_: reservation (spend held against the daily cap), claim (a session's hold on an item), booking
