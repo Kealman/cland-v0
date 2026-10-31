@@ -6,7 +6,7 @@ import { setSecret } from '../src/remote/secrets.ts';
 import { connectUi, projectHub } from './harness.ts';
 import { testMessenger } from './fakes/messenger.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
-import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { access, chmod, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Check } from '../src/doctor/report.ts';
 import { until } from './harness.ts';
@@ -15,9 +15,12 @@ import { Socket } from 'node:net';
 import { once } from 'node:events';
 import { telegramLivenessFixture } from './telegram-liveness-fixture.ts';
 import { control } from './telegram-polling-fixture.ts';
-import { within } from '../src/executor/droplet/deadline.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { abortable, within } from '../src/executor/droplet/deadline.ts';
+import { afterCleanup, guardDirectoryRemoval, onCleanup } from './process-cleanup.ts';
 import { fakeSpeech } from './fakes/speech/fake-api.ts';
+import { setTimeout as nativeTimeout, clearTimeout as nativeClearTimeout } from 'node:timers';
+import { performance } from 'node:perf_hooks';
+import { realClock } from '../src/hub/clock.ts';
 import { legacyRemoteHubFixture } from './fakes/legacy-remote-hub.ts';
 
 const checks = (stdout: string): Check[] => (JSON.parse(stdout) as { checks: Check[] }).checks;
@@ -286,4 +289,127 @@ test(`Discord workbench fixture drains ${failure} setup before Store and root re
   assert.throws(() => f.store.remotes.forMessenger('discord').get('discord.session'), /closed|not open/i);
   await project.remove();
   await assert.rejects(access(project.root), { code: 'ENOENT' });
+});
+
+// Observation deadlines and exceptional drainage stay native while product time is mocked.
+const observationClock = { ...realClock, now: () => new Date(performance.timeOrigin + performance.now()),
+  setTimeout: (fn: () => void, ms: number) => nativeTimeout(fn, ms),
+  clearTimeout: (timer: import('../src/hub/clock.ts').ClockTimer | null | undefined) => { if (timer) nativeClearTimeout(timer as NodeJS.Timeout); } };
+const readinessReceipt = (predicate: () => boolean, what: string) => until(predicate,
+  { what, timeoutMs: 1000, loadFactor: 1, clock: observationClock });
+
+function doctorReadinessOwner(t: import('node:test').TestContext) {
+  let work: ReturnType<typeof doctor> | undefined;
+  let joined = true, mocked = false;
+  let release = () => {};
+  let socketsClosed = () => true;
+  let disposal: Promise<void> | undefined;
+  const dispose = () => disposal ??= (async () => {
+    release();
+    // Keep fake Date and its native socket owners alive until the operation settles.
+    await readinessReceipt(() => {
+      if (!joined && mocked) t.mock.timers.tick(50);
+      return joined;
+    }, 'doctor operation drainage');
+    await work;
+    await readinessReceipt(socketsClosed, 'doctor native sockets closed');
+    if (mocked) { t.mock.timers.reset(); mocked = false; }
+  })();
+  onCleanup(t, dispose);
+  return { dispose, joined: () => joined,
+    start(root: string, env: Record<string, string>, makeReady: () => void, closed: () => boolean) {
+      release = makeReady;
+      socketsClosed = closed;
+      guardDirectoryRemoval(root, dispose);
+      t.mock.timers.enable({ apis: ['Date', 'setTimeout'] });
+      mocked = true;
+      joined = false;
+      work = doctor(root, env, '--json');
+      void work.then(() => { joined = true; }, () => { joined = true; });
+      return work;
+    },
+  };
+}
+
+for (const messenger of ['telegram', 'discord'] as const) for (const recovers of [true, false]) {
+  test(`doctor waits for ${messenger} readiness (recovers=${recovers})`, { timeout: 5000 }, async t => {
+    const owner = doctorReadinessOwner(t);
+    const tools = await toolchain(t);
+    const root = await initialised(t, tools.env);
+    const config = defaultConfig('doctor readiness');
+    config.remote[messenger].enabled = true;
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+    let reads = 0;
+    let connected = false;
+    const old = legacyRemoteHubFixture(t, root, { remoteStatus: () => {
+      reads++;
+      return { remotes: [{ messenger, token: { present: true, fingerprint: 'fixture' }, pairing: null,
+        connection: connected ? 'connected' : 'disconnected', reason: null, lastInbound: null,
+        lastOutbound: null, outboxDepth: 0, mute: false, botLink: null }] };
+    } });
+    await old.start();
+    let settled = false;
+    const work = owner.start(root, tools.env, () => { connected = true; }, () => old.receipts().peers === 0);
+    void work.then(() => { settled = true; }, () => { settled = true; });
+    await readinessReceipt(() => reads === 1 && old.receipts().peers === 0, 'initial doctor status closed');
+    for (let tick = 0; tick < 198; tick++) {
+      t.mock.timers.tick(50);
+      await readinessReceipt(() => settled || reads === tick + 2 && old.receipts().peers === 0, 'doctor readiness read closed');
+      assert.equal(settled, false, 'transient doctor status must remain pending');
+    }
+    assert.equal(settled, false);
+    connected = recovers;
+    t.mock.timers.tick(50);
+    if (!recovers) {
+      await readinessReceipt(() => reads === 200 && old.receipts().peers === 0, 'last doctor read closed');
+      t.mock.timers.tick(50);
+    }
+    const result = await work;
+    const row = named(checks(result.stdout), `${messenger} connection`);
+    assert.equal(row.detail, recovers ? 'connected' : 'disconnected');
+    assert.equal(row.verdict, recovers ? 'ok' : 'warn');
+    assert.ok(reads > 1 && reads <= 201);
+    assert.equal(old.receipts().writers, 0);
+  });
+}
+
+for (const failure of ['omitted', 'aborted'] as const) test(`doctor readiness drains ${failure} observation before removing root`, { timeout: 5000 }, async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const config = defaultConfig('abandoned doctor');
+  config.remote.telegram.enabled = true;
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const owner = doctorReadinessOwner(t);
+  let reads = 0, connected = false;
+  const old = legacyRemoteHubFixture(t, root, { remoteStatus: () => {
+    reads++;
+    return { remotes: [{ messenger: 'telegram', token: { present: true, fingerprint: 'fixture' }, pairing: null,
+      connection: connected ? 'connected' : 'disconnected', reason: null, lastInbound: null,
+      lastOutbound: null, outboxDepth: 0, mute: false, botLink: null }] };
+  } });
+  await old.start();
+  const work = owner.start(root, tools.env, () => { connected = true; }, () => old.receipts().peers === 0);
+  await readinessReceipt(() => reads === 1 && old.receipts().peers === 0, 'native initial status closed');
+  assert.equal(owner.joined(), false);
+  if (failure === 'aborted') {
+    const abort = new AbortController();
+    const observation = abortable(work, abort.signal);
+    const rejected = assert.rejects(observation, /observation cancelled/);
+    abort.abort(new Error('observation cancelled'));
+    await rejected;
+    assert.equal(owner.joined(), false, 'observer abort does not relinquish native work');
+  }
+  // No result await: exercise the actual shared cleanup lanes after the case returns.
+  onCleanup(t, async () => {
+    assert.equal(owner.joined(), true, 'doctor operation joined before resource/root cleanup');
+    assert.equal(old.receipts().peers, 0, 'native request socket closed before root removal');
+    await access(root);
+  });
+  afterCleanup(t, async () => {
+    assert.equal(owner.joined(), true);
+    assert.equal(old.receipts().closed, true);
+    assert.equal(old.receipts().peers, 0);
+    assert.equal(old.receipts().writers, 0);
+    await assert.rejects(access(root), { code: 'ENOENT' });
+  });
 });

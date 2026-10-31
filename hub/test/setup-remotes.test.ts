@@ -367,8 +367,9 @@ function reconnectScope(t: test.TestContext) {
   };
 }
 
-for (const messenger of ['discord', 'telegram'] as const) for (const recovers of [true, false]) {
-  test(`paired nonterminal ${messenger} rerun waits for recovery within ten seconds (recovers=${recovers})`, { timeout: 5000 }, async t => {
+for (const mode of ['paired', 'unpaired', 'reload'] as const)
+for (const messenger of (mode === 'reload' ? ['telegram'] : ['discord', 'telegram']) as ('discord' | 'telegram')[]) for (const recovers of [true, false]) {
+  test(`${mode} nonterminal ${messenger} rerun waits for recovery within ten seconds (recovers=${recovers})`, { timeout: 5000 }, async t => {
     const owner = reconnectScope(t);
     const f = pairingFixture(owner.fixtures, owner.close);
     const config = defaultConfig('Remote setup');
@@ -384,35 +385,46 @@ for (const messenger of ['discord', 'telegram'] as const) for (const recovers of
     f.client.remotes = async () => {
       reads++;
       return { remotes: [{ messenger, token: { present: true, fingerprint: 'fixture' },
-        pairing: { userId: '101', chatId: '101', guildId: null, name: 'Fixture human' },
+        pairing: mode === 'unpaired' ? null : { userId: '101', chatId: '101', guildId: null, name: 'Fixture human' },
         connection: connected ? 'connected' : 'disconnected', reason: null,
         lastInbound: null, lastOutbound: null, outboxDepth: 0, mute: false, botLink: null }] };
     };
-    f.client.reload = async () => { throw new Error('rerun must not reload'); };
+    f.client.reload = async () => { assert.equal(mode, 'reload'); };
+    if (mode === 'reload') {
+      const read = f.client.remotes;
+      f.client.remotes = async timeout => {
+        const result = await read!(timeout);
+        if (reads === 1) result.remotes[0]!.connection = 'disabled';
+        return result;
+      };
+    }
     t.mock.timers.enable({ apis: ['Date', 'setTimeout'] });
     let settled = false;
-    const result = owner.observe(() => (messenger === 'discord' ? discord : remotes)({ ...f.options, hub: f.client, signal: owner.signal }));
+    const result = owner.observe(() => (messenger === 'discord' ? discord : remotes)({ ...f.options, hub: f.client, signal: owner.signal,
+      ...(mode === 'reload' ? { interactive: true, prompter: scriptedPrompter([{ kind: 'confirm', question: 'Set up Telegram remote now?', answer: true }]) } : {}) }));
     void result.then(() => { settled = true; }, () => { settled = true; });
-    await owner.receipt(() => reads === 1, 'initial status');
+    const initialReads = mode === 'reload' ? 2 : 1;
+    await owner.receipt(() => reads === initialReads, 'initial status');
     for (let tick = 0; tick < 198; tick++) {
       t.mock.timers.tick(50);
-      await owner.receipt(() => reads === tick + 2, 'readiness status');
+      await owner.receipt(() => settled || reads === tick + initialReads + 1, 'readiness status');
+      assert.equal(settled, false, 'transient status must remain pending');
     }
     assert.equal(settled, false, 'a disconnected paired gateway stays pending before the bound');
     if (recovers) connected = true;
     t.mock.timers.tick(50);
     if (!recovers) {
-      await owner.receipt(() => reads === 200, 'last in-budget status');
+      await owner.receipt(() => reads === initialReads + 199, 'last in-budget status');
       assert.equal(settled, false);
       t.mock.timers.tick(50);
     }
     await owner.receipt(() => settled, 'final setup result');
     assert.equal(settled, true, 'the final readiness receipt settles setup at the bound');
     const line = (await result).find(row => row.name === `remote ${messenger}`)!;
-    assert.equal(line.verdict, recovers ? 'ok' : 'open');
+    assert.equal(line.verdict, recovers ? mode === 'paired' ? 'ok' : mode === 'reload' ? 'done' : 'open' : 'open');
     assert.ok(reads > 1, 'readiness must be re-read after the initial disconnected receipt');
     assert.ok(reads <= 201, 'readiness polling is bounded');
-    if (!recovers) assert.equal(line.fix, 'cland hub reload');
+    if (!recovers && mode !== 'unpaired') assert.equal(line.fix, 'cland hub reload');
   });
 }
 

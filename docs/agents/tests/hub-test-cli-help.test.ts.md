@@ -18,3 +18,8 @@ command coverage in T1 without a duration allowance. The existing T3
 implementation imports and dispatch failures; `help.ts`, the `usage.ts` facade and the 36 `usage/<command>.ts` modules are
 static metadata. The guard counts those 36 help modules separately from the
 existing implementation budgets.
+
+Help wording changes also update the independent literal blocks in
+`hub/test/fixtures/cli-usage/commands.json`. Both the T1 export-byte compatibility
+check and this T2 native top-level help composition consume them. T-1506 updates
+only setup/doctor readiness wording; all other command bytes stay frozen.

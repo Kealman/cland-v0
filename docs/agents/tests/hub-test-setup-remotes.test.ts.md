@@ -52,3 +52,8 @@ Held last reads prove the remaining 50 ms native read budget, timeout/late-succe
 refusal and abort drainage. SetupHub's optional timeout argument preserves old
 no-argument injected clients; those reads remain owned and joined. A cancellation
 joins the already admitted bounded status read before propagating its signal.
+
+T-1506 extends the fake-clock matrix to unpaired initial Telegram/Discord reads
+and Telegram post-reload. Recovery at 9,950 ms and continued disconnection past
+the ten-second bound retain final verdict and read-count assertions. These use
+the same owned setup operation and drainage controls as the paired reruns.

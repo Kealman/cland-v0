@@ -1351,3 +1351,13 @@ Opaque/computed shell or script-hidden subprocess chains require manual review;
 no finding changes exit status. See
 `docs/agents/tests/hub-test-build-guard-tiers.test.ts.md`. Existing role clauses
 cover this flow; no permission line is added.
+
+## Setup and doctor readiness audit (T-1506)
+
+Setup initial loaded remote reads and Telegram post-reload use the shared
+`setup/readiness.ts` helper, including unpaired remotes. Doctor waits for enabled
+loaded disconnected remotes concurrently over local status frames, within ten
+seconds. Keep terminal disabled/missing-token states and older-hub refusal
+controls immediate. Use the fake-clock matrices in the setup-remotes and
+doctor-remotes per-test guides. Pairing remains an explicit human gesture and
+approval; existing role clauses suffice.

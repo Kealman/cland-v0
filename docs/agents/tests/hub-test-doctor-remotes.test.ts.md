@@ -37,3 +37,14 @@ remote is set up", with no key/command warning; repair tests stay unchanged. No 
 Native Discord cases additionally close the loopback gateway with 4004 and 4014, wait for disabled local status, and compare fake REST request lists across both doctor output modes. Retain channel/guild/user identity and the literal recovery instructions; structured test-messenger cases remain legacy coverage.
 
 The shared Discord workbench fixture also has omitted/aborted setup controls here: inject the readiness deadline, retain the acquired hub through pacingOwner, and prove stopped hub, closed native server with zero handlers/connections, drained observations/timers, closed Store and only then absent root. No platform or browser is used for those lifecycle controls.
+
+T-1506 uses the owned legacy local-frame server with a scripted status reply
+and Node fake Date/setTimeout to prove Telegram and Discord recovery at 9,950 ms
+and disconnected warnings after ten seconds. Initial status and every read have
+separate bounded observations; the report promise is pre-owned in the shared `onCleanup` resource lane.
+Disposal releases readiness, drives product time while retaining native observation
+deadlines, joins the report and native socket closure, then resets mocks. The same
+barrier guards root removal on incomplete drainage. Omitted and aborted result
+observations exercise actual cleanup lanes, proving completion and socket closure
+while the root exists, then closed server/zero peers/writers and absent root. The literal previous-wire and refusal controls stay unchanged. No
+platform network or browser is used.

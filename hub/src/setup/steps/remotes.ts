@@ -25,7 +25,7 @@ export const remotes: SetupStep = async ({ root, env, machine, hub: injected, in
     const client = injected ?? setupHub(root, env);
     const running = await client.running();
     let status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'telegram') : undefined;
-    if (status?.pairing) status = await waitForRemote(client, 'telegram', status, signal);
+    status = await waitForRemote(client, 'telegram', status, signal);
     if (token && enabled && status?.token.present && status.connection === 'connected' && status.pairing) return [{ name, verdict: 'ok', detail: `configured and paired; token ${secretFingerprint(token)}` }];
     fix = [!token ? TOKEN : '', !enabled ? ENABLE : '', RELOAD, token && enabled && !status?.pairing ? APPROVE : ''].filter(Boolean).join('; ');
     if (!interactive) return [{ name, verdict: !token && !enabled ? 'skip' : 'open', detail: `optional Telegram remote${status?.botLink ? `; open ${status.botLink} and press Start` : ''}`, fix }];
@@ -55,7 +55,7 @@ export const remotes: SetupStep = async ({ root, env, machine, hub: injected, in
     if (!running) return [{ name, verdict: 'open', detail: `enabled; token ${secretFingerprint(token)}; start the hub to pair`, fix }];
     if (!client.reload || !client.remotes) throw new Error('reload unavailable');
     await client.reload();
-    const after = (await client.remotes()).remotes.find(row => row.messenger === 'telegram');
+    const after = await waitForRemote(client, 'telegram', (await client.remotes()).remotes.find(row => row.messenger === 'telegram'), signal);
     if (!after?.token.present || after.connection !== 'connected') return [{ name, verdict: 'open', detail: 'Telegram did not connect; check cland remote status', fix: RELOAD }];
     const detail = `enabled; token ${after.token.fingerprint}`;
     if (after.pairing) return [{ name, verdict: 'done', detail: `${detail}; paired` }];

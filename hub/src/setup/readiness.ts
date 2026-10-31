@@ -3,7 +3,7 @@ import type { RemoteStatusRow, RemoteVia } from '../protocol.ts';
 import type { SetupHub } from './hub.ts';
 
 /** Configuration completion can precede native readiness. Reuse the loaded row until it settles. */
-export async function waitForRemote(client: SetupHub, messenger: RemoteVia, status: RemoteStatusRow | undefined,
+export async function waitForRemote(client: Pick<SetupHub, 'remotes'>, messenger: RemoteVia, status: RemoteStatusRow | undefined,
   signal?: AbortSignal): Promise<RemoteStatusRow | undefined> {
   const deadline = Date.now() + 10_000;
   while (client.remotes && status?.token.present && status.connection === 'disconnected' && Date.now() < deadline) {

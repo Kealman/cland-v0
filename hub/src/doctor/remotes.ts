@@ -8,6 +8,7 @@ import { askHubFrame } from '../cli/socket-client.ts';
 import type { RemoteStatusResult } from '../protocol.ts';
 import { remoteRedactor } from '../remote/redact.ts';
 import { resolveCommand } from '../speech/command.ts';
+import { waitForRemote } from '../setup/readiness.ts';
 import { remoteStopDetails } from '../remote/notices.ts';
 
 /** Local credential presence only; validation never constructs a platform client. */
@@ -56,10 +57,20 @@ export async function checkRemotes(root: string, env: NodeJS.ProcessEnv): Promis
     try { status = await askHubFrame(discovery, { type: 'remote.status' }, 3000, env) as RemoteStatusResult; }
     catch { unavailable = 'local remote status unavailable'; }
   }
-  for (const messenger of ['telegram', 'discord'] as const) {
+  // Both connections share one ten-second window and use only local status frames.
+  const readyRows = await Promise.all((['telegram', 'discord'] as const).map(messenger => {
+    const row = status?.remotes.find(row => row.messenger === messenger);
+    return config.remote[messenger].enabled && discovery
+      ? waitForRemote({ remotes: async timeoutMs => await askHubFrame(discovery, { type: 'remote.status' }, timeoutMs ?? 3000, env) as RemoteStatusResult }, messenger, row).catch(() => {
+        unavailable = 'local remote status unavailable';
+        return undefined;
+      })
+      : row;
+  }));
+  for (const [index, messenger] of (['telegram', 'discord'] as const).entries()) {
     const enabled = config.remote[messenger].enabled;
     out.push(ok(`${messenger} enabled`, String(enabled)));
-    const row = status?.remotes.find(row => row.messenger === messenger);
+    const row = readyRows[index];
     if (!row) {
       out.push(warn(`${messenger} connection`, unavailable, unavailable === 'hub not running' ? 'cland hub start' : 'update and restart the hub, then rerun cland doctor'));
       continue;

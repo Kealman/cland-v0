@@ -6,7 +6,7 @@ import { beforeDirectories } from '../process-cleanup.ts';
 import { abortable, within } from '../../src/executor/droplet/deadline.ts';
 import { realClock, type Clock } from '../../src/hub/clock.ts';
 
-type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean };
+type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; remoteStatus?: () => unknown };
 
 // Literal previous wire shape: no stopCause field, including for a stopped remote.
 const LEGACY_STATUS = { remotes: [{
@@ -51,7 +51,9 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
         if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
         else {
           requests.push(frame.type);
-          peer.write(JSON.stringify(frame.type === 'remote.status' && options.legacyStatus
+          peer.write(JSON.stringify(frame.type === 'remote.status' && options.remoteStatus
+            ? { type: 'result', id: frame.id, ok: true, value: options.remoteStatus() }
+            : frame.type === 'remote.status' && options.legacyStatus
             ? { type: 'result', id: frame.id, ok: true, value: LEGACY_STATUS }
             : frame.type === 'pairing.approve'
             ? { type: 'result', id: frame.id, ok: true, value: { pairing: { userId: '12345', chatId: '23456', guildId: null, name: 'Old hub human' } } }

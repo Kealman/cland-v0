@@ -26,7 +26,7 @@ export const discord: SetupStep = async ({ root, env, machine, hub: injected, in
     const client = injected ?? setupHub(root, env);
     const running = await client.running();
     let status = running && token && enabled ? (await client.remotes?.())?.remotes.find(row => row.messenger === 'discord') : undefined;
-    if (status?.pairing) status = await waitForRemote(client, 'discord', status, signal);
+    status = await waitForRemote(client, 'discord', status, signal);
     if (token && enabled && status?.token.present && status.connection === 'connected' && status.pairing) return [{ name, verdict: 'ok', detail: `configured and paired; token ${secretFingerprint(token)}` }];
     fix = [!token ? TOKEN : '', !enabled ? ENABLE : '', RELOAD, token && enabled && !status?.pairing ? APPROVE : ''].filter(Boolean).join('; ');
     if (!interactive) return [{ name, verdict: !token && !enabled ? 'skip' : 'open', detail: `optional Discord remote${status?.botLink ? `; open ${status.botLink} and run /cland pair` : ''}`, fix }];
