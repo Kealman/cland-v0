@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T17:24:26.150Z
+updated: 2026-10-31T17:48:15.758Z
 ---
 
 ## Destination
@@ -87,12 +87,15 @@ Round-3 decisions 5–9 are replaced by these.
 
 - [Web sign-in modes and users](Q-1527): `[auth] mode` single (unchanged) or users; a users table with user_id on messages, answers, approvals, pairings, web sessions and artifacts; invite links, passkeys plus password fallback, OIDC later; pairings per user, first answer wins with the answerer shown; one admin role with a roles table and journal user_id as the RBAC seam; its own epic in 0.4.0 parallel to hosts.
 
+- [Prototype: login disks, snapshots and the login capacity rule](Q-1518): login disks work live (bind ~9 s, release ~10 s, ≈ $0.02–0.12 per login per month); keep the volume and detach at stop instead of snapshotting (DO rate limit, provider-enforced exclusive), snapshots as backups; bind during provisioning; release ends every process on the disk; one sudo helper; per-region logins; key logins only in the spawn env; capacity, waiting row, card, signed-out flow and hint all verified.
+
 ### Amendments from research
 - Round-1 decision 6 and round-6 decision 1 (image audit, 2026-10-31): the host image and the Kubernetes image contain only what cland the tool needs on any project (Ubuntu with apt timers off, git, curl, ca-certificates, jq, lsof, procps, xz-utils, locales, the hub's exact Node version, the unprivileged runner user, sshd prelude and auth helper on agent hosts, the harness installers, build-essential and python3 as common defaults). Neovim and the Chromium runtime libraries are this project's own test needs and leave provision.sh; Neovim is never in an image or the Helm chart (the human's workbench stays a local client). A project-level root provisioning hook (`[verification] provision`, run once on the builder/image) is added so a project can install system packages its prepare cannot (prepare runs as runner without sudo); this project moves its Chromium libraries there. Audit facts: provision.sh:11-13 and :25-31; prepare.ts:31-40; the prototype's hosts.ts:441 reuses provision.sh.
 
 - Round-1 decision 11: StatefulSet, not Deployment.
 - Round-2 decision 2: the host agent and the harness supervision must not depend on systemd (Fly and pods have none); systemd where present, a plain supervisor otherwise.
 - Round-3 decisions 5–9: replaced by round 4 (logins as a resource).
+- Round-4 decision 2: a `disk` login keeps its volume and detaches at host stop; snapshots are backups and the source for non-exclusive readers (Q-1518).
 
 ## Not yet specified
 
