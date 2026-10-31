@@ -2,8 +2,8 @@
 id: T-1488
 kind: task
 title: Switch batch interaction selection from report to run, on recorded batch evidence
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1281
 branch: t/T-1488-switch-batch-interaction-selection-from
 created: 2026-10-30T14:25:54.233Z
-updated: 2026-10-31T17:22:40.973Z
+updated: 2026-10-31T17:23:05.243Z
+closed: 2026-10-31T17:23:05.243Z
 ---
 
 ## Summary
@@ -48,3 +49,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-15015 independently audits A-15009 and supports keep report. All 25 unique batch IDs/heads/sets/phases/provenance match original logs and journal; 50 stored copies are exactly two per batch, with all appendix message IDs/text matching. Window is 25h15m; actual receipt span is 21h59m10.893s, correctly qualified. Split is 17 before #65 / 8 after; post-restart six nonempty six-file fallback sets and two empty. All 25 saved-baseline projections reproduce from task-head manifest blob d25ea998, with startup/scheduling/load exclusions retained; post set 4.509s ideal / 7.220s serial. Actual batches ran T0/T1, plus existing Web once; no T2/T3/T4 addition coverage implied. Known-break table distinguishes the T3 T-1490 interaction, Mac fixture defect, T1 duration gate, T2 race and pre-window clock failure; no confirmed T2/Web interaction catch claimed. C1 verified. Coordinator fc0fc169 authorizes artifact-only closure, no commit/push/verify; T3 follow-up already T-1528. No reviewer workload or mutation.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-31T17:23:05.243Z
+
+Closed without a merge: evidence only. Decision: keep `[merge] batch_interaction = "report"`.
+- Evidence A-15009 covers 25 batch receipts over 25 h 15 min. 8 of them ran after hub restart #65, and every one of those proposed only T-1510's 6 conservative T2 fallbacks, or nothing.
+- No observed T2/Web interaction catch. The one real interaction miss in the window, T-1490 (T-1484 × T-1453), sits in T3, which batch selection does not add.
+- Independent audit A-15015 is clear: C1 is verified (rev-20261031-1488-evidence-1).
+- The follow-up for T3 importer selection is T-1528.
