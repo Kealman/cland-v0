@@ -113,8 +113,18 @@ streaming-reader integration.
 ### Rest budget report
 
 `--heap-budget-mib N --rss-budget-mib N` supplies human-agreed limits in MiB.
-`memory-budget.json` compares readiness and completed-rest measurements, with
-mode `report`; over-budget readings never change the exit status. Omitted CLI limits default to human-agreed256MiB heap/768MiB RSS (ask53ad10db); an absent generic comparison limit is `unconfigured`, and an interrupted/unexecuted rest is `unavailable`.
+`memory-budget.json` and the printed report compare readiness, completed-rest
+endpoint and observed interval maximum heap/RSS readings, each within/over its
+limit. The policy line says limits govern endpoints; interval maxima are
+informational. Mode stays `report`; over-budget readings never change exit status.
+The additive `intervalMaximum` and `limitScope: "endpoints"` fields preserve old
+readiness/rest/mode readers. Maxima accumulate persisted readiness/rest (or
+streaming) samples through the endpoint, including delayed sample writes and
+excluding startup/shutdown. They do not claim unsampled continuous peaks.
+Interrupted runs retain observed maxima alongside their partial outcome;
+unexecuted rest leaves maxima unavailable. The sealed-rest regression compares
+the report to persisted samples and native close, while the comparison regression
+uses passing endpoints and a transient over-limit heap/RSS peak. Omitted CLI limits default to human-agreed256MiB heap/768MiB RSS (ask53ad10db); an absent generic comparison limit is `unconfigured`, and an interrupted/unexecuted rest is `unavailable`.
 These comparisons become C3 evidence only on the copied live-scale data with
 human-agreed figures. Synthetic test limits prove reporting only.
 

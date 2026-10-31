@@ -1302,3 +1302,13 @@ crew session identity for original pre-fixture admission and real suite workers;
 it is unsuitable for redirecting that identity to an unrelated scratch hub.
 Keep a synthetic sentinel positive control; see
 `docs/agents/tests/hub-test-cover-quiet.test.ts.md`. No role clause changes apply.
+
+
+## Memory budget interval reporting
+
+For memory probe reports, use the existing comparison and sealed-worker seams in
+`docs/agents/tests/hub-test-measure-memory.test.ts.md`. Preserve report-only endpoint
+limits, print the policy line, and label observed interval maxima as sampled facts
+from readiness through rest (including selected streaming). Startup/shutdown are
+excluded; partial outcomes retain observed maxima without a completed endpoint.
+Existing role clauses cover this diagnostic; no permission line is added.

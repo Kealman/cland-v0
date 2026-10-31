@@ -7714,8 +7714,15 @@ sealed disposable project copy, fake adapters and independent swap supervision;
 no live hub or connected crew is measured. Ten-second rest samples record heap,
 RSS and native physical footprint, with missing native readings unavailable.
 Sampling profiles estimate surviving allocations by site, not exact retained size.
-`--heap-budget-mib N --rss-budget-mib N` writes readiness/completed-rest
-comparisons in `memory-budget.json` in report mode only; omitted CLI limits use human-agreed256MiB heap/768MiB RSS. Limits require human agreement for budget evidence. See
+`--heap-budget-mib N --rss-budget-mib N` prints readiness, completed-rest endpoint
+and observed interval maximum comparisons and writes them to `memory-budget.json`
+in report mode only; omitted CLI limits use human-agreed 256 MiB heap/768 MiB RSS.
+Limits govern readiness and rest endpoints; interval maxima are informational.
+Each heap/RSS reading is marked within/over (or unavailable/unconfigured).
+Maxima cover persisted samples from readiness through the rest endpoint, including
+streaming when selected, excluding earlier startup and shutdown. They are sampled
+maxima, not continuous peaks; interrupted runs retain observed maxima with their
+partial outcome and no completed-rest endpoint. An unexecuted rest has no interval maximum. Limits require human agreement for budget evidence. See
 [the probe guide](../docs/agents/tests/hub-test-measure-memory.test.ts.md) for
 exclusions, guard stops and required disposal receipts.
 

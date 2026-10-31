@@ -202,6 +202,14 @@ test('sealed rest phase records both boundary receipts and timed samples before 
   assert.equal(budget.readiness.heap.status, 'over');
   assert.equal(budget.rest.rss.status, 'within');
   assert.equal(budget.rest.rss.budget, 768 * 1024 * 1024);
+  const interval = samples.filter(row => ['startup-ready', 'rest'].includes(row.phase));
+  assert.equal(budget.intervalMaximum.heap.bytes, Math.max(...interval.map(row => row.heapUsed)));
+  assert.equal(budget.intervalMaximum.rss.bytes, Math.max(...interval.map(row => row.rss)));
+  assert.equal(budget.intervalMaximum.heap.status, 'over');
+  assert.equal(budget.limitScope, 'endpoints');
+  assert.match(producer.tail(), /interval maximum: heap .*\(over\)/);
+  assert.match(producer.tail(), /Limits govern readiness and rest endpoints/);
+
   const profile = JSON.parse(await readFile(join(root, `stage-${rows.find(row => row.boundary === 'rest-end').ordinal}.heapprofile`), 'utf8'));
   assert.ok(profile.head);
   assert.equal((await producer.native).code, 0);
@@ -227,6 +235,29 @@ test('memory budget comparison is report only and distinguishes missing limits a
   assert.equal(report.readiness.rss.status, 'within');
   assert.equal(report.rest.heap.status, 'unavailable');
   assert.equal(memoryBudgetReport({ heapUsed: 200, rss: 300 }, null, {}).readiness.heap.status, 'unconfigured');
+});
+
+
+test('memory budget shows transient maxima beside passing endpoints with an explicit report-only policy', async () => {
+  const { memoryBudgetReport, formatMemoryBudgetReport } = await import('./memory-budget.ts');
+  const mib = 1024 * 1024;
+  const report = memoryBudgetReport({ heapUsed: 153 * mib, rss: 600 * mib },
+    { heapUsed: 129 * mib, rss: 500 * mib }, { heap: 256 * mib, rss: 768 * mib },
+    { heapUsed: 294.3 * mib, rss: 800 * mib });
+  assert.equal(report.mode, 'report');
+  assert.equal(report.limitScope, 'endpoints');
+  assert.equal(report.readiness.heap.status, 'within');
+  assert.equal(report.rest.heap.status, 'within');
+  assert.equal(report.intervalMaximum.heap.status, 'over');
+  assert.equal(report.intervalMaximum.rss.status, 'over');
+  const output = formatMemoryBudgetReport(report);
+  assert.match(output, /readiness: heap 153.0 MiB \(within\).*RSS 600.0 MiB \(within\)/);
+  assert.match(output, /rest endpoint: heap 129.0 MiB \(within\).*RSS 500.0 MiB \(within\)/);
+  assert.match(output, /interval maximum: heap 294.3 MiB \(over\).*RSS 800.0 MiB \(over\)/);
+  assert.match(output, /Limits govern readiness and rest endpoints; interval maxima are informational; report-only/);
+  const missing = memoryBudgetReport(null, null, {});
+  assert.equal(missing.intervalMaximum.heap.status, 'unavailable');
+  assert.match(formatMemoryBudgetReport(missing), /unavailable/);
 });
 
 

@@ -24,7 +24,7 @@ import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { realClock } from '../src/hub/clock.ts';
 import { beforeDirectories } from './process-cleanup.ts';
 import { memoryStreaming } from './memory-streaming.ts';
-import { memoryBudgetReport, DEFAULT_MEMORY_LIMITS, type MemoryReading, type MemoryLimits } from './memory-budget.ts';
+import { memoryBudgetReport, formatMemoryBudgetReport, DEFAULT_MEMORY_LIMITS, type MemoryReading, type MemoryLimits } from './memory-budget.ts';
 import { memoryProducer, memoryStopReserveMs }  from './memory-producer.ts';
 export { requestMemoryStop } from './memory-producer.ts';
 
@@ -96,7 +96,7 @@ for (const [flag, key] of [['--heap-budget-mib', 'heap'], ['--rss-budget-mib', '
 const runTimeoutMs = (restSeconds + 300) * 1000;
 
 if (args.includes('--help')) {
-  console.log(`Usage: node --max-old-space-size=8192 hub/test/measure-memory.ts --source PROJECT --run\nMac only; requires a Coordinator measurement slot. Copies tasks, sparse artifact placeholders (no bodies), journal and log plus a consistent SQLite backup to a private disposable root. Never reads secrets.toml or account config. Preparation seals copied suite paths, PIDs, leases, shards and unfinished recovery; isolated recovery uses sealed owned roots and labels outside logs unavailable without reading them; manifest retains active/archive row counts. Generated config disables remotes and verification. Fake adapters/probes exclude live harnesses, accounts, Git and external network. Default startup only; --rest-seconds N adds up to 1800 seconds idle with ten-second heap/RSS/physical-footprint samples and rest boundary allocation profiles. No full snapshots. Missing native readings remain unavailable. --stream-runs N (1..12, requires rest) seeds synthetic runs after copy sealing and streams 4 KiB per run per ten seconds through production suite collection using fake receipts; no workers, network or droplets. Its phases are labelled streaming. Preflight: load1 <=8, swap <=80%; every 30s request graceful stop over IPC above 90% swap, own and join setup/profile/sample writes, await hub stop and persist outcome before native exit/pipe closure. A bounded captured-process fallback records incomplete drainage. Approximately 1-2 minutes plus requested rest including copy. Private raw profiles remain in the printed scratch root; publish aggregate allocation sites only. Use --plan --source PROJECT for a dry inventory. --heap-budget-mib N and --rss-budget-mib N write readiness/rest comparisons to memory-budget.json in report mode only; omitted budgets default to human-agreed heap256MiB/RSS768MiB, report only. Use human-agreed figures for C3. --quiet-slot-until ISO is only for an explicitly Coordinator-granted slot/used-swap waiver: it waives the used-swap thresholds, checks load1<=6, kern.memorystatus_vm_pressure_level<=1, no new swap-out pages and deadline every five seconds. vm.memory_pressure and free-memory percentage are context only. Independent preflights and persisted machine readings/refusal/native-failure causes apply. Slot admission and expiry use one full owned-shutdown reserve (75s by default); guard-interrupted child code zero is partial measurement evidence. No automatic budget enforcement.`);
+  console.log(`Usage: node --max-old-space-size=8192 hub/test/measure-memory.ts --source PROJECT --run\nMac only; requires a Coordinator measurement slot. Copies tasks, sparse artifact placeholders (no bodies), journal and log plus a consistent SQLite backup to a private disposable root. Never reads secrets.toml or account config. Preparation seals copied suite paths, PIDs, leases, shards and unfinished recovery; isolated recovery uses sealed owned roots and labels outside logs unavailable without reading them; manifest retains active/archive row counts. Generated config disables remotes and verification. Fake adapters/probes exclude live harnesses, accounts, Git and external network. Default startup only; --rest-seconds N adds up to 1800 seconds idle with ten-second heap/RSS/physical-footprint samples and rest boundary allocation profiles. No full snapshots. Missing native readings remain unavailable. --stream-runs N (1..12, requires rest) seeds synthetic runs after copy sealing and streams 4 KiB per run per ten seconds through production suite collection using fake receipts; no workers, network or droplets. Its phases are labelled streaming. Preflight: load1 <=8, swap <=80%; every 30s request graceful stop over IPC above 90% swap, own and join setup/profile/sample writes, await hub stop and persist outcome before native exit/pipe closure. A bounded captured-process fallback records incomplete drainage. Approximately 1-2 minutes plus requested rest including copy. Private raw profiles remain in the printed scratch root; publish aggregate allocation sites only. Use --plan --source PROJECT for a dry inventory. --heap-budget-mib N and --rss-budget-mib N print readiness, rest endpoint and observed interval maximum comparisons and write memory-budget.json in report mode only; limits govern endpoints, interval maxima are informational (sampled from readiness through rest, excluding startup/shutdown; partial runs retain observed maxima labelled by outcome); omitted budgets default to human-agreed heap256MiB/RSS768MiB, report only. Use human-agreed figures for C3. --quiet-slot-until ISO is only for an explicitly Coordinator-granted slot/used-swap waiver: it waives the used-swap thresholds, checks load1<=6, kern.memorystatus_vm_pressure_level<=1, no new swap-out pages and deadline every five seconds. vm.memory_pressure and free-memory percentage are context only. Independent preflights and persisted machine readings/refusal/native-failure causes apply. Slot admission and expiry use one full owned-shutdown reserve (75s by default); guard-interrupted child code zero is partial measurement evidence. No automatic budget enforcement.`);
 } else if (args.includes('--plan')) {
   const source = resolve(args[args.indexOf('--source') + 1]!);
   const root = await mkdtemp(join(tmpdir(), 'cland-memory-plan-'));
@@ -259,6 +259,7 @@ if (args.includes('--help')) {
     t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
     let readinessMemory: MemoryReading | null = null;
     let restMemory: MemoryReading | null = null;
+    let intervalMaximum: MemoryReading | null = null;
     const reading = (samplePhase = phase) => ({ ms: performance.now() - start, phase: samplePhase, ...process.memoryUsage(), v8: getHeapStatistics() });
     const sample = async (fact = reading()) => {
       let footprint: { bytes: number | null; unavailable?: string } = { bytes: null, unavailable: 'not a Mac native measurement' };
@@ -269,6 +270,14 @@ if (args.includes('--help')) {
         } catch { footprint = { bytes: null, unavailable: 'vmmap refused, timed out or unusable' }; }
       }
       await appendFile(join(root, 'samples.jsonl'), JSON.stringify({ ...fact, footprint }) + '\n');
+      // Accumulate persisted facts only, including delayed writes admitted during rest.
+      if (fact.phase === 'startup-ready' || fact.phase === 'rest' || fact.phase === 'streaming') {
+        intervalMaximum = {
+          heapUsed: Math.max(intervalMaximum?.heapUsed ?? 0, fact.heapUsed),
+          rss: Math.max(intervalMaximum?.rss ?? 0, fact.rss),
+        };
+      }
+
     };
     const native = async (stage: string) => {
       const fact = { stage, phase, ms: performance.now() - start };
@@ -415,7 +424,10 @@ if (args.includes('--help')) {
         finalSystem = { unavailable: 'final system reading failed' };
         outcome = 'incomplete';
       }
-      await writeFile(join(root, 'memory-budget.json'), JSON.stringify({ ...memoryBudgetReport(readinessMemory, outcome === 'complete' && restSeconds ? restMemory : null, limits), outcome, restSeconds, platform: process.platform, executor: 'embedded sealed hub', browser: null }));
+      const budget = memoryBudgetReport(readinessMemory, outcome === 'complete' && restSeconds ? restMemory : null, limits,
+        restSeconds ? intervalMaximum : null);
+      await writeFile(join(root, 'memory-budget.json'), JSON.stringify({ ...budget, outcome, restSeconds, platform: process.platform, executor: 'embedded sealed hub', browser: null }));
+      console.log(formatMemoryBudgetReport(budget));
       await writeFile(join(root, 'outcome.json'), JSON.stringify({ outcome, stopping, stopped: drained, writeFailures, elapsedMs: performance.now() - start, finalSystem }));
       console.log(`PRIVATE_ROOT=${root}; outcome=${outcome}`);
       if (process.connected) process.disconnect();
