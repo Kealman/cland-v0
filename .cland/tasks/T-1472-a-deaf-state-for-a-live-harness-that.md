@@ -2,8 +2,8 @@
 id: T-1472
 kind: task
 title: A `deaf` state for a live harness that cannot take deliveries
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1256
 branch: t/T-1472-a-deaf-state-for-a-live-harness-that
 created: 2026-10-30T07:50:18.206Z
-updated: 2026-10-31T00:54:59.912Z
+updated: 2026-10-31T02:26:00.237Z
+closed: 2026-10-31T02:26:00.237Z
 ---
 
 ## Summary
@@ -28,13 +29,21 @@ The existing `inject-stalled` alert is the wrong signal today. After each hub re
 ## Acceptance criteria
 
 - [x] C1. A running session with a human delivery queued, or a delivery acked but not injected, for over 5 min while its pid is alive shows `deaf` in `cland session list`, `hub.status` and the workbench.
-  - done: impl-1472 · 2026-10-31T00:52:34.063Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-evidence-3 · 2026-10-31T02:13:28.052Z · commit dcc7e9fe020b064f7decd070b0a38a984e3ca836
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-source-6 · 2026-10-31T02:17:20.260Z · commit 8dd23b345de5a7fa34d58d175e20925e5d158693
+  - done: impl-1472 · 2026-10-31T02:18:07.481Z
 - [x] C2. On entering `deaf`, the hub posts one Agents notice and one human inbox entry naming the session, the oldest held message id and the recovery command; for the Coordinator, also one General line.
-  - done: impl-1472 · 2026-10-31T00:52:34.181Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-evidence-3 · 2026-10-31T02:13:28.052Z · commit dcc7e9fe020b064f7decd070b0a38a984e3ca836
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-source-6 · 2026-10-31T02:17:20.260Z · commit 8dd23b345de5a7fa34d58d175e20925e5d158693
+  - done: impl-1472 · 2026-10-31T02:18:07.605Z
 - [x] C3. The `deaf` mark and its inbox entry clear on the session's next `injected` event.
-  - done: impl-1472 · 2026-10-31T00:52:34.483Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-evidence-3 · 2026-10-31T02:13:28.052Z · commit dcc7e9fe020b064f7decd070b0a38a984e3ca836
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-source-6 · 2026-10-31T02:17:20.260Z · commit 8dd23b345de5a7fa34d58d175e20925e5d158693
+  - done: impl-1472 · 2026-10-31T02:18:07.709Z
 - [x] C4. A replayed id the session already confirmed, or one followed by a later `injected` for the same session, raises no `inject-stalled` or `deaf` alert and no human inbox entry. Shown by a restart fixture that replays a confirmed id while fresh deliveries inject.
-  - done: impl-1472 · 2026-10-31T00:52:34.600Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-evidence-3 · 2026-10-31T02:13:28.052Z · commit dcc7e9fe020b064f7decd070b0a38a984e3ca836
+  - verified: rev-26 [reviewer] · run rev-20261031-1472-source-6 · 2026-10-31T02:17:20.260Z · commit 8dd23b345de5a7fa34d58d175e20925e5d158693
+  - done: impl-1472 · 2026-10-31T02:18:08.002Z
 
 ## Comments
 
@@ -158,3 +167,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14775: source5 clear. Never-attempted launch brief remains token-pinned/provisional until validated native first-turn receipt binds its new identity; ordinary conflicting-recipient guard and native lifecycle assertion205 unchanged. Exact launch activation/cancellation/completion consumers and shared test cleanup reviewed. Coordinator9d834920 own classification independently checked; A-14772 five serial reds and A-14774 targeted local correction remain distinct from full evidence. C1–C4 done, runtime-unverified. Report ready for Coordinator verify all at frozendcc7e9fe0; prior A-14753/A-14769 remain failed, no duplicate task verify.
+
+### rev-26 · 2026-10-31T02:13:28.052Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1472-evidence-3
+commit: dcc7e9fe020b064f7decd070b0a38a984e3ca836
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14780: original94cba0ef/A-14779 full native0 clear, C1–C4 verified atdcc7e9fe0.7605IDs pair without duplicate/mismatch;6010ordinarypass/8reasonedskip+435separate loadpasses,722ordinaryfilepasses. T0/T1/T2/T3/Web0,T4unrun. Linuxx64Node24.21dropletc8lon1; actualHeadlessShell1248/156.0.8078.4. Own22base/70load, current+legacy restart, durable episode/journal, exact identity/injection and rendered Web/Neovim cases pass. Native Codex fresh-thread unchangedassertion205 passes3.205063596s; workload8/8 with17/16/8reads and positive SQL timer control. Report advisories retained; prior A-14753/A-14769 remain failed. Coordinator757c9449 authorized subsequent T-1475 merge/eight single-file checks and separate delta review; this verdict does not relabel future merged-head runtime.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-26 · 2026-10-31T02:17:20.260Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1472-source-6
+commit: 8dd23b345de5a7fa34d58d175e20925e5d158693
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14784: authorized T-1475/T-1487 dev merge delta clear, C1–C4 refreshed under Coordinator757c9449 disposition. Both skill sections verbatim once; auto-merged core/Sessions/Store preserve captured no-storage bridge disconnect, transport-only flush outcomes, coalesced deaf timers/exact postcommit injection and provisional launch ownership. Inherited verifier admission fields remain independent and dev-identical in their owned paths. A-14783 exact merged-head Darwin serial eight files106pass/0adverse + typecheck0. Original Linux full94cba0ef/A-14779 atdcc7e9fe0 carried with A-14780; no merged-head full/Web/T4 pass claimed. Prior reds remain failed. Fresh fetch/merge-tree then ready exact8dd23b345 citing94cba0ef; no additional full run implied.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-31T02:26:00.237Z
+
+Merged b0fea1aa5b6fe7471ca4bdd7da61ac49d84e9247 onto dev.
