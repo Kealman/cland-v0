@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1262
 branch: null
 created: 2026-10-30T06:38:19.300Z
-updated: 2026-10-31T05:19:44.996Z
+updated: 2026-10-31T08:06:25.796Z
 ---
 
 ## Goal
@@ -152,3 +152,24 @@ These are single samples per point on one machine, so they are not a distributio
 ### coord · 2026-10-31T05:19:44.996Z
 
 Live hub memory after restart #64, for the record: pid 79176 at 2026-10-30 21:07Z, 2 h 02 min after start, under a busy crew. RSS was 769 MB and footprint 1,255 MB (`footprint 79176`). For comparison, the pre-fix hub 17875 had a 5.3 GB footprint at 2 h 43 min, and hub 48336 had 8.2 GB at 88 min. These are single readings on one Mac.
+
+### coord · 2026-10-31T08:06:25.796Z
+
+Release conditions: evidence for the human's conditional approval (2026-10-30 14:40Z, Telegram msg remote-328802bf, recorded above).
+
+1. Every item landed or closed. `task list --under R-1465` has no open descendants, and the dry-run reports no refusal.
+   - Both epics are closed: E-1468 at 05:47Z and E-1466 at 06:05Z.
+   - The last item, T-1502, landed at df65ecc72. It was filed at 06:15Z for the race that reddened the first release cover.
+   - T-1264, T-1268, T-1457 and T-1481 were closed without a merge; the reasons are in the notes.
+2. Release covers are green.
+   - Linux droplet release cover cb18ecff (A-14850) at 20637bf7e, release occasion, 2 shards: 6,161 pass, 0 fail, 9 skipped, including T3, T4 and Web. The commits after it change only tracker files, `.cland/tasks/R-1465*.md`.
+   - Stage covers at 552255beb: Linux droplet 95712ae6 (A-14825; 6,151 pass, 0 fail) and macOS local 22d726c2 (A-14829, 2 workers; 6,159 pass, 0 fail). They closed both stages of E-1466 and E-1468.
+   - Periodic dev T3 3c7f31c4 (A-14844) at e5b310a78 was green: 4,810 pass.
+   - The first release cover 70e41a22 (A-14832) at e5b310a78 was red on one test. T-1502 fixed it.
+   - No full macOS cover ran after 552255beb. e5b310a78 changes one allowance owner string. T-1502's tests passed on macOS locally (33/33 focused; 70/70 native component cases over 10 runs).
+3. QA is clear.
+   - E-1466: qa-2026-10-31-677-1466-2 (A-14831) at e5b310a78, C1–C3. M4 readiness: heap 125.2 MiB, RSS 565.1 MiB. At rest: 130.8 / 560.1 MiB, within the 256/768 MiB report-only budget.
+   - E-1468: qa-2026-10-31-677-1468 (A-14810) at 7f0e3353b, 131 passes. The later commits do not touch its files; freshness was current at close.
+4. Dry-run notes are shown in topic-1262, as an artifact, at the release head.
+
+Informational: `npm run check:opencode` found OpenCode 2.2.5 against the tested 2.0.24, with 12 schema differences. Follow-up T-1501 does not block the release.
