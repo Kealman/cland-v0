@@ -1,0 +1,116 @@
+---
+title: 'v0.3.1: a fifth of the memory, and no silent Coordinator'
+description: 'v0.3.1 cuts the cland hub to about a fifth of its memory on our own project and makes sure a message to the Coordinator never silently goes undelivered. 25.5 hours from a voice note to the release, steered from a phone.'
+date: 2026-10-31
+release: v0.3.1
+tags: [retrospective, memory, reliability]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+v0.3.1 started as a voice note. On the first morning with [remote control](/log/v0-3-the-crew-on-your-phone/), the maintainer told the Coordinator from the phone that one hub took 2–3 GB of memory, and a second project's hub doubled that. 25.5 hours later, on October 31 at 08:07 UTC, the patch shipped.
+
+It does two things. The hub now needs about a fifth of the memory it did on our own project. And a message to the Coordinator can no longer sit undelivered without anyone knowing. That same first morning, one of the maintainer's Telegram answers waited 41 minutes for a Coordinator that looked busy and was not.
+
+The crew: a Coordinator on `claude-opus-5-5`, Implementers and Reviewers on `gpt-6.1-sol` through Codex, and a QA session that ran each epic's demo.
+
+## The hub's memory
+
+**Measured first.** Before any fix, the crew built a probe that runs a sealed hub on a scratch copy of this project's live state: about 1,460 tracker items, 14,000 artifacts and a 374 MB journal. At startup that hub held about 3.8 GB of heap. Two holders accounted for most of it.
+
+**The journal.** The hub read the whole journal into one string to rebuild its startup history. It now reads it in bounded steps. Heap after that step fell from 744 MiB to about 116 MiB.
+
+**Suite history.** The hub loaded and kept every archived test job. It now keeps only active jobs and summaries, and reads an archived job in full only when asked for it. Heap after that step fell from 3,567 MiB to 889 MiB.
+
+<BarChart
+  title="Before and after, on our own project's history"
+  legend={[
+    { name: 'before', color: 'muted' },
+    { name: 'after', color: 'teal' },
+  ]}
+  perRow
+  rows={[
+    { label: 'Live hub, 50 s after a restart', bars: [{ value: 4796, text: '4,796 MB', color: 'muted' }, { value: 969, text: '969 MB', color: 'teal' }] },
+    { label: 'Heap after the journal step', bars: [{ value: 744, text: '744 MiB', color: 'muted' }, { value: 116, text: '116 MiB', color: 'teal' }] },
+    { label: 'Heap after the suite-history step', bars: [{ value: 3567, text: '3,567 MiB', color: 'muted' }, { value: 889, text: '889 MiB', color: 'teal' }] },
+  ]}
+  caption="Each row is scaled on its own. Single samples on one Mac, not a distribution. The two step rows were each measured alone, in a startup run on the probe's copy."
+/>
+
+The figure that matters is the first row. After a restart on the fixed build, the hub that runs this project took 969 MB at 50 seconds and 943 MB at ten minutes. The hub before the fixes took 4,796 MB. Under a busy crew two hours later it was at 1,255 MB.
+
+QA measured the integrated build with the same probe: 125 MiB of heap and 565 MiB resident at readiness, and 131 MiB and 560 MiB after ten minutes at rest. A new memory budget report checks those two points against 256 MiB of heap and 768 MiB resident. For now it only reports. It does not fail a build.
+
+## A Coordinator that never goes silently deaf
+
+On the morning of October 30, the maintainer answered a question in Telegram, and the Coordinator got the answer 41 minutes later. Its session was idle, but a status poll had overwritten the idle signal with busy. The hub held messages for a busy session and released them only at the switch to idle, and that switch had already passed. Looking back through the journal, the crew found the same thing had happened to its own reports: eight messages to the Coordinator had waited between 3.6 and 10.7 hours.
+
+v0.3.1 closes that class:
+
+- A held message is delivered whenever the session is seen idle, and on a timer, not only on the switch to idle.
+- A relaunch leaves exactly one harness process. Anything left from an earlier launch is refused.
+- A session that cannot take messages for five minutes shows as `deaf` in `cland session list`, in the hub status and in the workbench, and you are told.
+- `cland session retry` forces a held message through.
+- The hub notices when the Claude daemon retires a session that sat idle for an hour.
+
+QA replayed the incident's sequence on fake clocks and fake harnesses. No real Claude daemon ran in those checks, so the five-minute bound comes from the fake clock, not from wall time.
+
+## Also in 0.3.1
+
+The Coordinator's retrospective of v0.3.0 proposed twelve process fixes. The maintainer took all twelve into this release. Among them:
+
+- `cland verify` runs the tier lint locally first, so a refusal costs seconds instead of a queue slot.
+- The merge queue checks queued items against each other when one is added, and a dropped item names the item it conflicts with.
+- A macOS test that fails a load-gate repetition but passed in recent full runs gets one automatic rerun.
+- Every test-suite log ends with one provenance footer.
+- The release asks for a conditional approval in daytime, so it no longer waits overnight.
+
+Smaller changes: a review request sent to the Reviewer role no longer waits while reviewers sit idle. A Telegram album of voice files gets every file transcribed. Re-running `cland setup` waits for a paired Discord or Telegram remote to reconnect before it reports. And the landing page shows every feature in one grid.
+
+## Steered from a phone
+
+This was the first release the maintainer steered from a phone. Three messages set its scope:
+
+1. 06:37 UTC, the voice note: a patch to cut the hub's memory.
+2. 10:16 UTC, in Telegram: take all twelve retrospective items too.
+3. 14:40 UTC, in Telegram: "Do everything: every bug you find, the tech debt and the rest, take it into 0.3.1, and when nothing is left, release."
+
+The third message was the release approval, given in advance and on conditions: every item landed or closed, the release test run green, QA clear, and the release notes shown before the tag. The Coordinator checked those conditions itself. The maintainer's last message of the day came at 21:08 UTC, and 11 of the 40 landings happened overnight after it.
+
+<Stats
+  items={[
+    { value: '25.5 h', label: 'from the voice note to the release' },
+    { value: '40', label: 'tasks landed, and 3 more closed with nothing left to change' },
+    { value: '3.7 min', label: 'of waiting on the human on the critical path', was: 'v0.3.0: about 13 h' },
+    { value: '6,161', label: 'tests passed, 0 failed, on the release run on Linux cloud machines' },
+    { value: '$10.69', label: 'of cloud test machines: 146 suite runs', was: 'v0.3.0: $36.24 over 92 h' },
+  ]}
+/>
+
+Review stayed strict: 240 verdicts for 40 tasks, and 35% of them were not clear, against 32% in v0.3.0. A task took a median of 2.14 hours from claim to landing, about twice as long as in v0.3.0, because this release was mostly hub internals that needed the full slow test tier.
+
+## The last four and a half hours
+
+The last task in scope landed at 03:31 UTC. The release went out at 08:07. A clean finish would have taken about an hour. Three things took the rest:
+
+- **One byte.** The macOS full run went red on a test socket path of 105 bytes. macOS allows 104. The fix took 77 minutes to land, and then both full runs had to go again.
+- **A race on a slow machine.** The first release run went red on one test: re-running `cland setup` read the Discord remote's state once, while it was still reconnecting. That was a real bug, so it was fixed, not retried.
+- **A landing nobody heard about.** The merge queue landed that fix and told no one. The Coordinator found out from a heartbeat 38 minutes later. That one is filed for the next release.
+
+## Known issue
+
+After the release, the maintainer noticed that outbound Telegram had stopped: a send interrupted on the evening of October 30 left the Telegram remote stuck, and it sent nothing more. Discord and the workbench kept working. A fix is in progress, and until it ships, Discord is the remote to rely on.
+
+## What we have not proven
+
+- The memory figures are single samples on one Mac. Hub memory on Linux, and on projects of other sizes, was not measured.
+- The memory budget is report-only, and one earlier probe saw a short spike above it at rest.
+- The delivery fixes were checked on fake clocks and fake harnesses, not against a real Claude daemon.
+- The OpenCode adapter has not been re-tested against OpenCode 2.2.
+
+## What's next
+
+The Telegram fix comes first. After that: a landing that wakes whoever queued it, and two report-only checks from this release that switch to enforcing once their recorded results show what they would have caught. There is no date. Like every release, it ships when the maintainer says so.
+
+To upgrade: `brew upgrade cland`, or see the [install docs](/docs/install/).
