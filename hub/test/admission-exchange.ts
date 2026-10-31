@@ -4,6 +4,8 @@ import { createServer } from 'node:net';
 import type { Socket } from 'node:net';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
+import { mkdtempSync, realpathSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { type Clock } from '../src/hub/clock.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -43,7 +45,10 @@ export function admissionExchange(t: TestContext, root: string, inspect: (signal
       }
     });
   });
-  const socket = join(root, 'admission.sock');
+  // TMPDIR may be a suite root or macOS's long per-user path. Keep this
+  // private listener independent of it, owned by the same close/drain barrier.
+  const socketRoot = mkdtempSync(join(realpathSync('/tmp'), 'ca-'));
+  const socket = join(socketRoot, 's');
   const dispose = () => disposal ??= (async () => {
     closed = true;
     abort.abort(new Error('admission exchange closed'));
@@ -56,6 +61,7 @@ export function admissionExchange(t: TestContext, root: string, inspect: (signal
     // Inspection has no cancellation port: stop admission and join its real work.
     // Failure retains the root via the same guard; a timeout never means drained.
     await within(Promise.all([...pending, ...nativeClosed, listenerClosed]), 45_000, options.clock, incomplete);
+    await rm(socketRoot, { recursive: true, force: true });
     drained = true;
     t.signal.removeEventListener('abort', cancel);
   })().catch(error => { disposal = undefined; throw error; });
@@ -68,6 +74,10 @@ export function admissionExchange(t: TestContext, root: string, inspect: (signal
     socket, signal: abort.signal, dispose, drained: () => drained,
     async listen() {
       if (closed) throw new Error('admission exchange closed');
+      if (Buffer.byteLength(socket) >= 104) {
+        await dispose();
+        throw new Error('admission socket path must be under 104 bytes including space for the NUL');
+      }
       const ready = new Promise<void>((resolve, reject) => {
         server.once('error', reject);
         server.listen({ path: socket, signal: abort.signal }, () => { server.removeListener('error', reject); resolve(); });

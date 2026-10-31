@@ -117,7 +117,9 @@ for (const consumer of ['duration identities', 'test lint'] as const) {
 for (const setup of ['omitted', 'aborted', 'held inspection'] as const) {
   test(`installed admission cleanup owns ${setup} setup`, async t => {
     const { admissionExchange } = await import('./admission-exchange.ts');
-    const root = await tempProject(t, 'cland-admission-owner-');
+    // Keep the real listener regression even when the runner's TMPDIR is short.
+    const parent = await tempProject(t, 'cland-admission-long-root-'.repeat(3));
+    const root = await tempProject(t, 'cland-admission-owner-', parent);
     if (setup === 'held inspection') {
       const control = await heldObservation(t, root);
       await control.run(receipt => receipt);

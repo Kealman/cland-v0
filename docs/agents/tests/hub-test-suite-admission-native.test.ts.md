@@ -18,6 +18,14 @@ active sockets and joins native close plus the actual inspection within a separa
 45 s bound. Inspection has no cancellation port, so its work is joined rather than
 detached. An incomplete drain retains the root. Omitted setup, aborted listener
 setup and an explicitly held inspection exercise those cleanup obligations.
+These controls nest the project under a deliberately long temporary parent.
+The exchange owns a separate private `ca-XXXXXX/s` listener directory directly
+under realpath(`/tmp`), independent of TMPDIR (including macOS's long user temp
+directory). Setup refuses paths of 104 bytes or more before binding; disposal
+removes that directory only after the same inspection, child and socket drain.
+For macOS release evidence, run this file alone with TMPDIR set to a disposable
+suite-style root at least as long as `/private/tmp/cland-suite-<uuid>/`, using
+`fixtureEnvironment` for the runner's isolated HOME, XDG and Git environment.
 
 Both cases require exit 1, empty stdout, and one stderr line naming the unavailable
 TypeScript compiler and unknown check, with no stack/module-resolution dump.
