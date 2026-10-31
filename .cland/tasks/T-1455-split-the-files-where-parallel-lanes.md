@@ -3,7 +3,7 @@ id: T-1455
 kind: task
 title: Split the files where parallel lanes keep conflicting
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 1
 labels:
@@ -27,7 +27,7 @@ blocked_by:
 topic: topic-1257
 branch: t/T-1455-split-the-files-where-parallel-lanes
 created: 2026-10-30T05:44:57.189Z
-updated: 2026-10-30T23:52:44.739Z
+updated: 2026-10-31T02:33:04.825Z
 ---
 
 ## Summary
@@ -52,3 +52,42 @@ Expanded consumer audit: cli/help.ts, task.ts, task-import.ts, crew/doctor/open/
 ### impl-1455 · 2026-10-30T23:52:05.827Z
 
 Exact usage consumers from field/importer search: hub/src/cli/{task,merge,web,release,artifact,suite,models,remote,task-import,subscriptions,hook,session,role,hub,setup,crew,open,inbox,worktree,account,init,help,qa,qa-lint,publish,doctor,executor,push}.ts; hub/src/qa-lint.ts; hub/test/{skills-onboarding,cli-usage,cli-usage-compatibility,cli-usage-merge}.test.ts and cli-usage-fixture.ts. All retain facade exports/bytes; cli-usage-merge migrated from monolithic source-row parsing to per-command modules and passed both native merge/object merge cases. Adapter files named usage.ts are unrelated harness accounting modules, unaffected. Command fixture commands.json unchanged. New generated-index check added to test:static in report mode; old membership guard remains enforced.
+
+### rev-26 · 2026-10-31T02:30:46.219Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261031-1455-source-1
+commit: 7b5ed74428e20f167379d4bce3a66c1e937e24ba
+scope: full
+findings: [{"severity":"medium","text":"M1: owning guide still instructs editing monolithic usage.ts table rows/separators, removed by this change. hub/README.md2362–2376 also retains old static-only/≤10 help import claim while actual guard separates36pure help modules from implementation budgets. Replace superseded current guidance with per-command facade/composition and correctly scoped counts; retain unchanged help bytes/guards.","file":"docs/agents/tests/hub-test-cli-usage-merge.test.ts.md","line":3}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14790: consolidated full source not clear for M1 only. Provenance migration retains every nonempty historical entry; facade/fixtures, derived-index report mode, native merge/squash fixture and installer ownership reviewed. C1 remains runtime-unverified; local A-14787 targeted summaries do not establish configured full evidence. Lead's draft M1 fixes not part of reviewed7b5ed7442. Complete current docs correction, fresh pushed-head source review before Coordinator verify all; preserve all semantic/compatibility/native assertions.
+
+### rev-32 · 2026-10-31T02:32:33.286Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1455-source2
+commit: 649a6d4d32e3f2499ebbec237daa6221dec574c5
+scope: full
+findings: [{"severity":"low","text":"L1: guide says four real CLI launches, but cli-help.test.ts has five: full help, task criterion, remote, hub, session. Adjacent guide omits remote/understates frozen comparisons; source header also says four. Correct count/list/header together; nonblocking documentation accuracy, runtime unchanged.","file":"docs/agents/tests/hub-test-cli-usage-merge.test.ts.md","line":5}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Successor source clear A-14793, M1 blocking drift closed. Exactly3docs files since rev-26/A-14790 predecessor, no runtime/test/fixture/help-byte/dev merge changes. Per-command ownership/facade/group composition match source; 36pure help modules separated from unchanged <=10/17/21 implementation budgets. Prior observed39/51/56 remain attributed local measurements. One low L1 launch count/list recorded; lead preparing correction. C1 remains runtime-unverified; request's docs4/4 local summary and priorA-14787 not configured full proof. Any count-fix changed head needs fresh source review before Coordinator-owned verify-all handoff. No Reviewer workload.
+
+### rev-32 · 2026-10-31T02:33:04.825Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1455-source3
+commit: 1cd10dea577609e0093a8713a04572bb329b1e35
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source3 clear: L1 count/list/header closed. Successor diff is3docs files plus cli-help first comment only; five actual launches/four frozen comparisons now match source. Executable statements/assertions/fixtures/help/runtime unchanged; no dev merge, diffcheck clean. M1 corrected ownership/facade/import-budget guidance retained. Local Darwin cli-help5/5/docs4/4 are summary validation, not configured full evidence. C1 remains runtime-unverified; ready for Coordinator-owned verify-all handoff then original-record final review. No Reviewer execution.
