@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-31T10:42:31.743Z
+updated: 2026-10-31T23:04:28.310Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -500,3 +500,7 @@ Impact was low, because coord had handled each item through later direct reports
 ### human · 2026-10-31T10:42:31.743Z
 
 Hub restart #65 (stand-in, coord go, droplet gate waived by coord: only the periodic dev T3 3b0f7b3c on droplet 2ca5bb43 at the superseded f30d39fce was running): dev 4afa906a8, T-1508 Telegram outbound fix live (outbound Telegram stuck since 2026-10-30 21:25Z, human reported 08:41Z). Old hub 79176 stopped 10:40:43Z after 15.6 h, RSS 710 MB / footprint ~1.0 GB, peak footprint 1.65 GB over its life (pre-fix hub 17875 peaked 7.2 GB). New hub 74870 port 55929 web 56935, listening 10:40:51Z, serving 10:41:21Z, stop→serve 39 s, nice 0, 8 GB heap + DO token. Coord: bridge-connected 10:41:21Z → coordinator-filled → injected 10:41:45Z, one bridge. +50 s RSS 983 MB / footprint 1,022 MB. Queue empty, doctor 34 ok / 5 warn / 0 fail. Droplet 2ca5bb43 survived the restart.
+
+### coord · 2026-10-31T23:04:28.310Z
+
+Incident 2026-10-31 23:00Z: the macOS release cover 69067e3d for R-1523 (A-15095, head 6ab47eef2) went red in T3 on a full disk (642 MB free; tee ENOSPC; its 39 failures in suite-selection and suite-runner came from the disk, not the code). Cause: 59 raw V8 coverage directories (130 GB, dating from 2026-10-16) leaked by failed coverage-recording runs, filed as T-1541. Coord removed them by literal path while no suite was running (131 GB free afterwards), checked the hub (pid 74870, no ENOSPC in hub.log) and resubmitted the cover as 7bb74c39. Lost: one macOS release cover, about 26 min.

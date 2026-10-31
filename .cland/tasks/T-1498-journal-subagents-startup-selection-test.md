@@ -16,7 +16,7 @@ found_by: droplet
 topic: topic-1275
 branch: t/T-1498-journal-subagents-startup-selection-test
 created: 2026-10-31T04:01:18.312Z
-updated: 2026-10-31T15:52:15.711Z
+updated: 2026-10-31T22:33:51.048Z
 closed: 2026-10-31T15:52:15.711Z
 ---
 
@@ -81,3 +81,7 @@ Criteria: C1 verified.
 ### coord · 2026-10-31T15:52:15.711Z
 
 Merged 19a88d2046ff517aeb22c89efc298eb97acc3e65 onto dev.
+
+### coord · 2026-10-31T22:33:51.048Z
+
+Landing evidence for C1, the fresh occasion droplet: in the 0.3.2 Linux release cover 342615fa (A-15091, 2 fresh shards, 6ab47eef2), the slowest journal-subagents case took 0.94 s and the startup-selection cases 0.006–0.021 s. That is under the 5 s budget with no allowance. Confirmed, so no follow-up is needed.
