@@ -2,8 +2,8 @@
 id: T-1498
 kind: task
 title: journal-subagents startup-selection test is slow on fresh occasion droplets (11.7 s soak, 13.8 s stage shard)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ found_by: droplet
 topic: topic-1275
 branch: t/T-1498-journal-subagents-startup-selection-test
 created: 2026-10-31T04:01:18.312Z
-updated: 2026-10-31T15:26:11.574Z
+updated: 2026-10-31T15:52:15.711Z
+closed: 2026-10-31T15:52:15.711Z
 ---
 
 ## Summary
@@ -31,7 +32,9 @@ Confirm the cause by comparing per-run machine age, shard and first-T1 position 
 
 ## Acceptance criteria
 
-- [ ] C1. On the item's task verify on a Linux droplet, the identity runs within its 5 s per-test budget without the T-1497 allowance, with its buffered-input assertion unchanged, and the item records the measured cause or states that cold I/O stays unproven; the fresh occasion-droplet confirmation is landing evidence from the 0.3.2 release cover, not a pre-merge criterion.
+- [x] C1. On the item's task verify on a Linux droplet, the identity runs within its 5 s per-test budget without the T-1497 allowance, with its buffered-input assertion unchanged, and the item records the measured cause or states that cold I/O stays unproven; the fresh occasion-droplet confirmation is landing evidence from the 0.3.2 release cover, not a pre-merge criterion.
+  - done: impl-1498 · 2026-10-31T15:44:21.634Z
+  - verified: rev-31 [reviewer] · run rev-20261031-1498-final1 · 2026-10-31T15:45:13.028Z · commit c315150b330d2501f4041817dfdf590247787940
 
 ## Comments
 
@@ -55,3 +58,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear A-14937, Standards 0 / Spec 0. Final three-file merged-head diff bounds fixture to16–17MiB, preserves exact bytesRead/selected-tail and unchanged <1MiB buffering assertions, adds diagnostic-only setup/scan times, removes old identity baseline and T-1497 allowance, and updates guide without production/shared-contract changes. Original historical ordinary timing/position facts independently match A-14799/A-14811/A-14806; cold I/O remains unproven. A-14932 local red/green/mutation summaries retain scope; no Linux/new-head runtime claim yet. Artifact wording correction: old input315,490,346 bytes is approximately301MiB, not315MiB. C1 remains runtime pending under Coordinator's revised task-Linux criterion; fresh occasion confirmation is later release landing evidence. Freeze this head for one mode-free droplet verification, then original-record final evidence with named budget/load outcomes. No Reviewer workloads.
+
+### impl-1498 · 2026-10-31T15:44:13.379Z
+
+C1 runtime proven by original run01296a7b/A-14955 at reviewed c315150b330d2501f4041817dfdf590247787940/tree9c102dbffe013368a02673c60a0d53677087984c. Renamed identity ordinary pass0.163348297s (lines2099–2105), no allowance; bytes17104938=bytesRead, peak527872<1MiB, setup44.761527ms scan113.736669ms. Five load repetitions pass0.159076225,0.176561912,0.194726387,0.159897672,0.160674728s;5/5 receipt2358. Native exit0;4443ordinary tests pass,0fail/cancel/skip/todo. Linuxx64 droplet c-8lon1 Node24.21.0, noncached/task occasionnull. T0,T1,all fallbackT2 inclNeovim,Web complete;T3/T4 unexecuted/deferred. Browser actual HeadlessShell1248 Chrome forTesting156.0.8078.4. Host typecheck at same tree not repeated remotely. Tier budgets/report-only advisories remain in original log; no new gate. Droplet lifetime989s cost$0.0687. Cold I/O remains unproven; fresh occasion confirmation remains Coordinator-owned0.3.2 landing evidence per revisedC1. Requesting original-record final evidence review.
+
+### rev-31 · 2026-10-31T15:45:13.028Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261031-1498-final1
+commit: c315150b330d2501f4041817dfdf590247787940
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear A-14956, Standards 0 / Spec 0. Original A-14955/run01296a7b at the unchanged source-clear head confirms C1: renamed identity ordinary pass 0.163348297s; diagnostic bytesRead17104938 and peak527872, unchanged <1MiB assertion; all five load passes 0.159076225–0.194726387s. Old baseline/allowance absent; no replacement allowance. Independently parsed4443 ordinary passes plus130 separate load passes, no adverse outcomes, duplicate IDs or unmatched starts/finishes. T0/T1/fallback allT2 including Neovim/Web completed; T3/T4 unrun. Host typecheck reuse, original browser/Linux provenance and advisory budget/lint diagnostics retained. Cold I/O remains unproven; fresh occasion confirmation remains later release landing evidence under revised C1. C1 verified; no Reviewer workloads.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-31T15:52:15.711Z
+
+Merged 19a88d2046ff517aeb22c89efc298eb97acc3e65 onto dev.

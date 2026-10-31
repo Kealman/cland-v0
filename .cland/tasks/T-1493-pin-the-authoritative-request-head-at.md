@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1269
 branch: t/T-1493-pin-the-authoritative-request-head-at
 created: 2026-10-30T19:25:08.372Z
-updated: 2026-10-31T15:11:58.846Z
+updated: 2026-10-31T15:35:16.780Z
 ---
 
 ## Summary
@@ -26,7 +26,8 @@ Origin: impl-1487's T-1487 scope note (2026-10-30). T-1487 kept the ordered-rece
 ## Acceptance criteria
 
 - [x] C1. A role-addressed review or QA request records the head it was admitted for, and pending retirement can compare a later verdict's commit with that head (same, descendant, or unrelated), with legacy text-only requests still accepted.
-  - done: impl-1493 · 2026-10-31T15:10:30.286Z
+  - verified: rev-32 [reviewer] · run rev-20261031-1493-evidence1 · 2026-10-31T15:31:36.831Z · commit eb522d7bfb66b361bfcb5ff9c95dc7d375ebbce0
+  - done: impl-1493 · 2026-10-31T15:33:46.694Z
 
 ## Comments
 
@@ -88,3 +89,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source3 clear, A-14917. M1–M4 closed at source: legacy NULL stays unpinned; indexed monotonic receipt history retained; separate durable retry pages permit forward coverage progress; conservative verification ancestry resolves both objects and positive merge-base under an isolated cache mode, preserving stage-cover defaults. New exact-after40-unavailable and object/ancestry-arrival/reopen controls retain unknown-only/definite-unrelated assertions. No remaining Standards/Spec finding. C1 runtime verification pending; one unchanged-head mode-free configured verify then original-record final evidence review. No Reviewer execution or full-all request.
+
+### rev-32 · 2026-10-31T15:31:36.831Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1493-evidence1
+commit: eb522d7bfb66b361bfcb5ff9c95dc7d375ebbce0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence clear, A-14945 from a02f0750/A-14940 and source3/A-14917. All 4,477 ordinary test passes and 519 files pair, no adverse/unmatched facts. Routing 75 ordinary passes; 37 new generated identities each once plus five passing repetitions (185 separate repetitions). Exact fresh reviewer/QA pins, same/descendant/unrelated retirement, legacy NULL/prose, queued restart, monotonic history, >32 unavailable pages and object-arrival/reopen controls establish C1. Selected T4 one base pass, no repetitions; T0/T1/all fallback T2/T4/Web complete, no T3 phase. Footer candidate hash reproduced; Linux droplet and Headless Shell1248, host gate reused. Three live-arrival cases 4.09–4.26s exceed report-only T2 2s; no enforce/budget clearance or allowance inferred. Lint/ratchet/skip-reason checks report-only; no skips. No source change or Reviewer execution.
+
+Criteria: C1 verified.
+
+### impl-1493 · 2026-10-31T15:33:34.435Z
+
+Coordinator-authorized merge after final evidence1 clear: a27fee4a29c4b44b065bf8597f63e669fc83c1c9 merges origin/dev b126dff13d3b2931dda67374cbfd5264350f6258 into reviewed eb522d7bf. Only conflict resolutions were appended implement skill and hub README sections; both sides retained verbatim. Item-owned hub/src, shared/wire and verifier-routing test have no diff from eb522d7bf. npm run typecheck passed at merged head; touched verifier-routing.test.ts 75/75 passed locally macOS. Searched hub/test and nvim/test for changed section headings and distinctive prose: no direct matching expectations. Original full configured receipt remains A-14940 at eb522d7bf, final evidence A-14945. No new mode-free verify per Coordinator decision 432b26b9; Coordinator owns planned verify all at merged head. Requesting merge-delta review.
+
+### rev-32 · 2026-10-31T15:34:44.062Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1493-delta1
+commit: a27fee4a29c4b44b065bf8597f63e669fc83c1c9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear, A-14950. Tree 42c8d643eeba9f09ff90ad049210c75de4c1ad78; parents eb522d7bf + b126dff13. Item-owned runtime, wire and routing test bytes unchanged from source3. README/implement append resolutions retain each new section; incoming nonconflict files exact dev parent. A-14948 reports merged-head local typecheck/routing 75/75 and prose searches; summary is not raw configured evidence. Original A-14940/A-14945 remain predecessor-only with report-only overruns and native/platform limits. C1 current-head runtime pending Coordinator432b26b9's required verify all; no new mode-free or final-ready claim.
+
+### impl-1493 · 2026-10-31T15:35:16.780Z
+
+Source-clear build handed to Coordinator for directed verify all: pushed a27fee4a29c4b44b065bf8597f63e669fc83c1c9, delta clear A-14950. Fresh origin/dev fetch b126dff13d3b2931dda67374cbfd5264350f6258; merge-tree exit 0 and tree 42c8d643eeba9f09ff90ad049210c75de4c1ad78, no conflicts; clean worktree. Merged-head local typecheck and 75/75 targeted routing tests pass. Merged-head full verification/final runtime evidence remain Coordinator-owned and pending; predecessor configured receipt A-14940 and final evidence A-14945 are not relabelled as merged-head results. No new mode-free verify. Claim retained until merge.

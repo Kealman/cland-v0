@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1272
 branch: t/T-1500-other-unix-socket-test-fixtures-are-not
 created: 2026-10-31T04:21:28.348Z
-updated: 2026-10-31T15:17:46.763Z
+updated: 2026-10-31T15:35:59.084Z
 ---
 
 ## Summary
@@ -82,3 +82,29 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14921 full source3 clear: remaining M1 closed by root-owned actual nodes plus reciprocal short aliases, recoverable by independent fixture and public suite owners after existing native/root-identity drainage. All eight revision paths read; no new process/quarantine authority, global sweep or external recursive deletion. Native separate-worker controls require lstat alias deletion; normal/killed-listener/incomplete controls and deep UTF8 bind remain. C1 done/runtime-unverified, no verified mark. A-14918 raw59-file + two final5-case runs/A-14919 Mac provenance remain targeted local evidence; earlier intermediate timeout remains incomplete. Submit one mode-free configured verify at frozen35d278d9f, then original-record final review. No reviewer tests/dev merge.
+
+### rev-26 · 2026-10-31T15:35:13.111Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-evidence-1
+commit: 35d278d9f9ef740a00692c7e331f435831509c8e
+scope: evidence
+findings: [{"severity":"medium","text":"Original A-14947 fails native-bind consumer: helper realpathSync throws ENOENT synchronously on deliberate absent root before setup owner/listen. Preserve a genuine native bind-error and disposal control under portable socket ownership; do not relabel helper failure as native refusal. Original cec33b90 remains failed; successor source4 is separate.","file":"hub/test/fakes/legacy-remote-hub.ts","line":26}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-14953 original-record not-clear: actual ENOENT realpath stack quoted before classification, paired native-bind fail14476→14477/file14559. Ordinary3759pass+1fail/3760test, separate10loadpasses; T0/T1green,T2red,Neovim/T3/T4/Webunexecuted,browsernull. Linuxdroplet exact35d278d9f/candidate7f99a23dd vsGit onlyexcludedtracker/rules. Report-only advisories unchanged. C1budget fact done/runtime-unverified, no unrelated failure mark. New6aaba7080 source4 request received during audit will be reviewed separately; no green relabelling.
+
+### rev-26 · 2026-10-31T15:35:59.084Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-source-4
+commit: 6aaba7080ddc9ad1769f4b0cb119ca8c10f10646
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14954 source4 clear, only remote-cli test+guide changed. Existing owned root and occupied shared portable endpoint now produce genuine native EADDRINUSE through setup/disposal; listening=false/empty peers/writers assertions and bounds retained, no helper/process authority changes. Source3 recovery/path budget source audit A-14921 unchanged. A-14951raw23/23/nativeexit0+A-14952Macprovenance/typecheck/lint summary reviewed; earlier59file evidence remains prior-head. Originalcec33b90/A-14947remainsred, laterphasesunexecuted. C1done/runtime-unverified. One configured mode-free retry at frozen6aaba7080 then original generated-case/native evidence review; no dev merge.

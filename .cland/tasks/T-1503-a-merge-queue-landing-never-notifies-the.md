@@ -3,7 +3,7 @@ id: T-1503
 kind: task
 title: A merge-queue landing never notifies the session that enqueued the item
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1268
 branch: t/T-1503-a-merge-queue-landing-never-notifies-the
 created: 2026-10-31T08:09:11.590Z
-updated: 2026-10-31T15:24:31.258Z
+updated: 2026-10-31T15:31:16.408Z
 ---
 
 ## Summary
@@ -111,3 +111,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14933 original-record evidence clear (corrects A-14931's uncertain T4 anchor to22722→22723). Original4bf2d597/A-14928 nativeexit0 at exact source3 head;5036 complete matching start/finish identities,4447ordinary test passes+519file passes, separate35loadtest+35loadfile passes, zero adverse/duplicates/missing; five failure arrays empty. Seven generated landing/recovery cases each base1+distinct sequential load5/5. Pinned source rechecked exact item/topic/commit/batch/recipients/one-frame assertions, rename/reuse/shared/human/refusal/null-admission/startup/late-recipient same-message controls. C1/C2 verified. Component fakeGit/LocalExecutor seam, no native-dev landing claim. T0host/T1/allfallbackT2inclNeovim/selectedT4once/Web0;T3/otherT4unexecuted. Remote typecheck reusedhost. Candidate4a56dc5d vsGitd62bc differs only1525excludedtracker/rulespaths. Linuxx64 dropletc8lon1Node24.21/Nvim.12.5; actualisolatedShell1248Chrome156.0.8078.4;cache/occasionnull;skips[];budget/lintreportmode122/59zero refusalsT1484advisory retained. Coordinator5606bfbb disposition preserves original head evidence; authorized later devmerge/delta and Coordinatorverifyall still outstanding, no new-head green claim.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-31T15:31:16.408Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1503-source-4
+commit: 4cd6434ce60f3249bbdc69fe31dd06e6b9dbb4e3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14944 authorized merge source delta clear. Parents2fcd2ffd8+b126dff13;tree2b3c7a156. Own production/test/help/frozen bytes identical to source3, all imported code/fixtures match dev exactly, README/implement sections preserved verbatim with no markers; shared guides compose both. No auto-merged task behavior change. Reviewer remerge-diff sandbox temp-dir failure explicitly disclosed; successful combined/parent byte comparisons establish delta. A-14941 local Mac typecheck/queue38/help26 summary remains targeted, not current Linux/all receipt. C1/C2 original-head verified A-14933 remain tied2fcd2ffd8; fresh runtime marks pending Coordinator-owned verify all at4cd6434ce per5606bfbb, no new task mode-free verify. Findings[].

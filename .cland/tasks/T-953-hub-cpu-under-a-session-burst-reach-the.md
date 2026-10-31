@@ -3,7 +3,7 @@ id: T-953
 kind: task
 title: "Hub CPU under a session burst: reach the ≥50 % CPU target with presence/visibility batching (after T-768's statement cache)"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - needs-triage
@@ -11,9 +11,9 @@ assignee: null
 parent: R-1523
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-953-hub-cpu-under-a-session-burst-reach-the
 created: 2026-10-20T09:44:48.962Z
-updated: 2026-10-31T14:43:41.406Z
+updated: 2026-10-31T15:52:33.077Z
 ---
 
 ## Summary
