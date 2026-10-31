@@ -2,8 +2,8 @@
 id: T-1504
 kind: task
 title: test:tiers refuses a duration allowance owned by an epic
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1273
 branch: t/T-1504-test-tiers-refuses-a-duration-allowance
 created: 2026-10-31T08:18:54.263Z
-updated: 2026-10-31T15:24:38.803Z
+updated: 2026-10-31T16:20:19.074Z
+closed: 2026-10-31T16:20:19.074Z
 ---
 
 ## Summary
@@ -30,9 +31,13 @@ E-1466 owned the measure-memory analyzer allowance, and `task close E-1466` was 
 - [x] C1. `test:tiers` refuses an allowance whose owner is an epic, with the same message shape as the task-owner refusal, naming the allowance key and a standing container to use instead.
   - done: impl-1504 · 2026-10-31T14:51:56.695Z
   - verified: rev-32 [reviewer] · run rev-20261031-1504-evidence1 · 2026-10-31T15:18:44.332Z · commit a830e2b73507e2ac60eabd83a1d40e8df30e1544
+  - verified: rev-32 [reviewer] · run rev-20261031-1504-evidence2 · 2026-10-31T16:08:56.373Z · commit e4ec52be8f8504548fefdf9bed7d4018323b63c3
+  - verified: rev-32 [reviewer] · run rev-20261031-1504-delta2 · 2026-10-31T16:13:27.561Z · commit c3d85e322b2f778c831878b645541ce166666765
 - [x] C2. The existing allowances in `hub/test/durations.json` pass the new check, or are re-owned in the same item with their added/expires/reason kept.
   - done: impl-1504 · 2026-10-31T14:51:57.345Z
   - verified: rev-32 [reviewer] · run rev-20261031-1504-evidence1 · 2026-10-31T15:18:44.332Z · commit a830e2b73507e2ac60eabd83a1d40e8df30e1544
+  - verified: rev-32 [reviewer] · run rev-20261031-1504-evidence2 · 2026-10-31T16:08:56.373Z · commit e4ec52be8f8504548fefdf9bed7d4018323b63c3
+  - verified: rev-32 [reviewer] · run rev-20261031-1504-delta2 · 2026-10-31T16:13:27.561Z · commit c3d85e322b2f778c831878b645541ce166666765
 
 ## Comments
 
@@ -84,3 +89,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta source clear, A-14934. Actual tree70c5ea3373f068590966b1646dccfd2175d66380; parents a830e2b73+da255b5d0. All own nonREADME paths exact predecessor; incoming nonREADME files exact dev parent. README preserves OpenCode and standing-owner sections once, with prior approved owner wording. A-14930 supplies local summary typecheck/246passes, not original raw capture/configured run. OriginalA-14920/A-14922 remain predecessor-only with R-1523 generated-output provenance limit. C1/C2 current-head runtime not refreshed; Coordinatorb371793f requires full all run at merged head after source clear. No extra mode-free or final-ready claim.
+
+### rev-32 · 2026-10-31T16:08:56.373Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1504-evidence2
+commit: e4ec52be8f8504548fefdf9bed7d4018323b63c3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record evidence2 clear, A-14973. Coordinator all e3c95e1a/A-14972 at exact delta-cleared e4ec52be8: 6,068 matched ordinary passes, 8 reasoned skips, 722 file passes; separate 140 load tests/files; no adverse/unmatched facts. T0/T1/T2/T3/Web exit 0, no T4 phase. C1 task/epic and C2 shipped-manifest controls each pass once plus five repetitions (max 2.313236351s); all eight touched files 246 ordinary passes. Footer candidate tree reproduced, Linux droplet/Headless Shell1248, host gate reused. Lint/budgets/ratchet report-only; eight macOS/OpenCode availability limits retained. No generated stanza appears in this all run; predecessor R-1523 provenance limitation remains unresolved, no new host-selector proof inferred. C1/C2 renewed at e4ec only; later Coordinator-authorized docs merge requires delta review, no extra all requested.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-32 · 2026-10-31T16:13:27.561Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1504-delta2
+commit: c3d85e322b2f778c831878b645541ce166666765
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final delta2 clear, A-14978. Coordinator3b5c4b4d explicitly carries full e3c95e1a/A-14972 at e4ec52be8 for unchanged code, with merged checks/delta and no new all. Own runtime/regressions unchanged; skill conflict retains both parents; inherited manifest removes one retired baseline/allowance, leaves 356 entries/budget unchanged. A-14976 original nine logs match retained originals byte-for-byte; eight serial native test exits 0, 246 passes, current C1/C2 exact controls positive. Typecheck capture limit retained: complete successful-check output through final hooks, no errors, but native npm numeric exit not separately captured because tail followed npm; shell 0 is not presented as npm 0. C1/C2 refreshed by authorized carry plus original targeted receipts, not new-head full run. Preserve full-run eight skips/no T4/report-only budgets and predecessor R-1523 output-provenance limitation.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T16:20:19.074Z
+
+Merged 4547eaa46802db8b5b1e482872054fe058998879 onto dev.

@@ -3,7 +3,7 @@ id: T-1505
 kind: task
 title: Guard tests that run only in a build step also belong to a verify tier
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: R-1523
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1505-guard-tests-that-run-only-in-a-build
 created: 2026-10-31T08:18:54.391Z
-updated: 2026-10-31T14:43:38.271Z
+updated: 2026-10-31T16:20:34.210Z
 ---
 
 ## Summary

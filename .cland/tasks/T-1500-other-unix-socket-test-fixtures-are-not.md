@@ -3,7 +3,7 @@ id: T-1500
 kind: task
 title: Other Unix-socket test fixtures are not safe under a deep TMPDIR on macOS
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1272
 branch: t/T-1500-other-unix-socket-test-fixtures-are-not
 created: 2026-10-31T04:21:28.348Z
-updated: 2026-10-31T15:54:12.747Z
+updated: 2026-10-31T16:05:51.164Z
 ---
 
 ## Summary
@@ -124,3 +124,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-14962 successor original220d380c/A-14958 at exact6aaba7080 independently audited. 5086matching pairs,4536ordinarytest+530file passes,separate10loadtest+10loadfile passes,no adverse/missing/duplicates;sevenfailurearrays[]. C1verified: deep multibyteTMPDIRnativebind andprivacy eachbase+5sequentialloadpasses; correctednativeEADDRINUSE14504→14505 and all five normal/killed/incomplete/separate-allocator/public-sweep lifecyclecasespass. T0host/T1/allfallbackT2inclNeovim/selected10T3files/selectedT4once/Web0;remainingtiersunexecuted,T4repsskipped. T3duration71identities50.597s/T4one11.716s excludingmachinewait,notrepeat/full-allclaims. Linuxx64dropletc8lon1Node24.21/Nvim.12.5,actualShell1248Chrome156.0.8078.4;candidate41ac vsGitd3e2 only1525excludedtracker/rulespaths;cache/occasionnull/skips[];reportadvisoriesretained. MacA14918/19 remainprior35d278 relevantcodeunchanged;A14951currentnativecorrection23/23,notfullMacrun. OriginalA14947remainsred andearlierlocaltimeoutincomplete.
 
 Criteria: C1 verified.
+
+### rev-26 · 2026-10-31T16:05:51.164Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1500-source-5
+commit: a46c6f93695fb720cef429bd523b053d7bbdeece
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14971 authorized merge delta clear. Parents6aaba7080+715ad1cdc/tree23a5298c; cover-quiet combines portable allocation with incoming fixtureEnvironment/runner builder, synthetic sentinel actor/identity stripping and all acquisition/drain fences; only new sentinel endpoint migrated. Own helper/recovery/controls byte-identical source4; other importedcode matchesdev. Docssections/index retained,no markers. A14967raw24coverquietpasses/A14968raw59fileexit0 plusA14969Macprovenance/typechecklint summary staytargeted,notcurrentLinux/full. C1old-headverifiedA14962 remains6aaba; fresh runtime mark pending Coordinatorverifyall atmergeda46. OriginalA14947failed/localincomplete retained. Findings[],no duplicate taskverify or newdevmerge.
