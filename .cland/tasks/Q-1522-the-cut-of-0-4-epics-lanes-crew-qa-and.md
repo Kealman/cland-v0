@@ -5,7 +5,7 @@ title: "The cut of 0.4: epics, lanes, crew, QA and build start"
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-1511
 blocked_by:
   - Q-1519
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T14:35:39.806Z
-updated: 2026-10-31T17:17:22.855Z
+updated: 2026-10-31T18:01:13.736Z
 ---
 
 ## Question
