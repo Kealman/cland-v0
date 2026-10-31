@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1262
 branch: null
 created: 2026-10-30T06:38:19.300Z
-updated: 2026-10-31T02:33:44.797Z
+updated: 2026-10-31T05:19:44.996Z
 ---
 
 ## Goal
@@ -41,3 +41,7 @@ Integrated memory measurement, hub restart #64 (2026-10-30 19:04:47Z stop → 19
 For comparison, hub #63 (dev before T-1476 and T-1477) had a 4,796 MB footprint at +50 s. The startup footprint is down about 5×.
 
 These are single samples per point on one machine, so they are not a distribution. T-1478 still owns growth at rest and the budget report. The earlier observation, hub 17875 at 5.3 GB after 2 h 43 min, is a growth figure and is not comparable to these startup readings.
+
+### coord · 2026-10-31T05:19:44.996Z
+
+Live hub memory after restart #64, for the record: pid 79176 at 2026-10-30 21:07Z, 2 h 02 min after start, under a busy crew. RSS was 769 MB and footprint 1,255 MB (`footprint 79176`). For comparison, the pre-fix hub 17875 had a 5.3 GB footprint at 2 h 43 min, and hub 48336 had 8.2 GB at 88 min. These are single readings on one Mac.

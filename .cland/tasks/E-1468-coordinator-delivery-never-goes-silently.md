@@ -2,7 +2,7 @@
 id: E-1468
 kind: epic
 title: Coordinator delivery never goes silently deaf
-state: open
+state: closed
 criterion_seq: 3
 labels: []
 assignee: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: topic-1261
 branch: null
 created: 2026-10-30T07:49:58.701Z
-updated: 2026-10-31T03:42:28.394Z
+updated: 2026-10-31T05:47:27.656Z
+closed: 2026-10-31T05:47:27.656Z
 ---
 
 ## Goal
@@ -87,3 +88,18 @@ All seven children closed/done with dev landing trailers and hub-sourced clear r
 Stage open: 7/7 members landed; Linux/macOS covers pending at inspection, Coordinator-owned. No stage closure claimed. Freshness current:true at 2026-10-31T03:39:48Z; final worktree clean, HEAD 7f0e3353b523efd4ca497d0a1d0e3fcef73f933d. Shared publication scan passed with positive controls; all 34 artifact files verified byte-identical to the scanned evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-31T05:47:27.656Z
+
+Closed (Coordinator, 2026-10-31 05:48Z).
+- Definition of done C1–C3: QA clear, qa-2026-10-31-677-1468 (A-14810) at 7f0e3353b, 131 passes. The demo is still current at the final dev 552255beb.
+- Stage "delivery and launch fixes": closed on the Linux droplet stage cover 95712ae6 (A-14825) and the macOS local stage cover 22d726c2 (A-14829), both at 552255beb.
+- Delivered T-1469 to T-1475 from the A-14159 root cause:
+  - a pushed idle wins over a busy poll;
+  - held deliveries drain on idle and on a timer, with the uncertain fence kept;
+  - one harness process per launch, and earlier-launch spokes are refused;
+  - a `deaf` state with stage-specific recovery commands;
+  - `session retry` forces a held queued human delivery;
+  - daemon idle retirement is detected;
+  - the bridge and flush logs are truthful.
+- Follow-ups: T-1493, T-1494 (Ideas).
