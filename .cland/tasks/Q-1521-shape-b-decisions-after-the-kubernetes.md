@@ -5,7 +5,7 @@ title: Shape B decisions after the Kubernetes research
 state: open
 labels:
   - wayfinder:grilling
-assignee: null
+assignee: cland-design
 parent: M-1511
 blocked_by:
   - Q-1516
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T14:35:39.678Z
-updated: 2026-10-31T14:35:55.103Z
+updated: 2026-10-31T17:09:25.488Z
 ---
 
 ## Question

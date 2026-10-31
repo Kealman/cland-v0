@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T17:02:50.621Z
+updated: 2026-10-31T17:09:25.360Z
 ---
 
 ## Destination
@@ -80,6 +80,8 @@ Round-3 decisions 5–9 are replaced by these.
 - [Shape B: the hub in Kubernetes, requirements and costs](Q-1516): works with nine hub changes; cheapest k3s on one Hetzner CX33 (€8.99/month), DOKS $62, GKE ≈ $80–141; the hub is a one-replica StatefulSet (amends round-1 decision 11); the hub lock needs a host identity and heartbeat; the hub creates agent pods itself as a provider; web through Traefik + cert-manager (ingress-nginx retired); CLI and Neovim via `kubectl exec`.
 
 - [Prototype: an agent host on a small droplet with the hub tunnelled in](Q-1517): the whole shape-A path works on a $0.036/h droplet (tunnel, git daemon, sessions, artifacts, attach, survival of hub restart and tunnel loss, packing, idle_stop, watchdog); no systemd needed; defaults 4 sessions per 2 vCPU/4 GB and 8 per 4 vCPU/8 GB; Claude 510–600 MB, OpenCode 345–437 MB per session on Linux; cold boot ~3.6 min; Ctrl+Z ends attach; 13 decisions in the README.
+
+- [Scheduler, pools and host lifecycle in detail](Q-1519): weighted slots (Claude 1.0, Codex 0.5, OpenCode 0.75; 8 on the default s-4vcpu-8gb), image snapshots per pool with `cland host prepare`, min_hosts 1 for agents, idle_stop 20 min, lease 12 h with the watchdog, failure rules (5 min boot, 3 min unreachable line, 15 min exit), Hosts row and queue lines, `hosts` ledger category with a $3 sub-cap, Coordinator and Aide local, a task stays on one host, provider interface mirrors the executor with a separate transport layer, nine prototype findings adopted.
 
 ### Amendments from research
 
