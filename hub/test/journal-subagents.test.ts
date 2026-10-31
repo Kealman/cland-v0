@@ -109,23 +109,29 @@ test('concurrent startup readers share one scan and subsequent reads see appends
   await assert.rejects(readStartupJournal(root));
 });
 
-test('startup selection scans over 300 MiB with less than 1 MiB of buffered input work', async t => {
+test('startup selection scans over 16 MiB with less than 1 MiB of buffered input work', async t => {
   const root = await tempProject(t), path = join(root, 'journal.jsonl');
+  const setupStarted = performance.now();
+  // Sixteen times the buffering ceiling catches whole-input retention without
+  // making this T1 bound depend on hundreds of MiB of first-touch disk I/O.
   const line = JSON.stringify({ event: 'audit', text: 'ordinary '.repeat(100) }) + '\n';
   const block = line.repeat(1024);
   const file = await open(path, 'w');
   let bytes = 0;
   try {
-    while (bytes < 300 * 1024 * 1024) {
+    while (bytes < 16 * 1024 * 1024) {
       await file.writeFile(block); bytes += Buffer.byteLength(block);
     }
     const tail = '{"event":"subagent-launched","item":"T-1"}';
     await file.writeFile(tail); bytes += Buffer.byteLength(tail);
   } finally { await file.close(); }
+  assert.ok(bytes < 17 * 1024 * 1024, `fixture work budget exceeded: ${bytes} bytes`);
+  const scanStarted = performance.now();
   const stats = { bytesRead: 0, peakBufferedBytes: 0 };
   const records = await readStartupJournal(path, stats);
+  t.diagnostic(JSON.stringify({ bytes, setupMs: scanStarted - setupStarted, scanMs: performance.now() - scanStarted, ...stats }));
   assert.equal(stats.bytesRead, bytes);
-  assert.ok(bytes >= 300 * 1024 * 1024);
+  assert.ok(bytes >= 16 * 1024 * 1024);
   assert.ok(stats.peakBufferedBytes < 1024 * 1024, JSON.stringify(stats));
   assert.deepEqual(records, [{ event: 'subagent-launched', item: 'T-1' }]);
 });

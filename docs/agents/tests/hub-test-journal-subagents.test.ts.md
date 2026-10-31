@@ -1,10 +1,16 @@
 # hub/test/journal-subagents.test.ts
 
 Run `node --test hub/test/journal-subagents.test.ts` alone (T1). The synthetic
-300 MiB test takes about one second on the development Mac; it writes only to a
+16 MiB fixture stays between 16 and 17 MiB (at least sixteen times the buffering
+ceiling); it writes only to a
 fixture-owned disposable root and closes the writer before selection/removal.
 It asserts the exact input bytes consumed and selected tail record, with a fixed
 1 MiB upper bound on accounted input work, rather than a timing threshold.
+T-1498 removes the temporary T-1497 allowance and retires the 300 MiB identity;
+the ordinary five-second per-test gate covers setup and scan. Separate setup/scan
+diagnostics report their actual monotonic times without adding a timing gate.
+The fixture size ceiling prevents accidental return to hundreds of MiB of T1 I/O;
+live-scale measurement remains the separate probe below.
 The counter conservatively covers chunks, unfinished fragments, joined line and
 UTF-16 decoding, excluding allocator overhead and selected decoded objects.
 The production bound is proportional to the longest line; oversized valid lines
