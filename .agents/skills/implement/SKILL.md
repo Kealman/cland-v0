@@ -1119,6 +1119,20 @@ accepts at most 1,000 merges, scanning 1,001 to detect overflow. This adds no
 pass/fail gate or role permission. New precision claims require measurement of
 both direct syntax and transitive graph unknowns on a disposable source copy.
 
+### Project package-base scanning (T-1510)
+
+The scanner also supports const createRequire handles based on
+`pathToFileURL(join(root, '<literal directories>/package.json'))`, using exact
+`node:path` join and `node:url` pathToFileURL imports. Only resolve calls with
+literal names or a const literal for-of list are supported for these bases.
+Candidate dependencies/devDependencies/optionalDependencies prove resolve-only
+registry packages; peer-only declarations do not prove installation. Dynamic,
+shadowed or escaping forms remain unknown.
+
+See `docs/agents/interaction-scanner-baseline.md` for retained fallbacks and
+`docs/agents/tests/hub-test-suite-selection.test.ts.md` for the regression seam.
+Selection evidence must use a hosting hub containing the scanner fix.
+
 ## Verification log provenance
 
 Read the final `suite provenance` record when citing a hub verification log on

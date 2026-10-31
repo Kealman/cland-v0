@@ -33,3 +33,15 @@ or undeclared refusals. The bounded createRequire form has literal positives and
 escaping, alias, dynamic argument and resolve negatives. Ordinary computed
 adapters/ops dispatch is not a module loader. Measurement reports both direct and
 transitive unknown counts/reasons on a sealed disposable source copy.
+
+## Package-base regression and fallback baseline (T-1510)
+
+Run the existing `project package base`, `unknown project package bases` and
+`Web candidate assessment` cases for the T-1492 fix. They cover declared-package
+resolution, dynamic/shadowed/escaping negatives and real web-readiness source
+copied into scratch, with an affected and an unaffected Web importer. They launch
+no browser. The pre-fix hosting hub's A-14877 is not current scanner evidence.
+
+The six retained fallback reasons and their scope are recorded in
+[interaction scanner baseline](../interaction-scanner-baseline.md). These are
+conservative selections, not failing tests or missing runtime dependencies.
