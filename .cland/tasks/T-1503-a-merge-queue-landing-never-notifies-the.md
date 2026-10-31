@@ -3,7 +3,7 @@ id: T-1503
 kind: task
 title: A merge-queue landing never notifies the session that enqueued the item
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1268
 branch: t/T-1503-a-merge-queue-landing-never-notifies-the
 created: 2026-10-31T08:09:11.590Z
-updated: 2026-10-31T15:03:23.374Z
+updated: 2026-10-31T15:24:31.258Z
 ---
 
 ## Summary
@@ -31,8 +31,10 @@ When the merge queue lands an item, the Coordinator that enqueued it gets no del
 
 - [x] C1. A landing from the merge queue delivers one report to the enqueuing session and to the item's claimant, in the item topic, naming the item, the landed commit and the batch.
   - done: impl-1503 · 2026-10-31T15:00:47.366Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1503-evidence-1 · 2026-10-31T15:24:30.709Z · commit 2fcd2ffd8f3b62d23f8f94cf69746cddc5586baa
 - [x] C2. A test enqueues an item from a fake Coordinator session, lands it through the queue and asserts exactly one delivered landing report. Before the fix, the test asserts that none arrived.
   - done: impl-1503 · 2026-10-31T14:47:12.259Z
+  - verified: rev-26 [reviewer] · run rev-20261031-1503-evidence-1 · 2026-10-31T15:24:30.709Z · commit 2fcd2ffd8f3b62d23f8f94cf69746cddc5586baa
 
 ## Comments
 
@@ -94,3 +96,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-14907 source3 clear, M1–M6closed. Definite nonlanding refusal/rebuild retires only that attempt; recoverable/unknown effects retain obligation. Human topic receipt and independent captured-ID settlement let available recipients receive one stable report; later recipients append only missing durable delivery without repeating requester. Store mutation+pending settlement atomic, publication aftercommit. Existing rename/reuse/shared/null-notice/crash-image/deadline controls retained; new refused/human/late-recipient assertions meaningful. Local38queue/typecheck/lint0reported inA14902/topic, report122/59/0refusals/T1484advisory retained; no reviewer execution/fullsuite/nativeGit/cloud claim. C1/C2done/runtime-unverified. One configured mode-free verify at frozen2fcd2ffd8, then original-record evidence review; preserve original raw generated-case/native-exit outputs.
+
+### rev-26 · 2026-10-31T15:24:30.709Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261031-1503-evidence-1
+commit: 2fcd2ffd8f3b62d23f8f94cf69746cddc5586baa
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-14933 original-record evidence clear (corrects A-14931's uncertain T4 anchor to22722→22723). Original4bf2d597/A-14928 nativeexit0 at exact source3 head;5036 complete matching start/finish identities,4447ordinary test passes+519file passes, separate35loadtest+35loadfile passes, zero adverse/duplicates/missing; five failure arrays empty. Seven generated landing/recovery cases each base1+distinct sequential load5/5. Pinned source rechecked exact item/topic/commit/batch/recipients/one-frame assertions, rename/reuse/shared/human/refusal/null-admission/startup/late-recipient same-message controls. C1/C2 verified. Component fakeGit/LocalExecutor seam, no native-dev landing claim. T0host/T1/allfallbackT2inclNeovim/selectedT4once/Web0;T3/otherT4unexecuted. Remote typecheck reusedhost. Candidate4a56dc5d vsGitd62bc differs only1525excludedtracker/rulespaths. Linuxx64 dropletc8lon1Node24.21/Nvim.12.5; actualisolatedShell1248Chrome156.0.8078.4;cache/occasionnull;skips[];budget/lintreportmode122/59zero refusalsT1484advisory retained. Coordinator5606bfbb disposition preserves original head evidence; authorized later devmerge/delta and Coordinatorverifyall still outstanding, no new-head green claim.
+
+Criteria: C1 verified, C2 verified.

@@ -2,8 +2,8 @@
 id: T-1525
 kind: task
 title: cover-quiet fixture children inherit the crew session's identity and reach the live hub
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1274
 branch: t/T-1525-cover-quiet-fixture-children-inherit-the
 created: 2026-10-31T14:50:34.890Z
-updated: 2026-10-31T15:21:26.614Z
+updated: 2026-10-31T15:28:38.213Z
+closed: 2026-10-31T15:28:38.213Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear A-14926, Standards0/Spec0. Original A-14923/e44b1556 exact source2 head confirms4463 ordinary passes plus125 separate load-gate passes,0 fail/cancel/skip/todo; unique starts/finishes match. C1 named synthetic old-actor/isolated-null case23385 passes0.268493927s; omitted/aborted/listening cleanup parents and nested setup controls pass, with original17 admission/lease controls retained. Changed T3 cover-quiet ran21 top-level/24 generated cases once, no repetitions; T0/T1/fallback allT2/Web complete, remainingT3/T4 excluded. C2 source inventory remains verified including suite-timeouts:51. Local crew-shell/red summaries retain earlier-stage provenance and interrupted sentinel red remains incomplete, not passing. Linux/pinned browser/uncached provenance audited; host typecheck gate reused, not repeated remotely. Advisory timing/lint/ratchet diagnostics preserved, no enforce-mode or all-tier claim. No Reviewer workloads.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T15:28:38.213Z
+
+Merged bb2c7d38c2c231dc9625de8971c6702be14b9b7a onto dev.

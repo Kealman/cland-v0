@@ -3,7 +3,7 @@ id: T-1504
 kind: task
 title: test:tiers refuses a duration allowance owned by an epic
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1273
 branch: t/T-1504-test-tiers-refuses-a-duration-allowance
 created: 2026-10-31T08:18:54.263Z
-updated: 2026-10-31T15:18:44.441Z
+updated: 2026-10-31T15:24:38.803Z
 ---
 
 ## Summary
@@ -71,3 +71,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final original-record evidence clear, A-14922 from214a8a16/A-14920 and source1/A-14897. Matched4647 ordinary test passes/522 files, separate140 load tests/files, no adverse/unpaired facts. C1 delivery task/epic and C2 exact shipped manifest each pass once+five load reps (18receipts; max2.015511827s). Eight touched files positive; four changedT3 files205identities once/no repetitions. T0/T1/allT2/changedT3/Web exit0, remainingT3/T4 unexecuted; Linux droplet/HeadlessShell1248, footer candidate tree reproduced; host gate reused. Lint/budget/ratchet report-only. Preserve limitation: emitted stanzas consume R-1523, admitted selection/running host version absent, and predecessor-host attribution explicitly withdrawn; no end-to-end new-host selector claim or stanza application. C1/C2 established independently by candidate lint/resolver/manifest assertions. No source change or rerun.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-32 · 2026-10-31T15:24:38.803Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261031-1504-delta1
+commit: e4ec52be8f8504548fefdf9bed7d4018323b63c3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear, A-14934. Actual tree70c5ea3373f068590966b1646dccfd2175d66380; parents a830e2b73+da255b5d0. All own nonREADME paths exact predecessor; incoming nonREADME files exact dev parent. README preserves OpenCode and standing-owner sections once, with prior approved owner wording. A-14930 supplies local summary typecheck/246passes, not original raw capture/configured run. OriginalA-14920/A-14922 remain predecessor-only with R-1523 generated-output provenance limit. C1/C2 current-head runtime not refreshed; Coordinatorb371793f requires full all run at merged head after source clear. No extra mode-free or final-ready claim.

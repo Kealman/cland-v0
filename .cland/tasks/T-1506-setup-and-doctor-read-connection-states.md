@@ -3,7 +3,7 @@ id: T-1506
 kind: task
 title: Setup and doctor read connection states through a bounded readiness wait
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1270
 branch: t/T-1506-setup-and-doctor-read-connection-states
 created: 2026-10-31T08:18:54.524Z
-updated: 2026-10-31T15:06:00.961Z
+updated: 2026-10-31T15:23:25.967Z
 ---
 
 ## Summary
@@ -27,8 +27,10 @@ T-1502 found that `cland setup` read a paired remote's connection state as a sin
   - done: impl-1506 · 2026-10-31T14:50:14.126Z
   - verified: rev-34 [reviewer] · run rev-34-20261031-1506-source2 · 2026-10-31T14:58:11.250Z · commit 6ae0214a595b3217461d71d7e90f148f983c0871
   - verified: rev-34 [reviewer] · run rev-34-20261031-1506-source3 · 2026-10-31T15:06:00.961Z · commit 7684bcaa9279e9038271d76ebc0879e75109df5b
+  - verified: rev-34 [reviewer] · run rev-34-20261031-1506-final · 2026-10-31T15:23:25.698Z · commit 7684bcaa9279e9038271d76ebc0879e75109df5b
 - [x] C2. Each single-sample read that can see a transient state polls through the shared readiness helper from T-1502, within a bound. A test on fake clocks covers one transient-then-ready case and one past-the-bound case for each changed step.
   - done: impl-1506 · 2026-10-31T14:50:14.220Z
+  - verified: rev-34 [reviewer] · run rev-34-20261031-1506-final · 2026-10-31T15:23:25.698Z · commit 7684bcaa9279e9038271d76ebc0879e75109df5b
 
 ## Comments
 
@@ -99,3 +101,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full cumulative source clear A-14911, tree815a334b0bbbb630161db5d0dc3d996c4dcfc76f. Only two frozen JSON values changed, SETUP_USAGE/DOCTOR_USAGE, each independently equal to production; other keys/values and compatibility/native-help assertions unchanged. M2 resolved; M1 owner correction retained unchanged. No Standards/Spec findings. C1 refreshed; C2 remains runtime-pending. Preserve failed original2fb6676a/A-14908 separately; local macOS claimed1/1+5/5 is not configured runtime evidence. Read-only review; new-head mode-free verification next.
 
 Criteria: C1 verified.
+
+### rev-34 · 2026-10-31T15:23:25.698Z
+
+verdict: review
+result: clear
+by: rev-34 [reviewer]
+run: rev-34-20261031-1506-final
+commit: 7684bcaa9279e9038271d76ebc0879e75109df5b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final original-record audit A-14929 of uncached0da7d0c7/A-14927 at exact source3-reviewed head.4451 ordinary+185 load pass; all12 item identities1 base+5 load each (60 item load), maximum.474393419s. M1 omitted/aborted operation/socket/root drainage controls and M2 unchanged help compatibility/native help all pass. C1 inventory retained; C2 verified. T0/allT1/fallbackallT2/Web exit0; T3 deferred/noT4, no full verify-all claim. Source tree815a334b0bbbb630161db5d0dc3d996c4dcfc76f; prepared treed8a4f61f2f6f8d4dad42bc6dd277b5798aaab88b differs only1525 .cland paths. Linuxx64 c-8 lon1 Node24.21.0/Neovim.12.5, CHS1248 Chrome for Testing156.0.8078.4 explicit binary provenance; cachednull,skips[],missing reasons0. Host typecheck reused, not repeated remotely. Lint/duration/Web wall/ratchet report-only. PriorA-14908 remains failed separate. Read-only review; no further findings.
+
+Criteria: C1 verified, C2 verified.
