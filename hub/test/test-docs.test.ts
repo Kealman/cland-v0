@@ -75,3 +75,13 @@ test('index membership rejects missing, conflicting and dangling entries but acc
   assert.throws(() => assertTestDocIndex([row('first.md'), row('second.md'), row('first.md', 'other.ts')].join('\n'), documents));
   assert.throws(() => assertTestDocIndex(['first.md', 'absent.md'].map(name => row(name)).join('\n'), documents));
 });
+
+
+test('derived test-guide index is deterministic and validates document identities', async () => {
+  const { renderTestDocIndex } = await import('./generate-test-docs-index.ts');
+  const documents = ['second', 'first'].map(name => ({ name: `hub-test-${name}.test.ts.md`, content: `# hub/test/${name}.test.ts\n` }));
+  const output = renderTestDocIndex(documents);
+  assert.equal(output, renderTestDocIndex([...documents].reverse()));
+  assertTestDocIndex(output, documents.map(document => document.name));
+  assert.throws(() => renderTestDocIndex([{ name: 'wrong.md', content: documents[0]!.content }]));
+});

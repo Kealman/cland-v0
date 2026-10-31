@@ -1,0 +1,2 @@
+// Pure command help text.
+export const INIT_USAGE = "  init [dir]      prepare the project (dir, else the current directory) for cland: .cland/,\n                  skills, docs/agents/, AGENTS.md's block, hooks and local git territory; idempotent (--json)\n                  init/update set local gc.auto=0 and maintenance.auto=false in project and existing territory\n                  Claude Bash hooks refuse computed rm/rmdir targets; retry with literal paths\n                  --undo restores the territory's remotes/root branch; --force discards territory-only refs\n";

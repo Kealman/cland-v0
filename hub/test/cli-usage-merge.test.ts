@@ -14,44 +14,44 @@ for (const [firstName, firstText, secondName, secondText] of [
 ] as const) test(`${firstName}/${secondName} help edits survive native Git merge and merge-tree`, t => {
   const root = mkdtempSync(join(tmpdir(), 'cland-usage-merge-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const source = readFileSync(new URL('../src/cli/usage.ts', import.meta.url), 'utf8');
-  // One complete string row per command, with an unchanged blank separator.
-  // These used to be neighboring multiline blocks implicated in repeated conflicts.
-  const first = source.split('\n').find(line => line.startsWith(`  ${firstName}:`));
-  const second = source.split('\n').find(line => line.startsWith(`  ${secondName}:`));
-  assert.ok(first);
-  assert.ok(second);
-  assert.ok(first.includes(firstText) && first.endsWith(','), `${firstName} help occupies one table row`);
-  assert.ok(second.includes(secondText) && second.endsWith(','), `${secondName} help occupies one table row`);
-  assert.ok(source.includes(`${first}\n\n${second}`), 'independent rows retain a blank merge boundary');
-  assert.ok(!first.includes(secondText), 'distinct top-level commands have distinct rows');
+  const moduleName = (name: string) => name.replace('_USAGE', '').toLowerCase();
+  const firstFile = `${moduleName(firstName)}.ts`;
+  const secondFile = `${moduleName(secondName)}.ts`;
+  const first = readFileSync(new URL(`../src/cli/usage/${firstFile}`, import.meta.url), 'utf8');
+  const second = readFileSync(new URL(`../src/cli/usage/${secondFile}`, import.meta.url), 'utf8');
+  assert.ok(first.includes(firstText));
+  assert.ok(second.includes(secondText));
+  assert.ok(!first.includes(secondText), 'distinct top-level commands have distinct modules');
   const frozen = readFileSync(new URL('./fixtures/cli-usage/commands.json', import.meta.url), 'utf8');
-  const git = (...args: string[]) => execFileSync('git', args, {
+  const git = (...args: string[]) => execFileSync('git', ['-c', 'gc.auto=0', ...args], {
     cwd: root, env: fixtureEnvironment(root, process.env), encoding: 'utf8', timeout: 5000,
   }).trim();
-  const save = (text: string, fixture: string) => {
-    writeFileSync(join(root, 'usage.ts'), text);
+  const save = (firstSource: string, secondSource: string, fixture: string) => {
+    writeFileSync(join(root, firstFile), firstSource);
+    writeFileSync(join(root, secondFile), secondSource);
     writeFileSync(join(root, 'commands.json'), fixture);
-    git('add', 'usage.ts', 'commands.json');
+    git('add', firstFile, secondFile, 'commands.json');
     git('commit', '-qm', 'Help edit');
   };
   git('init', '-qb', 'base');
-  save(source, frozen);
+  save(first, second, frozen);
   git('checkout', '-qb', 'first-help');
-  save(source.replace(first, first.replace(firstText, `${firstText} --first-marker`)),
+  save(first.replace(firstText, `${firstText} --first-marker`), second,
     frozen.replace(firstText, `${firstText} --first-marker`));
   git('checkout', '-qb', 'second-help', 'base');
-  save(source.replace(second, second.replace(secondText, `${secondText} --second-marker`)),
+  save(first, second.replace(secondText, `${secondText} --second-marker`),
     frozen.replace(secondText, `${secondText} --second-marker`));
   const tree = git('merge-tree', '--write-tree', 'second-help', 'first-help');
-  const projected = git('show', `${tree}:usage.ts`);
-  assert.match(projected, /--first-marker/);
-  assert.match(projected, /--second-marker/);
+  const projectedFirst = git('show', `${tree}:${firstFile}`);
+  const projectedSecond = git('show', `${tree}:${secondFile}`);
+  assert.match(projectedFirst, /--first-marker/);
+  assert.match(projectedSecond, /--second-marker/);
   const projectedFixture = git('show', `${tree}:commands.json`);
   assert.match(projectedFixture, /--first-marker/);
   assert.match(projectedFixture, /--second-marker/);
   git('merge', '--no-edit', 'first-help');
   assert.equal(git('diff', '--name-only', '--diff-filter=U'), '');
-  assert.equal(readFileSync(join(root, 'usage.ts'), 'utf8').trim(), projected);
+  assert.equal(readFileSync(join(root, firstFile), 'utf8').trim(), projectedFirst);
+  assert.equal(readFileSync(join(root, secondFile), 'utf8').trim(), projectedSecond);
   assert.equal(readFileSync(join(root, 'commands.json'), 'utf8').trim(), projectedFixture);
 });

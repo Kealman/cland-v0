@@ -25,7 +25,7 @@
     "test:durations": "node hub/test/durations.ts refresh",
     "check": "npm run typecheck && npm run build && npm run test:lint",
     "test:lint": "npm run test:static && node hub/test/lint-tests.ts",
-    "test:static": "node hub/test/lint-copied-tracker.ts && node hub/test/lint-child-environment.ts && node hub/test/lint-dictionary-membership.ts && node hub/test/lint-tracker-container-source.ts && node hub/test/lint-repository-tier-plan.ts && node hub/test/lint-version-source.ts && node hub/test/lint-skill-provenance.ts && node hub/test/lint-web-workspace.ts && node hub/test/lint-wire-imports.ts && node hub/test/lint-closed-item-wording.ts && node hub/test/lint-prerequisites.ts",
+    "test:static": "node hub/test/lint-copied-tracker.ts && node hub/test/lint-child-environment.ts && node hub/test/lint-dictionary-membership.ts && node hub/test/lint-tracker-container-source.ts && node hub/test/lint-repository-tier-plan.ts && node hub/test/lint-version-source.ts && node hub/test/lint-skill-provenance.ts && node hub/test/generate-test-docs-index.ts && node hub/test/lint-web-workspace.ts && node hub/test/lint-wire-imports.ts && node hub/test/lint-closed-item-wording.ts && node hub/test/lint-prerequisites.ts",
     "test:nvim-fixtures": "node hub/test/record-nvim-frames.ts",
     "build": "npm run build --workspace web",
     "prepare": "npm run build && npm run test:web:install",

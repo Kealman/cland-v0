@@ -1,0 +1,2 @@
+// Pure command help text.
+export const WORKTREE_USAGE = "  worktree list   the task worktrees (.cland/worktrees/T-<n>): item, branch, the item's state, the commits\n                  its base lacks and the sessions standing inside (--json for JSON)\n  worktree prune [--yes]   the human's: each closed item's worktree with its unmerged commits, removed with\n                  its branch after a y (--yes: all); refused from a session's shell\n";

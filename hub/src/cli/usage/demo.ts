@@ -1,0 +1,2 @@
+// Pure command help text.
+export const DEMO_USAGE = "  demo start <epic> [--commit <sha>] [--json]  lease a demo droplet\n  demo exec <epic> -- <command…>              run in the delivered tree\n  demo stop <epic> [--json]                  release the demo droplet\n  demo status <epic> [--commit <sha>] [--json]  show state, commit, lifetime and cost\n                  provisioning until delivery completes; active accepts demo exec\n";

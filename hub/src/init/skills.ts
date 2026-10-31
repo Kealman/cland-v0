@@ -1,6 +1,5 @@
 // The curated skill set cland ships: cland's own skills and the upstream skills it keeps. Kept upstream
-// skills record their origins in their headers and cland's changes in sibling CHANGES files, with
-// `.gitattributes` setting `CHANGES merge=union`. The skill set's source of truth is this repository's `.agents/skills/`,
+// skills record their origins in their headers and cland's changes in sibling CHANGES directories (one file per entry). The skill set's source of truth is this repository's `.agents/skills/`,
 // the live copies cland's own sessions use, read relative to the cland package. An installed cland provisions
 // exactly what it was built with and nothing is duplicated.
 //

@@ -28,7 +28,7 @@ bodies pass; the guard needs no running hub.
 
 When working as a custom role, read `docs/agents/session-permissions.md#custom-roles` for the own-claim review/verification path and route completion to the Coordinator.
 
-When editing a kept upstream skill, append the change and item as a new line in its sibling `CHANGES`; keep `metadata.changes: CHANGES` stable.
+When editing a kept upstream skill, write the change and item in a new sibling `CHANGES/<item>-<topic>.md` file; keep `metadata.changes: CHANGES` stable.
 
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
 
@@ -1243,6 +1243,10 @@ uncertain delivery; older hubs require the id. Refusals retain the legacy
 Preserve attempted-unconfirmed recovery and the uncertain fence.
 Use the memory/fake-harness controls in
 `docs/agents/tests/hub-test-human-hold.test.ts.md`; no new role clause is needed.
+
+## Parallel-edit lists
+
+Edit command help in `hub/src/cli/usage/<command>.ts`; `usage.ts` retains compatibility exports. Keep palette help expectations in `web/test/palette-help/<area>.json`. Add test guidance in its per-test document, then run `node hub/test/generate-test-docs-index.ts --write`; after combining branches regenerate the derived index. Index drift is report-only in T0.
 
 ## Deaf delivery supervision (T-1472)
 

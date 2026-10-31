@@ -1,0 +1,2 @@
+// Pure command help text.
+export const RULE_USAGE = "  rule add <text> --scope <roles>|all --reason <text> [--title t] [--origin memory:<path>]\n  rule edit <n> [--title t] [--text t] [--scope s] [--reason r]\n  rule retire <n> --reason <text>\n  rule list [--all] [--role r]\n  rule show <n>   read one rule; every rule command takes --json\n                  writes belong to the human shell or an Aide; other sessions propose to the Coordinator\n";

@@ -1,6 +1,6 @@
 // T0 static gate: every kept upstream skill ships its provenance and MIT notice.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { parse } from 'yaml';
 import { pathToFileURL } from 'node:url';
 
@@ -21,11 +21,14 @@ export async function checkSkillProvenance(folder: URL, skill: string): Promise<
   assert.match(metadata.origin as string, new RegExp(`mattpocock/skills skills/(?:engineering|productivity)/${skill} at [a-f0-9]{8,40}\\b`), `${skill}: origin needs its upstream path and commit`);
   assert.ok((metadata.origin as string).includes('MIT, Copyright (c) 2026 Matt Pocock'), `${skill}: origin needs the MIT notice`);
   assert.equal(metadata.changes, 'CHANGES', `${skill}: metadata.changes must point to CHANGES`);
-  const changes = await readFile(new URL('CHANGES', folder), 'utf8');
-  assert.ok(changes.trim(), `${skill}: CHANGES needs a provenance entry or none`);
-  assert.doesNotMatch(changes, /^(?:<{7}|={7}|>{7})/m, `${skill}: unresolved CHANGES conflict`);
-  const attributes = await readFile(new URL('.gitattributes', folder), 'utf8');
-  assert.match(attributes, /^CHANGES merge=union$/m, `${skill}: CHANGES needs its portable union merge attribute`);
+  const entries = await readdir(new URL('CHANGES/', folder));
+  assert.ok(entries.length, `${skill}: CHANGES needs a provenance entry or none`);
+  for (const entry of entries) {
+    assert.match(entry, /^[a-zA-Z0-9][a-zA-Z0-9.-]*\.md$/, `${skill}: CHANGES entry filename`);
+    const changes = await readFile(new URL(`CHANGES/${entry}`, folder), 'utf8');
+    assert.ok(changes.trim(), `${skill}: CHANGES needs a nonempty entry`);
+    assert.doesNotMatch(changes, /^(?:<{7}|={7}|>{7})/m, `${skill}: unresolved CHANGES conflict`);
+  }
   const license = await readFile(new URL('LICENSE', folder), 'utf8');
   assert.match(license, /MIT License/);
   assert.match(license, /Copyright \(c\) 2026 Matt Pocock/);

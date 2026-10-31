@@ -1,3 +1,4 @@
+// T3: native isolated CLI processes prove lazy imports and dispatch failures; no hub starts.
 // Observe the real command's import graph, including dynamic imports and erased TypeScript types.
 // This guard does not depend on whether the running Node version warns about node:sqlite.
 import { runnerFixtureEnvironment } from './fixture-environment.ts';
@@ -100,7 +101,8 @@ test('CLI commands load only their own source closure within the import budgets'
   t.after(() => rmSync(root, { recursive: true, force: true }));
   // Measured with this registerHooks fixture on Node 24, running the real CLI in an
   // empty temporary project without a hub: task list loads 15 modules; hub status loads 19.
-  // Command budgets add a rounded-up 10% margin.
+  // Command implementation budgets add a rounded-up 10% margin.
+  // Pure per-command usage modules replace one monolithic text module; count them separately.
   const commands: Array<{ args: string[]; code: number; budget: number; commands: string[] }> = [
     { args: ['--help'], code: 0, budget: 10, commands: [] },
     { args: ['--version'], code: 0, budget: 10, commands: [] },
@@ -111,10 +113,12 @@ test('CLI commands load only their own source closure within the import budgets'
   for (const { args, code, budget, commands: allowed } of commands) {
     const { result, urls } = countedCommand(root, args);
     assert.equal(result.status, code, result.stderr);
-    t.diagnostic(`cland ${args.join(' ')}: ${urls.length} hub/src modules`);
+    const helpModules = urls.filter(url => url.includes('/src/cli/usage/'));
+    t.diagnostic(`cland ${args.join(' ')}: ${urls.length} hub/src modules (${helpModules.length} pure command-help modules)`);
+    assert.equal(helpModules.length, 36, 'the command-help split has a fixed import cost');
     assert.ok(urls.length > 0, 'the counter observed source imports');
-    assert.ok(urls.length <= budget, `loaded ${urls.length} modules (budget ${budget}): ${urls.join(', ')}`);
-    const cliModules = urls.filter(url => url.includes('/src/cli/') && !['usage.ts', 'help.ts'].some(name => url.endsWith(`/${name}`)));
+    assert.ok(urls.filter(url => !url.includes('/src/cli/usage/')).length <= budget, `loaded ${urls.length} modules (budget ${budget}): ${urls.join(', ')}`);
+    const cliModules = urls.filter(url => url.includes('/src/cli/') && !url.includes('/src/cli/usage/') && !['usage.ts', 'help.ts'].some(name => url.endsWith(`/${name}`)));
     assert.deepEqual(cliModules.map(url => url.slice(url.lastIndexOf('/') + 1)).sort(), [...allowed].sort());
   }
 });

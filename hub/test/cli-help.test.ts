@@ -1,4 +1,4 @@
-// T2: four real CLI launches prove entry-point wiring; the full table is T1.
+// T2: five real CLI launches prove entry-point wiring; the full table is T1.
 import './cover-quiet.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';

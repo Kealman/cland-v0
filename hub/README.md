@@ -2359,20 +2359,25 @@ the human makes and authorizes any account choice.
 ## The cland CLI
 
 Subcommands load lazily: `bin/cland.ts` imports only the command it dispatches.
-Shared help text lives in `src/cli/usage.ts`; `src/cli/help.ts` composes the
-top-level usage and resolves bare help. Help, version and noninteractive
-no-command invocations load only those static modules and `version.ts`. Command modules
-re-export their usage constants for existing callers. `test/cli-imports.test.ts`
-uses a real-process resolve hook to guard the source-module counts (help and
-version at most 10; task list and hub status within their measured budgets).
-The guard is in the machine shard and also checks command import failures keep
-their existing error lines and exit codes.
+Command help text lives in `src/cli/usage/<command>.ts`; the `usage.ts` facade
+re-exports existing constants and composes the legacy grouped blocks.
+`src/cli/help.ts` composes top-level usage and resolves bare help. Help, version
+and noninteractive no-command invocations load the facade, help, `version.ts`
+and 36 pure command-help modules. Command implementations re-export their usage
+constants for existing callers.
+
+`test/cli-imports.test.ts` uses a real-process resolve hook to assert the 36 help
+modules separately. Excluding those modules, the existing source-module budgets
+remain: help/version/no-command at most 10, task list at most 17 and hub status
+at most 21. The current total observed counts are 39, 51 and 56 respectively.
+The guard also checks lazy implementation imports and preserves command import
+failure error lines and exit codes.
 
 Every command and group listed by `cland --help` accepts `--help` or `-h`
 immediately after its name: it prints its usage and exits 0 without a running
 hub or project changes. The executable calls the pure `commandHelp` entry in
 `src/cli/help.ts` before importing command implementations. It uses the
-command-owned entries in `src/cli/usage.ts`; release, sync and publish share
+command-owned entries behind the `src/cli/usage.ts` facade; release, sync and publish share
 the release usage block. Every task subcommand also accepts an immediate help
 flag (`cland task criterion --help`), showing that subcommand's forms and shared
 task options. This includes offline migrate and import-github, and requires
@@ -2380,9 +2385,9 @@ neither valid configuration nor a hub. Other argument paths keep their existing 
 The T1 table in `test/cli-command-help.test.ts` derives its command list from
 that same advertised top-level help and checks both flags in process. Adding
 a listed command without help support fails the table. The table also checks
-every advertised task subcommand and both flags. T2 `test/cli-help.test.ts` keeps four real
-CLI launches: top-level `--help`, `hub --help`, `session -h` and
-`task criterion --help`, checking output and sealed project/profile immutability.
+every advertised task subcommand and both flags. T2 `test/cli-help.test.ts` keeps five real
+CLI launches: top-level `--help`, `task criterion --help`, `remote --help`,
+`hub --help` and `session -h`, checking output and sealed project/profile immutability.
 
 The root `package.json` owns cland's version. `src/version.ts` reads it for
 `cland --version`, the spoke's MCP server info, hub discovery and every managed
@@ -3368,7 +3373,7 @@ If the project's `[tracker] levels` has no root `category` kind, including `leve
 
 Before writing anything, `cland init` refuses a shallow clone: `cland init: the territory needs the full history: run git fetch --unshallow, then cland init again`. Fetch the full history in that clone, then retry. `cland update` also refuses a shallow project that has a territory, with the same recovery command; projects without a territory can still be updated.
 
-Managed files and blocks carry `managed by cland <version>`. A file or hook without that mark is the project's own and is reported as `kept`, except that the project's `.claude/settings.json` receives the cland hooks and managed `worktree.bgIsolation` key below. The curated skill set is the exception: it includes cland's own skills and kept upstream skills. Kept upstream skills record their origins in their headers and cland's changes in per-skill `CHANGES` files (`metadata.changes: CHANGES`). Each kept upstream skill carries `.gitattributes` with `CHANGES merge=union`, so copied upstream skills retain independent provenance additions through merges and squash landings; see [skill maintenance](../skills/README.md). The manifest's mark and per-file SHA-256 hashes record each installed skill. Update decides on the whole skill: an untouched copy is refreshed, and a skill edited in the project is kept whole with its install hashes.
+Managed files and blocks carry `managed by cland <version>`. A file or hook without that mark is the project's own and is reported as `kept`, except that the project's `.claude/settings.json` receives the cland hooks and managed `worktree.bgIsolation` key below. The curated skill set is the exception: it includes cland's own skills and kept upstream skills. Kept upstream skills record their origins in their headers and cland's changes in per-skill `CHANGES/` directories (`metadata.changes: CHANGES`), one file per entry, so copied upstream skills retain independent provenance additions through merges and squash landings; see [skill maintenance](../skills/README.md). The manifest's mark and per-file SHA-256 hashes record each installed skill. Update decides on the whole skill: an untouched copy is refreshed, and a skill edited in the project is kept whole with its install hashes.
 
 Nothing is written or removed through a symbolic link: every destination and each folder above it inside the project is `lstat`ed first, and a link among them leaves the path alone, reported as `kept` with a note starting `symlink:` (a managed skill file or folder, `AGENTS.md`, `docs/agents`, `.claude`, …). A write goes to a fresh temporary file renamed over the destination, so it never follows a link planted after the check at the file itself. The folders above it are pinned too: each one's device and inode is noted before the temporary file is created and compared again just before the rename, so a folder swapped for a link (or another folder) in between refuses the write (`kept`, `symlink:`) and the temporary file is removed. What remains, as Node has no `openat`/`renameat`: a swap in the instant between that second check and the rename, and a temporary file left in a folder moved away after it was created. `CLAND_TEST_INIT_WRITE_PAUSE_MS` with `CLAND_TEST_INIT_WRITE_PAUSE_PATH` (tests only) holds the write of that path still after its checks. The managed set:
 
@@ -7890,6 +7895,11 @@ busy-to-idle/reconnect recovery and backoff remain in force. Uncertain deliverie
 keep the existing explicit operator replay path and never replay automatically.
 The message-id request and `{retried:true}` reply remain compatible with older
 hubs; omission of the id requires a hub with queued-input retry support.
+
+
+### Parallel-edit source lists
+
+CLI help lives in `hub/src/cli/usage/<command>.ts`, behind the existing `usage.ts` exports. Palette help expectations live in `web/test/palette-help/<area>.json`. Test guides live in `docs/agents/tests/`; regenerate their index with `node hub/test/generate-test-docs-index.ts --write`, including after a merge of new guides. The static check reports derived-index drift without changing exit status. Skill provenance uses one `CHANGES/<item>-<topic>.md` entry per change; recursive init/update copying and whole-skill hashes include those files.
 
 ### Bridge and flush process-log diagnostics (T-1475)
 

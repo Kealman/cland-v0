@@ -1,0 +1,2 @@
+// Pure command help text.
+export const QA_USAGE = "  --headless --qa <case.lua> [--out <dir>] [--hub stdio|stub] [--timeout <seconds>]\n                  run one QA case in a headless workbench on a fixture project; prints one JSON line\n                  (case, result, duration_ms, build, hub, evidence) and exits 0 (PASS), 1 (FAIL) or\n                  2 (INCONCLUSIVE, BLOCKED). --out: the screen and state dumps go there as files,\n                  else they are printed inline. --hub: the hub the case runs against, whatever it names\n";
