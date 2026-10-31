@@ -435,6 +435,7 @@ export class HubCore {
   #humanDeliveryCheck: ((sessionId: string, messageId: string) => boolean) | null = null;
 
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
+  #onInjected: ((sessionId: string) => void) | null = null;
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
   /** Ordered admissions for every named role, including roles whose fresh definition may become exclusive. */
@@ -1690,6 +1691,9 @@ export class HubCore {
     return this.#humanDeliveryCheck?.(sessionId, messageId) ?? (this.sessionState(sessionId) === 'busy');
   }
 
+  /** Exact recipient whose durable delivery just became injected; aggregate stages cannot identify it. */
+  onInjected(listener: ((sessionId: string) => void) | null): void { this.#onInjected = listener; }
+
   onDelivered(listener: ((messageId: string, session: string, sessionId: string) => void) | null): void {
     this.#onDelivered = listener;
   }
@@ -1736,8 +1740,10 @@ export class HubCore {
   }
 
   /** A session's adapter confirmed the turn (spec 4.2, `injected`); false when the delivery was not `delivered`. */
-  markInjected(messageId: string, session: string): boolean {
-    if (!this.#store.markInjected(messageId, session)) return false;
+  markInjected(messageId: string, session: string, confirmedSessionId?: string): boolean {
+    const recipientId = confirmedSessionId ?? this.#store.deliverySessionId(messageId, session);
+    if (!this.#store.markInjected(messageId, session, confirmedSessionId)) return false;
+    if (recipientId) this.#afterCommit(() => this.#onInjected?.(recipientId));
     for (const id of this.#store.deliveryIds(messageId, session)) {
       this.#log({ event: 'injected', id, session });
       this.#emitStage(id);
@@ -1844,6 +1850,7 @@ export class HubCore {
     const loaded = new Map(processes.filter(p => p.status === 'running').map(p => [p.sessionId, p]));
     return [...this.#live.values()].map((c) => {
       const process = loaded.get(c.sessionId);
+      const health = this.#heartbeatProcesses.get(c.sessionId);
       const work = process?.name === c.name && process.role === c.role ? process : undefined;
       const pending = work ? work.pending : this.sessionPending(c);
       return {
@@ -1854,6 +1861,7 @@ export class HubCore {
         label: withRole(c.name, c.role),
         status: c.status,
         connectedAt: c.connectedAt,
+        ...(health?.deaf ? { stateReason: 'deaf', deaf: health.deaf } : {}),
         state: this.sessionState(c.sessionId),
         holds: work?.holds ?? this.sessionHolds(c),
         ...(pending ? { pending } : {}),
@@ -2082,7 +2090,7 @@ export class HubCore {
         this.#log({ event: 'acked', id: message.id, session: name, source: 'launch first turn' });
         this.#emitStage(message.id);
       }
-      this.markInjected(message.id, name);
+      this.markInjected(message.id, name, sessionId);
     }
     // An early hello already got welcome and clause; now the spoke learns the accepted brief without injecting it.
     const connection = this.connectionOf(sessionId);

@@ -170,6 +170,7 @@ function M.sessions(include_archived)
       account = p.account,
       cwd = p.cwd,
       state = live and (p.state or 'unknown') or 'unknown',
+      stateReason = live and p.stateReason or nil,
       status = p.status,
       launched = true,
       live = live,

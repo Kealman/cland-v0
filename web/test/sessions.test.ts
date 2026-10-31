@@ -1,5 +1,6 @@
 // Web: merged session rows through the scratch hub and isolated Headless Shell.
 import test from 'node:test';
+import { caseDeadlines } from '../../hub/test/case-deadlines.ts';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -233,4 +234,33 @@ test('gs from an item reveals its claimed session inside a folded group', async 
     assert.ok((await row.textContent())?.includes(item));
     assert.equal(await page.locator('[data-session-detail="claimed-worker"]').count(), 1);
   });
+});
+
+test('Sessions renders deaf health and clears it after the next injection', async t => {
+  const scope = caseDeadlines(t, { timeoutMs: 15_000 });
+  const clock = new FakeClock();
+  const fixture = await scope.wait('fixture setup', () => webFixture(scope.fixtures, { clock }));
+  const ui = await scope.wait('UI setup', () => connectUi(scope.fixtures, fixture.hub.discovery));
+  await scope.wait('subscription setup', () => ui.request({ type: 'subscribe' }));
+  const launched = await scope.wait('fake launch setup', () => ui.request({ type: 'session.launch', harness: 'claude-code', name: 'held-worker', role: 'implementer' }));
+  assert.equal(launched.ok, true, launched.error);
+  const process = (launched.value as { process: HarnessProcessView }).process;
+  const peer = await scope.wait('spoke setup', () => inProcessSpoke(scope.fixtures, { discover: true, cwd: fixture.root, name: 'held-worker', sessionId: process.sessionId, launchToken: fixture.fakes['claude-code']!.spawns[0]!.launchToken! }));
+  await scope.wait('spoke presence setup', () => peer.waitForPresence(['held-worker']));
+  fixture.fakes['claude-code']!.busy('held-worker');
+  const sent = await scope.wait('held input send', () => ui.request({ type: 'topic.send', topic: 'general', to: ['held-worker'], text: 'held human input' }));
+  assert.equal(sent.ok, true, sent.error);
+  const id = (sent.value as { message: { id: string } }).message.id;
+  await scope.wait('rendered deaf and recovery receipts', () => fixture.pageCase(scope.fixtures, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await page.locator('[data-object-id="held-worker"]').waitFor();
+    await clock.advance(300_001);
+    const row = page.locator('[data-state="deaf"]:has([data-object-id="held-worker"])');
+    await row.waitFor();
+    assert.match(await row.textContent() ?? '', /deaf/);
+    fixture.fakes['claude-code']!.idle('held-worker');
+    await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+    await page.locator('[data-state="idle"]:has([data-object-id="held-worker"])').waitFor();
+    assert.equal(await row.count(), 0);
+  }));
 });

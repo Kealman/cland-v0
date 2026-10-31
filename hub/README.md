@@ -3979,24 +3979,32 @@ with the watched process.
 
 Signals or a bridge that arrive while a launch is still running belong to the new process and are kept until its row is written. The real SessionStart hook does arrive before `claude --bg` and the first `agents --json` return.
 
-A failed delivery remaining unconfirmed for five minutes while its session holds
-Coordinator produces one `inject-stalled` notice in General, naming the session
-and `cland session resume <name> --relaunch`. Each known Aide holder receives it
-directly by name, including offline holders; without an Aide, the human or
-stand-in reads General. It also appears as a `delivery-stalled` event. Other
-sessions produce an Agents notice to the Coordinator after one minute.
-Deadlines start at the first failed confirmation in the running hub. For Codex,
-the alarm waits until both that role's timeout and a 120-second startup grace
-have elapsed; the grace starts at the hub's serving receipt, after discovery is
-published and before adapter recovery, and covers app-server reattachment.
-For a standalone WebSocket hub it starts when its listener is ready.
-It is fixed per hub start,
-not renewed per session, failed delivery or reconnect. Other harnesses keep their
-normal timeouts, and the Coordinator's five-minute timeout still applies.
-Retries and bridge/spoke reconnects preserve deadlines. Confirmation cancels the pending alarm,
-and one notice covers an episode until all its failed deliveries are confirmed.
-Hub restart starts a new observation window. This detects stalled delivery; it
-does not relaunch a session automatically.
+### Deaf delivery supervision (T-1472)
+
+A running harness with queued human input or acknowledged, uninjected input
+older than five minutes shows `deaf` in session list, hub status and both
+workbenches. Native PIDs must still be alive; adapter-owned sessions without a
+PID use their running lifecycle receipt. Progress and deferred subscription
+digests do not qualify. This advisory never blocks operations or relaunches a
+session. Existing configuration needs no new setting.
+
+Candidate selection runs on one coalesced timer per affected session, outside
+delivery and view replies. The inbox consumes projected health events.
+The episode and generated notice identities commit together and restore before
+startup inbox projection. Restart does not republish an ongoing outage.
+Each episode posts one Agents notice and one human inbox message, naming the
+oldest held id and its stage: queued uses `cland session retry <name>`;
+delivered uses `cland session resume <name> --relaunch`. A deaf Coordinator also posts
+one General line to the named Aide holders. The next positive injection clears
+the mark and inbox wait. Launch-pinned input stays provisional until its native
+first-turn receipt supplies the new session identity; a previous pool holder
+does not own that new input. The durable confirmation watermark excludes older
+replays, including after hub restart, even if their exact delivery remains
+unconfirmed. Reconnects do not reset the queue age or flood notices. Codex keeps
+a fixed 120-second grace from the hub's serving receipt for app-server recovery;
+the five-minute age threshold applies to every role and harness. Session retry
+keeps its human-only, queued-input/uncertain eligibility; it does not grant an
+automatic replay of uncertain input.
 
 ### The OpenCode adapter
 

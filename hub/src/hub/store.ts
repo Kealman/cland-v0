@@ -1101,6 +1101,27 @@ export class Store implements HygieneMemory {
       queuedHuman: row.from_kind === 'human' && row.state === 'queued' && !row.injection_started && ageMs > 60_000 };
   }
 
+  /** Oldest meaningful held delivery since the session's last positive turn receipt. */
+  deafCandidate(session: string): { id: string; since: number; stage: 'queued' | 'delivered' } | null {
+    const row = this.#prepare(`select m.id, d.queued_at, d.state from deliveries d join messages m on m.id = d.message_id
+      where d.session = ? and d.digest_id is null
+        and (d.state = 'delivered' or (d.state = 'queued' and m.from_kind = 'human'))
+        and coalesce(m.notice, '') != 'progress'
+        and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now')
+        and m.seq > max(cast(coalesce((select value from meta where key = ?), '0') as integer),
+          coalesce((select confirmed.seq from deliveries receipt join messages confirmed on confirmed.id = receipt.message_id
+            where receipt.session = ? and receipt.state = 'injected' order by receipt.queued_at desc, confirmed.seq desc limit 1), 0))
+      order by d.queued_at, m.seq limit 1`).get(session, `deaf-confirmed:${this.sessionIdOf(session) ?? session}`, session) as Row | undefined;
+    return row ? { id: row.id as string, since: Number(row.queued_at), stage: row.state as 'queued' | 'delivered' } : null;
+  }
+
+  /** Captured recipient identity, independent of a later holder of the display name. */
+  deliverySessionId(messageId: string, session: string): string | null {
+    const row = this.#prepare('select session_id from deliveries where message_id = ? and session = ?')
+      .get(this.deliveryRoot(messageId, session), session) as Row | undefined;
+    return row?.session_id as string | null ?? null;
+  }
+
   /** Per-recipient facts, including states hidden by the aggregate stage. */
   deliveriesOf(messageId: string): Array<{ session: string; state: DeliveryState; injectionStarted: boolean }> {
     return (this.#prepare('select session, state, injection_started from deliveries where message_id = ?').all(messageId) as Row[])
@@ -1127,9 +1148,22 @@ export class Store implements HygieneMemory {
   }
 
   /** The session's adapter confirmed the turn; false when the delivery was not `delivered` (a repeat, or never acked). */
-  markInjected(messageId: string, session: string): boolean {
-    const root = this.deliveryRoot(messageId, session);
-    return this.#prepare("update deliveries set state = 'injected' where (message_id = ? or digest_id = ?) and session = ? and state in ('delivered', 'uncertain')").run(root, root, session).changes > 0;
+  markInjected(messageId: string, session: string, confirmedSessionId?: string): boolean {
+    return this.#transaction(() => {
+      const root = this.deliveryRoot(messageId, session);
+      // A validated native receipt can bind a provisional/legacy null row, but
+      // cannot claim a delivery already admitted to another session identity.
+      if (confirmedSessionId && this.#prepare(`select 1 from deliveries where session = ?
+        and (message_id = ? or digest_id = ?) and session_id is not null and session_id != ? limit 1`)
+        .get(session, root, root, confirmedSessionId)) return false;
+      const identity = this.deliverySessionId(root, session) ?? confirmedSessionId ?? session;
+      const changed = this.#prepare("update deliveries set state = 'injected' where (message_id = ? or digest_id = ?) and session = ? and state in ('delivered', 'uncertain')").run(root, root, session).changes > 0;
+      if (changed && confirmedSessionId) this.#prepare(`update deliveries set session_id = ? where session = ?
+        and (message_id = ? or digest_id = ?) and session_id is null`).run(confirmedSessionId, session, root, root);
+      if (changed) this.clearMeta(`deaf-episode:${identity}`);
+      if (changed) this.setMeta(`deaf-confirmed:${identity}`, String((this.#prepare('select max(seq) as seq from messages').get() as Row).seq ?? 0));
+      return changed;
+    });
   }
 
   /** The adapter's inject reached the harness and got no answer: the turn may have started. `uncertain` is never
@@ -1255,7 +1289,6 @@ export class Store implements HygieneMemory {
       and digest_id is null and message_id in (select id from messages where notice = 'role')`).run(briefId, session);
   }
 
-  /** A pending first input survives restart and follows any rename with its ordinary delivery row. */
   /** Legacy admission needs the captured launch token, current durable recipient and accepted delivery. */
   hasAcceptedLaunchBrief(messageId: string, session: string, sessionId: string): boolean {
     return this.#prepare(`select 1 from deliveries d
@@ -1266,8 +1299,13 @@ export class Store implements HygieneMemory {
       .get(sessionId, messageId, session) !== undefined;
   }
 
+  /** A pending first input survives restart and follows any rename with its ordinary delivery row. */
   rememberLaunchBrief(id: string, session: string, launchId: string): void {
-    this.#prepare('update deliveries set launch_brief = ? where message_id = ? and session = ?').run(launchId, id, session);
+    // The launch token owns this never-attempted input before its native session
+    // exists. A retained display-name holder must not become its recipient;
+    // the validated first-turn receipt binds the eventual session id atomically.
+    this.#prepare(`update deliveries set launch_brief = ?, session_id = null
+      where message_id = ? and session = ? and state = 'queued' and injection_started = 0`).run(launchId, id, session);
   }
 
   /** Only this launch's accepted hello can make its brief an ordinary first input. Carried input waits for

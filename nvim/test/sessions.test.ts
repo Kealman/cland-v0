@@ -216,3 +216,13 @@ test('remote state pushes render facts and failure highlights while old hubs kee
   await c.lua("assert(vim.wait(1000,function() local r=require('cland.state').S.remotes;return r and r[1] and r[1].enabled==false end))");
   assert.doesNotMatch((await c.screen()).join('\n'), /Remotes|telegram/);
 });
+
+test('recorded deaf health renders while older session rows still render idle', { skip }, async t => {
+  const c = await startSessions(t, s => {
+    s.processes!.push({ ...proc('deaf-worker', 'implementer', 'busy'), stateReason: 'deaf' }, proc('legacy-worker', 'implementer', 'idle'));
+  });
+  await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.right, 65); require('cland.state').S.ui.sessions_sel='deaf-worker'; require('cland.state').changed()");
+  const screen = await c.waitScreen(s => s.includes('· deaf') && s.includes('legacy-worker'), 'deaf and previous wire shape rows');
+  assert.ok(screen.includes('· deaf'));
+  assert.equal(await c.lua("return require('cland.panels').session_words({live=true, state='busy', stateReason='deaf'})"), 'deaf');
+});

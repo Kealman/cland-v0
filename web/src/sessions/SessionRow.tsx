@@ -32,7 +32,7 @@ export function SessionRow({ row, selected, groupOpen, select, connection, now, 
     button.current?.focus();
     button.current?.scrollIntoView({ block: 'nearest' });
   }, [selected, groupOpen]);
-  const state = !row.live ? (row.status === 'stopped' ? 'stopped' : 'died') : row.state;
+  const state = !row.live ? (row.status === 'stopped' ? 'stopped' : 'died') : row.stateReason ?? row.state;
   const glyph = !row.live ? (row.status === 'stopped' ? '×' : '✗') : row.state === 'busy' || row.state === 'waiting for human' ? '●'
     : row.state === 'idle' ? '○' : row.state === 'waiting for approval' ? '▲' : '?';
   const role = connection.roles?.roles.find(role => role.role === row.role)?.label ?? row.role ?? '—';

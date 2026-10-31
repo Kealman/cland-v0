@@ -17,3 +17,11 @@ fake session record (`sessions/<ses>.json`) rather than first-turn usage: with
 role instructions on by default no clause turn runs. Keep the idle and
 released-claim assertions. Run it alone locally; mode-free task verification
 selects this changed T3 file.
+
+T-1472 retains the pool context assertions unchanged, including line205's
+fresh-Codex-thread history check. A new launch brief stays pinned to its launch
+credential with provisional null recipient session_id until the validated native
+first-turn receipt binds it. It must not snapshot the previous pool holder's
+identity and replay the already-carried first input after rejecting completion.
+The memory/frame control is in inject-stalled.test.ts; native handoff remains
+proven here, for all three harnesses and both keep_context settings.

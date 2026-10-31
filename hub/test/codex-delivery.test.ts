@@ -322,7 +322,7 @@ test('Codex app-server confirmation at ninety seconds cancels the startup inject
   const id = await f.send('recover during startup grace');
   await eventually('disconnected injection receipt', async () => (await f.log()).includes(`"event":"inject-unconfirmed","session":"impl","id":"${id}"`) || undefined);
   await f.clock.advance(60_000);
-  assert.equal((await f.agents()).filter(row => row.kind === 'inject-stalled').length, 0, 'startup reconnect must not raise the ordinary one-minute alarm');
+  assert.equal((await f.agents()).filter(row => row.kind === 'deaf').length, 0, 'startup reconnect must not raise the ordinary one-minute alarm');
   await f.clock.advance(started + 89_900 - f.clock.now().getTime());
   f.refuseConnections(null);
   const confirmed = f.injected(id);
@@ -330,10 +330,10 @@ test('Codex app-server confirmation at ninety seconds cancels the startup inject
   await confirmed;
   assert.equal(f.clock.now().getTime() - started, 90_000);
   await f.clock.advance(120_000);
-  assert.equal((await f.agents()).filter(row => row.kind === 'inject-stalled').length, 0, 'exact delivery confirmation cancels the deferred alarm');
+  assert.equal((await f.agents()).filter(row => row.kind === 'deaf').length, 0, 'exact delivery confirmation cancels the deferred alarm');
 });
 
-for (const [beforeDisconnect, deadline, unconfirmedMs] of [[29_900, 120_000, 90_000], [129_900, 190_000, 60_000]] as const) {
+for (const [beforeDisconnect, deadline] of [[29_900, 330_001, 300_001], [129_900, 430_001, 300_001]] as const) {
   test(`Codex unconfirmed injection after ${beforeDisconnect + 100} ms alarms at hub startup plus ${deadline} ms`, async t => {
     const f = await scriptedCodex(t, undefined, { startupDelayMs: 50_000 });
     const started = f.clock.now().getTime();
@@ -343,15 +343,15 @@ for (const [beforeDisconnect, deadline, unconfirmedMs] of [[29_900, 120_000, 90_
     await eventually('native reconnection refusal receipt', async () => (await f.log()).includes('"event":"harness-reconnect-failed"') || undefined);
     const id = await f.send('still disconnected');
     await eventually('failed injection receipt', async () => (await f.log()).includes(`"event":"inject-unconfirmed","session":"impl","id":"${id}"`) || undefined);
-    const alarm = f.ui.waitFor(frame => frame.type === 'message' && (frame.message as Message).kind === 'inject-stalled' && (frame.message as Message).detail?.message === id);
+    const alarm = f.ui.waitFor(frame => frame.type === 'message' && (frame.message as Message).kind === 'deaf' && (frame.message as Message).detail?.message === id);
     await f.clock.advance(started + deadline - 1 - f.clock.now().getTime());
-    assert.equal((await f.agents()).filter(row => row.kind === 'inject-stalled').length, 0, 'no alarm before the later of startup grace and ordinary timeout');
+    assert.equal((await f.agents()).filter(row => row.kind === 'deaf').length, 0, 'no alarm before the later of startup grace and ordinary timeout');
     await f.clock.advance(1);
     const note = (await alarm).message as Message;
     assert.equal(note.topic, 'agents');
     assert.deepEqual(note.detail, { session: 'impl', message: id });
-    assert.match(note.text, new RegExp(`unconfirmed for ${unconfirmedMs} ms`));
+    assert.match(note.text, new RegExp(`oldest held message ${id}`));
     await f.clock.advance(300_000);
-    assert.equal((await f.agents()).filter(row => row.kind === 'inject-stalled').length, 1, 'one notice per unconfirmed episode');
+    assert.equal((await f.agents()).filter(row => row.kind === 'deaf').length, 1, 'one notice per unconfirmed episode');
   });
 }

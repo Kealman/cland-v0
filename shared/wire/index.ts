@@ -50,6 +50,8 @@ export type PendingVerification = { item: string; kind: 'review' | 'qa' };
 
 // hub/src/protocol.ts
 export type Presence = {
+  stateReason?: string;
+  deaf?: { message: string; since: string; text: string; notice: string };
   layer?: Layer;
   name: string;
   sessionId: string;
@@ -434,6 +436,7 @@ export type SessionListRows = { processes: HarnessProcessView[]; rows: SessionRo
 export type HarnessProcessView = {
   account?: string | null;
   stateReason?: string;
+  deaf?: { message: string; since: string; text: string; notice: string };
   /** Warning from an explicit recovery launch; absent from stored rows. */
   warning?: string;
   layer?: Layer;

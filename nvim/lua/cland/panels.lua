@@ -148,6 +148,7 @@ function M.session_words(s)
   if not s.live then
     return 'unknown · ' .. (s.status == 'stopped' and 'stopped' or 'died')
   end
+  if s.stateReason then return s.stateReason end
   local st = hl.SESSION[s.state] or hl.SESSION.unknown
   local words = st[3]
   if state.reliability(s) == 'heuristic' then
@@ -170,7 +171,7 @@ function M.session_meta_parts(s)
   if type(s.account) == 'string' and s.account ~= '' and not s.account:match('^default:') then
     head[#head + 1] = s.account
   end
-  local tail = M.session_words(s)
+  local tail = s.stateReason or M.session_words(s)
   local usage = s.live and M.usage_text(s.usage) or nil
   if usage then
     tail = tail .. ' · ' .. usage

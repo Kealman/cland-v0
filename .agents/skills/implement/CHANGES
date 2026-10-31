@@ -413,6 +413,14 @@ T-1473: preserve legacy no-uncertain-delivery refusal matching while appending s
 T-1478: Document explicit time-limited Coordinator used-swap waiver and shared quiet-machine stop conditions.
 T-1478: Correct quiet-slot pressure to native memorystatus level; retain transient counter/free percentage as context per Coordinator572bb1d0.
 T-1478: Configure agreed report-only256MiB heap/768MiB RSS defaults, ask53ad10db.
+
+T-1472: Replace inject-stalled guidance with advisory deaf delivery supervision, confirmation watermarks and retry recovery.
+
+T-1472 review: Persist notice episodes across restart, use recipient-scoped recovery, and name/execute queued retry versus delivered relaunch guidance.
+
+T-1472 verification fix: Keep candidate derivation on coalesced per-session timers and consume projected inbox health; retain whole-presence workload guard.
+
+T-1472 native verification fix: Launch-pinned queued input stays provisional until its new native receipt binds identity; preserve native fresh-thread/no-replay assertion.
 T-1475: Document process-log bridge identities, stale closure and separate flush sent/held facts with legacy compatibility and the agreed test seam.
 T-1475 review: derive stale closure from native adapter disconnect receipt; cover generation/unwatch and pre-owned retained-log setup/drain controls.
 T-1475 source2: own full retained-log root/native-open acquisition and cancellation before writer construction; migrate Object.assign fake-harness disconnect consumer.

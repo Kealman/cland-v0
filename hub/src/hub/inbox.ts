@@ -90,6 +90,7 @@ export class InboxBoard {
   #scheduled: ClockTimer | null = null;
   #published: string | null = null;
   #count: { value: number; until: number } | null = null;
+  readonly #deafProcesses = new Map<string, InboxMessage>();
   readonly #approvalProcesses = new Set<string>();
   #closed = false;
 
@@ -111,7 +112,17 @@ export class InboxBoard {
   /** Who lists the launched sessions (the adapters' side); null when the hub has none. */
   useProcesses(list: (() => HarnessProcessView[]) | null): void {
     this.#processes = list;
+    this.#deafProcesses.clear();
+    for (const process of list?.() ?? []) this.#observeDeaf(process);
     this.#changed();
+  }
+
+  /** Process events already carry the projected health; inbox reads need no second process inventory. */
+  #observeDeaf(process: HarnessProcessView): void {
+    if (process.status !== 'running' || !process.deaf) { this.#deafProcesses.delete(process.sessionId); return; }
+    this.#deafProcesses.set(process.sessionId, { id: process.deaf.notice, from: 'hub', subject: process.name,
+      topic: { id: 'agents', title: 'Agents' }, ts: process.deaf.since, since: process.deaf.since,
+      text: process.deaf.text, layer: 'now', severity: 'warn' });
   }
 
   /** Something the inbox lists changed outside the events it observes (a topic deleted, a prune): publish again. */
@@ -142,7 +153,8 @@ export class InboxBoard {
         const proc = event.process;
         // Non-approval process metadata cannot add or remove an inbox row.
         // Still publish labels/details through the normal coalesced window.
-        invalidateCount = this.#approvalProcesses.has(proc.sessionId) || proc.status === 'running' && proc.state === 'waiting for approval';
+        invalidateCount = !!proc.deaf || this.#deafProcesses.has(proc.sessionId) || this.#approvalProcesses.has(proc.sessionId) || proc.status === 'running' && proc.state === 'waiting for approval';
+        this.#observeDeaf(proc);
         const key = `${proc.sessionId}:${proc.startedAt}`;
         if (proc.status === 'exited' && !this.#deaths.has(key)) {
           this.#deaths.add(key);
@@ -166,7 +178,7 @@ export class InboxBoard {
             this.#notify('verdict', event.message.text.split('\n')[0] ?? '', { ...(typeof detail.item === 'string' ? { item: detail.item } : {}), ...(typeof detail.session === 'string' ? { session: detail.session } : {}), result, ...(detail.findings !== undefined ? { findings: detail.findings as Finding[], findingCounts: detail.findingCounts as FindingCounts } : {}) });
           }
         }
-        if (event.message.fromKind === 'hub' && event.message.kind === 'inject-stalled' && (event.message.topic === 'general' || event.message.topic === 'agents' && event.message.to.length === 0)) {
+        if (event.message.fromKind === 'hub' && event.message.kind === 'deaf' && event.message.topic === 'agents') {
           this.#notify('delivery-stalled', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
         }
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'turn-failed') {
@@ -300,6 +312,9 @@ export class InboxBoard {
       messages.push({ id: m.id, from: m.from, ...(m.fromRole ? { fromRole: m.fromRole } : {}),
         subject: t.item ?? t.id, topic, ts: m.ts, since: m.ts, text: m.text, layer, ...(placed.severity ? { severity: placed.severity } : {}) });
     }
+    for (const row of this.#deafProcesses.values()) {
+      if (!p.store.leftInbox('message', row.id)) messages.push({ ...row });
+    }
     const items = p.items();
     const plans: InboxPlan[] = items.filter(i => i.state === 'open' && i.plan && !i.planError && i.approval?.required && i.approval.state === 'pending')
       .map(i => ({ id: i.id, subject: i.id, title: i.title, stages: i.plan!.stages.length,
@@ -326,6 +341,8 @@ export class InboxBoard {
         if (item?.state === 'closed') reason = 'closed';
         else if (!item?.plan || item.planError || !item.approval?.required) reason = 'invalidated';
         else if (item.approval.state === 'approved') reason = 'approved';
+      } else if (p.store.message(row.id)?.kind === 'deaf') {
+        if (this.#processes && !messages.some(message => message.id === row.id)) reason = 'replied';
       } else {
         const candidate = candidates.find(c => c.message.id === row.id);
         if (candidate?.replied) reason = row.kind === 'request' ? 'replied' : 'answered';

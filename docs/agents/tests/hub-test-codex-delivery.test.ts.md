@@ -11,11 +11,14 @@ before the hub's serving receipt. Each test's startup origin is that serving
 receipt, so process/session-manager construction cannot consume the grace.
 
 The unconfirmed cases start at startup plus 30 and 130 seconds: their exact
-alarms arrive at plus 120 and 190 seconds respectively, with no earlier notice
-and only one notice per episode. This proves a fixed hub-start deadline rather
-than a fresh grace per failure, and preserves the ordinary post-startup timeout.
-Keep the old message detail shape and assert the actual unconfirmed duration in
-the notice. No wall-clock sleep or harness process is needed.
+alarms arrive at plus 330001 and 430001 milliseconds respectively. Assert no
+notice at five minutes of queue age, and one at strictly greater than five
+minutes, with one notice per durable session episode. The 120-second startup
+grace remains fixed; the longer queue-age threshold dominates these cases.
+Assert the oldest held message identity and delivered stage, with the displayed
+`cland session resume <name> --relaunch` recovery command. Keep the existing
+session/message detail shape.
+No wall-clock sleep or harness process is needed.
 
 Provider-capacity tests use the same scripted native connection and fake clock.
 Observe `turn-capacity-retry-scheduled` before advancing 30, 60 and 120 seconds;

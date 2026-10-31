@@ -414,12 +414,9 @@ For Claude delivery confirmation, require the exact envelope-bearing turn-start;
 the legacy mod `injected` frame proves submission acceptance only. Use the
 re-exec bridge regression in `docs/agents/tests/hub-test-claude-code-schedule.test.ts.md`
 and the fake-clock alarm routing in `docs/agents/tests/hub-test-inject-stalled.test.ts.md`.
-Coordinator alarms reach General and named Aides after five minutes of failed
-confirmation; recover with the named session's `cland session resume <name> --relaunch`.
-Codex injection alarms also wait for a fixed 120-second grace from the hub's
-serving receipt (initialization time does not consume it);
-use `docs/agents/tests/hub-test-codex-delivery.test.ts.md` for the scripted
-app-server confirmation, startup anchoring and post-startup timeout regressions.
+The advisory `deaf` policy and recovery are described in the dedicated
+"Deaf delivery supervision" section below. Codex's native app-server confirmation
+and startup receipts remain in `docs/agents/tests/hub-test-codex-delivery.test.ts.md`.
 
 For local verification cancellation or compatibility recovery, use the sealed cancellation, recreated-root quarantine and blocked-queue seams in `docs/agents/tests.md`. Observe exact descendant death before root cleanup; retain the quarantine journal's old/new inodes and next-run admission receipt. Live machine locks are outside the fixture.
 
@@ -1246,6 +1243,26 @@ uncertain delivery; older hubs require the id. Refusals retain the legacy
 Preserve attempted-unconfirmed recovery and the uncertain fence.
 Use the memory/fake-harness controls in
 `docs/agents/tests/hub-test-human-hold.test.ts.md`; no new role clause is needed.
+
+## Deaf delivery supervision (T-1472)
+
+Queued human input and acknowledged uninjected deliveries older than five
+minutes mark a live session `deaf`. Use the fake-harness/frame and persisted
+restart seams in `docs/agents/tests/hub-test-inject-stalled.test.ts.md`.
+Assert one Agents notice and inbox wait, plus General for the Coordinator;
+name the oldest held id and its stage: queued uses `cland session retry <name>`;
+delivered uses `cland session resume <name> --relaunch`. The next injection
+clears only that recipient’s wait and persists a watermark excluding stale
+replays. Persist episodes across restart, outside lifecycle-journal checkpoints;
+execute the displayed recovery command through the fake harness for both stages. This remains
+advisory, with no new setting or role permission; retain uncertain fencing and
+retry backoff. Select candidates on the coalesced session timer, never by
+reading whole presence on delivery or rebuilding health from the process
+inventory on inbox reads. Keep the unchanged inbox-workload guard and the
+positive SQL timer receipt. Keep new launch input pinned to the launch until
+the native receipt binds its session id; never snapshot a previous pool holder
+as the new brief recipient. Preserve the native fresh-thread assertion in
+session-native-lifecycle.test.ts. Check optional health fields against older wire shapes.
 
 ## Bridge and flush diagnostics (T-1475)
 

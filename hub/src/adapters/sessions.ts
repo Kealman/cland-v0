@@ -38,6 +38,7 @@ import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 import type { ProjectConfig } from '../init/config.ts';
 import { namedAccount, openCodeDatabase, readAccounts, selectAccount, type AccountSelection } from '../accounts/registry.ts';
+import { pidAlive } from '../project.ts';
 import { durationMs } from '../duration.ts';
 
 /** A signal posted from inside a session (`cland hook <event>`). */
@@ -83,13 +84,13 @@ export type SessionsOptions = {
 
 /** At most one latest usage snapshot per session per second, with a trailing update. */
 export const USAGE_EVENT_MS = 1000;
-/** A failed delivery left unconfirmed this long needs attention. */
+/** Initial delay for repeated failed injection attempts; independent of health notices. */
 export const INJECT_STALLED_MS = 60_000;
-const COORDINATOR_INJECT_STALLED_MS = 5 * 60_000;
+const DEAF_MS = 5 * 60_000;
 // Codex app-servers can take 90 seconds to reattach after a hub restart.
 const CODEX_STARTUP_INJECT_GRACE_MS = 120_000;
 const INJECT_RETRY_MAX_MS = 15 * 60_000;
-type UnconfirmedInject = { timer: ClockTimer; delay: number; retryAt: number; report: boolean };
+type UnconfirmedInject = { delay: number; retryAt: number; report: boolean };
 
 const untimed: Resumed = (work) => work();
 
@@ -123,8 +124,10 @@ export class Sessions {
    *  retry asked for while one is in flight — by an idle the harness fired after it went out, or a bridge
    *  that connected — is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
   readonly #inflight = new Map<string, { sentAt: number; again: boolean; reconnected: boolean }>();
-  /** One notice per failed-delivery episode; individual confirmations cancel their deadlines. */
-  readonly #unconfirmed = new Map<string, { noticed: boolean; messages: Map<string, UnconfirmedInject> }>();
+  /** One advisory notice per live-session outage; a positive turn receipt clears it. */
+  readonly #deafTimers = new Map<string, { timer: ClockTimer; due: number }>();
+  readonly #deaf = new Map<string, { message: string; since: string; text: string; notice: string }>();
+  readonly #unconfirmed = new Map<string, { messages: Map<string, UnconfirmedInject> }>();
   readonly #capacityRetries = new Map<string, { process: HarnessProcess; work: string; timer: ClockTimer | null }>();
   /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
    *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
@@ -412,6 +415,7 @@ export class Sessions {
       // final fact to cleanup, which publishes it only after the original process is gone.
       if (p.status !== 'running') {
         this.#clearUnconfirmed(p.sessionId);
+        this.#clearDeaf(p);
         for (const key of this.#forcedQueued) if (key.startsWith(`${p.sessionId}:`)) this.#forcedQueued.delete(key);
       }
       // Every row change is a durable checkpoint: the adapter's latest totals are written before a stop,
@@ -425,6 +429,10 @@ export class Sessions {
       }
     });
     this.#core.onHumanDeliveryCheck((id, message) => this.#humanDeliveryBlocked(id, message));
+    this.#core.onInjected(sessionId => {
+      const p = this.#table.bySessionId(sessionId);
+      if (p) this.#clearDeaf(p);
+    });
     this.#core.onDelivered((messageId, _name, sessionId) => this.#inject(sessionId, messageId));
     this.#core.onWithdrawalCheck((messageId, names) => {
       for (const name of names) {
@@ -451,6 +459,14 @@ export class Sessions {
     // the human's assignment or revocation is what a relaunch starts with: the row is found by the session's id,
     // never by a name (a renamed session's row is renamed with it, and a name may have been reused)
     this.#unsubscribe = this.#core.subscribe((event) => {
+      if (event.type === 'delivery') {
+        for (const delivery of this.#core.store.deliveriesOf(event.message)) {
+          const recipientId = this.#core.store.sessionIdOf(delivery.session);
+          const p = recipientId ? this.#table.bySessionId(recipientId) : null;
+          if (!p) continue;
+          this.#watchDeaf(p.sessionId);
+        }
+      }
       if (event.type !== 'session.role' || this.#vacating) return;
       const row = this.#rowOfName(event.session);
       if (row) this.#clearCapacityRetry(row.sessionId);
@@ -468,6 +484,11 @@ export class Sessions {
         this.#log({ event: 'process-rename-failed', session: to, error: err instanceof Error ? err.message : String(err) });
       }
     });
+    // Restore the durable episode before any configured process/inbox projection.
+    for (const p of this.#table.running()) {
+      const saved = this.#core.store.meta(`deaf-episode:${p.sessionId}`);
+      if (saved && (p.pid === null || pidAlive(p.pid))) this.#deaf.set(p.sessionId, JSON.parse(saved) as { message: string; since: string; text: string; notice: string });
+    }
     // An active snapshot emits nothing; terminal recovery waits for the fully configured startup sequence.
     for (const p of this.#table.running()) if (!this.#pendingStops.has(p.sessionId)) this.#core.rememberProcess(this.view(p));
   }
@@ -578,7 +599,8 @@ export class Sessions {
   view(p: HarnessProcess): HarnessProcessView {
     const adapter = this.#adapters.get(p.harness);
     const usage = this.#reportedUsage(p);
-    const stateReason = p.status === 'running' ? adapter?.stateReason?.(p) : null;
+    const deaf = p.status === 'running' ? this.#deaf.get(p.sessionId) : undefined;
+    const stateReason = deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     return {
@@ -603,6 +625,7 @@ export class Sessions {
       archivedBy: p.archivedBy ?? null,
       status: p.status,
       ...(stateReason ? { stateReason } : {}),
+      ...(deaf ? { deaf } : {}),
       state: p.status === 'running' && !stateReason ? this.#core.sessionState(p.sessionId) : 'unknown',
       ...(approvalCommand !== undefined ? { approvalCommand } : {}),
       attach: p.status === 'running' && adapter ? adapter.attachCommand(p) : null,
@@ -1959,11 +1982,12 @@ export class Sessions {
   #confirm(p: HarnessProcess, messageId: string): void {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
     this.adapter(p.harness).confirm(p, this.#core.store.deliveryRoot(messageId, name));
-    this.#core.markInjected(messageId, name);
+    this.#core.markInjected(messageId, name, p.sessionId);
     this.#clearUnconfirmedMessage(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
   }
 
   #humanDeliveryBlocked(sessionId: string, messageId: string): boolean {
+    this.#watchDeaf(sessionId);
     if (this.#forcedQueued.has(`${sessionId}:${messageId}`)) return false;
     if (this.#core.sessionState(sessionId) !== 'busy') return false;
     const observation = this.#stateObservation.get(sessionId);
@@ -1975,6 +1999,7 @@ export class Sessions {
   /** Configured recovery, after native discovery: retain supervision even without a native listing. */
   #recoverHeld(p: HarnessProcess): void {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
+    this.#watchDeaf(p.sessionId);
     this.#core.flushQueued(name);
     for (const message of this.#core.store.uninjected(name)) this.#holdRecheck(p.sessionId, message.id);
   }
@@ -2037,7 +2062,7 @@ export class Sessions {
     }
     const pending = this.#unconfirmed.get(sessionId)?.messages.get(messageId);
     // Reconnect renews immediate retries and completion logging, but cannot
-    // postpone the alarm for a message that still has no model-turn receipt.
+    // postpone supervision for a message that still has no model-turn receipt.
     if (reconnected && pending) {
       pending.delay = 0;
       pending.retryAt = this.#core.clock.now().getTime();
@@ -2064,7 +2089,7 @@ export class Sessions {
       .inject(p, message, topic)
       .then(() => {
         if (this.#closed) return;
-        this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
+        this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, sessionId);
         this.#clearUnconfirmedMessage(sessionId, messageId);
       })
       .catch((err: unknown) => {
@@ -2095,7 +2120,7 @@ export class Sessions {
     if (this.#table.bySessionId(sessionId)?.status !== 'running') return;
     let episode = this.#unconfirmed.get(sessionId);
     if (!episode) {
-      episode = { noticed: false, messages: new Map() };
+      episode = { messages: new Map() };
       this.#unconfirmed.set(sessionId, episode);
     }
     const pending = episode.messages.get(messageId);
@@ -2111,47 +2136,71 @@ export class Sessions {
     }
     const p = this.#table.bySessionId(sessionId)!;
     this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error });
-    const coordinator = this.#core.store.roleOf(this.#core.connectionOf(sessionId)?.name ?? p.name) === 'coordinator';
-    const threshold = Math.max(
-      coordinator ? COORDINATOR_INJECT_STALLED_MS : INJECT_STALLED_MS,
-      p.harness === 'codex' && this.#servingAt !== null ? this.#servingAt + CODEX_STARTUP_INJECT_GRACE_MS - this.#core.clock.now().getTime() : 0,
-    );
+    this.#watchDeaf(sessionId);
     const current = episode;
-    const timer = this.#core.clock.setTimeout(() => {
-      const p = this.#table.bySessionId(sessionId);
-      if (this.#closed || !p || p.status !== 'running' || current.noticed) return;
-      const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
-      if (!this.#core.store.uninjected(name).some(message => message.id === messageId)) {
-        this.#clearUnconfirmedMessage(sessionId, messageId);
-        return;
-      }
-      current.noticed = true;
-      const isCoordinator = this.#core.store.roleOf(name) === 'coordinator';
-      const text = `${this.#core.label(name)}: injection has remained unconfirmed for ${threshold} ms (${error}); ${isCoordinator ? `recover with \`cland session resume ${name} --relaunch\`.` : "check the session's bridge and harness connection."}`;
-      this.#core.noticeTo(isCoordinator ? 'general' : 'agents', {
-        kind: 'inject-stalled',
-        // Aides receive only direct named messages, never role broadcasts.
-        to: isCoordinator ? this.#core.store.sessionsWithRole('aide') : ['coordinator'],
-        text, detail: { session: name, message: messageId },
-      });
-    }, threshold);
-    timer.unref();
     // One immediate idle retry tolerates a transient failure. Repeated failures then
     // wait 1, 2, 4, 8 and at most 15 minutes; reconnects bypass the wait.
-    current.messages.set(messageId, { timer, delay: 0, retryAt: this.#core.clock.now().getTime(), report: false });
+    current.messages.set(messageId, { delay: 0, retryAt: this.#core.clock.now().getTime(), report: false });
+  }
+
+  #clearDeaf(p: HarnessProcess): void {
+    const pending = this.#deafTimers.get(p.sessionId);
+    if (pending) this.#core.clock.clearTimeout(pending.timer);
+    this.#deafTimers.delete(p.sessionId);
+    this.#core.store.clearMeta(`deaf-episode:${p.sessionId}`);
+    if (this.#deaf.delete(p.sessionId)) this.#core.publishProcess(this.view(p));
+  }
+
+  #watchDeaf(sessionId: string, delay = 0): void {
+    if (this.#closed || this.#deaf.has(sessionId)) return;
+    const due = this.#core.clock.now().getTime() + Math.max(1, delay);
+    const pending = this.#deafTimers.get(sessionId);
+    if (pending && pending.due <= due) return;
+    if (pending) this.#core.clock.clearTimeout(pending.timer);
+    const p = this.#table.bySessionId(sessionId);
+    if (!p || p.status !== 'running' || p.archivedAt) return;
+    const timer = this.#core.clock.setTimeout(() => {
+      this.#deafTimers.delete(sessionId);
+      const current = this.#table.bySessionId(sessionId);
+      if (this.#closed || !current || current.status !== 'running' || current.archivedAt || current.pid !== null && !pidAlive(current.pid)) return;
+      const recipient = this.#core.connectionOf(sessionId)?.name ?? current.name;
+      const oldest = this.#core.store.deafCandidate(recipient);
+      if (!oldest) return;
+      const grace = current.harness === 'codex' && this.#servingAt !== null ? this.#servingAt + CODEX_STARTUP_INJECT_GRACE_MS : 0;
+      const due = Math.max(oldest.since + DEAF_MS + 1, grace);
+      const remaining = due - this.#core.clock.now().getTime();
+      if (remaining > 0) { this.#watchDeaf(sessionId, remaining); return; }
+      const command = oldest.stage === 'queued' ? `cland session retry ${recipient}` : `cland session resume ${recipient} --relaunch`;
+      const text = `${this.#core.label(recipient)} is deaf: oldest held message ${oldest.id} (${oldest.stage}); recover with \`${command}\`.`;
+      // Notice identities, episode and inbox provenance commit together. Generated
+      // notice ids deliberately stay outside the lifecycle journal checkpoint.
+      const episode = this.#core.store.transaction(() => {
+        const notice = this.#core.noticeTo('agents', { kind: 'deaf', to: [], text, detail: { session: recipient, message: oldest.id } });
+        if (!notice) return;
+        const episode = { message: oldest.id, since: new Date(oldest.since).toISOString(), text, notice };
+        if (this.#core.store.roleOf(recipient) === 'coordinator') this.#core.noticeTo('general', {
+          kind: 'deaf', to: this.#core.store.sessionsWithRole('aide'), text, detail: { session: recipient, message: oldest.id },
+        });
+        this.#core.store.setMeta(`deaf-episode:${sessionId}`, JSON.stringify(episode));
+        return episode;
+      });
+      if (!episode) return;
+      this.#deaf.set(sessionId, episode);
+      this.#core.publishProcess(this.view(current));
+    }, Math.max(0, delay));
+    timer.unref();
+    this.#deafTimers.set(sessionId, { timer, due });
   }
 
   #clearUnconfirmed(sessionId: string): void {
     const episode = this.#unconfirmed.get(sessionId);
     if (!episode) return;
-    for (const pending of episode.messages.values()) this.#core.clock.clearTimeout(pending.timer);
     this.#unconfirmed.delete(sessionId);
   }
 
   #clearUnconfirmedMessage(sessionId: string, messageId: string): void {
     const episode = this.#unconfirmed.get(sessionId);
     if (!episode) return;
-    this.#core.clock.clearTimeout(episode.messages.get(messageId)?.timer);
     episode.messages.delete(messageId);
     if (!episode.messages.size) this.#unconfirmed.delete(sessionId);
   }
@@ -2182,8 +2231,11 @@ export class Sessions {
     this.#heldDeliveries.clear();
     this.#stateObservation.clear();
     this.#core.onHumanDeliveryCheck(null);
+    this.#core.onInjected(null);
     for (const sessionId of this.#capacityRetries.keys()) this.#clearCapacityRetry(sessionId);
     this.#earlyLimitHits.clear();
+    for (const pending of this.#deafTimers.values()) this.#core.clock.clearTimeout(pending.timer);
+    this.#deafTimers.clear();
     for (const sessionId of this.#unconfirmed.keys()) this.#clearUnconfirmed(sessionId);
     if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);
     if (this.#archiveTick) clearImmediate(this.#archiveTick);

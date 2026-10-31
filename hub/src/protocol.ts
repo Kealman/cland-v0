@@ -63,6 +63,8 @@ export type SessionHold = { item: string; role: 'item' | 'review' | 'qa'; heldAt
 export type PendingVerification = { item: string; kind: 'review' | 'qa' };
 
 export type Presence = {
+  stateReason?: string;
+  deaf?: { message: string; since: string; text: string; notice: string };
   layer?: Layer;
   name: string;
   sessionId: string;
@@ -960,6 +962,7 @@ export type SessionRow = Omit<Partial<HarnessProcessView>, 'harness' | 'status' 
 export type HarnessProcessView = {
   account?: string | null;
   stateReason?: string;
+  deaf?: { message: string; since: string; text: string; notice: string };
   /** Warning from an explicit recovery launch; absent from stored rows. */
   warning?: string;
   layer?: Layer;

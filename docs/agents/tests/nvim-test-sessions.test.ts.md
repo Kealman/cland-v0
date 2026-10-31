@@ -10,3 +10,6 @@ outbox facts, failure causes in ClandRed, normal recovery and hidden disabled
 state. Initial fixtures deliberately omit the new frame: an older hub remains
 readable without a Remotes section. Native fake-outage timing is separately
 covered in nvim/test/remotes.test.ts, not inferred from replayed pushes.
+
+T-1472 adds an optional stateReason `deaf` row beside a legacy row with no health
+fields. Refresh the same recorded slice; assert the rendered row and words.
