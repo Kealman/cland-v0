@@ -46,6 +46,13 @@ export async function runOpenCodeCheck(options: CheckOptions = {}): Promise<0 | 
     differences.push(...compareEventNames(names, upstreamEvents[0]!, upstreamEvents[1]!));
     if (differences.length) out(`Differences (informational; include in the release report):\n${differences.join('\n')}`);
     else out(`${OPERATIONS.length} wire operations and ${names.length} adapter event names compatible`);
+    if (tested === '2.0.24' && version === '2.2.5') {
+      out('Schema review 2.0.24 -> 2.2.5 (T-1501; warnings retained):\n'
+        + 'Form.When.value numeric unions flattened; integer bounds gained safe-integer maxima; snapshot reads form ids only.\n'
+        + 'Assistant providerState/state metadata moved to native; tool id/name/state.input unchanged.\n'
+        + 'Compaction recent/providerContext removed and providerState moved to native; non-assistant messages are ignored by approvalDetails.\n'
+        + 'Recorded schema-reader evidence only; native runtime remains tested at 2.0.24. Other versions require a fresh schema review.');
+    }
     return 0;
   } catch (error) {
     err(`OpenCode release check could not complete: ${error instanceof Error ? error.message : String(error)}`);

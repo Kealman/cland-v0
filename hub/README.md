@@ -7943,3 +7943,18 @@ including carried notices; digest-only notes filtered out by pendingFor are
 outside that flush. Older rows without these fields have unknown sent/held
 counts. These diagnostics remain process-log-only; they do not add journal
 lifecycle events or change delivery policy.
+
+### OpenCode 2.2.5 schema review (T-1501)
+
+The informational release check retains twelve differences from 2.0.24 to 2.2.5
+and appends their reviewed reasons for that exact pair. Ten form warnings reflect
+flattened numeric alternatives in `Form.When.value` across five field variants,
+repeated for `items` and `prefixItems`; snapshot reads only form ids. The two
+message warnings concern assistant provider metadata moved to `native`, and
+compaction dropping `recent`/`providerContext` and moving provider metadata to
+`native`. Approval details read only assistant content and correlated tool
+id/name/state/input; compaction is ignored. Safe-integer response bounds are
+also harmless to these readers. Recorded schemas and reader examples cover
+these changes; native runtime coverage and Doctor's informational tested range
+remain at 2.0.24. Future versions require a new review. The check remains
+informational, with no new gate, setting or role permission.

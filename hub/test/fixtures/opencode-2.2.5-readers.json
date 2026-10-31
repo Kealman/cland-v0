@@ -1,0 +1,248 @@
+{
+  "forms": [
+    {
+      "id": "frm_string",
+      "sessionID": "ses_fixture",
+      "title": "String",
+      "fields": [
+        {
+          "key": "a",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 9007199254740991,
+          "when": [
+            {
+              "key": "n",
+              "op": "eq",
+              "value": "Infinity"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frm_number",
+      "sessionID": "ses_fixture",
+      "title": "Number",
+      "fields": [
+        {
+          "key": "a",
+          "type": "number",
+          "minimum": "-Infinity",
+          "maximum": "Infinity",
+          "default": "NaN",
+          "when": [
+            {
+              "key": "n",
+              "op": "eq",
+              "value": 2.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frm_integer",
+      "sessionID": "ses_fixture",
+      "title": "Integer",
+      "fields": [
+        {
+          "key": "a",
+          "type": "integer",
+          "default": 2,
+          "when": [
+            {
+              "key": "n",
+              "op": "neq",
+              "value": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frm_boolean",
+      "sessionID": "ses_fixture",
+      "title": "Boolean",
+      "fields": [
+        {
+          "key": "a",
+          "type": "boolean",
+          "default": false,
+          "when": [
+            {
+              "key": "n",
+              "op": "eq",
+              "value": "NaN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frm_multiselect",
+      "sessionID": "ses_fixture",
+      "title": "Multiselect",
+      "fields": [
+        {
+          "key": "a",
+          "type": "multiselect",
+          "options": [
+            {
+              "value": "one",
+              "label": "One"
+            }
+          ],
+          "minItems": 0,
+          "maxItems": 9007199254740991,
+          "when": [
+            {
+              "key": "n",
+              "op": "eq",
+              "value": "-Infinity"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frm_external",
+      "sessionID": "ses_fixture",
+      "title": "External",
+      "fields": [
+        {
+          "key": "a",
+          "type": "external",
+          "url": "https://example.invalid"
+        }
+      ]
+    }
+  ],
+  "assistant": {
+    "id": "msg_assistant",
+    "time": {
+      "created": 1
+    },
+    "type": "assistant",
+    "agent": "build",
+    "model": {
+      "providerID": "fixture",
+      "id": "fixture"
+    },
+    "native": {
+      "private": "ignored"
+    },
+    "content": [
+      {
+        "type": "text",
+        "text": "Waiting",
+        "native": {
+          "private": "ignored"
+        }
+      },
+      {
+        "type": "reasoning",
+        "text": "Private reasoning",
+        "native": {
+          "private": "ignored"
+        }
+      },
+      {
+        "type": "tool",
+        "id": "other-tool",
+        "name": "shell",
+        "state": {
+          "status": "running",
+          "input": {
+            "command": "wrong command"
+          },
+          "metadata": {}
+        },
+        "time": {
+          "created": 1
+        }
+      },
+      {
+        "type": "tool",
+        "id": "tool_fixture",
+        "name": "shell",
+        "native": {
+          "private": "ignored"
+        },
+        "state": {
+          "status": "running",
+          "input": {
+            "command": "printf fixture"
+          },
+          "metadata": {}
+        },
+        "time": {
+          "created": 1
+        }
+      }
+    ]
+  },
+  "shell": {
+    "id": "msg_shell",
+    "time": {
+      "created": 1
+    },
+    "type": "shell",
+    "shellID": "sh_fixture",
+    "command": "do not authorize this",
+    "status": "exited",
+    "exit": "NaN",
+    "output": {
+      "output": "ignored",
+      "cursor": 9007199254740991,
+      "size": 9007199254740991,
+      "truncated": true
+    }
+  },
+  "user": {
+    "id": "msg_user",
+    "time": {
+      "created": 1
+    },
+    "type": "user",
+    "text": "do not authorize this"
+  },
+  "compactions": [
+    {
+      "type": "compaction",
+      "id": "msg_compaction_running",
+      "time": {
+        "created": 1
+      },
+      "status": "running",
+      "reason": "manual",
+      "summary": "fixture"
+    },
+    {
+      "type": "compaction",
+      "id": "msg_compaction_completed",
+      "time": {
+        "created": 1
+      },
+      "status": "completed",
+      "reason": "manual",
+      "summary": "fixture",
+      "native": {
+        "private": "ignored"
+      }
+    },
+    {
+      "type": "compaction",
+      "id": "msg_compaction_failed",
+      "time": {
+        "created": 1
+      },
+      "status": "failed",
+      "reason": "manual",
+      "error": {
+        "type": "fixture",
+        "message": "fixture"
+      }
+    }
+  ]
+}

@@ -148,3 +148,21 @@ test('release check distinguishes network and probe failures from compatibility 
     assert.match(fixture.stderr.join('\n'), message);
   }
 });
+
+test('release check preserves the twelve 2.2.5 differences and explains unaffected readers', async t => {
+  const fixture = await releaseFixture(t);
+  const code = await runOpenCodeCheck({ ...fixture.options, download: async url => {
+    if (url.endsWith('openapi.json')) return readFile(new URL(`./fixtures/opencode-${url.includes('v2.2.5') ? '2.2.5' : '2.0.24'}-contract.json`, import.meta.url), 'utf8');
+    if (url.endsWith('.ts')) return '"session.execution.started" "permission.asked"';
+    return JSON.stringify({ versions: { '2.0.24': {}, '2.2.5': {} } });
+  } });
+  assert.equal(code, 0);
+  const report = fixture.stdout.join('\n');
+  assert.equal(report.split('a tested variant was removed or changed').length - 1, 12);
+  assert.match(report, /Schema review 2.0.24 -> 2.2.5/);
+  assert.match(report, /Form.When.value.*flattened.*form ids only/);
+  assert.match(report, /providerState.*native.*tool id\/name\/state.input unchanged/);
+  assert.match(report, /Compaction.*recent.*providerContext.*ignored/);
+  assert.match(report, /schema-reader evidence only; native runtime remains tested at 2.0.24/);
+  assert.deepEqual(fixture.stderr, []);
+});
