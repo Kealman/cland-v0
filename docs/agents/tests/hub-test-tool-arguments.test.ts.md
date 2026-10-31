@@ -7,3 +7,7 @@ Run `node --test hub/test/tool-arguments.test.ts`. Validation errors must retain
 The merge control sends a known `override` string as a Coordinator and retains
 the human-only `forbidden` receipt and Agents notice. The misspelled `overide`
 control stays `invalid_argument` without a notice. This is T1; no Git is needed.
+
+The exhaustive tool baseline includes verification.decline with request and reason;
+its malformed-frame cases use a Reviewer caller so validation precedes request
+receipt checks. Keep the tool-name deep-equality guard and required/type cases.

@@ -206,3 +206,23 @@ For rule 17 evidence, retain both tested-source and served-page stamps; differin
 
 - The item’s lead requests review and QA and handles not-clear verdicts and retries. Before launching an item needing QA, commit `qa/briefs/T-<n>.md` via `qa` and give its lead the path. Use the `qa` skill’s brief-lint completion rule. Launch missing verifiers with `session.launch`. Lead an unclaimed item outside a claimed Lead subtree yourself; `@lead T-<n>` routes verdicts up.
 - The item’s lead requests review and QA and handles not-clear verdicts and retries. Before launching an item needing QA, commit `qa/briefs/T-<n>.md` via `qa` and give its lead the path. Launch missing verifiers with `session.launch`. Lead an unclaimed item outside a claimed Lead subtree yourself; `@lead T-<n>` routes verdicts up.
+
+## Declining an accepted verifier request (T-1494)
+
+Reviewer and QA use `verification.decline` with `request` set to the delivered
+`msg_id` and `reason` set to one nonempty line. The hub checks the caller's durable
+session and exact accepted receipt, clears that pending reservation immediately,
+and durably returns the reason and request id to the original requester's session
+in the request topic. Missing agent identity or incomplete captured-ID delivery
+admission refuses and retains pending; retry after identity recovery. Human
+requests receive the notice in their topic. It records
+no verdict and does not requeue the declined request; the requester decides the
+next assignment. Other queued requests can use the released capacity immediately.
+A stale id cannot release newer work, even on the same item or head. Existing
+tracker holds remain separate: release an acquired hold with `task.hold` too.
+Requests without a captured message receipt cannot be declined by guessing prose.
+
+Verifier sessions must be relaunched after this tool lands: tools are fixed at
+launch. Inherited roles with explicit tool lists must grant `verification.decline`
+to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
+without changing pending state; do not substitute a verdict to clear it.

@@ -64,6 +64,7 @@ test('available spoke tools reject unknown fields, missing fields, wrong types a
   const helper = await dispatcherSpoke(t, hub.dispatcher, '/virtual/project', 'helper', 'helper-id');
   const before = hub.core.topicHistory('agents').messages.length;
   const baselines: Record<string, Record<string, unknown>> = {
+    'verification.decline': { request: 'fixture-message-id', reason: 'Duplicate request' },
     verify: { report: 'agents' }, 'merge.queue': {}, merge: { item: 'T-1' },
     'artifact.create': { kind: 'note', title: 'Fixture', topic: 'agents', content: 'Fixture' },
     'artifact.keep': { artifact: 'A-1' }, 'artifact.archive': { artifact: 'A-1' },
@@ -98,7 +99,7 @@ test('available spoke tools reject unknown fields, missing fields, wrong types a
     ];
     for (const { args, field } of cases) {
       const type = tool.name === 'verify' ? 'suite.start' : ['subscribe', 'unsubscribe', 'subscriptions'].includes(tool.name) ? `event.${tool.name}` : tool.name;
-      const caller = tool.name === 'task.hold' ? rev : tool.name === 'artifact.promote' ? helper : coord;
+      const caller = (tool.name === 'task.hold' || tool.name === 'verification.decline') ? rev : tool.name === 'artifact.promote' ? helper : coord;
       const result = await caller.call<Record<string, unknown>>(type, args);
       const what = `${tool.name} ${JSON.stringify(args)}: ${JSON.stringify(result)}`;
       assert.equal(result.ok, false, what);

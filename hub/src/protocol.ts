@@ -400,6 +400,7 @@ export type SpokeRequest =
   | ArtifactPromote
   /** `to` absent or empty: the message goes into the topic for the human only. `topic` defaults to General. */
   | { type: 'send'; id: string; to?: string[]; text: string; kind?: SendKind; request?: RequestKind; subject?: string; replyTo?: string; topic?: string; artifacts?: string[] }
+  | { type: 'verification.decline'; id: string; request: string; reason: string }
   | { type: 'who'; id: string }
   /** `topic`: that topic's latest messages instead of the session's own traffic; Agents accepts item/session filters. */
   | ({ type: 'history'; id: string; limit?: number; with?: string; topic?: string } & AgentsHistoryFilter)
@@ -499,6 +500,8 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
     case 'artifact.move':
     case 'artifact.promote':
       return true;
+    case 'verification.decline':
+      return typeof f.request === 'string' && typeof f.reason === 'string';
     case 'who':
     case 'ping':
       return true;

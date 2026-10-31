@@ -16,3 +16,7 @@ its Implementer list now succeeds while mutation and hub-stop refusals stay.
 
 Run the touched files individually with `node --test <path>` after cover-quiet
 admission permits them. Source review precedes mode-free task verification.
+
+The exact Reviewer tool-list reload fixture includes verification.decline. Keep
+its literal match, reload receipt, grant/revocation, refusal and audit assertions
+when migrating defaults; a list mismatch must still fail before replacement.

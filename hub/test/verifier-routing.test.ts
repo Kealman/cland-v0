@@ -1,6 +1,8 @@
 // T2: real send frames prove queued assignment and recorded delivery through fake adapters.
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { fakeHarness } from './fakes/harness.ts';
+import { existsSync } from 'node:fs';
+import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
 import { FakeClock } from './fake-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -1012,3 +1014,146 @@ for (const reopen of [false, true]) for (const missing of ['request', 'covering'
     assert.equal(await pending(), undefined);
   });
 }
+
+for (const role of ['reviewer', 'qa'] as const) {
+  test(`${role} declines only its exact accepted request and returns a reason without a verdict`, async t => {
+    const scope = caseDeadlines(t, { timeoutMs: 15_000 });
+    const root = await scope.wait('root setup', () => tempProject(scope.fixtures));
+    await scope.wait('hub setup', () => projectHub(scope.fixtures, root, {}, { clock: new FakeClock() }));
+    const coord = await scope.wait('coord setup', () => inProcessSpoke(scope.fixtures, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' }));
+    const rev = await scope.wait('rev setup', () => inProcessSpoke(scope.fixtures, { cwd: root, discover: true, name: 'verifier', role, sessionId: 'verifier-id' }));
+    const other = await scope.wait('other setup', () => inProcessSpoke(scope.fixtures, { cwd: root, discover: true, name: 'other', role, sessionId: 'other-id' }));
+    const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Declined build' })).item;
+    const kind = role === 'reviewer' ? 'review' : 'qa';
+    const text = `${kind} request ${item.id}\nHead: ${'a'.repeat(40)}\nBuild`;
+    await coord.call('send', { to: ['verifier'], text });
+    const event = await rev.waitForEvent(e => e.params.content === text);
+    const request = event.params.meta!.msg_id!;
+    const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: unknown }> }>('who')).sessions.find(s => s.name === 'verifier')?.pending;
+    await eventually('accepted pending receipt', async () => { assert.deepEqual(await pending(), { item: item.id, kind, head: 'a'.repeat(40) }); return true; });
+    assert.equal((await other.call<{ ok: boolean }>('verification.decline', { request, reason: 'Duplicate' })).ok, false);
+    assert.equal((await rev.call<{ ok: boolean }>('verification.decline', { request, reason: '  ' })).ok, false);
+    assert.equal((await rev.call<{ ok: boolean }>('verification.decline', { request, reason: 'line\nbreak' })).ok, false);
+    const declined = await rev.call<{ ok: boolean; returned?: boolean }>('verification.decline', { request, reason: 'Already owned elsewhere' });
+    assert.equal(declined.ok, true);
+    assert.equal(declined.returned, true);
+    assert.equal(await pending(), undefined);
+    await coord.waitForEvent(e => e.params.content.includes('Already owned elsewhere') && e.params.content.includes(request));
+    const view = await coord.call<{ item: { verdicts: unknown[] } }>('task.view', { id: item.id });
+    assert.deepEqual(view.item.verdicts, []);
+    await coord.call('send', { to: ['verifier'], text: `${kind} request ${item.id}\nNew build` });
+    await rev.waitForEvent(e => e.params.content.endsWith('New build'));
+    await eventually('accepted pending receipt', async () => { assert.deepEqual(await pending(), { item: item.id, kind }); return true; });
+    assert.equal((await rev.call<{ ok: boolean }>('verification.decline', { request, reason: 'Late old decline' })).ok, false);
+    assert.deepEqual(await pending(), { item: item.id, kind });
+  });
+}
+
+for (const sender of ['missing', 'null'] as const) test(`decline retains ownership for ${sender} requester identity`, async t => {
+  const scope = caseDeadlines(t, { timeoutMs: 15_000 });
+  const root = await scope.wait('root setup', () => tempProject(scope.fixtures));
+  const start = () => scope.wait('hub setup', () => projectHub(scope.fixtures, root, {}, { clock: new FakeClock() }));
+  const peer = (name: string, role: 'coordinator' | 'reviewer' | 'implementer', sessionId: string) =>
+    scope.wait(`${name} setup`, () => inProcessSpoke(scope.fixtures, { cwd: root, discover: true, name, role, sessionId }));
+  const first = await start();
+  const coord = await peer('coord', 'coordinator', 'coord-id');
+  const rev = await peer('verifier', 'reviewer', 'verifier-id');
+  const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Return admission' })).item;
+  const text = `review request ${item.id}\nBuild`;
+  await coord.call('send', { to: ['verifier'], text });
+  const event = await rev.waitForEvent(e => e.params.content === text);
+  const request = event.params.meta!.msg_id!;
+  const pending = async (client: typeof rev) => (await client.call<{ sessions: Array<{ name: string; pending?: unknown }> }>('who')).sessions.find(s => s.name === 'verifier')?.pending;
+  await scope.wait('accepted receipt', () => eventually('accepted receipt', async () => {
+    assert.deepEqual(await pending(rev), { item: item.id, kind: 'review' }); return true;
+  }));
+  await scope.wait('stop writers before retained-row edit', async () => { await rev.close(); await coord.close(); await first.stop(); });
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  try { db.prepare('update messages set from_session_id = ?, verifier_admitted = null where id = ?').run(sender === 'missing' ? 'late-requester-id' : null, request); }
+  finally { db.close(); }
+  await start();
+  const back = await peer('verifier', 'reviewer', 'verifier-id');
+  const result = await back.call<{ ok: boolean }>('verification.decline', { request, reason: 'Owned elsewhere' });
+  assert.equal(result.ok, false);
+  assert.deepEqual(await pending(back), { item: item.id, kind: 'review' });
+  const history = await back.call<{ messages: Message[] }>('history', { topic: 'agents' });
+  assert.equal(history.messages.filter(m => m.text.includes('Owned elsewhere')).length, 0, 'failed admission rolls back the notice too');
+  if (sender === 'missing') {
+    const late = await peer('late-requester', 'implementer', 'late-requester-id');
+    await scope.wait('late requester registered', () => late.call('who'));
+    const receipt = scope.wait('returned reason delivery', () => late.waitForEvent(e => e.params.content.includes('Owned elsewhere') && e.params.content.includes(request)));
+    assert.equal((await back.call<{ ok: boolean }>('verification.decline', { request, reason: 'Owned elsewhere' })).ok, true);
+    await receipt;
+    assert.equal(await pending(back), undefined);
+  }
+  const view = await back.call<{ item: { verdicts: unknown[] } }>('task.view', { id: item.id });
+  assert.deepEqual(view.item.verdicts, []);
+});
+
+for (const mode of ['omitted', 'aborted', 'early-failure', 'assertion-failure'] as const) test(`decline fixture ${mode} setup drains before root removal`, async t => {
+  const clock = new FakeClock();
+  const release = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const abort = new AbortController();
+  let dispose: (() => Promise<unknown>) | undefined;
+  let cleanup: Promise<unknown> | undefined;
+  let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+  let stoppedWithRoot: Promise<boolean> | undefined;
+  const close = () => cleanup ??= dispose?.() ?? Promise.resolve();
+  // Even a failed setup observation invokes the shared disposer, not just hub.stop.
+  t.after(async () => {
+    release.resolve();
+    await observed.wait('emergency shared disposal', close);
+    await drainFixtureWork();
+  });
+  // Fault injection advances only the inner clock; every observer also has a real bound.
+  const observed = caseDeadlines(t, { timeoutMs: 15_000 });
+  const owner = new Proxy(t, {
+    get(target, key) {
+      if (key === 'after') return (fn: Parameters<test.TestContext['after']>[0]) => { dispose = async () => fn?.(target, () => {}); };
+      const value = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  const scope = caseDeadlines(owner, { clock, timeoutMs: 10 });
+  const root = await observed.wait('root acquisition', () => scope.wait('root setup', () => tempProject(scope.fixtures)));
+  const setup = observed.wait('hub and client acquisition', () => scope.wait('held hub and client setup', async () => {
+    entered.resolve();
+    await release.promise;
+    abort.signal.throwIfAborted();
+    hub = await projectHub(scope.fixtures, root, {}, { clock: new FakeClock() });
+    stoppedWithRoot = hub.stopped.then(() => existsSync(root));
+    await inProcessSpoke(scope.fixtures, { cwd: root, discover: true, name: 'verifier', role: 'reviewer', sessionId: 'verifier-id' });
+    if (mode === 'early-failure') throw new Error('synthetic setup failure after client acquisition');
+    return hub;
+  }));
+  const outcome = mode === 'assertion-failure' ? setup.then(() => {})
+    : mode === 'early-failure' ? assert.rejects(setup, /synthetic setup failure/)
+    : assert.rejects(setup, /held hub and client setup.*deadline exceeded/);
+  // Observe rejection immediately while preserving the final awaited assertion below.
+  void outcome.catch(() => {});
+  await observed.wait('entered setup receipt', () => entered.promise);
+  if (mode === 'early-failure' || mode === 'assertion-failure') release.resolve();
+  else await clock.advance(10);
+  await observed.wait('setup outcome assertion', () => outcome);
+  assert.ok(dispose);
+  assert.equal(existsSync(root), true, 'root retained until late acquisition settles and writers stop');
+  if (mode === 'assertion-failure') {
+    await observed.wait('assertion failure with finally disposal', () => assert.rejects((async () => {
+      try { assert.fail('synthetic body assertion before explicit cleanup'); }
+      finally { await close(); }
+    })(), /synthetic body assertion/));
+  } else {
+    const disposing = close();
+    if (mode === 'aborted') abort.abort(new Error('synthetic setup abort'));
+    release.resolve();
+    await observed.wait('shared cleanup receipt', () => disposing);
+  }
+  if (mode === 'aborted') assert.equal(hub, undefined, 'aborted setup creates no late writer');
+  else {
+    assert.ok(hub, 'late acquisition remained owned');
+    await observed.wait('hub stopped receipt', () => hub!.stopped);
+    assert.equal(await observed.wait('shutdown before removal receipt', () => stoppedWithRoot!), true, 'positive hub shutdown receipt precedes removal');
+  }
+  assert.equal(existsSync(root), false, 'owned root removed only after drainage');
+});

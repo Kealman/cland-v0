@@ -19,6 +19,14 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 When holding the Reviewer role, accept `review request T-<n>` from the item’s lead (the live claimant in `task.view`), a supervising Lead within its subtree, or the Coordinator. Take `task.hold` before reviewing the named branch/head and criteria. Ask the lead for missing review inputs. After recording the verdict, `send` kind `report` to `lead T-<n>` in the request’s topic with first line `review clear T-<n>` or `review not clear T-<n>` and the findings that matter. The claimant fixes findings and requests re-review itself; the supervising Lead or Coordinator merges on the hub’s `ready` event, without relaying verdicts. An unclaimed item’s lead address resolves to the nearest container Lead, then the Coordinator; for a closed or unknown item address `coordinator` directly.
 
+If an accepted request is withdrawn, duplicate or owned elsewhere, use
+`verification.decline` with `request` equal to its delivered `msg_id` and a
+nonempty one-line `reason`. It returns work to the requester without a verdict.
+Release any acquired tracker hold separately with `task.hold`. A missing requester
+identity or incomplete delivery admission retains the reservation; report the
+blocker instead of fabricating a verdict. Relaunch verifiers after upgrading to
+expose the tool; explicit inherited Reviewer/QA tool lists need its grant.
+
 Default subscriptions deliver item status/verdict and verifier death or long idle to the lead, digested at its next turn. Use `subscribe` to watch additional subjects and `subscriptions` to inspect them instead of polling. Routine updates use kind `progress`; requests and verdict reports use `report`; blockers use `question` or `report`.
 
 Review source first, before the full verification run. A clear source verdict at the exact reviewed head lets the Implementer run `cland verify` there. A fix or changed head needs a new source review before another run. When the post-verdict result arrives, check that it names the reviewed head and record the final verdict; a failed run is not clear. An unchanged head may reuse an earlier green run through the tree-hash cache. A source verdict alone is not final verification evidence.

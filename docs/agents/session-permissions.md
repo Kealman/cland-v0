@@ -114,3 +114,23 @@ The native adapter declares relaunch stop ownership explicitly; generic adapters
 retain Sessions' outer-stop boundary. A positive adapter stop receipt is persisted
 before replacement. An unconfirmed adapter-owned stop leaves the original running
 row, role and task claim intact, and cannot be reported as harness exit.
+
+## Declining an accepted verifier request (T-1494)
+
+Reviewer and QA use `verification.decline` with `request` set to the delivered
+`msg_id` and `reason` set to one nonempty line. The hub checks the caller's durable
+session and exact accepted receipt, clears that pending reservation immediately,
+and durably returns the reason and request id to the original requester's session
+in the request topic. Missing agent identity or incomplete captured-ID delivery
+admission refuses and retains pending; retry after identity recovery. Human
+requests receive the notice in their topic. It records
+no verdict and does not requeue the declined request; the requester decides the
+next assignment. Other queued requests can use the released capacity immediately.
+A stale id cannot release newer work, even on the same item or head. Existing
+tracker holds remain separate: release an acquired hold with `task.hold` too.
+Requests without a captured message receipt cannot be declined by guessing prose.
+
+Verifier sessions must be relaunched after this tool lands: tools are fixed at
+launch. Inherited roles with explicit tool lists must grant `verification.decline`
+to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
+without changing pending state; do not substitute a verdict to clear it.

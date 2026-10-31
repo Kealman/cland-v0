@@ -1615,6 +1615,9 @@ export class Dispatcher {
           case 'artifact.create':
           case 'artifact.list':
             return artifact(frame, () => connection && core.isCurrent(connection) ? connection : null);
+          case 'verification.decline':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: core.declineVerification(connection!, frame.request, frame.reason) });
+            break;
           case 'who':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { me, sessions: core.presence() } });
             break;

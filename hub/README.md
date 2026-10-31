@@ -1822,7 +1822,7 @@ An unknown tool or scope makes the file unreadable (the last good version stays 
 | Coordinator | `send`, `ask`, `ask.forward`, `ask.answer`, `resolve`, `topic.create`, `task.create`, `task.plan`, `task.edit` (assigning included), `task.close`, `task.claim`, `task.link`, `task.rank`, `task.criterion`, `task.comment`, `session.launch`, `session.list`, `session.stop`, `session.resume`, `hub.stop` (the last three from its shell: The CLI in a session's shell), `role.handover`, `merge`, `release`, `sync` (release and sync from its shell only), `artifact.create`, `rename`, `who`, `history`, `status`, `task.view`, `task.list` |
 | Implementer | `ask.forward`, `ask.answer`, `send:agents`, `topic.create:own`, `task.claim:own`, `task.comment:own`, `task.edit:review`, `task.criterion:done`, `task.plan:show`, `artifact.create`, `who`, `session.list`, `history`, `status`, `task.view`, `task.list` |
 | Aide | `task.criterion` (done and manage), `task.create`, `task.edit` (any status), `task.close`, `task.link`, `task.comment`, `task.claim`, `task.view`, `task.list`, `artifact.create`, `artifact.promote`, `send` (session names or topics), `topic.create`, `history`, `who`, `session.list`, `status`, `session.launch`, `session.stop`, `session.resume` (sessions of any role, only on the human's word; the Coordinator keeps staffing during a build), `task.import`, `push` (from its own shell) |
-| Reviewer, QA | `send:agents`, `task.hold`, `task.comment:verdict`, `task.criterion:verify`, `task.plan:show`, `artifact.create`, `who`, `session.list`, `history`, `status`, `task.view`, `task.list` |
+| Reviewer, QA | `send:agents`, `task.hold`, `verification.decline`, `task.comment:verdict`, `task.criterion:verify`, `task.plan:show`, `artifact.create`, `who`, `session.list`, `history`, `status`, `task.view`, `task.list` |
 | no role | nothing (such a session is refused at hello; one whose role is revoked while connected is refused every call) |
 
 `session.list` is a separate read permission for every role, including Leads. It covers `cland session list`, `--json` and `--archived`; session lifecycle mutations keep their existing grants. Projects with explicit `[<role>.permissions] tools` lists add `"session.list"` to each role that should read launched sessions; a `"session.launch"` grant does not imply it. See [session permission guidance](../docs/agents/session-permissions.md).
@@ -8104,3 +8104,23 @@ missing-row and previous-hub refusal states do not wait. Expiry preserves the
 last in-budget state; it supplies no passing connection evidence. Pairing still
 requires the existing human gesture and identity approval. This adds no gate,
 configuration or role permission.
+
+## Declining an accepted verifier request (T-1494)
+
+Reviewer and QA use `verification.decline` with `request` set to the delivered
+`msg_id` and `reason` set to one nonempty line. The hub checks the caller's durable
+session and exact accepted receipt, clears that pending reservation immediately,
+and durably returns the reason and request id to the original requester's session
+in the request topic. Missing agent identity or incomplete captured-ID delivery
+admission refuses and retains pending; retry after identity recovery. Human
+requests receive the notice in their topic. It records
+no verdict and does not requeue the declined request; the requester decides the
+next assignment. Other queued requests can use the released capacity immediately.
+A stale id cannot release newer work, even on the same item or head. Existing
+tracker holds remain separate: release an acquired hold with `task.hold` too.
+Requests without a captured message receipt cannot be declined by guessing prose.
+
+Verifier sessions must be relaunched after this tool lands: tools are fixed at
+launch. Inherited roles with explicit tool lists must grant `verification.decline`
+to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
+without changing pending state; do not substitute a verdict to clear it.

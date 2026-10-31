@@ -54,6 +54,7 @@ export const KNOWN_TOOLS: readonly string[] = [
   'task.criterion',
   'task.claim',
   'task.hold',
+  'verification.decline',
   'task.import',
   'session.list',
   'session.launch',
@@ -141,8 +142,8 @@ export const DEFAULT_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   // assignments are held by session id)
   lead: ['role.handover', 'task.plan:show', 'task.plan:set', 'ask.forward', 'ask.answer', 'send:agents', 'session.launch', 'session.stop', 'merge', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS],
   implementer: ['ask.forward', 'ask.answer', 'send:agents', 'topic.create:own', 'task.claim:own', 'task.comment:own', 'task.edit:review', 'task.criterion:done', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
-  reviewer: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
-  qa: ['send:agents', 'task.hold', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
+  reviewer: ['send:agents', 'task.hold', 'verification.decline', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
+  qa: ['send:agents', 'task.hold', 'verification.decline', 'task.comment:verdict', 'task.criterion:verify', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', ...READS, 'task.plan:show'],
 });
 
 /** Why a grant list is wrong, or null. `where` names it for the message (`reviewer.permissions.tools`). */
@@ -211,7 +212,7 @@ export function toolAvailability(role: string | null, grants: readonly string[] 
   if (role === 'lead' && LEAD_ROOT_TOOLS.includes(tool)) return { ok: false, permission: tool, reason: `root level: only the Coordinator may use ${tool}` };
   if (role === 'aide' && !DEFAULT_PERMISSIONS.aide!.includes(tool)
       || tool === 'ask' && role !== 'coordinator'
-      || tool === 'task.hold' && role !== 'reviewer' && role !== 'qa'
+      || (tool === 'task.hold' || tool === 'verification.decline') && role !== 'reviewer' && role !== 'qa'
       || tool === 'inbox.decline' || tool === 'inbox.read' || tool === 'account.clear') {
     return decide(role, grants, { tool });
   }
@@ -266,7 +267,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
     const reason = criterionRefusal(call.criterionOp, { role, human: false, claimed: call.claimed?.() === true });
     if (reason) return { ok: false, permission: tool, reason };
   }
-  if (tool === 'task.hold' && role !== 'reviewer' && role !== 'qa') return { ok: false, permission: tool, reason: 'only Reviewer and QA take verifier holds' };
+  if ((tool === 'task.hold' || tool === 'verification.decline') && role !== 'reviewer' && role !== 'qa') return { ok: false, permission: tool, reason: tool === 'verification.decline' ? 'only Reviewer and QA decline verification requests' : 'only Reviewer and QA take verifier holds' };
   if (tool === 'task.comment' && call.verdictCriteria) {
     const decision = decide(role, grants, { tool: 'task.criterion', criterionOp: 'verify' });
     if (!decision.ok) return decision;

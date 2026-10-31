@@ -251,6 +251,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
           const value = (await hub.request({ type: 'ask', topic: args.topic, question: args.question, options, ...(typeof args.free === 'boolean' ? { free: args.free } : {}) })) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
+        case 'verification.decline': {
+          const value = await hub.request({ type: 'verification.decline', request: args.request as string, reason: args.reason as string }) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
         case 'who': {
           const value = await hub.who();
           const note = hub.lastRefusal;

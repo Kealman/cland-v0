@@ -5,6 +5,8 @@ import { TASK_TOOLS } from './task-tools.ts';
 import { RULE_TOOLS } from './rule-tools.ts';
 
 const BASE_TOOLS = [
+  { name: 'verification.decline', description: 'Return your exact accepted review/QA request to its requester without a verdict. request is the delivered msg_id; reason is one nonempty line. Clears only that pending reservation, not tracker holds. Relaunch verifier sessions after upgrading to expose this tool.',
+    inputSchema: { type: 'object', properties: { request: { type: 'string' }, reason: { type: 'string' } }, required: ['request', 'reason'] } },
   {
     name: 'verify',
     description: 'Preview admission with dryRun, or submit verification and return immediately; the hub posts one result. Running sessions retain their launch-time tool schema.',

@@ -1970,6 +1970,48 @@ export class HubCore {
     return { ...pending, item: this.#items?.resolveId?.(pending.item) ?? pending.item };
   }
 
+  /** Release only the receipt admitted to this durable session, never request prose. */
+  declineVerification(session: Connection, request: string, reason: string): { returned: true; notice: string } {
+    if (!this.isCurrent(session) || (session.role !== 'reviewer' && session.role !== 'qa')) throw new Error('only the current verifier may decline its request');
+    if (typeof reason !== 'string' || !reason.trim() || /[\r\n\u2028\u2029]/u.test(reason)) throw new Error('decline needs a nonempty one-line reason');
+    const identity = this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id);
+    const receiptKey = this.#verificationReceiptKey(session);
+    const raw = this.#store.meta(receiptKey);
+    const pendingKey = `pending-verification:${identity}`;
+    const pending = this.#store.meta(pendingKey);
+    const receipt = raw ? JSON.parse(raw) as { messageId: string | null } : null;
+    if (!pending || !receipt?.messageId || receipt.messageId !== request) throw new Error('request is not your current accepted pending reservation');
+    const message = this.#store.message(request);
+    if (!message) throw new Error('accepted request is unavailable; pending reservation retained');
+    const work = JSON.parse(pending) as PendingVerification;
+    const senderId = this.#store.senderSessionId(request);
+    if (message.fromKind === 'agent' && !senderId) throw new Error('requester identity unavailable; pending reservation retained');
+    const notice = this.#store.transaction(() => {
+      const detail: TopicNotice = { kind: 'report', text: `${session.name} declined ${work.kind} request ${work.item} (${request}): ${reason.trim()}. Returned to requester; no verdict recorded.` };
+      const topic = message.topic ?? AGENTS.id;
+      const result = senderId ? (() => {
+        const admitted = this.noticeToSessions(topic, detail, [senderId]);
+        if (!admitted || admitted.pending.length) throw new Error('requester delivery admission incomplete; pending reservation retained');
+        return admitted;
+      })()
+        : message.fromKind === 'hub' ? (() => {
+          const id = this.noticeTo(topic, { ...detail, to: [`lead ${work.item}`] });
+          return id ? { id } : null;
+        })() : (() => {
+        const recorded = this.#recordNotice(topic, detail);
+        if (recorded) this.#afterCommit(() => this.#publishNotice(recorded));
+        return recorded;
+      })();
+      if (!result) throw new Error('request topic unavailable; pending reservation retained');
+      this.#store.clearMeta(pendingKey);
+      this.#store.clearMeta(receiptKey);
+      return result.id;
+    });
+    this.#schedulePresence();
+    this.#drainVerifierRequests();
+    return { returned: true, notice };
+  }
+
   clearPendingVerification(name: string, item: string, verdict?: { verdict: string; commit?: string }): void {
     const id = this.sessionIdentity(`name:${name}`), key = `pending-verification:${id}`;
     const stored = this.#store.meta(key);

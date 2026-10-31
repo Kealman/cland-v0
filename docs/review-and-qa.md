@@ -218,3 +218,23 @@ The hub checks that stage tasks are closed with dev landing receipts or qualify 
 Transient Git ancestry errors retry on the background tip schedule, at most once per two-second interval. Restoring Git can close a qualifying stage at the same dev SHA; no new commit or hub restart is needed. A completed negative ancestry check keeps it open.
 
 The Coordinator or epic's Lead uses the qa skill's `STAGE-BRIEF.md`, commits the brief on dev and sends `qa request T-<epic> stage <name>` with the brief and dev SHA. QA uses a clean detached worktree, records every check under the epic id, and reports the stage result. After not-clear, the Lead adds finding items to the stage through a plan change, lands fixes, and requests a new run. Stage order continues through role clauses; no new launch scheduler is introduced. Stage verdicts do not mark epic criteria and cannot substitute for the separate final epic Definition of done QA run.
+
+## Declining an accepted verifier request (T-1494)
+
+Reviewer and QA use `verification.decline` with `request` set to the delivered
+`msg_id` and `reason` set to one nonempty line. The hub checks the caller's durable
+session and exact accepted receipt, clears that pending reservation immediately,
+and durably returns the reason and request id to the original requester's session
+in the request topic. Missing agent identity or incomplete captured-ID delivery
+admission refuses and retains pending; retry after identity recovery. Human
+requests receive the notice in their topic. It records
+no verdict and does not requeue the declined request; the requester decides the
+next assignment. Other queued requests can use the released capacity immediately.
+A stale id cannot release newer work, even on the same item or head. Existing
+tracker holds remain separate: release an acquired hold with `task.hold` too.
+Requests without a captured message receipt cannot be declined by guessing prose.
+
+Verifier sessions must be relaunched after this tool lands: tools are fixed at
+launch. Inherited roles with explicit tool lists must grant `verification.decline`
+to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
+without changing pending state; do not substitute a verdict to clear it.

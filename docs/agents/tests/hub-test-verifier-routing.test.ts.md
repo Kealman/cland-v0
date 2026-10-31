@@ -74,3 +74,23 @@ predecessors, keep unknown-only work pending, and allow request/covering objects
 or ancestry to become available later (running hub and reopen). Conservative
 Git facts resolve both objects and return a positive common base; unrelated
 controls return a distinct common base. Retry and forward pages each cap at 32.
+
+Decline controls use real spoke tools for Reviewer and QA. Observe accepted pending
+receipts before calling verification.decline with the delivery msg_id. Cover foreign
+session, blank/multiline reason and stale same-item request refusals, pinned-head
+release, the returned notice and unchanged empty verdict list. No browser
+or native process is involved; legacy pending projections above remain unchanged.
+
+Decline acquisition uses caseDeadlines before root work for separate root, hub and
+client setup bounds. Held omitted/aborted setup and early post-client failure
+controls retain the root, join late acquisition and observe hub.stopped before
+removal. Missing/null requester rows are seeded only after every writer stops;
+failed decline retains pending and rolls back its notice. A late captured identity
+then receives the retry reason without a verdict or reused-name fallback.
+
+The fault controls retain a separate real-clock caseDeadlines observer for entered,
+assertion outcome, shared disposal and hub.stopped receipts. Emergency cleanup
+always invokes the captured idempotent disposer, including before the body reaches
+explicit cleanup. An actual assertion failure exercises finally disposal after
+hub/client acquisition; outcome rejection is observed immediately and its final
+assertion is retained.
