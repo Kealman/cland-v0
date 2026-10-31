@@ -2,8 +2,8 @@
 id: T-1510
 kind: task
 title: Batch interaction scanner falls back on every web test through web-readiness createRequire
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1279
 branch: t/T-1510-batch-interaction-scanner-falls-back-on
 created: 2026-10-31T10:40:20.317Z
-updated: 2026-10-31T17:06:22.911Z
+updated: 2026-10-31T17:13:03.310Z
+closed: 2026-10-31T17:13:03.310Z
 ---
 
 ## Summary
@@ -58,3 +59,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-15002 full documentation-only source/evidence review clear. C1 uses existing T-1492 parser/regression and Coordinator 2fe43bab's explicit accepted post-restart selection receipts: independently read A-14877's 55 fallbacks/49 Web vs exactly six non-Web reasons in A-14924/A-14938/A-14959. Parser/graph/external-proof/web-readiness bytes match A-14924 head. Those originals configure host+T1 only; selection facts do not prove Web/all-tier execution. C2 table lists all six matching reasons/dispositions, checked against current source; docs/README/skill/CHANGES align with report default and T2/Web scope. No executable change, new same-head runtime run, reviewer workload or full run request. C1/C2 verified under this docs-only closure and accepted historical evidence; local four filtered cases/typecheck/lint0 remain lead-reported.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-31T17:13:03.310Z
+
+Merged af49b98c71d89e189d06d5508fd43c080e49a990 onto dev.
