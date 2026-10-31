@@ -3,17 +3,17 @@ id: T-1559
 kind: task
 title: WebAuthn checks on node:crypto
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1536
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1288
+branch: t/T-1559-webauthn-checks-on-node-crypto
 created: 2026-10-31T23:47:50.061Z
-updated: 2026-10-31T23:48:16.778Z
+updated: 2026-10-31T23:49:11.739Z
 ---
 
 ## Summary

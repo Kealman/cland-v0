@@ -3,17 +3,17 @@ id: T-1542
 kind: task
 title: The Host interface and the local host's process operations
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1531
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1286
+branch: t/T-1542-the-host-interface-and-the-local-host-s
 created: 2026-10-31T23:47:40.429Z
-updated: 2026-10-31T23:48:13.122Z
+updated: 2026-10-31T23:49:19.477Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ Hot files: `hub/src/host/host.ts` (new), `hub/src/host/local.ts` (new), `hub/tes
 - [ ] C4. The liveness and stop cases show that a reused pid with another birth identity is not alive and is never signalled, and that a row with only a legacy `pid_started` keeps today's answer (test).
 - [ ] C5. The processes case reports, for a spawned parent with a child, the resident memory and CPU of the whole tree under the parent's pid (test).
 - [ ] C6. The `local` host's identity, alive and stop delegate to `processIdentityAsync`, `processAlive`, `sameProcess` and `endProcess`, and `process-identity.test.ts`, `system-processes.test.ts` and `session-async-processes.test.ts` pass with no test edited.
+
+## Comments
+
+### impl-1542 · 2026-10-31T23:49:19.477Z
+
+Seams fixed by C1–C6: reusable Host factory contract with native disposable processes, plus unedited process-identity.test.ts, system-processes.test.ts and session-async-processes.test.ts. Consumer audit: Host is new (no existing callers); avoid modifying shared SystemProcess/ps format so production system-processes, adapters/sessions, orphans, fixture-processes, stdio-writers, suite-isolation, process-cleanup and all recorded ps fixtures remain unchanged. Host resource collection will use its own explicit RSS/CPU projection.

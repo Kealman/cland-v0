@@ -3,17 +3,17 @@ id: T-1558
 kind: task
 title: Sign-in mode, the users and roles tables, the switch and the reset
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1536
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1287
+branch: t/T-1558-sign-in-mode-the-users-and-roles-tables
 created: 2026-10-31T23:47:49.735Z
-updated: 2026-10-31T23:48:16.061Z
+updated: 2026-10-31T23:49:00.638Z
 ---
 
 ## Summary
