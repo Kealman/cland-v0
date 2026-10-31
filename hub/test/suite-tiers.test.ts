@@ -381,6 +381,8 @@ test('shipped allowances retain valid standing owners without manifest migration
   for (const owner of new Set<string>(Object.values(manifest.allow as Record<string, { owner: string }>).map(entry => entry.owner))) {
     assert.ok(owners[owner]);
     // Positive control: the exact shipped entries must reject a delivery owner.
-    assert.throws(() => lintDurationManifest(manifest, { source, owners: { ...owners, [owner]: { state: 'open', kind: 'epic', parent: 'R-999' } } }), /epic owner/);
+    // Location diagnostics have small dedicated fixtures above; do not YAML-parse
+    // the entire shipped timing history merely to check this refusal.
+    assert.throws(() => lintDurationManifest(manifest, { owners: { ...owners, [owner]: { state: 'open', kind: 'epic', parent: 'R-999' } } }), /epic owner/);
   }
 });

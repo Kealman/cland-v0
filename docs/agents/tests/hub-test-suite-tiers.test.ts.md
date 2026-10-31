@@ -8,3 +8,11 @@ new stanzas. The shipped manifest is checked against a disposable copy of its
 owner ancestry; a planted release-parent epic is the refusal positive control.
 The source manifest is read only and never migrated. Other duration fixtures use
 categories, retaining ids so legacy and historical-admission assertions survive.
+
+T-1540 keeps shipped-owner resolution limited to the owners named by `allow`
+and their ancestry. Read the shipped JSON once; preserve all allowance checks
+and the delivery-owner positive control, but omit `source` from that control.
+Source-location diagnostics use the small delivery-owner fixtures above it.
+Passing the complete timing history as `source` makes a refusal YAML-parse
+the whole baseline for an unused line number. Measure this case with ten
+sequential targeted runs and the mode-free droplet verification; add no allowance.
