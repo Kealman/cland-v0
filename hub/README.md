@@ -1227,7 +1227,7 @@ A topic is a thread in the human's chat with agents (spec 4.5, decision #7): an 
 - **A role, for the human**, reaches its live holders only: a holder that went offline is not an addressee (it was replaced, or will take the role again on its hello). With no live holder the message is queued under the role, and the first session to take the role (its hello) gets it, also a session that was already addressed by name in the same message (one delivery, one ack). The stage stays `queued` until that session acks. One role may have several holders: all of them are reached. The sender is `human`, a reserved name.
 - **A session** writes with `send`: `to` accepts `string | string[]`, such as `"coordinator"` or `["coordinator"]`; a string becomes a one-element array. For a caller with send-tool availability, other shapes (including null and arrays with non-string entries) fail with `to must be a string or an array of strings` before argument-dependent permission routing. With no `to` or `to: []` the message is for the human, in the given topic or General; with `to` it goes to sessions and is recorded in the given topic or Agents. A role reaches its live holders, or, with none connected, the offline holders the hub remembers (queued for them); a role nobody ever held answers `empty`.
 
-The process view (`session.list`, `hub.status.harnesses` and `session.process`) carries `holds`: the claim (`role: "item"`) first, followed by verifier holds (`role: "review"` or `"qa"`) newest first. Each verifier hold includes its durable ISO `heldAt` timestamp; claims have no hold timestamp. Connected presence carries the same work facts. The view can also carry `pending: { item, kind: "review" | "qa" }`, captured when the session accepts a message whose first line starts with `review request <id>` or `qa request <id>` (including epic stage requests; text after the id is detail). IDs resolve by number with any kind prefix. Unknown, ready or closed items are ignored, including late delivery acknowledgements. Moving an item to ready, closing, landing or removing it clears every reservation for it, including disconnected verifiers; stale stored reservations for ready, closed or missing items never block assignment or appear in work views. A newer request replaces pending work; a hold on that item, the session's verdict on it, or stop/death clears it. Pending work survives hub restart, is stored at delivery acceptance, and is never reconstructed by reading message history. Hold and pending changes publish a changed process view at most once per tick.
+The process view (`session.list`, `hub.status.harnesses` and `session.process`) carries `holds`: the claim (`role: "item"`) first, followed by verifier holds (`role: "review"` or `"qa"`) newest first. Each verifier hold includes its durable ISO `heldAt` timestamp; claims have no hold timestamp. Connected presence carries the same work facts. The view can also carry `pending: { item, kind: "review" | "qa" }`, captured when the session accepts a message whose first line starts with `review request <id>` or `qa request <id>` (including epic stage requests; text after the id is detail). IDs resolve by number with any kind prefix. Unknown, ready or closed items are ignored, including late delivery acknowledgements. Moving an item to ready, closing, landing or removing it clears every reservation for it, including disconnected verifiers; stale stored reservations for ready, closed or missing items never block assignment or appear in work views. A newer request replaces pending work; a hold on that item or stop/death clears it. Same-kind verdicts and newer accepted requests retire reservations as described below. Pending work survives hub restart, is stored at delivery acceptance, and is never reconstructed by reading message history. Hold and pending changes publish a changed process view at most once per tick.
 
 The sessions snapshot also supplies `rows`: one hub-merged `SessionRow` per process or connected unmanaged session. `session.list` adds the same `rows` projection alongside its unchanged compatibility fields. Its default read includes unarchived processes and connected unmanaged sessions; `{archived: true}` returns only archived rows, excluding unrelated connected presence. The authenticated web edge permits both reads. `shared/wire` exposes this row portion as `SessionListRows`. Each row has a stable `key` (session id, or `name:<name>` for an unknown identity), the process facts, current `presence` or null, hub-held role, `launched` and `live`, account and usage. `item` selects the first claim/hold, then an accepted pending request, then the launch item. `itemKind` is `item`, `review`, `qa` or null; `additionalHolds` is the +N count, and `itemRequested` distinguishes a request from held work. Verifier holds are newest first. `stateSince` is the ISO transition time for computing the state's age without timer-only deltas (null when unknown); `approvalCommand` carries the command it waits on and clears when the state changes.
 
@@ -1236,6 +1236,43 @@ Clients negotiating `snapshot`, `numbered-deltas` or `slim-frames` receive `sess
 A lead's `review request T-n` addressed to `reviewer`, or `qa request T-n` addressed to `qa`, in Agents or the item's topic resolves to one live verifier. Text after the item on that first line is detail: `review request T-<n> — branch, head and scope` resolves exactly like the bare form, and only the item id decides routing. The hub prefers the item's current holder or latest request/authenticated verdict writer, then a free live holder. Verdict affinity follows durable hub write order and identity, independent of copied or reordered item comments. Free holders have no item holds, pending delivery or pool handoff and are idle (or have no adapter state). A bare spoke has no adapter to confirm injection, so its accepted deliveries count as complete for staffing; managed sessions still wait for adapter confirmation. The outcome includes `resolvedTo` with the selected session name.
 
 With no eligible verifier, the outcome is `queued`, its reason says it is waiting for the next free live verifier, and `resolvedTo` is absent. The request and its attachments stay in the topic's durable history, and its topic warns `waiting for free reviewer` or `waiting for free qa`. The hub retries in request order when holds release, delivery acceptance/injection completes, a session becomes idle or reconnects, and during queue maintenance. Selection retains the same affinity rules and reaches one session; a busy earlier request does not block unrelated eligible work. Selection and its sender notice commit together. The sender receives a `verifier-request` notice in the request topic naming the selected session. The queue and sender identity survive hub restarts and renames. Wait for the notice instead of resending; if no verifier is live, report the staffing blocker to the supervising lead so one can be launched.
+
+### Verifier reservation retirement and queue diagnostics
+
+Authorized request admission is persisted privately on its message before native
+delivery. Trusted human input through topic.send, CLI, web or remote ingress records
+the same receipt without a sender session; legacy human rows retain that authority
+from their stored human producer. Owned launch and pool-reuse brief producers also
+record admission before native delivery or first-turn acceptance. A legacy NULL
+launch receipt migrates only when the stored message/recipient delivery retains an
+accepted, uncancelled launch token bound to that durable session credential.
+Ordinary hub text, another owner and explicit denied0 remain unadmitted. Authorized named
+requests keep updating local pending even across request kinds. Only global
+supersession across verifiers requires the matching recipient role; unrelated
+agent messages cannot supersede verification work. Older queued role
+requests receive the receipt only after the normal authority recheck. Legacy
+named agent deliveries with a NULL receipt reauthorize through the stored durable sender
+identity, current send permission and item-lead authority at acceptance. New
+messages persist explicit 0/1 decisions; a rejected decision is never reauthorized.
+Missing durable agent sender identity leaves an ordinary delivery without a reservation.
+Accepted reservations retain the legacy `{item,kind}` projection, with
+`{messageId,admittedAt}` persisted separately. A durable same-kind verdict on that
+item recorded after admission retires the reservation, whoever wrote it. Another
+verifier accepting a newer same-kind request supersedes older reservations and
+queued requests. Late acceptance cannot recreate already-served work. Old stored
+reservations without provenance begin at hub load time and retire on the next
+later verdict. Ordering uses durable message identities and verdict timestamps;
+it does not infer heads from free text or prove Git ancestry.
+
+Eligibility changes retry immediately; the hub also retries at most every 1000 ms
+while its maintenance clock runs, independently of held asynchronous heartbeat
+warning reads. Diagnostic deduplication is separate from the lifecycle journal
+checkpoint and survives Store reopen. An unassigned request past 1000 ms posts one
+report-only `verifier-request` notice in Agents, naming the request and each idle
+connected verifier's exclusions (holds, pending work/delivery or pool handoff).
+Retired stale pending diagnostics name admission time and the superseding verifier
+and receipt. The notice survives restart without duplication and changes no gate,
+exit status or permissions. An idle process with live work remains reserved.
 
 Selection rechecks the sender's role, send permission and item ownership. A closed/removed item, closed topic, lost authority, hygiene refusal or expired queue (24 hours by default) drops the pending delivery and sends an explicit refusal notice with the reason and retry rule. Named recipients and ordinary role messages keep their usual addressing behavior.
 

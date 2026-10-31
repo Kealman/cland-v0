@@ -393,6 +393,12 @@ T-1453: Under docs/help conflict waiver retain local preflight alongside periodi
 
 T-1490: Preserve typed compiler capability refusals without source provenance decoration.
 
+T-1487: document ordered verifier reservation retirement and report-only queue diagnostics.
+T-1487 source2: gate supersession on captured authority, isolate diagnostic dedup and retain queue bounds during held heartbeat reads.
+T-1487 source3: preserve authorized legacy named admission using durable sender identity; distinguish NULL migration from current rejected0/accepted1 receipts.
+T-1487 source4: preserve trusted human admission and legacy human producers; retain computed-session and workload publication regressions.
+T-1487 source5: preserve named local cross-kind pending compatibility while gating global supersession; capture owned launch/reuse admission.
+T-1487 source6: migrate retained NULL launch receipts through accepted message/recipient/launch ownership, preserving cancellation, owner and explicit-denial fences.
 T-1470: Document the held-delivery supervision regression seam and receipt/fence controls.
 
 T-1470 M4: Distinguish never-attempted idle/timer drainage from attempted-unconfirmed transition/reconnect retry.

@@ -1177,6 +1177,21 @@ compiler capability is no passing evidence. Keep TypeScript dev-only and ordinar
 startup compiler-free. The native installed CLI fixture is documented in
 `docs/agents/tests/hub-test-suite-admission-native.test.ts.md`.
 
+## Verifier queue retirement diagnostics
+
+For a queued review/QA request, read its assignment/refusal notice and the single
+Agents diagnostic after 1000 ms of running hub clock. Idle verifiers can retain
+live work; the diagnostic names their exclusions and any retired stale pending
+receipt. A later same-kind verdict or another verifier accepting a newer request
+retires the old reservation. Wait for assignment rather than resending. For
+routing changes, retain delayed acceptance, supersession and legacy provenance
+controls in docs/agents/tests/hub-test-verifier-routing.test.ts.md. Keep admission
+authority (including trusted human input without a sender session and owned
+launch/reuse briefs and legacy launch ownership), local cross-kind compatibility,
+global supersession and lifecycle
+replay checkpoint isolation and maintenance during held
+heartbeat warnings covered when changing that boundary. Existing role
+clauses cover this flow; no permission line is added.
 
 ## Held-delivery supervision
 

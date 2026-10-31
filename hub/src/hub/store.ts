@@ -210,6 +210,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'from_role', type: 'text' },
   /** Eligibility at send time survives rebuilding derived runs after retention. Null: legacy, not projected yet. */
   { table: 'messages', column: 'run_eligible', type: 'integer' },
+  { table: 'messages', column: 'verifier_admitted', type: 'integer' },
   { table: 'messages', column: 'reply_to', type: 'text' },
   { table: 'messages', column: 'topic', type: 'text' },
   /** The human/agent's kind, or the hub notice's kind (`role`: a clause or revocation). */
@@ -573,7 +574,7 @@ export class Store implements HygieneMemory {
       this.#prepare('delete from launch_reservations where name = ?').run(name);
       this.#prepare('delete from subscription_usage where session_id = ?').run(sessionId);
       this.#prepare('delete from session_credentials where session_id = ?').run(sessionId);
-      for (const prefix of ['pending-verification:', 'subscription-terminal:', 'pool-handoff:']) this.clearMeta(prefix + sessionId);
+      for (const prefix of ['pending-verification:', 'verification-receipt:', 'verification-retired:', 'subscription-terminal:', 'pool-handoff:']) this.clearMeta(prefix + sessionId);
       this.#prepare("delete from meta where key like 'session-alias:%' and value = ?").run(sessionId);
       this.#prepare("delete from meta where key like 'verifier-request:%' and json_extract(value, '$.sessionId') = ?").run(sessionId);
     });
@@ -1161,6 +1162,16 @@ export class Store implements HygieneMemory {
       and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') limit 1`).get(session, Number(awaitsInjection)) !== undefined;
   }
 
+  /** Hub-owned authorization receipt, captured before sending; never inferred at acknowledgement. */
+  admitVerification(messageId: string, admitted = true): void {
+    this.#prepare('update messages set verifier_admitted = ? where id = ?').run(Number(admitted), messageId);
+  }
+
+  verificationAdmitted(messageId: string): boolean | null {
+    const value = this.#prepare('select verifier_admitted from messages where id = ?').get(messageId)?.verifier_admitted;
+    return value === null || value === undefined ? null : value === 1;
+  }
+
   queueVerifierRequest(messageId: string, item: string, role: 'reviewer' | 'qa'): void {
     item = item ? itemKey(item) : item;
     this.#prepare('update deliveries set verifier_item = ?, verifier_role = ? where message_id = ? and session = ?')
@@ -1245,6 +1256,16 @@ export class Store implements HygieneMemory {
   }
 
   /** A pending first input survives restart and follows any rename with its ordinary delivery row. */
+  /** Legacy admission needs the captured launch token, current durable recipient and accepted delivery. */
+  hasAcceptedLaunchBrief(messageId: string, session: string, sessionId: string): boolean {
+    return this.#prepare(`select 1 from deliveries d
+      join session_credentials c on c.session_id = ? and c.credential = d.launch_brief
+      join sessions s on s.name = d.session and s.session_id = c.session_id
+      where d.message_id = ? and d.session = ? and d.state in ('delivered', 'injected')
+      and (d.session_id is null or d.session_id = 'unknown' or d.session_id = c.session_id) limit 1`)
+      .get(sessionId, messageId, session) !== undefined;
+  }
+
   rememberLaunchBrief(id: string, session: string, launchId: string): void {
     this.#prepare('update deliveries set launch_brief = ? where message_id = ? and session = ?').run(launchId, id, session);
   }

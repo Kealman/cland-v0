@@ -273,3 +273,22 @@ or changed paths. On supported APFS/ext4, ctime detects same-size edits with
 restored mtime; native notifications and explicit full rescans backstop changes
 invisible in all metadata fields. Under load, wait for the exact file’s durable
 `task-reindexed` (or `task-removed`) receipt before checking client projections.
+
+## Accepted verifier request retirement
+
+A same-kind verdict recorded after a request's admission retires its pending
+reservation even when another verifier writes it. A newer same-kind request
+accepted by another verifier also supersedes older pending and queued requests.
+Late delivery cannot reserve already-served work. Legacy `{item,kind}` rows retain
+their shape and begin their separate admission provenance at hub load time.
+The queue retries at eligibility changes and within 1000 ms of running hub clock;
+a blocked request gets one report-only Agents notice with idle verifier exclusions.
+See hub/README.md, “Verifier reservation retirement and queue diagnostics”.
+
+Trusted human review/QA requests from topic.send, CLI, web and remote ingress
+record admission without a sender session. Legacy human producer rows retain
+that authority; agent admission still requires its captured authorized sender.
+
+Authorized named requests preserve local pending replacement across request kinds;
+matching recipient kind gates global supersession across verifiers. Owned launch
+and reused-brief producers capture admission before first-turn delivery.

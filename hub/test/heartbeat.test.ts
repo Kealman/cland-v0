@@ -436,3 +436,22 @@ test('watched review and ready transitions wait a full interval even when a hand
   await clock.advance(200);
   await ui.waitFor(f => ui.frames.indexOf(f) >= cursor && heartbeat(f) && (f.message as Message).detail?.stale === 2);
 });
+
+test('held duration warning work cannot stall verifier queue diagnostics', async t => {
+  const run = caseDeadlines(t);
+  const entered = Promise.withResolvers<void>();
+  const warnings = Promise.withResolvers<string[]>();
+  try {
+    const f = await fixture(t, 100, { durationWarnings: () => { entered.resolve(); return warnings.promise; } });
+    await f.clock.advance(100);
+    await run.wait('warning read held before queue admission', () => entered.promise);
+    const item = await f.tracker.create({ id: 'stable-coord', name: 'coord', role: 'coordinator' }, { title: 'Queued during warning read', size: 'S' });
+    const sent = f.hub.core.sendFromSession('coord', ['reviewer'], `review request ${item.id}`);
+    assert.equal(sent.outcomes[0]?.outcome, 'queued');
+    await f.clock.advance(1001);
+    const rows = f.hub.core.topicHistory('agents').messages.filter(m => m.detail?.request === sent.message.id && m.detail?.outcome === 'stalled');
+    assert.equal(rows.length, 1, 'durable queue diagnostic precedes release of warning work');
+    await f.clock.advance(1000);
+    assert.equal(f.hub.core.topicHistory('agents').messages.filter(m => m.detail?.request === sent.message.id && m.detail?.outcome === 'stalled').length, 1);
+  } finally { warnings.resolve([]); }
+});

@@ -351,7 +351,10 @@ export class HubCore {
 
   deliverReuseBrief(message: Message): void {
     const name = message.to[0]!;
-    this.#record(message, [{ session: name, state: 'queued', direct: true }], this.#now().getTime());
+    this.#store.transaction(() => {
+      this.#record(message, [{ session: name, state: 'queued', direct: true }], this.#now().getTime());
+      this.#store.admitVerification(message.id, verifierRequest(message.text) !== null);
+    });
     this.#store.touchTopic(AGENTS.id, message.ts);
     this.#emitMessage(message);
     this.#log({ event: 'send', id: message.id, from: message.from, kind: message.kind, to: message.to, topic: message.topic, bytes: Buffer.byteLength(message.text), outcomes: [`${name}:queued`] });
@@ -500,12 +503,18 @@ export class HubCore {
     this.#durationWarnings = options.durationWarnings;
     this.#idleNotifyMs = options.idleNotifyMs ?? IDLE_NOTIFY_MS;
     this.#heartbeatTimer = this.clock.setInterval(() => {
-      if (this.#heartbeatWork || this.#closed) return;
+      if (this.#closed) return;
+      this.#drainVerifierRequests();
+      if (this.#heartbeatWork) return;
       this.#heartbeatWork = this.#heartbeatTick().catch(error => this.#log({ event: 'heartbeat-failed', error: String(error) })).finally(() => { this.#heartbeatWork = null; });
     }, Math.min(1000, Math.max(10, (options.heartbeatMs ?? 4000) / 4)));
     this.#heartbeatTimer.unref();
     this.#items = options.items ?? null;
     this.#store.setItemResolver(id => this.#items?.resolveId?.(id) ?? null);
+    for (const pending of this.#store.pendingVerifications()) {
+      const receiptKey = pending.key.replace('pending-verification:', 'verification-receipt:');
+      if (!this.#store.meta(receiptKey)) this.#store.setMeta(receiptKey, JSON.stringify({ messageId: null, admittedAt: this.#now().toISOString() }));
+    }
     this.#sessionHolds = options.sessionHolds ?? (() => []);
     this.visibility = new Visibility({ preferences: options.visibilityPreferences, overrides: options.visibility ?? {}, now: this.#now, role: name => this.#store.roleOf(name), process: id => this.#processFacts.get(id), items: () => [...this.#itemSnapshots.values()], ...(options.ladder ? { ladder: options.ladder } : {}) });
     for (const item of this.#items?.list?.() ?? []) {
@@ -1850,6 +1859,27 @@ export class HubCore {
     return this.#sessionHolds(sessionActor(session, UNKNOWN_SESSION).id);
   }
 
+  #verificationReceiptKey(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): string {
+    return `verification-receipt:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`;
+  }
+
+  #acceptedVerificationKey(item: string, kind: 'review' | 'qa'): string {
+    return `verification-accepted:T-${idNumber(item)}:${kind}`;
+  }
+
+  #verificationRetirement(item: string, kind: 'review' | 'qa', receipt: { messageId: string | null; admittedAt: string }): string | undefined {
+    const verdict = this.#items?.lastVerifier?.(item, kind === 'review' ? 'reviewer' : 'qa');
+    if (verdict && verdict.at > receipt.admittedAt) return `superseded by ${this.#store.nameOfSession(verdict.sessionId) ?? verdict.sessionId} verdict at ${verdict.at}`;
+    const stored = this.#store.meta(this.#acceptedVerificationKey(item, kind));
+    const accepted = stored ? JSON.parse(stored) as { messageId: string; admittedAt: string; sessionId: string } : undefined;
+    if (accepted && (receipt.messageId
+      ? accepted.messageId !== receipt.messageId && this.#store.messageSeq(accepted.messageId) > this.#store.messageSeq(receipt.messageId)
+      : accepted.admittedAt > receipt.admittedAt)) {
+      return `superseded by ${this.#store.nameOfSession(accepted.sessionId) ?? accepted.sessionId} request ${accepted.messageId} at ${accepted.admittedAt}`;
+    }
+    return undefined;
+  }
+
   sessionPending(session: Pick<Connection, 'name' | 'sessionId' | 'role'>): PendingVerification | undefined {
     const key = `pending-verification:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`;
     const stored = this.#store.meta(key);
@@ -1860,6 +1890,19 @@ export class HubCore {
       this.#store.clearMeta(key);
       return undefined;
     }
+    const receiptKey = this.#verificationReceiptKey(session);
+    const receiptRaw = this.#store.meta(receiptKey);
+    // Upgrade legacy reservations without inferring their original admission time.
+    const receipt = receiptRaw ? JSON.parse(receiptRaw) as { messageId: string | null; admittedAt: string }
+      : { messageId: null, admittedAt: this.#now().toISOString() };
+    if (!receiptRaw) this.#store.setMeta(receiptKey, JSON.stringify(receipt));
+    const retired = this.#verificationRetirement(pending.item, pending.kind, receipt);
+    if (retired) {
+      this.#store.clearMeta(key);
+      this.#store.clearMeta(receiptKey);
+      this.#store.setMeta(`verification-retired:${this.sessionIdentity(sessionActor(session, UNKNOWN_SESSION).id)}`, `pending ${pending.item} since ${receipt.admittedAt}, ${retired}`);
+      return undefined;
+    }
     return { ...pending, item: this.#items?.resolveId?.(pending.item) ?? pending.item };
   }
 
@@ -1868,6 +1911,7 @@ export class HubCore {
     const stored = this.#store.meta(key);
     if (!stored || !this.#sameItem((JSON.parse(stored) as PendingVerification).item, item)) return;
     this.#store.clearMeta(key);
+    this.#store.clearMeta(`verification-receipt:${id}`);
     this.#schedulePresence();
     this.#drainVerifierRequests();
   }
@@ -1877,9 +1921,41 @@ export class HubCore {
     if (connection.role !== 'reviewer' && connection.role !== 'qa') return false;
     const request = verifierRequest(message.text);
     if (!request) return false;
+    let admitted = this.#store.verificationAdmitted(message.id);
+    if (admitted === null) {
+      // The persisted producer establishes legacy human authority; human input has no session id.
+      if (message.fromKind === 'human' && message.from === HUMAN) admitted = true;
+      else if (message.fromKind === 'hub' && message.from === 'hub'
+        && this.#store.hasAcceptedLaunchBrief(message.id, connection.name, connection.sessionId)) admitted = true;
+      else {
+        // Old agent queues reauthorize only the captured durable sender identity.
+        const senderId = this.#store.senderSessionId(message.id);
+        const sender = senderId ? this.#store.nameOfSession(this.sessionIdentity(senderId)) : null;
+        const topic = message.topic ? this.#store.topic(message.topic) : null;
+        const role = sender ? this.#store.roleOf(sender) : null;
+        const permission = decide(role, role === null ? undefined : this.roleDefinition(role)?.permissions.tools ?? DEFAULT_PERMISSIONS[role], { tool: 'send', to: [connection.name], roleNames: this.roleNames() });
+        admitted = !!(permission.ok && sender && topic && this.#verifierRequest(sender, role, message.text, topic));
+      }
+      this.#store.admitVerification(message.id, admitted);
+    }
+    if (!admitted) return false;
     const item = this.#items?.resolveId?.(request.item) ?? null;
     if (!item || this.#items?.lead(item)?.state !== 'open' || this.#items?.get?.(item)?.status === 'ready') return false;
-    const key = `pending-verification:${this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id)}`;
+    const identity = this.sessionIdentity(sessionActor(connection, UNKNOWN_SESSION).id);
+    const receipt = { messageId: message.id, admittedAt: message.ts };
+    const retired = this.#verificationRetirement(item, request.kind, receipt);
+    if (retired) {
+      this.#store.setMeta(`verification-retired:${identity}`, `pending ${item} since ${receipt.admittedAt}, ${retired}`);
+      return false;
+    }
+    const matchingKind = connection.role === (request.kind === 'review' ? 'reviewer' : 'qa');
+    if (matchingKind) {
+      // Global supersession requires matching work; an authorized cross-kind named request stays local.
+      this.#store.setMeta(this.#acceptedVerificationKey(item, request.kind), JSON.stringify({ ...receipt, sessionId: identity }));
+      for (const row of this.#live.values()) if (row.sessionId !== connection.sessionId) this.sessionPending(row);
+    }
+    this.#store.setMeta(this.#verificationReceiptKey(connection), JSON.stringify(receipt));
+    const key = `pending-verification:${identity}`;
     const pending = this.sessionHolds(connection).some(h => h.item === item)
       ? null : JSON.stringify({ item, kind: request.kind });
     if (this.#store.meta(key) === pending) return false;
@@ -1977,6 +2053,8 @@ export class HubCore {
       // A carried input contains only clause and brief; leave held notes for the next ordinary delivery.
       this.#record(message, [{ session: name, state: 'queued', direct: true }], this.#now().getTime(), null, !carried);
       this.#store.rememberLaunchBrief(message.id, name, launchId);
+      // The owned launch producer was authorized before recording this first input.
+      this.#store.admitVerification(message.id, verifierRequest(message.text) !== null);
     });
     this.#store.touchTopic(AGENTS.id, message.ts);
     this.#emitMessage(message);
@@ -2795,14 +2873,34 @@ export class HubCore {
     return { item, role: request.kind === 'review' ? 'reviewer' : 'qa' };
   }
 
-  #requestVerifier(item: ItemSummary, role: 'reviewer' | 'qa', except: string): string | undefined {
-    const live = [...this.#live.values()].filter(c => {
-      if (c.role !== role || c.name === except) return false;
-      // Affinity and pool handoffs cannot displace a received verification request either.
+  #verifierCandidates(item: ItemSummary, role: 'reviewer' | 'qa', except: string) {
+    return [...this.#live.values()].filter(c => c.role === role).map(c => {
       const pending = this.sessionPending(c);
-      return (!pending || this.#sameItem(pending.item, item.id))
-        && this.sessionHolds(c).every(hold => this.#sameItem(hold.item, item.id));
-    }).sort((a, b) => a.name.localeCompare(b.name));
+      const holds = this.sessionHolds(c);
+      const receiptRaw = this.#store.meta(this.#verificationReceiptKey(c));
+      const admittedAt = receiptRaw ? (JSON.parse(receiptRaw) as { admittedAt: string }).admittedAt : undefined;
+      const pendingReason = pending ? `pending ${pending.kind} ${pending.item}${admittedAt ? ` since ${admittedAt}` : ''}` : '';
+      const hard = [
+        ...(c.name === except ? ['request sender'] : []),
+        ...(pending && !this.#sameItem(pending.item, item.id) ? [pendingReason] : []),
+        ...holds.filter(h => !this.#sameItem(h.item, item.id)).map(h => `holds ${h.item}`),
+      ];
+      const free = [
+        ...hard,
+        ...(!['idle', 'unknown'].includes(this.sessionState(c.sessionId)) ? ['busy'] : []),
+        ...(pending ? [pendingReason] : []),
+        ...holds.map(h => `holds ${h.item}`),
+        ...(this.#store.hasPendingWork(c.name, this.#processFacts.get(c.sessionId)?.status === 'running') ? ['pending delivery'] : []),
+        ...(this.#store.meta(`pool-handoff:${c.sessionId}`) ? ['pool handoff'] : []),
+      ];
+      const retired = this.#store.meta(`verification-retired:${c.sessionId}`);
+      return { c, hard, free: [...new Set(free)], retired };
+    }).sort((a, b) => a.c.name.localeCompare(b.c.name));
+  }
+
+  #requestVerifier(item: ItemSummary, role: 'reviewer' | 'qa', except: string): string | undefined {
+    const candidates = this.#verifierCandidates(item, role, except);
+    const live = candidates.filter(row => !row.hard.length).map(row => row.c);
     const held = item.holds.find(h => h.role === role);
     const verdict = this.#items?.lastVerifier?.(item.id, role);
     const prior = this.#store.meta(`verifier-request:T-${idNumber(item.id)}:${role}`);
@@ -2814,13 +2912,10 @@ export class HubCore {
     // A launch can reserve an idle member before its brief is sent.
     const reserved = live.find(c => this.#sameItem(this.#store.meta(`pool-handoff:${c.sessionId}`), item.id));
     if (reserved) return reserved.name;
-    return live.find(c => ['idle', 'unknown'].includes(this.sessionState(c.sessionId))
-      && !this.sessionHolds(c).length && !this.sessionPending(c)
-      && !this.#store.hasPendingWork(c.name, this.#processFacts.get(c.sessionId)?.status === 'running')
-      && !this.#store.meta(`pool-handoff:${c.sessionId}`))?.name;
+    return candidates.find(row => !row.free.length)?.c.name;
   }
 
-  /** Durable role requests retry only at eligibility changes, never by asking the lead to resend. */
+  /** Durable role requests retry at eligibility changes and the bounded maintenance tick. */
   #drainVerifierRequests(): void {
     if (this.#drainingVerifierRequests) return;
     this.#drainingVerifierRequests = true;
@@ -2838,8 +2933,28 @@ export class HubCore {
           : !permission.ok ? `${permission.reason}; restore send authority and send a fresh request`
           : !request ? `${queued.item} is closed, removed, or no longer led by the sender; send a fresh request from its current lead`
           : topic?.status === 'closed' ? 'request topic closed; send a fresh request in an open topic' : undefined;
+        if (!reason) reason = this.#verificationRetirement(queued.item, role === 'reviewer' ? 'review' : 'qa', { messageId: message.id, admittedAt: message.ts });
         const name = !reason && request ? this.#requestVerifier(request.item, role, from!) : undefined;
-        if (!reason && !name) continue;
+        if (!reason && !name) {
+          if (request && now - queued.queuedAt >= 1000) {
+            const id = `verifier-stalled:${message.id}:${role}`;
+            const candidates = this.#verifierCandidates(request.item, role, from!);
+            const idle = candidates.filter(row => ['idle', 'unknown'].includes(this.sessionState(row.c.sessionId)));
+            if (this.#store.meta(id)) continue;
+            this.#store.transaction(() => {
+              const notice = this.#recordNotice(AGENTS.id, {
+              kind: 'verifier-request',
+              text: `Queued ${role} request ${message.id} for ${queued.item} unassigned after 1000 ms; idle verifiers: ${idle.map(row => `${row.c.name}: ${row.free.join(', ') || 'eligible'}${row.retired ? `; retired ${row.retired}` : ''}`).join('; ') || 'none connected'}`,
+              detail: { request: message.id, item: queued.item, role, outcome: 'stalled' },
+              });
+              if (notice) {
+                this.#store.setMeta(id, notice.id);
+                this.#afterCommit(() => this.#publishNotice(notice));
+              }
+            });
+          }
+          continue;
+        }
         if (name) {
           const self = this.#identity(from!);
           const other = this.#identity(name);
@@ -2848,8 +2963,11 @@ export class HubCore {
           if (reason) reason += '; send a fresh request after the mute is lifted';
         }
         this.#store.transaction(() => {
+          this.#store.clearMeta(`verifier-stalled:${message.id}:${role}`);
           if (reason) this.#store.dropVerifierRequest(message.id, role);
           else {
+            // Legacy queued requests acquire the receipt only after the same authority recheck.
+            this.#store.admitVerification(message.id);
             const assigned = this.#store.assignVerifierRequest(message.id, role, name!);
             const selected = this.#live.get(name!)!;
             this.#store.setMeta(`verifier-request:T-${idNumber(queued.item)}:${role}`, JSON.stringify({ sessionId: selected.sessionId, at: this.#now().toISOString() }));
@@ -3216,11 +3334,15 @@ export class HubCore {
       ...(artifact ? { artifact } : {}),
       ...messageArtifacts(artifacts),
     };
-    this.#record(
-      message,
-      [...[...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), ...placeholders.map((role) => ({ session: `@${role}`, state: 'queued' as const }))],
-      nowMs,
-    );
+    this.#store.transaction(() => {
+      this.#record(
+        message,
+        [...[...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })), ...placeholders.map((role) => ({ session: `@${role}`, state: 'queued' as const }))],
+        nowMs,
+      );
+      // This producer already holds human authority across local, CLI, web and remote ingress.
+      this.#store.admitVerification(message.id, verifierRequest(text) !== null);
+    });
     this.#store.touchTopic(topic.id, message.ts);
     this.#store.markTopicRead(topic.id, message.id);
     // An outer native-answer transaction owns both the effect and replay receipt.
@@ -3355,6 +3477,7 @@ export class HubCore {
       this.#store.transaction(() => {
         this.#record(message, [...[...sessions].map((session) => ({ session, state: 'queued' as const, direct: direct.has(session) })),
           ...waiting.map(({ tag }) => ({ session: `@verifier:${tag}`, state: 'queued' as const }))], nowMs);
+        this.#store.admitVerification(message.id, !!verifier);
         for (const { tag } of waiting) this.#store.queueVerifierRequest(message.id, verifier!.item.id, tag as 'reviewer' | 'qa');
         if (verifier) {
           const selected = [...sessions].filter(name => this.#live.get(name)?.role === verifier.role);

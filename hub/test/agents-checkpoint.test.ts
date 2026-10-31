@@ -150,3 +150,48 @@ test('a deduplicated General retirement notice preserves pending Agents replay a
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('a stalled verifier diagnostic preserves pending Agents replay and deduplicates after reopen', async () => {
+  const { Tracker } = await import('../src/tracker/tracker.ts');
+  const { trackerItems } = await import('../src/hub/topics.ts');
+  const root = await mkdtemp(join(tmpdir(), 'cland-stalled-checkpoint-'));
+  const file = join(root, 'hub.db');
+  const clock = new FakeClock();
+  const tracker = new Tracker({ root, db: join(root, 'tracker.db'), git: async () => null, now: () => clock.now() });
+  const actor = { id: 'coord-id', name: 'coord', role: 'coordinator' };
+  let core = new HubCore({ store: new Store(file), items: trackerItems(tracker), clock });
+  const recorder = agentsRecord();
+  const records: Record<string, unknown>[] = [];
+  try {
+    const item = await tracker.create(actor, { title: 'Stalled review', size: 'S' });
+    const hello = core.hello({ type: 'hello', protocol: 2, sessionId: actor.id, name: actor.name, role: actor.role, cwd: root }, () => true);
+    assert.equal(hello.ok, true);
+    recorder.attach(core);
+    const log = recorder.tap(entry => records.push(entry));
+    log({ event: 'role-assigned', session: 'coord', role: 'coordinator' });
+    await Promise.resolve();
+    const checkpoint = core.store.meta(AGENTS_JOURNAL_CHECKPOINT);
+    assert.ok(checkpoint);
+    assert.equal(core.sendFromSession('coord', ['reviewer'], `review request ${item.id}`).outcomes[0]?.outcome, 'queued');
+    clock.block(1001);
+    log({ event: 'harness-exited', session: 'coord', harness: 'codex', reason: 'fixture' });
+    core.refreshPresence(); // Record diagnostic while the lifecycle projection is still pending.
+    assert.equal(core.topicHistory('agents').messages.filter(m => m.detail?.outcome === 'stalled').length, 1);
+    recorder.attach(null);
+    core.close();
+    core.store.close();
+    core = new HubCore({ store: new Store(file), items: trackerItems(tracker), clock });
+    assert.equal(core.store.meta(AGENTS_JOURNAL_CHECKPOINT), checkpoint);
+    assert.equal(replayAgentsRecord(core, records), 1);
+    core.refreshPresence();
+    assert.equal(core.topicHistory('agents').messages.filter(m => m.detail?.outcome === 'stalled').length, 1);
+    assert.equal(core.topicHistory('agents').messages.filter(m => m.kind === 'session-death').length, 1);
+  } finally {
+    recorder.attach(null);
+    core.close();
+    core.store.close();
+    await tracker.stop();
+    await Promise.resolve();
+    await rm(root, { recursive: true, force: true });
+  }
+});

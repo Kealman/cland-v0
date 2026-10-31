@@ -55,18 +55,20 @@ for (const role of ['reviewer', 'qa'] as const) {
     }
     const pending = async () => (await coord.call<{ sessions: Array<{ name: string; pending?: { item: string; kind: string } }> }>('who')).sessions
       .filter(s => s.name.startsWith('verify-')).map(s => s.pending);
-    assert.deepEqual(await pending(), [0, 1].map(() => ({ item: previous.id, kind })));
+    assert.deepEqual(await pending(), [undefined, { item: previous.id, kind }], 'newer accepted request supersedes the earlier pending');
+    await verifiers[0]!.verifier.call('task.hold', { id: previous.id });
     for (const item of [next, later]) {
       const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: [role], text: `${kind} request ${item.id}\nWaiting build` });
       assert.equal(result.outcomes[0]?.outcome, 'queued');
     }
     assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: previous.id })).ok, true);
     const messages = ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages;
-    assert.deepEqual(messages.find(m => m.text.startsWith(`${kind} request ${next.id}\n`))?.to, ['verify-a']);
-    assert.deepEqual(messages.find(m => m.text.startsWith(`${kind} request ${later.id}\n`))?.to, ['verify-b']);
-    await verifiers[0]!.verifier.waitForEvent(e => e.params.content.startsWith(`${kind} request ${next.id}\n`));
-    await verifiers[1]!.verifier.waitForEvent(e => e.params.content.startsWith(`${kind} request ${later.id}\n`));
-    assert.deepEqual(await pending(), [{ item: next.id, kind }, { item: later.id, kind }]);
+    const nextName = messages.find(m => m.text.startsWith(`${kind} request ${next.id}\n`))!.to[0]!;
+    const laterName = messages.find(m => m.text.startsWith(`${kind} request ${later.id}\n`))!.to[0]!;
+    assert.deepEqual([nextName, laterName].sort(), ['verify-a', 'verify-b']);
+    await verifiers.find(v => v.name === nextName)!.verifier.waitForEvent(e => e.params.content.startsWith(`${kind} request ${next.id}\n`));
+    await verifiers.find(v => v.name === laterName)!.verifier.waitForEvent(e => e.params.content.startsWith(`${kind} request ${later.id}\n`));
+    assert.deepEqual(await pending(), verifiers.map(v => ({ item: v.name === nextName ? next.id : later.id, kind })));
     for (const item of [next, later]) assert.equal((await coord.call<{ ok: boolean }>('task.close', { id: item.id })).ok, true);
     assert.deepEqual(await pending(), [undefined, undefined], 'who never shows a closed item as pending');
     const lateText = `${text}\nLate delivery after closure`;
@@ -97,6 +99,8 @@ for (const ready of [false, true]) for (const queued of [false, true]) {
     const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
     try {
       db.prepare('insert into meta (key, value) values (?, ?)').run('pending-verification:rev-id', JSON.stringify({ item: previous.id, kind: 'review' }));
+      // Older queued deliveries had no private admission receipt.
+      db.prepare('update messages set verifier_admitted = null where text = ? or text = ?').run(text, laterText);
     } finally { db.close(); }
     const restarted = await projectHub(t, root, {}, { clock: new FakeClock() });
     const ui = await connectUi(t, restarted.discovery);
@@ -421,3 +425,349 @@ test('ready clears an idle reviewer reservation and assigns queued work while an
   await reviewers[1]!.waitForEvent(e => e.params.content === late);
   assert.deepEqual((await who()).find(s => s.name === 'rev-idle')?.pending, { item: next.id, kind: 'review' }, 'late ready delivery cannot replace live work');
 });
+
+for (const role of ['reviewer', 'qa'] as const) {
+  test(`same-item ${role} request after a settled verdict reaches the idle verifier`, async t => {
+    const root = await tempProject(t);
+    const clock = new FakeClock(Date.parse('2026-10-30T12:38:00Z'));
+    const { discovery, fakes } = await projectHub(t, root, {}, { clock });
+    const ui = await connectUi(t, discovery);
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const launch = await ui.request({ type: 'session.launch', name: 'verify-d', role, harness: 'codex' });
+    assert.equal(launch.ok, true, launch.error);
+    const process = (launch.value as { process: HarnessProcessView }).process;
+    const verifier = await inProcessSpoke(t, { cwd: root, discover: true, name: 'verify-d', assignRole: false, sessionId: process.sessionId });
+    await verifier.waitForEvent(e => e.params.meta?.kind === 'role');
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Review again after verdict' });
+    const kind = role === 'reviewer' ? 'review' : 'qa';
+    const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages;
+    const first = `${kind} request ${item.id}\nSource review`;
+    await coord.call('send', { to: ['verify-d'], text: first });
+    await eventually('first request injected', async () => (await history()).find(m => m.text === first)?.stage === 'injected' || undefined);
+    assert.equal((await verifier.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: kind, ...(kind === 'review' ? { scope: 'full' } : {}), result: 'not clear', run: 'source-not-clear' })).ok, true);
+    fakes.codex!.idle('verify-d');
+    await clock.advance(5 * 60_000);
+    const text = `${kind} request ${item.id}\nEvidence review`;
+    await coord.call('send', { to: [role], text });
+    await clock.advance(1000);
+    assert.deepEqual((await history()).find(m => m.text === text)?.to, ['verify-d']);
+    await eventually('same-item follow-up injected', async () => (await history()).find(m => m.text === text)?.stage === 'injected' || undefined);
+  });
+}
+
+test('an overdue queued request names idle verifier exclusions once in Agents', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-d', role: 'reviewer', sessionId: 'rev-id' });
+  await rev.waitForEvent(e => e.params.meta?.kind === 'role');
+  const create = async (title: string) => (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title })).item;
+  const occupied = await create('Still held review');
+  const waiting = await create('Waiting review');
+  assert.equal((await rev.call<{ ok: boolean }>('task.hold', { id: occupied.id })).ok, true);
+  const result = await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text: `review request ${waiting.id}\nWaiting build` });
+  assert.equal(result.outcomes[0]?.outcome, 'queued');
+  await clock.advance(1001);
+  const notices = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages
+    .filter(m => m.kind === 'verifier-request' && m.detail?.outcome === 'stalled');
+  const rows = await notices();
+  assert.equal(rows.length, 1);
+  assert.match(rows[0]!.text, new RegExp(((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages.find(m => m.text === `review request ${waiting.id}\nWaiting build`)!.id));
+  assert.match(rows[0]!.text, /rev-d/);
+  assert.match(rows[0]!.text, new RegExp(occupied.id));
+  await clock.advance(3000);
+  assert.equal((await notices()).length, 1);
+});
+
+for (const settlement of ['verdict', 'newer request'] as const) {
+  test(`a delayed request accepted after ${settlement} cannot reserve an idle reviewer`, async t => {
+    const root = await tempProject(t);
+    const clock = new FakeClock(Date.parse('2026-10-30T12:38:00Z'));
+    const { discovery } = await projectHub(t, root, {}, { clock });
+    const ui = await connectUi(t, discovery);
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const old = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+    const current = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+    await old.waitForEvent(e => e.params.meta?.kind === 'role');
+    await current.waitForEvent(e => e.params.meta?.kind === 'role');
+    const create = async (title: string) => (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title })).item;
+    const served = await create('Delayed already served request');
+    const next = await create('Next review after settled verdict');
+    await current.call('task.comment', { id: next.id, verdict: 'review', scope: 'full', result: 'not clear', run: '12:38-verdict' });
+    await old.close();
+    const first = `review request ${served.id}\nDelayed source request`;
+    await coord.call('send', { to: ['rev-a'], text: first });
+    await clock.advance(1);
+    if (settlement === 'verdict') {
+      await current.call('task.comment', { id: served.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'served-elsewhere' });
+    } else {
+      const newer = `review request ${served.id}\nNewer source request`;
+      await coord.call('send', { to: ['rev-b'], text: newer });
+      await current.waitForEvent(e => e.params.content === newer);
+    }
+    await current.call('task.hold', { id: served.id });
+    const back = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', assignRole: false, sessionId: 'a-id' });
+    await back.waitForEvent(e => e.params.content === first);
+    const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages;
+    await eventually('delayed request durably accepted', async () => (await history()).find(m => m.text === first)?.stage === 'delivered' || undefined);
+    await clock.advance(5 * 60_000);
+    const text = `review request ${next.id}\n12:43 follow-up`;
+    await coord.call('send', { to: ['reviewer'], text });
+    await clock.advance(1000);
+    assert.deepEqual((await history()).find(m => m.text === text)?.to, ['rev-a']);
+    await back.waitForEvent(e => e.params.content === text);
+  });
+}
+
+test('legacy open pending without provenance retires on the next other-verifier verdict', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const served = await projectHub(t, root, {}, { clock });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Legacy reserved review' });
+  await coord.close();
+  await served.stop();
+  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  try {
+    db.prepare('insert into meta (key, value) values (?, ?)').run('pending-verification:a-id', JSON.stringify({ item: item.id, kind: 'review' }));
+  } finally { db.close(); }
+  const restarted = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, restarted.discovery);
+  const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+  const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+  await a.waitForEvent(e => e.params.meta?.kind === 'role');
+  await b.waitForEvent(e => e.params.meta?.kind === 'role');
+  const pending = async () => ((await ui.request({ type: 'session.list' })).value as { rows: Array<{ name: string; pending?: { item: string; kind: string } }> }).rows.find(r => r.name === 'rev-a')?.pending;
+  assert.deepEqual(await pending(), { item: item.id, kind: 'review' });
+  await clock.advance(1);
+  const qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-d', role: 'qa', sessionId: 'qa-id' });
+  await qa.waitForEvent(e => e.params.meta?.kind === 'role');
+  assert.equal((await qa.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'different-kind' })).ok, true);
+  assert.deepEqual(await pending(), { item: item.id, kind: 'review' });
+  assert.equal((await b.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'legacy-settled' })).ok, true);
+  assert.equal(await pending(), undefined);
+});
+
+test('an already served queued request is retired before a second reviewer is assigned', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+  const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+  await a.waitForEvent(e => e.params.meta?.kind === 'role');
+  await b.waitForEvent(e => e.params.meta?.kind === 'role');
+  const create = async (title: string) => (await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title })).item;
+  const occupied = await create('Occupied review');
+  const item = await create('Served queued review');
+  await a.call('task.hold', { id: occupied.id });
+  await b.call('task.hold', { id: occupied.id });
+  const text = `review request ${item.id}\nQueued source`;
+  assert.equal((await coord.call<{ outcomes: SendOutcome[] }>('send', { to: ['reviewer'], text })).outcomes[0]?.outcome, 'queued');
+  await clock.advance(1);
+  await b.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'named-review-complete' });
+  await a.call('task.hold', { id: occupied.id, release: true });
+  const history = ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages;
+  assert.equal(history.find(m => m.text === text)?.stage, 'dropped');
+  assert.ok(history.some(m => m.kind === 'verifier-request' && m.text.includes('superseded by rev-b verdict')));
+});
+
+test('unrelated named request cannot supersede an authorized live reservation', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const unrelated = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl-other', role: 'implementer', sessionId: 'other-id' });
+  const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+  const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+  await a.waitForEvent(e => e.params.meta?.kind === 'role');
+  await b.waitForEvent(e => e.params.meta?.kind === 'role');
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Authorized reserved review' });
+  const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] }).messages;
+  const send = async (sender: typeof coord, name: string, label: string) => {
+    const text = `review request ${item.id}\n${label}`;
+    await sender.call('send', { to: [name], text });
+    await eventually(`${label} accepted`, async () => (await history()).find(m => m.text === text)?.stage === 'delivered' || undefined);
+  };
+  const pending = async (name: string) => ((await ui.request({ type: 'session.list' })).value as { rows: Array<{ name: string; pending?: { item: string; kind: string } }> }).rows.find(r => r.name === name)?.pending;
+  await send(coord, 'rev-a', 'Authorized initial request');
+  await clock.advance(1);
+  await send(unrelated, 'rev-b', 'Unrelated sender request');
+  assert.deepEqual(await pending('rev-a'), { item: item.id, kind: 'review' });
+  assert.equal(await pending('rev-b'), undefined);
+  const qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-d', role: 'qa', sessionId: 'qa-id' });
+  await qa.waitForEvent(e => e.params.meta?.kind === 'role');
+  await send(coord, 'qa-d', 'Wrong recipient kind');
+  assert.deepEqual(await pending('rev-a'), { item: item.id, kind: 'review' });
+  // Authorized named cross-kind work still updates local pending, without superseding rev-a globally.
+  assert.deepEqual(await pending('qa-d'), { item: item.id, kind: 'review' });
+  await clock.advance(1);
+  await send(coord, 'rev-b', 'Authorized replacement request');
+  assert.equal(await pending('rev-a'), undefined);
+  assert.deepEqual(await pending('rev-b'), { item: item.id, kind: 'review' });
+});
+
+for (const authorized of [true, false, 'human'] as const) {
+  test(`legacy ${authorized === 'human' ? 'human ' : ''}named request without admission receipt ${authorized ? 'reserves its authorized reviewer' : 'cannot reserve for an unrelated sender'}`, async t => {
+    const root = await tempProject(t);
+    const clock = new FakeClock();
+    const served = await projectHub(t, root, {}, { clock });
+    const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+    const unrelated = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl-other', role: 'implementer', sessionId: 'other-id' });
+    const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+    await a.waitForEvent(e => e.params.meta?.kind === 'role');
+    const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Legacy named review' });
+    await a.close();
+    const text = `review request ${item.id}\nPre-upgrade named delivery`;
+    if (authorized === 'human') {
+      const human = await connectUi(t, served.discovery);
+      assert.equal((await human.request({ type: 'topic.send', topic: 'general', to: ['rev-a'], text })).ok, true);
+      await human.close();
+    } else await (authorized ? coord : unrelated).call('send', { to: ['rev-a'], text });
+    await unrelated.close();
+    await coord.close();
+    await served.stop();
+    const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+    try { db.prepare('update messages set verifier_admitted = null where text = ?').run(text); }
+    finally { db.close(); }
+    const restarted = await projectHub(t, root, {}, { clock });
+    const ui = await connectUi(t, restarted.discovery);
+    const back = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', assignRole: false, sessionId: 'a-id' });
+    await back.waitForEvent(e => e.params.content === text);
+    await eventually('legacy named delivery durably accepted', async () => {
+      const history = (await ui.request({ type: 'topic.history', topic: authorized === 'human' ? 'general' : 'agents' })).value as { messages: TopicMessage[] };
+      return history.messages.find(m => m.text === text)?.stage === 'delivered' || undefined;
+    });
+    const rows = (await ui.request({ type: 'session.list' })).value as { rows: Array<{ name: string; pending?: { item: string; kind: string } }> };
+    assert.deepEqual(rows.rows.find(r => r.name === 'rev-a')?.pending, authorized ? { item: item.id, kind: 'review' } : undefined);
+  });
+}
+
+test('trusted human review requests reserve and supersede without a sender session', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-a', role: 'reviewer', sessionId: 'a-id' });
+  const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-b', role: 'reviewer', sessionId: 'b-id' });
+  await a.waitForEvent(e => e.params.meta?.kind === 'role');
+  await b.waitForEvent(e => e.params.meta?.kind === 'role');
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Human requested review' });
+  const send = async (name: string, label: string) => {
+    const text = `review request ${item.id}\n${label}`;
+    assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [name], text })).ok, true);
+    await eventually(`${label} durably accepted`, async () => {
+      const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] };
+      return history.messages.find(m => m.text === text)?.stage === 'delivered' || undefined;
+    });
+  };
+  const pending = async (name: string) => ((await ui.request({ type: 'session.list' })).value as { rows: Array<{ name: string; pending?: { item: string; kind: string } }> }).rows.find(row => row.name === name)?.pending;
+  await send('rev-a', 'Human initial request');
+  assert.deepEqual(await pending('rev-a'), { item: item.id, kind: 'review' });
+  await clock.advance(1);
+  await send('rev-b', 'Human replacement request');
+  assert.equal(await pending('rev-a'), undefined);
+  assert.deepEqual(await pending('rev-b'), { item: item.id, kind: 'review' });
+});
+
+test('trusted launch brief admission reserves carried first-turn verification work', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Carried launch review' });
+  const text = `review request ${item.id}\nOwned launch brief`;
+  const launch = await ui.request({ type: 'session.launch', name: 'rev-carried', role: 'reviewer', harness: 'codex', brief: text });
+  assert.equal(launch.ok, true, launch.error);
+  await eventually('carried brief has durable native completion', async () => {
+    const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] };
+    return history.messages.find(m => m.text.startsWith(text))?.stage === 'injected' || undefined;
+  });
+  const processes = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
+  assert.deepEqual(processes.processes.find(p => p.name === 'rev-carried')?.pending, { item: item.id, kind: 'review' });
+});
+
+test('trusted reuse brief admission reserves the existing verifier', async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 1 })).ok, true);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Reused verifier review' });
+  const initial = await ui.request({ type: 'session.launch', name: 'rev-reuse', role: 'reviewer', harness: 'codex' });
+  assert.equal(initial.ok, true, initial.error);
+  const process = (initial.value as { process: HarnessProcessView }).process;
+  const verifier = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev-reuse', assignRole: false, sessionId: process.sessionId });
+  await verifier.waitForEvent(e => e.params.meta?.kind === 'role');
+  fakes.codex!.idle('rev-reuse');
+  const text = `review request ${item.id}\nOwned reused brief`;
+  const launch = await ui.request({ type: 'session.launch', name: 'new-name', role: 'reviewer', harness: 'codex', item: item.id, brief: text });
+  assert.equal(launch.ok, true, launch.error);
+  assert.equal((launch.value as { process: HarnessProcessView }).process.sessionId, process.sessionId);
+  await eventually('reused brief has durable injection receipt', async () => {
+    const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: TopicMessage[] };
+    return history.messages.find(m => m.text === text)?.stage === 'injected' || undefined;
+  });
+  const rows = (await ui.request({ type: 'session.list' })).value as { processes: HarnessProcessView[] };
+  assert.deepEqual(rows.processes.find(p => p.sessionId === process.sessionId)?.pending, { item: item.id, kind: 'review' });
+});
+
+for (const variant of ['owned', 'ordinary hub', 'cancelled', 'wrong owner', 'denied'] as const) {
+  test(`legacy NULL launch admission after Store reopen: ${variant}`, async t => {
+    const { HubCore } = await import('../src/hub/core.ts');
+    const { Store } = await import('../src/hub/store.ts');
+    const { Tracker } = await import('../src/tracker/tracker.ts');
+    const { trackerItems } = await import('../src/hub/topics.ts');
+    const { beforeDirectories } = await import('./process-cleanup.ts');
+    const root = await tempProject(t);
+    const file = join(root, '.cland', 'hub.db');
+    const clock = new FakeClock();
+    let tracker = new Tracker({ root, db: file, git: async () => null, now: () => clock.now() });
+    let core = new HubCore({ store: new Store(file), items: trackerItems(tracker), clock });
+    let open = true;
+    const close = async () => {
+      if (!open) return;
+      open = false;
+      core.close();
+      core.store.close();
+      await tracker.stop();
+    };
+    beforeDirectories(t, close);
+    const item = await tracker.create(human, { title: 'Legacy owned launch request', size: 'S' });
+    const connect = () => {
+      const result = core.hello({ type: 'hello', protocol: 2, name: 'rev', sessionId: 'rev-id', role: 'reviewer', cwd: root }, () => true);
+      assert.equal(result.ok, true);
+      if (!result.ok) throw new Error('fixture hello refused');
+      return result.connection;
+    };
+    connect();
+    core.store.rememberSessionCredential('rev-id', variant === 'wrong owner' ? 'different-owner' : 'fixture-launch');
+    const text = `review request ${item.id}\nLegacy launch input`;
+    let id = 'legacy-launch-input';
+    if (variant === 'ordinary hub') {
+      const notice = core.noticeInTopic('agents', { kind: 'report', to: ['rev'], text });
+      assert.ok(notice);
+      id = notice;
+    } else {
+      core.recordLaunchBrief({ id, from: 'hub', fromKind: 'hub', via: 'hub', to: ['rev'], text, ts: clock.now().toISOString(), topic: 'agents' }, 'fixture-launch', true);
+      if (variant === 'cancelled') core.cancelLaunchBrief('fixture-launch');
+    }
+    await close();
+    const db = new DatabaseSync(file);
+    try { db.prepare('update messages set verifier_admitted = ? where id = ?').run(variant === 'denied' ? 0 : null, id); }
+    finally { db.close(); }
+    tracker = new Tracker({ root, db: file, git: async () => null, now: () => clock.now() });
+    core = new HubCore({ store: new Store(file), items: trackerItems(tracker), clock });
+    open = true;
+    const connection = connect();
+    if (variant === 'ordinary hub') core.ack(connection, id);
+    else core.completeCarriedBrief('fixture-launch', 'rev-id');
+    assert.equal(core.topicHistory('agents').messages.find(m => m.id === id)?.stage, variant === 'cancelled' ? 'dropped' : variant === 'ordinary hub' ? 'delivered' : 'injected');
+    assert.deepEqual(core.sessionPending(connection), variant === 'owned' ? { item: item.id, kind: 'review' } : undefined);
+  });
+}
