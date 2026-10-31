@@ -172,7 +172,7 @@ approval = "never"
 sandbox = "read-only"
 
 [reviewer.permissions]
-tools = ["rule.list", "send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "task.plan:show", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list"]
+tools = ["rule.list", "send:agents", "task.hold", "verification.decline", "task.comment:verdict", "task.criterion:verify", "task.plan:show", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list"]
 
 [qa]
 skills = ["qa", "diagnosing-bugs"]
@@ -215,7 +215,7 @@ sandbox = "danger-full-access"
 # With sandbox = "workspace-write" and no writable_roots, QA's are [".cland/qa"]: its runs and their evidence (T-62).
 
 [qa.permissions]
-tools = ["rule.list", "send:agents", "task.hold", "task.comment:verdict", "task.criterion:verify", "task.plan:show", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list"]
+tools = ["rule.list", "send:agents", "task.hold", "verification.decline", "task.comment:verdict", "task.criterion:verify", "task.plan:show", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "subscribe", "unsubscribe", "subscriptions", "who", "session.list", "history", "status", "task.view", "task.list"]
 
 [lead]
 exclusive = false
