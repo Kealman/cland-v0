@@ -5,7 +5,7 @@ title: "Prototype: login disks, snapshots and the login capacity rule"
 state: open
 labels:
   - wayfinder:prototype
-assignee: null
+assignee: cland-design
 parent: M-1511
 blocked_by:
   - Q-1514
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T14:35:39.154Z
-updated: 2026-10-31T15:17:35.080Z
+updated: 2026-10-31T17:02:51.353Z
 ---
 
 ## Question

@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T15:17:35.322Z
+updated: 2026-10-31T17:02:50.621Z
 ---
 
 ## Destination
@@ -78,6 +78,8 @@ Round-3 decisions 5–9 are replaced by these.
 - [Harness credentials replicated across hosts](Q-1514): no subscription login survives copying to concurrent hosts (rotating refresh tokens); Anthropic's terms bar storing or intermediating Claude.ai credentials, so round-3 decision 5 is reopened in Q-1520; compliant Claude default is a login per host over `ssh -t`; Codex Pro: a pinned copy with write-back or device-auth per host; OpenCode: copy the static key.
 - [SSH tunnel, git daemon and host-agent transport facts](Q-1515): one SSH ControlMaster per host owned by the hub with its own reconnect loop; every host endpoint a Unix socket (new spoke socket edge, git daemon --inetd per connection over a per-host socket, hub.sock, agent.sock); harnesses outside the host agent's cgroup; attach by a separate `ssh -t`; the territory guard env must be stripped from the daemon.
 - [Shape B: the hub in Kubernetes, requirements and costs](Q-1516): works with nine hub changes; cheapest k3s on one Hetzner CX33 (€8.99/month), DOKS $62, GKE ≈ $80–141; the hub is a one-replica StatefulSet (amends round-1 decision 11); the hub lock needs a host identity and heartbeat; the hub creates agent pods itself as a provider; web through Traefik + cert-manager (ingress-nginx retired); CLI and Neovim via `kubectl exec`.
+
+- [Prototype: an agent host on a small droplet with the hub tunnelled in](Q-1517): the whole shape-A path works on a $0.036/h droplet (tunnel, git daemon, sessions, artifacts, attach, survival of hub restart and tunnel loss, packing, idle_stop, watchdog); no systemd needed; defaults 4 sessions per 2 vCPU/4 GB and 8 per 4 vCPU/8 GB; Claude 510–600 MB, OpenCode 345–437 MB per session on Linux; cold boot ~3.6 min; Ctrl+Z ends attach; 13 decisions in the README.
 
 ### Amendments from research
 
