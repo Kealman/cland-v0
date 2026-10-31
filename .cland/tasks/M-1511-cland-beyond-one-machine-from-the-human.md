@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T14:35:06.562Z
-updated: 2026-10-31T17:09:25.360Z
+updated: 2026-10-31T17:17:23.094Z
 ---
 
 ## Destination
@@ -83,6 +83,8 @@ Round-3 decisions 5–9 are replaced by these.
 
 - [Scheduler, pools and host lifecycle in detail](Q-1519): weighted slots (Claude 1.0, Codex 0.5, OpenCode 0.75; 8 on the default s-4vcpu-8gb), image snapshots per pool with `cland host prepare`, min_hosts 1 for agents, idle_stop 20 min, lease 12 h with the watchdog, failure rules (5 min boot, 3 min unreachable line, 15 min exit), Hosts row and queue lines, `hosts` ledger category with a $3 sub-cap, Coordinator and Aide local, a task stays on one host, provider interface mirrors the executor with a separate transport layer, nine prototype findings adopted.
 
+- [Shape B decisions after the Kubernetes research](Q-1521): Helm chart + GHCR multi-arch image published with releases; one-replica StatefulSet with PVC, host-identity lock; `kubernetes` host provider creating pods with the `outbound` transport; the web through Ingress + cert-manager, Neovim stays a local client via `cland attach-cluster` (port-forward to a loopback CLI listener); Secrets for secrets.toml and the DO token; PVC snapshots for backup; 0.4.0 carries only the B-safe hub changes, the rest in 0.4.x; first live B on DOKS.
+
 ### Amendments from research
 
 - Round-1 decision 11: StatefulSet, not Deployment.
@@ -99,6 +101,7 @@ Round-3 decisions 5–9 are replaced by these.
 - Cost accounting for hosts in the spend ledger and the daily cap; what the human sees.
 - QA on fakes: a fake host provider and a fake SSH host in the test suite; the one live run before release.
 - Docs and site pages: hosts, pools, login, Kubernetes install.
+- Multi-user web sign-in graduated to its own ticket (the human, 2026-10-31).
 
 ## Out of scope
 
