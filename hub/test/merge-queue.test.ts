@@ -21,6 +21,10 @@ import { batchRebuildReason } from '../src/hub/merge-batch-territory.ts';
 import { verificationFixture } from './verification-fixture.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Store } from '../src/hub/store.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories } from './process-cleanup.ts';
+import { MergeError } from '../src/merge.ts';
+import { TaskMerges } from '../src/hub/merge.ts';
 import { HubCore } from '../src/hub/core.ts';
 
 async function checkoutClandFixture(cwd: string) {
@@ -547,4 +551,131 @@ test('scripts-only manifest changes omit the install warning from queue frames a
   assert.equal(shown.code, 0, shown.stderr);
   assert.ok(shown.stdout.includes(f.item.id));
   assert.doesNotMatch(shown.stdout, /npm install|dependencies out of date/);
+});
+
+for (const mode of ['ordinary', 'rename', 'shared', 'unavailable', 'refused-retry', 'human'] as const) test(`queue landing delivers exactly one report: ${mode}`, async t => {
+  const setup = caseDeadlines(t);
+  const release = Promise.withResolvers<void>();
+  let entered = false;
+  beforeDirectories(setup.fixtures, async () => { release.resolve(); });
+  let available = mode !== 'unavailable';
+  const notice = HubCore.prototype.noticeToSessions;
+  t.mock.method(HubCore.prototype, 'noticeToSessions', function (this: HubCore, ...args: Parameters<HubCore['noticeToSessions']>) {
+    return available ? notice.apply(this, args) : null;
+  });
+  let refused = false;
+  const commit = 'c'.repeat(40);
+  const merge = TaskMerges.prototype.merge;
+  t.mock.method(TaskMerges.prototype, 'merge', async function (this: TaskMerges, ...args: Parameters<TaskMerges['merge']>) {
+    if (!args[5]) return merge.apply(this, args);
+    const [id, actor] = args;
+    if (mode === 'refused-retry' && !refused) { refused = true; throw new MergeError('merge-changed', 'fixture gate refused before landing'); }
+    entered = true;
+    if (mode === 'rename') await release.promise;
+    this.tracker.recordMerge(id, { commit, base: 'dev', branch: 't/parser', tip: 'b'.repeat(40) });
+    await this.tracker.close(actor, id);
+    return { item: id, commit, base: 'dev', cleanup: 'fixture' };
+  });
+  let receipt: RunStatus = { state: 'running' };
+  const lease = (run: RunRef, deadline: string): Lease => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null });
+  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
+  t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
+  t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { await writeFile(run.log, '# tests 1\n# fail 0\n'); });
+  t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);
+  t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
+  t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
+  const candidateHead = 'f'.repeat(40), tree = 'e'.repeat(40);
+  const { root, ui, item, clock } = await setup.wait('landing hub/UI readiness', () => fixture(setup.fixtures, { durationContext: null, candidate: {
+    head: async () => candidateHead, tree: async () => tree,
+    inspect: async () => ({ head: candidateHead, tree, branch: '', selection: { mode: 'full', files: [], reason: 'batch' }, tierPlan: [], budgetBase: undefined }),
+  }, batchRepository: {
+    git: async args => args[0] === 'rev-parse' ? args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40) : args[0] === 'merge-tree' ? tree + '\0' : candidateHead,
+    facts: async () => ({ context: null, workers: 1 }), identity: async () => tree,
+    checkout: async candidate => checkoutClandFixture(candidate.cwd), remove: async () => {},
+  } }));
+
+  const coord = await setup.wait('landing spoke readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'coord', sessionId: 'landing-requester', role: 'coordinator' }));
+  const impl = mode === 'shared' ? coord : await setup.wait('landing spoke readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'impl', sessionId: 'landing-claimant', role: 'implementer' }));
+  await value(ui, { type: 'task.edit', item: item.id, assignee: mode === 'shared' ? 'coord' : 'impl' });
+  const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: item.id });
+  assert.equal(claimed.ok, true, claimed.error);
+  const topic = (await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Landing', item: item.id })).topic.id;
+  assert.equal((mode === 'human' ? await value<{ queued: number }>(ui, { type: 'merge', item: item.id }) : await coord.call<{ queued: number }>('merge', { item: item.id })).queued, 1);
+  await clock.advance(601_000);
+  let batch = (await value<{ batch: MergeBatchStatus }>(ui, { type: 'merge.queue' })).batch.id;
+  receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
+  if (mode === 'refused-retry') {
+    await until(async () => { await clock.advance(1000); return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null; }, { what: 'positive pre-landing refusal', timeoutMs: 3000 });
+    assert.equal((await coord.call<{ queued: number }>('merge', { item: item.id })).queued, 1);
+    receipt = { state: 'running' };
+    await clock.advance(601_000);
+    batch = (await value<{ batch: MergeBatchStatus }>(ui, { type: 'merge.queue' })).batch.id;
+    receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
+  }
+  let stranger: Awaited<ReturnType<typeof inProcessSpoke>> | undefined;
+  if (mode === 'rename') {
+    await until(async () => { await clock.advance(1000); return entered; }, { what: 'held landing entered', timeoutMs: 3000 });
+    assert.deepEqual(await coord.call('rename', { name: 'renamed-coord' }), { ok: true, name: 'renamed-coord' });
+    stranger = await setup.wait('reused name spoke readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'coord', sessionId: 'unrelated' }));
+    release.resolve();
+  }
+  await until(async () => { await clock.advance(1000); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.state === 'closed'; }, { what: 'durable queued landing', timeoutMs: 3000 });
+  await until(async () => { await clock.advance(1000); return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null; }, { what: 'batch cleanup completion', timeoutMs: 3000 });
+  if (mode === 'unavailable') {
+    assert.equal((await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic, limit: 100 })).messages.filter(message => message.text.startsWith('merge-queue-landed')).length, 0);
+    available = true;
+    await clock.advance(1000);
+  }
+  const messages = (await value<{ messages: Array<{ id: string; kind: string; text: string; to: string[]; detail?: { batch: string } }> }>(ui, { type: 'topic.history', topic, limit: 100 })).messages;
+  const reports = messages.filter(message => message.text.startsWith(`merge-queue-landed ${item.id}:`));
+  assert.equal(reports.length, 1, 'one landing report per completed queue admission');
+  const report = reports[0]!;
+  assert.equal(report.kind, 'report');
+  assert.deepEqual([...report.to].sort(), mode === 'human' ? ['impl'] : mode === 'shared' ? ['coord'] : mode === 'rename' ? ['impl', 'renamed-coord'] : ['coord', 'impl']);
+  assert.equal(report.text, `merge-queue-landed ${item.id}: merged ${commit} onto dev; batch ${batch}`);
+  for (const recipient of new Set(mode === 'human' ? [impl] : [coord, impl])) {
+    await until(() => recipient.events.some(event => JSON.stringify(event).includes(report.id)), { what: 'landing delivered to spoke', timeoutMs: 1500 });
+    assert.equal(recipient.events.filter(event => JSON.stringify(event).includes(report.id)).length, 1);
+  }
+  assert.equal(stranger?.events.some(event => JSON.stringify(event).includes(report.id)) ?? false, false);
+});
+
+test('startup recovers a captured landing obligation after close removed its queue and claim', async t => {
+  const setup = caseDeadlines(t);
+  let landed = '';
+  const { root, ui, clock } = await setup.wait('recovery hub readiness', () => fixture(setup.fixtures, {}, undefined, async tracker => {
+    const actor = { id: 'recovered-requester', name: 'old-name', role: 'coordinator' };
+    const item = await tracker.create(actor, { title: 'Interrupted landing', size: 'S', branch: 't/recovered' });
+    landed = item.id;
+    const store = new Store(join(tracker.root, '.cland/hub.db'));
+    try {
+      // Crash image: obligation persisted before merge; close/receipt persisted,
+      // but no notice was admitted before the old process disappeared.
+      store.rememberSession('recovered', new FakeClock().now().getTime());
+      store.rememberSessionId('recovered', actor.id);
+      store.setMeta('merge-landing-reports', JSON.stringify([{ item: item.id, branch: 't/recovered', head: 'b'.repeat(40), batch: 'interrupted-batch', topic: 'agents', recipients: [actor.id, actor.id, 'late-recipient'] }]));
+    } finally { store.close(); }
+    tracker.recordMerge(item.id, { commit: 'c'.repeat(40), base: 'dev', branch: 't/recovered', tip: 'b'.repeat(40) });
+    await tracker.close(actor, item.id);
+  }));
+  const coord = await setup.wait('recovered recipient readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'recovered', sessionId: 'recovered-requester', role: 'coordinator' }));
+  await clock.advance(2000);
+  const messages = (await value<{ messages: Array<{ id: string; text: string; to: string[] }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 })).messages;
+  const reports = messages.filter(message => message.text.startsWith(`merge-queue-landed ${landed}:`));
+  assert.equal(reports.length, 1);
+  assert.deepEqual(reports[0]!.to, ['recovered']);
+  assert.equal(reports[0]!.text, `merge-queue-landed ${landed}: merged ${'c'.repeat(40)} onto dev; batch interrupted-batch`);
+  await until(() => coord.events.some(event => JSON.stringify(event).includes(reports[0]!.id)), { what: 'recovered landing delivered', timeoutMs: 1500 });
+  assert.equal(coord.events.filter(event => JSON.stringify(event).includes(reports[0]!.id)).length, 1);
+  const late = await setup.wait('late recipient readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'late', sessionId: 'late-recipient' }));
+  await clock.advance(2000);
+  await until(() => late.events.some(event => JSON.stringify(event).includes(reports[0]!.id)), { what: 'late landing delivered', timeoutMs: 1500 });
+  assert.equal(coord.events.filter(event => JSON.stringify(event).includes(reports[0]!.id)).length, 1, 'resolving another recipient never redelivers to requester');
+  assert.equal(late.events.filter(event => JSON.stringify(event).includes(reports[0]!.id)).length, 1);
+  const final = (await value<{ messages: Array<{ id: string; to: string[] }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 })).messages.filter(message => message.id === reports[0]!.id);
+  assert.equal(final.length, 1);
+  assert.deepEqual(final[0]!.to.sort(), ['late', 'recovered']);
 });

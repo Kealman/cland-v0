@@ -957,6 +957,28 @@ export class Store implements HygieneMemory {
     });
   }
 
+  /** Extend a durable hub notice with newly resolved captured recipients. */
+  appendNoticeRecipients(id: string, names: string[], now: number): { message: Message; added: string[] } {
+    return this.#transaction(() => {
+      const message = this.message(id)!;
+      const added: string[] = [];
+      for (const name of names) {
+        const identity = this.sessionIdOf(name);
+        if (!identity || this.#prepare('select 1 from deliveries where message_id = ? and (session_id = ? or session = ?)').get(id, identity, name)) continue;
+        this.#prepare("insert into deliveries (message_id, session, state, queued_at, session_id, direct) values (?, ?, 'queued', ?, ?, 1)").run(id, name, now, identity);
+        if (!isHeldDelivery(message)) {
+          const row = this.#prepare('select seq from messages where id = ?').get(id) as Row;
+          this.#bindProgress(id, name, row.seq as number);
+        }
+        added.push(name);
+      }
+      message.to = [...new Set([...message.to, ...added])];
+      this.#prepare('update messages set to_json = ? where id = ?').run(JSON.stringify(message.to), id);
+      this.#refreshThreadRun(id);
+      return { message, added };
+    });
+  }
+
   allSubscriptions(): OwnedSubscription[] {
     return (this.#prepare('select * from subscriptions order by rowid').all() as Row[]).map(row => ({
       id: row.id as string, subscriberId: row.subscriber_id as string,

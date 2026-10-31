@@ -1294,6 +1294,13 @@ wait up to ten seconds for a loaded paired remote to reconnect. Retain the
 still-down and inactive-token controls; share readiness polling with Discord's
 post-reload path. No remote.status fields or role permissions change.
 
+## Merge queue landing reports
+
+With the merge queue enabled, read the item-topic landing report for the landed
+commit and batch. It goes to the enqueuing session and pre-closure claimant;
+the earlier green batch suite report alone is not a landing receipt. Follow-up
+failures remain separately reported. Existing role clauses cover this flow.
+
 ## Standing duration allowance owners (T-1504)
 
 Use a category or an epic directly under a category (such as E-880) for duration

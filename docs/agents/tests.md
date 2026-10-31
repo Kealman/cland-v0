@@ -2311,3 +2311,10 @@ limitation is that the existing runner stops at the failing phase. A future enfo
 item must continue remaining phases after a successful rerun or rerun the cover
 tail before it can change the result. Native controls and policy cases:
 `docs/agents/tests/hub-test-load-gate-rerun.test.ts.md`.
+
+## Merge queue landing delivery
+
+Queued landings report their item, commit and batch to the requester and
+pre-closure claimant in the item topic, with Agents as the unbound fallback.
+This follows landing, separately from the earlier batch suite result.
+See [the merge queue fixture guide](tests/hub-test-merge-queue.test.ts.md).

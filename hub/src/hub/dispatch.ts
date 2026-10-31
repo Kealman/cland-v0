@@ -1,3 +1,4 @@
+import { MergeLandingReports } from './merge-landing-reports.ts';
 import { uploadArtifacts } from './artifact-upload.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { dependencyInstallText } from '../dependency-install.ts';
@@ -304,21 +305,29 @@ export class Dispatcher {
       blocked: (input, reason) => { options.core.noticeTo(AGENTS.id, { id: `dev-t3-search-blocked:${input.run}`, kind: 'report', to: ['coordinator'], text: options.core.boundedText(`Periodic dev T3 search ${input.run} blocked: ${reason}`), detail: { event: 'verification-dev-t3-search-blocked', run: input.run, reason } }); },
     }) : null;
     this.#devT3Search?.start(options.core.clock);
+    const landingReports = options.tracker ? new MergeLandingReports(options.core.store, options.tracker,
+      (topic, notice, ids) => options.core.noticeToSessions(topic, notice, ids)) : null;
     this.#batches = root && this.#suites && this.#merges && this.#mergeQueue ? new MergeBatches(options.core.store, this.#suites, options.core.clock, {
       log: this.#log,
-      changed: () => options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }),
-      entries: () => this.#mergeQueue!.entries(),
+      changed: () => { landingReports?.reconcile(); options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }); },
+      entries: () => { landingReports?.reconcile(); return this.#mergeQueue!.entries(); },
       build: (id, members, base) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository, base)),
       rebuildReason: (tested, current) => batchRebuildReason(root, tested, current, options.env, options.batchRepository),
       cleanup: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.remove(candidate) : removeMergeBatch(root, candidate, options.env)),
       checkout: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.checkout(candidate) : checkoutMergeBatch(root, candidate, options.env)),
       isLanded: entry => options.tracker!.summary(entry.item)?.state === 'closed' && !!options.tracker!.mergeReceipt(entry.item),
       land: async (entry, candidate) => {
+        const claim = options.tracker!.summary(entry.item)?.claim;
+        const batch = this.#batches!.snapshot()!.id;
+        landingReports!.capture({ item: entry.item, head: entry.head, branch: entry.branch,
+          batch, topic: options.tracker!.summary(entry.item)?.topic ?? AGENTS.id,
+          recipients: [...(entry.by.id === 'human' ? [] : [entry.by.id]), ...(claim ? [claim.sessionId] : [])] });
         try {
           const result = await this.#merges!.merge(entry.item, entry.by, work => work(), undefined, () => {
             if (this.#closed || !(options.projectConfig?.().merge.queue ?? false)) throw new Error('merge batch execution stopped');
           }, { head: entry.head, base: candidate.base });
           if ('queued' in result) throw new Error('batch landing requeued its member');
+          landingReports!.reconcile();
           if (result.dependencies) {
             const topic = options.tracker!.summary(entry.item)?.topic ?? AGENTS.id;
             options.core.noticeTo(topic, { id: `merge-install:${result.commit}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`],
@@ -329,8 +338,14 @@ export class Dispatcher {
         } catch (error) {
           // A recoverable landing must keep its receipt and membership for retry;
           // only an ordinary gate refusal drops an entry from the next batch.
-          if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) throw new BatchRebuild(error.message);
-          if (error instanceof MergeError && !['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new BatchRefusal(entry, error.message);
+          if (error instanceof MergeError && error.code === 'merge-changed' && /(?:batch|integration) base moved/.test(error.message)) {
+            landingReports!.retire(entry.item, batch);
+            throw new BatchRebuild(error.message);
+          }
+          if (error instanceof MergeError && !['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) {
+            landingReports!.retire(entry.item, batch);
+            throw new BatchRefusal(entry, error.message);
+          }
           throw error;
         }
       },
@@ -348,7 +363,7 @@ export class Dispatcher {
         options.core.noticeTo(AGENTS.id, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase}`, kind: 'report', text, detail });
       },
     }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
-    void this.#mergeQueueReady.then(() => { if (!this.#closed) this.#batches?.start(); });
+    void this.#mergeQueueReady.then(() => { if (!this.#closed) { landingReports?.reconcile(); this.#batches?.start(); } });
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     options.core.inbox.pairingCodes.onChange(() => this.#guard.changed());
     // what a read shows changed: no earlier answer is replayed

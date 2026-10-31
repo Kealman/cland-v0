@@ -2012,6 +2012,29 @@ export class HubCore {
     return message.id;
   }
 
+  /** Admit a notice to captured identities without role/name re-resolution. */
+  noticeToSessions(topicId: string, notice: TopicNotice, ids: string[]): { id: string; pending: string[] } | null {
+    const identities = [...new Set(ids.map(id => this.sessionIdentity(id)))];
+    const names = identities.flatMap(id => {
+      const name = this.#store.nameOfSession(id);
+      return name && this.#store.sessionIdOf(name) === id ? [name] : [];
+    });
+    const prior = notice.id ? this.#store.message(notice.id) : null;
+    const message = this.#recordNotice(topicId, { ...notice, to: names }, new Set(names));
+    if (!message) return null;
+    if (prior) {
+      const extended = this.#store.appendNoticeRecipients(message.id, names, this.#now().getTime());
+      this.#afterCommit(() => {
+        if (extended.added.length) this.#emitMessage(extended.message);
+        for (const name of extended.added) this.#send(extended.message, name);
+      });
+    } else this.#afterCommit(() => this.#publishNotice(message));
+    return { id: message.id, pending: identities.filter(id => {
+      const name = this.#store.nameOfSession(id);
+      return !name || this.#store.deliverySessionId(message.id, name) !== id;
+    }) };
+  }
+
   /** A topic notice written to the store (inside a caller's transaction, when there is one), not yet published. */
   #recordNotice(topicId: string, notice: TopicNotice, direct: ReadonlySet<string> = new Set()): Message | null {
     const topic = this.#store.topic(topicId);
