@@ -1645,8 +1645,15 @@ between `added` and `expires` for dated allowances owned by `budget.legacyOwner`
 all other owners keep the seven-day maximum. Ownership
 is checked in the live authoritative tracker, including linked worktrees. Planning-container
 close refuses while that project’s manifest still names it as an allowance owner;
-re-own the named entries to an open container before closing, retaining dates and reasons.
-The close guard does nothing when the manifest is absent; allowance lint stays unchanged.
+re-own the named entries to a standing container before closing, retaining dates and reasons.
+The close guard does nothing when the manifest is absent.
+
+`npm run test:tiers` and working-tree/immutable admission require a standing
+container owner: a category or an epic directly under a category. Tasks and
+release delivery epics are refused with the allowance key and source line when
+available, plus a standing ancestor suggestion (for example E-880). Generated
+allowance stanzas use the same policy. The shipped E-880 allowances remain valid;
+owner kind and parentage, rather than the id prefix, determine eligibility.
 Both paths also refuse duration test/allow keys with no matching source test
 identity, and file baselines/allowances naming a missing test file. Literal and
 template titles are checked in their own file; computed titles remain uncertain.

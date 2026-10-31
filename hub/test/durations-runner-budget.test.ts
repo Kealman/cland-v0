@@ -14,7 +14,7 @@ test('runner duration decision fails a known T2 test at 2.5 seconds until a vali
     `duration budget: ${key} 2.5 s > 2 s (T2) (add to hub/test/durations.json with a reason)`,
   ]);
   head.allow[key] = { seconds: 2.5, owner: 'E-482', added: '2026-10-18', expires: '2026-10-24', reason: 'Temporary component migration.' };
-  lintDurationManifest(head, { now: Date.parse('2026-10-18'), owners: { 'E-482': { state: 'open', kind: 'epic' } } });
+  lintDurationManifest(head, { now: Date.parse('2026-10-18'), owners: { 'E-482': { state: 'open', kind: 'category' } } });
   assert.deepEqual(checkDurations(receipts, head, tiers).failures, []);
   head.allow[key]!.seconds = 2.4;
   assert.equal(checkDurations(receipts, head, tiers).failures.length, 1, 'allowance caps the permitted seconds');

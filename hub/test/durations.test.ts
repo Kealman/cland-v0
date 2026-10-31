@@ -62,7 +62,7 @@ test('immutable duration identity lint reads candidate sources and names stale b
   const cwd = machine.root, file = 'hub/test/identity.test.ts';
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Owner\nstate: open\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Owner\nstate: open\n---\n');
   const git = async (...args: string[]) => {
     const result = await commandIn(machine, cwd, 'git', args);
     assert.equal(result.code, 0, result.stderr);
@@ -144,7 +144,7 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const path = join(cwd, 'hub/test/durations.json');
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
     'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: 'TODO' },
@@ -163,7 +163,7 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /duration.*TODO/, 'working reasons cannot repair an immutable candidate');
   await git('add', '.'); await git('commit', '-m', 'reasoned allowance');
   await lintHubShardTree(cwd, 'HEAD');
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: closed\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: closed\n---\n');
   await assert.rejects(lintHubShards(cwd), /closed owner E-677.*slow/);
   await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /closed owner E-677.*slow/);
 });
@@ -176,7 +176,7 @@ test('immutable candidate admission uses the owning Git environment for tree and
     await mkdir(join(cwd, 'hub/test'), { recursive: true });
     await writeFile(join(cwd, 'hub/test/one.test.ts'), "test('slow', () => {});");
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
     await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
       'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: i === 0 ? 'TODO' : 'Real process teardown.' },
     } }));
@@ -339,7 +339,7 @@ test('new allowances cannot adopt the one-time legacy exception at either admiss
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const manifest = { version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60, T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 } }, files: {}, tests: {}, allow: {} as Record<string, unknown> };
   const path = join(cwd, 'hub/test/durations.json');
   await writeFile(path, JSON.stringify(manifest));
@@ -367,7 +367,7 @@ for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted 
   await git('config', 'user.name', 'Probe test'); await git('config', 'user.email', 'probe@example.invalid');
   await mkdir(join(f.root, '.cland/tasks'), { recursive: true });
   const owner = join(f.root, '.cland/tasks/E-677-fixture.md');
-  await writeFile(owner, '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(owner, '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const file = 'hub/test/historical.test.ts';
   await writeFile(join(f.root, file), "test('slow', () => {});\n");
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
@@ -376,7 +376,7 @@ for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted 
     } }));
   await git('add', '.'); await git('commit', '-qm', 'Open owner');
   const head = await git('rev-parse', 'HEAD'), tree = await git('rev-parse', 'HEAD^{tree}');
-  await writeFile(owner, '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: closed\n---\n');
+  await writeFile(owner, '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: closed\n---\n');
   await git('add', '.'); await git('commit', '-qm', 'Close live owner');
   await assert.rejects(lintHubShards(f.root), /closed owner E-677/);
   const probes = new DevT3Probes(f.store, f.suites, f.root, f.env);

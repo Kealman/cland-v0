@@ -22,7 +22,7 @@ async function fixture(t: TestContext, packageRun = false) {
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const file = join(cwd, 'hub/test/fixture.test.ts');
   await writeFile(file, `import test from 'node:test';
 test('parent', async t => { await t.test('child', () => new Promise(r => setTimeout(r, 100))); });

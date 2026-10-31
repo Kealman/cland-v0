@@ -65,7 +65,7 @@ test('allowance stanzas use the worst passing sample at the tier threshold with 
     seconds: 13.5, owner: 'E-1195', added: '2026-12-29', expires: '2027-01-05',
     reason: 'T3 measured peak 9 s; 1.5x headroom for process.test.ts: threshold.',
   } });
-  lintDurationManifest({ ...current, allow: stanzas }, { now: Date.parse('2026-12-29T23:59:59Z'), owners: { 'E-1195': { state: 'open', kind: 'epic' } } });
+  lintDurationManifest({ ...current, allow: stanzas }, { now: Date.parse('2026-12-29T23:59:59Z'), owners: { 'E-1195': { state: 'open', kind: 'category' } } });
   assert.equal(JSON.stringify(current), before, 'printing leaves all manifest values unchanged');
 });
 
@@ -131,7 +131,7 @@ test('allowance lint names bad reasons, owners and dates while legacy entries fo
   const key = 'known::slow';
   const entry = { seconds: 6, reason: 'Curated lifecycle coverage.', owner: 'E-482', added: '2026-10-17', expires: '2026-10-24' };
   const now = Date.parse('2026-10-17');
-  const owners = { 'E-482': { state: 'open', kind: 'epic' }, 'T-2': { state: 'closed', kind: 'task' }, 'E-677': { state: 'open', kind: 'epic' } } as const;
+  const owners = { 'E-482': { state: 'open', kind: 'category' }, 'T-2': { state: 'closed', kind: 'task' }, 'E-677': { state: 'open', kind: 'category' } } as const;
   for (const [patch, message] of [
     [{ reason: 'TODO explain' }, /non-TODO reason/], [{ owner: '' }, /owner/], [{ owner: 'T-2' }, /closed owner/], [{ owner: 'T-3' }, /unknown owner/],
     [{ expires: '2026-10-25' }, /seven days/], [{ expires: '2026-10-17' }, /seven days/], [{ added: '2026-10-09', expires: '2026-10-16' }, /expired/],
@@ -144,7 +144,7 @@ test('allowance lint names bad reasons, owners and dates while legacy entries fo
   assert.doesNotThrow(() => lintDurationManifest(head, { now, owners }));
   head.allow[key] = { seconds: 6, reason: 'Original reason.', owner: 'E-677', legacy: true };
   assert.doesNotThrow(() => lintDurationManifest(head, { now, owners }));
-  assert.throws(() => lintDurationManifest(head, { now, owners: { ...owners, 'E-677': { state: 'closed', kind: 'epic' } } }), /closed owner.*known::slow/);
+  assert.throws(() => lintDurationManifest(head, { now, owners: { ...owners, 'E-677': { state: 'closed', kind: 'category' } } }), /closed owner.*known::slow/);
 });
 
 test('result summaries cap ranked overages at ten and retain legacy progress separately', async () => {
@@ -164,7 +164,7 @@ test('D72 legacy allowances follow the configured owner without admitting new le
   const head = manifest(), key = 'known::slow';
   head.budget.legacyOwner = 'E-880';
   head.allow[key] = { seconds: 6, reason: 'Original process proof.', owner: 'E-880', legacy: true };
-  const owners = { 'E-880': { state: 'open', kind: 'epic' }, 'E-677': { state: 'open', kind: 'epic' } };
+  const owners = { 'E-880': { state: 'open', kind: 'category' }, 'E-677': { state: 'open', kind: 'category' } };
   const options = { owners, legacyKeys: new Set([key]) };
   assert.doesNotThrow(() => lintDurationManifest(head, options));
   assert.ok(durationBudgetReport(head, {}, []).includes('budget legacy allowances: 1; 6 s; owner E-880'));
@@ -186,7 +186,7 @@ test('D72 legacy allowances follow the configured owner without admitting new le
 test('D72 dated allowances permit 31 days only for the legacy owner', async () => {
   const { lintDurationManifest } = await import('../src/suite-durations.ts');
   const now = Date.parse('2026-10-19'), key = 'known::slow';
-  const owners = { 'E-880': { state: 'open', kind: 'epic' }, 'E-677': { state: 'open', kind: 'epic' }, 'E-482': { state: 'open', kind: 'epic' } };
+  const owners = { 'E-880': { state: 'open', kind: 'category' }, 'E-677': { state: 'open', kind: 'category' }, 'E-482': { state: 'open', kind: 'category' } };
   for (const legacyOwner of [undefined, 'E-880']) {
     const head = manifest();
     if (legacyOwner) head.budget.legacyOwner = legacyOwner;

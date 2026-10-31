@@ -2,6 +2,7 @@ import { glob, readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { isMap, isScalar, parseDocument } from 'yaml';
 import { projectRoot } from './project.ts';
+import { DEFAULT_LEVELS, isPlanningContainer } from './tracker/kinds.ts';
 import { parseItem } from './tracker/item.ts';
 import type { Tier } from './suite-shards.ts';
 
@@ -26,6 +27,11 @@ export type DurationManifest = {
 export const timingKey = (test: TestTiming): string => `${test.file}::${test.name}`;
 export type DurationRegression = { key: string; before: number; now: number; budget?: number };
 export type DurationOwner = { state: string; kind: string; parent?: string | null };
+/** Standing containers survive delivery completion: categories and their direct epics. */
+export function isStandingDurationOwner(owner: DurationOwner | undefined, owners: Record<string, DurationOwner>): boolean {
+  return owner?.state === 'open' && (owner.kind === 'category' ||
+    (isPlanningContainer(owner.kind, DEFAULT_LEVELS) && !!owner.parent && owners[owner.parent]?.kind === 'category' && owners[owner.parent]?.state === 'open'));
+}
 const seconds = (value: number) => Number(value.toFixed(3)).toString();
 const durationDate = (value: unknown): number => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? Date.parse(value) : NaN;
 
@@ -48,9 +54,10 @@ export function durationAllowanceStanzas(tests: TestTiming[], manifest: Duration
   }));
 }
 
-/** The nearest open container survives closure of the task that measured it. */
+/** The nearest standing container survives closure of the delivery that measured it. */
 export async function durationAllowanceOwner(cwd: string, item: string): Promise<string | undefined> {
   const root = projectRoot(cwd), seen = new Set<string>();
+  const owners: Record<string, DurationOwner> = {};
   let id: string | null | undefined = item;
   while (id && /^[A-Z]+-[1-9]\d*$/.test(id) && !seen.has(id)) {
     seen.add(id);
@@ -58,12 +65,13 @@ export async function durationAllowanceOwner(cwd: string, item: string): Promise
     for await (const path of glob(`.cland/tasks/${id}-*.md`, { cwd: root })) {
       const parsed = parseItem(await readFile(join(root, path), 'utf8'));
       if (parsed.fm.id !== id) continue;
-      if (parsed.fm.state === 'open' && !['task', 'question', 'spec', 'map'].includes(parsed.fm.kind)) return id;
+      owners[id] = { state: parsed.fm.state, kind: parsed.fm.kind, parent: parsed.fm.parent };
       parent = parsed.fm.parent;
       break;
     }
     id = parent;
   }
+  return [...seen].find(id => isStandingDurationOwner(owners[id], owners));
 }
 
 /** Dated allowances expire at midnight UTC; legacy allowances expire on owner closure. */
@@ -155,21 +163,21 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
     if (typeof entry.owner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(entry.owner)) throw new Error(`duration allowance needs an open owner item: ${key}`);
     const owner = options.owners?.[entry.owner];
     if (options.owners && owner?.state !== 'open') throw new Error(`duration allowance has ${owner?.state === 'closed' ? 'closed' : 'unknown'} owner ${entry.owner}: ${key}`);
-    if (owner?.kind === 'task') {
+    if (owner && !isStandingDurationOwner(owner, options.owners!)) {
       let parent = owner.parent;
       let replacement = '';
       const seen = new Set<string>([entry.owner]);
       while (parent && !seen.has(parent)) {
         seen.add(parent);
         const item = options.owners?.[parent];
-        if (item?.state === 'open' && !['task', 'question', 'spec', 'map'].includes(item.kind)) { replacement = ` ${parent}`; break; }
+        if (isStandingDurationOwner(item, options.owners!)) { replacement = ` ${parent}`; break; }
         parent = item?.parent;
       }
       const allowance = options.source ? parseDocument(options.source).getIn(['allow', key], true) : undefined;
       const ownerKey = isMap(allowance) ? allowance.items.find(pair => isScalar(pair.key) && pair.key.value === 'owner')?.key : undefined;
       const offset = isScalar(ownerKey) ? ownerKey.range?.[0] : undefined;
       const location = offset === undefined ? DURATION_MANIFEST : `${DURATION_MANIFEST}:${options.source!.slice(0, offset).split('\n').length}`;
-      throw new Error(`${location}: duration allowance has task owner ${entry.owner}: ${key}; use an open epic owner${replacement} (or another open container)`);
+      throw new Error(`${location}: duration allowance has ${owner.kind} owner ${entry.owner}: ${key}; use a standing container${replacement || ' (for example E-880)'} (a category or an epic directly under a category)`);
     }
     if (entry.legacy !== undefined && entry.legacy !== true) throw new Error(`invalid legacy duration allowance: ${key}`);
     if (entry.legacy === true) {

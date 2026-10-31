@@ -17,4 +17,4 @@ export function durationFixture(file?: string) {
   return { manifest, legacyKey, expiringKey, legacy };
 }
 
-export const durationOwner = '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n';
+export const durationOwner = '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n';

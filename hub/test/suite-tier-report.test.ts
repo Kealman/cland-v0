@@ -50,7 +50,7 @@ async function durationFixture(t: test.TestContext) {
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, 'hub/test/one.test.ts'), "test('recorded', () => {});");
   await writeFile(join(root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { 'hub/test/one.test.ts': 'T1' } }));
-  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const key = 'hub/test/one.test.ts::recorded';
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({
     version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 },

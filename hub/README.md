@@ -6126,7 +6126,7 @@ Keep the existing `seconds` and `reason` unchanged. There is no renewal command.
 Closing a planning container (an epic by default) rereads the project’s
 `hub/test/durations.json` when present and refuses if any `allow` entry names
 that item as `owner`. The refusal lists every test/file key. Re-own those
-`allow[key].owner` entries to an open release/category before retrying; retain
+`allow[key].owner` entries to a standing category or epic directly under a category before retrying; retain
 `added`, `expires`, `seconds` and reasons. There is no re-own command: edit the
 manifest. `task edit --state closed` and imports closing an existing epic share
 the guard, and the human’s QA `--override` does not bypass it. Projects without
@@ -7975,3 +7975,15 @@ also harmless to these readers. Recorded schemas and reader examples cover
 these changes; native runtime coverage and Doctor's informational tested range
 remain at 2.0.24. Future versions require a new review. The check remains
 informational, with no new gate, setting or role permission.
+
+## Standing duration allowance owners
+
+`npm run test:tiers` and verification/merge manifest admission accept categories
+and epics directly under a category as standing owners. They refuse tasks,
+release delivery epics and other nonstanding owners, naming the allowance key,
+source line when available, and a standing ancestor or E-880 as an example.
+Generated allowance stanzas select owners through this same policy. Existing
+E-880 allowances and their legacy-owner budget remain unchanged. This extends
+the existing owner refusal; it is independent of the duration budget's report
+or enforce mode. Missing manifests and older callers without owner records keep
+their existing behavior. No role permission changes are needed.

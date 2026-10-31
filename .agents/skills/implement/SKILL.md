@@ -1294,6 +1294,14 @@ wait up to ten seconds for a loaded paired remote to reconnect. Retain the
 still-down and inactive-token controls; share readiness polling with Discord's
 post-reload path. No remote.status fields or role permissions change.
 
+## Standing duration allowance owners (T-1504)
+
+Use a category or an epic directly under a category (such as E-880) for duration
+allowances. `test:tiers` refuses delivery epics and tasks with the key, source
+location and a standing-owner suggestion. Generated stanzas use the same rule.
+Keep seconds, dates and reasons when re-owning. Existing E-880 entries remain
+valid; no role clause or permission change is needed.
+
 ## Scratch admission children (T-1525)
 
 When testing admission against a disposable hub, use `fixtureEnvironment` with

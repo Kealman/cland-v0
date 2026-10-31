@@ -546,7 +546,7 @@ test('task admission adds only changed T3/T4 files, including renamed and untrac
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/T-214-fixture.md'), '---\nid: T-214\nkind: task\ntitle: Task\nstate: open\nparent: E-1\n---\n');
-  await writeFile(join(root, '.cland/tasks/E-1-fixture.md'), '---\nid: E-1\nkind: epic\ntitle: Owner\nstate: open\n---\n');
+  await writeFile(join(root, '.cland/tasks/E-1-fixture.md'), '---\nid: E-1\nkind: category\ntitle: Owner\nstate: open\n---\n');
   await writeFile(join(root, '.cland/config.toml'), '[merge]\nqueue = true\n');
   await git('add', '.'); await git('commit', '-m', 'tier baseline'); await git('push', 'origin', 'HEAD:dev');
   await writeFile(join(root, 'hub/test/changed.test.ts'), "import test from 'node:test'; test('renamed identity', () => {});\n");

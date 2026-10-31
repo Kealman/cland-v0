@@ -1,13 +1,14 @@
 // T1: in-process manifest/planner tests; no hub or process is started.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, glob, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { hubShards, lintHubShards, packageShards, readTierLoadGuards, serializeTierManifest, ShardManifestError, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection, suiteTestEnv } from '../src/verification-occasion.ts';
 import { planTierReport } from '../src/suite-tier-report.ts';
 import { selectionTransport, selectionFromEnv, chooseSuiteMode } from '../src/suite-selection.ts';
+import { durationOwners, lintDurationManifest, durationAllowanceOwner } from '../src/suite-durations.ts';
 import { skipT4LoadRepetitions, loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 
 test('shard planning refuses with every expired duration allowance key', async t => {
@@ -230,7 +231,7 @@ test('duration lint uses supplied legacy keys for package planning and rejects u
   await writeFile(join(root, 'hub/test/a.test.ts'), "test('recorded', () => {});");
   await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
-  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const key = 'hub/test/a.test.ts::recorded';
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({
     version: 1, source: { artifacts: [], commit: 'fixture' },
@@ -248,7 +249,7 @@ test('test:tiers refuses an open task allowance with its line and open epic repl
   await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/T-761-fixture.md'), '---\nid: T-761\nkind: task\ntitle: Implementing task\nstate: open\nparent: E-482\n---\n');
-  await writeFile(join(root, '.cland/tasks/E-482-fixture.md'), '---\nid: E-482\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(root, '.cland/tasks/E-482-fixture.md'), '---\nid: E-482\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   // Admission uses today's date; keep this allowance valid whenever the test runs.
   const today = new Date().toISOString().slice(0, 10);
   const expires = new Date(Date.parse(today) + 86_400_000).toISOString().slice(0, 10);
@@ -268,7 +269,7 @@ test('test:tiers refuses an open task allowance with its line and open epic repl
     assert.ok(error instanceof Error);
     assert.ok(error.message.includes(`hub/test/durations.json:${line}`), error.message);
     assert.match(error.message, /task owner T-761/);
-    assert.match(error.message, /open epic owner.*E-482/);
+    assert.match(error.message, /standing container.*E-482/);
     assert.ok(error.message.includes(key), error.message);
     return true;
   });
@@ -287,7 +288,7 @@ test('duration owners follow container state through the E-677 to E-482 transiti
     budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {},
     allow: { 'hub/test/a.test.ts::temporary migration': allowance } };
   const save = () => writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(manifest));
-  for (const [id, kind] of [['E-677', 'epic'], ['R-577', 'release'], ['C-100', 'category'], ['T-761', 'epic']] as const) {
+  for (const [id, kind] of [['E-677', 'category'], ['C-100', 'category'], ['T-761', 'category']] as const) {
     await item(id, kind);
     allowance.owner = id;
     await save();
@@ -295,9 +296,9 @@ test('duration owners follow container state through the E-677 to E-482 transiti
   }
   allowance.owner = 'E-677';
   await save();
-  await item('E-677', 'epic', 'closed');
+  await item('E-677', 'category', 'closed');
   await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), /closed owner E-677/);
-  await item('E-482', 'epic');
+  await item('E-482', 'category');
   allowance.owner = 'E-482';
   await save();
   await assert.doesNotReject(lintHubShards(root, { legacyKeys: new Set() }));
@@ -325,4 +326,61 @@ test('working manifest lint names unmatched test, allowance and file keys', asyn
   const key = `${file}::absent allowance`;
   await assert.rejects(lintDurationIdentities({ ...manifest, allow: { [key]: { seconds: 6, reason: 'Fixture.' } } }, async () => "test('literal [.*]', () => {}); test(`case ${kind} succeeds`, () => {});"), error => error instanceof Error && error.message.endsWith(key));
   await assert.doesNotReject(lintDurationIdentities({ ...manifest, tests: { [`${file}::computed title`]: 1 } }, async () => 'test(titleFromTable, () => {});'), 'computed titles remain uncertain, not proven absent');
+});
+
+for (const kind of ['task', 'epic'] as const) test(`test:tiers refuses delivery ${kind} owners and suggests a standing container`, async t => {
+  const { root, write } = await fixture(t);
+  await writeFile(join(root, 'hub/test/a.test.ts'), "test('delivery', () => {});");
+  await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  const item = async (id: string, kind: string, parent: string | null) => writeFile(join(root, `.cland/tasks/${id}-fixture.md`), `---\nid: ${id}\nkind: ${kind}\ntitle: Owner\nstate: open\nparent: ${parent}\n---\n`);
+  await item('C-1', 'category', null);
+  await item('E-880', 'epic', 'C-1');
+  await item('R-1', 'release', 'E-880');
+  await item('E-1466', kind, 'R-1');
+  const key = 'hub/test/a.test.ts::delivery';
+  const today = new Date().toISOString().slice(0, 10);
+  const expires = new Date(Date.parse(today) + 86_400_000).toISOString().slice(0, 10);
+  const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {},
+    allow: { [key]: { seconds: 6, owner: 'E-1466', added: today, expires, reason: 'Native delivery lifecycle.' } } };
+  const source = JSON.stringify(manifest, null, 2);
+  await writeFile(join(root, 'hub/test/durations.json'), source);
+  const line = source.split('\n').findIndex(line => line.includes('"owner"')) + 1;
+  await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), error => {
+    assert.ok(error instanceof Error);
+    assert.ok(error.message.includes(`hub/test/durations.json:${line}`), error.message);
+    assert.ok(error.message.includes(`${kind} owner E-1466`), error.message);
+    assert.ok(error.message.includes(key), error.message);
+    assert.match(error.message, /standing container.*E-880/);
+    return true;
+  });
+  assert.equal(await durationAllowanceOwner(root, 'E-1466'), 'E-880');
+  manifest.allow[key]!.owner = 'E-880';
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(manifest));
+  await assert.doesNotReject(lintHubShards(root, { legacyKeys: new Set() }));
+});
+
+test('shipped allowances retain valid standing owners without manifest migration', async t => {
+  const { root } = await fixture(t);
+  const repo = new URL('../../', import.meta.url);
+  const source = await readFile(new URL('hub/test/durations.json', repo), 'utf8');
+  const manifest = JSON.parse(source);
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  const pending = new Set<string>(Object.values(manifest.allow as Record<string, { owner: string }>).map(entry => entry.owner));
+  // Copy only owner ancestry; the checker never runs on the live tracker.
+  for (const id of pending) {
+    for await (const path of glob(`.cland/tasks/${id}-*.md`, { cwd: repo })) {
+      const text = await readFile(new URL(path, repo), 'utf8');
+      await copyFile(new URL(path, repo), join(root, path));
+      const parent = /^parent: ([A-Z]+-\d+)$/m.exec(text)?.[1];
+      if (parent) pending.add(parent);
+    }
+  }
+  const owners = await durationOwners(root, manifest);
+  lintDurationManifest(manifest, { owners, source });
+  for (const owner of new Set<string>(Object.values(manifest.allow as Record<string, { owner: string }>).map(entry => entry.owner))) {
+    assert.ok(owners[owner]);
+    // Positive control: the exact shipped entries must reject a delivery owner.
+    assert.throws(() => lintDurationManifest(manifest, { source, owners: { ...owners, [owner]: { state: 'open', kind: 'epic', parent: 'R-999' } } }), /epic owner/);
+  }
 });

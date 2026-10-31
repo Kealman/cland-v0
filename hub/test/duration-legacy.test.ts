@@ -18,7 +18,7 @@ async function history(cwd: string) {
   await git('init', '-qb', 'dev');
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const key = 'hub/test/old.test.ts::old';
   await writeFile(join(cwd, 'hub/test/old.test.ts'), "test('old', () => {});");
   const entry = { seconds: 6, owner: 'E-677', legacy: true as const, reason: 'Existing process lifecycle.' };
