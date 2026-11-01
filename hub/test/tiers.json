@@ -277,6 +277,7 @@
     "hub/test/merge-recovery-native.test.ts": "T3",
     "hub/test/merge-recovery.test.ts": "T2",
     "hub/test/merge.test.ts": "T3",
+    "hub/test/message-users.test.ts": "T2",
     "hub/test/migrate-plan.test.ts": "T1",
     "hub/test/mod-bridge.test.ts": "T2",
     "hub/test/model-output.test.ts": "T1",

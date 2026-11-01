@@ -199,6 +199,7 @@ create table if not exists hygiene (
  */
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
   { table: 'web_sessions', column: 'user_id', type: 'text' },
+  { table: 'messages', column: 'user_id', type: 'text' },
   { table: 'inbox_waits', column: 'text', type: "text not null default ''" },
   { table: 'inbox_waits', column: 'approval_json', type: 'text' },
   { table: 'inbox_departures', column: 'text', type: "text not null default ''" },
@@ -919,6 +920,14 @@ export class Store implements HygieneMemory {
     return result;
   }
 
+  #messageFromRow(row: Row): Message {
+    const message = toMessage(row);
+    if (message.fromKind !== 'human') return message;
+    const user = typeof row.user_id === 'string' ? this.users.get(row.user_id)
+      : this.users.mode() === 'users' ? this.users.first() : null;
+    return user ? { ...message, from: user.name, userId: user.id } : message;
+  }
+
   /** Record a message and the state of each addressee's delivery, together: a message is never stored with
    *  only some of its deliveries. */
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState; direct?: boolean }>, now: number, notice: string | null = null, bindHeld = true): void {
@@ -942,6 +951,7 @@ export class Store implements HygieneMemory {
           message.answerTo ?? null,
           seq,
         );
+      if (message.userId !== undefined) this.#prepare('update messages set user_id = ? where id = ?').run(message.userId, message.id);
       if (message.answered_as !== undefined) this.#prepare('update messages set answer_attribution = ? where id = ?').run(JSON.stringify({ answered_as: message.answered_as, answered_by: message.answered_by, relayed_by: message.relayed_by }), message.id);
       if (message.criteria !== undefined) this.#prepare('update messages set criteria = ? where id = ?').run(JSON.stringify(message.criteria), message.id);
       if (message.request !== undefined) this.#prepare('update messages set request_kind = ?, request_subject = ? where id = ?').run(message.request, message.subject ?? null, message.id);
@@ -1071,7 +1081,7 @@ export class Store implements HygieneMemory {
     const row = this.#prepare('select * from messages where id = ?').get(id) as Row | undefined;
     if (!row) return null;
     const ask = this.ask(id);
-    return { ...toMessage(row), ...(ask ? { ask: cardOf(ask) } : {}) };
+    return { ...this.#messageFromRow(row), ...(ask ? { ask: cardOf(ask) } : {}) };
   }
 
   /** The messages waiting for a session, oldest first; those past the TTL are marked dropped and returned
@@ -1084,7 +1094,7 @@ export class Store implements HygieneMemory {
       .all(session, 'queued') as Row[];
     const deliver: Message[] = [];
     for (const row of rows) {
-      const message = toMessage(row);
+      const message = this.#messageFromRow(row);
       if (!isHeldDelivery(message)) deliver.push(this.deliveryMessage(message.id, session)!);
     }
     return { deliver, dropped };
@@ -1284,7 +1294,7 @@ export class Store implements HygieneMemory {
   queuedVerifierRequests(): Array<{ message: Message; item: string; role: 'reviewer' | 'qa'; senderId: string | null; queuedAt: number }> {
     return (this.#prepare(`select m.*, d.verifier_item, d.verifier_role, d.queued_at from deliveries d join messages m on m.id = d.message_id
       where d.verifier_item is not null and d.state = 'queued' order by m.seq`).all() as Row[]).map(row => ({
-      message: toMessage(row), item: this.#canonicalItem(row.verifier_item as string), role: row.verifier_role as 'reviewer' | 'qa',
+      message: this.#messageFromRow(row), item: this.#canonicalItem(row.verifier_item as string), role: row.verifier_role as 'reviewer' | 'qa',
       senderId: row.from_session_id as string | null, queuedAt: row.queued_at as number,
     }));
   }
@@ -1385,14 +1395,14 @@ export class Store implements HygieneMemory {
         where d.session = ? and d.launch_brief = ? and d.launch_brief_ready = 0
         and (d.state = 'injected' or (? and d.state = 'queued')) order by m.seq`).all(session, launchId, Number(allowQueued)) as Row[];
       for (const row of rows) this.#prepare('update deliveries set launch_brief_ready = 1 where message_id = ? and session = ?').run(row.id as string, session);
-      return rows.map(toMessage);
+      return rows.map(row => this.#messageFromRow(row));
     });
   }
 
   /** Delivery ownership remains attached to the launch through acceptance, cancellation and recovery. */
   launchBriefs(launchId: string): Message[] {
     return (this.#prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
-      where d.launch_brief = ? order by m.seq`).all(launchId) as Row[]).map(toMessage);
+      where d.launch_brief = ? order by m.seq`).all(launchId) as Row[]).map(row => this.#messageFromRow(row));
   }
 
   /** A failed launch cannot leave an undelivered first input for a later launch under its name. */
@@ -1760,7 +1770,7 @@ export class Store implements HygieneMemory {
       const rows = this.#prepare('select m.*, exists(select 1 from asks a where a.id = m.id) as has_ask from messages m where topic = ? and seq > ? order by seq limit 200').all(topic, after) as Row[];
       if (!rows.length) break;
       for (const row of rows) {
-        const message = toMessage(row), seq = Number(row.seq);
+        const message = this.#messageFromRow(row), seq = Number(row.seq);
         const eligible = !row.has_ask && (row.run_eligible === null ? joinsRun(message, name => this.roleOf(name)) : row.run_eligible === 1);
         // Freeze legacy classification once, and finalize a question after its ask card exists.
         if (row.run_eligible === null || Number(eligible) !== row.run_eligible) this.#prepare('update messages set run_eligible = ? where id = ?').run(Number(eligible), message.id);
@@ -1787,7 +1797,7 @@ export class Store implements HygieneMemory {
     if (!member?.run_id) return;
     const rows = this.#prepare('select m.* from thread_run_members member join messages m on m.id = member.message_id where member.run_id = ? order by member.seq').all(member.run_id as string) as Row[];
     let facts: RunFacts | undefined;
-    for (const row of rows) facts = appendRun(facts, toMessage(row), Number(row.seq));
+    for (const row of rows) facts = appendRun(facts, this.#messageFromRow(row), Number(row.seq));
     if (facts) this.#prepare('update thread_runs set data = ? where id = ?').run(JSON.stringify(facts), member.run_id as string);
   }
 
@@ -1842,7 +1852,7 @@ export class Store implements HygieneMemory {
     return rows.map((row) => {
       const stage = this.stage(row.id as string);
       const ask = this.ask(row.id as string);
-      return { ...toMessage(row), seq: Number(row.seq), topic, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
+      return { ...this.#messageFromRow(row), seq: Number(row.seq), topic, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
     });
   }
 
@@ -1870,7 +1880,7 @@ export class Store implements HygieneMemory {
           and seq > ? and seq <= ? order by seq limit 100`).all(choice.target, after, through)) as Row[];
     return rows.map(row => {
       const stage = this.stage(row.id as string), ask = this.ask(row.id as string);
-      return { ...toMessage(row), seq: Number(row.seq), topic: row.topic as string, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
+      return { ...this.#messageFromRow(row), seq: Number(row.seq), topic: row.topic as string, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
     });
   }
 
@@ -1915,7 +1925,7 @@ export class Store implements HygieneMemory {
         and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
           or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))
       order by m.seq desc`).all() as Row[];
-    return rows.map(r => ({ message: { ...toMessage(r), seq: Number(r.seq), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 }));
+    return rows.map(r => ({ message: { ...this.#messageFromRow(r), seq: Number(r.seq), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 }));
   }
 
   inboxWaits(): InboxWait[] {
@@ -2080,7 +2090,7 @@ export class Store implements HygieneMemory {
       where (m.from_name = :session or exists (select 1 from deliveries d where d.message_id = m.id and d.session = :session))
         and (:before is null or m.seq < :before)
       order by m.seq desc limit :limit`).all({ session, before: before ?? null, limit }) as Row[];
-    return rows.map(row => ({ ...toMessage(row), seq: Number(row.seq) })).reverse();
+    return rows.map(row => ({ ...this.#messageFromRow(row), seq: Number(row.seq) })).reverse();
   }
 
   /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only.
@@ -2093,6 +2103,6 @@ export class Store implements HygieneMemory {
          order by m.created_at desc, m.rowid desc limit :limit`,
       )
       .all({ session, counterpart: counterpart ?? null, limit }) as Row[];
-    return rows.map(toMessage).reverse();
+    return rows.map(row => this.#messageFromRow(row)).reverse();
   }
 }

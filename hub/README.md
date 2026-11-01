@@ -418,6 +418,15 @@ plain HTTP carries the cookie in clear and gives phones no notifications or inst
 
 ### Browser sign-in and protocol
 
+Human messages in users mode persist `messages.user_id` and expose the user's
+name in `from`, with `fromKind: human`. Local human sends use the first user;
+web sends use the authenticated cookie user, never an identity from the frame.
+Legacy human rows without a user id read as the first user while users mode is
+active. Single-mode sends retain `from: human` and omit `userId`. The optional
+message `userId` supports older clients and hubs; agent delivery envelopes use
+the existing `from` attribute. The content-free `human-send` journal record
+includes `userId` for new users-mode messages; earlier journal rows stay unchanged.
+
 The spokes' authentication and refusal of client hellos are unchanged.
 Paths stay inside the bundle,
 including symlinks; extensionless routes fall back to `index.html`. Missing

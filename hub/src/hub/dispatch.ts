@@ -1081,7 +1081,7 @@ export class Dispatcher {
     // Web identity is supplied only by the authenticated upgrade/upload, never a frame.
     const humanUser = () => {
       if (core.store.users.mode() !== 'users') return null;
-      const user = transport.edge === 'web' ? transport.user?.() : core.store.users.list()[0];
+      const user = transport.edge === 'web' ? transport.user?.() : core.store.users.first();
       if (!user || user.state !== 'active') throw new Error('human connection requires an active user');
       return user;
     };
@@ -1313,7 +1313,7 @@ export class Dispatcher {
             const reply = typeof frame.replyTo === 'string' ? frame.replyTo : undefined;
             const to = Array.isArray(frame.to) ? frame.to as string[] : undefined;
             const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts, frame.kind, undefined, false, undefined, frame.request, frame.subject)
-              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts, undefined, undefined, frame.kind as import('../protocol.ts').HumanMessageKind | undefined);
+              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts, undefined, undefined, frame.kind as import('../protocol.ts').HumanMessageKind | undefined, undefined, false, humanUser()?.id);
             return { type: 'result', id: String(frame.id), ok: true, value };
           });
         } catch (err) { return resumed(() => Dispatcher.#failure(String(frame.id), err)); }
@@ -1793,7 +1793,7 @@ export class Dispatcher {
             };
             const operation = this.#artifactQueue.then(() => uploadArtifacts(core.store, root, frame, bytes,
               this.#options.projectConfig?.().artifacts.maxUploadMb ?? 50, artifacts => {
-                const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true);
+                const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true, humanUser()?.id);
                 return { message, artifacts };
               }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor, this.#options.uploadOpen, transport.ownsUploadBytes === true));
             uploads.add(operation);
@@ -1810,7 +1810,7 @@ export class Dispatcher {
               if (original.fromKind !== 'human' || original.via !== via) throw new Error('remote input identity conflict');
               return answer({ message: { ...original, topic: original.topic!, seq: core.store.messageSeq(original.id), stage: core.store.stage(original.id) }, outcomes: [] });
             }
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, messageId, undefined, frame.kind, via);
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, messageId, undefined, frame.kind, via, false, humanUser()?.id);
             // Native crash fixture: the durable human effect exists, but the
             // adapter has not received a result or stored its feedback receipt.
             if (messageId && ((via === 'telegram' && this.#options.env?.CLAND_TEST_CRASH_AT === 'telegram-input-committed')

@@ -23,6 +23,10 @@ export class Users {
     const row = this.#db.prepare('select id, name, display_name as displayName, role, state, created from users where id=?').get(id);
     return row ? { ...row } as User : null;
   }
+  first(): User | null {
+    const row = this.#db.prepare('select id, name, display_name as displayName, role, state, created from users order by created, rowid limit 1').get();
+    return row ? { ...row } as User : null;
+  }
   roles(): string[] { return (this.#db.prepare('select name from roles order by name').all() as { name: string }[]).map(row => row.name); }
   list(): User[] {
     return this.#db.prepare('select id, name, display_name as displayName, role, state, created from users order by created, rowid').all().map(row => ({ ...row })) as User[];

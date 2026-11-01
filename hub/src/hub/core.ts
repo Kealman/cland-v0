@@ -2032,7 +2032,7 @@ export class HubCore {
     let admitted = this.#store.verificationAdmitted(message.id);
     if (admitted === null) {
       // The persisted producer establishes legacy human authority; human input has no session id.
-      if (message.fromKind === 'human' && message.from === HUMAN) admitted = true;
+      if (message.fromKind === 'human') admitted = true;
       else if (message.fromKind === 'hub' && message.from === 'hub'
         && this.#store.hasAcceptedLaunchBrief(message.id, connection.name, connection.sessionId)) admitted = true;
       else {
@@ -3417,7 +3417,10 @@ export class HubCore {
    * shows the warning (`no coordinator`) meanwhile. Always recorded: the human's words show in the topic whoever
    * they reach. Only a Question starts a wait for its addressee; every kind marks the topic read.
    */
-  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message', via?: RemoteVia, uploadCaption = false): { message: TopicMessage; outcomes: SendOutcome[] } {
+  sendFromHuman(topicId: string, text: string, to?: string[], replyTo?: string, answerTo?: string, artifact?: Artifact, artifacts?: Artifact[], messageId?: string, attribution?: AnswerAttribution, kind: HumanMessageKind = 'message', via?: RemoteVia, uploadCaption = false, userId?: string): { message: TopicMessage; outcomes: SendOutcome[] } {
+    const user = this.#store.users.mode() === 'users'
+      ? (userId ? this.#store.users.get(userId) : this.#store.users.first()) : null;
+    if (this.#store.users.mode() === 'users' && (!user || user.state !== 'active')) throw new Error('human message requires an active user');
     const topic = this.#topicOrThrow(topicId);
     if (topic.id === AGENTS.id) {
       // Agents is the record of what agents send each other (spec 4.5): the human reads it, and writes there only
@@ -3460,7 +3463,8 @@ export class HubCore {
     const placeholders = empty.map(({ tag }) => tag);
     const message: Message = {
       id: messageId ?? randomUUID(),
-      from: HUMAN,
+      from: user?.name ?? HUMAN,
+      ...(user ? { userId: user.id } : {}),
       fromKind: 'human',
       kind,
       via: via ?? 'hub',
@@ -3501,7 +3505,7 @@ export class HubCore {
         outcomes.push(offline.length ? { to: tag, outcome: 'queued', reason: `${offline.join(', ')} ${waiting} — queued` } : { to: tag, outcome: 'delivered' });
       }
       for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
-      this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
+      this.#log({ event: 'human-send', id: message.id, ...(user ? { userId: user.id } : {}), topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     });
     const stage = this.#store.stage(message.id);
     return { message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, withdrawable: this.#withdrawalReason(message) === null, ...(stage ? { stage } : {}) }, outcomes };

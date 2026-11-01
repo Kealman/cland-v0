@@ -134,6 +134,8 @@ export type Message = {
   id: string;
   from: string;
   fromKind: FromKind;
+  /** Durable human author; optional for single mode and older hubs. */
+  userId?: string;
   /** The sender's role when a session wrote it; absent on the hub's own message. */
   fromRole?: string;
   via: Via;
