@@ -1038,7 +1038,7 @@ export class Dispatcher {
     return { id: artifact.id, path: artifact.path };
   }
 
-  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T, suite?: Readonly<SuiteJob>): Promise<unknown> {
+  async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T, suite?: Readonly<SuiteJob>, user?: { name: string; id: string } | null): Promise<unknown> {
     const caller = callerNow();
     const core = this.#options.core;
     if (frame.type === 'artifact.list') {
@@ -1059,10 +1059,10 @@ export class Dispatcher {
     const authorize = () => this.#artifactTopic(callerNow(), frame.topic);
     const topic = authorize();
     const root = this.#options.control?.status().root;
-    const name = caller?.name ?? (suite ? suiteAuthor(suite) : 'human');
+    const name = caller?.name ?? (suite ? suiteAuthor(suite) : user?.name ?? 'human');
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
     const host = caller && !suite ? this.#sessions?.hostForSession(caller.sessionId) ?? localHost() : localHost();
-    const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', kind: caller || name === 'hub' ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
+    const artifact = await createArtifact(core.store, root, frame, { name, ...(!caller && !suite && user ? { userId: user.id } : {}), cwd: cwd ?? '.', kind: caller || name === 'hub' ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
       if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
       const current = callerNow();
@@ -1270,7 +1270,7 @@ export class Dispatcher {
         if (current && !this.#permitted(current, frame as unknown as Record<string, unknown>, peer, false)) throw new ToolForbidden(current.role, tool, 'permission changed during artifact preparation');
         return current;
       };
-      const run = () => this.#artifact(frame, authorizeCaller, resumed);
+      const run = () => this.#artifact(frame, authorizeCaller, resumed, undefined, original ? null : humanUser());
       const operation = frame.type === 'artifact.create' ? this.#artifactQueue.then(() => resumed(run)) : run();
       if (frame.type === 'artifact.create') this.#artifactQueue = operation.catch(() => resumed(() => {}));
       later(tool, operation.then(value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
@@ -1290,7 +1290,7 @@ export class Dispatcher {
         const artifacts = ids.map(id => {
           const a = core.store.resolveArtifact(id);
           if (!a || a.status === 'archived' || a.topic !== topicId) throw new ArtifactError('artifact-unavailable', `artifact ${id} is unavailable in this topic`);
-          if (prompt && (a.movedTo || a.kind !== 'prompt' || a.status !== 'draft' || a.creator !== 'human')) throw new ArtifactError('artifact-unavailable', 'only a human prompt draft can be sent here');
+          if (prompt && (a.movedTo || a.kind !== 'prompt' || a.status !== 'draft' || !(a.creatorKind === 'human' || (a.creatorKind === undefined && a.creator === 'human')))) throw new ArtifactError('artifact-unavailable', 'only a human prompt draft can be sent here');
           return a;
         });
         return { caller, artifacts };
@@ -1803,7 +1803,7 @@ export class Dispatcher {
               this.#options.projectConfig?.().artifacts.maxUploadMb ?? 50, artifacts => {
                 const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true, humanUser()?.id);
                 return { message, artifacts };
-              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor, this.#options.uploadOpen, transport.ownsUploadBytes === true));
+              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor, this.#options.uploadOpen, transport.ownsUploadBytes === true, undefined, humanUser() ?? undefined));
             uploads.add(operation);
             void operation.then(() => uploads.delete(operation), () => uploads.delete(operation));
             this.#artifactQueue = operation.catch(() => {});

@@ -12,7 +12,7 @@ import { ArtifactError, artifactCreation } from './artifacts.ts';
 const mimeExtensions: Record<string, string> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'application/pdf': '.pdf', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'text/plain': '.txt' };
 
 /** Prepare files under the shared creation queue, then register all rows and the message atomically. */
-export function uploadArtifacts<T>(store: Store, root: string, request: ArtifactUpload, bytes: readonly Buffer[] | undefined, maxMb: number, publish: (artifacts: Artifact[]) => T, authorize: () => void, replay: () => T | undefined, resumed: <R>(work: () => R) => R, now: () => Date, redactor?: Pick<RemoteRedactor, 'containsSecret' | 'text'>, openFile: typeof open = open, ownedBytes = false, host: Pick<Host, 'fileType'> = localHost()): Promise<T> {
+export function uploadArtifacts<T>(store: Store, root: string, request: ArtifactUpload, bytes: readonly Buffer[] | undefined, maxMb: number, publish: (artifacts: Artifact[]) => T, authorize: () => void, replay: () => T | undefined, resumed: <R>(work: () => R) => R, now: () => Date, redactor?: Pick<RemoteRedactor, 'containsSecret' | 'text'>, openFile: typeof open = open, ownedBytes = false, host: Pick<Host, 'fileType'> = localHost(), creator?: { name: string; id: string }): Promise<T> {
   return artifactCreation(store, () => resumed(async () => {
     authorize();
     const previous = replay();
@@ -63,7 +63,7 @@ export function uploadArtifacts<T>(store: Store, root: string, request: Artifact
         const handle = await resumed(() => openFile(path, 'wx'));
         written.push(path);
         try { await resumed(() => handle.writeFile(file.data)); } finally { await resumed(() => handle.close()); }
-        artifacts.push({ id, title: file.name, kind: 'file', path, creator: 'human', creatorKind: 'human', creatorRole: null, topic: request.topic, status: 'shared', time: now().toISOString() });
+        artifacts.push({ id, title: file.name, kind: 'file', path, creator: creator?.name ?? 'human', ...(creator ? { creatorUserId: creator.id } : {}), creatorKind: 'human', creatorRole: null, topic: request.topic, status: 'shared', time: now().toISOString() });
       }
       return resumed(() => {
         authorize();

@@ -454,6 +454,14 @@ shows the display name. Human request audit records add `userId`; single mode
 omits both optional fields and keeps the existing link and cookie flow. Agent
 session identity and role permissions are unchanged.
 
+Human artifact creation and uploads in users mode persist `creatorUserId` and
+use the authenticated user's name as `creator`; artifact journal events carry
+`userId` alongside the human request audit. Local human CLI connections use the
+first user, web uploads use the cookie user, and gateway uploads use the acting
+human connection. Agent artifacts carry no creator user id. Single mode keeps
+`creator: "human"` and omits `creatorUserId`. Artifact source paths still use the
+session's Host; uploads retain their transport-owned bytes.
+
 In users mode, `cland user add <name> [--display <name>]` creates an admin
 in state `invited`. Names must be unique lowercase ASCII slugs and cannot be
 `human`, `hub`, `all`, a role or a current session name. The local human CLI

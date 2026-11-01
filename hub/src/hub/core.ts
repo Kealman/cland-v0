@@ -1629,7 +1629,7 @@ export class HubCore {
   #publishArtifact(artifact: Artifact): void {
     const previous = this.#artifactStates.get(artifact.id);
     this.#artifactStates.set(artifact.id, artifact.status);
-    const context = { artifact: artifact.id, topic: artifact.topic, session: artifact.creator, item: this.#store.topic(artifact.topic)?.item ?? null, role: this.#store.roleOf(artifact.creator) };
+    const context = { artifact: artifact.id, ...(artifact.creatorUserId ? { userId: artifact.creatorUserId } : {}), topic: artifact.topic, session: artifact.creator, item: this.#store.topic(artifact.topic)?.item ?? null, role: this.#store.roleOf(artifact.creator) };
     const subjects: SubscriptionSubject[] = [{ topic: artifact.topic }, { session: artifact.creator }];
     // One logical occurrence per recipient even when topic and creator subscriptions overlap.
     const selected = this.#store.allSubscriptions().filter(s => subjects.some(subject => this.#eventMatches(s, subject, context)));

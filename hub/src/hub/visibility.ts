@@ -185,7 +185,7 @@ export class Visibility {
       case 'artifacts': {
         const authorRole = Object.hasOwn(r, 'creatorRole') ? r.creatorRole : this.#role(String(r.creator));
         if (r.status === 'archived') return 'archived';
-        if (r.creator === 'human' || authorRole === 'aide') return 'human';
+        if (r.creatorKind === 'human' || (r.creatorKind === undefined && r.creator === 'human') || authorRole === 'aide') return 'human';
         if (r.kept === true) return 'kept';
         return authorRole === 'coordinator' && ['shared', 'sent'].includes(String(r.status)) ? 'coordinator' : 'agent';
       }

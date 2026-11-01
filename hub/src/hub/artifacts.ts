@@ -29,7 +29,7 @@ export function artifactCreation<T>(store: Store, work: () => Promise<T>): Promi
   return operation;
 }
 
-async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock, sourceHost?: Host): Promise<Artifact> {
+async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; userId?: string; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock, sourceHost?: Host): Promise<Artifact> {
   const host = sourceHost ?? { ...localHost(), readFile: readSource };
   if (!root) throw new ArtifactError('artifact-unavailable', 'this hub serves no project for artifacts');
   if (!(typeof request.kind === 'string' && Object.hasOwn(extensions, request.kind))) throw new ArtifactError('artifact-kind', 'kind must be prompt, note, page, diagram or file');
@@ -115,7 +115,7 @@ async function prepareArtifact(store: Store, root: string | undefined, request: 
       authorize(); // topic, caller identity, and permissions are read again after file preparation
       const artifact = store.registerArtifact((id) => {
         if (id !== prepared.id) throw new Error('artifact reservation moved');
-        return { id, title, kind, path: prepared.path, creator: actor.name, creatorKind: actor.kind, creatorRole: actor.role(), ...(folder ? { folder: true, entry: entry! } : {}), time: clock.now().toISOString(), topic: request.topic, status: request.status ?? 'shared' };
+        return { id, title, kind, path: prepared.path, creator: actor.name, creatorKind: actor.kind, ...(actor.kind === 'human' && actor.userId ? { creatorUserId: actor.userId } : {}), creatorRole: actor.role(), ...(folder ? { folder: true, entry: entry! } : {}), time: clock.now().toISOString(), topic: request.topic, status: request.status ?? 'shared' };
       }, publish);
       return artifact;
     });

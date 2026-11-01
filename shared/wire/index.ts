@@ -82,7 +82,7 @@ export type Artifact = {
   layer?: Layer;
   id: string; title: string; kind: ArtifactKind; path: string; creator: string; time: string;
   topic: string; status: 'draft' | 'sent' | 'shared' | 'archived' | 'moved';
-  creatorKind?: 'human' | 'agent'; creatorRole?: string | null;
+  creatorKind?: 'human' | 'agent'; creatorRole?: string | null; creatorUserId?: string;
   folder?: boolean; entry?: string; kept?: boolean;
   movedTo?: { folder: string; path: string }; explicitArchive?: boolean;
   promoted?: string; archivedAt?: string; fileDeleted?: boolean;
