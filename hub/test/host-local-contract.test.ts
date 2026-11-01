@@ -4,4 +4,4 @@ import test from 'node:test';
 import { hostContract } from './host-contract.ts';
 import { localHost } from '../src/host/local.ts';
 // Keep Node's generated test location on this executable file for exact-name replay.
-hostContract(localHost, (name, run) => test(name, run));
+hostContract(localHost, (name, run) => test(name, run), { name: 'local', limitPolls: true });

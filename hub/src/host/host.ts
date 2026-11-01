@@ -10,7 +10,7 @@ export type HostProcessUsage = {
   cpuPercent: number;
 };
 
-/** Process operations shared by local and remote implementations. No native handles cross this seam. */
+/** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
   readonly name: string;
   spawn(command: HostCommand): Promise<{ pid: number }>;
@@ -19,5 +19,14 @@ export interface Host {
   alive(process: HostProcess): Promise<boolean>;
   /** False means ownership or complete termination could not be proved. */
   stop(process: HostProcess): Promise<boolean>;
+  statDirectory(path: string): Promise<{ refusal: string | null; identity: { dev: number; ino: number } | null }>;
+  realpath(path: string): Promise<string>;
+  readFile(path: string): Promise<Uint8Array>;
+  listFolder(path: string): Promise<string[]>;
+  worktreeAdd(options: { root: string; path: string; branch: string }): Promise<{ warning?: string }>;
+  worktreeRemove(options: { root: string; path: string }): Promise<void>;
+  occupants(path: string, sessions: readonly { name: string; cwd: string }[]): Promise<string[]>;
+  /** Whether this Host permits idle account polling. Live-session reads are separate. */
+  readonly limitPolls: boolean;
   processes(): Promise<HostProcessUsage[]>;
 }

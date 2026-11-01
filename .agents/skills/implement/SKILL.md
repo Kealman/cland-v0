@@ -1431,3 +1431,12 @@ crypto; no real authenticator or account is needed. Preserve nonthrowing bounded
 parsing and distinct ceremony/signature/counter refusals. Sign-in integration
 owns challenge consumption, user/credential binding and atomic counter updates;
 module tests alone do not prove those flows. No new role permission applies.
+
+## Local Host files and polling (T-1543)
+
+Use the reusable Host contract for directory identity/refusals, exact file bytes,
+folder safety, worktree add/remove and alias containment. Keep shared install
+diagnostics in host/worktree-install.ts. The local limitPolls flag preserves idle
+polls; AccountPoller checks it again when queued work starts. Keep both existing
+account-poller test files unedited. The T1 member inventory detects omitted Host
+members, while source review checks assertion quality. No role clause is added.

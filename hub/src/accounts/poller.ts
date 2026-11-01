@@ -1,3 +1,5 @@
+import { localHost } from '../host/local.ts';
+import type { Host } from '../host/host.ts';
 // Idle accounts are read by their harness, never by a provider client in cland.
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
@@ -63,11 +65,13 @@ export class AccountPoller {
   readonly #floor: number;
   readonly #minimum: number;
   readonly #bound: number;
+  readonly #host: Pick<Host, 'limitPolls'>;
   readonly #reader: AccountReader | undefined;
   #active = 0;
   #closed = false;
   #timer: ClockTimer | null = null;
-  constructor(core: HubCore, sessions: Pick<Sessions, 'list' | 'readAccountLimits'>, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, reader?: AccountReader) {
+  constructor(core: HubCore, sessions: Pick<Sessions, 'list' | 'readAccountLimits'>, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, reader?: AccountReader, host: Pick<Host, 'limitPolls'> = localHost(env)) {
+    this.#host = host;
     this.#reader = reader;
     this.#clock = clock;
     this.#env = env;
@@ -142,14 +146,14 @@ export class AccountPoller {
       (p.account === account.name || !p.account && (account.name === `default:${p.harness}` || account.path === null)));
   }
   #enqueue(account: Account, refresh: boolean, hit: boolean): Promise<void> {
-    if (this.#closed || !['claude-code', 'codex'].includes(account.harness) || !hit && !this.#idle(account)) return Promise.resolve();
+    if (this.#closed || !['claude-code', 'codex'].includes(account.harness) || !hit && (!this.#host.limitPolls || !this.#idle(account))) return Promise.resolve();
     const pending = this.#pending.get(account.name);
     if (pending) return pending;
     const ready = () => this.#wait(account.name, refresh) === 0;
     if (!ready()) return Promise.resolve();
     const work = new Promise<void>(resolve => {
       const run = () => {
-        if (this.#closed || !ready() || !hit && !this.#idle(account)) { resolve(); return; }
+        if (this.#closed || !ready() || !hit && (!this.#host.limitPolls || !this.#idle(account))) { resolve(); return; }
         this.#active++;
         void this.#run(account).finally(() => {
           this.#active--;

@@ -8172,3 +8172,21 @@ enforce credential uniqueness, and atomically persist counters before admitting
 a session. None attestation provides no authenticator provenance or registration
 signature. This module adds no sign-in route or changes to single mode. See the
 [W3C registration and assertion procedures](https://www.w3.org/TR/webauthn-3/#sctn-rp-operations).
+
+### Local Host files, worktrees and polling
+
+The Host contract includes `statDirectory` (cwd refusal and device/inode),
+`realpath` (original path on failure), `readFile` (regular-file bytes),
+`listFolder` (sorted relative regular-file names, rejecting symbolic links),
+`worktreeAdd`, `worktreeRemove`, `occupants` and the `limitPolls` flag.
+Local worktree operations use the supplied repository root, path and existing
+branch. Add shares the root install and returns the existing stale-install
+warning without replacing installs; remove uses Git's ordinary dirty refusal.
+Occupants shares path resolution and containment with TaskWorktrees, resolves aliases and checks directory boundaries against the supplied
+session cwd snapshot. Callers doing destructive pruning still own revalidation.
+
+The local Host permits idle account polling. AccountPoller reads the flag at
+admission and again when a queued idle poll starts; after-hit live-session reads
+retain their existing path. No new setting, CLI flag or role permission is added.
+The reusable contract and its T1 member-coverage check are documented in
+`docs/agents/tests/hub-test-host-local-contract.test.ts.md`.

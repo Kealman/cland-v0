@@ -1,3 +1,8 @@
+import { statDirectory } from '../adapters/session-cwd.ts';
+import { occupants } from './occupants.ts';
+import { worktreeInstall } from './worktree-install.ts';
+import { stat, realpath, readFile } from 'node:fs/promises';
+import { folderFiles } from '../hub/artifact-folder.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
 import { processStarted, processAlive, sameProcess } from '../adapters/processes.ts';
@@ -8,6 +13,25 @@ import type { Host, HostProcessUsage } from './host.ts';
 export function localHost(env: NodeJS.ProcessEnv = process.env): Host {
   return {
     name: 'local',
+    limitPolls: true,
+    worktreeAdd: async ({ root, path, branch }) => {
+      const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'add', '--', path, branch], env, undefined, false, undefined, 'utf8', root);
+      if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree add failed');
+      const warning = await worktreeInstall(root, path);
+      return warning ? { warning } : {};
+    },
+    worktreeRemove: async ({ root, path }) => {
+      const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'remove', '--', path], env, undefined, false, undefined, 'utf8', root);
+      if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree remove failed');
+    },
+    occupants,
+    statDirectory,
+    realpath: path => realpath(path).catch(() => path),
+    readFile: async path => {
+      if (!(await stat(path)).isFile()) throw new Error('Host readFile requires a regular file');
+      return readFile(path);
+    },
+    listFolder: path => folderFiles(path),
     run: command => run(command.command, command.args, command.env, command.timeoutMs, false, command.signal, 'utf8', command.cwd),
     spawn: command => new Promise((resolve, reject) => {
       const child = spawn(command.command, command.args, { cwd: command.cwd, env: command.env, detached: true, stdio: 'ignore' });
