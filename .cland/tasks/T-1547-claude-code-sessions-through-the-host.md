@@ -3,7 +3,7 @@ id: T-1547
 kind: task
 title: Claude Code sessions through the Host
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1296
 branch: t/T-1547-claude-code-sessions-through-the-host
 created: 2026-10-31T23:47:41.550Z
-updated: 2026-11-01T07:40:59.840Z
+updated: 2026-11-01T08:15:38.608Z
 ---
 
 ## Summary
@@ -27,15 +27,20 @@ Hot files: `hub/src/adapters/claude-code.ts`
 ## Acceptance criteria
 
 - [x] C1. `claude --bg`, `claude agents --json` and `claude stop` run through the Host's run with the same arguments, environment and working directory as today (test).
-  - done: impl-1547 · 2026-11-01T07:28:10.926Z
+  - done: impl-1547 · 2026-11-01T07:57:31.656Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
 - [x] C2. The session cwd's `.claude` settings files are read through the Host's readFile (test).
   - done: impl-1547 · 2026-11-01T07:28:11.047Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
 - [x] C3. Pid checks, birth identities, resume liveness and stop of a Claude Code row use the Host's identity, alive and stop, and the adapter's own `process.kill` probe is gone.
   - done: impl-1547 · 2026-11-01T07:40:11.097Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
 - [x] C4. A test with a recording Host shows every command, liveness check and stop of a Claude Code row reaching that Host (test).
   - done: impl-1547 · 2026-11-01T07:28:11.479Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
 - [x] C5. The claude-code-adapter, claude-code-sessions, claude-code-schedule, claude-code-accounts and claude-code-environment test files pass with no test edited.
   - done: impl-1547 · 2026-11-01T07:28:11.589Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
 
 ## Comments
 
@@ -93,3 +98,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Fresh source review clear; Standards/spec no findings. Remaining relaunch shutdown issue resolved: inner launch catches closure before commit, retains accepted process/files through Host stop and rollback, admits only cleanup-specific stop/query after closure, and close rejects explicitly for retained unconfirmed cleanup. Two bounded held post-launch identity regressions prove successful cleanup/file removal versus incomplete-close/file retention; ordinary resume joins retained. Reviewed full new delta plus prior routing examination and updated docs/provenance. Five C5 files unedited. C1–C5 remain run-dependent/unverified pending same-head post-source verification. A-15235 reports targeted local macOS Node24 recording 9/9, C5 controls 6/20/46/8/19, typecheck/lint exit 0 with report-only advisories; not a full-suite claim. Reviewer ran no tests/browser.
+
+### rev-36 · 2026-11-01T07:54:05.584Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1547-evidence-1
+commit: 6274c92a616674d0c72a5e93419f497bcd735965
+scope: evidence
+findings: [{"severity":"medium","text":"Composition fixture still mocks execFile, but production Host.run now uses spawn; fixture-claude escapes the injected edge and fails ENOENT. Migrate this contract consumer while retaining both hubs' environment wiring and fast/slow scheduling assertions.","file":"hub/test/project-hub.test.ts","line":14}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not clear: A-15248 actual failure `AssertionError [ERR_ASSERTION]: fixture-claude --bg: spawn fixture-claude ENOENT` (line 22289). Medium project-hub.test.ts:14 still intercepts execFile while production Host.run invokes spawn; migrate the fixture to the Host command seam, retaining original two-project environment wiring and independent poll scheduling assertions, and add it to consumer inventory. C1 failed; other criteria unverified. Run28f980d3 at reviewed6274c92a: uncached Linux x64 droplet Node24.21.0, T0/T1 exit0, T2 exit1, later phases/Web unexecuted and browser receipt null. Advisory checks report-only. Failed run is not clear; fresh source review before new verification. Reviewer ran no tests/browser.
+
+Criteria: C1 failed (Same-head task verification fails the unchanged project-hub command/environment composition consumer: fixture-claude --bg: spawn fixture-claude ENOENT; injection boundary was not migrated to Host.run.).
+
+### impl-1547 · 2026-11-01T07:55:41.876Z
+
+Verification consumer migration after A-15248: project-hub.test.ts retained an execFile mock and failed deterministically (`fixture-claude --bg: spawn fixture-claude ENOENT`) on Linux droplet and local macOS. Migrated its command edge to Host.run, preserving default production adapter construction, both injected environments/clocks and every original independent schedule assertion. Threaded optional readonly Host[] injection from projectHub -> serveProject -> projectSessions -> existing Sessions.hosts, as approved in A-15078. This is programmatic composition only; no wire/config/CLI shape changes. Existing callers omitting hosts retain the existing local default. Direct production consumers are hub/server.ts and hub/daemon.ts; test harness exports projectHub/nativeProjectHub/reuses callers. createHub/server keeps its existing default path, unaffected. Search covers function/type names across source, all test tiers, QA, skills and docs; all other call sites omit the additive option. project-hub.test.ts now passes with original assertions; five C5 files remain unedited.
+
+### rev-36 · 2026-11-01T07:58:00.886Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1547-source-4
+commit: ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at ea01ad9ac9347c89c89dc7e9dcf6434915128eca. Standards/spec no findings. Reviewed complete new diff and retained prior routing/lifecycle review: project-hub migrates obsolete execFile mock to Host.run while preserving production default Claude construction, actual environments, both clocks/directories, every original schedule and frame-stop assertion. Optional readonly hosts passthrough preserves omitted defaults; consumer audit/docs/provenance updated. Adapter/termination source and five C5 controls unchanged. C1–C5 await fresh same-head post-source run. A-15250 targeted macOS Node24 project-hub1/project-probes2/Host9 plus typecheck/lint green is preliminary, not full-suite evidence; A-15248 remains failed. Reviewer ran no tests/browser.
+
+### rev-36 · 2026-11-01T08:15:38.128Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1547-final-1
+commit: ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final task evidence clear at unchanged ea01ad9ac9347c89c89dc7e9dcf6434915128eca. Standards/spec no findings; all C1–C5 verified. A-15252 uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/Web exit0,4565 pass; actual named recording9/project-hub1/schedule46/sessions10 top-level/environment11 top-level pass receipts checked (nested cases separate). Browser isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. T3/T4 absent, no all-tier claim. A-15253 exact-head post-source local macOS arm64 Node24.21.0 native exit0 with named adapter6/accounts8/Host-contract7 passes supplies omitted C5/shared-stop evidence; all five C5 files unedited. Prior failed A-15248 stays failed. Advisory budgets/lint/ratchet/skip checks report mode. Reviewer ran no tests/browser. Coordinator's separate full pre-merge suite remains its next gate, not claimed complete.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

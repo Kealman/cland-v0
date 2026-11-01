@@ -2,8 +2,8 @@
 id: T-1551
 kind: task
 title: Artifact path reads through the session's Host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1299
 branch: t/T-1551-artifact-path-reads-through-the-session
 created: 2026-10-31T23:47:42.500Z
-updated: 2026-11-01T07:45:00.815Z
+updated: 2026-11-01T08:31:57.625Z
+closed: 2026-11-01T08:31:57.625Z
 ---
 
 ## Summary
@@ -100,3 +101,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear. Standards/Spec no findings. Evidence A-15239 (corrects arithmetic in A-15238). Same-head89a866dc / A-15237 exit0:4560 pass,zero fail/cancel/skip/todo. Actual named outcomes include four artifact-host cases and34 unchanged C5 preservation cases (15/2/7/5/5). T0/T1/all fallback T2/Web and selected T4 base complete; T3/remaining T4/repetitions unexecuted, not full premerge cover. Linux x64 droplet Node24.21.0,Neovim0.12.5,isolated Headless Shell1248/Chrome Testing156.0.8078.4; runner tree69999b5f separately recorded. A-15220 seven native Host named passes,exit0,Darwin arm64 local Node24.21.0; compared execution1f9233a1 to reviewed head: only docs/index differ, production/wrapper/helper identical. Budget/lint/ratchet report-only,no cache/skips. C1–C5 established. No Reviewer execution; affected after-stage QA and Coordinator full premerge cover remain separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-01T08:31:57.625Z
+
+Merged 19b2d5c4a71804b2365241d9297802a169914b91 onto dev.

@@ -3,7 +3,7 @@ id: T-1552
 kind: task
 title: The `host` column, the host registry and a test host
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1300
 branch: t/T-1552-the-host-column-the-host-registry-and-a
 created: 2026-10-31T23:47:42.826Z
-updated: 2026-11-01T07:32:53.432Z
+updated: 2026-11-01T07:51:32.820Z
 ---
 
 ## Summary
@@ -28,14 +28,19 @@ Hot files: `hub/src/adapters/processes.ts`, `hub/src/adapters/contract.ts` (`Har
 
 - [x] C1. A hub opened on a `hub.db` written before the column existed adds `host` in place, every existing row reads `local`, and new rows are written with their host (test).
   - done: impl-1552 · 2026-11-01T07:24:19.248Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.298Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
 - [x] C2. `session list` and the session frames show no new field for a `local` row (test).
   - done: impl-1552 · 2026-11-01T07:24:19.486Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
 - [x] C3. A hub started with `CLAND_TEST_HOSTS=t1` has a test host `t1` that logs each operation it receives to `hub.log`, mints `linux:` identities for what it spawns and refuses spawn with a reason naming it a test host; without the variable no test host exists (test).
   - done: impl-1552 · 2026-11-01T07:24:20.229Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
 - [x] C4. The orphan sweep and doctor's orphan check neither protect nor sweep a local process because a row on another host carries its pid (test).
   - done: impl-1552 · 2026-11-01T07:31:31.329Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
 - [x] C5. The orphan-servers, orphan-sweep-lock and session-async-processes test files pass with no test edited.
   - done: impl-1552 · 2026-11-01T07:24:22.251Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
 
 ## Comments
 
@@ -78,3 +83,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Fresh source review clear. Standards/spec: no findings. Prior C4 isolation finding resolved: final helper spawn uses shared fixtureEnvironment after overlays, then validated scratchAccountEnvironment inputs, with no inherited spread afterwards. Reviewed all changes since ee6f7eef: native seven-sentinel positive/red-first control, exact presence/path assertions, shared optional config-path/content extension, containment tests, docs and consumer audit; original orphan assertions retained. C1–C5 are all run-dependent and remain unverified pending same-head post-source verification. A-15227 reports local macOS arm64 Node 24.21.0 targeted host-orphans 2, fixture-environment 6 and unchanged orphan-servers 18 passes plus typecheck; lint rerun pending at request, no pass claimed. Reviewer ran no tests/browser. No full verification yet.
+
+### rev-36 · 2026-11-01T07:51:32.299Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1552-final-1
+commit: d5929211c594959bafe4cd3d89f1834d635fabcc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final task evidence clear at unchanged d5929211c594959bafe4cd3d89f1834d635fabcc; Standards/spec no findings, C1–C5 verified. Independently read A-15242 pass facts: host-registry 4, host-orphans 2 (including native sealing control), fixture-environment 6, session-async-processes 3. Uncached Linux x64 droplet Node24.21.0, T0/T1/fallback T2/changed T3/mapped T4 base/Web exit0, 4562 passed; isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. Remaining T3/T4 deferred, no repetitions/all-tier occasion claimed; advisory budgets/ratchet/lint/skip check report-only. A-15244 supplies same-head Darwin arm64 Node24.21.0 native exit0 and complete named unedited orphan-servers18/orphan-sweep-lock4 passes; all C5 files confirmed unedited. Reviewer ran no tests/browser. Coordinator's separate full pre-merge suite remains its next gate, not claimed complete here.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
