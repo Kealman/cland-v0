@@ -3,7 +3,7 @@ id: T-1547
 kind: task
 title: Claude Code sessions through the Host
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1296
 branch: t/T-1547-claude-code-sessions-through-the-host
 created: 2026-10-31T23:47:41.550Z
-updated: 2026-11-01T08:15:38.608Z
+updated: 2026-11-01T09:12:06.804Z
 ---
 
 ## Summary
@@ -27,20 +27,20 @@ Hot files: `hub/src/adapters/claude-code.ts`
 ## Acceptance criteria
 
 - [x] C1. `claude --bg`, `claude agents --json` and `claude stop` run through the Host's run with the same arguments, environment and working directory as today (test).
-  - done: impl-1547 · 2026-11-01T07:57:31.656Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+  - done: impl-1547 · 2026-11-01T09:11:54.510Z
 - [x] C2. The session cwd's `.claude` settings files are read through the Host's readFile (test).
-  - done: impl-1547 · 2026-11-01T07:28:11.047Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+  - done: impl-1547 · 2026-11-01T09:11:55.434Z
 - [x] C3. Pid checks, birth identities, resume liveness and stop of a Claude Code row use the Host's identity, alive and stop, and the adapter's own `process.kill` probe is gone.
-  - done: impl-1547 · 2026-11-01T07:40:11.097Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+  - done: impl-1547 · 2026-11-01T09:11:55.951Z
 - [x] C4. A test with a recording Host shows every command, liveness check and stop of a Claude Code row reaching that Host (test).
-  - done: impl-1547 · 2026-11-01T07:28:11.479Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+  - done: impl-1547 · 2026-11-01T09:11:56.456Z
 - [x] C5. The claude-code-adapter, claude-code-sessions, claude-code-schedule, claude-code-accounts and claude-code-environment test files pass with no test edited.
-  - done: impl-1547 · 2026-11-01T07:28:11.589Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
+  - done: impl-1547 · 2026-11-01T09:11:56.960Z
 
 ## Comments
 
@@ -145,3 +145,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final task evidence clear at unchanged ea01ad9ac9347c89c89dc7e9dcf6434915128eca. Standards/spec no findings; all C1–C5 verified. A-15252 uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/Web exit0,4565 pass; actual named recording9/project-hub1/schedule46/sessions10 top-level/environment11 top-level pass receipts checked (nested cases separate). Browser isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. T3/T4 absent, no all-tier claim. A-15253 exact-head post-source local macOS arm64 Node24.21.0 native exit0 with named adapter6/accounts8/Host-contract7 passes supplies omitted C5/shared-stop evidence; all five C5 files unedited. Prior failed A-15248 stays failed. Advisory budgets/lint/ratchet/skip checks report mode. Reviewer ran no tests/browser. Coordinator's separate full pre-merge suite remains its next gate, not claimed complete.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1547 · 2026-11-01T09:07:10.867Z
+
+Shared Host.alive semantics inventory for the Lead-death fix: production naked-PID calls are ClaudeCodeAdapter.#pidAlive; proof-bearing rows flow from Sessions deaf startup/timer checks and both resume fallback branches. The standalone Claude compatibility Host already uses a raw injected/shared PID probe when no proof exists. Shared native Host contract covers full identity mismatch, legacy start, absent PID and stop; added explicit bare-PID live/absent assertions and a positive-controlled no-subprocess T2 case. Other fake Hosts supply their own synthetic facts. No wire reply/schema changed, no signal authority added. Unchanged lead-routing-process fails at ea01ad9ac and passes disposable dev d4c19797; replacing unnecessary local bare-PID identity subprocess work with shared signal-0 existence probe makes it pass unchanged.
