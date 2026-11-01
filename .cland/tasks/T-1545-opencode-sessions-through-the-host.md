@@ -3,7 +3,7 @@ id: T-1545
 kind: task
 title: OpenCode sessions through the Host
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1295
 branch: t/T-1545-opencode-sessions-through-the-host
 created: 2026-10-31T23:47:41.079Z
-updated: 2026-11-01T17:42:59.206Z
+updated: 2026-11-01T19:06:46.019Z
 ---
 
 ## Summary
