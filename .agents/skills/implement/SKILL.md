@@ -1495,7 +1495,10 @@ cases in the shared Host contract. No CLI or role clause change applies.
 
 For task creation/prune Host routing, use the recording Host and native Git seam
 in `docs/agents/tests/hub-test-worktree-host.test.ts.md`. Keep the four named
-worktree regression files unedited. Territory owns policy and the lock; Host add
+worktree regression files unedited. List and prune occupants, including the final
+pre-Git check, come from Host.occupants; path identities come from
+Host.statDirectory and Host.realpath. Keep the recording Host controls for
+alias-only occupants and raced session/worktree identities. Territory owns policy and the lock; Host add
 owns install warnings on creation and reuse, after its beforeInstall confinement
 and authorization barrier. Keep held revocation and install-failure controls.
 Legacy injected WorktreeGit overrides

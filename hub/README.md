@@ -8307,8 +8307,12 @@ Legacy injected WorktreeGit overrides are adapted in host/legacy-worktree-git.ts
 so their empty-folder fixtures keep install behaviour through the Host too.
 No command, setting or role permission changes.
 
-Occupants shares path resolution and containment with TaskWorktrees, resolves aliases and checks directory boundaries against the supplied
-session cwd snapshot. Callers doing destructive pruning still own revalidation.
+TaskWorktrees reads list and prune occupants through the Host, including locked
+admission and the last check before Git removes a worktree. The Host resolves
+aliases and directory boundaries against the supplied session cwd snapshot.
+TaskWorktrees revalidates item and session snapshots, and uses Host `realpath`
+and `statDirectory` for alias and directory identity changes before removal.
+When a changed session alias is now occupied, the refusal reports both facts.
 
 The local Host permits idle account polling. AccountPoller reads the flag at
 admission and again when a queued idle poll starts; after-hit live-session reads

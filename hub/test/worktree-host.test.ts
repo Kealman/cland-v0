@@ -193,3 +193,86 @@ test('an install failure after confinement retains the registered worktree and b
     t.mock.restoreAll(); syncBuiltinESMExports();
   }
 });
+
+test('Host occupants govern list and prune even with a different recorded cwd', async t => {
+  const root = await preparedProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
+  t.after(() => tracker.stop());
+  const item = await tracker.create(human, { title: 'Occupied', kind: 'task' });
+  const native = localHost(env);
+  const calls: Array<{ path: string; sessions: readonly { name: string; cwd: string }[] }> = [];
+  const sessions = [{ name: 'remote-worker', cwd: '/host-only/alias' }];
+  let removed = false;
+  const host: Host = { ...native,
+    occupants: async (path, candidates) => { calls.push({ path, sessions: candidates }); return ['remote-worker']; },
+    worktreeRemove: async () => { removed = true; },
+  };
+  const worktrees = new TaskWorktrees({ tracker, env, host, sessions: () => sessions });
+  const tree = (await worktrees.afterClaim(item.id, null)).worktree!;
+  await tracker.close(human, item.id);
+  assert.deepEqual((await worktrees.list())[0]!.sessions, ['remote-worker']);
+  const result = await worktrees.prune([item.id]);
+  assert.match(result.failed[0]!.error, /remote-worker still stands inside/);
+  assert.equal(removed, false);
+  assert.ok(calls.length >= 2);
+  assert.deepEqual(calls[0], { path: tree.path, sessions });
+  await access(tree.path);
+});
+
+test('prune rechecks Host occupants at both locked admission and the last pre-Git boundary', async t => {
+  for (const boundary of [2, 4]) await t.test(`occupant appears at check ${boundary}`, async t => {
+    const root = await preparedProject(t);
+    const env = fixtureEnvironment(root, process.env);
+    const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
+    t.after(() => tracker.stop());
+    const item = await tracker.create(human, { title: 'Late occupant', kind: 'task' });
+    const native = localHost(env);
+    let checks = 0, removed = false;
+    const host: Host = { ...native,
+      occupants: async () => ++checks >= boundary ? ['late-worker'] : [],
+      worktreeRemove: async options => { removed = true; await native.worktreeRemove(options); },
+    };
+    const worktrees = new TaskWorktrees({ tracker, env, host, sessions: () => [{ name: 'late-worker', cwd: '/host-only/cwd' }] });
+    const tree = (await worktrees.afterClaim(item.id, null)).worktree!;
+    await tracker.close(human, item.id);
+    const result = await worktrees.prune([item.id]);
+    assert.match(result.failed[0]!.error, /late-worker now stands inside/);
+    assert.equal(checks, boundary);
+    assert.equal(removed, false);
+    await access(tree.path);
+  });
+});
+
+test('prune retains a directory when the Host reports a changed worktree or session identity', async t => {
+  for (const target of ['worktree', 'session']) await t.test(target, async t => {
+    const root = await preparedProject(t);
+    const env = fixtureEnvironment(root, process.env);
+    const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
+    t.after(() => tracker.stop());
+    const item = await tracker.create(human, { title: 'Host identity', kind: 'task' });
+    const native = localHost(env);
+    const cwd = '/host-only/session';
+    const stats: string[] = [], paths: string[] = [];
+    let checks = 0, removed = false;
+    const host: Host = { ...native,
+      occupants: async () => { checks++; return []; },
+      realpath: async path => { paths.push(path); return path; },
+      statDirectory: async path => {
+        stats.push(path);
+        const changed = checks >= 3 && (target === 'session' ? path === cwd : path !== cwd);
+        return { refusal: null, identity: { dev: 42, ino: changed ? 2 : 1 } };
+      },
+      worktreeRemove: async options => { removed = true; await native.worktreeRemove(options); },
+    };
+    const worktrees = new TaskWorktrees({ tracker, env, host, sessions: () => [{ name: 'worker', cwd }] });
+    const tree = (await worktrees.afterClaim(item.id, null)).worktree!;
+    await tracker.close(human, item.id);
+    const result = await worktrees.prune([item.id]);
+    assert.equal(result.removed.length, 0);
+    assert.match(result.failed[0]!.error, target === 'session' ? /session path identity changed/ : /worktree identity or containment changed/);
+    assert.equal(removed, false);
+    for (const path of [cwd, tree.path]) { assert.ok(stats.includes(path)); assert.ok(paths.includes(path)); }
+    await access(tree.path);
+  });
+});

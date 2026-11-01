@@ -1,6 +1,5 @@
 import type { Host } from '../host/host.ts';
 import { localHost } from '../host/local.ts';
-import { realWorktreePath as real, resolvedOccupants } from '../host/occupants.ts';
 import { legacyWorktreeGit } from '../host/legacy-worktree-git.ts';
 import { isCustomRole } from '../names.ts';
 // Task worktrees in the hub (T-58; T-20 decisions D3, D7, D8): the first claim of an open task makes its branch and
@@ -10,7 +9,6 @@ import { isCustomRole } from '../names.ts';
 // (`task-worktree`, an Agents notice through the log's tap). Its Git commands are awaited, never synchronous, and
 // run one operation at a time (`#serial`): the territory lock refuses a second holder rather than waiting for it.
 import { kindWithArticle } from '../tracker/kinds.ts';
-import { stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import type { LogFn } from '../log.ts';
 import type { Claim } from '../tracker/index-db.ts';
@@ -45,15 +43,6 @@ export type SessionCwd = { name: string; cwd: string };
 const HUB_ACTOR: Actor = { id: 'hub', name: 'hub', role: null };
 
 type PathIdentity = { dev: number; ino: number } | null;
-const identity = async (path: string, resumed: Resumed): Promise<PathIdentity> => {
-  try { const value = await stat(path); return resumed(() => ({ dev: value.dev, ino: value.ino })); }
-  catch (err) {
-    return resumed(() => {
-      if (['ENOENT', 'ENOTDIR'].includes((err as NodeJS.ErrnoException).code ?? '')) return null;
-      throw err;
-    });
-  }
-};
 const sameIdentity = (a: PathIdentity, b: PathIdentity): boolean => a === null ? b === null : b !== null && a.dev === b.dev && a.ino === b.ino;
 
 /** Runs the synchronous write a handler resumes into after awaiting Git: the hub times it against its budget (T-67). */
@@ -290,11 +279,12 @@ export class TaskWorktrees {
           resumed(() => views.push(view));
         } catch { resumed(() => views.push(null)); }
       }
-      const [cwds, dirs, cwdIdentities, dirIdentities] = await Promise.all([
-        Promise.all(sessions.map(s => real(s.cwd))),
-        Promise.all(entries.map(w => real(w.path))),
-        Promise.all(sessions.map(s => identity(s.cwd, resumed))),
-        Promise.all(entries.map(w => identity(w.path, resumed))),
+      const [cwds, dirs, cwdIdentities, dirIdentities, occupants] = await Promise.all([
+        Promise.all(sessions.map(s => this.#host.realpath(s.cwd))),
+        Promise.all(entries.map(w => this.#host.realpath(w.path))),
+        Promise.all(sessions.map(s => this.#host.statDirectory(s.cwd).then(info => info.identity))),
+        Promise.all(entries.map(w => this.#host.statDirectory(w.path).then(info => info.identity))),
+        Promise.all(entries.map(w => this.#host.occupants(w.path, sessions))),
       ]);
       const observed = resumed(() => {
         // Sessions may enter/leave while paths or item files are read. Only use a still-current snapshot.
@@ -307,17 +297,18 @@ export class TaskWorktrees {
         })) return null;
         return entries.map((entry, i) => ({
           view: views[i]!,
-          sessions: resolvedOccupants(dirs[i]!, sessions, cwds),
+          sessions: occupants[i]!,
           validate: async () => {
             // The territory's final lstat check also awaited: resolve aliases again after it, before Git.
-            const [currentCwds, currentDir] = await Promise.all([
-              Promise.all(sessions.map(s => real(s.cwd))),
-              real(entry.path),
+            const [currentCwds, currentDir, inside] = await Promise.all([
+              Promise.all(sessions.map(s => this.#host.realpath(s.cwd))),
+              this.#host.realpath(entry.path),
+              this.#host.occupants(entry.path, sessions),
             ]);
             // Detect a previously resolved alias or target replaced while a sibling lookup awaited.
             const [currentCwdIdentities, currentDirIdentity] = await Promise.all([
-              Promise.all(sessions.map(s => identity(s.cwd, resumed))),
-              identity(entry.path, resumed),
+              Promise.all(sessions.map(s => this.#host.statDirectory(s.cwd).then(info => info.identity))),
+              this.#host.statDirectory(entry.path).then(info => info.identity),
             ]);
             resumed(() => {
               const latest = this.#tracker.list().find(item => item.id === entry.item);
@@ -325,9 +316,10 @@ export class TaskWorktrees {
               const now = this.#sessions();
               if (now.length !== sessions.length || now.some((s, i) => s.name !== sessions[i]!.name || s.cwd !== sessions[i]!.cwd)) throw new Error(`${entry.item}: session locations changed during prune; recheck who stands inside its worktree`);
               if (currentDir !== dirs[i] || !sameIdentity(currentDirIdentity, dirIdentities[i]!)) throw new Error(`${entry.item}: worktree identity or containment changed during prune; kept`);
-              const inside = resolvedOccupants(currentDir, sessions, currentCwds);
-              if (inside.length) throw new Error(`${entry.item}: ${inside.join(', ')} now ${inside.length === 1 ? 'stands' : 'stand'} inside its worktree`);
-              if (currentCwds.some((cwd, i) => cwd !== cwds[i] || !sameIdentity(currentCwdIdentities[i]!, cwdIdentities[i]!))) throw new Error(`${entry.item}: session path identity changed during prune; recheck who stands inside its worktree`);
+              // Check session identity before refusing occupancy; report both facts when they coincide.
+              const occupantRefusal = inside.length ? `${inside.join(', ')} now ${inside.length === 1 ? 'stands' : 'stand'} inside its worktree` : null;
+              if (currentCwds.some((cwd, i) => cwd !== cwds[i] || !sameIdentity(currentCwdIdentities[i]!, cwdIdentities[i]!))) throw new Error(`${entry.item}: session path identity changed during prune; recheck who stands inside its worktree${occupantRefusal ? `; ${occupantRefusal}` : ''}`);
+              if (occupantRefusal) throw new Error(`${entry.item}: ${occupantRefusal}`);
             });
           },
         }));

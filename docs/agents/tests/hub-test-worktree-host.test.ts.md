@@ -19,3 +19,14 @@ replacement before install I/O, install-error preservation, and authorization
 revocation after durable branch creation. Bound setup with eventually and release
 all holds plus join the operation before restoring mocks or removing roots.
 Check captured-tip deletion and concurrent-writer retention separately.
+
+Occupancy controls supply a Host-only cwd alias: list must show its occupant and
+prune must refuse it. Return occupants at locked admission and at the final
+pre-Git cleanup check separately; assert the native directory remains and no
+Host removal occurred. Host statDirectory controls change a synthetic worktree
+or session inode at validation, while the native paths remain unchanged; both
+must retain the worktree. Record Host realpath and statDirectory inputs for each.
+
+Preserve both identity-change and occupant facts when they coincide. The unedited
+hub/test/tracker-native-boundary.test.ts alias races cover both diagnostic
+expectations; run that whole file after changing pre-removal checks.
