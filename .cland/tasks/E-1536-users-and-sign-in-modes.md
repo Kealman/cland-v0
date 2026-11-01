@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1294
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-11-01T19:53:16.220Z
+updated: 2026-11-01T19:56:35.819Z
 ---
 
 ## Goal
@@ -107,6 +107,7 @@ stages:
         - T-1567
         - T-1568
       - - T-1572
+      - - T-1584
   - name: remotes for every user
     qa:
       scope: full

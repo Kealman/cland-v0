@@ -2,8 +2,8 @@
 id: T-1545
 kind: task
 title: OpenCode sessions through the Host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1295
 branch: t/T-1545-opencode-sessions-through-the-host
 created: 2026-10-31T23:47:41.079Z
-updated: 2026-11-01T19:52:11.760Z
+updated: 2026-11-01T21:52:52.899Z
+closed: 2026-11-01T21:52:52.899Z
 ---
 
 ## Summary
@@ -27,23 +28,28 @@ Hot files: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`
 ## Acceptance criteria
 
 - [x] C1. `opencode serve` is started by the Host's spawn with the same arguments, environment, working directory and log file as today (test).
-  - done: impl-1545 · 2026-11-01T17:21:11.078Z
   - verified: rev-35 [reviewer] · run rev-35-1545-final-1 · 2026-11-01T17:42:58.711Z · commit 650c90c1816894e23995756832f2b6ea4574c436
   - verified: rev-35 [reviewer] · run rev-35-1545-delta-1 · 2026-11-01T19:52:11.242Z · commit c7eca3ca17d6577295872ebfb353e0659ab9ae3f
+  - done: impl-1545 · 2026-11-01T20:45:32.413Z
+  - verified: rev-36 [reviewer] · run rev-36-1545-final-1 · 2026-11-01T21:06:57.953Z · commit e0ef603d395e4019c703df344fda8f67ae0ebda2
 - [x] C2. The adapter's poll, resume and stop use the Host's alive and stop for the row, and the adapter's own `process.kill` probe is gone.
-  - done: impl-1545 · 2026-11-01T17:21:11.276Z
   - verified: rev-35 [reviewer] · run rev-35-1545-source-2 · 2026-11-01T17:23:25.039Z · commit 60874ec440b5a29a948deeb38821638c94137547
   - verified: rev-35 [reviewer] · run rev-35-1545-source-3 · 2026-11-01T17:24:24.482Z · commit 650c90c1816894e23995756832f2b6ea4574c436
   - verified: rev-35 [reviewer] · run rev-35-1545-final-1 · 2026-11-01T17:42:58.711Z · commit 650c90c1816894e23995756832f2b6ea4574c436
   - verified: rev-35 [reviewer] · run rev-35-1545-delta-1 · 2026-11-01T19:52:11.242Z · commit c7eca3ca17d6577295872ebfb353e0659ab9ae3f
+  - done: impl-1545 · 2026-11-01T20:45:32.616Z
+  - verified: rev-36 [reviewer] · run rev-36-1545-source-1 · 2026-11-01T20:49:23.107Z · commit e0ef603d395e4019c703df344fda8f67ae0ebda2
+  - verified: rev-36 [reviewer] · run rev-36-1545-final-1 · 2026-11-01T21:06:57.954Z · commit e0ef603d395e4019c703df344fda8f67ae0ebda2
 - [x] C3. A test with a recording Host shows one spawn per launch, with every liveness check and stop of an OpenCode row reaching that Host (test).
-  - done: impl-1545 · 2026-11-01T17:21:11.646Z
   - verified: rev-35 [reviewer] · run rev-35-1545-final-1 · 2026-11-01T17:42:58.711Z · commit 650c90c1816894e23995756832f2b6ea4574c436
   - verified: rev-35 [reviewer] · run rev-35-1545-delta-1 · 2026-11-01T19:52:11.242Z · commit c7eca3ca17d6577295872ebfb353e0659ab9ae3f
+  - done: impl-1545 · 2026-11-01T20:45:33.018Z
+  - verified: rev-36 [reviewer] · run rev-36-1545-final-1 · 2026-11-01T21:06:57.954Z · commit e0ef603d395e4019c703df344fda8f67ae0ebda2
 - [x] C4. The opencode-adapter and opencode-native test files pass with no test edited; in opencode-launch-policy only its cp.spawn fake may change, to emit `spawn` and an owned exit receipt the way a real child does, with every test body and assertion byte-identical (exception decided by the Coordinator 2026-11-01; the fake never modelled a child's lifecycle).
-  - done: impl-1545 · 2026-11-01T17:05:33.103Z
   - verified: rev-35 [reviewer] · run rev-35-1545-final-1 · 2026-11-01T17:42:58.712Z · commit 650c90c1816894e23995756832f2b6ea4574c436
   - verified: rev-35 [reviewer] · run rev-35-1545-delta-1 · 2026-11-01T19:52:11.242Z · commit c7eca3ca17d6577295872ebfb353e0659ab9ae3f
+  - done: impl-1545 · 2026-11-01T20:45:33.248Z
+  - verified: rev-36 [reviewer] · run rev-36-1545-final-1 · 2026-11-01T21:06:57.954Z · commit e0ef603d395e4019c703df344fda8f67ae0ebda2
 
 ## Comments
 
@@ -145,3 +151,41 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta clear; Standards/Spec no findings. Coordinator300ae9ff authorized merge/waiver; both skill blocks retained verbatim, task OpenCode/LaunchFiles/Host runtime and C4 tests unchanged. Incoming registry/default-local/unknown-host and merged index composition inspected. A-15360 merged-head typecheck/lint0 plus literal/identifier search and account-coalescing pass; A-15367 remaining17 matched files all named passes/native0,zero fail/cancel/skip,macOS Node24.21.0,no browser. Earlier cover-quiet admission remains incomplete,not coverage. C1–C4 carried under explicit rule6 waiver; prior A-15336/A-15331 remain parent-head suite/native evidence,not new-head suite pass/cache. Premerge T1–T3 batch still required. Coordinator’s stage1 QA hold at30a7f8cf means ready/report only,keep head,no enqueue/landing until lifted. No Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1545 · 2026-11-01T20:46:32.445Z
+
+Merge batch d9734a2b/d0168171 dropped item on sole T3 adapter-native-boundary OpenCode close case (Missing expected rejection). Reproduced unchanged c7eca3ca1 whole file66/67pass. Per Coordinator a0425aaa, test-only reconciliation at e0ef603d3 explicitly separates post-spawn log close diagnostic/live-row/live-child from pre-spawn config close rejection/zero-child/rollback; Codex matrix unchanged. All28 T3 matches under hub/test passed436/436 tests at this head,0 fail/cancel/skip/todo; typecheck/test:lint pass. Search and native outputs A-15399. Fresh source review assigned Reviewer rev-36; reverify pending clear source. No production edits or new dev merge.
+
+### rev-36 · 2026-11-01T20:49:23.107Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1545-source-1
+commit: e0ef603d395e4019c703df344fda8f67ae0ebda2
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards/Spec no findings. Coordinator-approved test/docs-only reconciliation separates exact post-spawn serve.log close diagnostic with retained live ownership from pre-spawn config close rejection/zero-child/rollback. Codex matrix and all production/C4 preservation files unchanged from reviewed c7eca3ca1; unchanged Host poll/resume/stop routing inspected. A-15399 exact-head targeted macOS/local Node24.21.0: independently matched all28 identifier-selected T3 files,436/436 named pass,native exits0,zero fail/cancel/skip/todo; typecheck/lint0,advisories report-only,no browser/full suite. C2 source verified; C1/C3/C4 await same-head post-source mode-free verification/named preservation evidence. Prior batch A-15397 remains failed and earlier parent greens historical. Premerge batch/after-stage QA separate.
+
+Criteria: C2 verified.
+
+### rev-36 · 2026-11-01T21:06:57.954Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1545-final-1
+commit: e0ef603d395e4019c703df344fda8f67ae0ebda2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards/Spec no findings. A-15408/08ff0eae post-source exact-head exit0,4697pass,zero fail/cancel/skip/todo. Inspected named recording9/inventory4/Host-contract11/native31/policy5/boundary68 all pass, including both corrected close boundaries and unchanged Codex close. A-15399 supplies unchanged adapter21 named passes/native0 at exact head,macOS/local Node24.21.0,no browser; all28 targeted T3 files436/436. SourceA-15402 current; production/C4 preservation unchanged. Linux x64 droplet Node24.21.0/Neovim0.12.5,isolated HeadlessShell1248/ChromeTesting156.0.8078.4; uncached T0,T1,fallbackallT2,selectedT3base6files95identities,Web completed. RemainingT3/newpremergebatch and otherT4/repetitions unexecuted; advisory budgets/lint/skip-check report-only. Historical A-15397 batch remains red. C1–C4 verified; after-stage QA separate. DetailsA-15409.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-01T21:52:52.899Z
+
+Merged 273687567fda30fc3b23fcd042e89c8c20a11047 onto dev.
