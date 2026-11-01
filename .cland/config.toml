@@ -84,7 +84,8 @@ image = "ubuntu-24-04-x64"
 queue = true
 # Maximum reviewed heads in one batch.
 batch = 3
-batch_tiers = ["T1"]
+# Human decision 2026-11-01 09:01Z (ask 31d43750): batches run T1–T3, so one batch run is the pre-merge full suite for up to three items (rule 6). Throughput is measured against the serial baseline.
+batch_tiers = ["T1", "T2", "T3"]
 # Start a partial batch after this wait from its oldest request.
 batch_wait = "120s"
 
