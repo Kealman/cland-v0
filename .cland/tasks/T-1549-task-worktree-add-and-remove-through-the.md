@@ -3,8 +3,9 @@ id: T-1549
 kind: task
 title: Task worktree add and remove through the Host
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1298
 branch: t/T-1549-task-worktree-add-and-remove-through-the
 created: 2026-10-31T23:47:42.044Z
-updated: 2026-11-01T07:17:56.835Z
+updated: 2026-11-01T07:33:42.071Z
 ---
 
 ## Summary
@@ -26,9 +27,14 @@ Hot files: `hub/src/territory.ts`, `hub/src/hub/worktrees.ts`
 ## Acceptance criteria
 
 - [ ] C1. `ensureTaskWorktree` and `removeTaskWorktree` take a Host, `local` by default, and call its worktreeAdd and worktreeRemove for the `git worktree add` and `remove` steps (test).
-- [ ] C2. The `node_modules` link and the stale-install warning come from worktreeAdd, and `TaskWorktrees` no longer calls `symlink` itself.
-- [ ] C3. With a recording Host, a claim, an item launch and a prune make one worktreeAdd per created worktree and one worktreeRemove per pruned one, each under the territory lock (test).
-- [ ] C4. The task-worktrees, task-worktrees-lifecycle, worktree-cli and territory-lock test files pass with no test edited.
+  - failed: rev-35 [reviewer] · 2026-11-01T07:26:49.265Z · note Host add moves install side effects before post-Git confinement and split branch creation leaves an uncovered authorization-failure cleanup boundary.
+- [x] C2. The `node_modules` link and the stale-install warning come from worktreeAdd, and `TaskWorktrees` no longer calls `symlink` itself.
+  - done: impl-1549 · 2026-11-01T07:25:00.694Z
+  - verified: rev-35 [reviewer] · run rev-35-1549-source-2 · 2026-11-01T07:33:42.071Z · commit 5376aec357c6651f513775bc2d6c5b4a82a827cf
+- [x] C3. With a recording Host, a claim, an item launch and a prune make one worktreeAdd per created worktree and one worktreeRemove per pruned one, each under the territory lock (test).
+  - done: impl-1549 · 2026-11-01T07:25:02.413Z
+- [x] C4. The task-worktrees, task-worktrees-lifecycle, worktree-cli and territory-lock test files pass with no test edited.
+  - done: impl-1549 · 2026-11-01T07:25:03.370Z
 
 ## Comments
 
@@ -47,3 +53,45 @@ Applied Coordinator decision: legacy injected WorktreeGit compatibility lives in
 ### impl-1549 · 2026-11-01T07:17:56.835Z
 
 Coordinator quiet-machine decision 15292553 supersedes the earlier local test evidence: all loaded-run receipts are diagnostic only, not passing evidence. Heavy commands stopped; worktree-host run interrupted at file cleanup (3 assertions completed, file cancelled), test:lint interrupted (exit 130). Will rerun all required targeted checks and typecheck/test:lint sequentially only after Coordinator posts local runs resume. Source implementation is committed; criteria/review remain pending fresh receipts.
+
+### impl-1549 · 2026-11-01T07:24:01.067Z
+
+After explicit resume: sequential fresh typecheck and test:lint passed (lint report-only findings, 0 refusals); worktree-host 3/3 and unedited task-worktrees 19/19 passed at start/end vm.loadavg below 10. Fetched/merged origin/dev before first review (tracker/QA-doc-only changes), pushed head 6794262b3f13c1229fb8e8b3372030b57e8c12c9; merge-tree clean tree 61ae1c6b15727c513fc5b9a04e45d16ed74aec22. Lifecycle completed 3/3 but end load 10.52, treated provisional; waited a minute (load 5.03) and rerunning that file now. No local suites.
+
+### rev-35 · 2026-11-01T07:26:49.265Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1549-source-1
+commit: 6794262b3f13c1229fb8e8b3372030b57e8c12c9
+scope: full
+findings: [{"severity":"medium","text":"Host.worktreeAdd now creates the Git worktree and immediately runs worktreeInstall before verifyCreatedWorktree checks post-Git confinement. Previously confinement was verified before install reads/symlink writes. A parent swapped during Git can now receive install writes outside the intended root, and an install failure bypasses confinement verification entirely. Preserve a post-create confinement barrier before install handling and cover raced-parent plus install-failure recovery.","file":"hub/src/territory.ts","line":570},{"severity":"medium","text":"The new separate git branch creation is followed by resumed(authorize) outside the cleanup try. If authority is revoked during the awaited branch command, that check throws and leaves the newly created branch behind without worktree or CAS cleanup. Include every post-branch failure boundary in owned recovery; preserve a concurrently advanced branch with compare-and-swap and test the revocation interleaving.","file":"hub/src/territory.ts","line":585}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Source not clear: two medium findings. territory.ts:570 calls Host add, including install effects, before verifyCreatedWorktree; raced parent/install failure can write outside confinement or bypass verification. territory.ts:585 authorizes after newly creating branch outside cleanup try; revocation during branch command strands its new ref. Preserve prior confinement-before-install ordering and CAS-owned cleanup across every post-branch boundary. Success-path routing/lock tests otherwise match scope; native race/recovery controls required for fixes. No Reviewer execution.
+
+Criteria: C1 failed (Host add moves install side effects before post-Git confinement and split branch creation leaves an uncovered authorization-failure cleanup boundary.).
+
+### impl-1549 · 2026-11-01T07:28:31.726Z
+
+Source-review fixes: consumer inventory adds optional Host.worktreeAdd beforeInstall barrier callback, awaited after native Git creation and before install reads/writes. Local Host and legacy compatibility adapter are the only implementations; recording Host forwards options; previous branch-only contract remains unchanged. Territory supplies confinement/recovery + reauthorization barrier; transport implementations must await it before install effects. Adding held native-registration/branch-command regressions in worktree-host.test.ts without changing C4 files. No wire/schema change.
+
+### impl-1549 · 2026-11-01T07:32:08.721Z
+
+Both source findings fixed in pushed 5376aec35. Red held regressions reproduced injected install error before confinement (new/existing branches) and leftover unmodified branch after durable creation + authorization revocation. Green expanded worktree-host file 10/10 includes concurrent writer preservation and contained install-failure retention. beforeInstall callback blocks install I/O pending territory confinement/authorization; rollback restoration skips installs. All post-branch errors share captured-tip cleanup. Typecheck and test:lint pass (0 refusals; report-only findings). Rerunning C4 unedited files sequentially; task-worktrees 19/19 green, lifecycle running. No dev merge after first review.
+
+### rev-35 · 2026-11-01T07:33:42.071Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1549-source-2
+commit: 5376aec357c6651f513775bc2d6c5b4a82a827cf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear. Standards/Spec: no findings. Both medium findings resolved: Host beforeInstall awaits territory confinement/authorization after Git and before install effects; recovery skips installs. Every post-branch failure now shares captured-tip cleanup, with registered worktree retention and concurrent-ref CAS protection. Held regression controls prove new/existing parent races, revoked authority with unchanged/advanced ref, and post-confinement install failure. Lock/final prune protections and four preservation files retained. C2 source verified; C1/C3/C4 pending exact-head native/verify receipts. No Reviewer execution; QA after-stage.
+
+Criteria: C2 verified.

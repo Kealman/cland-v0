@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1295
 branch: t/T-1545-opencode-sessions-through-the-host
 created: 2026-10-31T23:47:41.079Z
-updated: 2026-11-01T07:18:57.887Z
+updated: 2026-11-01T07:26:20.309Z
 ---
 
 ## Summary
@@ -26,9 +26,12 @@ Hot files: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/server.ts`
 
 ## Acceptance criteria
 
-- [ ] C1. `opencode serve` is started by the Host's spawn with the same arguments, environment, working directory and log file as today (test).
-- [ ] C2. The adapter's poll, resume and stop use the Host's alive and stop for the row, and the adapter's own `process.kill` probe is gone.
-- [ ] C3. A test with a recording Host shows one spawn per launch, with every liveness check and stop of an OpenCode row reaching that Host (test).
+- [x] C1. `opencode serve` is started by the Host's spawn with the same arguments, environment, working directory and log file as today (test).
+  - done: impl-1545 · 2026-11-01T07:25:59.114Z
+- [x] C2. The adapter's poll, resume and stop use the Host's alive and stop for the row, and the adapter's own `process.kill` probe is gone.
+  - done: impl-1545 · 2026-11-01T07:26:00.039Z
+- [x] C3. A test with a recording Host shows one spawn per launch, with every liveness check and stop of an OpenCode row reaching that Host (test).
+  - done: impl-1545 · 2026-11-01T07:26:01.712Z
 - [ ] C4. The opencode-adapter and opencode-native test files pass with no test edited; in opencode-launch-policy only its cp.spawn fake may change, to emit `spawn` and an owned exit receipt the way a real child does, with every test body and assertion byte-identical (exception decided by the Coordinator 2026-11-01; the fake never modelled a child's lifecycle).
 
 ## Comments
@@ -40,3 +43,7 @@ Rule 20 consumer inventory before shared Host spawn extension: searched HostComm
 ### impl-1545 · 2026-11-01T07:18:57.887Z
 
 C4 fixture exception authorized by Coordinator decisions a0e3c455 and dc781da0: the launch-policy cp.spawn fake returned a synthetic already-exited child that emitted neither spawn nor exit, and threw on every ps query. It never modeled native admission/completion. Only its fixture changes: native ps passthrough with scratch-only env and impossible real PID 99999999, owned spawn/exit/kill/teardown receipts. All test bodies and assertions remain byte-identical; opencode-adapter and opencode-native remain byte-unedited. Will present this fixture diff separately in source review. All loaded-run receipts are diagnostic only; local heavy work is paused by Coordinator.
+
+### impl-1545 · 2026-11-01T07:26:20.309Z
+
+Implementation pushed at 2ca64564b; spawn seam remains aac95bc4f. C1–C3 marked done. Fresh macOS/local Node24.21.0 checks after resume: typecheck passed (start load4.77); test:lint exit0 with 0 refusals (start load4.98), existing report-only advisory findings retained. Serial targeted results: recording3/3, inventory2/2, native Host contract7/7, unedited native31/31, approved launch-policy fixture5/5. Unedited adapter18/21 has the three Coordinator-confirmed T-1547 positive-absence failures; C4 remains incomplete. No full suite/Web/browser run. Waiting on Coordinator-posted T-1547 merge before adapter rerun and first source review, as directed in 73fdab25.

@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1297
 branch: t/T-1546-codex-spawn-liveness-and-stop-through
 created: 2026-10-31T23:47:41.385Z
-updated: 2026-11-01T07:18:02.309Z
+updated: 2026-11-01T07:23:33.752Z
 ---
 
 ## Summary
@@ -44,3 +44,7 @@ Implementation checkpoint consumes Coordinator-approved pending T-1545 HostComma
 ### impl-1546 · 2026-11-01T07:18:02.309Z
 
 Checkpoint 53d09a95e pushed, tree clean. Artifact A-15211 records pending shared T-1545/T-1547 shapes and validation. Coordinator paused all local heavy runs and invalidated high-load receipts; all prior local results are provisional and will be rerun serially after resume. No source review or verification requested yet. Per Coordinator no per-item QA; stage QA on dev covers this item. Holding claim and waiting for resume/merge-dev instruction.
+
+### impl-1546 · 2026-11-01T07:23:33.752Z
+
+Post-resume serial reruns at acceptable pre-run load, Darwin arm64/local Node v24.21.0: codex-native 35/35 at 53d09a95e (1m 3.95); new cwd/version/stale-row cases 3/3 at working tree leading to 795df512d (1m 6.15); npm run test:lint exit 0 at 795df512d (1m 7.15, advisories report-only, 0 refusals); codex-delivery 22/22 at 795df512d plus generated-doc-index-only delta (1m 8.92); codex-workspace-git 1/1 synthetic Seatbelt at 59e2b407f (1m 7.45). No browser or full suite. Current head 59e2b407f pushed, tree clean. Main Host lifecycle/Codex adapter preservation and root typecheck wait for shared T-1545/T-1547 shapes and Coordinator merge-dev instruction. All heavy commands exited.
