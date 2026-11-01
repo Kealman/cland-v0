@@ -3,7 +3,7 @@ id: T-1563
 kind: task
 title: Artifacts a person created carry their user
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1536
 blocked_by:
   - T-1560
   - T-1551
-topic: null
-branch: null
+topic: topic-1308
+branch: t/T-1563-artifacts-a-person-created-carry-their
 created: 2026-10-31T23:47:51.208Z
-updated: 2026-10-31T23:48:11.671Z
+updated: 2026-11-01T19:54:21.433Z
 ---
 
 ## Summary

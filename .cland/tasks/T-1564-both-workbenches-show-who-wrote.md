@@ -3,7 +3,7 @@ id: T-1564
 kind: task
 title: Both workbenches show who wrote
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:51.380Z
-updated: 2026-10-31T23:47:55.515Z
+updated: 2026-11-01T19:53:17.487Z
 ---
 
 ## Summary

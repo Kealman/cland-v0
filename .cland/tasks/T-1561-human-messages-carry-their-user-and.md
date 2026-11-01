@@ -3,7 +3,7 @@ id: T-1561
 kind: task
 title: Human messages carry their user, and deliveries name the author
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1536
 blocked_by:
   - T-1560
-topic: null
-branch: null
+topic: topic-1306
+branch: t/T-1561-human-messages-carry-their-user-and
 created: 2026-10-31T23:47:50.605Z
-updated: 2026-10-31T23:47:54.539Z
+updated: 2026-11-01T19:54:16.787Z
 ---
 
 ## Summary

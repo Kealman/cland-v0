@@ -3,7 +3,7 @@ id: T-1571
 kind: task
 title: "`--as <user>` in users mode"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:53.293Z
-updated: 2026-10-31T23:47:58.528Z
+updated: 2026-11-01T19:53:17.752Z
 ---
 
 ## Summary

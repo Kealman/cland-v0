@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1294
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-11-01T07:19:22.163Z
+updated: 2026-11-01T19:53:16.220Z
 ---
 
 ## Goal
@@ -168,3 +168,53 @@ Quiet admission temporarily timed out before case 16, then recovered under the b
 Evidence contains only declared outputs, with no environment export, cookies, one-time links or HOME. Publication scan uses the shared assertPublishable policy with a successful positive control, plus visual inspection of the Profile screenshot. Source/provenance reads and served/built stamps retained. Commands followed the brief; the independent source-boundary and scratch cleanup checks ran while the regression group finished, without altering its fixtures.
 
 Evidence: A-15215 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15215-e-1536-stage-mode-and-identity-qa-evidence-cbe02fc6/report.md
+
+### qa-678 · 2026-11-01T19:53:16.220Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-s1-2026-11-01-qa678-2
+commit: 88fd418100cfd99d3908c054ae17ee349fba8b41
+stage: mode and identity
+stage_hash: ece23045aee4b9f5e2186f5b979a5aec3c501497354804b421512643e459ab48
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| S0 | PASS | S0.txt |
+| E1536S1-00 | PASS | E1536S1-00.txt |
+| E1536S1-01 | PASS | E1536S1-01.txt |
+| E1536S1-02 | PASS | E1536S1-02.txt |
+| E1536S1-03 | PASS | E1536S1-03.txt |
+| E1536S1-04 | PASS | E1536S1-04.txt |
+| E1536S1-05 | PASS | E1536S1-05.txt |
+| E1536S1-06 | PASS | E1536S1-06.txt |
+| E1536S1-07 | PASS | E1536S1-07.txt |
+| E1536S1-08 | PASS | E1536S1-08.txt, E1536S1-08.png |
+| E1536S1-09 | PASS | E1536S1-09.txt |
+| E1536S1-10 | PASS | E1536S1-10.txt |
+| E1536S1-11 | PASS | E1536S1-11.log |
+| E1536S1-12 | PASS | E1536S1-12.log |
+| E1536S1-13 | PASS | E1536S1-13.log |
+| E1536S1-14 | PASS | E1536S1-14.log |
+| E1536S1-15 | PASS | E1536S1-15.log |
+| E1536S1-16 | PASS | E1536S1-16.log |
+| E1536S1-17 | PASS | E1536S1-17.txt |
+| E1536S1-18 | PASS | E1536S1-18.txt |
+| SHELL-001 | PASS | SHELL-001.screen.txt, SHELL-001.state.json |
+
+Clear — E-1536 stage "mode and identity". Run qa-s1-2026-11-01-qa678-2 at 88fd418100cfd99d3908c054ae17ee349fba8b41. HEAD and dev matched before and after; detached worktree remained clean. All three stage tasks have exactly one landing receipt. No findings. No epic criterion marks.
+
+The whole corrected brief ran afresh. The previous brief errors are resolved: E1536S1-03/-05/-07/-10 now pass with the documented `human` welcome/audit client normalization (current dispatch.ts:1538). Cookie-derived users-mode identity, forged-field refusal, audit attribution, first-admin uniqueness across reload/restart, hand-edit guards, reset/session/link revocation and retained user rows all matched the brief. The Profile screenshot displays Jane Q. Doe.
+
+179 targeted tests passed, none failed, cancelled, skipped or todo. Group counts: 11=21, 12=7, 13=10, 14=7, 15=123, 16=11. Required literal and generated test names were checked against TAP/source, including both COSE algorithms, reset active/expired owners and failed single/users transitions. SHELL-001 passed; its screen capture shows the typed message queued. Recorder session `rescue` on that line results from the brief's sealed environment stripping CLAND identity; QA qa-678 executed the case in this session.
+
+Local macOS arm64, Node 24.21.0. Pinned Chrome Headless Shell 156.0.8078.4, Playwright revision 1248, with its own scratch profile; exact binary is in platform.json. No real browser/GUI. Web prerequisite gate was report-only. Served and built bundle source stamps both 1d2a126853ca42545b5be161a00a50b3c42b54c88018a07c66015756fe8c08e7, HTTP 200. All tests ran sequentially after quiet admission. No timing, benchmark or droplet-cost claim.
+
+Full T0–T4 suites and stage covers were out of this brief's scope and were not rerun by this QA pass. The Coordinator supplied green Linux 559a77e5 (A-15361) and macOS 141a9187 (A-15365) cover receipts at the build's tree fe38e2c2. This report's 179-test count covers only the named targeted files, not a full suite.
+
+Manual browser process group ended at zero; all seven Accounts fixture census lines ended `after 0; scratch hub stopped`. The manual scratch hub stopped and the census of its 27 registered pids found no survivor. All evidence is retained under this artifact. Shared assertPublishable publication scan passed with a successful positive control; screenshot visually inspected. No HOME, environment exports, cookies or sign-in links included. Source, selector, generated-name provenance and the brief correction diff retained.
+
+Evidence A-15369: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15369-e-1536-stage-mode-and-identity-qa-clear-88fd4181/report.md

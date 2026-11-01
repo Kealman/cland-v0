@@ -3,7 +3,7 @@ id: T-1569
 kind: task
 title: The admin's users list and invites from the web
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:52.767Z
-updated: 2026-10-31T23:47:57.862Z
+updated: 2026-11-01T19:53:18.660Z
 ---
 
 ## Summary

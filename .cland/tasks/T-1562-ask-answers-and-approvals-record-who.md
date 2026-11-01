@@ -3,7 +3,7 @@ id: T-1562
 kind: task
 title: Ask answers and approvals record who answered
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1536
 blocked_by:
   - T-1560
-topic: null
-branch: null
+topic: topic-1307
+branch: t/T-1562-ask-answers-and-approvals-record-who
 created: 2026-10-31T23:47:50.788Z
-updated: 2026-10-31T23:47:55.004Z
+updated: 2026-11-01T19:54:17.131Z
 ---
 
 ## Summary
