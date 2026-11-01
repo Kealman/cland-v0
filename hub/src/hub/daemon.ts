@@ -363,6 +363,21 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
         }) }),
         pairingApproved: (messenger, pairing) => gateway?.pairingApproved(messenger, pairing),
         pairingReplaced: (messenger, previous) => gateway?.pairingReplaced(messenger, previous),
+        userAdd: (name, displayName) => {
+          if (roles.config().auth.mode !== 'users') throw new Error('use cland auth mode users before cland user commands');
+          if (!web?.status.available) throw new Error('the web edge is unavailable');
+          web.assertInviteAdmission();
+          const user = store.users.add(name, displayName ?? name, [...roles.get().keys(), ...store.knownSessions().map(session => session.name)], clock.now().getTime());
+          return { user, ...web.invite(user.id) };
+        },
+        userInvite: name => {
+          if (roles.config().auth.mode !== 'users') throw new Error('use cland auth mode users before cland user commands');
+          if (!web?.status.available) throw new Error('the web edge is unavailable');
+          web.assertInviteAdmission();
+          const user = store.users.list().find(user => user.name === name);
+          if (!user) throw new Error('unknown user');
+          return { user, ...web.invite(user.id) };
+        },
         userList: () => {
           if (roles.config().auth.mode !== 'users') throw new Error('use cland auth mode users before cland user commands');
           return { users: store.users.list() };
@@ -384,7 +399,11 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
             publishMode();
           });
           return { mode, ...(user ? { user } : {}) };
-        }, resumed),
+        }, resumed).then(value => resumed(() => {
+          // Mint only after successful reload publishes the mode and releases its admission fence.
+          const result = value as { mode: string; user?: import('./users.ts').User };
+          return { ...result, ...(mode === 'users' && result.user && web?.status.available ? web.invite(result.user.id) : {}) };
+        })),
         webSessions: () => {
           if (!web) throw new Error('the web edge is unavailable');
           return web.sessions();

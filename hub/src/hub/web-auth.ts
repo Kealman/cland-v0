@@ -37,10 +37,14 @@ export class WebAuth {
 
   revokeAll(): void { this.#links.clear(); this.#linkUsers.clear(); this.#store.revokeAllWebSessions(); }
 
+  assertAdmission(): void {
+    if (this.#fences) throw new Error('browser sign-in transition is in progress');
+  }
+
   mint(userId?: string): string {
     if (userId !== undefined && this.#store.users.get(userId)?.state !== 'active') throw new Error('unknown or inactive user');
     if (this.#store.users.mode() === 'users' && !userId) throw new Error('users mode requires a user-bound link');
-    if (this.#fences) throw new Error('browser sign-in transition is in progress');
+    this.assertAdmission();
     this.#prune();
     const token = randomBytes(32).toString('hex');
     this.#links.set(digest(token), this.#now() + LINK_MS);

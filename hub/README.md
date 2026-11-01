@@ -454,6 +454,30 @@ shows the display name. Human request audit records add `userId`; single mode
 omits both optional fields and keeps the existing link and cookie flow. Agent
 session identity and role permissions are unchanged.
 
+In users mode, `cland user add <name> [--display <name>]` creates an admin
+in state `invited`. Names must be unique lowercase ASCII slugs and cannot be
+`human`, `hub`, `all`, a role or a current session name. The local human CLI
+prints a 24-hour one-time `/invite?token=…` URL at the configured `[web] origin`,
+or the edge's bind address and port (wildcard binds use loopback).
+`cland user invite <name>` replaces that user's open invites, including for an
+active user adding a device. `cland auth mode users` also prints the first user's
+invite when the web edge is available. An unavailable edge refuses user creation
+and invite commands; the mode switch still works without an invite.
+
+The `auth.mode`, `auth.reset`, `user.list`, `user.add` and `user.invite` handlers
+share a local-human guard that refuses authenticated session shells before reads
+or mutations. Invite commands share WebAuth's admission fence and refuse during
+held or failed sign-in transitions, before changing users or replacing invites.
+The first-user invite is minted after successful mode publication releases the
+fence. The `user.add` and `user.invite` frames require local human socket authority;
+web user management is separately integrated. Minting replies alone carry the
+URL. SQLite keeps SHA-256 digests, user ids, expiry timestamps and open/used/revoked
+states. `Users.checkInvite` validates without consuming; `consumeInvite` checks
+and spends synchronously, and can join the registration owner's transaction.
+The hub clock defines the 24-hour boundary. Unknown, used, expired and revoked
+invites have distinct refusals. `Users.onReset` revokes all open invites in the
+same transaction as the return to single mode; user rows remain for attribution.
+
 In users mode every admitted web request also passes `userAuthorityRefusal` in
 `hub/src/hub/web-authority.ts` before replay or actor resolution. It resolves the
 transport's user id from the users table for each request. The same table holds

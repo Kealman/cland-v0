@@ -123,6 +123,8 @@ export type Control = {
   pairingApproved?: (messenger: RemoteVia, pairing: import('../remote/state.ts').Pairing) => void;
   pairingReplaced?: (messenger: RemoteVia, previous: import('../remote/state.ts').Pairing) => void;
   authMode?: (mode: 'users' | 'single', resumed: import('./budget.ts').Resumed) => Promise<unknown>;
+  userAdd?: (name: string, displayName?: string) => unknown;
+  userInvite?: (name: string) => unknown;
   userList?: () => unknown;
   webLink?: (qr?: boolean, userId?: string) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
@@ -189,7 +191,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['auth.mode', 'auth.reset', 'user.list', 'demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['auth.mode', 'auth.reset', 'user.list', 'user.add', 'user.invite', 'demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1731,6 +1733,12 @@ export class Dispatcher {
         if (transport.edge === 'gateway') core.store.afterCommit(publish, () => log({ event: 'result-publication-failed' }));
         else publish();
       };
+      const requireLocalHuman = () => {
+        const caller = this.#asSession(frame);
+        const reason = 'auth and user commands require a local human shell';
+        if (caller) throw new ToolForbidden(caller.role, frame.type, reason);
+        if (transport.edge !== 'socket') throw new Error(reason);
+      };
       try {
         switch (frame.type) {
           case 'resume':
@@ -2040,11 +2048,21 @@ export class Dispatcher {
             break;
           case 'auth.mode':
           case 'auth.reset':
+            requireLocalHuman();
             if (transport.edge !== 'socket') throw new Error('cland auth requires the local Unix socket');
             if (!control.authMode) throw new Error('auth is unavailable');
             later(frame.type, control.authMode(frame.type === 'auth.reset' ? 'single' : frame.mode, this.#guard.resumer(frame.type, client)).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
             break;
+          case 'user.add':
+            requireLocalHuman();
+            if (transport.edge !== 'socket' || !control.userAdd) throw new Error('cland user requires the local Unix socket');
+            return answer(control.userAdd(frame.name, frame.displayName));
+          case 'user.invite':
+            requireLocalHuman();
+            if (transport.edge !== 'socket' || !control.userInvite) throw new Error('cland user requires the local Unix socket');
+            return answer(control.userInvite(frame.name));
           case 'user.list':
+            requireLocalHuman();
             if (transport.edge !== 'socket' || !control.userList) throw new Error('cland user requires the local Unix socket');
             return answer(control.userList());
           case 'web.link':

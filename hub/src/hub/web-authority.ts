@@ -16,6 +16,8 @@ const ADMIN_ROLES: readonly string[] = ['admin'];
 export const WEB_AUTHORITY = {
   'auth.mode': 'changes sign-in mode through the local CLI',
   'auth.reset': 'resets sign-in mode through the local CLI',
+  'user.add': 'creates users through the local CLI',
+  'user.invite': 'mints invites through the local CLI',
   'user.list': 'lists users through the local CLI',
   'account.clear': true,
   'account.list': true,

@@ -1440,6 +1440,17 @@ that transaction. Keep the retained first user and single-mode compatibility.
 Recovery from a stopped hub with a hand-edited single config restores users mode
 in config, starts the hub, then uses `cland auth reset`; never edit SQLite offline.
 
+For user invite work, use the public Store and disposable frame/CLI seams in
+`docs/agents/tests/hub-test-invites.test.ts.md` and
+`docs/agents/tests/hub-test-user-invites.test.ts.md`. Keep raw tokens only in
+minting results and digest/expiry/state in SQLite. Replacements and reset revoke
+open invites; use the hub clock and retain distinct refusal reasons. Registration
+validates via `checkInvite`, then consumes inside its credential transaction.
+All five auth/user handlers share the local-human guard. External invite
+commands check WebAuth admission before mutation; mode switching mints the first
+invite only after successful reload releases its fence. Keep session-shell and
+held/failed-transition refusal regressions. No role clause changes are needed.
+
 ## Local Host process contract (T-1542)
 
 For Host process operations, use the reusable factory contract described in

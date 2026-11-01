@@ -20,7 +20,7 @@ import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
 
-export type WebEdge = { status: WebEdgeStatus; link: (qr?: boolean, userId?: string) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; revokeAll: () => Promise<void>; fence: () => () => void; close: () => Promise<void> };
+export type WebEdge = { status: WebEdgeStatus; assertInviteAdmission: () => void; invite: (userId: string) => WebLinkResult; link: (qr?: boolean, userId?: string) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; revokeAll: () => Promise<void>; fence: () => () => void; close: () => Promise<void> };
 
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const MIME: Record<string, string> = {
@@ -174,6 +174,15 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
     if (!http.listening) throw new Error('the web edge is unavailable');
     const base = qr ? phoneOrigin(bind, origin, port, network) : `http://${addressHost(bind === '0.0.0.0' || bind === '::' ? '127.0.0.1' : bind)}:${port}`;
     return { url: `${base}/auth?token=${auth.mint(userId)}` };
+  };
+  const assertInviteAdmission = () => {
+    auth.assertAdmission();
+    if (!http.listening) throw new Error('the web edge is unavailable');
+  };
+  const invite = (userId: string) => {
+    assertInviteAdmission();
+    const base = origin || `http://${addressHost(bind === '0.0.0.0' || bind === '::' ? '127.0.0.1' : bind)}:${port}`;
+    return { url: `${base}/invite?token=${options.store.users.mintInvite(userId, clock.now().getTime())}` };
   };
   const file = join(options.stateDir, 'web-port');
   let port = options.port ?? 0;
@@ -350,9 +359,9 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
       await writeFile(`${file}.tmp`, `${port}\n`, { mode: 0o600 });
       await rename(`${file}.tmp`, file);
     }
-    return { status: { port, bind: (http.address() as AddressInfo).address, available: true }, link, sessions, revoke, revokeAll, fence: () => auth.fence(), close };
+    return { status: { port, bind: (http.address() as AddressInfo).address, available: true }, assertInviteAdmission, invite, link, sessions, revoke, revokeAll, fence: () => auth.fence(), close };
   } catch (error) {
     await close();
-    return { status: { port, bind, available: false, reason: error instanceof Error ? error.message : String(error) }, link, sessions, revoke, revokeAll, fence: () => auth.fence(), close };
+    return { status: { port, bind, available: false, reason: error instanceof Error ? error.message : String(error) }, assertInviteAdmission, invite, link, sessions, revoke, revokeAll, fence: () => auth.fence(), close };
   }
 }

@@ -705,6 +705,8 @@ export type ClientRequest =
   | { type: 'auth.mode'; id: string; mode: 'users' }
   | { type: 'auth.reset'; id: string }
   | { type: 'user.list'; id: string }
+  | { type: 'user.add'; id: string; name: string; displayName?: string }
+  | { type: 'user.invite'; id: string; name: string }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
   | RuleRequest
@@ -1085,6 +1087,10 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'config.set':
     case 'crew.set':
       return typeof f.key === 'string' && f.value !== undefined;
+    case 'user.add':
+      return typeof f.name === 'string' && (f.displayName === undefined || typeof f.displayName === 'string');
+    case 'user.invite':
+      return typeof f.name === 'string';
     case 'auth.mode':
       return f.mode === 'users';
     case 'auth.reset':

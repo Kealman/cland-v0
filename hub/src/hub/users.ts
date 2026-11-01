@@ -1,5 +1,5 @@
-// Project-owned human identities. No credentials or transport policy live here.
-import { randomUUID } from 'node:crypto';
+// Project-owned human identities and digest-only invites; no transport policy.
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 
 export type SignInMode = 'single' | 'users';
@@ -14,7 +14,11 @@ export class Users {
       create table if not exists users (id text primary key, name text not null unique,
         display_name text not null, role text not null references roles(name), state text not null, created integer not null);
       create table if not exists auth_state (singleton integer primary key check(singleton = 1),
-        mode text not null check(mode in ('single','users')), set_at integer not null);`);
+        mode text not null check(mode in ('single','users')), set_at integer not null);
+      create table if not exists user_invites (digest text primary key, user_id text not null references users(id),
+        expires integer not null, state text not null);
+      create index if not exists user_invites_user on user_invites(user_id);`);
+    this.onReset(() => { db.prepare("update user_invites set state='revoked' where state='open'").run(); });
   }
   mode(): SignInMode {
     return this.#db.prepare('select mode from auth_state where singleton=1').get()?.mode === 'users' ? 'users' : 'single';
@@ -40,6 +44,43 @@ export class Users {
     if (collisions.includes(name)) throw new Error(`user name collision: ${name}`);
     const user: User = { id: randomUUID(), name, displayName, role: 'admin', state: 'active', created: now };
     this.#db.prepare('insert into users (id,name,display_name,role,state,created) values (?,?,?,?,?,?)').run(user.id, name, displayName, user.role, user.state, now);
+    return user;
+  }
+  add(name: string, displayName: string, collisions: readonly string[], now: number): User {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) throw new Error('user name must be a lowercase slug');
+    if (['human', 'hub', 'all'].includes(name)) throw new Error(`reserved user name: ${name}`);
+    if ([...this.roles(), ...collisions].includes(name)) throw new Error(`user name collision with a role or current session: ${name}`);
+    if (this.list().some(user => user.name === name)) throw new Error(`user name must be unique: ${name}`);
+    const user: User = { id: randomUUID(), name, displayName, role: 'admin', state: 'invited', created: now };
+    this.#db.prepare('insert into users values (?,?,?,?,?,?)').run(user.id, name, displayName, user.role, user.state, now);
+    return user;
+  }
+  mintInvite(userId: string, now: number): string {
+    if (!this.get(userId)) throw new Error('unknown user');
+    const token = randomBytes(32).toString('hex');
+    this.#db.exec('savepoint mint_invite');
+    try {
+      this.#db.prepare("update user_invites set state='revoked' where user_id=? and state='open'").run(userId);
+      this.#db.prepare('insert into user_invites values (?,?,?,?)').run(createHash('sha256').update(token).digest('hex'), userId, now + 24 * 60 * 60 * 1000, 'open');
+      this.#db.exec('release mint_invite');
+    } catch (error) { this.#db.exec('rollback to mint_invite; release mint_invite'); throw error; }
+    return token;
+  }
+  /** Read validation is non-consuming so registration can validate before committing credentials. */
+  checkInvite(token: string, now: number): User {
+    const row = this.#db.prepare('select user_id, expires, state from user_invites where digest=?').get(createHash('sha256').update(token).digest('hex'));
+    if (!row) throw new Error('unknown invite');
+    if (row.state === 'used') throw new Error('used invite');
+    if (row.state === 'revoked') throw new Error('revoked invite');
+    if (Number(row.expires) <= now) throw new Error('expired invite');
+    const user = this.get(String(row.user_id));
+    if (!user) throw new Error('unknown invite user');
+    return user;
+  }
+  /** Synchronous check/spend; credential owners may call inside their database transaction. */
+  consumeInvite(token: string, now: number): User {
+    const user = this.checkInvite(token, now);
+    this.#db.prepare("update user_invites set state='used' where digest=? and state='open'").run(createHash('sha256').update(token).digest('hex'));
     return user;
   }
   setMode(mode: SignInMode, now: number): void {
