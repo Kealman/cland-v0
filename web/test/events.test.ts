@@ -204,10 +204,29 @@ test('physical s selects an Events subject in the palette and Enter opens topic,
   }
   const inventory = await fixture.ui.request({ type: 'artifact.list' });
   assert.equal((inventory.value as { artifacts: { id: string }[] }).artifacts.some(row => row.id === artifact), false);
+  let holdRefresh = false;
+  let heldRefresh: { release: () => void; page: EventsPage } | undefined;
+  const requests = new Set<string>();
+  let refreshed: EventsPage | undefined;
+  let refreshes = 0;
   await fixture.pageCase(t, async page => {
     const enterEvents = async () => {
+      const before = refreshes;
+      const alreadyOpen = await page.getByRole('main', { name: 'Events', exact: true }).count() > 0;
       await page.getByRole('button', { name: 'Events', exact: true }).click();
-      await page.locator('[data-event-id]').first().waitFor();
+      if (holdRefresh) {
+        await until(() => !!heldRefresh, { what: 'session visit refresh held', timeoutMs: 3000 });
+        assert.equal(await page.locator('[data-event-subject="events-worker"]').count() > 0, true, 'cached older page contains session before refresh');
+        assert.equal(heldRefresh!.page.rows.some(row => row.subject.id === 'events-worker'), false, 'refresh first page excludes older session');
+        holdRefresh = false;
+        heldRefresh!.release();
+      }
+      // Re-entry retains older rows until the fresh first page arrives. Observe
+      // that exact rendered response before deciding whether to load older rows.
+      await until(async () => (alreadyOpen || refreshes > before) && !!refreshed && !await page.locator('[data-events-loading]').count()
+        && JSON.stringify(await page.locator('[data-event-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-event-id')))) === JSON.stringify(refreshed!.rows.map(row => row.id)),
+      { what: 'refreshed Events page rendered', timeoutMs: 3000 });
+      assert.deepEqual(await page.locator('[data-event-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-event-id'))), refreshed!.rows.map(row => row.id));
       await page.locator('[data-event-id]').first().focus();
     };
     await enterEvents();
@@ -221,6 +240,7 @@ test('physical s selects an Events subject in the palette and Enter opens topic,
     await physical(page, 'KeyF', true);
     await pageUntil(page, () => document.querySelector('[data-events-filter]')?.textContent?.includes('subject: any') === true && !document.querySelector('[data-events-loading]'), 'cleared subject receipt');
     for (const [subject, target] of [[topic, 'Topics'], ['events-worker', 'Sessions'], [artifact, 'Artifacts']] as const) {
+      holdRefresh = subject === 'events-worker';
       await enterEvents();
       if (!await page.locator(`[data-event-subject="${subject}"]`).count()) {
         await page.getByRole('button', { name: 'A · 200 older events', exact: true }).click();
@@ -233,6 +253,23 @@ test('physical s selects an Events subject in the palette and Enter opens topic,
       if (target === 'Sessions') await page.locator(`[data-object-id="${subject}"]`).first().waitFor();
       if (target === 'Artifacts') await page.locator(`[data-artifact-viewer][data-artifact-selection="${subject}"]`).waitFor();
     }
+  }, async page => {
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      route.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        if (frame.type === 'events.list' && frame.id.startsWith('action:') && !frame.before && !frame.filter?.subject) requests.add(frame.id);
+        server.send(message);
+      });
+      server.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        if (frame.type === 'result' && requests.delete(frame.id)) {
+          const forward = () => { refreshed = frame.value as EventsPage; ++refreshes; route.send(message); };
+          if (holdRefresh) heldRefresh = { release: forward, page: frame.value as EventsPage };
+          else forward();
+        } else route.send(message);
+      });
+    });
   });
 });
 

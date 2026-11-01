@@ -24,3 +24,12 @@ The phone tap-filter case uses the fixture's 390×844 touch context and native
 warnings, clear and subject filters, then retain task identity and pressed state
 through reload. Check every chip's 44 px geometry. This extends the existing
 filter seam without changing key routing, wire frames or browser storage format.
+
+The palette/Enter case holds the unfiltered first-page action response on session
+re-entry. The retained older page must contain `events-worker` while that
+response excludes it. Release the response, observe its exact rendered row IDs,
+and only then decide whether to load older events and focus the subject. Keep
+all topic/session/artifact destination assertions and the out-of-inventory
+artifact check. Clicking Events while it is already open does not start a new
+refresh; retain the current response receipt in that case. This deterministic
+ordering control replaces scheduler load as the race proof (T-1578).
