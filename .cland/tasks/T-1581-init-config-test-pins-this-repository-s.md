@@ -2,8 +2,8 @@
 id: T-1581
 kind: task
 title: init-config test pins this repository's merge batch tiers to T1 after the T1–T3 change
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1302
 branch: t/T-1581-init-config-test-pins-this-repository-s
 created: 2026-11-01T09:12:24.790Z
-updated: 2026-11-01T09:20:08.326Z
+updated: 2026-11-01T14:43:30.493Z
+closed: 2026-11-01T14:43:30.493Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards/Spec no findings. Same-headA-15275/0aa50ff1 exit0,1298pass,zero fail/cancel/skip/todo. All17 init-config actual named outcomes pass, including repository tier pin and unchanged generic defaults; standalone17/17 also recorded by lead. C2 search established in sourceA-15271, no stale other pins. T0/T1/Web smoke complete; selected T2 command had no selected test cases, T3/T4/full integrated unexecuted. Linux x64 droplet Node24.21.0,Neovim0.12.5,isolated Headless Shell1248/Chrome Testing156.0.8078.4; report-only advisories,no cache/skips. C1/C2 verified. No Reviewer execution; QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-01T14:43:30.493Z
+
+Merged 701d849045bae678e1e8cbada7bca567f6734f69 onto dev.

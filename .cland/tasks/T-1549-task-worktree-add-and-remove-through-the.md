@@ -2,8 +2,8 @@
 id: T-1549
 kind: task
 title: Task worktree add and remove through the Host
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1298
 branch: t/T-1549-task-worktree-add-and-remove-through-the
 created: 2026-10-31T23:47:42.044Z
-updated: 2026-11-01T09:05:33.690Z
+updated: 2026-11-01T14:43:44.731Z
+closed: 2026-11-01T14:43:44.731Z
 ---
 
 ## Summary
@@ -133,3 +134,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear; Standards/Spec no findings. A-15261: Coordinator decision5d362b3e explicitly authorized dev merge and rule6 waiver/batch route. Both skill paragraphs preserved verbatim; no manual runtime edits. Task territory/worktree/legacy adapter and criterion test files identical to prior reviewed head; additive incoming fileType and artifact/Events changes already reviewed. A-15260 merged-head macOS Node24.21 typecheck/lint exit0,0 lint refusals,report-only findings; conflict-text search has no matching tests. C1–C4 rechecked/carried under explicit rule6 waiver using unchanged source/tests and prior A-15243/A-15246 receipts. Those receipts remain prior-head evidence, not new-head runtime passes. Additional all9ba018aa failed bundling after authorized HEAD change; runtime counts unavailable. New-head runtime/full premerge evidence pending Coordinator T1–T3 merge batch; this is delta source clearance for ready/enqueue, not a green suite claim. After-stage QA separate. No Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-01T14:43:44.731Z
+
+Merged 89cefcfddd78d62891ae49cd7d8608135f1c79fc onto dev.
