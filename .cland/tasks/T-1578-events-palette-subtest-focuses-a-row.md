@@ -3,7 +3,7 @@ id: T-1578
 kind: task
 title: Events palette subtest focuses a row that a late event re-renders (detached on macOS stage cover)
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ regression_of: T-1127
 topic: topic-1293
 branch: t/T-1578-events-palette-subtest-focuses-a-row
 created: 2026-11-01T06:25:26.372Z
-updated: 2026-11-01T06:28:35.717Z
+updated: 2026-11-01T07:14:19.510Z
 ---
 
 ## Summary
@@ -26,12 +26,36 @@ updated: 2026-11-01T06:28:35.717Z
 
 ## Acceptance criteria
 
-- [ ] C1. The step waits for the Events list to settle (a receipt for the last expected event, or a stable row identity) before it focuses the row, with the test's assertions unchanged.
-- [ ] C2. A regression holds or replays the late event that re-renders the row, and shows the focus step still succeeds.
-- [ ] C3. The file passes five sequential targeted runs on macOS with normal admission (`node --test web/test/events.test.ts` after `npm run build`, or the mode-free verify's file selection), each receipt kept; the deterministic control in C2 carries the race proof, not machine load.
+- [x] C1. The step waits for the Events list to settle (a receipt for the last expected event, or a stable row identity) before it focuses the row, with the test's assertions unchanged.
+  - done: impl-1578 · 2026-11-01T07:13:23.843Z
+  - verified: rev-35 [reviewer] · run rev-35-1578-source-1 · 2026-11-01T07:14:19.510Z · commit 930a3b400bedbd2886d4852209dcfd8738765893
+- [x] C2. A regression holds or replays the late event that re-renders the row, and shows the focus step still succeeds.
+  - done: impl-1578 · 2026-11-01T07:13:24.647Z
+  - verified: rev-35 [reviewer] · run rev-35-1578-source-1 · 2026-11-01T07:14:19.510Z · commit 930a3b400bedbd2886d4852209dcfd8738765893
+- [x] C3. The file passes five sequential targeted runs on macOS with normal admission (`node --test web/test/events.test.ts` after `npm run build`, or the mode-free verify's file selection), each receipt kept; the deterministic control in C2 carries the race proof, not machine load.
+  - done: impl-1578 · 2026-11-01T07:13:25.475Z
 
 ## Comments
 
 ### impl-1578 · 2026-11-01T06:27:02.216Z
 
 Pre-change failure quoted in topic-1293 from A-15202: locator.focus Timeout 3000ms exceeded; events-worker launched row resolved then detached, events.test.ts:230. Deterministic events.list response-holding control prepared. First targeted run was refused at admission by cover-quiet f7d23abd before setup; awaiting test-slot-available, no runtime pass/fail claimed. Source points to reactivation's fresh first page replacing retained older-page rows before focus. No production contract changes.
+
+### impl-1578 · 2026-11-01T07:13:25.722Z
+
+Diagnosis A-15206 and five sequential macOS receipts A-15207. Retained older page was read before re-entry refresh; deterministic held action response reproduces session focus Timeout 3000ms before fix, passes after exact rendered response wait. All original assertions retained; no production changes. Final source 930a3b400bedbd2886d4852209dcfd8738765893 (tree 415658227406537a65fef944506cbfbeff2c4c2a). Five full events.test.ts runs each 12 pass/0 fail/skip/cancel/todo on darwin arm64 Node 24.21.0 isolated Headless Shell 1248 / 156.0.8078.4, normal admission, no load occasion. Build/typecheck/test:lint exit 0 (existing advisory findings remain). No full Web or T0-T4 from targeted runs. Pre-review fetch/merge origin/dev cbe02fc648 was tracker-only; merge-tree clean. QA policy none.
+
+### rev-35 · 2026-11-01T07:14:19.510Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1578-source-1
+commit: 930a3b400bedbd2886d4852209dcfd8738765893
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear. Standards/Spec: no findings. Before-navigation transport observer correlates real first-page action replies, deterministically holds session re-entry refresh, proves cached row removal, then exact rendered response IDs precede presence/paging/focus. Already-open Events uses current response. Original keyboard/destination/filter/out-of-inventory assertions and bounds retained; test-only scope. C1/C2 source verified. C3 five macOS receipts in A-15207 and same-head verify need final evidence check. A-15206 controlled red/green is correctly scoped separately from full-stage load. No Reviewer tests/browser execution; QA none.
+
+Criteria: C1 verified, C2 verified.

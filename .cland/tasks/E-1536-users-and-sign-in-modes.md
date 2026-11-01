@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: R-1530
 blocked_by: []
-topic: null
+topic: topic-1294
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-10-31T23:48:14.703Z
+updated: 2026-11-01T07:19:22.163Z
 ---
 
 ## Goal
@@ -115,3 +115,56 @@ stages:
       - - T-1573
       - - T-1574
 ```
+
+## Comments
+
+### qa-678 · 2026-11-01T07:19:22.163Z
+
+verdict: qa
+result: not clear
+by: qa-678 [qa]
+run: qa-s1-2026-11-01-qa678-1
+commit: cbe02fc648f6418622cd9a31207e0dde25297dee
+stage: mode and identity
+stage_hash: ece23045aee4b9f5e2186f5b979a5aec3c501497354804b421512643e459ab48
+findings: [{"severity":"medium","text":"E1536S1-03/-05/-07/-10 INCONCLUSIVE: brief expects web welcome/audit client `web`; actual `human` follows dispatch.ts:1537 normalization. Coordinator confirmed brief error; no product defect observed.","file":"qa/briefs/E-1536-stage-1.md"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| S0 | PASS | S0.txt |
+| E1536S1-00 | PASS | E1536S1-00.txt |
+| E1536S1-01 | PASS | E1536S1-01.txt |
+| E1536S1-02 | PASS | E1536S1-02.txt |
+| E1536S1-03 | INCONCLUSIVE | E1536S1-03.txt |
+| E1536S1-04 | PASS | E1536S1-04.txt |
+| E1536S1-05 | INCONCLUSIVE | E1536S1-05.txt |
+| E1536S1-06 | PASS | E1536S1-06.txt |
+| E1536S1-07 | INCONCLUSIVE | E1536S1-07.txt |
+| E1536S1-08 | PASS | E1536S1-08.txt |
+| E1536S1-09 | PASS | E1536S1-09.txt |
+| E1536S1-10 | INCONCLUSIVE | E1536S1-10.txt |
+| E1536S1-11 | PASS | E1536S1-11.log |
+| E1536S1-12 | PASS | E1536S1-12.log |
+| E1536S1-13 | PASS | E1536S1-13.log |
+| E1536S1-14 | PASS | E1536S1-14.log |
+| E1536S1-15 | PASS | E1536S1-15.log |
+| E1536S1-16 | PASS | E1536S1-16.log |
+| E1536S1-17 | PASS | E1536S1-17.txt |
+| E1536S1-18 | PASS | E1536S1-18.txt |
+| SHELL-001 | PASS | SHELL-001.screen.txt, SHELL-001.state.json |
+
+Verdict: not clear. Stage: mode and identity. Epic: E-1536.
+Tested HEAD and final dev: cbe02fc648f6418622cd9a31207e0dde25297dee. Run: qa-s1-2026-11-01-qa678-1. Detached build clean before and after; all three stage members have landing receipts. No epic criterion marks.
+
+Medium — brief expectation error, qa/briefs/E-1536-stage-1.md, cases E1536S1-03, -05, -07, -10. Commands: committed functions m03, m05, m07 and m10. The actual single-mode web welcome is `human`; web audit client is `human`. The brief expects `web`. hub/src/hub/dispatch.ts:1537 normalizes the web connection to HUMAN_SESSION, and line 1540 emits humanUser()?.name ?? client. All other checked facts in these rows match: cookie-derived identity, user ids in users mode, absence in single mode, impersonation refusal, session/link revocation and retained user. The Coordinator confirmed the expectation error in message 36510c18-0c8e-469e-b870-d09ce5bbcedd and requested INCONCLUSIVE plus a not-clear verdict. No product defect found; no code fixed.
+
+All 179 tests across the six brief groups passed, with zero failures, cancellations, skips or todos: 11=21, 12=7, 13=10, 14=7, 15=123, 16=11. Required literal and generated case names were checked in TAP, including both WebAuthn algorithms and auth reset/failed-transition permutations. Full T0–T4 suites and stage covers were not run by this QA pass; the Coordinator supplied the separate stage cover receipts. SHELL-001 passed and its capture shows the typed message queued. Its recorder session reads `rescue` because the brief explicitly seals away CLAND session identity; execution was performed by qa-678 in this session.
+
+Platform: local macOS, Darwin arm64, Node 24.21.0. Browser: pinned Chrome Headless Shell 156.0.8078.4, Playwright revision 1248; exact binary in platform.txt. No GUI or real browser. Web prerequisite gate reports only. Served and built bundle source stamps both 1d2a126853ca42545b5be161a00a50b3c42b54c88018a07c66015756fe8c08e7, HTTP 200. Profile screenshot E1536S1-08.png shows Jane Q. Doe. All seven Accounts test browser censuses end after 0; scratch hub stopped. Manual browser group after 0. The fixture-owned census found no surviving processes after m18.
+
+Quiet admission temporarily timed out before case 16, then recovered under the brief retry loop. Cases 16 and SHELL-001 started only after quiet admission. This is not a product failure or a performance measurement. No timing claim, no droplet lifetime or cost for this local pass.
+
+Evidence contains only declared outputs, with no environment export, cookies, one-time links or HOME. Publication scan uses the shared assertPublishable policy with a successful positive control, plus visual inspection of the Profile screenshot. Source/provenance reads and served/built stamps retained. Commands followed the brief; the independent source-boundary and scratch cleanup checks ran while the regression group finished, without altering its fixtures.
+
+Evidence: A-15215 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15215-e-1536-stage-mode-and-identity-qa-evidence-cbe02fc6/report.md
