@@ -436,6 +436,15 @@ link; `cland web --help` describes the command. It does not start the hub.
 This is a human-shell command: a session's shell is refused, including an
 unknown session identity; do not unset its actor variables to bypass that check.
 
+In `auth.mode = "users"`, CLI and Neovim human connections act as the first
+user. `cland web` binds its one-time link to that acting user; redemption stores
+`web_sessions.user_id`. WebSocket and upload conversations resolve their user
+from that authenticated session, never a frame field. Web `as` remains refused.
+`web.session` adds `user: {id, name, displayName, role}` in users mode, and Profile
+shows the display name. Human request audit records add `userId`; single mode
+omits both optional fields and keeps the existing link and cookie flow. Agent
+session identity and role permissions are unchanged.
+
 The client frame `{type: "web.link", id: "…", qr?: boolean}` returns a normal `result` with
 `value: {url: "http://127.0.0.1:<port>/auth?token=…"}`. It requires the local Unix
 socket and human authority, so isolated test clients can mint links without

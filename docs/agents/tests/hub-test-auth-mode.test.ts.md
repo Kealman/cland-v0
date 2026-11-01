@@ -19,3 +19,5 @@ and joins every request before fixture removal.
 For both transition directions, invalidate roles.toml before the command. The
 saved transition must fail its reload with admission still fenced; restore the
 roles file, reload successfully, then redeem a freshly minted link.
+
+T-1560 adds a real CLI/Unix and cookie WebSocket regression: the first local user and a second persisted browser user produce distinct audit userId values, forged userId is ignored and web as is refused. Second-user setup seeds only a disposable database; no invite/auth provider is contacted.

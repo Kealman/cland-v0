@@ -9,6 +9,7 @@ import { until } from '../../hub/test/until.ts';
 import { connectUi } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { pageUntil, webFixture, pausePageClock } from './harness.ts';
+import { defaultConfig, renderConfig } from '../../hub/src/init/config.ts';
 import { visibleProse } from './prose.ts';
 
 test('Accounts profile shows this browser sign-in, last use and fixed 30-day cookie expiry', async t => {
@@ -221,5 +222,23 @@ test('accounts without readings show dashes and a failed registry poll exposes n
     assert.ok((await page.getByRole('alert').textContent())?.includes(registry));
     assert.ok(!(await page.locator('body').textContent())?.includes('fake-secret-never-exposed'));
     assert.equal(await page.locator('[data-account-id]').count(), 0, 'failed registry reply replaces the old registry');
+  });
+});
+
+test('Accounts profile shows the signed-in user display name in users mode', async t => {
+  const fixture = await webFixture(t, { prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    const config = defaultConfig('Profile');
+    config.verification.lockPath = join(root, 'suite.lock');
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  } });
+  await askHubFrame(fixture.hub.discovery, { type: 'auth.mode', mode: 'users' }, 3000, {});
+  const { users } = await askHubFrame(fixture.hub.discovery, { type: 'user.list' }, 3000, {}) as { users: Array<{ displayName: string }> };
+  await fixture.pageCase(t, async page => {
+    const profile = page.getByRole('region', { name: 'Profile', exact: true });
+    const rendered = profile.getByText(users[0]!.displayName, { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+    await rendered;
+    assert.equal(await profile.getByText(users[0]!.displayName, { exact: true }).count(), 1);
   });
 });

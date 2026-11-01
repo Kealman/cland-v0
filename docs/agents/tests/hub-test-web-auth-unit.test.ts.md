@@ -23,3 +23,5 @@ and filtered environments through the shared fixtures. Both `open` and
 `xdg-open` are stubbed on scratch PATH even for `--no-open`, so a regression
 cannot launch the human's browser or touch its keychain. Real browser checks
 belong to the dedicated headless web phase (T-991/T-992).
+
+T-1560: user-bound links persist user_id across Store reopen and profile reads; invalid user links refuse. The single-mode SQL row now includes nullable user_id; token/hash and lifetime assertions remain.

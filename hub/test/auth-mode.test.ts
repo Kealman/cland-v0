@@ -1,3 +1,5 @@
+import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { WebSocket } from 'ws';
 import { askHubFrame } from '../src/cli/socket-client.ts';
@@ -162,4 +164,52 @@ for (const mode of ['single', 'users'] as const) test(`failed ${mode} transition
   const link = await askHubFrame(hub.discovery, { type: 'web.link' }, 2000, {}) as { url: string };
   assert.equal((await fetch(link.url, { redirect: 'manual' })).status, 302);
   assert.equal(parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), 'Recovery', {}).auth.mode, mode);
+});
+
+test('local and cookie-authenticated human requests audit their user, including web impersonation refusal', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('User audit');
+  config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const audits: Record<string, unknown>[] = [];
+  const hub = await projectHub(t, root, {}, { git: async args => args.includes('user.name') ? 'Jane Doe\n' : '', log: entry => { if (entry.event === 'audit') audits.push(entry); } });
+  const local = await connectUi(t, hub.discovery);
+  t.after(() => local.close());
+  await local.request({ type: 'hub.status' });
+  assert.equal(audits.at(-1)?.userId, undefined);
+  assert.equal((await cland(root, 'auth', 'mode', 'users')).code, 0);
+  const users = (await local.request({ type: 'user.list' })).value as { users: Array<{ id: string }> };
+  const userId = users.users[0]!.id;
+  await local.request({ type: 'hub.status' });
+  assert.equal(audits.at(-1)?.userId, userId);
+  assert.equal((await cland(root, 'hub', 'status')).code, 0);
+  assert.equal(audits.at(-1)?.userId, userId);
+  const link = await cland(root, 'web', '--no-open');
+  assert.equal(link.code, 0, link.stderr);
+  const url = link.stdout.trim();
+  const response = await fetch(url, { redirect: 'manual' });
+  const origin = new URL(url).origin;
+  // Seed a second sign-in at the persisted authentication boundary; invite creation is another item.
+  const db = new DatabaseSync(join(root, '.cland/hub.db'));
+  try {
+    db.prepare('insert into users values (?,?,?,?,?,?)').run('second-user', 'alex', 'Alex Smith', 'admin', 'active', Date.now());
+    db.prepare('insert into web_sessions (id,cookie_hash,created_at,last_used_at,user_id) values (?,?,?,?,?)')
+      .run('second-session', createHash('sha256').update('second-cookie').digest('hex'), Date.now(), Date.now(), 'second-user');
+  } finally { db.close(); }
+  assert.equal(response.status, 302);
+  const cookieName = response.headers.get('set-cookie')!.split('=')[0]!;
+  const ws = new WebSocket(`${origin.replace('http:', 'ws:')}/ws`, { origin, headers: { Cookie: `${cookieName}=second-cookie` } });
+  t.after(() => ws.terminate());
+  const { frameClient } = await import('./harness.ts');
+  const client = frameClient(line => ws.send(line.trim()), fn => ws.on('message', data => fn(`${data}\n`)), () => ws.terminate());
+  await once(ws, 'open', { signal: AbortSignal.timeout(3000) });
+  const welcomed = client.waitFor(f => f.type === 'welcome');
+  client.send({ type: 'hello', protocol: 2, client: 'web', userId: 'forged' });
+  assert.equal((await welcomed).name, 'alex');
+  const profile = (await client.request({ type: 'web.session', userId: 'forged' })).value as { user: unknown };
+  assert.deepEqual(profile.user, { id: 'second-user', name: 'alex', displayName: 'Alex Smith', role: 'admin' });
+  assert.equal(audits.at(-1)?.userId, 'second-user');
+  assert.equal((await client.request({ type: 'hub.status', as: { name: 'forged' } })).ok, false);
+  assert.equal(audits.at(-1)?.userId, 'second-user');
 });

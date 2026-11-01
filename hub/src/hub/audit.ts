@@ -12,6 +12,8 @@ export type AuditRecord = {
   session: string;
   /** The session's id (its harness's); null for the human. */
   sessionId: string | null;
+  /** Trusted acting user for human calls in users mode; absent in single mode. */
+  userId?: string;
   /** The role the hub held for the session at call time (null: none); `human` for the UI and the CLI. */
   role: string | null;
   /** The tool (the frame's type): `send`, `task.claim`, `role.set`, … */

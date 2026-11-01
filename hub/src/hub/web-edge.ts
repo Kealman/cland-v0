@@ -20,7 +20,7 @@ import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
 
-export type WebEdge = { status: WebEdgeStatus; link: (qr?: boolean) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; revokeAll: () => Promise<void>; fence: () => () => void; close: () => Promise<void> };
+export type WebEdge = { status: WebEdgeStatus; link: (qr?: boolean, userId?: string) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; revokeAll: () => Promise<void>; fence: () => () => void; close: () => Promise<void> };
 
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const MIME: Record<string, string> = {
@@ -170,10 +170,10 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
     ? Object.values(networkInterfaces()).flatMap(rows => rows ?? []).filter(row => !row.internal && !row.address.includes('%') && (bind === '::' || row.family === 'IPv4')).map(row => row.address)
     : [bind];
   const hosts = network.map(addressHost);
-  const link = (qr = false) => {
+  const link = (qr = false, userId?: string) => {
     if (!http.listening) throw new Error('the web edge is unavailable');
     const base = qr ? phoneOrigin(bind, origin, port, network) : `http://${addressHost(bind === '0.0.0.0' || bind === '::' ? '127.0.0.1' : bind)}:${port}`;
-    return { url: `${base}/auth?token=${auth.mint()}` };
+    return { url: `${base}/auth?token=${auth.mint(userId)}` };
   };
   const file = join(options.stateDir, 'web-port');
   let port = options.port ?? 0;
@@ -223,7 +223,7 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
             if (result.type !== 'result' || result.id !== 'upload') return;
             reply(200, result); resolve();
           },
-        }, { authenticated: true, edge: 'web', authorizeUpload, ownsUploadBytes: true, webSession: () => auth.profile(session), artifactUrl: id => artifacts.mint(session, id, pageOrigin(req)) });
+        }, { authenticated: true, edge: 'web', user: () => auth.user(session), authorizeUpload, ownsUploadBytes: true, webSession: () => auth.profile(session), artifactUrl: id => artifacts.mint(session, id, pageOrigin(req)) });
         res.once('close', resolve);
         conversation.receive(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, client: 'web' }));
         conversation.receive(JSON.stringify(frame), undefined, undefined, bytes);
@@ -261,7 +261,7 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
       send: (frame, serialized) => { if (ws.readyState === WebSocket.OPEN) ws.send(serialized ?? JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),
       isOpen: () => ws.readyState === WebSocket.OPEN,
-    }, { authenticated: true, edge: 'web', buildStamp, webSession: () => auth.profile(session), artifactUrl: id => artifacts.mint(session, id, page) });
+    }, { authenticated: true, edge: 'web', user: () => auth.user(session), buildStamp, webSession: () => auth.profile(session), artifactUrl: id => artifacts.mint(session, id, page) });
     ws.on('message', (data, binary) => {
       if (binary) { ws.close(BINARY_RESERVED_CLOSE_CODE, 'binary frames reserved for streams'); return; }
       conversation.receive(data.toString());

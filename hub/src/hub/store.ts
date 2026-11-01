@@ -198,6 +198,7 @@ create table if not exists hygiene (
  * Additive only: a column is never dropped or retyped here.
  */
 const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string }> = [
+  { table: 'web_sessions', column: 'user_id', type: 'text' },
   { table: 'inbox_waits', column: 'text', type: "text not null default ''" },
   { table: 'inbox_waits', column: 'approval_json', type: 'text' },
   { table: 'inbox_departures', column: 'text', type: "text not null default ''" },
@@ -502,8 +503,8 @@ export class Store implements HygieneMemory {
     }
   }
 
-  createWebSession(id: string, cookieHash: string, now: number): void {
-    this.#prepare('insert into web_sessions (id, cookie_hash, created_at, last_used_at) values (?, ?, ?, ?)').run(id, cookieHash, now, now);
+  createWebSession(id: string, cookieHash: string, now: number, userId: string | null = null): void {
+    this.#prepare('insert into web_sessions (id, cookie_hash, created_at, last_used_at, user_id) values (?, ?, ?, ?, ?)').run(id, cookieHash, now, now, userId);
   }
 
   useWebSession(cookieHash: string, now: number, createdAfter: number): string | null {
@@ -511,9 +512,9 @@ export class Store implements HygieneMemory {
     return row ? row.id as string : null;
   }
 
-  webSession(id: string): { createdAt: number; lastUsedAt: number } | null {
-    const row = this.#prepare('select created_at, last_used_at from web_sessions where id = ?').get(id);
-    return row ? { createdAt: row.created_at as number, lastUsedAt: row.last_used_at as number } : null;
+  webSession(id: string): { createdAt: number; lastUsedAt: number; userId: string | null } | null {
+    const row = this.#prepare('select created_at, last_used_at, user_id from web_sessions where id = ?').get(id);
+    return row ? { createdAt: row.created_at as number, lastUsedAt: row.last_used_at as number, userId: row.user_id as string | null } : null;
   }
 
   webSessions(): Array<{ id: string; createdAt: number; lastUsedAt: number }> {

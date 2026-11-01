@@ -123,7 +123,7 @@ export type Control = {
   pairingReplaced?: (messenger: RemoteVia, previous: import('../remote/state.ts').Pairing) => void;
   authMode?: (mode: 'users' | 'single', resumed: import('./budget.ts').Resumed) => Promise<unknown>;
   userList?: () => unknown;
-  webLink?: (qr?: boolean) => import('../protocol.ts').WebLinkResult;
+  webLink?: (qr?: boolean, userId?: string) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
   webRevoke?: (id: string) => Promise<import('../protocol.ts').WebRevokeResult>;
   status: () => Omit<HubStatus, 'sessions'>;
@@ -1072,10 +1072,21 @@ export class Dispatcher {
     });
   }
 
-  open(wire: Peer, transport: { authenticated: boolean; edge: string; authorizeUpload?: () => void; ownsUploadBytes?: boolean; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
+  open(wire: Peer, transport: { authenticated: boolean; edge: string; authorizeUpload?: () => void; ownsUploadBytes?: boolean; user?: () => import('./users.ts').User | null; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
     const uploads = new Set<Promise<unknown>>();
     const core = this.#options.core;
     const log = this.#log;
+    // Web identity is supplied only by the authenticated upgrade/upload, never a frame.
+    const humanUser = () => {
+      if (core.store.users.mode() !== 'users') return null;
+      const user = transport.edge === 'web' ? transport.user?.() : core.store.users.list()[0];
+      if (!user || user.state !== 'active') throw new Error('human connection requires an active user');
+      return user;
+    };
+    const humanAudit = () => {
+      const user = humanUser();
+      return { session: user?.name ?? HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, ...(user ? { userId: user.id } : {}) };
+    };
     /** The calls in flight, by request id, waiting for their result to be audited. */
     const audits = new Map<string, Array<Omit<AuditRecord, 'ts' | 'event' | 'outcome'>>>();
     const settle = (frame: HubFrame) => {
@@ -1526,7 +1537,7 @@ export class Dispatcher {
         log({ event: 'client', edge: transport.edge, client: frame.client });
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
-        peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
+        peer.send({ type: 'welcome', name: humanUser()?.name ?? client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
         if (!features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
         if (frame.resume) resumeModel(frame.resume);
         else if (features.includes('snapshot')) startSnapshot();
@@ -2037,7 +2048,7 @@ export class Dispatcher {
           case 'web.link':
             if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');
             if (!control.webLink) throw new Error('the web edge is unavailable');
-            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink(frame.qr) });
+            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink(frame.qr, humanUser()?.id) });
             break;
           case 'hub.status': {
             const status = (): HubFrame => {
@@ -2182,14 +2193,14 @@ export class Dispatcher {
         if (transport.edge === 'gateway') {
           const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
           if (refusal) {
-            audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
+            audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
             return peer.send(refusal);
           }
         }
         if (transport.edge === 'web') {
           const refusal = webAuthorityRefusal(frame);
           if (refusal) {
-            audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
+            audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
             return peer.send(refusal);
           }
         }
@@ -2221,7 +2232,7 @@ export class Dispatcher {
           }
         } else if (!plumbing) {
           // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
-          audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
+          audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
         }
         // a client's frame may name who it acts as (a name no session holds: written as it, unrestricted)
         if (isTaskRequest(frame)) {

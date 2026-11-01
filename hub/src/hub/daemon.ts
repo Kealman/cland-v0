@@ -393,9 +393,9 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
           if (!web) throw new Error('the web edge is unavailable');
           return web.revoke(id);
         },
-        webLink: qr => {
+        webLink: (qr, userId) => {
           if (!web?.status.available) throw new Error('the web edge is unavailable');
-          return web.link(qr);
+          return web.link(qr, userId);
         },
         reload: resumed => roles.reload(resumed),
         setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),

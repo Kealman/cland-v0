@@ -13,6 +13,7 @@ export class WebAuth {
   readonly #now: () => number;
   readonly #links: Map<string, number>;
   readonly #store: Store;
+  readonly #linkUsers = new Map<string, string>();
 
   /** `root` is the canonical project root; the optional link store holds digests only. */
   constructor(root: string, store: Store, now: () => number = Date.now, links = new Map<string, number>()) {
@@ -24,7 +25,7 @@ export class WebAuth {
 
   #prune(): void {
     const now = this.#now();
-    for (const [hash, expires] of this.#links) if (expires <= now) this.#links.delete(hash);
+    for (const [hash, expires] of this.#links) if (expires <= now) { this.#links.delete(hash); this.#linkUsers.delete(hash); }
     this.#store.pruneWebSessions(now - WEB_SESSION_SECONDS * 1000);
   }
 
@@ -34,13 +35,16 @@ export class WebAuth {
     return () => { if (!released) { released = true; this.#fences--; } };
   }
 
-  revokeAll(): void { this.#links.clear(); this.#store.revokeAllWebSessions(); }
+  revokeAll(): void { this.#links.clear(); this.#linkUsers.clear(); this.#store.revokeAllWebSessions(); }
 
-  mint(): string {
+  mint(userId?: string): string {
+    if (userId !== undefined && this.#store.users.get(userId)?.state !== 'active') throw new Error('unknown or inactive user');
+    if (this.#store.users.mode() === 'users' && !userId) throw new Error('users mode requires a user-bound link');
     if (this.#fences) throw new Error('browser sign-in transition is in progress');
     this.#prune();
     const token = randomBytes(32).toString('hex');
     this.#links.set(digest(token), this.#now() + LINK_MS);
+    if (userId) this.#linkUsers.set(digest(token), userId);
     return token;
   }
 
@@ -48,8 +52,11 @@ export class WebAuth {
     if (this.#fences) return null;
     this.#prune();
     if (!this.#links.delete(digest(token))) return null;
+    const userId = this.#linkUsers.get(digest(token)) ?? null;
+    this.#linkUsers.delete(digest(token));
+    if (this.#store.users.mode() === 'users' && (!userId || this.#store.users.get(userId)?.state !== 'active')) return null;
     const session = randomBytes(32).toString('hex');
-    this.#store.createWebSession(randomUUID(), digest(session), this.#now());
+    this.#store.createWebSession(randomUUID(), digest(session), this.#now(), userId);
     return session;
   }
 
@@ -71,11 +78,21 @@ export class WebAuth {
     this.#prune();
     const row = this.#store.webSession(id);
     if (!row) throw new Error('this browser sign-in has expired or was revoked');
+    const user = this.user(id);
     return {
+      ...(user ? { user: { id: user.id, name: user.name, displayName: user.displayName, role: user.role } } : {}),
       createdAt: new Date(row.createdAt).toISOString(),
       lastUsedAt: new Date(row.lastUsedAt).toISOString(),
       expiresAt: new Date(row.createdAt + WEB_SESSION_SECONDS * 1000).toISOString(),
     };
+  }
+
+  user(id: string): import('./users.ts').User | null {
+    if (this.#store.users.mode() !== 'users') return null;
+    const row = this.#store.webSession(id);
+    const user = row?.userId ? this.#store.users.get(row.userId) : null;
+    if (!user || user.state !== 'active') throw new Error('browser sign-in has no active user');
+    return user;
   }
 
   sessions(): Array<{ id: string; createdAt: string; lastUsedAt: string }> {

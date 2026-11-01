@@ -16,6 +16,13 @@ export class Users {
       create table if not exists auth_state (singleton integer primary key check(singleton = 1),
         mode text not null check(mode in ('single','users')), set_at integer not null);`);
   }
+  mode(): SignInMode {
+    return this.#db.prepare('select mode from auth_state where singleton=1').get()?.mode === 'users' ? 'users' : 'single';
+  }
+  get(id: string): User | null {
+    const row = this.#db.prepare('select id, name, display_name as displayName, role, state, created from users where id=?').get(id);
+    return row ? { ...row } as User : null;
+  }
   roles(): string[] { return (this.#db.prepare('select name from roles order by name').all() as { name: string }[]).map(row => row.name); }
   list(): User[] {
     return this.#db.prepare('select id, name, display_name as displayName, role, state, created from users order by created, rowid').all().map(row => ({ ...row })) as User[];

@@ -25,6 +25,7 @@ export function Profile({ connection }: { connection: ConnectionState }) {
     <Fold area="accounts" id="profile" label="Profile" count={signIn ? 1 : '—'}>
       <div className={s.content}>
         <h3>This browser</h3>
+        {signIn?.user && <p>{signIn.user.displayName}</p>}
         {error ? <div role="alert" className={s.error} title={error}>Sign-in unavailable</div> : signIn ? <dl className={s.dates}>
           {([['Created', signIn.createdAt], ['Last used', signIn.lastUsedAt], ['Cookie expires', signIn.expiresAt]] as const).map(([label, value]) => <div key={label}>
             <dt>{label}</dt><dd><time dateTime={value} title={value}>{new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</time></dd>

@@ -60,7 +60,7 @@ test('cookie rows contain only a hash and timestamps and survive reopening the s
   reader = new DatabaseSync(path, { readOnly: true });
   const row = () => ({ ...reader.prepare('select * from web_sessions').get() });
   const original = row();
-  assert.deepEqual(original, { id: original.id, cookie_hash: createHash('sha256').update(token).digest('hex'), created_at: 1000, last_used_at: 1000 });
+  assert.deepEqual(original, { id: original.id, cookie_hash: createHash('sha256').update(token).digest('hex'), created_at: 1000, last_used_at: 1000, user_id: null });
   assert.match(String(original.id), /^[a-f0-9-]{36}$/);
   assert.ok(!JSON.stringify(original).includes(token));
   store.close();
@@ -72,4 +72,35 @@ test('cookie rows contain only a hash and timestamps and survive reopening the s
   now = 1000 + 30 * 24 * 60 * 60 * 1000;
   assert.equal(restarted.accepts(cookie), false, 'last use must not renew the original lifetime');
   assert.deepEqual(restarted.sessions(), []);
+});
+
+test('a user-bound link persists its user across store restart and profile reads', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-web-user-'));
+  const path = join(root, 'hub.db');
+  let store = new Store(path);
+  t.after(() => { store.close(); rmSync(root, { recursive: true, force: true }); });
+  const user = store.users.firstAdmin('Jane Doe', [], 1000);
+  store.users.setMode('users', 1000);
+  const auth = new WebAuth(root, store, () => 2000);
+  const token = auth.redeem(auth.mint(user.id))!;
+  const cookie = `${auth.cookieName}=${token}`;
+  const id = auth.session(cookie)!;
+  assert.equal(store.webSession(id)?.userId, user.id);
+  store.close();
+  store = new Store(path);
+  const restored = new WebAuth(root, store, () => 3000);
+  assert.equal(restored.session(cookie), id);
+  assert.deepEqual(restored.profile(id).user, { id: user.id, name: 'jane-doe', displayName: 'Jane Doe', role: 'admin' });
+  assert.throws(() => restored.mint('unknown'), /user/);
+});
+
+
+test('single-mode profile keeps the previous wire shape without a user', t => {
+  const store = new Store();
+  t.after(() => store.close());
+  const auth = new WebAuth('/fixture/project', store, () => 1000);
+  const cookie = `${auth.cookieName}=${auth.redeem(auth.mint())!}`;
+  assert.deepEqual(auth.profile(auth.session(cookie)!), {
+    createdAt: '1970-01-01T00:00:01.000Z', lastUsedAt: '1970-01-01T00:00:01.000Z', expiresAt: '1970-01-31T00:00:01.000Z',
+  });
 });
