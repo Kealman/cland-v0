@@ -3,8 +3,9 @@ id: T-1550
 kind: task
 title: Who stands inside a worktree, through the Host
 state: open
-status: in progress
+status: ready
 size: S
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1303
 branch: t/T-1550-who-stands-inside-a-worktree-through-the
 created: 2026-10-31T23:47:42.340Z
-updated: 2026-11-01T15:27:38.382Z
+updated: 2026-11-01T16:36:59.517Z
 ---
 
 ## Summary
@@ -25,10 +26,19 @@ Hot files: `hub/src/hub/worktrees.ts`
 
 ## Acceptance criteria
 
-- [ ] C1. The list's sessions, prune's refusals and the last check before removal come from the Host's occupants (test).
-- [ ] C2. `TaskWorktrees` no longer calls `realpath` or `stat` on session cwds or worktree paths itself: identities come from the Host's statDirectory.
-- [ ] C3. With a recording Host that reports a session inside, a prune is refused even when the session's recorded cwd string differs from the worktree path (test).
-- [ ] C4. The task-worktrees and worktree-cli test files pass with no test edited.
+- [x] C1. The list's sessions, prune's refusals and the last check before removal come from the Host's occupants (test).
+  - done: impl-1550 · 2026-11-01T16:16:06.929Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+- [x] C2. `TaskWorktrees` no longer calls `realpath` or `stat` on session cwds or worktree paths itself: identities come from the Host's statDirectory.
+  - done: impl-1550 · 2026-11-01T16:16:08.780Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-source-1 · 2026-11-01T16:18:41.496Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+- [x] C3. With a recording Host that reports a session inside, a prune is refused even when the session's recorded cwd string differs from the worktree path (test).
+  - done: impl-1550 · 2026-11-01T16:16:10.674Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+- [x] C4. The task-worktrees and worktree-cli test files pass with no test edited.
+  - done: impl-1550 · 2026-11-01T16:16:11.472Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
 
 ## Comments
 
@@ -43,3 +53,33 @@ Inventory correction after repository search: production construction is hub/src
 ### impl-1550 · 2026-11-01T15:27:38.382Z
 
 Red/green progress on uncommitted tree, macOS local Node v24.21.0, no browser: alias-only occupant regression failed [] vs ['remote-worker']; occupancy migration then passed worktree-host 11/11. Expanded file passed locked admission and last pre-Git occupancy controls; both Host directory identity controls failed removed=1 vs expected 0 before statDirectory migration. Identity migration and existing-section docs now written. Latest full file rerun did not execute assertions: cover-quiet 5d0045cd-7415-4cd2-a55e-cb8734274174. Await registered wake-up. No preservation file/typecheck/lint/verify evidence yet; no review requested.
+
+### rev-35 · 2026-11-01T16:18:41.496Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1550-source-1
+commit: 95b208038b3668b406ba5099bf6e733627609be8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear. Standards/Spec no findings. Host occupants drive list, locked prune admission and repeated final validator immediately before removal; current item/session snapshots, alias paths and directory identities still revalidate. TaskWorktrees has no native realpath/stat path reads: C2 verified. New alias/late-occupant/Host-only inode controls retain directory/no-removal assertions and exact Host input facts. Existing C4 tests unchanged; contract/wire unchanged, docs/skill/provenance match behavior. C1/C3/C4 await exact-head verify and named runtime receipts. No Reviewer execution. QA after-stage separate.
+
+Criteria: C2 verified.
+
+### rev-35 · 2026-11-01T16:36:58.995Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1550-final-1
+commit: 95b208038b3668b406ba5099bf6e733627609be8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards/Spec no findings. A-15316 same-head a7cd1047 exit0,4586pass,zero fail/cancel/skip/todo. All17 worktree-host named finishes pass including alias/locked/final occupancy and both Host identity cases; task-worktrees13 top-level pass. A-15317 compiled actual local native output: unchanged CLI4/lifecycle3/lock20/source worktrees6 pass,native0,no signal/timeout,exact head/source tree,macOS Node24.21.0,no browser. Remote Linux x64 droplet Node24.21.0,isolated Headless Shell1248/Chrome Testing156.0.8078.4. T0/T1/all fallback T2/Web/changed T3 complete; remaining T3/T4 deferred,not full integrated coverage. Snapshot/source equality outside .cland independently checked. Advisory budgets/lint/ratchet report-only,no cache/skips. C1–C4 verified; after-stage QA/merge batch separate. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

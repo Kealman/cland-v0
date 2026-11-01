@@ -2,8 +2,8 @@
 id: T-1547
 kind: task
 title: Claude Code sessions through the Host
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1296
 branch: t/T-1547-claude-code-sessions-through-the-host
 created: 2026-10-31T23:47:41.550Z
-updated: 2026-11-01T14:49:02.987Z
+updated: 2026-11-01T17:02:01.540Z
+closed: 2026-11-01T17:02:01.540Z
 ---
 
 ## Summary
@@ -30,22 +31,27 @@ Hot files: `hub/src/adapters/claude-code.ts`
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
   - done: impl-1547 · 2026-11-01T09:20:46.663Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+  - verified: rev-36 [reviewer] · run rev-36-1547-delta-1 · 2026-11-01T16:18:27.797Z · commit a24b7e6144c8be7cb8c9160f298da9b049556e1f
 - [x] C2. The session cwd's `.claude` settings files are read through the Host's readFile (test).
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
   - done: impl-1547 · 2026-11-01T09:20:46.799Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+  - verified: rev-36 [reviewer] · run rev-36-1547-delta-1 · 2026-11-01T16:18:27.798Z · commit a24b7e6144c8be7cb8c9160f298da9b049556e1f
 - [x] C3. Pid checks, birth identities, resume liveness and stop of a Claude Code row use the Host's identity, alive and stop, and the adapter's own `process.kill` probe is gone.
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
   - done: impl-1547 · 2026-11-01T09:20:47.749Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+  - verified: rev-36 [reviewer] · run rev-36-1547-delta-1 · 2026-11-01T16:18:27.798Z · commit a24b7e6144c8be7cb8c9160f298da9b049556e1f
 - [x] C4. A test with a recording Host shows every command, liveness check and stop of a Claude Code row reaching that Host (test).
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
   - done: impl-1547 · 2026-11-01T09:20:48.279Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+  - verified: rev-36 [reviewer] · run rev-36-1547-delta-1 · 2026-11-01T16:18:27.798Z · commit a24b7e6144c8be7cb8c9160f298da9b049556e1f
 - [x] C5. The claude-code-adapter, claude-code-sessions, claude-code-schedule, claude-code-accounts and claude-code-environment test files pass with no test edited.
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
   - done: impl-1547 · 2026-11-01T09:20:49.276Z
   - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+  - verified: rev-36 [reviewer] · run rev-36-1547-delta-1 · 2026-11-01T16:18:27.798Z · commit a24b7e6144c8be7cb8c9160f298da9b049556e1f
 
 ## Comments
 
@@ -195,3 +201,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final task evidence clear at unchanged fb893018e8a9ca6b8559cc91d201e7a98e0a999a; Standards/spec no findings; C1–C5 verified. A-15284 uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/changed T3 guard/Web exit0,4570 pass. Actual records: init17, recording9, schedule46, sessions10/environment11 top-level, project-hub1, bare-PID guard1 all pass. Isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4; remaining T3/T4 unexecuted, advisory checks report mode. A-15286 exact-head Darwin27 arm64 Node24.21.0 native exit0 and named adapter6/accounts8/Host-contract8/Lead-routing1 receipts close omitted C5/shared-stop/original regression proof. All five C5 files and Lead test unedited; prior failed runs stay failed. Reviewer ran no tests/browser. Current rule6 pre-merge T1–T3 batch remains next; no batch completion or full-T3 task claim.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-36 · 2026-11-01T16:18:27.798Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1547-delta-1
+commit: a24b7e6144c8be7cb8c9160f298da9b049556e1f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta clear at unchanged authorized merge a24b7e6144c8be7cb8c9160f298da9b049556e1f. Standards/spec no findings; C1–C5 carried forward under Coordinator's docs-conflict waiver. Both skill sections preserved, Claude implementation/C5/Lead tests unchanged. A-15299 merged-head typecheck/lint exit0; A-15311 closes previously missing identifier evidence with all twelve matched/mapped/named files,208 named Node cases including nested, native exits0/no skips/failures, local Darwin27 arm64 Node24.21.0/no browser. Independent helper-owner mapping confirmed. Two cover-quiet admission refusals are not behavioral coverage. Prior A-15284 Linux selected task run and A-15286 macOS native receipts remain parent-head evidence, not new-head suite claims. No current-head full phase claimed; merge-queue T1–T3 remains next pre-merge coverage. Reviewer ran no tests/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-01T17:02:01.540Z
+
+Merged 8e7252c6597ce060a93656e19b53373928c808d3 onto dev.

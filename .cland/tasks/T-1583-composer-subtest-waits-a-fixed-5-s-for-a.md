@@ -3,7 +3,7 @@ id: T-1583
 kind: task
 title: Composer subtest waits a fixed 5 s for a channel event (third macOS stage-cover Web flake)
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-1304
 branch: t/T-1583-composer-subtest-waits-a-fixed-5-s-for-a
 created: 2026-11-01T15:26:21.036Z
-updated: 2026-11-01T15:31:00.008Z
+updated: 2026-11-01T16:41:14.817Z
 ---
 
 ## Summary
@@ -27,10 +27,17 @@ This is the third different Web test today that fails only in full macOS stage c
 
 ## Acceptance criteria
 
-- [ ] C1. The composer subtest waits on the receipt of the channel event it expects (or a deterministic hold proves the event's arrival), with assertions unchanged and no bigger fixed timeout.
-- [ ] C2. A regression deterministically holds the race's cause, the first browser topic.send result after its channel receipt, so Send stays pending, and shows the fixed subtest still passes once the result arrives late; the hold reproduces the original failure before the fix.
+- [x] C1. The composer subtest waits on the receipt of the channel event it expects (or a deterministic hold proves the event's arrival), with assertions unchanged and no bigger fixed timeout.
+  - done: impl-1583 · 2026-11-01T16:19:12.535Z
+  - verified: rev-35 [reviewer] · run rev-35-1583-source-1 · 2026-11-01T16:20:58.566Z · commit 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
+  - verified: rev-35 [reviewer] · run rev-35-1583-final-1 · 2026-11-01T16:41:14.551Z · commit 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
+- [x] C2. A regression deterministically holds the race's cause, the first browser topic.send result after its channel receipt, so Send stays pending, and shows the fixed subtest still passes once the result arrives late; the hold reproduces the original failure before the fix.
+  - done: impl-1583 · 2026-11-01T16:19:12.700Z
+  - verified: rev-35 [reviewer] · run rev-35-1583-final-1 · 2026-11-01T16:41:14.551Z · commit 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
 - [x] C3. A comment in the item lists every Web test on the macOS stage-cover path that waits a fixed 3–5 s for a channel event or a render, as input for the systemic decision.
   - done: impl-1583 · 2026-11-01T15:31:00.008Z
+  - verified: rev-35 [reviewer] · run rev-35-1583-source-1 · 2026-11-01T16:20:58.566Z · commit 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
+  - verified: rev-35 [reviewer] · run rev-35-1583-final-1 · 2026-11-01T16:41:14.551Z · commit 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
 
 ## Comments
 
@@ -508,3 +515,37 @@ Helper waits: L14 until; L18 pageUntil.
 - L239 'one injected recipient removes Withdraw while the broadcast remains queued' — L256 row.getByRole('button', { name: 'Withdraw', exact: true }).waitFor; L258 until; L259 fixture.ui.waitFor; L262 until; L265 until; L268 until; L270 until; L275 page.getByRole('form', { name: 'Composer', exact: true }).waitFor.
 
 Total: 298 statically declared test/subtest entries; dynamic case names are represented by their source template, not counted as executed generated cases. This inventory does not constitute a pass.
+
+### impl-1583 · 2026-11-01T16:19:13.252Z
+
+C1/C2 diagnosis and local evidence: A-15306 original failure is “no channel event matched within 5000ms”, with Single line receipt present and multiline absent. Holding the first successful browser topic.send result after peer delivery deterministically reproduces that same error on the original sequence (exit 1, 2026-11-01, macOS darwin arm64, Node 24.21.0, local executor, isolated Chrome Headless Shell revision 1248 / 156.0.8078.4). This proves pending completion races the next send; it is not machine-load/stage-cover reproduction. Fixed test waits within 3000 ms for the positively rendered enabled Send button after typing the next draft. The 500 ms negative native click releases the hold; readiness stays pending while held. All existing assertions and 5000 ms channel bounds retained. Full touched composer file passes 8/8, 0 fail/cancelled/skipped/todo. First attempt failed setup because web/dist was absent; npm run build succeeded before causal red/green. Browser groups drained to zero. Checks ran on f3d90cea3 plus these changes; subsequent pre-review origin/dev fast-forward to 3187865aa changes tracker/config only, not tested source. No full tiers/stage cover claimed; mode-free same-reviewed-head verify will supply integrated evidence.
+
+### rev-35 · 2026-11-01T16:20:58.566Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1583-source-1
+commit: 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards/Spec no findings. Exact first browser result held after channel delivery; next-send readiness observes positively rendered enabled Send within existing3s bound, final assertion retained. Native500ms negative click releases held result, finally drains/joins readiness. All original keyboard/newline/focus/channel-content/count/draft/pane assertions and3s/5s bounds retained. C3 inventory compared to pinned tiers:49/49 Web files,no omissions, direct/helper waits listed;298static entries explicitly not execution coverage. A-15314 causal red/green inspected, setup failure/load-reproduction distinction correct; C2 awaits exact-head queued result. C1/C3 verified. No Reviewer execution; QA none.
+
+Criteria: C1 verified, C3 verified.
+
+### rev-35 · 2026-11-01T16:41:14.551Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1583-final-1
+commit: 2de2ec0d18f3500d7766f9a2cc85e94caeba9be8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards/Spec no findings. Same-headA-15319/804471f4 exit0,4569pass,zero fail/cancel/skip/todo. All8 composer named outcomes pass, including physical Enter/newline/Meta-K held-result regression at24271. C2 causal macOS red/green A-15314 retained: original exact5000ms multiline miss, fixed8/8; setup failure excluded and no stage-load/latency claim. C1/C3 source marks carry forward;49-file static inventory is decision input,not executed coverage. T0/T1/all fallback T2/Web complete;T3/T4 unexecuted. Linux x64 droplet Node24.21.0,isolated Headless Shell1248/Chrome Testing156.0.8078.4; runner treefce2fe74,report-only advisories,no cache/skips. C1–C3 verified; QA none. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.

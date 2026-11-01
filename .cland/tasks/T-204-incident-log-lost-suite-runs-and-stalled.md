@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-01T03:15:13.949Z
+updated: 2026-11-01T16:16:46.625Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -512,3 +512,7 @@ Hub restarts #66 and #67 (stand-in, coord go after v0.3.2 released at 7f99daac8)
 ### coord · 2026-11-01T03:15:13.949Z
 
 Incident 2026-11-01 03:14Z: the nightly soak 31352d5e at dev bda184aa (A-15180, Linux droplet, occasion soak) was lost. Its T2 phase ended with `Error: suite ticket disappeared while waiting` (suite-lock.ts:202). No test failed (3,864 passed); T3, T4 and Web did not run. The T2 suite duration reads 5023.59 s against a droplet lifetime of 828 s. Filed in Bugs as a separate item. Cost $0.0575.
+
+### human · 2026-11-01T16:16:46.625Z
+
+Hub restart #68 (stand-in, coord go, T-1580 coordinator_suites must be live before config = 2): dev f3d90cea3, pre-restart integrated Linux cover c4c01c90 green. Old hub 74655 (16.5 h, nice 0, peak footprint 2.36 GB) stopped 16:14:16Z. New hub 97875 port 64450 via launchd (cland-hub-r68) at nice 0, 8 GB heap + DO token, listening 16:14:28Z, serving 16:14:32Z, stop→serve 17 s. Coord: bridge-connected 16:14:33Z → coordinator-filled → injected 16:14:50Z, one bridge. +50 s RSS 982 MB / footprint 1,115 MB. Observation (also at #67): for ~60–90 s after serving the hub does not answer on hub.sock within 3 s (startup replay ~90% CPU); cland hub status / doctor fail transiently, fine by +100 s. Doctor 33 ok / 5 warn / 0 fail at 16:16Z, queue empty.
