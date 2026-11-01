@@ -1413,3 +1413,12 @@ Verifier sessions must be relaunched after this tool lands: tools are fixed at
 launch. Inherited roles with explicit tool lists must grant `verification.decline`
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
+
+## WebAuthn byte verification (T-1559)
+
+Use the pure registration/assertion seam in
+`docs/agents/tests/hub-test-webauthn.test.ts.md`. Generate keys locally with Node
+crypto; no real authenticator or account is needed. Preserve nonthrowing bounded
+parsing and distinct ceremony/signature/counter refusals. Sign-in integration
+owns challenge consumption, user/credential binding and atomic counter updates;
+module tests alone do not prove those flows. No new role permission applies.

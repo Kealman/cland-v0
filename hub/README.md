@@ -8124,3 +8124,32 @@ Verifier sessions must be relaunched after this tool lands: tools are fixed at
 launch. Inherited roles with explicit tool lists must grant `verification.decline`
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
+
+### WebAuthn verification module
+
+`hub/src/hub/webauthn.ts` exports bounded, synchronous, nonthrowing
+`verifyRegistration(response, expected)` and
+`verifyAssertion(response, expected, credential)`. Responses carry decoded byte
+arrays, including the credential id; expected values come from the server's
+ceremony record, never the response. Registration returns a credential containing
+its id, SPKI PEM public key, COSE algorithm and sign counter. Assertion returns
+the next counter. Failures return `{ ok: false, reason }` without input bytes or
+native crypto diagnostics.
+
+Only attestation `none`, ES256/P-256 and Ed25519 are supported. RS256 and other
+attestations fail closed. Both ceremonies validate type, canonical base64url
+challenge, exact origin, RP hash, presence, optional required user verification,
+flags and complete authenticator-data consumption. Origins must be HTTPS, or
+HTTP localhost; RP ID equals the origin hostname (v0.4 decision A8). Cross-origin
+ceremonies are refused. Assertions verify the signature over authenticator data
+and SHA-256 of the original client JSON bytes; any nonzero counter must advance.
+The parser accepts definite-length CBOR only, caps input at 64 KiB, client JSON
+at 8 KiB, CBOR depth at eight and total CBOR items at 4096, and rejects duplicate
+map keys, invalid UTF-8 and trailing bytes.
+
+The integrating sign-in flow must generate unpredictable challenges, expire and
+atomically consume them, bind the expected origin/RP and credential to the user,
+enforce credential uniqueness, and atomically persist counters before admitting
+a session. None attestation provides no authenticator provenance or registration
+signature. This module adds no sign-in route or changes to single mode. See the
+[W3C registration and assertion procedures](https://www.w3.org/TR/webauthn-3/#sctn-rp-operations).
