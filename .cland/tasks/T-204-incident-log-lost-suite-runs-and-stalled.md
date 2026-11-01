@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-31T23:47:50.694Z
+updated: 2026-11-01T03:15:13.949Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -508,3 +508,7 @@ Incident 2026-10-31 23:00Z: the macOS release cover 69067e3d for R-1523 (A-15095
 ### human · 2026-10-31T23:47:50.694Z
 
 Hub restarts #66 and #67 (stand-in, coord go after v0.3.2 released at 7f99daac8): dev 7a0548c70, T-1503/T-1506/T-1493/T-1494/T-1500 live. #66 23:42:35Z: old hub 74870 (13 h, RSS 873 MB / footprint 1.15 GB) stopped, new hub 58949 serving 23:43:15Z (40 s) but at NICE 5: the stand-in's own Claude session now runs at nice 5 and every child inherits it; renice to 0 is refused without root. #67 23:45:20Z: hub 58949 stopped, new hub 74655 port 62137 launched through launchd (launchctl submit, zsh -ic, BG_NICE unset) → nice 0, ppid 1, 8 GB heap + DO token in env, listening 23:45:29Z, serving 23:45:31Z, stop→serve 12 s. Coord bridge survived both gaps: bridge-connected → coordinator-filled → injected at 23:44:34Z and 23:45:38Z. +50 s RSS 1,153 MB / footprint 1,035 MB; hub status no priority warning; doctor 34 ok / 4 warn / 0 fail; queue empty. Lesson: check the launcher's own nice before a restart; a niced launcher must go through launchd.
+
+### coord · 2026-11-01T03:15:13.949Z
+
+Incident 2026-11-01 03:14Z: the nightly soak 31352d5e at dev bda184aa (A-15180, Linux droplet, occasion soak) was lost. Its T2 phase ended with `Error: suite ticket disappeared while waiting` (suite-lock.ts:202). No test failed (3,864 passed); T3, T4 and Web did not run. The T2 suite duration reads 5023.59 s against a droplet lifetime of 828 s. Filed in Bugs as a separate item. Cost $0.0575.
