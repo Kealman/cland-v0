@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HttpError } from '../src/adapters/opencode/client.ts';
 import { deferred } from './fakes/scripted-codex.ts';
+import { FakeHarness } from './fakes/harness.ts';
 import { scriptedOpenCode } from './fakes/scripted-opencode.ts';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,6 +13,36 @@ import type { ApprovalRecord, Message, SessionUsage } from '../src/protocol.ts';
 
 const command = 'touch approved && echo done';
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+
+test('scripted OpenCode close retains lifecycle ownership until the adapter drain finishes', { timeout: 5000 }, async t => {
+  const lifecycleClose = FakeHarness.prototype.close;
+  const receipts: string[] = [];
+  t.mock.method(FakeHarness.prototype, 'close', function (this: FakeHarness) {
+    if (this.harness === 'opencode') receipts.push('lifecycle closed');
+    lifecycleClose.call(this);
+  });
+  const f = await scriptedOpenCode(t);
+  const entered = deferred<void>();
+  const drain = deferred<void>();
+  const adapterClose = f.adapter.close.bind(f.adapter);
+  t.mock.method(f.adapter, 'close', async () => {
+    entered.resolve();
+    await drain.promise;
+    await adapterClose();
+    receipts.push('adapter drained');
+  });
+  let enteredDone = false;
+  void entered.promise.then(() => { enteredDone = true; });
+  const closing = f.restartHub();
+  try {
+    await eventually('adapter close entered', () => enteredDone || undefined);
+    assert.deepEqual(receipts, [], 'lifecycle must retain ownership during adapter drainage');
+  } finally {
+    drain.resolve();
+    await closing;
+  }
+  assert.deepEqual(receipts, ['adapter drained', 'lifecycle closed']);
+});
 
 test('an unavailable OpenCode model reports the separate credential database and standalone login', { timeout: 2000 }, async t => {
   const f = await scriptedOpenCode(t);

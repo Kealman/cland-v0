@@ -163,7 +163,7 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions?: boolea
     lifecycle.usage = adapter.usage.bind(adapter);
     lifecycle.answerApproval = adapter.answerApproval?.bind(adapter);
     const close = lifecycle.close.bind(lifecycle);
-    lifecycle.close = () => { adapter.close(); close(); };
+    lifecycle.close = async () => { await adapter.close(); await close(); };
     return lifecycle;
   };
   let hub = await projectHub(t, root, {}, { clock, adapters: [factory] });
