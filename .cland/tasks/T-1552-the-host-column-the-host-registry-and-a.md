@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1300
 branch: t/T-1552-the-host-column-the-host-registry-and-a
 created: 2026-10-31T23:47:42.826Z
-updated: 2026-11-01T07:51:32.820Z
+updated: 2026-11-01T17:25:31.605Z
 ---
 
 ## Summary
@@ -27,20 +27,25 @@ Hot files: `hub/src/adapters/processes.ts`, `hub/src/adapters/contract.ts` (`Har
 ## Acceptance criteria
 
 - [x] C1. A hub opened on a `hub.db` written before the column existed adds `host` in place, every existing row reads `local`, and new rows are written with their host (test).
-  - done: impl-1552 · 2026-11-01T07:24:19.248Z
   - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.298Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
+  - done: impl-1552 · 2026-11-01T17:07:42.234Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-2 · 2026-11-01T17:25:30.148Z · commit a000ebca80374d5c2477cd6437652e46733a9fa6
 - [x] C2. `session list` and the session frames show no new field for a `local` row (test).
-  - done: impl-1552 · 2026-11-01T07:24:19.486Z
   - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
+  - done: impl-1552 · 2026-11-01T17:07:42.354Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-2 · 2026-11-01T17:25:30.148Z · commit a000ebca80374d5c2477cd6437652e46733a9fa6
 - [x] C3. A hub started with `CLAND_TEST_HOSTS=t1` has a test host `t1` that logs each operation it receives to `hub.log`, mints `linux:` identities for what it spawns and refuses spawn with a reason naming it a test host; without the variable no test host exists (test).
-  - done: impl-1552 · 2026-11-01T07:24:20.229Z
   - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
+  - done: impl-1552 · 2026-11-01T17:07:42.671Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-2 · 2026-11-01T17:25:30.148Z · commit a000ebca80374d5c2477cd6437652e46733a9fa6
 - [x] C4. The orphan sweep and doctor's orphan check neither protect nor sweep a local process because a row on another host carries its pid (test).
-  - done: impl-1552 · 2026-11-01T07:31:31.329Z
   - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
+  - done: impl-1552 · 2026-11-01T17:07:42.798Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-2 · 2026-11-01T17:25:30.148Z · commit a000ebca80374d5c2477cd6437652e46733a9fa6
 - [x] C5. The orphan-servers, orphan-sweep-lock and session-async-processes test files pass with no test edited.
-  - done: impl-1552 · 2026-11-01T07:24:22.251Z
   - verified: rev-36 [reviewer] · run rev-36-1552-final-1 · 2026-11-01T07:51:32.299Z · commit d5929211c594959bafe4cd3d89f1834d635fabcc
+  - done: impl-1552 · 2026-11-01T17:07:42.911Z
+  - verified: rev-36 [reviewer] · run rev-36-1552-final-2 · 2026-11-01T17:25:30.148Z · commit a000ebca80374d5c2477cd6437652e46733a9fa6
 
 ## Comments
 
@@ -96,5 +101,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final task evidence clear at unchanged d5929211c594959bafe4cd3d89f1834d635fabcc; Standards/spec no findings, C1–C5 verified. Independently read A-15242 pass facts: host-registry 4, host-orphans 2 (including native sealing control), fixture-environment 6, session-async-processes 3. Uncached Linux x64 droplet Node24.21.0, T0/T1/fallback T2/changed T3/mapped T4 base/Web exit0, 4562 passed; isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. Remaining T3/T4 deferred, no repetitions/all-tier occasion claimed; advisory budgets/ratchet/lint/skip check report-only. A-15244 supplies same-head Darwin arm64 Node24.21.0 native exit0 and complete named unedited orphan-servers18/orphan-sweep-lock4 passes; all C5 files confirmed unedited. Reviewer ran no tests/browser. Coordinator's separate full pre-merge suite remains its next gate, not claimed complete here.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1552 · 2026-11-01T17:06:12.894Z
+
+Coordinator-authorized dev merge completed at a000ebca80374d5c2477cd6437652e46733a9fa6 (parents d5929211c and origin/dev 912b7172da7d741faf5752b3f0e9ec8330848b9b). Resolved index/daemon as one hosts path: projectHub options → serveProject hosts → projectSessions composition of injected hosts plus CLAND_TEST_HOSTS → Sessions. README unique prose retained verbatim; tiers retains sorted entries from both sides. Dev adds Host.fileType; test host now logs/refuses it and exhaustive refusal regression includes it. Typecheck/test:lint exit0, host-registry4/4, host-orphans2/2, project-hub1/1, claude-code-host9/9 at current head, macOS arm64 Node24.21.0, sequential admission load <10. Renewing unchanged C5 native receipts before final evidence review. No separate full suite; T1–T3 merge batch is pre-merge gate.
+
+### rev-36 · 2026-11-01T17:07:06.038Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1552-source-3
+commit: a000ebca80374d5c2477cd6437652e46733a9fa6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh merged-source delta clear. Standards/spec no findings. Inspected Coordinator-authorized merge: one hosts path projectHub→serveProject→projectSessions composed registry→Sessions; object references retained, default local preserved. Required fileType on testHost logs/refuses and exhaustive operation assertion includes it. Prior migration/wire/orphan-filter/isolation fixes unchanged; incoming hostForSession uses registry/unknown-host refusal. README preserves both guidance sections; tiers retains both inventories. Preliminary request reports macOS arm64 Node24.21.0 registry4/orphans2/project-hub1/Claude-host9 and typecheck/lint exit0; C5 renewal incomplete at request, no pass assumed. C1–C5 remain pending same-head post-source verification. Reviewer ran no tests/browser.
+
+### rev-36 · 2026-11-01T17:25:30.148Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1552-final-2
+commit: a000ebca80374d5c2477cd6437652e46733a9fa6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head task evidence clear; Standards/spec no findings, C1–C5 verified. A-15330 current-head uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/selected T3/mapped T4 base/Web exit0,4601 pass. Actual named registry4/orphan2/sealing6/session-async3/project-hub1/Claude-host9 pass records checked; browser isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. Remaining T3 in batch, other T4/repetitions unexecuted; advisory checks report mode. A-15325 exact-head macOS arm64 Node24 native exit0 and complete named C5 orphan-servers18/orphan-sweep-lock4/session-async3 passes; files confirmed unedited. Reviewer ran no tests/browser. Task coverage only, not full-tier occasion; T1–T3 merge batch remains the separate pre-merge gate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1303
 branch: t/T-1550-who-stands-inside-a-worktree-through-the
 created: 2026-10-31T23:47:42.340Z
-updated: 2026-11-01T16:36:59.517Z
+updated: 2026-11-01T18:06:38.575Z
 ---
 
 ## Summary
@@ -27,18 +27,23 @@ Hot files: `hub/src/hub/worktrees.ts`
 ## Acceptance criteria
 
 - [x] C1. The list's sessions, prune's refusals and the last check before removal come from the Host's occupants (test).
-  - done: impl-1550 · 2026-11-01T16:16:06.929Z
   - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+  - done: impl-1550 · 2026-11-01T17:48:46.076Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-2 · 2026-11-01T18:06:37.951Z · commit 4a9e5102e74d9eb2789eba58235e580796f470a5
 - [x] C2. `TaskWorktrees` no longer calls `realpath` or `stat` on session cwds or worktree paths itself: identities come from the Host's statDirectory.
-  - done: impl-1550 · 2026-11-01T16:16:08.780Z
   - verified: rev-35 [reviewer] · run rev-35-1550-source-1 · 2026-11-01T16:18:41.496Z · commit 95b208038b3668b406ba5099bf6e733627609be8
   - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+  - done: impl-1550 · 2026-11-01T17:48:46.198Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-source-2 · 2026-11-01T17:49:37.874Z · commit 4a9e5102e74d9eb2789eba58235e580796f470a5
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-2 · 2026-11-01T18:06:37.951Z · commit 4a9e5102e74d9eb2789eba58235e580796f470a5
 - [x] C3. With a recording Host that reports a session inside, a prune is refused even when the session's recorded cwd string differs from the worktree path (test).
-  - done: impl-1550 · 2026-11-01T16:16:10.674Z
   - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+  - done: impl-1550 · 2026-11-01T17:48:46.320Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-2 · 2026-11-01T18:06:37.951Z · commit 4a9e5102e74d9eb2789eba58235e580796f470a5
 - [x] C4. The task-worktrees and worktree-cli test files pass with no test edited.
-  - done: impl-1550 · 2026-11-01T16:16:11.472Z
   - verified: rev-35 [reviewer] · run rev-35-1550-final-1 · 2026-11-01T16:36:58.995Z · commit 95b208038b3668b406ba5099bf6e733627609be8
+  - done: impl-1550 · 2026-11-01T17:48:46.645Z
+  - verified: rev-35 [reviewer] · run rev-35-1550-final-2 · 2026-11-01T18:06:37.951Z · commit 4a9e5102e74d9eb2789eba58235e580796f470a5
 
 ## Comments
 
@@ -81,5 +86,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final clear; Standards/Spec no findings. A-15316 same-head a7cd1047 exit0,4586pass,zero fail/cancel/skip/todo. All17 worktree-host named finishes pass including alias/locked/final occupancy and both Host identity cases; task-worktrees13 top-level pass. A-15317 compiled actual local native output: unchanged CLI4/lifecycle3/lock20/source worktrees6 pass,native0,no signal/timeout,exact head/source tree,macOS Node24.21.0,no browser. Remote Linux x64 droplet Node24.21.0,isolated Headless Shell1248/Chrome Testing156.0.8078.4. T0/T1/all fallback T2/Web/changed T3 complete; remaining T3/T4 deferred,not full integrated coverage. Snapshot/source equality outside .cland independently checked. Advisory budgets/lint/ratchet report-only,no cache/skips. C1–C4 verified; after-stage QA/merge batch separate. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1550 · 2026-11-01T17:46:48.785Z
+
+Refusal text consumer inventory for follow-up: hub/src/hub/worktrees.ts producer (final validator + locked admission); hub/src/cli/worktree.ts displays failed.error verbatim, no phrase parser; hub/src/hub/worktrees.test.ts exact-equals occupant-only error; hub/test/tracker-native-boundary.test.ts regex matches both identity-change and occupant phrases in separate native alias races; hub/test/worktree-host.test.ts matches those same phrases in recording Host controls. Search included all hub/nvim/web/shared/docs/shipped skills: no other runtime phrase consumers. hub/test/fixtures/tracker-snapshot/items.json has incidental retained historical prose, unaffected (not a runtime error matcher). Wire failed[].error remains a string and no outcome class changes. Existing clauses retained verbatim, combined only when both observed facts apply. Re-running every matching test file and CLI/lifecycle preservation.
+
+### rev-35 · 2026-11-01T17:49:37.874Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1550-source-2
+commit: 4a9e5102e74d9eb2789eba58235e580796f470a5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source clear; Standards/Spec no findings. Small validator delta evaluates session identity before occupant refusal and retains both existing clauses if both facts hold; ordinary single-fact messages unchanged. Same Host reads/awaits/current snapshot and worktree identity/confinement/removal guards. All tests byte-identical; known native alias-race expectations preserved. A-15341 failure/read-sequence diagnosis and consumer inventory inspected. C2 reverified; C1/C3/C4 await new exact-head queued run plus named native-boundary/CLI/source preservation outputs. Prior task/batch evidence stays prior-head and failed batch is not a pass. No Reviewer execution; after-stage QA separate.
+
+Criteria: C2 verified.
+
+### rev-35 · 2026-11-01T18:06:37.951Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1550-final-2
+commit: 4a9e5102e74d9eb2789eba58235e580796f470a5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards/Spec no findings. A-15349 same-head d6bbeb1f exit0,4586pass,zero fail/cancel/skip/todo. Named Host17 and task-worktrees13 top-level outcomes pass. Exact-head local macOS Node24.21.0 A-15346 native-boundary29/A-15347 CLI4 raw pass outputs and exits0; A-15350 source-worktrees6 actual named pass output,native child/wrapper0 closes exact-equality consumer. Both original alias diagnostics pass with assertions/fixtures unchanged. Historical lifecycle/lock receipts not relabeled current. Remote Linux x64 droplet Node24.21.0,isolated Headless Shell1248/Chrome Testing156.0.8078.4; T0/T1/all fallback T2/Web/changed T3 complete,remaining T3/T4/full integrated unexecuted. No cache/skips,advisories report-only. C1–C4 verified; original failed batch stays failed. No Reviewer execution; after-stage QA/merge batch separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
