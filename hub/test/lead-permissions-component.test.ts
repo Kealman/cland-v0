@@ -9,7 +9,9 @@ import { EventEmitter } from 'node:events';
 import { ProjectConfiguration } from '../src/hub/configuration.ts';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
-import { LaunchFiles } from '../src/adapters/launch-files.ts';
+import { localHost } from '../src/host/local.ts';
+import type { Host } from '../src/host/host.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -148,30 +150,29 @@ test('adapter preparation rechecks Lead authority before native work is admitted
     },
     close: () => { serverClosed = true; },
   });
-  const execMock = t.mock.method(childProcess, 'execFile', ((file: string, args: string[], options: unknown, callback: (...args: unknown[]) => void) => {
-    if (file !== 'codex-in-memory') return noTerritory(file, args, options, callback);
-    assert.deepEqual(args, ['--version']);
-    if (boundary === 'version') { gate.enter(); void gate.released.then(() => callback(null, 'codex 0.160.0', '')); }
-    else queueMicrotask(() => callback(null, 'codex 0.160.0', ''));
-    return new EventEmitter() as childProcess.ChildProcess;
-  }) as typeof childProcess.execFile);
-  const spawnMock = t.mock.method(childProcess, 'spawn', ((file: string, ...args: unknown[]) => {
-    assert.equal(file, 'codex-in-memory');
-    serverStarts++;
-    return Object.assign(new EventEmitter(), { pid: 42, unref() {} }) as childProcess.ChildProcess;
-  }) as typeof childProcess.spawn);
   t.mock.method(AppServerClient, 'connect', async () => client as unknown as AppServerClient);
-  // No OS process exists at this edge. The production rollback still closes its RPC
-  // client and removes launch files; OS child reaping is the retained T3 proof's job.
-  t.mock.method(LaunchFiles.prototype, 'child', () => {});
-  syncBuiltinESMExports();
-  t.after(() => { execMock.mock.restore(); spawnMock.mock.restore(); syncBuiltinESMExports(); });
+  // Fake the Host command/process boundary; production authorization, RPC and
+  // LaunchFiles rollback remain intact. Native child reaping is the T3 proof.
   for (boundary of ['version', 'thread-start']) {
     gate = work.gate();
     serverStarts = 0;
     serverClosed = false;
     requests.length = 0;
-    const adapter = new CodexAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: 'unused', spoke: 'unused', log() {}, signal() {}, recordPid() {}, exited() {} }, { bin: 'codex-in-memory', env: {} });
+    let end!: () => void;
+    const exited = new Promise<{ code: number | null; signal: string | null }>(resolve => { end = () => resolve({ code: 0, signal: null }); });
+    const host: Host = {
+      ...localHost(fixtureEnvironment(root, process.env)),
+      run: async command => {
+        assert.equal(command.command, 'codex-in-memory');
+        assert.deepEqual(command.args, ['--version']);
+        if (boundary === 'version') { gate.enter(); await gate.released; }
+        return { code: 0, stdout: 'codex 0.160.0', stderr: '' };
+      },
+      spawn: async (_command, options) => { options?.authorize?.(); serverStarts++; return { pid: 42, exited }; },
+      identity: async pid => ({ pid, pidStarted: 'fixture-start', pidIdentity: 'fixture-birth' }),
+      stop: async () => { end(); return true; },
+    };
+    const adapter = new CodexAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: 'unused', spoke: 'unused', log() {}, signal() {}, recordPid() {}, exited() {}, hostForLaunch: () => host, hostForProcess: () => host }, { bin: 'codex-in-memory', env: {} });
     t.after(() => adapter.close());
     fakes.codex!.spawn = adapter.spawn.bind(adapter);
     const launching = work.track(lead.call<{ ok: boolean; code: string; reason: string }>('session.launch', { name: `native-${boundary}`, role: 'reviewer', item, harness: 'codex', brief: 'Review the native launch permission boundary.' }));

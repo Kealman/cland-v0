@@ -51,7 +51,7 @@ export function remoteApprovalHarness(t: TestContext, root: string, clock: Clock
     lifecycle.unwatch = adapter.unwatch.bind(adapter);
     lifecycle.answerApproval = adapter.answerApproval!.bind(adapter);
     const close = lifecycle.close.bind(lifecycle);
-    lifecycle.close = () => { adapter.close(); close(); };
+    lifecycle.close = async () => { await adapter.close(); close(); };
     return lifecycle;
   };
   return { factory, codex, opencode, commands,

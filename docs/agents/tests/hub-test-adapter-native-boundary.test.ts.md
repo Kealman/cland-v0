@@ -15,5 +15,12 @@ close fault only on that exact handle: spawn resolves, records
 host-spawn-log-close-failed with the owned PID, and retains the normal live
 session/config/password/child until explicit stop. A config handle's close fails
 before spawn and still rejects, leaves zero native children and rolls back its
-files and staging. Keep Codex's close fault and every generic rollback assertion
-unchanged; its migration belongs to the Codex item.
+files and staging.
+
+Codex uses the same exact post-spawn log-handle diagnostic control, asserting
+its thread/socket and owned live child before explicit stop. Its pre-spawn log
+handle control revokes authorization after opening that log, then injects a close
+failure: the launch rejects, starts no app-server child and rolls back its log
+and socket directory. Host.spawn rechecks authorization after async log preparation.
+The fake version CLI now answers through a short native process on Host.run;
+identity, all other native processes and the rollback assertions stay real.

@@ -17,7 +17,7 @@ test('Codex diagnoses a missing cwd before probing its binary', async t => {
   const root = await mkdtemp(join(tmpdir(), 'session-cwd-'));
   const cwd = join(root, 'removed-worktree');
   const adapter = new CodexAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: '', cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: join(root, 'absent-codex'), clock: new FakeClock() });
-  t.after(async () => { adapter.close(); await rm(root, { recursive: true, force: true }); });
+  t.after(async () => { await adapter.close(); await rm(root, { recursive: true, force: true }); });
   const request = { name: 'impl', cwd, role: null, model: null };
   await assert.rejects(adapter.spawn(request), { message: `session cwd ${cwd} no longer exists` });
 });

@@ -119,7 +119,7 @@ export async function scriptedCodex(t: TestContext, beforePublish?: (native: Scr
     lifecycle.stateReason = adapter.stateReason.bind(adapter);
     lifecycle.answerApproval = (process, id, answer) => adapter.answerApproval(process, id, answer);
     const close = lifecycle.close.bind(lifecycle);
-    lifecycle.close = () => { adapter.close(); close(); };
+    lifecycle.close = async () => { await adapter.close(); close(); };
     return lifecycle satisfies HarnessAdapter;
   }] });
   const ui = await connectUi(t, discovery);

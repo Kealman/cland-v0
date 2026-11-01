@@ -1471,6 +1471,15 @@ module tests alone do not prove those flows. No new role permission applies.
 
 ## Local Host files and polling (T-1543)
 
+For Codex process routing, use the recording Host and scripted app-server seam in
+`docs/agents/tests/hub-test-codex-host.test.ts.md`. Preserve one version check per
+launch, the log path, final credential filtering, birth identity and Host stop.
+Capture the launch Host once and retain its name on internal and returned rows.
+Await Codex close in fixture cleanup; held probes coalesce, admitted lifecycle
+work drains, and a late accepted launch retains ownership through rollback.
+Keep the four existing Codex preservation files unedited. Sandbox roots and
+hub-local sockets/files remain separate work; no role clause or CLI change applies.
+
 For OpenCode lifecycle routing, use the recording Host and scripted transport in
 `docs/agents/tests/hub-test-opencode-host.test.ts.md`; keep the existing adapter and
 native test files unedited. The launch-policy fixture alone models native

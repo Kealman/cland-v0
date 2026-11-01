@@ -71,6 +71,11 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
     if (_bin === 'ps' && _args[0] === '-o' && identityRefused) return nativeSpawn(process.execPath, ['-e', 'process.exit(1)'], options);
     // cland-allow-child-env: native adapter spy forwards the product launch options under test; harness profiles and credentials are synthetic
     if (_bin !== 'fake-harness') return nativeSpawn(_bin, _args, options);
+    if (_args[0] === '--version') {
+      launchArgv.push([_bin, ..._args]);
+      // cland-allow-child-env: Host.run owns this short version process and receives sealed product options
+      return nativeSpawn(process.execPath, ['-e', "console.log('codex 0.160.0')"], options);
+    }
     launchArgv.push([_bin, ..._args]);
     if (fault === 'spawn') throw new Error('planted spawn failure');
     launchEnvs.push(options.env ?? {});
@@ -132,7 +137,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   };
   const adapter = new Adapter(host, { bin: 'fake-harness', env: { PATH: process.env.PATH, HOME: root, DIGITALOCEAN_TOKEN: 'test-token-not-real' }, spawnDeadlineMs: 1000, pollMs, stopGraceMs: 50 });
   t.after(async () => {
-    adapter.close();
+    await adapter.close();
     for (const p of children) { if (p.exitCode === null && p.signalCode === null) { p.kill(); await once(p, 'exit'); } }
     t.mock.restoreAll(); syncBuiltinESMExports();
   });
@@ -269,6 +274,42 @@ test('OpenCode rollback waits for its owned child exit receipt before undoing fi
   assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null));
 });
 
+test('CodexAdapter: post-spawn log close failure retains the normal live session and child', async t => {
+  const f = await fixture(t, CodexAdapter);
+  const native = fsp.open;
+  const log = join(f.root, '.cland/log/codex-impl.log');
+  let faulted = false;
+  t.mock.method(fsp, 'open', async (...args: unknown[]) => {
+    const handle = await Reflect.apply(native, fsp, args);
+    if (String(args[0]) === log) {
+      const close = handle.close.bind(handle);
+      t.mock.method(handle, 'close', async () => {
+        await close();
+        faulted = true;
+        throw new Error('planted post-spawn log close failure');
+      });
+    }
+    return handle;
+  });
+  syncBuiltinESMExports();
+  await guarded(async () => {
+    const process = await f.adapter.spawn(f.request);
+    assert.equal(faulted, true);
+    assert.equal(f.children.length, 1);
+    assert.equal(process.pid, f.children[0]!.pid);
+    assert.equal(process.status, 'running');
+    assert.equal(process.harnessSessionId, 'thread-1');
+    assert.match(process.harnessId!, /\.sock$/);
+    assert.equal(await processAlive(process), true);
+    assert.equal(f.children[0]!.exitCode, null);
+    assert.equal(f.children[0]!.signalCode, null);
+    assert.ok(f.events.some(entry => entry.event === 'host-spawn-log-close-failed' && entry.pid === process.pid));
+    assert.ok((await fsp.stat(log)).isFile());
+    await f.adapter.stop(process);
+    assert.ok(f.children.every(child => child.exitCode !== null || child.signalCode !== null));
+  });
+});
+
 test('OpenCodeAdapter: post-spawn log close failure retains the normal live session and child', async t => {
   const f = await fixture(t, OpenCodeAdapter);
   const native = fsp.open;
@@ -331,8 +372,33 @@ test('OpenCodeAdapter: config handle close rejection rolls back before native sp
   assert.equal((await fsp.readdir(join(f.root, '.cland/opencode')).catch(() => [])).some(file => file.startsWith('.stage-')), false);
 });
 
+test('CodexAdapter: pre-spawn log handle close rejection rolls back a revoked launch', async t => {
+  const f = await fixture(t, CodexAdapter);
+  const native = fsp.open;
+  const log = join(f.root, '.cland/log/codex-impl.log');
+  let opened = false;
+  let faulted = false;
+  t.mock.method(fsp, 'open', async (...args: unknown[]) => {
+    const handle = await Reflect.apply(native, fsp, args);
+    if (String(args[0]) === log) {
+      opened = true;
+      const close = handle.close.bind(handle);
+      t.mock.method(handle, 'close', async () => { await close(); faulted = true; throw new Error('planted pre-spawn log close failure'); });
+    }
+    return handle;
+  });
+  syncBuiltinESMExports();
+  await guarded(async () => {
+    await assert.rejects(f.adapter.spawn(f.request, work => work(), () => { if (opened) throw new Error('launch revoked'); }), /planted pre-spawn log close failure/);
+  });
+  assert.equal(faulted, true);
+  assert.deepEqual(f.children, [], 'close fails before app-server launch');
+  await assert.rejects(fsp.access(log), { code: 'ENOENT' });
+  assert.deepEqual(await fsp.readdir(join(f.root, '.cland/run')).catch(() => []), []);
+});
+
 for (const Adapter of adapters) {
-  const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'close', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'spawn', 'read-log', 'server-exit', 'no-answer', 'session', 'log'] : ['bg', 'log'];
+  const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'spawn', 'read-log', 'server-exit', 'no-answer', 'session', 'log'] : ['bg', 'log'];
   for (const fault of faults) test(`${Adapter.name}: failure at ${fault} leaves no session files or live child`, async t => {
     const f = await fixture(t, Adapter);
     if (['mkdir', 'rm', 'chmod', 'open'].includes(fault)) {
@@ -377,15 +443,6 @@ for (const Adapter of adapters) {
           return Promise.reject(new Error(`planted ${fault} failure`));
         }
         return Reflect.apply(native, fsp, args);
-      });
-      syncBuiltinESMExports();
-    } else if (fault === 'close') {
-      const native = fsp.open;
-      t.mock.method(fsp, 'open', async (...args: unknown[]) => {
-        const handle = await Reflect.apply(native, fsp, args);
-        const close = handle.close.bind(handle);
-        t.mock.method(handle, 'close', async () => { await close(); throw new Error('planted close failure'); });
-        return handle;
       });
       syncBuiltinESMExports();
     } else f.setFault(fault);

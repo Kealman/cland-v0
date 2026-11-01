@@ -8260,6 +8260,19 @@ signature. This module adds no sign-in route or changes to single mode. See the
 
 ### Local Host files, worktrees and polling
 
+Codex app-server launch and relaunch use the session's Host for the cwd check,
+`codex --version` (once per launch), detached spawn with the existing appended
+log, native birth identity, liveness and stop. Executor credentials are filtered
+after account environment overlays. Poll and connection-close checks revalidate
+the watched row after asynchronous Host replies. The admitted Host is captured
+once and its name stays on both returned and internally watched process rows.
+Concurrent probes share one in-flight check per captured row. Codex close returns
+a promise that joins admitted launch, resume, stop, reconnect and probe work;
+late accepted launches roll back before it settles. Incomplete cleanup retains
+the PID/undo receipt and rejects close rather than claiming shutdown complete.
+Standalone adapters without Host lookup callbacks use the local Host. Sandbox root resolution is unchanged;
+launch files, sockets and RPC transport remain hub-local pending E-1532.
+
 Sessions owns a registry containing `local`.
 Process rows persist an owning `host`; opening an older database adds the column
 in place with `local` as its default. Older adapter results and pending-stop
@@ -8313,8 +8326,8 @@ observed disappearance or PID reuse during rollback; an unknown native identity
 never grants signal authority. Legacy pending-stop and undo receipts retain their
 shape and gain matching native birth proof durably before a signal. Undo metadata
 for hub-side launch files stays in the named `hubFileMeta` helper; moving those
-files to a remote transport belongs to E-1532. Harness spawn/watch/stop migration
-continues in the adapter items of E-1531.
+files to a remote transport belongs to E-1532. The harness adapters route their
+process operations through the Host.
 
 Claude Code routes background launch, `agents --json`, `claude stop`, cwd
 `.claude` settings reads, identity acquisition and resume/poll liveness through
