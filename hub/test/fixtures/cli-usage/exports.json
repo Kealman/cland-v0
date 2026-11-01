@@ -96,5 +96,11 @@
   ],
   "REMOTE_USAGE": [
     "REMOTE_USAGE"
+  ],
+  "AUTH_USAGE": [
+    "AUTH_USAGE"
+  ],
+  "USER_USAGE": [
+    "USER_USAGE"
   ]
 }

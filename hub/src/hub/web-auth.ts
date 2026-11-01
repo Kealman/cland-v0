@@ -8,6 +8,7 @@ const LINK_MS = 5 * 60 * 1000;
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export class WebAuth {
+  #fences = 0;
   readonly cookieName: string;
   readonly #now: () => number;
   readonly #links: Map<string, number>;
@@ -27,7 +28,16 @@ export class WebAuth {
     this.#store.pruneWebSessions(now - WEB_SESSION_SECONDS * 1000);
   }
 
+  fence(): () => void {
+    this.#fences++;
+    let released = false;
+    return () => { if (!released) { released = true; this.#fences--; } };
+  }
+
+  revokeAll(): void { this.#links.clear(); this.#store.revokeAllWebSessions(); }
+
   mint(): string {
+    if (this.#fences) throw new Error('browser sign-in transition is in progress');
     this.#prune();
     const token = randomBytes(32).toString('hex');
     this.#links.set(digest(token), this.#now() + LINK_MS);
@@ -35,6 +45,7 @@ export class WebAuth {
   }
 
   redeem(token: string): string | null {
+    if (this.#fences) return null;
     this.#prune();
     if (!this.#links.delete(digest(token))) return null;
     const session = randomBytes(32).toString('hex');
@@ -48,6 +59,7 @@ export class WebAuth {
 
   /** Authenticate an upgrade and record its last use; expiry is fixed at creation. */
   session(cookie: string | undefined): string | null {
+    if (this.#fences) return null;
     const matches = (cookie ?? '').split(';').map(part => part.trim()).filter(part => part.startsWith(`${this.cookieName}=`));
     if (matches.length !== 1) return null;
     const now = this.#now();
@@ -73,6 +85,7 @@ export class WebAuth {
 
   /** Capabilities check the same fixed session lifetime without requiring its cookie. */
   active(id: string): boolean {
+    if (this.#fences) return false;
     this.#prune();
     return this.#store.webSessionActive(id, this.#now() - WEB_SESSION_SECONDS * 1000);
   }

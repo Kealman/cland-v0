@@ -17,6 +17,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 import type { HarnessId } from '../doctor/ranges.ts';
 
 export type ProjectConfig = {
+  auth: { mode: 'single' | 'users' };
   name: string;
   publish: { allowPaths: string[] };
   release: { webBundle: boolean; homebrew: { tap: string } };
@@ -39,6 +40,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
+  auth: { mode: 'single' },
   publish: { allowPaths: ['site/**', 'docs/brand/**', 'README.md', 'LICENSE', '.github/workflows/pages.yml'] },
   release: { webBundle: false, homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
@@ -65,6 +67,10 @@ export function renderConfig(c: ProjectConfig): string {
 
 [project]
 name = ${JSON.stringify(c.name)}
+
+[auth]
+# Sign-in mode; change through cland auth, never config set.
+mode = ${JSON.stringify(c.auth.mode)}
 
 [release]
 # cland product only: attach a prebuilt web archive and SHA-256 through gh.
@@ -251,6 +257,11 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     if (!value || typeof value !== 'object' || Array.isArray(value) || value instanceof Date) throw new Error(`${key} must be a table`);
     return value as Record<string, unknown>;
   };
+  const auth = table(doc.auth, 'auth');
+  if (auth.mode !== undefined) {
+    if (auth.mode !== 'single' && auth.mode !== 'users') throw new Error('auth.mode must be single or users');
+    c.auth.mode = auth.mode;
+  }
   const remote = table(doc.remote, 'remote');
   const telegram = table(remote.telegram, 'remote.telegram');
   const discord = table(remote.discord, 'remote.discord');

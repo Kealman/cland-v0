@@ -1,3 +1,5 @@
+import { userInfo } from 'node:os';
+import { prepareAuthMode } from '../init/config-set.ts';
 import { speechProvider } from '../speech/provider.ts';
 import { remoteRedactor } from '../remote/redact.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -209,7 +211,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const stopTimeoutMs = Number(env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
   let config: ReturnType<typeof readProjectConfig>;
   try {
-    config = readProjectConfig(l.config, root, error => { if (/^verification\.(lifetime|run_timeout|daily_spend_usd)/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); }, env);
+    config = readProjectConfig(l.config, root, error => { if (/^(auth\.|verification\.(lifetime|run_timeout|daily_spend_usd))/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); }, env);
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
@@ -240,8 +242,10 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     finally { lock.release(); }
     throw error;
   }
+  let releaseAuthFence: (() => void) | undefined;
   // the role definitions: written with the defaults when the project has none, then watched
-  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; remoteWorkbench?.changed(); }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
+  const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; releaseAuthFence?.(); releaseAuthFence = undefined; remoteWorkbench?.changed(); }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
+    store.users.validateMode(next.auth.mode);
     const secrets = resolveRemoteSecrets();
     if (gateway instanceof ConfiguredGateway) await gateway.update(next, secrets);
     remoteSecrets = secrets;
@@ -294,6 +298,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     }
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
     store = new Store(l.db, options.openDatabase);
+    store.users.validateMode(config?.auth.mode ?? 'single', l.config);
     log({ event: 'hub-startup-step', step: 'restoring core and suites', pid: process.pid });
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
@@ -358,6 +363,28 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
         }) }),
         pairingApproved: (messenger, pairing) => gateway?.pairingApproved(messenger, pairing),
         pairingReplaced: (messenger, previous) => gateway?.pairingReplaced(messenger, previous),
+        userList: () => {
+          if (roles.config().auth.mode !== 'users') throw new Error('use cland auth mode users before cland user commands');
+          return { users: store.users.list() };
+        },
+        authMode: (mode, resumed) => roles.changeAuth(async () => {
+          const publishMode = resumed(() => prepareAuthMode(root, l.config, mode, env));
+          // Only a successful configuration publication releases this owner. Failures stay fenced for recovery.
+          releaseAuthFence ??= web?.fence();
+          let user = store.users.list()[0];
+          if (mode === 'users' && !user) {
+            const displayName = ((await (options.git ?? gitIn(root, env))(['config', 'user.name']).catch(() => '')) ?? '').trim() || userInfo().username;
+            user = resumed(() => store.users.firstAdmin(displayName, [...roles.get().keys(), ...store.knownSessions().map(session => session.name)], clock.now().getTime()));
+          }
+          // Persist the users fence before config publication; a crash must never admit single mode.
+          if (mode === 'users') resumed(() => store.users.setMode(mode, clock.now().getTime()));
+          if (web && (mode === 'single' || roles.config().auth.mode !== 'users')) await web.revokeAll();
+          resumed(() => {
+            if (mode === 'single') store.users.reset(clock.now().getTime());
+            publishMode();
+          });
+          return { mode, ...(user ? { user } : {}) };
+        }, resumed),
         webSessions: () => {
           if (!web) throw new Error('the web edge is unavailable');
           return web.sessions();

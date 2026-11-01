@@ -47,6 +47,8 @@ test('database-free CLI commands never resolve node:sqlite in their import graph
     [['--version'], 0],
     [['unknown-command'], 2],
     [['remote', 'status'], 1],
+    [['auth', 'mode', 'users'], 1],
+    [['user', 'list'], 1],
     [['inbox'], 1],
     [['inbox', '--json'], 1],
     [['topic', 'answer', 'some-ask', '1'], 1],
@@ -115,7 +117,7 @@ test('CLI commands load only their own source closure within the import budgets'
     assert.equal(result.status, code, result.stderr);
     const helpModules = urls.filter(url => url.includes('/src/cli/usage/'));
     t.diagnostic(`cland ${args.join(' ')}: ${urls.length} hub/src modules (${helpModules.length} pure command-help modules)`);
-    assert.equal(helpModules.length, 36, 'the command-help split has a fixed import cost');
+    assert.equal(helpModules.length, 37, 'the command-help split has a fixed import cost');
     assert.ok(urls.length > 0, 'the counter observed source imports');
     assert.ok(urls.filter(url => !url.includes('/src/cli/usage/')).length <= budget, `loaded ${urls.length} modules (budget ${budget}): ${urls.join(', ')}`);
     const cliModules = urls.filter(url => url.includes('/src/cli/') && !url.includes('/src/cli/usage/') && !['usage.ts', 'help.ts'].some(name => url.endsWith(`/${name}`)));
@@ -127,6 +129,7 @@ test('subcommand import failures retain each dispatch error line and exit code',
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'cland-cli-failures-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const commands: Array<[string, string, number]> = [
+    ['auth', 'auth', 1], ['user', 'auth', 1],
     ['remote', 'remote', 1], ['account', 'account', 1], ['executor', 'executor', 1], ['verify', 'suite', 1], ['suite', 'suite', 1],
     ['open', 'open', 1], ['--headless', 'qa', 2], ['--qa', 'qa', 2], ['init', 'init', 1], ['update', 'init', 1],
     ['doctor', 'doctor', 2], ['hub', 'hub', 1], ['subscribe', 'subscriptions', 1],

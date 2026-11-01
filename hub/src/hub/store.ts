@@ -1,3 +1,4 @@
+import { Users } from './users.ts';
 import { COORDINATOR_RETIRED } from './retirement.ts';
 import { suiteHistoryProjection } from './suite-history.ts';
 import type { ApprovalOutcome } from '../protocol.ts';
@@ -427,6 +428,7 @@ export function hasRoleMappedSession(path: string, sessionId: string): boolean {
 
 export class Store implements HygieneMemory {
   readonly remotes: RemoteState;
+  readonly users: Users;
   readonly #db: DatabaseSync;
   readonly #statements = new Map<string, StatementSync>();
   #itemResolver: (id: string) => string | null = () => null;
@@ -460,6 +462,7 @@ export class Store implements HygieneMemory {
     create trigger if not exists suite_summary_delete after delete on meta when old.key glob 'suite-job:*' begin
       delete from suite_job_summaries where key = old.key;
     end;`);
+    this.users = new Users(this.#db);
     this.remotes = new RemoteState(this.#db);
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
@@ -534,6 +537,8 @@ export class Store implements HygieneMemory {
   revokeWebSession(id: string): boolean {
     return this.#prepare('delete from web_sessions where id = ?').run(id).changes > 0;
   }
+
+  revokeAllWebSessions(): void { this.#prepare('delete from web_sessions').run(); }
 
   pruneWebSessions(createdThrough: number): void {
     this.#prepare('delete from web_sessions where created_at <= ?').run(createdThrough);

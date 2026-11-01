@@ -15,11 +15,15 @@ This split replaces the old 67-process table, whose Linux receipt A-11192 at
 d0333145 failed the 5-second aggregate gate (8.232 seconds). It keeps full
 command coverage in T1 without a duration allowance. The existing T3
 `cli-imports.test.ts` guards the executable's static help closure, lazy
-implementation imports and dispatch failures; `help.ts`, the `usage.ts` facade and the 36 `usage/<command>.ts` modules are
-static metadata. The guard counts those 36 help modules separately from the
+implementation imports and dispatch failures; `help.ts`, the `usage.ts` facade and the pure `usage/<command>.ts` modules are
+static metadata. The guard counts those help modules separately from the
 existing implementation budgets.
 
 Help wording changes also update the independent literal blocks in
 `hub/test/fixtures/cli-usage/commands.json`. Both the T1 export-byte compatibility
 check and this T2 native top-level help composition consume them. T-1506 updates
 only setup/doctor readiness wording; all other command bytes stay frozen.
+
+T-1558 adds AUTH_USAGE and USER_USAGE markers before MODELS_USAGE in the
+full-help template. Adding an export requires both an exports.json mapping and a
+help.txt marker when it appears in top-level help; every older block stays frozen.

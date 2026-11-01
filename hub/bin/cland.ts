@@ -66,6 +66,13 @@ if (help !== undefined) {
     }
     catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
     break;
+  case 'auth':
+  case 'user':
+    try {
+      const { runAuth, runUser } = await import('../src/cli/auth.ts');
+      process.exitCode = await (command === 'auth' ? runAuth(rest) : runUser(rest));
+    } catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
+    break;
   case 'web':
     try {
       const { runWeb } = await import('../src/cli/web.ts');

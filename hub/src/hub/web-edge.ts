@@ -20,7 +20,7 @@ import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
 
-export type WebEdge = { status: WebEdgeStatus; link: (qr?: boolean) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; close: () => Promise<void> };
+export type WebEdge = { status: WebEdgeStatus; link: (qr?: boolean) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; revokeAll: () => Promise<void>; fence: () => () => void; close: () => Promise<void> };
 
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const MIME: Record<string, string> = {
@@ -302,6 +302,20 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
     await Promise.all(closed);
     return { revoked: id };
   };
+  const revokeAll = async (): Promise<void> => {
+    const release = auth.fence();
+    try {
+      auth.revokeAll();
+      const activeUploads = [...uploads];
+      for (const upload of activeUploads) upload.stop();
+      const closed: Promise<unknown>[] = activeUploads.map(upload => upload.settled);
+      for (const ws of sockets.keys()) {
+        closed.push(once(ws, 'close'));
+        ws.terminate();
+      }
+      await Promise.all(closed);
+    } finally { release(); }
+  };
   let closing: Promise<void> | undefined;
   const close = () => closing ??= (async () => {
     stopping = true;
@@ -336,9 +350,9 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
       await writeFile(`${file}.tmp`, `${port}\n`, { mode: 0o600 });
       await rename(`${file}.tmp`, file);
     }
-    return { status: { port, bind: (http.address() as AddressInfo).address, available: true }, link, sessions, revoke, close };
+    return { status: { port, bind: (http.address() as AddressInfo).address, available: true }, link, sessions, revoke, revokeAll, fence: () => auth.fence(), close };
   } catch (error) {
     await close();
-    return { status: { port, bind, available: false, reason: error instanceof Error ? error.message : String(error) }, link, sessions, revoke, close };
+    return { status: { port, bind, available: false, reason: error instanceof Error ? error.message : String(error) }, link, sessions, revoke, revokeAll, fence: () => auth.fence(), close };
   }
 }

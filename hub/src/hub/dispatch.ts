@@ -121,6 +121,8 @@ export type Control = {
   remoteStatus?: () => import('../protocol.ts').RemoteStatusResult;
   pairingApproved?: (messenger: RemoteVia, pairing: import('../remote/state.ts').Pairing) => void;
   pairingReplaced?: (messenger: RemoteVia, previous: import('../remote/state.ts').Pairing) => void;
+  authMode?: (mode: 'users' | 'single', resumed: import('./budget.ts').Resumed) => Promise<unknown>;
+  userList?: () => unknown;
   webLink?: (qr?: boolean) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
   webRevoke?: (id: string) => Promise<import('../protocol.ts').WebRevokeResult>;
@@ -186,7 +188,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['auth.mode', 'auth.reset', 'user.list', 'demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1427,6 +1429,7 @@ export class Dispatcher {
         const current = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
         if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
         if (current) this.#requirePermission(current, frame, peer);
+        if (frame.type === 'session.launch' && core.store.users.list().some(user => user.name === frame.name)) throw new Error(`session name is a user name: ${frame.name}`);
         if (inferred && core.store.roleOf(frame.name) !== inferredRole) throw new Error(`session "${frame.name}" changed role while launching; retry the launch`);
       };
       void answerSession(
@@ -2022,6 +2025,15 @@ export class Dispatcher {
             if (!control.webRevoke) throw new Error('the web edge is unavailable');
             later('web.revoke', control.webRevoke(frame.session).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
             break;
+          case 'auth.mode':
+          case 'auth.reset':
+            if (transport.edge !== 'socket') throw new Error('cland auth requires the local Unix socket');
+            if (!control.authMode) throw new Error('auth is unavailable');
+            later(frame.type, control.authMode(frame.type === 'auth.reset' ? 'single' : frame.mode, this.#guard.resumer(frame.type, client)).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+            break;
+          case 'user.list':
+            if (transport.edge !== 'socket' || !control.userList) throw new Error('cland user requires the local Unix socket');
+            return answer(control.userList());
           case 'web.link':
             if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');
             if (!control.webLink) throw new Error('the web edge is unavailable');

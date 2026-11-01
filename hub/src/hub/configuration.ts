@@ -171,6 +171,17 @@ export class ProjectConfiguration implements RolesSource {
     this.#work = work.catch(() => {});
     return work;
   }
+  changeAuth(action: () => Promise<unknown>, resumed: Resumed): Promise<unknown> {
+    const work = this.#work.then(async () => {
+      resumed(() => { if (this.#stopped) throw new Error('hub is stopping'); });
+      const result = await action();
+      try { await this.#reload(resumed); }
+      catch (error) { throw new Error(`auth transition saved but not applied; browser sign-in remains fenced. Fix the configuration error and run cland hub reload: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
+      return result;
+    });
+    this.#work = work.catch(() => {});
+    return work;
+  }
   setRoleLaunch(role: string, fields: LaunchFields, resumed: Resumed, authorize: () => void): Promise<RoleLaunchResult> {
     const work = this.#work.then(async () => {
       resumed(() => { authorize(); if (this.#stopped) throw new Error('hub is stopping'); });

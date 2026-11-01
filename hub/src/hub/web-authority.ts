@@ -9,6 +9,9 @@ type WebRule = true | string | ((frame: Record<string, unknown>) => string | nul
 
 /** true allows normal dispatch; each refusal names why that action stays local. */
 export const WEB_AUTHORITY = {
+  'auth.mode': 'changes sign-in mode through the local CLI',
+  'auth.reset': 'resets sign-in mode through the local CLI',
+  'user.list': 'lists users through the local CLI',
   'account.clear': true,
   'account.list': true,
   'account.poll': true,

@@ -916,6 +916,9 @@ export type ClientRequest =
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
+  | { type: 'auth.mode'; id: string; mode: 'users' }
+  | { type: 'auth.reset'; id: string }
+  | { type: 'user.list'; id: string }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
   | RuleRequest

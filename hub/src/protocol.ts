@@ -700,6 +700,9 @@ export type ClientRequest =
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
+  | { type: 'auth.mode'; id: string; mode: 'users' }
+  | { type: 'auth.reset'; id: string }
+  | { type: 'user.list'; id: string }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
   | RuleRequest
@@ -1080,6 +1083,11 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'config.set':
     case 'crew.set':
       return typeof f.key === 'string' && f.value !== undefined;
+    case 'auth.mode':
+      return f.mode === 'users';
+    case 'auth.reset':
+    case 'user.list':
+      return true;
     case 'web.revoke':
       return typeof f.session === 'string' && f.session.length > 0;
     case 'task.migrate':

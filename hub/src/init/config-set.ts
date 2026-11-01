@@ -36,6 +36,19 @@ function tableAt(doc: Table, parts: string[]): Table {
 
 /** Validate and atomically replace only a managed config; return the value the hub reads back. */
 export function setConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): unknown {
+  if (key === 'auth.mode') throw new Error('use cland auth mode users or cland auth reset to change auth.mode');
+  return writeConfigValue(root, path, key, value, env);
+}
+
+export function prepareAuthMode(root: string, path: string, mode: 'single' | 'users', env: NodeJS.ProcessEnv): () => unknown {
+  return prepareConfigValue(root, path, 'auth.mode', mode, env);
+}
+
+function writeConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): unknown {
+  return prepareConfigValue(root, path, key, value, env)();
+}
+
+function prepareConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): () => unknown {
   const known = configKeys();
   if (!known.includes(key)) {
     const section = key.split('.').slice(0, -1).join('.');
@@ -56,7 +69,9 @@ export function setConfigValue(root: string, path: string, key: string, value: u
   // Validate the rendered candidate too, before publishing any bytes.
   parseConfig(text, name, env, { strict: true });
   const readback = tableAt(parse(text) as Table, parts)[field];
-  const refused = writeAtomic(root, path, text, original);
-  if (refused !== null) throw new Error(symlinkNote(refused));
-  return readback;
+  return () => {
+    const refused = writeAtomic(root, path, text, original);
+    if (refused !== null) throw new Error(symlinkNote(refused));
+    return readback;
+  };
 }

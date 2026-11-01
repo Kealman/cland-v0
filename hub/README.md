@@ -583,6 +583,18 @@ The role clause is delivered before the brief on Claude Code, Codex and OpenCode
 
 A spoke discovering a project hub without `CLAND_SESSION_NAME`, an existing session-id role mapping or a hub launch credential stays disconnected. It serves its MCP tools with an error explaining how to bind the session and appends one `spoke-connection-skipped` record to the project's journal. `CLAND_ROLE` alone grants no connection. Named sessions with a human-assigned role and hub-launched sessions still connect; a nameless spoke of a mapped session still joins or recovers its identity, and an explicitly configured standalone hub retains generated names.
 
+#### Users and sign-in mode
+
+Managed init/update configs default to `[auth] mode = "single"`; missing settings
+also keep single mode. `cland auth mode users` creates and prints the first admin
+from Git's user.name, with OS user-name fallback. `cland user list` prints names,
+display names, roles and states. `cland auth reset` returns to single, retains
+users and revokes browser sessions and links. All three frames are local CLI-only;
+the gateway has no authority for them. Generic config writes cannot change the mode.
+See [sign-in mode](../docs/agents/auth.md) for the durable mode fence, startup
+recovery and reset revoker seam. Config's `[auth]` is independent of secrets'
+`[auth]` login key storage settings.
+
 ### Spoke stdio input limit
 
 Every local MCP input line is capped at 1 MiB (1,048,576 UTF-8 bytes, excluding
@@ -2366,13 +2378,14 @@ Command help text lives in `src/cli/usage/<command>.ts`; the `usage.ts` facade
 re-exports existing constants and composes the legacy grouped blocks.
 `src/cli/help.ts` composes top-level usage and resolves bare help. Help, version
 and noninteractive no-command invocations load the facade, help, `version.ts`
-and 36 pure command-help modules. Command implementations re-export their usage
+and 37 pure command-help modules. Command implementations re-export their usage
 constants for existing callers.
 
-`test/cli-imports.test.ts` uses a real-process resolve hook to assert the 36 help
+`test/cli-imports.test.ts` uses a real-process resolve hook to assert the 37 help
 modules separately. Excluding those modules, the existing source-module budgets
 remain: help/version/no-command at most 10, task list at most 17 and hub status
-at most 21. The current total observed counts are 39, 51 and 56 respectively.
+at most 21. The macOS Node 24 real-CLI fixture observed total counts of 40, 52 and 57
+respectively (help/version/no-command, task list and hub status).
 The guard also checks lazy implementation imports and preserves command import
 failure error lines and exit codes.
 

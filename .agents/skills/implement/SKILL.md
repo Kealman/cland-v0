@@ -1414,6 +1414,16 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+## Sign-in mode storage and commands (T-1558)
+
+For mode, first-user or reset work, use the seams in
+`docs/agents/tests/hub-test-auth-mode.test.ts.md` and
+`docs/agents/tests/hub-test-users.test.ts.md`. Register synchronous durable invite
+and pairing revocation through `store.users.onReset`; native drainage precedes
+that transaction. Keep the retained first user and single-mode compatibility.
+Recovery from a stopped hub with a hand-edited single config restores users mode
+in config, starts the hub, then uses `cland auth reset`; never edit SQLite offline.
+
 ## Local Host process contract (T-1542)
 
 For Host process operations, use the reusable factory contract described in

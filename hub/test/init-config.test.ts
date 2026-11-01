@@ -252,3 +252,24 @@ test('batch interaction defaults report and round-trips explicit run through the
   }
   for (const value of ['"other"', 'true', '1']) assert.throws(() => parseConfig(`[merge]\nbatch_interaction = ${value}`, 'fixture', {}, { strict: true }), /merge.batch_interaction/);
 });
+
+test('sign-in mode defaults survive managed update and generic settings cannot change it', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-auth-config-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  provisionConfig(new Report(root), path, root);
+  assert.deepEqual({ ...parse(readFileSync(path, 'utf8')).auth as object }, { mode: 'single' });
+  writeFileSync(path, '# managed by cland 0.3\n[project]\nname="Kept"\n[web]\nport=12345\n');
+  provisionConfig(new Report(root), path, root);
+  const updated = parse(readFileSync(path, 'utf8'));
+  assert.deepEqual({ ...updated.auth as object }, { mode: 'single' });
+  assert.deepEqual({ ...updated.project as object }, { name: 'Kept' });
+  assert.equal((updated.web as { port: number }).port, 12345);
+  assert.throws(() => parseConfig('[auth]\nmode="other"', 'scratch', {}), /auth.mode/);
+  for (const value of ['single', 'users', 'other', false]) {
+    const before = readFileSync(path, 'utf8');
+    assert.throws(() => setConfigValue(root, path, 'auth.mode', value, {}), /cland auth/);
+    assert.equal(readFileSync(path, 'utf8'), before);
+  }
+});
