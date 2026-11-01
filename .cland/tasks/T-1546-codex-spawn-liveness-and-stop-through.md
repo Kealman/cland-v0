@@ -3,7 +3,7 @@ id: T-1546
 kind: task
 title: Codex spawn, liveness and stop through the Host
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:41.385Z
-updated: 2026-10-31T23:47:44.901Z
+updated: 2026-11-01T07:09:53.631Z
 ---
 
 ## Summary

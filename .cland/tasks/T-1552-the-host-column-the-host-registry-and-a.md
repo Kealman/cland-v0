@@ -3,7 +3,7 @@ id: T-1552
 kind: task
 title: The `host` column, the host registry and a test host
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:42.826Z
-updated: 2026-10-31T23:47:46.328Z
+updated: 2026-11-01T07:09:55.342Z
 ---
 
 ## Summary

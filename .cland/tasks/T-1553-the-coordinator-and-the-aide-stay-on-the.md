@@ -3,7 +3,7 @@ id: T-1553
 kind: task
 title: The Coordinator and the Aide stay on the local host
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:42.983Z
-updated: 2026-10-31T23:47:46.632Z
+updated: 2026-11-01T07:09:55.488Z
 ---
 
 ## Summary

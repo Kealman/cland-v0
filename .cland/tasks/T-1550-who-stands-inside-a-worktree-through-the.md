@@ -3,7 +3,7 @@ id: T-1550
 kind: task
 title: Who stands inside a worktree, through the Host
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:42.340Z
-updated: 2026-10-31T23:47:45.868Z
+updated: 2026-11-01T07:09:54.838Z
 ---
 
 ## Summary

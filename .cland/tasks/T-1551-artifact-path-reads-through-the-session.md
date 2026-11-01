@@ -3,7 +3,7 @@ id: T-1551
 kind: task
 title: Artifact path reads through the session's Host
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:42.500Z
-updated: 2026-10-31T23:47:46.160Z
+updated: 2026-11-01T07:09:54.982Z
 ---
 
 ## Summary

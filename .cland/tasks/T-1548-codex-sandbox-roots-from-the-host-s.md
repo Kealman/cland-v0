@@ -3,7 +3,7 @@ id: T-1548
 kind: task
 title: Codex sandbox roots from the Host's realpath
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:41.861Z
-updated: 2026-10-31T23:47:45.395Z
+updated: 2026-11-01T07:09:54.188Z
 ---
 
 ## Summary
