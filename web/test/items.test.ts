@@ -9,6 +9,7 @@ import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { seedItem, seedTree } from './items-fixture.ts';
 import { currentRelease } from '../src/current-release.ts';
 import type { Page } from 'playwright-core';
+import { until } from '../../hub/test/until.ts';
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
 
 // The pinned tracker can queue snapshot/page/delta work on a loaded runner.
@@ -83,12 +84,19 @@ test('the Items tree reads the pinned tracker snapshot', async t => {
   });
   await t.test('CLI status deltas reorder a focused task and change its hub roll-up', async t => {
     const ui = await connectUi(t, fixture.hub.discovery);
+    let releaseClosed: (() => void) | undefined;
     await fixture.pageCase(t, async page => {
       await page.keyboard.press('2');
       await page.getByLabel('Release', { exact: true }).selectOption('R-900000');
       const tree = page.getByRole('tree', { name: 'Items tree' });
       const epic = tree.locator('[data-object-id="E-900001"]'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       assert.match(await tree.locator('[data-tree-key=":direct:R-900000"]').textContent() ?? '', /Direct tasks.*\(1\)/);
+      await until(() => !!releaseClosed, { what: 'closed epic page held at browser transport', timeoutMs: copiedRowTimeout });
+      assert.equal(await tree.locator('[data-object-id="E-900026"]').count(), 0, 'open rows precede the held closed page'); // cland-allow-tracker-id: seedTree plants this row in the scratch tracker.
+      releaseClosed!();
+      // Selecting the release renders open summaries before its closed page.
+      // Observe both closed rows before retaining the complete order assertion.
+      for (const id of ['E-900027', 'E-900026']) await tree.locator(`[data-object-id="${id}"]`).waitFor({ timeout: copiedRowTimeout }); // cland-allow-tracker-id: seedTree plants these rows in the scratch tracker.
       const epics = await tree.locator('[data-object-id^="E-"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
       assert.deepEqual(epics.slice(-2), ['E-900027', 'E-900026'], 'done epics follow live epics in close order'); // cland-allow-tracker-id: seedItem/seedTree plant these rows in the scratch tracker.
       await epic.click();
@@ -128,6 +136,16 @@ test('the Items tree reads the pinned tracker snapshot', async t => {
       await nextVerdict;
       t.diagnostic(`copied tracker task.comment result: ${requestMs} ms; rendered verdict: ${performance.now() - requestStarted} ms; model ${JSON.stringify(await rebuildTiming(page))}`);
       assert.deepEqual(await task.locator('[title*=" · web-r"]').allTextContents(), ['✓ review r3'], 'a subsequent verdict replaces the prior round');
+    }, async page => {
+      await page.routeWebSocket('**/ws', route => {
+        const server = route.connectToServer();
+        server.onMessage(message => {
+          const frame = JSON.parse(String(message));
+          if (frame.type === 'result' && frame.id === 'tree-closed:R-900000') {
+            releaseClosed = () => route.send(message);
+          } else route.send(message);
+        });
+      });
     });
   });
   await t.test('claims and verifier holds arrive in the task and ancestor rows', async t => {

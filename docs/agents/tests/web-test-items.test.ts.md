@@ -61,3 +61,11 @@ at f42e87fd9 retained five green parent runs and every semantic assertion;
 raw baseline records include the first two incomplete diagnostic teardown runs.
 Safety polling now reads changed paths only, without increasing any request or
 rendered-row bound. Historic Linux 5 s attribution remains unobserved locally.
+
+The CLI status subtest holds the selected release's closed-page result at the
+isolated browser WebSocket boundary. Open rows render while that page is held;
+a bounded transport receipt precedes release, and both closed epic rows must
+render within the existing 15 s bound before the unchanged close-order assertion.
+This catches the open-only DOM read deterministically without machine load,
+clock changes or a full stage cover. Fixed close dates serve ordering only; this
+fixture uses the real clock throughout and no date-based archive window.
