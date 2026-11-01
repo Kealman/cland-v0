@@ -1,4 +1,5 @@
 // T2: reservation rules through native SQLite and real frames; fixture-owned faults.
+import { localHost } from '../src/host/local.ts';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
@@ -57,7 +58,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
 
   const table = new ProcessTable(join(root, '.cland', 'hub.db'), clock, database.open);
   const probes = { started: async (_pid: number): Promise<string | null> => 'current-start', rows: async (): Promise<import('../src/system-processes.ts').SystemProcess[]> => [{ pid: process.pid, parent: 0, group: 0, started: 'current-start', identity: 'fixture:current-start', state: 'S', command: 'fixture' }] };
-  const sessions = new Sessions({ processIdentity: async () => 'fixture:current-start', processStarted: pid => probes.started(pid), processRows: async () => probes.rows(), root, core: hub.core, table, ...(log ? { log } : {}) });
+  const sessions = new Sessions({ hosts: [{ ...localHost(), identity: async pid => { const started = await probes.started(pid); const row = (await probes.rows()).find(row => row.pid === pid); return row ? { pid, pidStarted: started, pidIdentity: row.identity ?? null } : null; }, processes: async () => (await probes.rows()).map(row => ({ pid: row.pid, parent: row.parent, rssBytes: 0, cpuPercent: 0 })) }], root, core: hub.core, table, ...(log ? { log } : {}) });
   let sessionsClosed = false;
   const closeSessions = async () => { if (sessionsClosed) return; sessionsClosed = true; await sessions.close(); table.close(); };
   onCleanup(t, closeSessions);
@@ -1193,7 +1194,7 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
   const table = new ProcessTable(db, f.clock, f.database.open);
-  const sessions = new Sessions({ processIdentity: async () => 'fixture:current-start', processStarted: pid => f.probes.started(pid), processRows: async () => f.probes.rows(), root: f.root, core: hub.core, table });
+  const sessions = new Sessions({ hosts: [{ ...localHost(), identity: async pid => { const started = await f.probes.started(pid); const row = (await f.probes.rows()).find(row => row.pid === pid); return row ? { pid, pidStarted: started, pidIdentity: row.identity ?? null } : null; }, processes: async () => (await f.probes.rows()).map(row => ({ pid: row.pid, parent: row.parent, rssBytes: 0, cpuPercent: 0 })) }], root: f.root, core: hub.core, table });
   onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const stopped: string[] = [];
   const watched: string[] = [];

@@ -1444,6 +1444,13 @@ module tests alone do not prove those flows. No new role permission applies.
 
 ## Local Host files and polling (T-1543)
 
+For sessions routing, use the recording local Host seam documented in
+`docs/agents/tests/hub-test-session-host.test.ts.md`. AdapterHost lookup callbacks
+are optional for older standalone adapter fixtures. Inject `hosts: [local]` into
+Sessions rather than separate process probe functions; every production lookup
+currently resolves local. Keep rollback file metadata hub-local and preserve
+old pending-stop receipts. No CLI flag, setting or role permission changes.
+
 Use the reusable Host contract for directory identity/refusals, exact file bytes,
 folder safety, worktree add/remove and alias containment. Keep shared install
 diagnostics in host/worktree-install.ts. The local limitPolls flag preserves idle

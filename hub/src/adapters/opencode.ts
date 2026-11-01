@@ -173,7 +173,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       p = { ...p, accountEnv: p.accountEnv ?? { OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv) } };
       const files = this.#files(p.name);
-      const transaction = new LaunchFiles(resumed);
+      const transaction = new LaunchFiles(resumed, this.#host.hostForLaunch?.(p));
       let pid: number | undefined;
       try {
         const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));

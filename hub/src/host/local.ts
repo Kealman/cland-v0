@@ -10,7 +10,7 @@ import { endProcess } from '../system-processes.ts';
 import { run } from '../doctor/report.ts';
 import type { Host, HostProcessUsage } from './host.ts';
 
-export function localHost(env: NodeJS.ProcessEnv = process.env): Host {
+export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Record<string, unknown>) => void = () => {}): Host {
   return {
     name: 'local',
     limitPolls: true,
@@ -45,10 +45,10 @@ export function localHost(env: NodeJS.ProcessEnv = process.env): Host {
       return pidStarted && pidIdentity ? { pid, pidStarted, pidIdentity } : null;
     },
     alive: row => processAlive({ pid: row.pid, pidStarted: row.pidStarted ?? null, pidIdentity: row.pidIdentity ?? null }, undefined, env),
-    stop: async row => {
+    stop: async (row, options) => {
       const recorded = { pid: row.pid, pidStarted: row.pidStarted ?? null, pidIdentity: row.pidIdentity ?? null };
-      if (!await sameProcess(recorded, undefined, env)) return false;
-      return endProcess(recorded, undefined, undefined, undefined, { env });
+      if (!options?.allowReused && !await sameProcess(recorded, undefined, env)) return false;
+      return endProcess(recorded, log, options?.graceMs, undefined, { env, ...(options?.allowReused ? { allowReused: true } : {}) });
     },
     processes: async () => {
       const result = await run('ps', ['-e', '-o', 'pid=,ppid=,rss=,pcpu=,stat='], { ...env, LC_ALL: 'C' });

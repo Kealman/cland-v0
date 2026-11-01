@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { LaunchFiles } from '../src/adapters/launch-files.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
-import { Sessions, type SessionsOptions } from '../src/adapters/sessions.ts';
+import { localHost } from '../src/host/local.ts';
+import { Sessions } from '../src/adapters/sessions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { createHubBase } from '../src/hub/server.ts';
 import { parseRoles } from '../src/roles/config.ts';
@@ -20,13 +21,13 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void, processStarted?: SessionsOptions['processStarted']) {
+async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void, processStarted?: (pid: number) => Promise<string | null>) {
   const root = await tempProject(t);
   let roles = parseRoles('[coordinator.launch]\nharness = "test"\n');
   const clock = new FakeClock();
   const hub = createHubBase({ clock, secret: 'test', roles: { get: () => roles } });
   const table = new ProcessTable(':memory:', clock);
-  const sessions = new Sessions({ core: hub.core, table, root, env: fixtureEnvironment(root, {}), ...(log ? { log } : {}), ...(processStarted ? { processStarted } : {}) });
+  const sessions = new Sessions({ core: hub.core, table, root, env: fixtureEnvironment(root, {}), ...(log ? { log } : {}), ...(processStarted ? { hosts: [{ ...localHost(), identity: async pid => ({ pid, pidStarted: await processStarted(pid), pidIdentity: null }) }] } : {}) });
   t.after(async () => { await sessions.close(); table.close(); await hub.close(); });
   const p = { name: 'impl', harness: 'test', role: null, model: null, cwd: root, pid: null, pidStarted: null, harnessId: null, sessionId: 'stable-id', harnessSessionId: 'conversation', startedAt: '', status: 'stopped' as const };
   table.put(p);

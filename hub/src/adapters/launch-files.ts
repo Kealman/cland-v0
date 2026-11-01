@@ -1,13 +1,15 @@
-import { processIdentityAsync } from '../process-identity.ts';
+import type { Host } from '../host/host.ts';
+import { localHost } from '../host/local.ts';
 // Files a launch owns until it commits. On failure restore relaunch inputs and prior logs, and remove
 // only directories this launch created. Shared parent directories are never removed recursively.
 import type { ChildProcess } from 'node:child_process';
-import { endProcess, systemProcesses } from '../system-processes.ts';
-import { processStarted } from './processes.ts';
 import { dirname } from 'node:path';
 import type { Resumed } from '../hub/worktrees.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import { mkdir, readFile, rm, rmdir, stat, truncate, writeFile, chmod } from 'node:fs/promises';
+
+/** Metadata belongs to the hub's undo files, never to a session cwd. */
+const hubFileMeta = (path: string) => stat(path);
 
 type FileUndo = { kind: 'remove' | 'directory'; path: string }
   | { kind: 'truncate'; path: string; size: number }
@@ -35,10 +37,14 @@ export class LaunchFiles {
   get pids(): number[] { return this.#children.map(child => child.pid); }
 
   readonly resumed: Resumed;
-  constructor(resumed: Resumed = untimed) { this.resumed = resumed; }
+  readonly #host: Host;
+  constructor(resumed: Resumed = untimed, host?: Host) {
+    this.resumed = resumed;
+    this.#host = host ?? localHost(process.env, entry => this.resumed(() => this.#log(entry)));
+  }
 
-  static restore(state: LaunchFilesState, resumed: Resumed = untimed): LaunchFiles {
-    const files = new LaunchFiles(resumed);
+  static restore(state: LaunchFilesState, resumed: Resumed = untimed, host?: Host): LaunchFiles {
+    const files = new LaunchFiles(resumed, host);
     files.#undo.push(...state.undo);
     files.#children.push(...state.children.map(({ pid, pidStarted, pidIdentity, graceMs }) => ({ pid, identity: Promise.resolve(pidStarted), birth: Promise.resolve(pidIdentity ?? null), graceMs })));
     return files;
@@ -58,7 +64,7 @@ export class LaunchFiles {
           yield* wait(this.directory(path, mode));
           return;
         }
-        if (code === 'EEXIST' && (yield* wait(stat(path))).isDirectory()) return;
+        if (code === 'EEXIST' && (yield* wait(hubFileMeta(path))).isDirectory()) return;
         throw err;
       }
       // Record each parent as it is created: a later mkdir failure cannot strand earlier parents.
@@ -69,7 +75,7 @@ export class LaunchFiles {
   async file(path: string, append = false): Promise<void> {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
       let before;
-      try { before = yield* wait(stat(path)); } catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; before = null; }
+      try { before = yield* wait(hubFileMeta(path)); } catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; before = null; }
       if (!before)
         this.#undo.push({ kind: 'remove', path });
       else if (append)
@@ -88,10 +94,11 @@ export class LaunchFiles {
   child(child: ChildProcess, log: (entry: Record<string, unknown>) => void, graceMs: number): void {
     if (child.pid === undefined) return;
     const pid = child.pid;
-    const identity = processStarted(pid, undefined, this.resumed);
+    const proof = this.#host.identity(pid);
+    const identity = proof.then(row => row?.pidStarted ?? null);
     const exited = child.exitCode !== null || child.signalCode !== null ? Promise.resolve()
       : new Promise<void>(resolve => child.once('exit', () => resolve()));
-    this.#children.push({ pid, identity, birth: processIdentityAsync(pid), graceMs, child, exited });
+    this.#children.push({ pid, identity, birth: proof.then(row => row?.pidIdentity ?? null), graceMs, child, exited });
     this.#log = log;
   }
 
@@ -105,6 +112,7 @@ export class LaunchFiles {
   commit(): void { this.#undo.length = 0; this.#children.length = 0; }
 
   async rollback(checkpoint?: (state: LaunchFilesState) => void, log = this.#log): Promise<void> {
+    this.#log = log;
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
       // Never undo a live child's resources. Failed verification leaves the complete recovery state intact.
       while (this.#children.length) {
@@ -112,10 +120,9 @@ export class LaunchFiles {
         const pidStarted = yield* wait(identity);
         let pidIdentity = yield* wait(birth);
         if (!pidIdentity && pidStarted) {
-          const rows = yield* wait(systemProcesses(this.resumed, undefined, [pid]));
-          const observed = rows.find(row => row.pid === pid && row.started === pidStarted);
-          if (observed?.identity) {
-            pidIdentity = observed.identity;
+          const observed = yield* wait(this.#host.identity(pid));
+          if (observed?.pidStarted === pidStarted && observed.pidIdentity) {
+            pidIdentity = observed.pidIdentity;
             this.#children[0]!.birth = Promise.resolve(pidIdentity);
             // A restored legacy receipt gains its precise proof durably before a signal.
             if (checkpoint) {
@@ -125,7 +132,7 @@ export class LaunchFiles {
           }
         }
         if (!child || (child.exitCode === null && child.signalCode === null)) {
-          if (!(yield* wait(endProcess({ pid, pidStarted, pidIdentity }, log, graceMs, undefined, { resumed: this.resumed, allowReused: true })))) throw new Error(`could not roll back launched process ${pid}`);
+          if (!(yield* wait(this.#host.stop({ pid, pidStarted, pidIdentity }, { graceMs, allowReused: true })))) { log({ event: 'launch-rollback-pending', pid }); throw new Error(`could not roll back launched process ${pid}`); }
         }
         // OS disappearance can precede libuv's receipt under load. Native children
         // settle that receipt before their resources are undone; restored receipts use OS proof.

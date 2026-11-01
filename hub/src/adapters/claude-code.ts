@@ -493,7 +493,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   async #launch(p: Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, permissions: Permissions | null = null): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
-      const files = new LaunchFiles(resumed);
+      const files = new LaunchFiles(resumed, this.#host.hostForLaunch?.(p));
       let launched: HarnessProcess | undefined;
       let backgroundStarted = false;
       const previousGeneration = this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
@@ -913,7 +913,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const d = this.#directory(p);
       this.watch(p);
       if (d.signedOut && !options.relaunch) {
-        if (p.pid !== null && !pidAlive(p.pid)) {
+        if (p.pid !== null && !this.#pidAlive(p.pid)) {
           this.#unwatch(p.sessionId);
           return { found: false, reason: 'recorded pid is gone (Claude directory is signed out)' };
         }
@@ -937,7 +937,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       }
       // Authentication may fail while a shared query or the next slot is awaited.
       if (d.signedOut && !options.relaunch) {
-        if (p.pid !== null && !pidAlive(p.pid)) {
+        if (p.pid !== null && !this.#pidAlive(p.pid)) {
           this.#unwatch(p.sessionId);
           return { found: false, reason: 'recorded pid is gone (Claude directory is signed out)' };
         }
@@ -948,7 +948,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       // the same session: listed under its own session id (or background id), with a live process
       const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(this.#processStarted(pid, resumed)) : null;
       const birth = p.pidIdentity && pid !== null && pid !== undefined ? yield* wait(this.#processIdentity(pid)) : null;
-      if (entry && pid !== null && pid !== undefined && pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted) && (!p.pidIdentity || p.pid !== pid || birth === p.pidIdentity)) {
+      if (entry && pid !== null && pid !== undefined && this.#pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted) && (!p.pidIdentity || p.pid !== pid || birth === p.pidIdentity)) {
         const process: HarnessProcess = { ...p, pid, pidIdentity: p.pid === pid ? p.pidIdentity ?? null : birth, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
         return { found: true, process, state: stateOfAgent(entry) };
       }

@@ -448,6 +448,7 @@
     "hub/test/session-events.test.ts": "T3",
     "hub/test/session-holds-component.test.ts": "T2",
     "hub/test/session-holds.test.ts": "T3",
+    "hub/test/session-host.test.ts": "T2",
     "hub/test/session-launch-component.test.ts": "T2",
     "hub/test/session-launch-lifecycle.test.ts": "T3",
     "hub/test/session-launch.test.ts": "T2",

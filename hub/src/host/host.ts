@@ -18,7 +18,7 @@ export interface Host {
   identity(pid: number): Promise<HostProcess | null>;
   alive(process: HostProcess): Promise<boolean>;
   /** False means ownership or complete termination could not be proved. */
-  stop(process: HostProcess): Promise<boolean>;
+  stop(process: HostProcess, options?: { graceMs?: number; allowReused?: boolean }): Promise<boolean>;
   statDirectory(path: string): Promise<{ refusal: string | null; identity: { dev: number; ino: number } | null }>;
   realpath(path: string): Promise<string>;
   readFile(path: string): Promise<Uint8Array>;

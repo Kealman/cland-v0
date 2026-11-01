@@ -4,6 +4,7 @@
 // Mandatory: spawn, attachCommand, inject (confirming `injected`), a state stream, stop, resume.
 // Optional: history, usage, setModel, approval relay — each declared in the capability table and never
 // emulated when declared `none`. Every state signal is published with its reliability too.
+import type { Host } from '../host/host.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import type { ApprovalChoice, ApprovalOutcome, ApprovalRecord, ApprovalSubject, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 
@@ -157,6 +158,9 @@ export type ApprovalRequest = { id: string; kind: ApprovalRecord['kind']; subjec
 
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
+  /** Optional for standalone adapters built against the previous contract. */
+  hostForProcess?: (process: HarnessProcess) => Host;
+  hostForLaunch?: (request: SpawnRequest) => Host;
   root: string;
   /** The sessions layer takes failed handshakes into its durable pending-stop receipts. */
   durableLaunchRecovery?: boolean;

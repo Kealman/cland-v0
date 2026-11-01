@@ -8197,6 +8197,25 @@ signature. This module adds no sign-in route or changes to single mode. See the
 
 ### Local Host files, worktrees and polling
 
+Sessions owns a registry containing `local`. Its AdapterHost supplies
+`hostForProcess` and `hostForLaunch`; standalone adapters using the previous
+contract may omit these callbacks and retain local behaviour. Launch admission,
+crew-pool restart and relaunch check directories through the Host, preserving
+existing refusals. Identity publication, legacy identity upgrades, deferred-stop
+recovery and deaf-episode liveness use Host operations. Async liveness checks
+drain on close and recheck the captured launch before publishing.
+
+LaunchFiles captures child identity and rolls failed launches back through the
+Host. The local Host retains its owner's termination logger, including the
+`harness-ended` OS termination receipt before LaunchFiles waits for libuv's
+separate child-exit receipt. Its stop options preserve the recorded grace period and permit positively
+observed disappearance or PID reuse during rollback; an unknown native identity
+never grants signal authority. Legacy pending-stop and undo receipts retain their
+shape and gain matching native birth proof durably before a signal. Undo metadata
+for hub-side launch files stays in the named `hubFileMeta` helper; moving those
+files to a remote transport belongs to E-1532. Harness spawn/watch/stop migration
+continues in the adapter items of E-1531.
+
 The Host contract includes `statDirectory` (cwd refusal and device/inode),
 `realpath` (original path on failure), `readFile` (regular-file bytes),
 `listFolder` (sorted relative regular-file names, rejecting symbolic links),

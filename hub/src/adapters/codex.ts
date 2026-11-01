@@ -849,7 +849,7 @@ export class CodexAdapter implements HarnessAdapter {
       this.#recoveries.assertAvailable(request.name);
       yield* wait(this.#checkVersion(request.cwd, request.accountEnv, resumed));
       authorize();
-      const files = new LaunchFiles(resumed);
+      const files = new LaunchFiles(resumed, this.#host.hostForLaunch?.(request));
       const sessionId = request.sessionId ?? randomUUID();
       this.#tmpRun = yield* wait(tmpRunDir(resumed));
       const socket = this.#socketPath(sessionId);
@@ -1308,7 +1308,7 @@ export class CodexAdapter implements HarnessAdapter {
       yield* wait(this.stop(p, options.resumed));
       this.#live.set(p.sessionId, live);
       // a new app-server on the same socket, resuming the thread from its rollout
-      const files = new LaunchFiles(resumed);
+      const files = new LaunchFiles(resumed, this.#host.hostForProcess?.(p));
       let pid: number | undefined;
       let client: AppServerConnection | undefined;
       try {
