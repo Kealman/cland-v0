@@ -445,6 +445,16 @@ shows the display name. Human request audit records add `userId`; single mode
 omits both optional fields and keeps the existing link and cookie flow. Agent
 session identity and role permissions are unchanged.
 
+In users mode every admitted web request also passes `userAuthorityRefusal` in
+`hub/src/hub/web-authority.ts` before replay or actor resolution. It resolves the
+transport's user id from the users table for each request. The same table holds
+web restrictions and user-role grants: existing plain rows default to `admin`;
+an explicit `{ web, roles }` row lists permitted user roles. Only `admin` ships.
+A denied role returns `forbidden`, naming the stored role and request.
+The reusable check accepts `(users, userId, frame)` for CLI and gateway callers;
+those callers retain their own transport restrictions. Single mode bypasses
+user-role checks and preserves the existing `cli-neovim-only` refusals.
+
 The client frame `{type: "web.link", id: "…", qr?: boolean}` returns a normal `result` with
 `value: {url: "http://127.0.0.1:<port>/auth?token=…"}`. It requires the local Unix
 socket and human authority, so isolated test clients can mint links without

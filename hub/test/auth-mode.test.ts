@@ -212,4 +212,16 @@ test('local and cookie-authenticated human requests audit their user, including 
   assert.equal(audits.at(-1)?.userId, 'second-user');
   assert.equal((await client.request({ type: 'hub.status', as: { name: 'forged' } })).ok, false);
   assert.equal(audits.at(-1)?.userId, 'second-user');
+  const changed = new DatabaseSync(join(root, '.cland/hub.db'));
+  try {
+    changed.exec("insert into roles values ('test-reader')");
+    changed.prepare('update users set role=? where id=?').run('test-reader', 'second-user');
+    const denied = await client.request({ type: 'topic.send', topic: 'general', text: 'must not persist', role: 'admin', userId });
+    assert.equal(denied.ok, false);
+    assert.match(denied.error ?? '', /test-reader.*topic.send/);
+    const history = await local.request({ type: 'topic.history', topic: 'general' });
+    assert.equal((history.value as { messages: { text: string }[] }).messages.some(m => m.text === 'must not persist'), false);
+    changed.prepare('update users set role=? where id=?').run('admin', 'second-user');
+    assert.equal((await client.request({ type: 'web.session' })).ok, true);
+  } finally { changed.close(); }
 });

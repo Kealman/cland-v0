@@ -46,3 +46,36 @@ test('web launch directories are refused before dispatch, including malformed fi
     assert.match(refusal?.error ?? '', /directory/);
   }
 });
+
+
+test('user authority reads stored roles per call and supports an omitted test-role request', async t => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const { Users } = await import('../src/hub/users.ts');
+  const policy = await import('../src/hub/web-authority.ts');
+  const db = new DatabaseSync(':memory:');
+  t.after(() => db.close());
+  const users = new Users(db);
+  const user = users.firstAdmin('Jane', [], 1);
+  users.setMode('users', 2);
+  assert.deepEqual(users.roles(), ['admin']);
+  for (const type of Object.keys(WEB_AUTHORITY)) {
+    assert.equal(policy.userAuthorityRefusal(users, user.id, { type }), null, type);
+  }
+  const table = Object.fromEntries(Object.entries(WEB_AUTHORITY).map(([type, web]) =>
+    [type, { web, roles: type === 'topic.send' ? ['admin'] : ['admin', 'test-reader'] }]));
+  db.exec("insert into roles values ('test-reader')");
+  db.prepare('update users set role=? where id=?').run('test-reader', user.id);
+  assert.equal(policy.userAuthorityRefusal(users, user.id, { type: 'topic.list' }, table), null);
+  const refused = policy.userAuthorityRefusal(users, user.id, { type: 'topic.send', id: 'denied' }, table);
+  assert.equal(refused?.ok, false);
+  assert.equal(refused?.id, 'denied');
+  assert.match(refused?.error ?? '', /test-reader.*topic.send/);
+  assert.equal(policy.userAuthorityRefusal(users, user.id, { type: 'topic.send' })?.ok, false);
+  db.prepare('update users set role=? where id=?').run('admin', user.id);
+  assert.equal(policy.userAuthorityRefusal(users, user.id, { type: 'topic.send' }), null);
+  for (const type of ['constructor', '__proto__', 'future.frame'])
+    assert.equal(policy.userAuthorityRefusal(users, user.id, { type })?.ok, false);
+  assert.equal(policy.userAuthorityRefusal(users, 'missing', { type: 'topic.send' })?.ok, false);
+  users.setMode('single', 3);
+  assert.equal(policy.userAuthorityRefusal(users, 'missing', { type: 'topic.send' }), null);
+});

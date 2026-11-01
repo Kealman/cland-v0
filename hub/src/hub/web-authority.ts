@@ -2,10 +2,15 @@
 // Keep this boundary independent of dispatch so protocol extensions add one row.
 import type { ClientRequest, HubFrame } from '../protocol.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
+import type { Users } from './users.ts';
 import type { SessionRequest } from '../adapters/requests.ts';
 
 type HumanRequest = ClientRequest | TaskRequest | SessionRequest;
-type WebRule = true | string | ((frame: Record<string, unknown>) => string | null);
+export type WebRule = true | string | ((frame: Record<string, unknown>) => string | null);
+
+export type AuthorityRow = WebRule | { web: WebRule; roles: readonly string[] };
+export type UserAuthorityTable = Readonly<Record<string, AuthorityRow>>;
+const ADMIN_ROLES: readonly string[] = ['admin'];
 
 /** true allows normal dispatch; each refusal names why that action stays local. */
 export const WEB_AUTHORITY = {
@@ -120,19 +125,38 @@ export const WEB_AUTHORITY = {
   'web.revoke': 'revokes a local browser session',
   'worktree.list': true,
   'worktree.prune': 'deletes worktrees and branches',
-} satisfies Record<HumanRequest['type'], WebRule>;
+} satisfies Record<HumanRequest['type'], AuthorityRow>;
 
 /** Run before replay and actor resolution, including for malformed/unknown frames. */
-export function webAuthorityRefusal(frame: Record<string, unknown>): Extract<HubFrame, { ok: false }> | null {
+export function webAuthorityRefusal(frame: Record<string, unknown>, table: UserAuthorityTable = WEB_AUTHORITY): Extract<HubFrame, { ok: false }> | null {
   let reason: string | null;
   if (Object.hasOwn(frame, 'as')) reason = 'acts as another identity';
-  else if (typeof frame.type !== 'string' || !Object.hasOwn(WEB_AUTHORITY, frame.type)) reason = 'has no web authority classification';
+  else if (typeof frame.type !== 'string' || !Object.hasOwn(table, frame.type)) reason = 'has no web authority classification';
   else {
-    const rule = WEB_AUTHORITY[frame.type as keyof typeof WEB_AUTHORITY];
+    const row = table[frame.type]!;
+    const rule = typeof row === 'object' ? row.web : row;
     reason = rule === true ? null : typeof rule === 'string' ? rule : rule(frame);
   }
   return reason === null ? null : {
     type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
     code: 'cli-neovim-only', error: `${String(frame.type)} lives in the CLI and Neovim: ${reason}`,
   };
+}
+
+/** Shared human role boundary for web, CLI and gateway callers. Pass only a
+ * transport-resolved user id; never accept identity or role from frame fields.
+ * Single mode is unchanged. Read the durable user anew for every request.
+ */
+export function userAuthorityRefusal(users: Users, userId: string | null | undefined,
+  frame: Record<string, unknown>, table: UserAuthorityTable = WEB_AUTHORITY,
+): Extract<HubFrame, { ok: false }> | null {
+  if (users.mode() !== 'users') return null;
+  const user = userId ? users.get(userId) : null;
+  const row = typeof frame.type === 'string' && Object.hasOwn(table, frame.type) ? table[frame.type] : undefined;
+  const roles = typeof row === 'object' ? row.roles : row === undefined ? [] : ADMIN_ROLES;
+  if (user?.state === 'active' && roles.includes(user.role)) return null;
+  return { type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
+    code: 'forbidden', permission: String(frame.type), role: user?.role ?? null,
+    reason: 'user role does not grant this request',
+    error: `User role ${user?.role ?? '(unknown)'} cannot request ${String(frame.type)}` };
 }

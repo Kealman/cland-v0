@@ -5,7 +5,7 @@ import { suiteAuthor } from './suite-author.ts';
 import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
-import { webAuthorityRefusal } from './web-authority.ts';
+import { userAuthorityRefusal, webAuthorityRefusal } from './web-authority.ts';
 import { gatewayAuthorityRefusal, gatewayInbox } from '../remote/authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
@@ -2200,7 +2200,7 @@ export class Dispatcher {
           }
         }
         if (transport.edge === 'web') {
-          const refusal = webAuthorityRefusal(frame);
+          const refusal = userAuthorityRefusal(core.store.users, transport.user?.()?.id, frame) ?? webAuthorityRefusal(frame);
           if (refusal) {
             audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
             return peer.send(refusal);
