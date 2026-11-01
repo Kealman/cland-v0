@@ -52,6 +52,7 @@ export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted' 
 const SCHEMA = `
 create table if not exists harness_processes (
   name text primary key,
+  host text not null default 'local',
   harness text not null,
   role text,
   model text,
@@ -103,6 +104,7 @@ export type PendingStop = {
 
 const toProcess = (r: Row): HarnessProcess => ({
   name: r.name as string,
+  host: (r.host as string | null) ?? 'local',
   harness: r.harness as string,
   role: (r.role as string | null) ?? null,
   model: (r.model as string | null) ?? null,
@@ -140,6 +142,7 @@ export class ProcessTable {
     this.#db.exec(SCHEMA);
     // additive, as the store's own migrations: a table written before the column existed grows in place
     const columns = new Set((this.#db.prepare('pragma table_info(harness_processes)').all() as Row[]).map((r) => r.name as string));
+    if (!columns.has('host')) this.#db.exec("alter table harness_processes add column host text not null default 'local'");
     if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
     if (!columns.has('pid_identity')) this.#db.exec('alter table harness_processes add column pid_identity text');
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
@@ -177,12 +180,12 @@ export class ProcessTable {
   put(p: HarnessProcess): void {
     this.#db
       .prepare(
-        `insert into harness_processes (name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, pid_identity, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         on conflict (name) do update set harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
+        `insert into harness_processes (host, name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, pid_identity, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         on conflict (name) do update set host = excluded.host, harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
            pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
       )
-      .run(p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
+      .run(p.host ?? 'local', p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
     this.#changed(p.name);
   }
 

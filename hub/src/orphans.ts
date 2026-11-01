@@ -28,7 +28,8 @@ export function orphanSessions(root: string): Session[] | null {
   const db = openDatabase(path, path => new DatabaseSync(path, { readOnly: true }));
   try {
     if (!db.prepare("select name from sqlite_master where type = 'table' and name = 'harness_processes'").get()) return [];
-    return db.prepare('select name, pid, pid_started, status, cwd from harness_processes').all() as Session[];
+    const hasHost = db.prepare('pragma table_info(harness_processes)').all().some(column => column.name === 'host');
+    return db.prepare(`select name, pid, pid_started, status, cwd from harness_processes${hasHost ? " where host = 'local'" : ''}`).all() as Session[];
   } catch { return null; } finally { db.close(); }
 }
 

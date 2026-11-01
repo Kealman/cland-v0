@@ -96,7 +96,12 @@ export class Sessions {
   readonly #recoveryClock: Clock;
   readonly #transportClock: Clock;
   readonly #hosts: Map<string, Host>;
-  #hostForProcess(_process: HarnessProcess): Host { return this.#hosts.get('local')!; }
+  #hostForProcess(process: HarnessProcess): Host {
+    const name = process.host ?? 'local';
+    const host = this.#hosts.get(name);
+    if (!host) throw new Error(`unknown host ${name}`);
+    return host;
+  }
   #hostForLaunch(_request: { cwd?: string }): Host { return this.#hosts.get('local')!; }
   /** File operations use the same placement lookup as the captured session row. */
   hostForSession(sessionId: string): Host {
@@ -263,7 +268,7 @@ export class Sessions {
   }
 
   #reuseEligible(p: HarnessProcess, role: string | null, cwd: string, checkLifecycle = true): boolean {
-    return p.status === 'running' && p.role === role && p.cwd === cwd
+    return this.#hosts.has(p.host ?? 'local') && p.status === 'running' && p.role === role && p.cwd === cwd
       && !!this.#core.connectionOf(p.sessionId) && this.#core.sessionState(p.sessionId) === 'idle'
       && !this.#core.sessionHolds(p).length && !this.#core.sessionPending(p)
       && (!checkLifecycle || !this.#lifecycle.has(p.sessionId))
@@ -322,7 +327,7 @@ export class Sessions {
     this.#transportClock = options.transportClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#log = options.log ?? (() => {});
-    this.#hosts = new Map([['local', options.hosts?.find(host => host.name === 'local') ?? localHost(this.#env, this.#log)]]);
+    this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, host] as const)]);
     this.#core = options.core;
     this.#table = options.table;
     this.#root = options.root;
@@ -485,6 +490,7 @@ export class Sessions {
     });
     // Restore the durable episode before any configured process/inbox projection.
     for (const p of this.#table.running()) {
+      if (!this.#hosts.has(p.host ?? 'local')) continue;
       const saved = this.#core.store.meta(`deaf-episode:${p.sessionId}`);
       if (saved) {
         this.#deaf.set(p.sessionId, JSON.parse(saved) as { message: string; since: string; text: string; notice: string });
@@ -566,6 +572,7 @@ export class Sessions {
   register(adapter: HarnessAdapter): void {
     this.#adapters.set(adapter.harness, adapter);
     for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.files && !entry.stages.stopped && !entry.stopIntent) {
+      if (!this.#hosts.has(entry.process.host ?? 'local')) continue;
       try { adapter.watch(entry.process); }
       catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
     }
@@ -610,7 +617,8 @@ export class Sessions {
     const adapter = this.#adapters.get(p.harness);
     const usage = this.#reportedUsage(p);
     const deaf = p.status === 'running' ? this.#deaf.get(p.sessionId) : undefined;
-    const stateReason = deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
+    const unknownHost = !this.#hosts.has(p.host ?? 'local');
+    const stateReason = unknownHost ? 'unknown host' : deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     return {
@@ -638,7 +646,7 @@ export class Sessions {
       ...(deaf ? { deaf } : {}),
       state: p.status === 'running' && !stateReason ? this.#core.sessionState(p.sessionId) : 'unknown',
       ...(approvalCommand !== undefined ? { approvalCommand } : {}),
-      attach: p.status === 'running' && adapter ? adapter.attachCommand(p) : null,
+      attach: p.status === 'running' && !unknownHost && adapter ? adapter.attachCommand(p) : null,
       ...(usage ? { usage } : {}),
     };
   }
@@ -662,7 +670,7 @@ export class Sessions {
   }
 
   async readAccountLimits(name: string): Promise<AccountReading['windows'] | null> {
-    const p = this.#table.running().find(p => p.harness === 'codex' && (p.account ?? `default:${p.harness}`) === name);
+    const p = this.#table.running().find(p => this.#hosts.has(p.host ?? 'local') && p.harness === 'codex' && (p.account ?? `default:${p.harness}`) === name);
     if (!p) return null;
     const adapter = this.adapter(p.harness);
     if (!adapter.readAccountLimits) throw new Error('live harness cannot read account limits');
@@ -916,6 +924,7 @@ export class Sessions {
   }
 
   async #stopFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
+    this.#hostForProcess(entry.process);
     let p = entry.process;
     if (this.#stoppingLaunches.has(p.sessionId) || this.#closed) return;
     this.#stoppingLaunches.add(p.sessionId);
@@ -1280,6 +1289,7 @@ export class Sessions {
 
   attachCommand(name: string): string {
     const p = this.#process(name);
+    this.#hostForProcess(p);
     if (p.status !== 'running') throw new Error(`session "${name}" is not running (${p.status})`);
     return this.adapter(p.harness).attachCommand(p);
   }
@@ -1314,6 +1324,7 @@ export class Sessions {
   async #stop(name: string, resumed: Resumed, authorize: () => void, poolHandoff?: () => void): Promise<HarnessProcessView> {
     authorize();
     const identity = this.#process(name).sessionId;
+    this.#hostForProcess(this.#process(name));
     if (!poolHandoff && this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
     let released = false;
@@ -1382,6 +1393,7 @@ export class Sessions {
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false): Promise<SessionResumeAnswer> {
     authorize();
+    this.#hostForProcess(this.#process(name));
     if (fresh) return this.#freshResume(name, resumed, authorize);
     const original = this.#process(name);
     const identity = original.sessionId;
@@ -1624,6 +1636,7 @@ export class Sessions {
       catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
     }
     for (const p of this.#table.running()) {
+      if (!this.#hosts.has(p.host ?? 'local')) continue;
       if (this.#pendingStops.has(p.sessionId)) continue;
       try {
         await this.resume(p.name);
@@ -1993,6 +2006,7 @@ export class Sessions {
   }
 
   #confirm(p: HarnessProcess, messageId: string): void {
+    if (!this.#hosts.has(p.host ?? 'local')) return;
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
     this.adapter(p.harness).confirm(p, this.#core.store.deliveryRoot(messageId, name));
     this.#core.markInjected(messageId, name, p.sessionId);
@@ -2065,7 +2079,7 @@ export class Sessions {
     if (this.#closed) return;
     const p = this.#table.bySessionId(sessionId);
     // a session no adapter launched has nobody to inject: its messages stay `delivered`
-    if (!p || p.status !== 'running') return;
+    if (!p || p.status !== 'running' || !this.#hosts.has(p.host ?? 'local')) return;
     const key = `${sessionId}:${messageId}`;
     const inflight = this.#inflight.get(key);
     if (inflight) {
@@ -2171,7 +2185,7 @@ export class Sessions {
     if (pending && pending.due <= due) return;
     if (pending) this.#core.clock.clearTimeout(pending.timer);
     const p = this.#table.bySessionId(sessionId);
-    if (!p || p.status !== 'running' || p.archivedAt) return;
+    if (!p || p.status !== 'running' || p.archivedAt || !this.#hosts.has(p.host ?? 'local')) return;
     const timer = this.#core.clock.setTimeout(() => {
       const check = (async () => {
         this.#deafTimers.delete(sessionId);

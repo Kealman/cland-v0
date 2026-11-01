@@ -1040,10 +1040,12 @@ machine clears worker-default Git identities so its absent/configured Git identi
 contracts use only its disposable HOME configuration.
 
 Account product contracts may supply `projectHub`'s typed `scratchAccountPaths`
-dependency for HOME fallback and a conflicting OpenCode database. Both paths
-must be absolute and contained in that fixture's disposable project. Ordinary
-HOME/OPENCODE_DB extras stay sealed; these explicit inputs preserve default,
-exclusion and restart assertions without exposing a machine account.
+dependency for HOME fallback, a conflicting OpenCode database or an explicit
+OpenCode config file and inline config. Path fields must be absolute and contained
+in that fixture's disposable project. Ordinary HOME/OPENCODE_DB/OPENCODE_CONFIG
+extras stay sealed; `scratchAccountEnvironment` restores these deliberate inputs
+after `fixtureEnvironment`, preserving default, exclusion and restart assertions
+without exposing a machine account.
 Native Git contracts may supply `projectHub`'s typed `scratchGitConfig` with an
 `excludesFile` inside the disposable project. `scratchGitEnvironment` admits only
 that named `core.excludesFile` setting through `GIT_CONFIG_COUNT/KEY_0/VALUE_0`;

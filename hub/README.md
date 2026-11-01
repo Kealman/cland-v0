@@ -8209,6 +8209,23 @@ signature. This module adds no sign-in route or changes to single mode. See the
 
 ### Local Host files, worktrees and polling
 
+Sessions owns a registry containing `local`.
+Process rows persist an owning `host`; opening an older database adds the column
+in place with `local` as its default. Older adapter results and pending-stop
+receipts without a host retain local semantics. Local session wire views omit
+this storage field. Doctor and the orphan sweeper read only local rows, including
+when a remote PID collides with a native PID; pre-column snapshots remain readable.
+
+For tests, `CLAND_TEST_HOSTS=t1,t2` registers named test Hosts in project hubs;
+in-process callers may pass `hosts` to Sessions, projectSessions or serveProject.
+Without that environment or option only local exists. Each test Host operation
+writes `test-host-operation` with `host` and `operation` to the hub logger.
+Its identity operation returns synthetic `linux:` birth identities, liveness is
+false, stop grants no authority, and spawn refuses with a test-host reason.
+File and command operations also refuse without native work. An unregistered
+host stays `unknown`, has no attach command, and refuses resume/stop before any
+adapter operation. No CLI placement flag or role permission is added.
+
 Sessions owns a registry containing `local`. Programmatic `projectSessions`,
 `serveProject` and `projectHub` callers can inject `hosts` to exercise default
 adapter construction against recording Hosts; omitted injection keeps the

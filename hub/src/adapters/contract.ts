@@ -33,6 +33,8 @@ export type NativeJobInspection =
 
 /** A harness process the hub launched: a row of the process table (`./processes.ts`). */
 export type HarnessProcess = {
+  /** Owning Host; absent in legacy adapter results and recovery receipts means local. */
+  host?: string;
   /** The cland session name. */
   name: string;
   /** The adapter's name (`claude-code`). */

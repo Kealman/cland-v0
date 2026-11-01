@@ -1453,6 +1453,24 @@ module tests alone do not prove those flows. No new role permission applies.
 
 ## Local Host files and polling (T-1543)
 
+Process rows persist an owning `host`; opening an older database adds the column
+in place with `local` as its default. Older adapter results and pending-stop
+receipts without a host retain local semantics. Local session wire views omit
+this storage field. Doctor and the orphan sweeper read only local rows, including
+when a remote PID collides with a native PID; pre-column snapshots remain readable.
+
+For tests, `CLAND_TEST_HOSTS=t1,t2` registers named test Hosts in project hubs;
+in-process callers may pass `hosts` to Sessions, projectSessions or serveProject.
+Without that environment or option only local exists. Each test Host operation
+writes `test-host-operation` with `host` and `operation` to the hub logger.
+Its identity operation returns synthetic `linux:` birth identities, liveness is
+false, stop grants no authority, and spawn refuses with a test-host reason.
+File and command operations also refuse without native work. An unregistered
+host stays `unknown`, has no attach command, and refuses resume/stop before any
+adapter operation. No CLI placement flag or role permission is added.
+Native orphan fixtures seal after the last environment overlay; preserve explicit
+scratch HOME, database and config inputs through `scratchAccountEnvironment`.
+
 For sessions routing, use the recording local Host seam documented in
 `docs/agents/tests/hub-test-session-host.test.ts.md`. AdapterHost lookup callbacks
 are optional for older standalone adapter fixtures. Inject `hosts: [local]` into

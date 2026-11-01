@@ -44,14 +44,17 @@ test('shared fixture environments seal poisoned parent and overlay credentials a
 
 test('deliberate account paths stay under the disposable project without opening credential overlays', () => {
   const base = fixtureEnvironment('/scratch', { HOME: '/poison' });
-  const env = scratchAccountEnvironment('/scratch/project', base, { home: '/scratch/project', openCodeDatabase: '/scratch/project/inherited.db' });
+  const env = scratchAccountEnvironment('/scratch/project', base, { home: '/scratch/project', openCodeDatabase: '/scratch/project/inherited.db', openCodeConfig: '/scratch/project/config.json', openCodeConfigContent: '{}' });
   assert.ok(env.HOME === '/scratch/project', 'HOME');
   assert.ok(env.OPENCODE_DB === '/scratch/project/inherited.db', 'OPENCODE_DB');
+  assert.equal(env.OPENCODE_CONFIG, '/scratch/project/config.json');
+  assert.equal(env.OPENCODE_CONFIG_CONTENT, '{}');
   assert.ok(env.GIT_CONFIG_GLOBAL === base.GIT_CONFIG_GLOBAL, 'Git config remains isolated');
   assert.ok(base.HOME === '/scratch/home' && !('OPENCODE_DB' in base), 'sealed parent unchanged');
   for (const path of ['/host', '../host', '/scratch/project/../../host', '/scratch/project-sibling']) {
     assert.throws(() => scratchAccountEnvironment('/scratch/project', base, { home: path }), /disposable project: HOME/);
     assert.throws(() => scratchAccountEnvironment('/scratch/project', base, { openCodeDatabase: path }), /disposable project: OPENCODE_DB/);
+    assert.throws(() => scratchAccountEnvironment('/scratch/project', base, { openCodeConfig: path }), /disposable project: OPENCODE_CONFIG/);
   }
 });
 

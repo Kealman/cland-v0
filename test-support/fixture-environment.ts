@@ -53,16 +53,17 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
 }
 
 /** Deliberate product path inputs, distinct from inherited environment extras. */
-export type ScratchAccountPaths = { home?: string; openCodeDatabase?: string };
+export type ScratchAccountPaths = { home?: string; openCodeDatabase?: string; openCodeConfig?: string; openCodeConfigContent?: string };
 
 export function scratchAccountEnvironment(root: string, env: NodeJS.ProcessEnv, paths: ScratchAccountPaths): NodeJS.ProcessEnv {
   const extra: NodeJS.ProcessEnv = {};
-  for (const [key, path] of [['HOME', paths.home], ['OPENCODE_DB', paths.openCodeDatabase]] as const) {
+  for (const [key, path] of [['HOME', paths.home], ['OPENCODE_DB', paths.openCodeDatabase], ['OPENCODE_CONFIG', paths.openCodeConfig]] as const) {
     if (path === undefined) continue;
     const within = relative(resolve(root), resolve(path));
     if (!isAbsolute(path) || within === '..' || within.startsWith('../') || isAbsolute(within)) throw new Error(`scratch account path must belong to the disposable project: ${key}`);
     extra[key] = path;
   }
+  if (paths.openCodeConfigContent !== undefined) extra.OPENCODE_CONFIG_CONTENT = paths.openCodeConfigContent;
   return withoutExecutorCredentials({ ...env, ...extra });
 }
 
