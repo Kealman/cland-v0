@@ -3,7 +3,7 @@ id: T-1547
 kind: task
 title: Claude Code sessions through the Host
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1296
 branch: t/T-1547-claude-code-sessions-through-the-host
 created: 2026-10-31T23:47:41.550Z
-updated: 2026-11-01T09:41:40.795Z
+updated: 2026-11-01T14:49:02.987Z
 ---
 
 ## Summary

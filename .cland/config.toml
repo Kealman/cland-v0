@@ -66,6 +66,8 @@ stall_timeout = "600s"
 lifetime = "90m"
 
 run_timeout = "75m"
+# Human decision 2026-11-01 09:01Z (ask 31d43750, option 3): the Coordinator may run two droplet suites at once (T-1580, live since restart #68).
+coordinator_suites = 2
 daily_spend_usd = 14
 # Nightly UTC time (HH:MM); empty disables the droplet soak.
 soak = "03:00"
