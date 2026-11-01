@@ -8216,7 +8216,14 @@ for hub-side launch files stays in the named `hubFileMeta` helper; moving those
 files to a remote transport belongs to E-1532. Harness spawn/watch/stop migration
 continues in the adapter items of E-1531.
 
-The Host contract includes `statDirectory` (cwd refusal and device/inode),
+Artifact creation resolves a relative source against the captured caller cwd.
+Session path types, folder listings and bytes go through Sessions' Host lookup;
+human calls and hub-generated suite artifacts use `local`. Stored output stays
+hub-local. Upload bytes arrive in the frame; only checks of existing attached
+artifact files use the local Host. Artifact creator fields are unchanged.
+
+The Host contract includes `fileType` (lstat without following symlinks;
+`missing` for ENOENT/ENOTDIR, other errors reject), `statDirectory` (cwd refusal and device/inode),
 `realpath` (original path on failure), `readFile` (regular-file bytes),
 `listFolder` (sorted relative regular-file names, rejecting symbolic links),
 `worktreeAdd`, `worktreeRemove`, `occupants` and the `limitPolls` flag.

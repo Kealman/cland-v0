@@ -1451,6 +1451,12 @@ Sessions rather than separate process probe functions; every production lookup
 currently resolves local. Keep rollback file metadata hub-local and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
 
+For artifact source routing, use the recording Host/frame cases in
+`docs/agents/tests/hub-test-artifact-host.test.ts.md`. Keep file type, folder
+listing and bytes on the caller Host; human and hub-owned sources stay local.
+Upload bytes remain frame-owned; stored attachment types use local. Preserve
+legacy createArtifact callers and leave creator attribution to its own item.
+
 Use the reusable Host contract for directory identity/refusals, exact file bytes,
 folder safety, worktree add/remove and alias containment. Keep shared install
 diagnostics in host/worktree-install.ts. The local limitPolls flag preserves idle

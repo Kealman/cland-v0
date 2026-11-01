@@ -1,5 +1,6 @@
 import { mkdir, open, rm } from 'node:fs/promises';
-import { stat } from 'node:fs/promises';
+import type { Host } from '../host/host.ts';
+import { localHost } from '../host/local.ts';
 import { artifactEntry } from './artifact-folder.ts';
 import { extname, join } from 'node:path';
 import type { Artifact, ArtifactUpload } from '../protocol.ts';
@@ -11,7 +12,7 @@ import { ArtifactError, artifactCreation } from './artifacts.ts';
 const mimeExtensions: Record<string, string> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'application/pdf': '.pdf', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'text/plain': '.txt' };
 
 /** Prepare files under the shared creation queue, then register all rows and the message atomically. */
-export function uploadArtifacts<T>(store: Store, root: string, request: ArtifactUpload, bytes: readonly Buffer[] | undefined, maxMb: number, publish: (artifacts: Artifact[]) => T, authorize: () => void, replay: () => T | undefined, resumed: <R>(work: () => R) => R, now: () => Date, redactor?: Pick<RemoteRedactor, 'containsSecret' | 'text'>, openFile: typeof open = open, ownedBytes = false): Promise<T> {
+export function uploadArtifacts<T>(store: Store, root: string, request: ArtifactUpload, bytes: readonly Buffer[] | undefined, maxMb: number, publish: (artifacts: Artifact[]) => T, authorize: () => void, replay: () => T | undefined, resumed: <R>(work: () => R) => R, now: () => Date, redactor?: Pick<RemoteRedactor, 'containsSecret' | 'text'>, openFile: typeof open = open, ownedBytes = false, host: Pick<Host, 'fileType'> = localHost()): Promise<T> {
   return artifactCreation(store, () => resumed(async () => {
     authorize();
     const previous = replay();
@@ -28,8 +29,8 @@ export function uploadArtifacts<T>(store: Store, root: string, request: Artifact
       return artifact;
     });
     const existing = attached();
-    const entries = await Promise.all(existing.map(artifact => resumed(() => stat(artifactEntry(artifact)))));
-    if (entries.some(entry => !entry.isFile())) throw new ArtifactError('artifact-unavailable', 'artifact file unavailable');
+    const entries = await Promise.all(existing.map(artifact => resumed(() => host.fileType(artifactEntry(artifact)))));
+    if (entries.some(entry => entry !== 'file')) throw new ArtifactError('artifact-unavailable', 'artifact file unavailable');
     const files = request.files.map((file, i) => {
       if (!file || typeof file.name !== 'string' || typeof file.mime !== 'string') return invalid('each file needs a name and MIME type');
       const name = file.name.replace(/\\/g, '/').split('/').pop()!.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200) || 'file';

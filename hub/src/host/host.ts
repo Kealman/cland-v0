@@ -21,6 +21,8 @@ export interface Host {
   stop(process: HostProcess, options?: { graceMs?: number; allowReused?: boolean }): Promise<boolean>;
   statDirectory(path: string): Promise<{ refusal: string | null; identity: { dev: number; ino: number } | null }>;
   realpath(path: string): Promise<string>;
+  /** Source type without following symbolic links; ENOENT/ENOTDIR are missing. */
+  fileType(path: string): Promise<'file' | 'directory' | 'symlink' | 'other' | 'missing'>;
   readFile(path: string): Promise<Uint8Array>;
   listFolder(path: string): Promise<string[]>;
   worktreeAdd(options: { root: string; path: string; branch: string }): Promise<{ warning?: string }>;

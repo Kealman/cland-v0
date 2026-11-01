@@ -98,6 +98,11 @@ export class Sessions {
   readonly #hosts: Map<string, Host>;
   #hostForProcess(_process: HarnessProcess): Host { return this.#hosts.get('local')!; }
   #hostForLaunch(_request: { cwd?: string }): Host { return this.#hosts.get('local')!; }
+  /** File operations use the same placement lookup as the captured session row. */
+  hostForSession(sessionId: string): Host {
+    const row = this.#table.bySessionId(sessionId);
+    return row ? this.#hostForProcess(row) : this.#hosts.get('local')!;
+  }
   readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
   #servingAt: number | null = null;

@@ -1,3 +1,4 @@
+import { localHost } from '../host/local.ts';
 import { MergeLandingReports } from './merge-landing-reports.ts';
 import { uploadArtifacts } from './artifact-upload.ts';
 import { suiteAuthor } from './suite-author.ts';
@@ -1030,7 +1031,7 @@ export class Dispatcher {
     const artifact = await createArtifact(core.store, root, { type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log },
       { name: 'hub', cwd: root ?? '.', kind: 'agent', role: () => null },
       artifact => { core.noticeTo(job.topic, { id: `batch-artifact:${job.id}:${job.topic}`, kind: 'report', text: `▣ ${artifact.id} file · ${title}`, detail: { artifact: artifact.id } }); },
-      work => work(), () => {}, this.#options.readArtifact ?? readFile, core.clock);
+      work => work(), () => {}, this.#options.readArtifact ?? readFile, core.clock, localHost());
     core.artifactChanged(artifact);
     return { id: artifact.id, path: artifact.path };
   }
@@ -1058,6 +1059,7 @@ export class Dispatcher {
     const root = this.#options.control?.status().root;
     const name = caller?.name ?? (suite ? suiteAuthor(suite) : 'human');
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
+    const host = caller && !suite ? this.#sessions?.hostForSession(caller.sessionId) ?? localHost() : localHost();
     const artifact = await createArtifact(core.store, root, frame, { name, cwd: cwd ?? '.', kind: caller || name === 'hub' ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
       if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
@@ -1065,7 +1067,7 @@ export class Dispatcher {
       if (current) core.sendFromSession(current.name, [], text, undefined, topic.id, a, current);
       else if (suite && (name === 'hub' || topic.id === AGENTS.id)) core.noticeTo(topic.id, { kind: 'report', to: ['coordinator'], text, detail: { artifact: a.id } });
       else core.sendFromHuman(topic.id, text, undefined, undefined, undefined, a);
-    }, resumed, authorize, this.#options.readArtifact ?? readFile, core.clock);
+    }, resumed, authorize, this.#options.readArtifact ?? readFile, core.clock, this.#options.readArtifact ? { ...host, readFile: this.#options.readArtifact } : host);
     return resumed(() => {
       core.artifactChanged(artifact);
       return { artifact, id: artifact.id, path: artifact.path };

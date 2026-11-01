@@ -36,6 +36,19 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
       await assert.rejects(() => host.listFolder(dir), /symbolic links/);
     } finally { await rm(root, { recursive: true, force: true }); }
   });
+  register('Host fileType does not follow symlinks and reports absent paths', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-types-'));
+    try {
+      const host = factory(fixtureEnvironment(root, process.env));
+      await writeFile(join(root, 'file'), 'bytes');
+      await symlink(join(root, 'file'), join(root, 'link'));
+      assert.equal(await host.fileType(root), 'directory');
+      assert.equal(await host.fileType(join(root, 'file')), 'file');
+      assert.equal(await host.fileType(join(root, 'link')), 'symlink');
+      assert.equal(await host.fileType(join(root, 'missing')), 'missing');
+      assert.equal(await host.fileType(join(root, 'file', 'child')), 'missing');
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
   register('Host worktrees add the given branch, share installs, warn and refuse dirty removal', async () => {
     const root = await mkdtemp(join(tmpdir(), 'host-worktree-'));
     const env = fixtureEnvironment(root, process.env);

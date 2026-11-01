@@ -1,10 +1,12 @@
 import { realClock, type Clock } from './clock.ts';
 // Persistent artifact files and their hub index. Publication runs in the index transaction;
 // a refused publication leaves neither an index entry nor a file.
-import { lstat, mkdir, open, rm } from 'node:fs/promises';
+import { mkdir, open, rm } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import type { Artifact, ArtifactCreate, ArtifactKind } from '../protocol.ts';
-import { folderFiles, folderName } from './artifact-folder.ts';
+import { folderName } from './artifact-folder.ts';
+import type { Host } from '../host/host.ts';
+import { localHost } from '../host/local.ts';
 import type { Store } from './store.ts';
 
 export type ArtifactErrorCode = 'secret-in-upload' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy';
@@ -27,7 +29,8 @@ export function artifactCreation<T>(store: Store, work: () => Promise<T>): Promi
   return operation;
 }
 
-async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock): Promise<Artifact> {
+async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock, sourceHost?: Host): Promise<Artifact> {
+  const host = sourceHost ?? { ...localHost(), readFile: readSource };
   if (!root) throw new ArtifactError('artifact-unavailable', 'this hub serves no project for artifacts');
   if (!(typeof request.kind === 'string' && Object.hasOwn(extensions, request.kind))) throw new ArtifactError('artifact-kind', 'kind must be prompt, note, page, diagram or file');
   if (typeof request.title !== 'string' || !request.title.trim()) throw new ArtifactError('artifact-title', 'an artifact needs a title');
@@ -48,10 +51,10 @@ async function prepareArtifact(store: Store, root: string | undefined, request: 
     if (typeof request.path !== 'string' || !request.path) throw new ArtifactError('artifact-source', 'path must name a file or directory');
     const source = isAbsolute(request.path) ? request.path : resolve(actor.cwd, request.path);
     const unreadable = () => resumed(() => { throw new ArtifactError('artifact-source', `cannot read artifact source "${request.path}"`); });
-    const info = await lstat(source).catch(unreadable);
-    if (resumed(() => { authorize(); return info.isDirectory(); })) {
+    const info = await host.fileType(source).catch(unreadable);
+    if (resumed(() => { authorize(); if (info === 'missing') unreadable(); return info === 'directory'; })) {
       folder = true;
-      const names = await resumed(() => { authorize(); return folderFiles(source, resumed); });
+      const names = await resumed(() => { authorize(); return host.listFolder(source); });
       resumed(() => {
         const selected = request.entry ?? names.find(n => n.endsWith('.md'));
         if (selected === undefined) throw new ArtifactError('artifact-source', 'a folder needs a Markdown entry or an explicit entry file');
@@ -62,10 +65,10 @@ async function prepareArtifact(store: Store, root: string | undefined, request: 
     } else {
       const reading = resumed(() => {
         authorize();
-        if (!info.isFile()) throw new ArtifactError('artifact-source', `artifact source "${request.path}" is not a regular file`);
+        if (info !== 'file') throw new ArtifactError('artifact-source', `artifact source "${request.path}" is not a regular file`);
         const ext = extname(source);
         if (/^\.[a-zA-Z0-9]{1,16}$/.test(ext)) extension = ext.toLowerCase();
-        return readSource(source).catch(unreadable);
+        return host.readFile(source).then(bytes => Buffer.from(bytes)).catch(unreadable);
       });
       const bytes = await reading;
       resumed(() => { content = bytes; });
@@ -95,7 +98,7 @@ async function prepareArtifact(store: Store, root: string | undefined, request: 
       if (folder) {
         const files = sources.length ? sources : [{ name: entry!, path: '' }];
         for (const source of files) {
-          const bytes = source.path ? await resumed(() => { authorize(); return readSource(source.path); }) : content;
+          const bytes = source.path ? await resumed(() => { authorize(); return host.readFile(source.path); }) : content;
           const target = resumed(() => join(prepared.path, source.name));
           await resumed(() => { authorize(); return mkdir(dirname(target), { recursive: true }); });
           const handle = await resumed(() => { authorize(); return open(target, 'wx'); });

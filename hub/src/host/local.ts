@@ -1,7 +1,7 @@
 import { statDirectory } from '../adapters/session-cwd.ts';
 import { occupants } from './occupants.ts';
 import { worktreeInstall } from './worktree-install.ts';
-import { stat, realpath, readFile } from 'node:fs/promises';
+import { stat, lstat, realpath, readFile } from 'node:fs/promises';
 import { folderFiles } from '../hub/artifact-folder.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
@@ -27,6 +27,13 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
     occupants,
     statDirectory,
     realpath: path => realpath(path).catch(() => path),
+    fileType: async path => {
+      const info = await lstat(path).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+        throw error;
+      });
+      return !info ? 'missing' : info.isSymbolicLink() ? 'symlink' : info.isFile() ? 'file' : info.isDirectory() ? 'directory' : 'other';
+    },
     readFile: async path => {
       if (!(await stat(path)).isFile()) throw new Error('Host readFile requires a regular file');
       return readFile(path);

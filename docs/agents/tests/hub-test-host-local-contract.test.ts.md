@@ -25,10 +25,11 @@ The executable wrapper supplies `(name, run) => test(name, run)` as the registra
 This keeps Node test locations and load-gate exact-name replay on the `.test.ts`
 entry point. Passing `test` directly attributes tests to the helper and makes
 replay execute an inert module. Check attribution with the production
-`load-gate-reporter.ts`: all six passing receipts must name the wrapper.
+`load-gate-reporter.ts`: all seven passing receipts must name the wrapper.
 
 File/worktree cases additionally check directory identity and exact cwd refusals,
 symlink realpath and missing fallback, binary bytes and missing/directory refusal,
+`fileType` without symlink following (including missing and ENOTDIR paths),
 sorted recursive files and symlink rejection, a scratch Git branch/worktree,
 root dependency sharing, stale warnings, dirty removal and alias containment.
 All Git operations use the fixture environment. No provider or login is used.
