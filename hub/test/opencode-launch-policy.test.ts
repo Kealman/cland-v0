@@ -21,8 +21,12 @@ async function fixture(t: TestContext, unavailable = false) {
   const sessions = new Map<string, Record<string, unknown>>();
   const logs: Record<string, unknown>[] = [];
   const launches: Array<{ args: string[]; env: NodeJS.ProcessEnv }> = [];
+  const nativeSpawn = cp.spawn;
   t.mock.method(cp, 'spawn', (bin: string, args: string[], options: cp.SpawnOptions) => {
-    if (bin === 'ps') throw new Error('synthetic process identity is absent');
+    // Read-only native probes use the scratch-only env; fake PID 99999999 is
+    // above both macOS and Linux PID maximums and can never name a real owner.
+    // cland-allow-child-env: read-only ps passthrough receives the fixture's scratch-only Host environment.
+    if (bin === 'ps') return nativeSpawn(bin, args, options);
     assert.equal(bin, 'fake-opencode');
     launches.push({ args, env: options.env! });
     const server = createServer(async (req, res) => {
@@ -42,7 +46,22 @@ async function fixture(t: TestContext, unavailable = false) {
     });
     server.listen(Number(args[args.indexOf('--port') + 1]), '127.0.0.1');
     servers.push(server);
-    return Object.assign(new EventEmitter(), { pid: 99999999, exitCode: 0, signalCode: null, unref() {} });
+    const child = Object.assign(new EventEmitter(), { pid: 99999999, exitCode: null as number | null, signalCode: null as string | null, unref() {}, kill() { end(); return true; } });
+    let ended = false;
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      child.exitCode = 0;
+      child.emit('exit', 0, null);
+    };
+    server.once('close', end);
+    queueMicrotask(() => child.emit('spawn'));
+    t.after(end);
+    // A failed HTTP launch ends this fake server, just as native stop would.
+    if (unavailable) server.on('request', (req, res) => {
+      if (req.method === 'POST' && req.url === '/api/session') res.once('finish', end);
+    });
+    return child;
   });
   syncBuiltinESMExports();
   const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: entry => { logs.push(entry); }, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-opencode', env: { HOME: root }, clock: new FakeClock() });

@@ -1,7 +1,7 @@
 # hub/test/host-local-contract.test.ts
 
 `node --test hub/test/host-local-contract.test.ts` registers the reusable
-`hostContract(factory, register, expected?)` suite in `hub/test/host-contract.ts`. This T3 scenario
+`hostContract(factory, register, expected?, faults?)` suite in `hub/test/host-contract.ts`. This T3 scenario
 uses native disposable Node processes and `fixtureEnvironment`, with no hub,
 provider, remote login or transport. Check disk space before each local run.
 
@@ -26,7 +26,6 @@ This keeps Node test locations and load-gate exact-name replay on the `.test.ts`
 entry point. Passing `test` directly attributes tests to the helper and makes
 replay execute an inert module. Check attribution with the production
 `load-gate-reporter.ts`: all passing receipts must name the wrapper.
-`load-gate-reporter.ts`: all seven passing receipts must name the wrapper.
 
 File/worktree cases additionally check directory identity and exact cwd refusals,
 symlink realpath and missing fallback, binary bytes and missing/directory refusal,
@@ -44,9 +43,18 @@ supply their own expectations; byte comparisons accept any Uint8Array.
 Containment and path fallback are shared with TaskWorktrees; its inode and
 live-session revalidation remain in the pruning owner.
 
+Host spawn also proves append of both output streams, native code/signal completion, default ignored stdio and missing-binary refusal. Its transport-neutral exited receipt is joined before removing fixture storage.
 The stop callback case captures parent and descendant birth records as plain
 values before the hub-side callback. Declined authorization runs no native stop
 callback and leaves the process alive. Successful stop retains the injected owner
 logger through the terminal receipt and observes both parent and descendant gone.
 Repeated stop of an absent process succeeds; a mismatched live birth refuses
 without signalling it. The T1 inventory also checks the callback options.
+
+Final spawn authority runs after log open and before native launch. Prove a
+declined callback plus an authorized child with exactly one durable launch.
+The local wrapper supplies the reusable contract's log-close fault hook; it
+captures a separate native child/exit owner before injection, closes the real
+descriptor then raises the synthetic error, and drains that owner even on red
+before fixture removal. Assert returned PID, diagnostic PID, live birth, stop
+and final native completion. Other providers supply an equivalent fault hook.

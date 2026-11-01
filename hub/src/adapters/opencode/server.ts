@@ -10,9 +10,9 @@ import type { Resumed } from '../../hub/worktrees.ts';
 import { continueWith, wait, untimed } from '../continuations.ts';
 import { createServer } from 'node:net';
 import { OpenCodeClient } from './client.ts';
-import { spawn } from 'node:child_process';
+import type { Host } from '../../host/host.ts';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { chmod, link, mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { LaunchFiles } from '../launch-files.ts';
 import { dirname, join } from 'node:path';
 
@@ -103,7 +103,7 @@ async function freePort(): Promise<number> {
   });
 }
 
-export async function startServer(options: { bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
+export async function startServer(options: { host: Host; bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
   return continueWith((function* (): Generator<Promise<unknown>, {
     pid: number;
     url: string;
@@ -121,26 +121,23 @@ export async function startServer(options: { bin: string; cwd: string; env: Node
       attempted.add(port);
       const url = `http://127.0.0.1:${port}`;
       const client = new OpenCodeClient(url, options.password);
-      const out = yield* wait(open(files.log, 'a'));
-      let child;
       let exited: string | null = null;
-      try {
-        options.authorize?.();
-        child = spawn(options.bin, ['serve', '--hostname', '127.0.0.1', '--port', String(port)], {
-          cwd: options.cwd,
-          detached: true,
-          stdio: ['ignore', out.fd, out.fd],
-          env: { ...options.env, OPENCODE_CONFIG: files.config, OPENCODE_PASSWORD: options.password },
-        });
-        child.once('exit', (code, signal) => (exited = `exited ${code ?? signal}`));
-        child.once('error', (err) => (exited = err.message));
-        child.unref();
-        options.transaction.child(child, options.log, options.stopGraceMs);
-      } finally {
-        yield* wait(out.close());
-      }
+      const child = yield* wait(options.host.spawn({
+        command: options.bin,
+        args: ['serve', '--hostname', '127.0.0.1', '--port', String(port)],
+        cwd: options.cwd,
+        env: { ...options.env, OPENCODE_CONFIG: files.config, OPENCODE_PASSWORD: options.password },
+        logFile: files.log,
+      }, options.authorize ? { authorize: options.authorize } : undefined).then(child => {
+        // Own the PID before the continuation can reject a late launch result.
+        options.transaction.spawned(child, options.log, options.stopGraceMs);
+        return child;
+      }));
+      options.authorize?.();
+      void child.exited.then(({ code, signal }) => { exited = `exited ${code ?? signal}`; });
       while (Date.now() < deadline && !exited) {
         const ready = yield* wait(client.request('GET', '/api/session/active', undefined, Math.max(1, Math.min(250, deadline - Date.now()))).then(() => true, () => false));
+        options.authorize?.();
         if (ready && !exited && child.pid !== undefined) return { pid: child.pid, url };
         yield* wait(new Promise(r => setTimeout(r, Math.max(0, Math.min(50, deadline - Date.now())))));
       }

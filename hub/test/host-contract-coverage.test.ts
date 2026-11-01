@@ -24,15 +24,34 @@ test('Host contract exercises every interface member and detects an uncovered ad
   assert.deepEqual(missingMembers(api, cases), []);
 });
 
+// Spawn's command/result fields are nested contract members too.
+test('Host spawn contract inventory includes logFile and exited with positive omission controls', async () => {
+  const cases = await readFile(new URL('./host-contract.ts', import.meta.url), 'utf8');
+  const fields = (source: string) => {
+    const tree = ts.createSourceFile('cases.ts', source, ts.ScriptTarget.Latest, true);
+    const names = new Set<string>();
+    const visit = (node: ts.Node) => {
+      if (ts.isPropertyAccessExpression(node)) names.add(node.name.text);
+      if (ts.isShorthandPropertyAssignment(node)) names.add(node.name.text);
+      ts.forEachChild(node, visit);
+    };
+    visit(tree);
+    return ['logFile', 'exited'].filter(name => !names.has(name));
+  };
+  assert.deepEqual(fields(cases), []);
+  assert.deepEqual(fields(cases.replaceAll('logFile', 'omittedLog')), ['logFile']);
+  assert.deepEqual(fields(cases.replaceAll('exited', 'omittedExit')), ['exited']);
+});
+
 // T-1547: options, including hub-side callbacks, remain represented in Host.stop cases.
-function missingStopOptions(contract: string, cases: string): string[] {
+function missingOperationOptions(contract: string, cases: string, type = 'HostStopOptions', operation = 'stop'): string[] {
   const api = ts.createSourceFile('host.ts', contract, ts.ScriptTarget.Latest, true);
   const suite = ts.createSourceFile('cases.ts', cases, ts.ScriptTarget.Latest, true);
-  const options = api.statements.find((node): node is ts.TypeAliasDeclaration => ts.isTypeAliasDeclaration(node) && node.name.text === 'HostStopOptions');
+  const options = api.statements.find((node): node is ts.TypeAliasDeclaration => ts.isTypeAliasDeclaration(node) && node.name.text === type);
   assert.ok(options && ts.isTypeLiteralNode(options.type));
   const exercised = new Set<string>();
   const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node) && node.expression.getText(suite) === 'host.stop') {
+    if (ts.isCallExpression(node) && node.expression.getText(suite) === `host.${operation}`) {
       const argument = node.arguments[1];
       if (argument && ts.isObjectLiteralExpression(argument)) for (const property of argument.properties) {
         if (property.name) exercised.add(property.name.getText(suite));
@@ -46,6 +65,13 @@ function missingStopOptions(contract: string, cases: string): string[] {
 test('Host stop option inventory detects an uncovered callback addition', async () => {
   const api = await readFile(new URL('../src/host/host.ts', import.meta.url), 'utf8');
   const cases = await readFile(new URL('./host-contract.ts', import.meta.url), 'utf8');
-  assert.deepEqual(missingStopOptions(api.replace('export type HostStopOptions = {', 'export type HostStopOptions = { uncovered?: () => void;'), cases), ['uncovered']);
-  assert.deepEqual(missingStopOptions(api, cases), []);
+  assert.deepEqual(missingOperationOptions(api.replace('export type HostStopOptions = {', 'export type HostStopOptions = { uncovered?: () => void;'), cases), ['uncovered']);
+  assert.deepEqual(missingOperationOptions(api, cases), []);
+});
+
+test('Host spawn option inventory detects an uncovered callback addition', async () => {
+  const api = await readFile(new URL('../src/host/host.ts', import.meta.url), 'utf8');
+  const cases = await readFile(new URL('./host-contract.ts', import.meta.url), 'utf8');
+  assert.deepEqual(missingOperationOptions(api.replace('export type HostSpawnOptions = {', 'export type HostSpawnOptions = { uncovered?: () => void;'), cases, 'HostSpawnOptions', 'spawn'), ['uncovered']);
+  assert.deepEqual(missingOperationOptions(api, cases, 'HostSpawnOptions', 'spawn'), []);
 });

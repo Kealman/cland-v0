@@ -1,7 +1,7 @@
 import { statDirectory } from '../adapters/session-cwd.ts';
 import { occupants } from './occupants.ts';
 import { worktreeInstall } from './worktree-install.ts';
-import { stat, lstat, realpath, readFile } from 'node:fs/promises';
+import { stat, lstat, realpath, readFile, open } from 'node:fs/promises';
 import { folderFiles } from '../hub/artifact-folder.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
@@ -43,11 +43,28 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
     },
     listFolder: path => folderFiles(path),
     run: command => run(command.command, command.args, command.env, command.timeoutMs, false, command.signal, 'utf8', command.cwd),
-    spawn: command => new Promise((resolve, reject) => {
-      const child = spawn(command.command, command.args, { cwd: command.cwd, env: command.env, detached: true, stdio: 'ignore' });
-      child.once('error', reject);
-      child.once('spawn', () => { child.unref(); resolve({ pid: child.pid! }); });
-    }),
+    spawn: async (command, options) => {
+      const output = command.logFile ? await open(command.logFile, 'a') : undefined;
+      let accepted: Awaited<ReturnType<Host['spawn']>> | undefined;
+      try {
+        options?.authorize?.();
+        const result = await new Promise<Awaited<ReturnType<Host['spawn']>>>((resolve, reject) => {
+          const child = spawn(command.command, command.args, { cwd: command.cwd, env: command.env, detached: true, stdio: output ? ['ignore', output.fd, output.fd] : 'ignore' });
+          const exited = new Promise<{ code: number | null; signal: string | null }>(done => child.once('exit', (code, signal) => done({ code, signal })));
+          child.once('error', reject);
+          child.once('spawn', () => { child.unref(); resolve({ pid: child.pid!, exited }); });
+        });
+        accepted = result;
+        return result;
+      } finally {
+        try { await output?.close(); }
+        catch (error) {
+          if (!accepted) throw error;
+          // A cleanup diagnostic cannot hide the accepted native owner.
+          try { log({ event: 'host-spawn-log-close-failed', pid: accepted.pid, error: String(error) }); } catch { /* ownership wins over observers */ }
+        }
+      }
+    },
     identity: async pid => {
       if (!Number.isSafeInteger(pid) || pid <= 0) return null;
       const pidStarted = await processStarted(pid, undefined, undefined, undefined, env);

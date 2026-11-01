@@ -1453,6 +1453,22 @@ module tests alone do not prove those flows. No new role permission applies.
 
 ## Local Host files and polling (T-1543)
 
+For OpenCode lifecycle routing, use the recording Host and scripted transport in
+`docs/agents/tests/hub-test-opencode-host.test.ts.md`; keep the existing adapter and
+native test files unedited. The launch-policy fixture alone models native
+spawn/exit receipts; its test bodies and assertions stay unchanged. Host spawn accepts optional
+`logFile` (host-side append of both output streams) and returns required `exited`
+with a native `{ code, signal }` receipt. Register its PID and receipt immediately
+with `LaunchFiles.spawned`; rollback stops through the Host and joins completion
+before file undo. Every Host implementation, including test Hosts, supplies it.
+`HostSpawnOptions.authorize` runs after async log preparation immediately before
+native spawn; refusal closes the log without launching. Post-spawn log-close
+failure is diagnostic and retains PID/exited ownership. Keep held resume/stream,
+late accepted launch (durable recovery enabled), open-revocation and native
+close-fault controls. Close joins operations and rolls back before releasing
+files; fault injection owns a separate native cleanup receipt even on red.
+No CLI, setting or role permission changes apply.
+
 Process rows persist an owning `host`; opening an older database adds the column
 in place with `local` as its default. Older adapter results and pending-stop
 receipts without a host retain local semantics. Local session wire views omit

@@ -3,7 +3,7 @@ import { EventEmitter, once } from 'node:events';
 import fsp from 'node:fs/promises';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
 import { OpenCodeClient } from '../src/adapters/opencode/client.ts';
-import { processStarted } from '../src/adapters/processes.ts';
+import { processStarted, processAlive } from '../src/adapters/processes.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import cp from 'node:child_process';
@@ -269,8 +269,70 @@ test('OpenCode rollback waits for its owned child exit receipt before undoing fi
   assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null));
 });
 
+test('OpenCodeAdapter: post-spawn log close failure retains the normal live session and child', async t => {
+  const f = await fixture(t, OpenCodeAdapter);
+  const native = fsp.open;
+  const log = join(f.root, '.cland/opencode/impl/serve.log');
+  let faulted = false;
+  t.mock.method(fsp, 'open', async (...args: unknown[]) => {
+    const handle = await Reflect.apply(native, fsp, args);
+    if (String(args[0]) === log) {
+      const close = handle.close.bind(handle);
+      t.mock.method(handle, 'close', async () => {
+        await close();
+        faulted = true;
+        throw new Error('planted post-spawn log close failure');
+      });
+    }
+    return handle;
+  });
+  syncBuiltinESMExports();
+  await guarded(async () => {
+    const process = await f.adapter.spawn(f.request);
+    assert.equal(faulted, true);
+    assert.equal(f.children.length, 1);
+    assert.equal(process.pid, f.children[0]!.pid);
+    assert.equal(process.status, 'running');
+    assert.equal(process.harnessSessionId, 'session-1');
+    assert.match(process.harnessId!, /^http:\/\/127\.0\.0\.1:/);
+    assert.equal(await processAlive(process), true);
+    assert.equal(f.children[0]!.exitCode, null);
+    assert.equal(f.children[0]!.signalCode, null);
+    assert.ok(f.events.some(entry => entry.event === 'host-spawn-log-close-failed' && entry.pid === process.pid));
+    assert.ok((await fsp.stat(log)).isFile());
+    const directory = join(f.root, '.cland/opencode/impl');
+    assert.ok(JSON.parse(await fsp.readFile(join(directory, 'opencode.json'), 'utf8')).mcp);
+    assert.ok((await fsp.readFile(join(directory, 'password'), 'utf8')).trim());
+    await f.adapter.stop(process);
+    assert.ok(f.children.every(child => child.exitCode !== null || child.signalCode !== null));
+  });
+});
+
+test('OpenCodeAdapter: config handle close rejection rolls back before native spawn', async t => {
+  const f = await fixture(t, OpenCodeAdapter);
+  const native = fsp.writeFile;
+  let faulted = false;
+  t.mock.method(fsp, 'writeFile', async (...args: unknown[]) => {
+    if (!faulted && String(args[0]) === join(f.root, '.cland/opencode/impl/opencode.json')) {
+      const handle = await fsp.open(String(args[0]), 'w', 0o600);
+      const close = handle.close.bind(handle);
+      t.mock.method(handle, 'close', async () => { await close(); faulted = true; throw new Error('planted config close failure'); });
+      try { await handle.writeFile(String(args[1]), 'utf8'); }
+      finally { await handle.close(); }
+    }
+    return Reflect.apply(native, fsp, args);
+  });
+  syncBuiltinESMExports();
+  await guarded(async () => { await assert.rejects(f.adapter.spawn(f.request), /planted config close failure/); });
+  assert.equal(faulted, true);
+  assert.deepEqual(f.children, [], 'config close fails before native launch');
+  await assert.rejects(fsp.access(join(f.root, '.cland/opencode/impl')), { code: 'ENOENT' });
+  assert.deepEqual(await fsp.readdir(join(f.root, '.cland/run')).catch(() => []), []);
+  assert.equal((await fsp.readdir(join(f.root, '.cland/opencode')).catch(() => [])).some(file => file.startsWith('.stage-')), false);
+});
+
 for (const Adapter of adapters) {
-  const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'close', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'close', 'spawn', 'read-log', 'server-exit', 'no-answer', 'session', 'log'] : ['bg', 'log'];
+  const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'close', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'spawn', 'read-log', 'server-exit', 'no-answer', 'session', 'log'] : ['bg', 'log'];
   for (const fault of faults) test(`${Adapter.name}: failure at ${fault} leaves no session files or live child`, async t => {
     const f = await fixture(t, Adapter);
     if (['mkdir', 'rm', 'chmod', 'open'].includes(fault)) {

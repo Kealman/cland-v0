@@ -1,6 +1,10 @@
 /** Host-local PIDs are meaningful only on the Host that returned them. */
 export type HostProcess = { pid: number | null; pidStarted?: string | null; pidIdentity?: string | null };
-export type HostCommand = { command: string; args: readonly string[]; cwd: string; env: NodeJS.ProcessEnv; timeoutMs?: number; signal?: AbortSignal };
+export type HostCommand = {
+  command: string; args: readonly string[]; cwd: string; env: NodeJS.ProcessEnv; timeoutMs?: number; signal?: AbortSignal;
+  /** Host-side path; spawn appends stdout and stderr, otherwise ignoring both. */
+  logFile?: string;
+};
 export type HostRunResult = { code: number | null; stdout: string; stderr: string; error?: string };
 export type HostProcessUsage = {
   pid: number;
@@ -9,6 +13,9 @@ export type HostProcessUsage = {
   rssBytes: number;
   cpuPercent: number;
 };
+
+/** Hub-side final authority after host-side log preparation, immediately before spawn. */
+export type HostSpawnOptions = { authorize?: () => void };
 
 /** Hub-side callbacks between process-tree capture and signals; data is transport-neutral. */
 export type HostCapturedProcess = { pid: number; pidStarted: string; pidIdentity: string };
@@ -23,7 +30,8 @@ export type HostStopOptions = {
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
   readonly name: string;
-  spawn(command: HostCommand): Promise<{ pid: number }>;
+  /** Native exit receipt resolves once; no process handle crosses the Host seam. */
+  spawn(command: HostCommand, options?: HostSpawnOptions): Promise<{ pid: number; exited: Promise<{ code: number | null; signal: string | null }> }>;
   run(command: HostCommand): Promise<HostRunResult>;
   identity(pid: number): Promise<HostProcess | null>;
   /** With neither start nor birth proof, observe PID existence only; this grants no signal authority. */

@@ -102,6 +102,13 @@ export class LaunchFiles {
     this.#log = log;
   }
 
+  /** Register a Host-owned PID before the first fallible handshake operation. */
+  spawned(process: { pid: number; exited: Promise<{ code: number | null; signal: string | null }> }, log: (entry: Record<string, unknown>) => void, graceMs: number): void {
+    const proof = this.#host.identity(process.pid);
+    this.#children.push({ pid: process.pid, identity: proof.then(row => row?.pidStarted ?? null), birth: proof.then(row => row?.pidIdentity ?? null), graceMs, exited: process.exited.then(() => {}) });
+    this.#log = log;
+  }
+
   #log: (entry: Record<string, unknown>) => void = () => {};
 
   async process(pid: number): Promise<{ pidStarted: string | null; pidIdentity: string | null }> {

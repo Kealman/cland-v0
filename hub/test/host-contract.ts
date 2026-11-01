@@ -6,9 +6,16 @@ import { join } from 'node:path';
 import { ownProcess } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import type { Host } from '../src/host/host.ts';
+import { existsSync } from 'node:fs';
 import { fixtureEnvironment } from './fixture-environment.ts';
 
-export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean }): void {
+async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
+  let receipt: { code: number | null; signal: string | null } | undefined;
+  void child.exited.then(value => { receipt = value; });
+  return eventually('native Host completion receipt', () => receipt);
+}
+
+export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
   register('Host file operations preserve cwd refusals, identity, paths, bytes and folder safety', async () => {
     const root = await mkdtemp(join(tmpdir(), 'host-files-'));
     try {
@@ -99,6 +106,76 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
         assert.equal(host.name, expected.name);
       }
     } finally { await rm(root, { recursive: true, force: true }); }
+  });
+  register('Host spawn appends both output streams and publishes native exit and signal receipts', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-output-'));
+    const env = fixtureEnvironment(root, process.env);
+    const host = factory(env);
+    let pending: Awaited<ReturnType<Host['spawn']>> | undefined;
+    try {
+      const logFile = join(root, 'serve.log');
+      await writeFile(logFile, 'before\n');
+      pending = await host.spawn({ command: process.execPath, args: ['-e', "console.log('stdout'); console.error('stderr'); process.exitCode=7"], cwd: root, env, logFile });
+      assert.ok(pending.exited, 'spawn carries a native completion receipt');
+      assert.deepEqual(await hostCompletion(pending), { code: 7, signal: null });
+      assert.equal(await readFile(logFile, 'utf8'), 'before\nstdout\nstderr\n');
+      pending = await host.spawn({ command: process.execPath, args: ['-e', "process.kill(process.pid, 'SIGTERM')"], cwd: root, env });
+      assert.deepEqual(await hostCompletion(pending), { code: null, signal: 'SIGTERM' });
+      await assert.rejects(host.spawn({ command: join(root, 'missing-binary'), args: [], cwd: root, env, logFile }));
+    } finally {
+      if (pending) { await host.stop(await host.identity(pending.pid) ?? { pid: pending.pid }, { allowReused: true }); await hostCompletion(pending); }
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+  register('Host spawn checks final authority after opening its log and refuses without launching', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-authority-'));
+    const env = fixtureEnvironment(root, process.env);
+    const host = factory(env);
+    let accepted: Awaited<ReturnType<Host['spawn']>> | undefined;
+    try {
+      const logFile = join(root, 'serve.log');
+      const marker = join(root, 'launches');
+      const command = { command: process.execPath, args: ['-e', "require('fs').appendFileSync('launches','spawned\\n')"], cwd: root, env, logFile };
+      let checked = false;
+      await assert.rejects(async () => {
+        accepted = await host.spawn(command, { authorize: () => { checked = true; assert.equal(existsSync(logFile), true); throw new Error('authority declined'); } });
+      }, /authority declined/);
+      assert.equal(checked, true);
+      accepted = await host.spawn(command, { authorize: () => { assert.equal(existsSync(logFile), true); } });
+      let receipt: unknown;
+      void accepted.exited.then(value => { receipt = value; });
+      await eventually('authorized child completion', () => receipt);
+      assert.deepEqual(await hostCompletion(accepted), { code: 0, signal: null });
+      assert.equal(await readFile(marker, 'utf8'), 'spawned\n');
+    } finally {
+      if (accepted) { await host.stop(await host.identity(accepted.pid) ?? { pid: accepted.pid }, { allowReused: true }); await hostCompletion(accepted); }
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+  if (faults) register('Host spawn retains accepted PID and completion when log descriptor close fails', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-close-fault-'));
+    const env = fixtureEnvironment(root, process.env);
+    const host = factory(env);
+    const logFile = join(root, 'serve.log');
+    const restore = faults.failLogClose(logFile);
+    let accepted: Awaited<ReturnType<Host['spawn']>> | undefined;
+    let owned: Awaited<ReturnType<Host['identity']>>;
+    try {
+      accepted = await host.spawn({ command: process.execPath, args: ['-e', "require('fs').writeFileSync('ready','ready');setInterval(()=>{},1000)"], cwd: root, env, logFile });
+      owned = await eventually('accepted fault child birth', async () => await host.identity(accepted!.pid) ?? undefined);
+      await eventually('accepted fault child durable launch', async () => (await readFile(join(root, 'ready'), 'utf8').catch(() => '')) || undefined);
+      assert.equal(await host.alive(owned), true);
+      assert.ok(faults.diagnostics.some(entry => entry.event === 'host-spawn-log-close-failed' && entry.pid === accepted!.pid));
+      assert.equal(await host.stop(owned), true);
+      let receipt: unknown;
+      void accepted.exited.then(value => { receipt = value; });
+      await eventually('fault child completion', () => receipt);
+      assert.deepEqual(await hostCompletion(accepted), { code: null, signal: 'SIGTERM' });
+    } finally {
+      await restore();
+      if (accepted) { await host.stop(await host.identity(accepted.pid) ?? { pid: accepted.pid }, { allowReused: true }); await hostCompletion(accepted); }
+      await rm(root, { recursive: true, force: true });
+    }
   });
   register('Host run returns output and exit status with the supplied cwd and environment', async () => {
     const root = await mkdtemp(join(tmpdir(), 'host-contract-'));

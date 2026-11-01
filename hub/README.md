@@ -8247,6 +8247,23 @@ existing refusals. Identity publication, legacy identity upgrades, deferred-stop
 recovery and deaf-episode liveness use Host operations. Async liveness checks
 drain on close and recheck the captured launch before publishing.
 
+OpenCode starts its detached server through the launch Host and routes poll,
+stream-disconnect, resume and stop checks through the row Host. Polls coalesce. Close joins resume, stream, stop and launch operations, fences
+late continuations, and rolls back accepted launches before releasing files. `HostCommand.logFile`, when supplied, is a host-side
+path receiving appended stdout and stderr; omitted output remains ignored.
+`Host.spawn` returns `{ pid, exited }`, where `exited` resolves once with
+`{ code, signal }` on native exit, without exposing a child-process handle.
+`HostSpawnOptions.authorize` is a hub-side callback after log preparation and
+immediately before native spawn. A refusal closes the prepared descriptor and
+spawns nothing. A remote implementation must return to the hub for that callback
+between opening the log and spawning. Spawn errors reject the launch.
+After successful spawn, descriptor-close failure reports
+`host-spawn-log-close-failed` with the PID and still returns its ownership and
+completion receipt; a diagnostic cannot discard an accepted child. `LaunchFiles.spawned` registers that PID and
+completion receipt immediately: failed handshakes stop through the same Host
+and join completion before undoing files. The SSH transport must supply the
+same receipt, as must test Hosts. Native launch-file preparation stays hub-local.
+
 LaunchFiles captures child identity and rolls failed launches back through the
 Host. The local Host retains its owner's termination logger, including the
 `harness-ended` OS termination receipt before LaunchFiles waits for libuv's
