@@ -145,6 +145,7 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
       } else assert.notEqual(child[2], caller[2], 'separate native session');
       assert.ok(!ps.stdout.includes('synthetic-private-value'));
       assert.equal(await host.alive(owned), true, 'no child handle retained by caller');
+      assert.equal(await host.alive({ pid }), true, 'bare PID observes existence only');
       const reused = { ...owned, pidIdentity: owned.pidIdentity + ':different-birth' };
       assert.equal(await host.alive(reused), false);
       assert.equal(await host.stop(reused), false);
@@ -156,9 +157,54 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
       assert.equal(await host.stop(owned), true);
       assert.equal(await host.alive(owned), false);
       assert.equal(await host.identity(pid), null);
+      assert.equal(await host.alive({ pid }), false, 'reaped PID is absent even without recorded proof');
+      assert.equal(await host.stop(owned), true, 'an absent process is already stopped');
       owned = null;
     } finally {
       if (owned) assert.equal(await host.stop(owned), true, 'fixture writers stopped before removal');
+      await cleanup?.();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  // T-1547: hub-side stop callbacks remain transport-neutral and preserve the owner logger.
+  register('Host stop captures births before callbacks, refuses declined authority and retains the owner logger', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-stop-'));
+    const env = fixtureEnvironment(root, process.env);
+    const host = factory(env);
+    let owned: Awaited<ReturnType<Host['identity']>> = null;
+    let cleanup: (() => Promise<void>) | undefined;
+    try {
+      const script = join(root, 'child.cjs');
+      await writeFile(script, `require('child_process').spawn(process.execPath, ['-e', "require('fs').writeFileSync('child-ready', String(process.pid)); setInterval(()=>{},1000)"], {stdio:'ignore'}); require('fs').writeFileSync('ready', 'ready'); setInterval(()=>{},1000);`);
+      const { pid } = await host.spawn({ command: process.execPath, args: [script], cwd: root, env });
+      cleanup = ownProcess(undefined, pid);
+      owned = await eventually('stop callback native birth', async () => await host.identity(pid) ?? undefined);
+      await eventually('stop callback readiness', async () => { try { return await readFile(join(root, 'ready'), 'utf8') === 'ready' ? true : undefined; } catch { return undefined; } });
+      const childPid = await eventually('stop callback descendant readiness', async () => { try { return Number(await readFile(join(root, 'child-ready'), 'utf8')) || undefined; } catch { return undefined; } });
+      const child = await host.identity(childPid);
+      assert.ok(child?.pidIdentity);
+      let attempted = false;
+      await assert.rejects(host.stop(owned, {
+        authorize: tree => { assert.deepEqual(tree.find(p => p.pid === pid), owned); throw new Error('declined authority'); },
+        beforeSignal: async () => { attempted = true; },
+      }), /declined authority/);
+      assert.equal(attempted, false);
+      assert.equal(await host.alive(owned), true, 'declined authority sends no signal');
+      const events: string[] = [];
+      assert.equal(await host.stop(owned, {
+        graceMs: 50, allowReused: false,
+        authorize: tree => { assert.ok(tree.some(p => p.pid === pid && p.pidIdentity === owned!.pidIdentity)); events.push('authorize'); },
+        beforeSignal: async tree => { assert.deepEqual(tree.find(p => p.pid === pid), owned); assert.deepEqual(tree.find(p => p.pid === childPid), child); assert.equal(await host.alive(owned!), true); events.push('beforeSignal'); },
+        log: entry => { if (entry.event === 'harness-ended') events.push('ended'); },
+      }), true);
+      assert.ok(events.indexOf('authorize') < events.indexOf('beforeSignal'));
+      assert.equal(events.at(-1), 'ended');
+      assert.equal(await host.alive(child!), false, 'captured descendant is also gone');
+      assert.equal(await host.alive(owned), false);
+      owned = null;
+    } finally {
+      if (owned) assert.equal(await host.stop(owned), true);
       await cleanup?.();
       await rm(root, { recursive: true, force: true });
     }

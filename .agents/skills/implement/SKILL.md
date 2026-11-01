@@ -1456,9 +1456,24 @@ module tests alone do not prove those flows. No new role permission applies.
 For sessions routing, use the recording local Host seam documented in
 `docs/agents/tests/hub-test-session-host.test.ts.md`. AdapterHost lookup callbacks
 are optional for older standalone adapter fixtures. Inject `hosts: [local]` into
-Sessions rather than separate process probe functions; every production lookup
+Sessions rather than separate process probe functions. For default-adapter
+environment wiring, `projectHub`/`serveProject` also accept `hosts`; see
+`docs/agents/tests/hub-test-project-hub.test.ts.md`. Every production lookup
 currently resolves local. Keep rollback file metadata hub-local and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
+
+For Claude Code Host routing, use the recording seam in
+`docs/agents/tests/hub-test-claude-code-host.test.ts.md`. Preserve the unchanged
+adapter, sessions, schedule, accounts and environment files as controls. New
+fixtures inject the Host; old local synthetic process observers remain compatible.
+Keep directory discovery timing and hub-side private launch files unchanged.
+Bare-PID local Host liveness is an existence-only probe without a subprocess;
+recorded proof keeps identity-aware liveness. Preserve the unedited native Lead
+death/routing regression when changing that path.
+Host.stop captures birth records before hub-side callbacks and rechecks authorize
+before signals; callback payloads contain only plain process data. Keep the
+owner logger, absent-process success, reused-birth refusal and shutdown drainage
+cases in the shared Host contract. No CLI or role clause change applies.
 
 For task creation/prune Host routing, use the recording Host and native Git seam
 in `docs/agents/tests/hub-test-worktree-host.test.ts.md`. Keep the four named

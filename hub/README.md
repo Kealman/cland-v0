@@ -8209,7 +8209,10 @@ signature. This module adds no sign-in route or changes to single mode. See the
 
 ### Local Host files, worktrees and polling
 
-Sessions owns a registry containing `local`. Its AdapterHost supplies
+Sessions owns a registry containing `local`. Programmatic `projectSessions`,
+`serveProject` and `projectHub` callers can inject `hosts` to exercise default
+adapter construction against recording Hosts; omitted injection keeps the
+existing local default. Its AdapterHost supplies
 `hostForProcess` and `hostForLaunch`; standalone adapters using the previous
 contract may omit these callbacks and retain local behaviour. Launch admission,
 crew-pool restart and relaunch check directories through the Host, preserving
@@ -8227,6 +8230,36 @@ shape and gain matching native birth proof durably before a signal. Undo metadat
 for hub-side launch files stays in the named `hubFileMeta` helper; moving those
 files to a remote transport belongs to E-1532. Harness spawn/watch/stop migration
 continues in the adapter items of E-1531.
+
+Claude Code routes background launch, `agents --json`, `claude stop`, cwd
+`.claude` settings reads, identity acquisition and resume/poll liveness through
+the session Host. The existing directory discovery schedule is unchanged.
+Closing the adapter aborts and joins command work and joins outstanding Host
+liveness observations and resume flights before releasing ownership. Shutdown
+cancels resume directory-slot waits and rejects their continuation before a
+running-row result can publish. An interrupted relaunch stops its newly accepted
+native job through the Host and rolls back private files inside the launch
+failure boundary. An unconfirmed native cleanup retains its launch owner and
+files and makes close fail explicitly; it never reports a completed shutdown.
+Hub-generated private launch
+files remain hub-local. Legacy standalone fixtures can omit Host lookup; their
+injected process observers also retain the existing local synthetic seam, never
+overriding another Host.
+
+A local `Host.alive` request with neither a recorded start stamp nor a native
+birth is an existence-only signal-0 probe, with no identity subprocess. This
+keeps Claude PID polling on its existing schedule. Supplying either proof field
+retains the existing identity-aware liveness path; existence alone grants no
+signal authority.
+
+`Host.stop` accepts optional hub-side `beforeSignal` and `authorize` callbacks.
+The Host captures its owned tree first and passes plain PID, start-stamp and
+native-birth records to them; callbacks carry no native handles. Authorization
+is rechecked before signals. A remote implementation must preserve this capture,
+hub callback and signal order. `log` optionally selects the caller's termination
+logger; omitting it preserves the Host owner's logger. An absent process is
+already stopped. A live mismatched birth refuses without a signal; the explicit
+`allowReused` rollback option may acknowledge the recorded process gone.
 
 Artifact creation resolves a relative source against the captured caller cwd.
 Session path types, folder listings and bytes go through Sessions' Host lookup;

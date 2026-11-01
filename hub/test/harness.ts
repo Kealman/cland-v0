@@ -432,6 +432,7 @@ export type ProjectHubOptions = {
   probes?: 'fake' | 'native';
   gitMaintenance?: typeof import('../src/git-maintenance.ts').maintainProjectGit;
   gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>;
+  hosts?: readonly import('../src/host/host.ts').Host[];
   adapters?: import('../src/adapters/index.ts').AdapterFactory[];
   git?: import('../src/tracker/verdict-git.ts').Git;
   hasTerritory?: typeof import('../src/territory.ts').hasTerritory;

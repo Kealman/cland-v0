@@ -25,6 +25,7 @@ The executable wrapper supplies `(name, run) => test(name, run)` as the registra
 This keeps Node test locations and load-gate exact-name replay on the `.test.ts`
 entry point. Passing `test` directly attributes tests to the helper and makes
 replay execute an inert module. Check attribution with the production
+`load-gate-reporter.ts`: all passing receipts must name the wrapper.
 `load-gate-reporter.ts`: all seven passing receipts must name the wrapper.
 
 File/worktree cases additionally check directory identity and exact cwd refusals,
@@ -42,3 +43,10 @@ The local wrapper supplies expected name and polling policy. Other Hosts may
 supply their own expectations; byte comparisons accept any Uint8Array.
 Containment and path fallback are shared with TaskWorktrees; its inode and
 live-session revalidation remain in the pruning owner.
+
+The stop callback case captures parent and descendant birth records as plain
+values before the hub-side callback. Declined authorization runs no native stop
+callback and leaves the process alive. Successful stop retains the injected owner
+logger through the terminal receipt and observes both parent and descendant gone.
+Repeated stop of an absent process succeeds; a mismatched live birth refuses
+without signalling it. The T1 inventory also checks the callback options.

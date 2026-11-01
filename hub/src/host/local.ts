@@ -5,7 +5,7 @@ import { stat, lstat, realpath, readFile } from 'node:fs/promises';
 import { folderFiles } from '../hub/artifact-folder.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
-import { processStarted, processAlive, sameProcess } from '../adapters/processes.ts';
+import { processStarted, processAlive, pidAlive } from '../adapters/processes.ts';
 import { endProcess } from '../system-processes.ts';
 import { run } from '../doctor/report.ts';
 import type { Host, HostProcessUsage } from './host.ts';
@@ -54,11 +54,14 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
       const pidIdentity = await processIdentityAsync(pid, env);
       return pidStarted && pidIdentity ? { pid, pidStarted, pidIdentity } : null;
     },
-    alive: row => processAlive({ pid: row.pid, pidStarted: row.pidStarted ?? null, pidIdentity: row.pidIdentity ?? null }, undefined, env),
+    // An existence-only request has no recorded birth to compare. Keep it a
+    // native signal-0 probe so local adapter polling introduces no subprocess I/O.
+    alive: row => row.pid !== null && row.pidStarted == null && row.pidIdentity == null
+      ? Promise.resolve(pidAlive(row.pid))
+      : processAlive({ pid: row.pid, pidStarted: row.pidStarted ?? null, pidIdentity: row.pidIdentity ?? null }, undefined, env),
     stop: async (row, options) => {
       const recorded = { pid: row.pid, pidStarted: row.pidStarted ?? null, pidIdentity: row.pidIdentity ?? null };
-      if (!options?.allowReused && !await sameProcess(recorded, undefined, env)) return false;
-      return endProcess(recorded, log, options?.graceMs, undefined, { env, ...(options?.allowReused ? { allowReused: true } : {}) });
+      return endProcess(recorded, options?.log ?? log, options?.graceMs, options?.beforeSignal ? tree => options.beforeSignal!(tree ?? []) : undefined, { env, ...(options?.authorize ? { authorize: tree => options.authorize!(tree ?? []) } : {}), ...(options?.allowReused ? { allowReused: true } : {}) });
     },
     processes: async () => {
       const result = await run('ps', ['-e', '-o', 'pid=,ppid=,rss=,pcpu=,stat='], { ...env, LC_ALL: 'C' });

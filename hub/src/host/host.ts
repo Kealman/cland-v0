@@ -10,15 +10,26 @@ export type HostProcessUsage = {
   cpuPercent: number;
 };
 
+/** Hub-side callbacks between process-tree capture and signals; data is transport-neutral. */
+export type HostCapturedProcess = { pid: number; pidStarted: string; pidIdentity: string };
+export type HostStopOptions = {
+  graceMs?: number;
+  allowReused?: boolean;
+  beforeSignal?: (tree: readonly HostCapturedProcess[]) => Promise<void>;
+  authorize?: (tree: readonly HostCapturedProcess[]) => void;
+  log?: (entry: Record<string, unknown>) => void;
+};
+
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
   readonly name: string;
   spawn(command: HostCommand): Promise<{ pid: number }>;
   run(command: HostCommand): Promise<HostRunResult>;
   identity(pid: number): Promise<HostProcess | null>;
+  /** With neither start nor birth proof, observe PID existence only; this grants no signal authority. */
   alive(process: HostProcess): Promise<boolean>;
   /** False means ownership or complete termination could not be proved. */
-  stop(process: HostProcess, options?: { graceMs?: number; allowReused?: boolean }): Promise<boolean>;
+  stop(process: HostProcess, options?: HostStopOptions): Promise<boolean>;
   statDirectory(path: string): Promise<{ refusal: string | null; identity: { dev: number; ino: number } | null }>;
   realpath(path: string): Promise<string>;
   /** Source type without following symbolic links; ENOENT/ENOTDIR are missing. */

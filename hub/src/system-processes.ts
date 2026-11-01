@@ -1,3 +1,4 @@
+import type { HostCapturedProcess } from './host/host.ts';
 // Bounded asynchronous termination requires verified identities; recovery CONT has an explicit exception.
 import { probeTimeout, run } from './doctor/report.ts';
 import { processIdentitiesAsync, type IdentityExited } from './process-identity.ts';
@@ -28,7 +29,7 @@ export type ProcessEndOptions = {
   env?: NodeJS.ProcessEnv;
   resumed?: Resumed;
   /** Recheck the caller's live authority immediately before destructive actions. */
-  authorize?: () => void;
+  authorize?: (tree?: readonly HostCapturedProcess[]) => void;
   /** Atomically reserve each captured identity for this worker before any further await. */
   claim?: (identity: SystemProcess) => boolean;
   /** Relaunch of a row already marked exited may leave a proven reused PID alone. */
@@ -98,13 +99,14 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 /** Capture descendants while ancestry is intact; verify each positive PID immediately before its signal.
  * Group membership can change during an identity probe, so never signal an entire group.
  */
-export async function endProcess(p: { pid: number | null; pidStarted?: string | null; pidIdentity?: string | null }, log: (entry: Record<string, unknown>) => void = () => {}, graceMs = 5000, beforeSignal?: () => Promise<void>, options: ProcessEndOptions = {}): Promise<boolean> {
+export async function endProcess(p: { pid: number | null; pidStarted?: string | null; pidIdentity?: string | null }, log: (entry: Record<string, unknown>) => void = () => {}, graceMs = 5000, beforeSignal?: (tree?: readonly HostCapturedProcess[]) => Promise<void>, options: ProcessEndOptions = {}): Promise<boolean> {
   const resumed = options.resumed ?? untimed;
   const env = options.env ?? process.env;
   const observe = (entry: Record<string, unknown>) => { try { log(entry); } catch { /* observers cannot abort recovery */ } };
   if (p.pid === null) return false;
   const rows = await systemProcesses(resumed, options.deadline, undefined, undefined, env);
   const owned = new Map<number, SystemProcess>();
+  const capturedStopTree = (): HostCapturedProcess[] => [...owned.values()].map(row => ({ pid: row.pid, pidStarted: row.started, pidIdentity: row.identity! }));
   const leader = resumed(() => {
     const leader = rows.find(row => row.pid === p.pid);
     if (!leader) return undefined;
@@ -234,7 +236,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
             observe({ event: 'signal-refused', pid: row.pid, signal: kind, reason: `process identity changed or cannot be verified: ${birthError ?? (stamp === null ? 'ps start unavailable' : 'native birth missing or mismatched')}` });
             return kind === 'SIGTERM';
           }
-          options.authorize?.();
+          options.authorize?.(capturedStopTree());
           try {
             process.kill(row.pid, kind);
             if (kind === 'SIGSTOP') frozen.set(row.pid, row);
@@ -295,7 +297,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
           const after = await proof();
           if (after === 'gone') { frozen.delete(pid); continue; }
           if (after !== 'same') throw new Error('native thaw identity unavailable after scope check');
-          resumed(() => { options.authorize?.(); process.kill(pid, 'SIGCONT'); frozen.delete(pid); });
+          resumed(() => { options.authorize?.(capturedStopTree()); process.kill(pid, 'SIGCONT'); frozen.delete(pid); });
         } catch (err) {
           if ((err as NodeJS.ErrnoException).code === 'ESRCH') frozen.delete(pid);
           else { failed = true; observe({ event: 'process-thaw-failed', pid, error: String(err) }); }
@@ -322,8 +324,8 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       // A contending owner may have ended the captured tree while we waited. Retain the
       // original descendants across that wait so a surviving reparented child is still owned.
       if (!(await remaining()).length) return true;
-      resumed(() => options.authorize?.());
-      await beforeSignal?.();
+      resumed(() => options.authorize?.(capturedStopTree()));
+      await beforeSignal?.(capturedStopTree());
       // Let the harness close its bridges gracefully. Before escalation, freeze and capture the entire tree.
       if (!await signal('SIGTERM', true)) return await incomplete('SIGTERM refused');
       let forced = false;
