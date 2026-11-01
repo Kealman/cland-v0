@@ -31,3 +31,15 @@ the exact rendered row, draft, read cursor, disconnect and no-replay assertions
 pass. A body-local `finally` drains held sends, joins selection even on failure,
 and restores the 3 s action budget before context teardown. The bounded negative
 native click is a regression control, not application latency evidence.
+
+The physical Enter/newline case holds the first successful `topic.send` result at
+its isolated browser socket. A peer channel delivery does not mean the composer
+has applied that result: Send remains disabled until it does. The case types the
+next draft and waits within the existing 3 s bound for the rendered Send button
+to become enabled before continuing its keyboard sequence. A native Send click
+with a 500 ms budget must time out during the hold, while the readiness observer
+stays pending; that rejection signals release without a test-owned timer. The
+body drains the held result and joins readiness in `finally`. All channel-content,
+newline, focus, count and pane assertions retain their original 5 s channel or
+3 s browser bounds. The control proves ordering, not full stage-cover load or
+application latency.

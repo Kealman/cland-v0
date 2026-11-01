@@ -99,6 +99,7 @@ test('the composer sends Message, Decision and Question with their kinds in the 
 
 test('composer physical Enter, Shift+Enter and Meta+Enter send or break lines and Meta+K keeps the draft', async t => {
   const fixture = await composerFixture(t);
+  let release: (() => void) | undefined;
   await fixture.pageCase(t, async page => {
     const form = await thread(page);
     const field = form.getByRole('textbox', { name: 'Message text' });
@@ -106,7 +107,26 @@ test('composer physical Enter, Shift+Enter and Meta+Enter send or break lines an
     const single = fixture.coordinator.waitForEvent(event => event.params.content === 'Single line receipt');
     await physical(page, 'Enter');
     assert.equal((await single).params.content, 'Single line receipt');
+    // Peer delivery precedes the browser result. Hold that result to prove
+    // that the next keyboard send waits for the first send to finish rendering.
+    await until(() => !!release, { what: 'first send result held', timeoutMs: 3000 });
     await field.fill('first last');
+    const send = form.getByRole('button', { name: 'Send', exact: true });
+    let settled = false;
+    const ready = (async () => {
+      await until(() => send.isEnabled(), { what: 'composer ready for the next send', timeoutMs: 3000 });
+      assert.equal(await send.isEnabled(), true, 'first result rendered and next send enabled');
+    })();
+    void ready.then(() => { settled = true; }, () => { settled = true; });
+    try {
+      await assert.rejects(send.click({ timeout: 500 }), /Timeout 500ms exceeded/);
+      assert.equal(settled, false, 'composer completion stays pending while its result is held');
+      release!();
+      await ready;
+    } finally {
+      release?.();
+      await ready.catch(() => {});
+    }
     await field.evaluate(node => (node as HTMLTextAreaElement).setSelectionRange(5, 6));
     await physical(page, 'Enter', { shiftKey: true });
     assert.equal(await field.inputValue(), 'first\nlast');
@@ -124,6 +144,22 @@ test('composer physical Enter, Shift+Enter and Meta+Enter send or break lines an
     assert.equal(fixture.coordinator.events.filter(event => event.params.content === 'first\nlast').length, 1);
     await pageUntil(page, () => (document.querySelector('[aria-label="Message text"]') as HTMLTextAreaElement)?.value === '', 'multi-line send receipt');
     assert.equal(await page.locator('[data-pane="secondary"]').count(), 0, 'command Enter stays in the composer');
+  }, async page => {
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      let firstSend = '';
+      route.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        if (frame.type === 'topic.send' && frame.text === 'Single line receipt') firstSend = frame.id;
+        server.send(message);
+      });
+      server.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        if (frame.type === 'result' && frame.id === firstSend) {
+          release = () => { firstSend = ''; route.send(message); release = undefined; };
+        } else route.send(message);
+      });
+    });
   });
 });
 
