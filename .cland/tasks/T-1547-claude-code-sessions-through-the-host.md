@@ -3,7 +3,7 @@ id: T-1547
 kind: task
 title: Claude Code sessions through the Host
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1296
 branch: t/T-1547-claude-code-sessions-through-the-host
 created: 2026-10-31T23:47:41.550Z
-updated: 2026-11-01T09:12:06.804Z
+updated: 2026-11-01T09:41:40.795Z
 ---
 
 ## Summary
@@ -28,19 +28,24 @@ Hot files: `hub/src/adapters/claude-code.ts`
 
 - [x] C1. `claude --bg`, `claude agents --json` and `claude stop` run through the Host's run with the same arguments, environment and working directory as today (test).
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
-  - done: impl-1547 · 2026-11-01T09:11:54.510Z
+  - done: impl-1547 · 2026-11-01T09:20:46.663Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
 - [x] C2. The session cwd's `.claude` settings files are read through the Host's readFile (test).
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
-  - done: impl-1547 · 2026-11-01T09:11:55.434Z
+  - done: impl-1547 · 2026-11-01T09:20:46.799Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
 - [x] C3. Pid checks, birth identities, resume liveness and stop of a Claude Code row use the Host's identity, alive and stop, and the adapter's own `process.kill` probe is gone.
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
-  - done: impl-1547 · 2026-11-01T09:11:55.951Z
+  - done: impl-1547 · 2026-11-01T09:20:47.749Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
 - [x] C4. A test with a recording Host shows every command, liveness check and stop of a Claude Code row reaching that Host (test).
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
-  - done: impl-1547 · 2026-11-01T09:11:56.456Z
+  - done: impl-1547 · 2026-11-01T09:20:48.279Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
 - [x] C5. The claude-code-adapter, claude-code-sessions, claude-code-schedule, claude-code-accounts and claude-code-environment test files pass with no test edited.
   - verified: rev-36 [reviewer] · run rev-36-1547-final-1 · 2026-11-01T08:15:38.128Z · commit ea01ad9ac9347c89c89dc7e9dcf6434915128eca
-  - done: impl-1547 · 2026-11-01T09:11:56.960Z
+  - done: impl-1547 · 2026-11-01T09:20:49.276Z
+  - verified: rev-36 [reviewer] · run rev-36-1547-final-2 · 2026-11-01T09:41:40.310Z · commit fb893018e8a9ca6b8559cc91d201e7a98e0a999a
 
 ## Comments
 
@@ -149,3 +154,44 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-1547 · 2026-11-01T09:07:10.867Z
 
 Shared Host.alive semantics inventory for the Lead-death fix: production naked-PID calls are ClaudeCodeAdapter.#pidAlive; proof-bearing rows flow from Sessions deaf startup/timer checks and both resume fallback branches. The standalone Claude compatibility Host already uses a raw injected/shared PID probe when no proof exists. Shared native Host contract covers full identity mismatch, legacy start, absent PID and stop; added explicit bare-PID live/absent assertions and a positive-controlled no-subprocess T2 case. Other fake Hosts supply their own synthetic facts. No wire reply/schema changed, no signal authority added. Unchanged lead-routing-process fails at ea01ad9ac and passes disposable dev d4c19797; replacing unnecessary local bare-PID identity subprocess work with shared signal-0 existence probe makes it pass unchanged.
+
+### rev-36 · 2026-11-01T09:12:55.852Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1547-source-5
+commit: 706bc39214f7fc58341de5594a5ec96f3e48d62d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source review clear; Standards/spec no findings. Inspected bare-PID fix, authorized dev merge and T3 guard classification. localHost.alive uses shared signal0 pidAlive only when both recorded proof fields are absent; identity-bearing liveness and stop authority unchanged. Positive-controlled no-subprocess guard, native live/reaped assertions, docs/inventory and original unedited Lead-routing/C5 files inspected. Docs conflicts preserve Claude/artifact sections; dev fileType contract retained. A-15266 targeted macOS arm64 Node24.21.0 receipts are preliminary, not new-head verification; previous all290738e6 remains failed. C1–C5 pending new-head post-source run. Current rule6 confirmed: merge-batch T1–T3 supplies pre-merge suite, no routine separate all. Reviewer ran no tests/browser.
+
+### rev-36 · 2026-11-01T09:21:19.784Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1547-source-6
+commit: fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source review clear. Standards/spec no findings. Complete delta from source-clear706bc392 is one init-config.test.ts:177 expectation: T1 -> T1/T2/T3, matching shipped config and current rule6; all other assertions and Host/Lead/lifecycle implementation unchanged. A-15280 records exact reviewed shared-fix cherry-pick provenance and preliminary current-head macOS arm64 Node24 init-config17/17/typecheck exit0. No new full run claimed; A-15274 remains failed, later phases unexecuted. C1–C5 pending fresh same-head verification. Reviewer ran no tests/browser.
+
+### rev-36 · 2026-11-01T09:41:40.310Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1547-final-2
+commit: fb893018e8a9ca6b8559cc91d201e7a98e0a999a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final task evidence clear at unchanged fb893018e8a9ca6b8559cc91d201e7a98e0a999a; Standards/spec no findings; C1–C5 verified. A-15284 uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/changed T3 guard/Web exit0,4570 pass. Actual records: init17, recording9, schedule46, sessions10/environment11 top-level, project-hub1, bare-PID guard1 all pass. Isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4; remaining T3/T4 unexecuted, advisory checks report mode. A-15286 exact-head Darwin27 arm64 Node24.21.0 native exit0 and named adapter6/accounts8/Host-contract8/Lead-routing1 receipts close omitted C5/shared-stop/original regression proof. All five C5 files and Lead test unedited; prior failed runs stay failed. Reviewer ran no tests/browser. Current rule6 pre-merge T1–T3 batch remains next; no batch completion or full-T3 task claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
