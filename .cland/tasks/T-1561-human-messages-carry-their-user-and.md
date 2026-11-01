@@ -2,8 +2,8 @@
 id: T-1561
 kind: task
 title: Human messages carry their user, and deliveries name the author
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1306
 branch: t/T-1561-human-messages-carry-their-user-and
 created: 2026-10-31T23:47:50.605Z
-updated: 2026-11-01T21:34:00.220Z
+updated: 2026-11-01T22:29:33.117Z
+closed: 2026-11-01T22:29:33.117Z
 ---
 
 ## Summary
@@ -122,3 +123,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear, no Standards/Spec findings. A-15418 run453b74cd Finished exit0, noncached exact head/treeb992dae43857d1d868d2b9c02db3253c40030b9c. Linux x64 droplet Node24.21.0 Neovim0.12.5, isolated chromium_headless_shell-1248 Chrome156.0.8078.4. T0/T1/all-T2 fallback/Web completed; mapped T4 inbox-verifier-load base-only, repetitions skipped; remaining T3 deferred, no full T3/T4 claim. Aggregate4586pass,0fail/cancel/skip/todo. Independently checked named completion outcomes: message-users1, human-routing6, Store29, imported auth-mode7 and web-authority-unit6 all pass. Combined with clear delta/source-reviewed assertions this establishes C1–C6 at merged head. Budget/lint/ratchets report-only; QA after-stage. No Reviewer execution/browser.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-01T22:29:33.117Z
+
+Merged ed81ac0be15848b2944a77aedc97e152b62efb7f onto dev.

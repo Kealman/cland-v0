@@ -2,8 +2,8 @@
 id: T-1565
 kind: task
 title: "Invites: `cland user add` and the one-time invite link"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1310
 branch: t/T-1565-invites-cland-user-add-and-the-one-time
 created: 2026-10-31T23:47:51.739Z
-updated: 2026-11-01T21:37:57.439Z
+updated: 2026-11-01T22:29:48.401Z
+closed: 2026-11-01T22:29:48.401Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merged-head final evidence clear, no findings. Exact delta-reviewed3c5d1561 confirmed by branch tip/hub run/provenance. Run7c764124/A-15420 exit0,4593 passes,zero fail/cancel/skip/todo; T0/T1/all fallback T2/Web complete; T3 deferred,T4 unexecuted. Direct named timing pass facts: invites4,user-invites5,composed auth-mode7/web-authority-unit6,users4/web-auth29/legacy authority45,frozen usage1/native help5. Current-role and forged-write assertions pass alongside five human-only paths, held/failed fences, old-wire mint and reset/digest/expiry assertions. All C1–C7 now verified at merged head; no waiver or parent-run reuse as exact-head evidence. Droplet Linux x64 6.8.0-142-generic Node24.21.0 Neovim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4,cached null; advisories report-only. A-15421 records exact case lines and runner tree: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15421-t-1565-merged-head-final-evidence-at-3c5d1561.md. Reviewer executed no tests/browser; after-stage QA and merge batch separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-01T22:29:48.401Z
+
+Merged 9de0552f8e6b886bc6dedb2e55b02d33808fce0e onto dev.

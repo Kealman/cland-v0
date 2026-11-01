@@ -3,7 +3,7 @@ id: T-1548
 kind: task
 title: Codex sandbox roots from the Host's realpath
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1531
 blocked_by:
   - T-1546
-topic: null
-branch: null
+topic: topic-1314
+branch: t/T-1548-codex-sandbox-roots-from-the-host-s
 created: 2026-10-31T23:47:41.861Z
-updated: 2026-11-01T07:09:54.188Z
+updated: 2026-11-01T23:42:24.907Z
 ---
 
 ## Summary

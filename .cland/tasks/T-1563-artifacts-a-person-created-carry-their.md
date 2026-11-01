@@ -2,8 +2,8 @@
 id: T-1563
 kind: task
 title: Artifacts a person created carry their user
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1308
 branch: t/T-1563-artifacts-a-person-created-carry-their
 created: 2026-10-31T23:47:51.208Z
-updated: 2026-11-01T21:16:27.881Z
+updated: 2026-11-01T23:41:24.719Z
+closed: 2026-11-01T23:41:24.719Z
 ---
 
 ## Summary
@@ -30,19 +31,25 @@ Hot files: `hub/src/hub/artifacts.ts` [Host: E-1531 moves path reads], `hub/src/
 - [x] C1. An artifact a user creates or uploads in users mode records that user's id and has the user's name as `creator`.
   - done: impl-1563 · 2026-11-01T20:01:37.963Z
   - verified: rev-36 [reviewer] · run rev-36-1563-final-1 · 2026-11-01T20:20:15.044Z · commit 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32
+  - verified: rev-36 [reviewer] · run rev-36-1563-final-2 · 2026-11-01T22:49:10.930Z · commit 02d6b86637b2de3ae392c19ea30f3233422ed2ca
 - [x] C2. An artifact created by an agent session carries no user id.
   - done: impl-1563 · 2026-11-01T19:58:44.035Z
   - verified: rev-36 [reviewer] · run rev-36-1563-final-1 · 2026-11-01T20:20:15.044Z · commit 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32
+  - verified: rev-36 [reviewer] · run rev-36-1563-final-2 · 2026-11-01T22:49:10.930Z · commit 02d6b86637b2de3ae392c19ea30f3233422ed2ca
 - [x] C3. The audit and artifact journal records of a human artifact carry the user's id.
   - done: impl-1563 · 2026-11-01T19:58:45.001Z
   - verified: rev-36 [reviewer] · run rev-36-1563-final-1 · 2026-11-01T20:20:15.044Z · commit 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32
+  - verified: rev-36 [reviewer] · run rev-36-1563-final-2 · 2026-11-01T22:49:10.930Z · commit 02d6b86637b2de3ae392c19ea30f3233422ed2ca
 - [x] C4. Single-mode human artifacts keep `creator` `human` and no user id.
   - done: impl-1563 · 2026-11-01T19:58:45.615Z
   - verified: rev-36 [reviewer] · run rev-36-1563-final-1 · 2026-11-01T20:20:15.044Z · commit 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32
+  - verified: rev-36 [reviewer] · run rev-36-1563-final-2 · 2026-11-01T22:49:10.931Z · commit 02d6b86637b2de3ae392c19ea30f3233422ed2ca
 - [x] C5. The change touches only creator fields in the artifact code, leaving its path reading as it is.
   - done: impl-1563 · 2026-11-01T19:58:45.771Z
   - verified: rev-36 [reviewer] · run rev-36-1563-source-2 · 2026-11-01T20:03:32.764Z · commit 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32
   - verified: rev-36 [reviewer] · run rev-36-1563-final-1 · 2026-11-01T20:20:15.045Z · commit 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32
+  - verified: rev-36 [reviewer] · run rev-36-1563-delta-source-1 · 2026-11-01T22:31:29.685Z · commit 02d6b86637b2de3ae392c19ea30f3233422ed2ca
+  - verified: rev-36 [reviewer] · run rev-36-1563-final-2 · 2026-11-01T22:49:10.931Z · commit 02d6b86637b2de3ae392c19ea30f3233422ed2ca
 
 ## Comments
 
@@ -98,3 +105,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear at unchanged 518f4b1a7d1c8cbcae8e7cc61fec052ece5c7e32. Standards/spec no findings; C1–C5 verified. Independently checked A-15389's four generated artifact-user outcomes: users-mode attribution/index/audit/journal/agents, single-mode old shape, authenticated second-user watch and now placement, all pass. Unedited artifact-host4/artifacts15/upload5 pass, supporting source-established path/byte invariance; Neovim12/Web14 artifact regressions pass. Run dfd8d43b uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/selected T4 base/Web exit0,4588 pass; isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. Remaining T3 in batch; other T4/repetitions unexecuted. Advisory checks report mode, no all-tier claim. Reviewer ran no tests/browser. QA after-stage; merge-batch T1–T3 gate remains next.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-36 · 2026-11-01T22:31:29.685Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1563-delta-source-1
+commit: 02d6b86637b2de3ae392c19ea30f3233422ed2ca
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; Standards/Spec no findings. Coordinator explicitly authorized both merges; final manual resolutions retain all four items' README/skill text. Artifact creation/upload/visibility and all four targeted test files byte-unchanged from518f4b1a7. Inspected composition with landed user authority, Users.first bounded lookup, and trusted upload-caption/prompt message attribution; optional creatorUserId/journal identity and agent/single shape preserved. C5 source verified; C1–C4 await fresh same-head post-source mode-free verify. A-15435 is local macOS summary-only targeted/typecheck receipt without named raw output/Node version, not final coverage. Prior A-15389 remains old-head evidence. Incoming items' clear reviews/landings confirmed; no Reviewer tests/browser/edits. Premerge batch/after-stage QA separate.
+
+Criteria: C5 verified.
+
+### rev-36 · 2026-11-01T22:49:10.931Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1563-final-2
+commit: 02d6b86637b2de3ae392c19ea30f3233422ed2ca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear; Standards/Spec no findings. Current delta sourceA-15437 unchanged. Independently streamed A-15456/935430dc generated artifact-user4 all pass (identity/index/audit/journal/agents,single old shape,cookie second-user watch/now with forged fields ignored). Unchanged artifact-host4/artifacts15/upload5 and Neovim12/Web14 artifact cases pass. Exact-head uncached Linuxx64 droplet Node24.21.0/Neovim0.12.5; T0,T1,fallbackallT2,selected mergedT3/mappedT4base,Web exit0,4689pass,zero fail/cancel/skip/todo. Isolated HeadlessShell1248/ChromeTesting156.0.8078.4; budget/lint/skip-check advisories report-only. RemainingT3/premergebatch,otherT4/repetitions unexecuted; priorA-15389 old-head only. C1–C5 verified. QA after-stage separate; no Reviewer execution/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-01T23:41:24.719Z
+
+Merged 0488a63cb039bc16214f0da2ad2592d0f2f6c155 onto dev.
