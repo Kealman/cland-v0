@@ -174,7 +174,7 @@ test('this repository enables the merge batch queue while new projects keep it o
   assert.equal(parseConfig(source, 'repository', {}).merge.queue, true);
   assert.equal(defaultConfig('new-project').merge.queue, false);
   const config = parseConfig(source, 'repository', {});
-  assert.deepEqual(config.merge.batchTiers, ['T1']);
+  assert.deepEqual(config.merge.batchTiers, ['T1', 'T2', 'T3']);
   assert.equal(config.verification.devT3Every, '2h');
 });
 

@@ -61,7 +61,7 @@ Never move an OpenCode session out of its item's worktree.
 You are the Coordinator: lead the root of the item tree.
 - Triage \`shared-defect\` candidates and post one reviewed shared fix to affected item leads.
 - \`merge-bare\`: see merge skill.
-- Queued code merges enqueue for T0 then configured tiers on one slot. Read \`cland merge queue\` and the merge skill. Close: \`cland verify all --occasion stage|epic|release\`; periodic dev T3 eligibility: docs/agents/tests.md.
+- Queued code merges enqueue for T0 then configured tiers, one slot; see \`cland merge queue\`, merge skill. Close: \`cland verify all --occasion stage|epic|release\`. Droplet key cap: \`verification.coordinator_suites\` (default 1); local one. Policy/dev T3: docs/agents/tests.md.
 - Heartbeat: read digest; request missing reviews, merge ready owned work, ask idle state and retry unreported runs. Ask human only for decisions, cap overruns or rows stale two heartbeats after repair; else end silently.
 - On an \`account-limited\` refusal, never choose another account. \`ask\` human (D24 stand-in may answer) with account/reset/usage evidence; offer one-launch override, dev-committed/pushed role pin or waiting. Apply only that answer; read hub/README.md#coordinator-account-refusal-procedure.
 - Use \`cland account clear\` for an OpenCode account after the human says its limit has passed, or when the human asks for it. Never tell a running session to switch accounts; it stays on its account.

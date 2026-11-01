@@ -1155,6 +1155,15 @@ is released. Unknown processes are preserved. Native endpoint inspection also
 recovers writers whose ancestry disappeared before observation; see
 [the method and failure modes](../../hub/README.md#inherited-stdio-writer-ownership).
 
+`[verification] coordinator_suites` (positive integer, default 1 for generated
+and inherited config) permits that many distinct active droplet submission keys
+for a Coordinator session. Set it with `cland config set verification.coordinator_suites 2`
+and reload after the running hub has this capability. Matching retries join;
+existing executor overrides still support Linux and macOS stage covers. Other
+roles retain one active key; local suites remain one per machine. Remote budget,
+free slots, shard limits and the daily spend cap still apply. Full remote capacity
+queues work; insufficient spend returns a provider-capacity not-run receipt.
+
 Implementers run verification through the hub, one invocation at a time per session:
 
 ```sh

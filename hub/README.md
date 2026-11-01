@@ -1545,7 +1545,7 @@ history). Uncommitted edits may be loaded; the source commit identifies the file
 Git history, not a claim that those edits were committed.
 
 The following settings apply live: `verification.executor`, `budget` (still capped
-at one local run), `remote_budget`, `local_fallback`, `load_gate_workers`, `shards`, `cache_max_age_minutes`, `lifetime`,
+at one local run), `remote_budget`, `coordinator_suites`, `local_fallback`, `load_gate_workers`, `shards`, `cache_max_age_minutes`, `lifetime`,
 `run_timeout`, `daily_spend_usd`, the `verification.droplet` table, `keys.layouts`,
 and role definitions. Work that has started keeps its snapshot; anything that starts after the reload
 uses the reloaded config. A queued job has not started. The scheduler persists the
@@ -4952,6 +4952,18 @@ provisioning and cleanup add to billed lifetime. Read measured costs in each run
 the lifetime must cover the timeout plus ten minutes. Droplet settings are read
 again at each acquire; invalid values name their config key. The first available
 configured region offering the size and holding the prepared image wins.
+
+`[verification] coordinator_suites` is a positive integer, default 1 in generated
+and inherited configuration, applied on reload. It limits distinct active droplet
+submission keys for the hub-held Coordinator session identity. A matching retry
+joins its existing run; executor/worker/size overrides retain their existing
+separate-run behavior, including Linux and macOS stage covers. Other roles keep
+the existing one-key limit. Extra Coordinator requests queue when remote slots are full; shard limits and
+daily spend checks remain unchanged. Insufficient spend returns a provider-capacity
+not-run receipt rather than waiting for budget; this setting creates no extra
+machine capacity.
+Local execution stays at one run per machine. Deploy and restart the hub before
+raising this setting for work that relies on the new admission policy.
 
 One local run uses the host's compatibility leases. Up to `remote_budget` droplet
 runs proceed beside it, using their own machines' locks. A full remote budget with `local_fallback = true` (the default)

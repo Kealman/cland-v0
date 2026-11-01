@@ -675,10 +675,24 @@ export class Suites {
     const owned = this.#jobs.filter(job => this.#active(job) && suiteOwner(job) === suiteOwner(input));
     const key = submissionKey(input, head);
     const matching = owned.filter(job => (job.submissionKey ?? submissionKey(job, job.head)) === key);
-    if (owned.length && !matching.length) throw new Error('this session already has a suite queued or running');
     // Compare requested overrides, not resolved policy or a fallback executor.
     const active = matching.find(job => (job.followsConfig ? undefined : job.requestedExecutor ?? job.executor) === input.executor && job.size === input.size && job.workersOverride === input.workers);
-    if (!active) return null;
+    if (!active) {
+      const config = this.#options.projectConfig?.();
+      const executor = input.executor ?? config?.verification.executor ?? this.#options.executor ?? 'local';
+      const name = input.actor && this.#store.nameOfSession(input.actor.sessionId);
+      const coordinator = name && this.#store.roleOf(name) === 'coordinator';
+      const refusal = 'this session already has a suite queued or running';
+      // Local execution always retains the machine's single-run boundary.
+      if (coordinator && executor === 'local' && owned.some(job => job.executor === 'local' || job.requestedExecutor === 'local')) throw new Error(refusal);
+      if (owned.length && !matching.length && (!coordinator || executor !== 'droplet')) throw new Error(refusal);
+      if (coordinator && executor === 'droplet') {
+        const cap = config?.verification.coordinatorSuites ?? 1;
+        const remoteKeys = new Set(owned.filter(job => (job.requestedExecutor ?? job.executor) === 'droplet').map(job => job.submissionKey ?? submissionKey(job, job.head)));
+        if (!remoteKeys.has(key) && remoteKeys.size >= cap) throw new Error(cap === 1 ? refusal : `${refusal} (coordinator_suites cap ${cap})`);
+      }
+      return null;
+    }
     if (active.occasion !== input.occasion || (active.submissionKey ?? submissionKey(active, active.head)) !== submissionKey(input, head)) throw new Error('this session already has a suite queued or running');
     return { reused: true, id: active.id, pid: active.pid, topic: active.topic, position: active.state === 'queued' ? this.#ordered().findIndex(job => job.id === active.id) + 1 : 1, ...(active.cached ? { cached: active.cached } : {}) };
   }

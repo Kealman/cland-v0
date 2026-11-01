@@ -1180,6 +1180,15 @@ both workbench bodies; exercise the shared native Telegram marks fixture,
 including a filename beginning `not transcribed: ` and a single surviving file
 after an oversized peer is refused. No role permission changes.
 
+## Coordinator droplet suite admission
+
+`verification.coordinator_suites` defaults to 1 and limits distinct active droplet
+submission keys for the stored Coordinator identity. It does not raise local
+machine capacity or other roles' limits. Retries and existing executor overrides
+retain their behavior, including Linux/macOS stage pairs. Remote slots, shards
+and spend caps still apply. Deploy/restart before configuring a higher cap;
+Implementers continue submitting one task verification at a time.
+
 ## Installed verification without the development compiler
 
 For compiler-backed duration identity or test-lint admission, preserve the shared

@@ -23,7 +23,7 @@ export type ProjectConfig = {
   release: { webBundle: boolean; homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { batchInteraction: 'report' | 'run'; queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -45,7 +45,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   release: { webBundle: false, homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
-  verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -118,6 +118,8 @@ load_gate_workers = ${c.verification.loadGateWorkers}
 budget = ${c.verification.budget}
 # Parallel droplet runs beside the local slot.
 remote_budget = ${c.verification.remoteBudget}
+# Active droplet submission keys per Coordinator session; local capacity stays one.
+coordinator_suites = ${c.verification.coordinatorSuites}
 shards = ${c.verification.shards}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
 # Reuse green candidate trees for this many minutes; 0 disables caching.
@@ -415,6 +417,10 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       if (!Array.isArray(values.regions) || !values.regions.length || !values.regions.every(v => typeof v === 'string' && /^[a-z0-9]+$/.test(v))) throw new Error('verification.droplet.regions must be a nonempty list of region slugs');
       c.verification.droplet.regions = values.regions;
     }
+  }
+  if (verification.coordinator_suites !== undefined) {
+    if (typeof verification.coordinator_suites !== 'number' || !Number.isSafeInteger(verification.coordinator_suites) || verification.coordinator_suites <= 0) throw new Error('verification.coordinator_suites must be a positive integer');
+    c.verification.coordinatorSuites = verification.coordinator_suites;
   }
   if (verification.shards !== undefined) {
     if (typeof verification.shards !== 'number' || !Number.isSafeInteger(verification.shards) || verification.shards <= 0) throw new Error('verification.shards must be a positive integer');
