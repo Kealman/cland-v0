@@ -201,6 +201,7 @@
     "hub/test/homebrew-publication.test.ts": "T3",
     "hub/test/homebrew.test.ts": "T1",
     "hub/test/hook-bridge-doctor.test.ts": "T3",
+    "hub/test/host-local-contract.test.ts": { "tier": "T3", "scenario": "local-host" },
     "hub/test/hub-priority.test.ts": "T2",
     "hub/test/hub-status-component.test.ts": "T2",
     "hub/test/human-hold.test.ts": "T2",

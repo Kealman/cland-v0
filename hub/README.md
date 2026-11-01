@@ -8125,6 +8125,25 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+### Host process operations
+
+`hub/src/host/host.ts` defines the process seam for session Hosts.
+`localHost(env)` implements `spawn`, `run`, `identity`, `alive`, `stop` and
+`processes`; session callers migrate in the following Host items. Spawn accepts
+an explicit environment and cwd, uses ignored stdio and a detached session/group,
+and returns only a PID after native spawn, with no retained caller handle.
+Environment values stay in the environment, never appended to argv.
+Short commands use the bounded doctor runner, with cwd, output, exit status and
+optional cancellation. Existing runner callers keep their defaults.
+
+Identity includes native birth and the legacy ps start timestamp. Liveness
+preserves existing conservative unreadable-proof and legacy timestamp behavior;
+stop requires matching native birth and delegates complete tree termination to
+`endProcess`. A legacy timestamp alone never authorizes a signal.
+`processes` returns resident bytes and ps CPU percentages summed over each PID
+and its descendants. These are one OS snapshot's samples, not an interval peak
+or a launch gate. This item adds no command, policy, role permission or dependency.
+
 ### WebAuthn verification module
 
 `hub/src/hub/webauthn.ts` exports bounded, synchronous, nonthrowing

@@ -64,8 +64,9 @@ export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number
  * Await close and native cleanup after termination. If close never arrives, report incomplete cleanup after 1 s.
  * Optional cancellation uses that same owned-group termination/close boundary; older calls are unchanged.
  * Cancellation is sixth; optional output encoding is seventh, defaulting to utf8.
+ * Optional eighth cwd serves Host commands; omitted preserves every existing caller.
  */
-export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false, signal?: AbortSignal, encoding: BufferEncoding = 'utf8'): Promise<RunResult> {
+export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false, signal?: AbortSignal, encoding: BufferEncoding = 'utf8', cwd?: string): Promise<RunResult> {
   return new Promise((done) => {
     let stdout = '';
     let stderr = '';
@@ -90,7 +91,7 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
     }
     let child;
     try {
-      child = spawn(bin, args, { env, stdio: [inheritStdin ? 0 : 'ignore', 'pipe', 'pipe'], detached: true });
+      child = spawn(bin, args, { env, cwd, stdio: [inheritStdin ? 0 : 'ignore', 'pipe', 'pipe'], detached: true });
     } catch (err) {
       finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err) });
       return;

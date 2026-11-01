@@ -1414,6 +1414,15 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+## Local Host process contract (T-1542)
+
+For Host process operations, use the reusable factory contract described in
+`docs/agents/tests/hub-test-host-local-contract.test.ts.md`. Preserve native birth
+and legacy timestamp semantics through the existing identity/liveness/termination
+functions. Resource samples sum resident bytes and ps CPU percentages across the
+tree; they do not measure launch capacity or enforce a new gate. No new role
+clause or permission applies.
+
 ## WebAuthn byte verification (T-1559)
 
 Use the pure registration/assertion seam in
