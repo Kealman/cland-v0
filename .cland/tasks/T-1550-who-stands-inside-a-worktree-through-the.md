@@ -2,8 +2,8 @@
 id: T-1550
 kind: task
 title: Who stands inside a worktree, through the Host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1303
 branch: t/T-1550-who-stands-inside-a-worktree-through-the
 created: 2026-10-31T23:47:42.340Z
-updated: 2026-11-01T18:06:38.575Z
+updated: 2026-11-01T19:05:19.715Z
+closed: 2026-11-01T19:05:19.715Z
 ---
 
 ## Summary
@@ -122,3 +123,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards/Spec no findings. A-15349 same-head d6bbeb1f exit0,4586pass,zero fail/cancel/skip/todo. Named Host17 and task-worktrees13 top-level outcomes pass. Exact-head local macOS Node24.21.0 A-15346 native-boundary29/A-15347 CLI4 raw pass outputs and exits0; A-15350 source-worktrees6 actual named pass output,native child/wrapper0 closes exact-equality consumer. Both original alias diagnostics pass with assertions/fixtures unchanged. Historical lifecycle/lock receipts not relabeled current. Remote Linux x64 droplet Node24.21.0,isolated Headless Shell1248/Chrome Testing156.0.8078.4; T0/T1/all fallback T2/Web/changed T3 complete,remaining T3/T4/full integrated unexecuted. No cache/skips,advisories report-only. C1–C4 verified; original failed batch stays failed. No Reviewer execution; after-stage QA/merge batch separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-01T19:05:19.715Z
+
+Merged 60c6e2d399a8d0fb56a84790dbbffe1733c621d5 onto dev.

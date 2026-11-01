@@ -2,8 +2,8 @@
 id: T-1552
 kind: task
 title: The `host` column, the host registry and a test host
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1300
 branch: t/T-1552-the-host-column-the-host-registry-and-a
 created: 2026-10-31T23:47:42.826Z
-updated: 2026-11-01T17:25:31.605Z
+updated: 2026-11-01T19:05:02.455Z
+closed: 2026-11-01T19:05:02.455Z
 ---
 
 ## Summary
@@ -135,3 +136,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head task evidence clear; Standards/spec no findings, C1–C5 verified. A-15330 current-head uncached Linux x64 droplet Node24.21.0 T0/T1/fallback T2/selected T3/mapped T4 base/Web exit0,4601 pass. Actual named registry4/orphan2/sealing6/session-async3/project-hub1/Claude-host9 pass records checked; browser isolated chromium_headless_shell-1248 Chrome for Testing156.0.8078.4. Remaining T3 in batch, other T4/repetitions unexecuted; advisory checks report mode. A-15325 exact-head macOS arm64 Node24 native exit0 and complete named C5 orphan-servers18/orphan-sweep-lock4/session-async3 passes; files confirmed unedited. Reviewer ran no tests/browser. Task coverage only, not full-tier occasion; T1–T3 merge batch remains the separate pre-merge gate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-01T19:05:02.455Z
+
+Merged cca4b422b055aba187fcb333864e18141ed2a7b0 onto dev.
