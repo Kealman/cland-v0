@@ -689,6 +689,7 @@
     "hub/test/web-verification-model.test.ts": "T1",
     "hub/test/webauthn.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
+    "hub/test/worktree-host.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",
     "nvim/test/agents-filters.test.ts": "T2",
     "nvim/test/artifact-browser-component.test.ts": "T2",

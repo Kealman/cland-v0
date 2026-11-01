@@ -1,3 +1,4 @@
+import type { Host } from './host/host.ts';
 import { removeWorktreeWithFixtures } from './fixture-processes.ts';
 import { testLintPolicy, TestLintError } from './test-lint-policy.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
@@ -470,7 +471,8 @@ async function worktreeConfined(root: string, path: string, resumed: <T>(work: (
 }
 
 /** Verify after Git creates the worktree; roll back only this call's registered worktree and new branch. */
-async function verifyCreatedWorktree(root: string, path: string, branch: string | null, creationTip: string | null, createdBranch: boolean, resumed: <T>(work: () => T) => T, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+async function verifyCreatedWorktree(root: string, path: string, branch: string | null, creationTip: string | null, createdBranch: boolean, resumed: <T>(work: () => T) => T, env: NodeJS.ProcessEnv = process.env, host?: Host): Promise<void> {
+  const worktreeHost = host ?? (await import('./host/local.ts')).localHost(env);
   const confined = await worktreeConfined(root, path, resumed).catch(() => false);
   if (resumed(() => confined)) return;
   const registered = branch === null ? [await findWorktree(root, path, env)] : await worktrees(root, env);
@@ -489,7 +491,7 @@ async function verifyCreatedWorktree(root: string, path: string, branch: string 
   let removed = false;
   try {
     // Git checks for dirty work; use its registered path, never a resolved recursive delete.
-    await removeWorktreeWithFixtures(created.path, () => territoryGitAsync(root, ['worktree', 'remove', created.path], undefined, undefined, env));
+    await removeWorktreeWithFixtures(created.path, () => worktreeHost.worktreeRemove({ root, path: created.path }));
     await resumed(() => {
       removed = true;
       if (!createdBranch || !creationTip || !branch) return;
@@ -505,7 +507,7 @@ async function verifyCreatedWorktree(root: string, path: string, branch: string 
     try {
       await resumed(() => {
         if (!removed) return;
-        return territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', created.path, creationTip!] : ['worktree', 'add', created.path, branch!], undefined, undefined, env);
+        return worktreeHost.worktreeAdd({ root, path: created.path, branch: current === null ? creationTip! : branch!, detached: current === null, beforeInstall: () => false });
       });
     } catch (recovery) {
       return resumed(() => { throw new Error(`worktree: created worktree failed confinement; branch ${branch} kept; could not restore worktree ${created.path}: ${recovery instanceof Error ? recovery.message : String(recovery)}`); });
@@ -531,7 +533,8 @@ export type TaskWorktree = { warning?: string; item: string; branch: string; pat
  * own (its `branch` field), else `t/<id>-<slug>`, started at `taskBase`'s tip. The worktree is linked to the
  * project's own repository (decision D3). Under the territory lock; rejects with a reason meant for the asker.
  */
-export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }, resumed: <T>(work: () => T) => T = work => work(), authorize: () => void = () => {}, env: NodeJS.ProcessEnv = process.env): Promise<TaskWorktree> {
+export async function ensureTaskWorktree(root: string, item: { id: string; slug: string; branch: string | null }, resumed: <T>(work: () => T) => T = work => work(), authorize: () => void = () => {}, env: NodeJS.ProcessEnv = process.env, host?: Host): Promise<TaskWorktree> {
+  const worktreeHost = host ?? (await import('./host/local.ts')).localHost(env);
   if (!(await hasTerritory(root, env))) throw new Error('the project has no territory (run cland init)');
   if (parseItemReference(item.id) === null) throw new Error(`not an item id: ${item.id}`);
   return withTerritoryLockAsync(root, async () => {
@@ -550,7 +553,13 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
       if (!await worktreeConfined(root, path, resumed)) throw new Error('worktree: reused worktree failed confinement');
       if (registered.branch === null) throw new Error(`${path} is a worktree on a detached HEAD: check out its task branch there first`);
       if (item.branch !== null && item.branch !== registered.branch) throw new Error(`${path} holds branch ${registered.branch}, but ${item.id} names ${item.branch}`);
-      return { item: item.id, branch: registered.branch, path, base: null, createdBranch: false, createdWorktree: false };
+      resumed(authorize);
+      const { warning } = await worktreeHost.worktreeAdd({ root, path, branch: registered.branch, reuseOnly: true, beforeInstall: async () => {
+        await checkWorktreePath(root, path, resumed);
+        if (!await worktreeConfined(root, path, resumed)) throw new Error('worktree: reused worktree failed confinement');
+        resumed(authorize);
+      } });
+      return { item: item.id, branch: registered.branch, path, base: null, createdBranch: false, createdWorktree: false, ...(warning ? { warning } : {}) };
     }
     if (present) throw new Error(`${path} exists and is not a worktree of this repository: move it aside`);
     const branch = item.branch ?? `t/${item.id}${item.slug ? `-${item.slug}` : ''}`;
@@ -562,9 +571,11 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
       await mkdir(worktreesPath(root), { recursive: true });
       await checkWorktreePath(root, path, resumed);
       resumed(authorize);
-      await territoryGitAsync(root, ['worktree', 'add', path, branch], undefined, undefined, env);
-      await verifyCreatedWorktree(root, path, branch, existingTip, false, resumed, env);
-      return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true };
+      const installed = await worktreeHost.worktreeAdd({ root, path, branch, beforeInstall: async () => {
+        await verifyCreatedWorktree(root, path, branch, existingTip, false, resumed, env, worktreeHost);
+        resumed(authorize);
+      } });
+      return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true, ...installed };
     }
     const base = await taskBase(root, undefined, env);
     if (base === null) throw new Error('neither dev nor main has a commit to start the task branch from');
@@ -576,9 +587,24 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
     await checkWorktreePath(root, path, resumed);
     resumed(authorize);
     // Pin the creation tip: a later listing may already contain another writer's commit.
-    await territoryGitAsync(root, ['worktree', 'add', '--no-track', '-b', branch, path, createdTip], undefined, undefined, env);
-    await verifyCreatedWorktree(root, path, branch, createdTip, true, resumed, env);
-    return { item: item.id, branch, path, base, createdBranch: true, createdWorktree: true };
+    await territoryGitAsync(root, ['branch', '--no-track', branch, createdTip], undefined, undefined, env);
+    let installed: { warning?: string };
+    try {
+      resumed(authorize);
+      installed = await worktreeHost.worktreeAdd({ root, path, branch, beforeInstall: async () => {
+        await verifyCreatedWorktree(root, path, branch, createdTip, true, resumed, env, worktreeHost);
+        resumed(authorize);
+      } });
+    } catch (err) {
+      // All post-creation errors share captured-tip recovery. A registered worktree
+      // or a concurrent writer owns its bytes; neither may be discarded here.
+      if (!await findWorktree(root, path, env) && await refAsync(root, `refs/heads/${branch}`, env) !== null) {
+        try { await territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, createdTip], undefined, undefined, env); }
+        catch (recovery) { throw new Error(`${err instanceof Error ? err.message : String(err)}; branch ${branch} kept: ${recovery instanceof Error ? recovery.message : String(recovery)}`); }
+      }
+      throw err;
+    }
+    return { item: item.id, branch, path, base, createdBranch: true, createdWorktree: true, ...installed };
   }, resumed);
 }
 
@@ -593,7 +619,8 @@ export type ExpectedBranch = { branch: string; tip: string; base?: string };
 type WorktreeValidation = () => void | Promise<void>;
 export type WorktreeCheck = () => void | WorktreeValidation | Promise<void | WorktreeValidation>;
 
-export async function removeTaskWorktree(root: string, item: string, check: WorktreeCheck = () => {}, expected?: ExpectedBranch, resumed: <T>(work: () => T) => T = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<{ path: string; branch: string | null }> {
+export async function removeTaskWorktree(root: string, item: string, check: WorktreeCheck = () => {}, expected?: ExpectedBranch, resumed: <T>(work: () => T) => T = work => work(), env: NodeJS.ProcessEnv = process.env, host?: Host): Promise<{ path: string; branch: string | null }> {
+  const worktreeHost = host ?? (await import('./host/local.ts')).localHost(env);
   return withTerritoryLockAsync(root, async () => {
     const path = taskWorktreePath(root, item);
     const matched = await findWorktree(root, path, env);
@@ -640,7 +667,7 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
         if (!identity || current.dev !== identity.dev || current.ino !== identity.ino || !confined) throw new Error(`${item}: worktree identity or confinement changed during cleanup; kept`);
       });
       await resumed(() => validate?.());
-      return territoryGitAsync(root, ['worktree', 'remove', found.path], undefined, undefined, env);
+      return worktreeHost.worktreeRemove({ root, path: found.path });
     });
     const validateBranch = await resumed(check);
     await resumed(() => validateBranch?.());
@@ -655,8 +682,10 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
             // A writer moved the ref after the pre-removal check: preserve its branch and put its worktree back.
             if (found) {
               await checkWorktreePath(root, path, resumed);
-              await territoryGitAsync(root, current === null ? ['worktree', 'add', '--detach', path, tip] : ['worktree', 'add', path, branch], undefined, undefined, env);
-              await verifyCreatedWorktree(root, path, current === null ? null : branch, current ?? tip, false, resumed, env);
+              await worktreeHost.worktreeAdd({ root, path, branch: current === null ? tip : branch, detached: current === null, beforeInstall: async () => {
+                await verifyCreatedWorktree(root, path, current === null ? null : branch, current ?? tip, false, resumed, env, worktreeHost);
+                return false as const;
+              } });
             }
             resumed(() => { throw new Error(`${item}: branch moved since merge (${current ?? 'none'}), kept`); });
           }

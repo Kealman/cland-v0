@@ -1869,6 +1869,10 @@
       "seconds": 7.04803,
       "tests": 7
     },
+    "hub/test/worktree-host.test.ts": {
+      "seconds": 10,
+      "tests": 6
+    },
     "hub/test/worktree-cli.test.ts": {
       "seconds": 11.532413,
       "tests": 4

@@ -1,5 +1,7 @@
+import type { Host } from '../host/host.ts';
+import { localHost } from '../host/local.ts';
 import { realWorktreePath as real, resolvedOccupants } from '../host/occupants.ts';
-import { worktreeInstall } from '../host/worktree-install.ts';
+import { legacyWorktreeGit } from '../host/legacy-worktree-git.ts';
 import { isCustomRole } from '../names.ts';
 // Task worktrees in the hub (T-58; T-20 decisions D3, D7, D8): the first claim of an open task makes its branch and
 // its worktree, `session.launch` with an item makes them before the session starts there and claims the item for
@@ -68,6 +70,7 @@ const nativeGit: WorktreeGit = { ensureTaskWorktree, taskBase, listTaskWorktrees
 
 export class TaskWorktrees {
   readonly #git: WorktreeGit;
+  readonly #host: Host;
   readonly #env: NodeJS.ProcessEnv;
   readonly #hasTerritory: typeof hasTerritory;
   readonly #tracker: Tracker;
@@ -79,9 +82,10 @@ export class TaskWorktrees {
    *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
   readonly #launching = new Map<string, symbol>();
 
-  constructor(options: { git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
-    this.#git = options.git ?? nativeGit;
+  constructor(options: { host?: Host; git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
     this.#env = options.env ?? process.env;
+    this.#host = options.host ?? localHost(this.#env);
+    this.#git = options.git ? legacyWorktreeGit(options.git, this.#host) : nativeGit;
     this.#hasTerritory = options.hasTerritory ?? hasTerritory;
     this.#tracker = options.tracker;
     this.#log = options.log ?? (() => {});
@@ -109,9 +113,7 @@ export class TaskWorktrees {
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<TaskWorktree> {
-    const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env);
-    const warning = await worktreeInstall(this.root, worktree.path, () => resumed(authorize));
-    if (warning) worktree.warning = warning;
+    const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env, this.#host);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     resumed(authorize);
@@ -389,7 +391,7 @@ export class TaskWorktrees {
             if (view.state !== 'closed') throw new Error(`${item} reopened: prune keeps its branch`);
             return validate;
           });
-        }, expected, resumed, this.#env);
+        }, expected, resumed, this.#env, this.#host);
         return resumed(() => ({ removed: [{ item, ...done }], failed: [] }));
       } catch (err) {
         return resumed(() => ({ removed: [], failed: [{ item, error: err instanceof Error ? err.message : String(err) }] }));
@@ -423,7 +425,7 @@ export class TaskWorktrees {
                 resumed(() => { if (this.#launching.has(item)) throw new Error(`${item}: a session is being launched in its worktree`); });
               };
             });
-          }, expectedBranches.get(item), resumed, this.#env);
+          }, expectedBranches.get(item), resumed, this.#env, this.#host);
           resumed(() => {
             this.#log({ event: 'task-worktree-removed', id: item, path: relative(this.root, done.path), branch: done.branch, ahead: entry.ahead.length });
             removed.push({ item, ...done });

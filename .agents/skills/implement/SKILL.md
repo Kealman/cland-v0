@@ -1460,6 +1460,14 @@ Sessions rather than separate process probe functions; every production lookup
 currently resolves local. Keep rollback file metadata hub-local and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
 
+For task creation/prune Host routing, use the recording Host and native Git seam
+in `docs/agents/tests/hub-test-worktree-host.test.ts.md`. Keep the four named
+worktree regression files unedited. Territory owns policy and the lock; Host add
+owns install warnings on creation and reuse, after its beforeInstall confinement
+and authorization barrier. Keep held revocation and install-failure controls.
+Legacy injected WorktreeGit overrides
+use host/legacy-worktree-git.ts, keeping install handling outside TaskWorktrees.
+
 For artifact source routing, use the recording Host/frame cases in
 `docs/agents/tests/hub-test-artifact-host.test.ts.md`. Keep file type, folder
 listing and bytes on the caller Host; human and hub-owned sources stay local.

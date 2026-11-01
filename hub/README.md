@@ -8242,6 +8242,21 @@ The Host contract includes `fileType` (lstat without following symlinks;
 Local worktree operations use the supplied repository root, path and existing
 branch. Add shares the root install and returns the existing stale-install
 warning without replacing installs; remove uses Git's ordinary dirty refusal.
+Task worktree creation and prune pass a Host (local by default) through the
+territory module. Territory retains the lock, branch policy, confinement checks,
+fixture drainage and final revalidation; the Host performs add/remove, including
+rollback restoration. Add accepts `reuseOnly` for install diagnostics without Git
+creation, and `detached` for recovery at a retained tip. Its optional `beforeInstall`
+barrier is awaited after Git and before install I/O: territory verifies confinement
+and authorization there. Recovery can return false from the barrier to restore
+bytes without install effects. Install failures retain a confined registered
+worktree and branch. New branches are pinned
+before add; every post-branch failure drops a newly created branch only at its captured tip
+and only when no worktree was registered. TaskWorktrees forwards the Host warning.
+Legacy injected WorktreeGit overrides are adapted in host/legacy-worktree-git.ts,
+so their empty-folder fixtures keep install behaviour through the Host too.
+No command, setting or role permission changes.
+
 Occupants shares path resolution and containment with TaskWorktrees, resolves aliases and checks directory boundaries against the supplied
 session cwd snapshot. Callers doing destructive pruning still own revalidation.
 

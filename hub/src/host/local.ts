@@ -14,9 +14,12 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
   return {
     name: 'local',
     limitPolls: true,
-    worktreeAdd: async ({ root, path, branch }) => {
-      const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'add', '--', path, branch], env, undefined, false, undefined, 'utf8', root);
-      if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree add failed');
+    worktreeAdd: async ({ root, path, branch, reuseOnly, detached, beforeInstall }) => {
+      if (!reuseOnly) {
+        const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'add', ...(detached ? ['--detach'] : []), '--', path, branch], env, undefined, false, undefined, 'utf8', root);
+        if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree add failed');
+      }
+      if (await beforeInstall?.() === false) return {};
       const warning = await worktreeInstall(root, path);
       return warning ? { warning } : {};
     },
