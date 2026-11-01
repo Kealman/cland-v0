@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1297
 branch: t/T-1546-codex-spawn-liveness-and-stop-through
 created: 2026-10-31T23:47:41.385Z
-updated: 2026-11-01T07:23:33.752Z
+updated: 2026-11-01T09:02:18.185Z
 ---
 
 ## Summary
@@ -48,3 +48,7 @@ Checkpoint 53d09a95e pushed, tree clean. Artifact A-15211 records pending shared
 ### impl-1546 · 2026-11-01T07:23:33.752Z
 
 Post-resume serial reruns at acceptable pre-run load, Darwin arm64/local Node v24.21.0: codex-native 35/35 at 53d09a95e (1m 3.95); new cwd/version/stale-row cases 3/3 at working tree leading to 795df512d (1m 6.15); npm run test:lint exit 0 at 795df512d (1m 7.15, advisories report-only, 0 refusals); codex-delivery 22/22 at 795df512d plus generated-doc-index-only delta (1m 8.92); codex-workspace-git 1/1 synthetic Seatbelt at 59e2b407f (1m 7.45). No browser or full suite. Current head 59e2b407f pushed, tree clean. Main Host lifecycle/Codex adapter preservation and root typecheck wait for shared T-1545/T-1547 shapes and Coordinator merge-dev instruction. All heavy commands exited.
+
+### impl-1546 · 2026-11-01T09:02:18.185Z
+
+Workflow correction to A-15211: Coordinator decision 032ecef3 (2026-11-01 09:01Z) supersedes its separate-full-suite note. T1–T3 merge-queue batch is now the pre-merge suite. Implementer path stays source review, mode-free verify at reviewed head, evidence review, ready. Shared prerequisites remain unmerged as of this check; no new tests run.

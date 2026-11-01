@@ -3,7 +3,7 @@ id: T-1549
 kind: task
 title: Task worktree add and remove through the Host
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1298
 branch: t/T-1549-task-worktree-add-and-remove-through-the
 created: 2026-10-31T23:47:42.044Z
-updated: 2026-11-01T07:53:24.959Z
+updated: 2026-11-01T09:02:30.802Z
 ---
 
 ## Summary
