@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1294
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-11-01T19:56:35.819Z
+updated: 2026-11-02T05:28:34.042Z
 ---
 
 ## Goal
@@ -219,3 +219,69 @@ Full T0–T4 suites and stage covers were out of this brief's scope and were not
 Manual browser process group ended at zero; all seven Accounts fixture census lines ended `after 0; scratch hub stopped`. The manual scratch hub stopped and the census of its 27 registered pids found no survivor. All evidence is retained under this artifact. Shared assertPublishable publication scan passed with a successful positive control; screenshot visually inspected. No HOME, environment exports, cookies or sign-in links included. Source, selector, generated-name provenance and the brief correction diff retained.
 
 Evidence A-15369: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15369-e-1536-stage-mode-and-identity-qa-clear-88fd4181/report.md
+
+### qa-678 · 2026-11-02T05:28:34.042Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-users2-2026-11-02-qa678-1
+commit: c14994a248fee18f1affcc4e49e2c67288f91dfe
+stage: attribution and invites
+stage_hash: 22cffcfcedc08f67bffebb96e7bad7e519b94a1e91745a2232401c909758f780
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# E-1536 stage attribution and invites — QA clear
+
+Run `qa-users2-2026-11-02-qa678-1`, tested source and served bundle `c14994a248fee18f1affcc4e49e2c67288f91dfe`. Clean detached HEAD and root dev matched before and after. macOS 27.0.1 (26A434), Darwin arm64, local executor; Node 24.21.0, Neovim 0.11.2. Isolated Chrome Headless Shell 156.0.8078.4, Playwright revision 1248; exact executable in final-build.txt. No GUI browser.
+
+All 27 setup/check rows pass. Named test files: 227 tests in 29 files, zero failures/skips. Generated case names were checked against source loops and retained in test-summary.json and generated-test-source.txt. Web build and typecheck pass. Full suites were not run here; separately supplied stage covers: Linux 801d32a7/A-15573 and macOS 11f9a8be/A-15577 at cover tree f605d08ac83205d3bbda879f82faf516e174dc46. No wall-time or remote cost claim. Quiet queue/load admission enforced for named test files; web readiness is report-only, actual browser cases ran.
+
+| Case | Result | Command and observations |
+| --- | --- | --- |
+| S0 | PASS | brief setup: fixtureEnvironment then scratchGitEnvironment; zero credential-prefix names; no session credentials inherited; probes syntax checked |
+| E1536S2-00 | PASS | brief m00: all preconditions and expected facts checked |
+| E1536S2-01 | PASS | brief m01: all preconditions and expected facts checked |
+| E1536S2-02 | PASS | brief m02: all preconditions and expected facts checked |
+| E1536S2-11 | PASS | brief m11: all preconditions and expected facts checked |
+| E1536S2-03 | PASS | brief test group 03, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-04 | PASS | brief test group 04, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-05 | PASS | brief test group 05, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-06 | PASS | brief test group 06, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-07 | PASS | brief test group 07, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-08 | PASS | brief test group 08, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-09 | PASS | brief test group 09, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-10 | PASS | brief test group 10, serial named files after load <=10 and quiet; TAP counts, generated names and no skips checked |
+| E1536S2-12 | PASS | isolated Headless Shell single-mode labels; both you; browser group after 0; screenshot inspected |
+| E1536S2-13 | PASS | probe correction (brief facts() order), coord-authorised; original setup retained; corrected inbox observation confirms the same five saved asks |
+| E1536S2-14 | PASS | brief m14; preconditions and all expected facts checked; invite tokens kept outside evidence |
+| E1536S2-15 | PASS | brief m15; preconditions and all expected facts checked; invite tokens kept outside evidence |
+| E1536S2-16 | PASS | brief m16; preconditions and all expected facts checked; invite tokens kept outside evidence |
+| E1536S2-17 | PASS | m17; fixture correction (driver lifetime), coord-authorised; original retained, same name/session/role connected then two sends and matching deliveries |
+| E1536S2-18 | PASS | m18; probe correction (brief facts() order), coord-authorised; persistent driver confirmed; ask first-wins, identity, topics/artifacts, journal/audit pass |
+| E1536S2-19 | PASS | m19; probe correction (brief facts() order), coord-authorised; approval first-wins and identity facts match |
+| E1536S2-20 | PASS | m20; brief correction (expected outcome), coord-authorised: ignored --as, session-scope refusal, qa-oc/null userId audit, no QA shell note artifact; other checks pass |
+| E1536S2-21 | PASS | m21; isolated Headless Shell desktop/phone labels and live messages, screenshots inspected, browser groups zero |
+| E1536S2-22 | PASS | m22; users/counts/create invite/dismiss/reload, screenshot inspected after dismissal, browser group zero |
+| E1536S2-23 | PASS | m23; probe correction (brief facts() order), coord-authorised; persistent driver survives reset; revocation, single stand-in and audit facts pass |
+| E1536S2-24 | PASS | m24; isolated Headless Shell labels all you after reset; screenshot inspected; browser group zero |
+| E1536S2-25 | PASS | m25; driver closed, fake OpenCode stopped, hub stopped, fixture census empty; final HEAD/dev unchanged and clean |
+
+## Corrections, separate from product results
+
+No product findings. These are Coordinator-authorised brief/fixture corrections, with original captures retained:
+
+- **Probe correction (brief facts() order), coord-authorised**, decision 2e7f08e8-41b1-4564-a3e9-88b9b78fa44e. Row13 original inbox facts lost approvals/asks/archive because messages returned first. Added only the supplied combined branch before messages. Corrected observation confirms the same five ask IDs; applied to later inbox observations (18–20,23). No asks recreated.
+- **Fixture correction (driver lifetime), coord-authorised**, decision 4d5d4d9e-05b2-424d-9ecb-52f54a55f0df. Row17 initially had no deliveries; background driver/spoke had exited, empty stderr. Restarted its remaining steps in persistent exec, same qa-coord/coordinator/session qa-qa-coord confirmed in session-list presence. Repeated two sends, one matching delivery each. Rows18/23 and agent artifact then passed; driver remained through reset and closed normally. Original driver/row17 captures preserved. The shell CLI has no who command and human wire who is unknown; equivalent session-list presence provided the required identity evidence.
+- **Brief correction (expected outcome), coord-authorised**, decision 796f3bb1-5d40-4099-b4c1-11033acc856b. Row20 originally expected an Implementer with no item/request to create an artifact in General. Actual exit1: `cland: forbidden: artifact.create (artifacts require your own item topic or a delivered request in this topic; General and Agents are the Coordinator’s)`. Ignored --as warning, qa-oc/null userId audit, and absence of the attempted QA shell note prove session identity. No retry after refusal. Existing Alex artifacts are the successful row18 artifacts, not this refused call.
+
+## Evidence and limits
+
+Every case has a recorder receipt with evidence paths. Screenshots inspected: single, desktop/phone live attribution, Accounts after invite dismissal, reset labels. No browser-group leftovers. Driver, fake OpenCode and scratch hub stopped; scratch-root process census zero.
+
+Exact-token scan positive controls detected the four stored invite tokens; final scans found none in scratch .cland or exported evidence. Carol's browser-created token is deliberately not stored in a private invite file: the optional exact-token extension reported ENOENT; original partial capture retained and corrected scan explicitly covers only the four available tokens. Generic publication scan with positive control checks all text captures, including Carol's URL syntax; screenshots contain no invite links. No secret files, HOME, cookie files, or raw databases exported.
+
+Stage verdict only; no epic criterion marks. Findings by severity: none. No product edits.
+
+Artifact A-15579: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15579-e-1536-stage-2-qa-27-checks-pass-authorised-brief-corrections/report.md

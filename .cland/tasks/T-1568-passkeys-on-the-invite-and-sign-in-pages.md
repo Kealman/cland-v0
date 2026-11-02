@@ -3,7 +3,7 @@ id: T-1568
 kind: task
 title: Passkeys on the invite and sign-in pages
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:52.450Z
-updated: 2026-10-31T23:47:57.355Z
+updated: 2026-11-02T05:28:35.883Z
 ---
 
 ## Summary

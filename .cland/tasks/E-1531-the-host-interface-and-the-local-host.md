@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1315
 branch: null
 created: 2026-10-31T18:22:03.207Z
-updated: 2026-11-02T01:54:35.547Z
+updated: 2026-11-02T05:41:32.579Z
 ---
 
 ## Goal
@@ -162,3 +162,82 @@ Platform: local macOS Darwin arm64, Node 24.21.0. No browser, GUI, real harness,
 Evidence excludes scratch HOME, environment exports, secrets and raw process census. Shared assertPublishable scan passed with a positive control. All scratch commands used the brief's shared fixtureEnvironment; inherited credentials and Git controls were stripped, with only the documented synthetic CLAND names retained. Evidence and recorded case lines were saved before the verdict.
 
 Evidence A-15518: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15518-e-1531-stage-2-qa-clear-6fe6289c/report.md
+
+### qa-678 · 2026-11-02T05:41:32.579Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-s3-2026-11-02-qa678-1
+commit: c14994a248fee18f1affcc4e49e2c67288f91dfe
+stage: routing by host, the territory branch and the boundary
+stage_hash: 47094421c2e2d32645f4232c5ec57679507efd5b3e5d94967435472fdf09bb73
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# E-1531 stage 3 — QA clear
+
+Stage: routing by host, the territory branch and the boundary. Run `qa-s3-2026-11-02-qa678-1` at `c14994a248fee18f1affcc4e49e2c67288f91dfe`. All 25 setup/check rows pass; no product findings. The clean detached HEAD and root dev matched the request before and after; all four stage members have landings and stages 1–2 are closed. No epic criterion marks.
+
+Platform: local macOS 27.0.1 (26A434), Darwin arm64, Node 24.21.0. No browser binary, GUI, real harness/provider, remote executor or droplet used. Every scratch command used the brief's shared fixtureEnvironment, with scratch HOME/XDG/Git and credential filtering. Credentials count zero and only the expected synthetic CLAND variables were present.
+
+The named-file phase ran **735 tests across 62 files**, serially, with no failures, cancellations or skips. Literal required names matched source and passing TAP; generated Host contract, routing, restart/abandonment, prune/divergent-tip and coordinator/aide placement cases were checked separately. Full names are in test-summary.json, source loops in generated-test-source.txt. Each file retains enforced quiet-queue and one-minute vm.loadavg below10 admission plus free disk readings; no timing benchmark or whole-suite wall-time claim. The macOS Seatbelt test executed; it proves synthetic scratch Git access, not real Codex sandbox enforcement or Linux parity.
+
+The separate planted-boundary control ran the enforcing T1 boundary test in a disposable adapter copy: expected exit1, exactly the recursive scan failed, and all four forbidden uses were named with file/line diagnostics. Its eleven cases are separate from the 735 passing tests; expected failure is not silently included as a green test.
+
+Full T3/T4 suites, soak, and stage covers were not rerun in QA. Supplied stage covers are Linux 801d32a7/A-15573 and macOS 11f9a8be/A-15577, tree f605d08ac83205d3bbda879f82faf516e174dc46. No remote lifetime/cost claim.
+
+| Case | Result | Command and observation |
+| --- | --- | --- |
+| S0 | PASS | committed brief setup; clean detached worktree, sealed fixtureEnvironment scratch HOME/Git, zero credential names, expected synthetic CLAND names only, probe syntax checked |
+| E1531S3-00 | PASS | m00; HEAD/dev/request equal, clean, four stage members landed, previous stages closed |
+| E1531S3-01 | PASS | m01; preserved files unchanged, approved routing exception recorded, source/doc strings and native boundary pass, no web changes |
+| E1531S3-02 | PASS | nt row02: ten named files serial, quiet/load gates; literal and eleven generated Host contract cases pass with no skips/failures |
+| E1531S3-03 | PASS | nt row03; serial files, quiet/load gates; routing and lifecycle tests pass; generated counts 2/2/2/0/6 as required |
+| E1531S3-04 | PASS | nt row04; nine serial files, quiet/load gates; nonlocal discovery and local schedule pass, both generated restart/abandonment pairs pass |
+| E1531S3-05 | PASS | nt row05; eight serial files, quiet/load gates; territory ordering/lock/rollback/prune pass, generated unchanged/pushed and local/recording subcases pass |
+| E1531S3-06 | PASS | nt row06; eleven serial files, quiet/load gates; OpenCode/Codex Host, native, sandbox and permission cases pass, required names present |
+| E1531S3-07 | PASS | nt row07; macOS synthetic Seatbelt Git test executed and passed, no platform skip |
+| E1531S3-08 | PASS | nt row08; twelve serial files, quiet/load gates; artifacts, placement, fixture environment and orphan checks pass; generated coordinator/aide cases present |
+| E1531S3-09 | PASS | nt row09; enforcing T1 source boundary passes all eleven named cases |
+| E1531S3-10 | PASS | m10; disposable adapter copy with four planted bypasses; expected exit1 only recursive-boundary case, all file/line/use diagnostics present twice |
+| E1531S3-11 | PASS | m11; scratch init clean on dev, local executor lock configured, territory present, t1-enabled hub up, host column present with no rows |
+| E1531S3-12 | PASS | m12; all three fake harnesses running local/darwin/alive, no t1 ops; local Claude agents 5 to17 in10s; all survive hub stop and resume same PIDs; no close diagnostics |
+| E1531S3-13 | PASS | m13; all three fake harness stops complete, local/darwin rows stopped and process gone, no t1 operations |
+| E1531S3-14 | PASS | m14; T-5 local item launch: territory/root/worktree/base equal, unpublished root commit included, territory dev unchanged, expected path/install link/session, no t1 ops |
+| E1531S3-15 | PASS | m15; prune keeps occupied worktree, then removes directory/root branch/unchanged territory launch ref/base after session stop |
+| E1531S3-16 | PASS | m16; T-6 inferred slug confirmed; preexisting territory tip supplies worktree/root, no launch base, prune removes local worktree/root but retains territory tip |
+| E1531S3-17 | PASS | m17; T-7 slug confirmed, launch base matches then pushed work advances territory; prune removes worktree and preserves pushed territory tip |
+| E1531S3-18 | PASS | m18; T-8 remote launch refused by t1 worktreeAdd; only t1 operation, no branch/base/worktree/row, both dev tips unchanged |
+| E1531S3-19 | PASS | m19; file/folder/relative artifact bytes match, missing source refused, no t1 operations |
+| E1531S3-20 | PASS | m20; Coordinator/Aide nonlocal and unknown host refused before t1 ops; implementer reaches only t1 statDirectory with invalid-cwd/no row; local Coordinator launches/stops normally |
+| E1531S3-21 | PASS | m21 in persistent exec; live local PID collision survives startup/stops with zero signals, unknown-host row unknown; only t1 ops including identity+stop, role assignment refused, coordinator none; positive control in22 |
+| E1531S3-22 | PASS | m22; restart without t1 makes both remote rows unknown; local host fields unchanged, trap alive/zero signals; positive control captures exactly one TERM then fixture KILL leaves trap dead |
+| E1531S3-23 | PASS | m23; hub stopped, all43 fixture PIDs gone, zero processes naming scratch; final clean HEAD/dev match request |
+
+## Findings and observations
+
+Findings ranked by severity: none. No code changes or brief corrections were needed.
+
+All inferred setup assumptions under the request held. Row12: local Claude agents invocations rose from5 to17 during the prescribed10s observation, excluding launch/restart time; all three native fake processes stayed alive through hub stop and resumed the same PIDs. Rows16/17: expected slugs matched, pre-existing and pushed territory work survived prune. Rows21/22 ran in one persistent exec so the collision trap remained owned until its positive control and cleanup.
+
+The real-hub collision window contains only t1 operations, including identity and stop. The colliding local sh stayed alive with zero TERM/HUP receipts, then captured exactly one deliberate TERM; explicit fixture KILL left it dead. This proves no signal reached it during the tested window. A signal-0 probe leaves no trace: the “never probed locally” evidence is the spy-local-host routing test in row03, not the absence of local entries in testHostOps. Unknown hosts stayed state unknown/reason unknown host; Coordinator placement remained unassigned after refusal.
+
+Row20 actual Implementer refusal: `invalid-cwd`, `launch cwd "<scratch>/p1" is not an accessible directory`, with exactly t1:statDirectory and no row. This matches the brief's explicit pass conditions, which do not require the underlying test-host refusal wording; the original full capture is retained. This diagnostic gap was already tracked separately as T-1586 after stage2. Row18 reached t1:worktreeAdd and returned `T-8: no worktree for the launch: test host t1 refuses worktreeAdd`, then removed all launch-created refs/base/worktree state.
+
+Real-hub territory checks prove final state, including unpublished local dev ancestry, matching launch-base/ref/worktree tips, rollback and prune. Ordering before Host worktreeAdd and the territory lock are proven by the recording-Host tests in row05, not a raced real-hub observation. Real nonlocal successful launches are outside scope; the tests use the recording Host. Codex launch arguments were captured in row14 as evidence only, not judged as live sandbox-root proof.
+
+## DoD coverage and limits
+
+| Epic criterion | Checked here | Remaining outside this stage verdict |
+| --- | --- | --- |
+| C1 | All local Host contract operations and coverage omission controls, row02 | No criterion mark; epic demo separate |
+| C2 | Boundary tests/negative control, adapters/worktrees/artifacts tests, real-hub fake launches/resume/stop and file copies | Full-suite occasion belongs to epic demo |
+| C3 | Host column/local rows, spy-local routing, real PID collision and unknown-host states | Real-hub signal0 cannot be directly observed |
+| C4 | Codex Host root/path tests and macOS Git sandbox test; launch argv retained | Live sandbox-root read reserved for DoD demo |
+| C5 | Recording-Host ordering/lock tests and real-hub territory end states | No extra real-hub ordering claim |
+| C6 | Generated placement tests; real nonlocal launch and role refusals | No criterion mark; epic demo separate |
+
+Cleanup: scratch hub stopped, census of43 fixture PIDs empty and zero processes naming scratch root. Export contains only declared captures/receipts/report, no scratch HOME, environment export, cookies, hub secret or raw database. Shared publication scan passed with a positive control. Evidence and recorder lines precede this verdict.
+
+Evidence A-15587: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15587-e-1531-stage-3-qa-clear-c14994a2/report.md

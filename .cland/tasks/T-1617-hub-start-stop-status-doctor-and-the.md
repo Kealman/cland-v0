@@ -5,6 +5,7 @@ title: Hub start, stop, status, doctor and the orphan sweep read a foreign holde
 state: open
 status: planned
 size: S
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:34:16.800Z
-updated: 2026-11-02T03:34:44.348Z
+updated: 2026-11-02T05:44:40.308Z
 ---
 
 ## Summary
@@ -31,6 +32,7 @@ Hot files: `hub/src/cli/hub.ts`, `hub/src/doctor/project.ts`, `hub/src/orphans.t
 - [ ] C4. The orphan sweep never matches a foreign holder's pid against local process rows (test).
 - [ ] C5. The existing `cland hub` CLI, doctor and orphan tests (`edges.test.ts`, `orphan-servers.test.ts`, `doctor.test.ts` and `doctor-cli.test.ts`) pass with no test edited.
 
+- [ ] C6. `tracker/offline-migrate.ts`, which takes the hub lock, refuses while a foreign holder's heartbeat is fresh, naming the holder's host, and never signals its pid (test).
 ## Notes
 
 Shared files: see Hot files

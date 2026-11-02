@@ -3,7 +3,7 @@ id: T-1567
 kind: task
 title: The sign-in page and sign-out
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T23:47:52.250Z
-updated: 2026-10-31T23:47:56.690Z
+updated: 2026-11-02T05:28:35.351Z
 ---
 
 ## Summary

@@ -3,17 +3,17 @@ id: T-1621
 kind: task
 title: One resolver for the hub's per-user state, and an inventory of what the hub writes outside the project
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1538
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1332
+branch: t/T-1621-one-resolver-for-the-hub-s-per-user
 created: 2026-11-02T03:34:17.764Z
-updated: 2026-11-02T03:34:46.550Z
+updated: 2026-11-02T05:51:39.908Z
 ---
 
 ## Summary
@@ -33,3 +33,13 @@ Hot files: new `hub/src/state-paths.ts`, `hub/src/executor/droplet/spend.ts` [E-
 ## Notes
 
 Shared files: see Hot files
+
+## Comments
+
+### impl-1621 · 2026-11-02T05:44:28.033Z
+
+Consumer inventory before implementation: spendPath exported from executor/droplet/spend.ts is used by droplet.ts, cli/executor.ts, executor-spend.test.ts, init-machine.ts and retirement/component tests; ledger lock, migration and retirement derive dirname(spendPath). Legacy reader and project HOME safety check are in spend.ts. HOME consumers outside spend: accounts/registry.ts; adapters/claude-code.ts; setup/steps/{accounts,trust}.ts; CLI {init,setup,open}.ts root guards. Runtime temp consumers: project socket fallback, termination-owner, suite-lock, verification-tree, Codex cland-run/sandbox, fixture-processes, QA scratch roots, droplet run/temp/provision scripts and health observation; suite lock defaults in init/config, daemon, suites and suite-worker. Search also covered hub/src colocated tests, all hub/test tiers, docs, skills, QA and shared. New API: hub/src/state-paths.ts exports userStateDirectory(env=process.env), userHome(env=process.env), legacySpendPath(env), and exact-source out-of-project exceptions with reasons. Existing spendPath API/wire and persisted ledger shapes remain unchanged. E-1532 paths must stay project-local or register exact runtime uses here.
+
+### impl-1621 · 2026-11-02T05:51:39.908Z
+
+Full consumer inventory: A-15593 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15593-t-1621-state-contract-consumer-inventory.md). No existing paths or wire/persisted formats change; existing fixtures and client consumers remain compatible. Local macOS/Node v24.21.0 targeted evidence so far: state-paths.test.ts 1/1, state-paths-lint.test.ts 3/3 (including planted controls, TS+shell inventory), state-inventory.test.ts 1/1 (fake harness, scripted provider lease, positive ledger and transient-lock observations), unchanged executor-spend.test.ts 20/20. Root typecheck passed. test:lint initially found missing new-file tier entries; added explicit T1/T2 registrations and rerunning. No T3/T4 or browser run; no full suite yet.

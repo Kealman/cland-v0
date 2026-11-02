@@ -3,17 +3,17 @@ id: T-1588
 kind: task
 title: The host agent's protocol, its client and its process operations
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1532
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1325
+branch: t/T-1588-the-host-agent-s-protocol-its-client-and
 created: 2026-11-02T03:33:52.542Z
-updated: 2026-11-02T03:34:39.455Z
+updated: 2026-11-02T05:57:40.952Z
 ---
 
 ## Summary
@@ -36,3 +36,17 @@ Hot files: `hub/src/host/agent/` (new: `protocol.ts`, `server.ts`, `processes.ts
 ## Notes
 
 Shared files: the agent protocol module (framing, hello, events owned here; ops added by 07, 19 and 23 in that order); `hub/src/cli/host.ts` (created here)
+
+## Comments
+
+### impl-1588 · 2026-11-02T05:43:27.490Z
+
+Rule 20 inventory before changes: searched host/agent, agent-client, process-exited, CLAND_HOST_, host serve across hub/src, hub/test, web, nvim, shared, docs, qa and shipped skills. No existing agent wire consumers; new consumers are server, client, CLI and tests. Existing process-identity.ts owns Linux birth parsing and must retain old exports/shape. Proposed v1 JSONL: request {id,op,args}; hello args {protocol:1,secret}; success {id,ok:true,result}, failure {id,ok:false,error}; hello result {protocol:1,version,pid,bootId}; events {event:'process-exited',pid,identity,code,signal} and {event:'memory',totalBytes,availableBytes}. Operations spawn, identity, alive, signal, stop, processes. Later op owners T-1593/T-1605/T-1609 extend dispatch. No existing wire shape is replaced.
+
+### impl-1588 · 2026-11-02T05:48:05.684Z
+
+Shared extraction exports: host/agent/identity.ts owns linuxIdentity(pid,stat,boot,report?,reportExited?), readLinuxBootId(): Promise<string>, readLinuxBootIdSync(): string and callback types. process-identity.ts imports/re-exports unchanged linuxIdentity/types and the two new readers. Existing Linux read sites use the readers. Coordinated with T-1615, which consumes the exports. Initial native CLI restart test exposed stale agent.sock after SIGKILL; adding stale-listener recovery while refusing an active listener.
+
+### impl-1588 · 2026-11-02T05:57:40.952Z
+
+Rule 20 extraction inventory (search process-identity/linuxIdentity/readLinuxBootId in production, colocated tests, all tiers, docs, QA, shipped skills): production consumers adapters/{sessions,processes,claude-code-local}, host/local, system-processes, stdio-writers, suite-command, hub/suite-isolation, executor/local and executor/droplet/watchdog retain existing process-identity imports/behavior unchanged. Test/fixture consumers host-boundary, measure-memory, process-cleanup, memory-producer, claude-code-sessions-lifecycle, session-resume-component, system-process-probe, system-processes, process-identity, executor-droplet and process-started are unaffected through re-exports. References in tests.md; per-test guides for host-boundary/lifecycle-serialization/process-identity/session-resume-component/telegram-polling-restart/fake-claude-cleanup/host-local-contract; QA briefs E-1531-stage-2/stage-3 and E-1284 remain valid. T-1615 imports the new boot readers. No old function signature or wire shape is removed.
