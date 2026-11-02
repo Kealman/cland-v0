@@ -62,7 +62,7 @@ test('claim, item launch and prune route each created/removed worktree through H
   const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
   const core = new HubCore();
   const table = new ProcessTable(':memory:', core.clock);
-  const sessions = new Sessions({ root, core, table, env });
+  const sessions = new Sessions({ root, core, table, env, hosts: [host] });
   sessions.register(fakeHarness('codex', { clock: core.clock }));
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); await tracker.stop(); });
   const worktrees = new TaskWorktrees({ tracker, env, host });
@@ -140,7 +140,7 @@ test('revocation after durable branch creation removes only its captured tip', a
       // cland-allow-child-env: native Git spy forwards production options unchanged at the durable branch receipt
       execFile(file, args, options, (err, stdout, stderr) => {
         void (async () => {
-          if (!err && args[0] === 'branch' && args[1] === '--no-track') { created = true; await proceed.promise; }
+          if (!err && options.cwd === root && args[0] === 'branch' && args[1] === '--no-track') { created = true; await proceed.promise; }
           callback(err, stdout, stderr);
         })();
       }));

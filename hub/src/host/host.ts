@@ -44,8 +44,9 @@ export interface Host {
   fileType(path: string): Promise<'file' | 'directory' | 'symlink' | 'other' | 'missing'>;
   readFile(path: string): Promise<Uint8Array>;
   listFolder(path: string): Promise<string[]>;
-  /** Await beforeInstall after Git and before install I/O; false skips installs for recovery. */
-  worktreeAdd(options: { root: string; path: string; branch: string; reuseOnly?: boolean; detached?: boolean; beforeInstall?: () => void | false | Promise<void | false> }): Promise<{ warning?: string }>;
+  /** Optional territory supplies the captured source path and commit before add; omitted keeps legacy local refs.
+   * Await beforeInstall after Git and before install I/O; false skips installs for recovery. */
+  worktreeAdd(options: { root: string; path: string; branch: string; territory?: { path: string; tip: string }; reuseOnly?: boolean; detached?: boolean; beforeInstall?: () => void | false | Promise<void | false> }): Promise<{ warning?: string }>;
   worktreeRemove(options: { root: string; path: string }): Promise<void>;
   occupants(path: string, sessions: readonly { name: string; cwd: string }[]): Promise<string[]>;
   /** Whether this Host permits idle account polling. Live-session reads are separate. */

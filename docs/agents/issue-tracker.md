@@ -231,6 +231,13 @@ Preserve `.cland/publish.tmp` after a failed push reply or follow-up. Repair the
 
 - File category work: find the ids with `cland task list --kind category`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with `--parent C-<n>`. Tasks need `--size XS|S|M|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n` for rework of landed tasks.
 
+Task preparation creates a missing task branch in the territory before the Host
+adds its worktree, under the territory lock. Local launches preserve the root's
+task-base tip, including unpublished commits; nonlocal launches use the territory
+base tip. Existing territory task refs supply their tip on either Host, while
+root-only branches retain local behavior. Prune deletes a launch-created territory
+ref only while it equals its recorded launch base, keeping pushed work.
+
 Task preparation shares the root dependency install through a `node_modules`
 link when the task worktree has none. Claim/launch replies preserve existing
 installs and report stale ones with their worktree path and directory/link kind.

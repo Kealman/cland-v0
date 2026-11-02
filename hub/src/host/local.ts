@@ -14,8 +14,19 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
   return {
     name: 'local',
     limitPolls: true,
-    worktreeAdd: async ({ root, path, branch, reuseOnly, detached, beforeInstall }) => {
+    worktreeAdd: async ({ root, path, branch, territory, reuseOnly, detached, beforeInstall }) => {
       if (!reuseOnly) {
+        if (territory) {
+          const fetched = await run('git', ['-c', 'gc.auto=0', 'fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', territory.path, territory.tip], env, undefined, false, undefined, 'utf8', root);
+          if (fetched.error || fetched.code !== 0) throw new Error(fetched.stderr || fetched.error || 'git fetch task branch failed');
+          const current = await run('git', ['-c', 'gc.auto=0', 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], env, undefined, false, undefined, 'utf8', root);
+          if (current.error || (current.code !== 0 && current.code !== 1)) throw new Error(current.stderr || current.error || 'git task branch inspection failed');
+          const trees = await run('git', ['-c', 'gc.auto=0', 'worktree', 'list', '--porcelain'], env, undefined, false, undefined, 'utf8', root);
+          if (trees.error || trees.code !== 0) throw new Error(trees.stderr || trees.error || 'git worktree inspection failed');
+          if (trees.stdout.split('\n').includes(`branch refs/heads/${branch}`)) throw new Error(`task branch ${branch} is already checked out`);
+          const updated = await run('git', ['-c', 'gc.auto=0', 'update-ref', '--no-deref', `refs/heads/${branch}`, territory.tip, current.code === 0 ? current.stdout.trim() : '0'.repeat(40)], env, undefined, false, undefined, 'utf8', root);
+          if (updated.error || updated.code !== 0) throw new Error(updated.stderr || updated.error || 'git task branch failed');
+        }
         const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'add', ...(detached ? ['--detach'] : []), '--', path, branch], env, undefined, false, undefined, 'utf8', root);
         if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree add failed');
       }

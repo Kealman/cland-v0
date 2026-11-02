@@ -1562,6 +1562,23 @@ before signals; callback payloads contain only plain process data. Keep the
 owner logger, absent-process success, reused-birth refusal and shutdown drainage
 cases in the shared Host contract. No CLI or role clause change applies.
 
+Task launch creates a missing task branch in the territory under the territory
+lock before calling the launch Host. Local publication requires an absent-ref
+lease and a native new-ref receipt; an up-to-date result grants no ownership.
+The Host fetches the captured commit without reading or writing FETCH_HEAD. On
+local the base is the root task-base tip (including unpublished commits), pushed
+into the territory; on a nonlocal Host the base is the territory task-base tip.
+The local Host adds the linked worktree in the root repository; branch names,
+paths and task-worktree journal fields retain their existing form. An existing
+territory branch supplies its tip; a root-only branch keeps its local tip.
+Failed add rolls back newly created refs only at their captured tips and without
+a registered worktree. Territory config `branch.<name>.clandLaunchBase` records
+launch-created refs: prune deletes those refs only while unchanged at that base,
+retaining pushed commits and pre-existing territory branches. Calls that omit the
+optional worktreeAdd territory source keep legacy local-ref behavior.
+No command, setting exposed to the human, or role permission changes.
+Use `docs/agents/tests/hub-test-territory-task-branch.test.ts.md` for the branch-first scratch fixture.
+
 For task creation/prune Host routing, use the recording Host and native Git seam
 in `docs/agents/tests/hub-test-worktree-host.test.ts.md`. Keep the four named
 worktree regression files unedited. List and prune occupants, including the final

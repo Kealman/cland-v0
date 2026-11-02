@@ -111,9 +111,10 @@ export class Sessions {
     return host;
   }
 
-  validateLaunchHost(request: LaunchRequest): void {
+  validateLaunchHost(request: LaunchRequest): Host {
     const host = this.#hostForLaunch(request);
     checkRoleHost(request.role ?? this.#core.store.roleOf(request.name), host.name);
+    return host;
   }
   /** File operations use the same placement lookup as the captured session row. */
   hostForSession(sessionId: string): Host {

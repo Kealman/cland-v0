@@ -564,7 +564,19 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
     if (present) throw new Error(`${path} exists and is not a worktree of this repository: move it aside`);
     const branch = item.branch ?? `t/${item.id}${item.slug ? `-${item.slug}` : ''}`;
     if ((await maybeGitAsync(root, ['check-ref-format', '--branch', branch], env)) === null) throw new Error(`${JSON.stringify(branch)} is not a valid branch name`);
+    const territory = territoryPath(root);
+    const territoryTip = await refAsync(territory, `refs/heads/${branch}`, env);
     const existingTip = await refAsync(root, `refs/heads/${branch}`, env);
+    if (territoryTip !== null) {
+      await mkdir(worktreesPath(root), { recursive: true });
+      await checkWorktreePath(root, path, resumed);
+      resumed(authorize);
+      const installed = await worktreeHost.worktreeAdd({ root, path, branch, territory: { path: territory, tip: territoryTip }, beforeInstall: async () => {
+        await verifyCreatedWorktree(root, path, branch, territoryTip, existingTip === null, resumed, env, worktreeHost);
+        resumed(authorize);
+      } });
+      return { item: item.id, branch, path, base: null, createdBranch: existingTip === null, createdWorktree: true, ...installed };
+    }
     if (existingTip !== null) {
       await checkWorktreePath(root, path, resumed);
       resumed(authorize);
@@ -577,9 +589,11 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
       } });
       return { item: item.id, branch, path, base: null, createdBranch: false, createdWorktree: true, ...installed };
     }
-    const base = await taskBase(root, undefined, env);
+    const territoryRefs = await territoryGitAsync(territory, ['for-each-ref', '--format=%(refname:strip=2) %(objectname)', 'refs/heads/'], undefined, undefined, env);
+    const tips = new Map(territoryRefs.split('\n').filter(Boolean).map(line => { const [name, tip] = line.split(' '); return [name!, tip!] as const; }));
+    const base = await taskBase(root, worktreeHost.name === 'local' ? undefined : tips, env);
     if (base === null) throw new Error('neither dev nor main has a commit to start the task branch from');
-    const createdTip = await refAsync(root, `refs/heads/${base}`, env);
+    const createdTip = await refAsync(worktreeHost.name === 'local' ? root : territory, `refs/heads/${base}`, env);
     if (createdTip === null) throw new Error(`${base} no longer has a commit to start the task branch from`);
     await checkWorktreePath(root, path, resumed);
     resumed(authorize);
@@ -587,11 +601,25 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
     await checkWorktreePath(root, path, resumed);
     resumed(authorize);
     // Pin the creation tip: a later listing may already contain another writer's commit.
-    await territoryGitAsync(root, ['branch', '--no-track', branch, createdTip], undefined, undefined, env);
+    if (worktreeHost.name === 'local') {
+      // Preserve unpublished root task-base commits (Coordinator amendment to A-15078).
+      const publication = await territoryGitAsync(root, ['push', '--porcelain', `--force-with-lease=refs/heads/${branch}:`, territory, `${createdTip}:refs/heads/${branch}`], undefined, undefined, env);
+      // Git can report an equal competing ref as up-to-date even with the empty lease.
+      // Only the native new-ref receipt grants ownership for rollback and prune.
+      if (!publication.split('\n').some(line => line.startsWith(`*\t${createdTip}:refs/heads/${branch}\t`))) {
+        throw new Error(`territory branch ${branch} was not created by this launch; competing ref kept`);
+      }
+    } else await territoryGitAsync(territory, ['branch', '--no-track', branch, createdTip], undefined, undefined, env);
     let installed: { warning?: string };
     try {
+      // Persist provenance for prune; existing territory branches never acquire it.
+      await territoryGitAsync(territory, ['config', `branch.${branch}.clandLaunchBase`, createdTip], undefined, undefined, env);
       resumed(authorize);
-      installed = await worktreeHost.worktreeAdd({ root, path, branch, beforeInstall: async () => {
+      await territoryGitAsync(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', territory, `refs/heads/${branch}`], undefined, undefined, env);
+      resumed(authorize);
+      await territoryGitAsync(root, ['branch', '--no-track', branch, createdTip], undefined, undefined, env);
+      resumed(authorize);
+      installed = await worktreeHost.worktreeAdd({ root, path, branch, territory: { path: territory, tip: createdTip }, beforeInstall: async () => {
         await verifyCreatedWorktree(root, path, branch, createdTip, true, resumed, env, worktreeHost);
         resumed(authorize);
       } });
@@ -601,6 +629,12 @@ export async function ensureTaskWorktree(root: string, item: { id: string; slug:
       if (!await findWorktree(root, path, env) && await refAsync(root, `refs/heads/${branch}`, env) !== null) {
         try { await territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, createdTip], undefined, undefined, env); }
         catch (recovery) { throw new Error(`${err instanceof Error ? err.message : String(err)}; branch ${branch} kept: ${recovery instanceof Error ? recovery.message : String(recovery)}`); }
+      }
+      if (!await findWorktree(root, path, env)) {
+        try {
+          await territoryGitAsync(territory, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, createdTip], undefined, undefined, env);
+          await territoryGitAsync(territory, ['config', '--unset-all', `branch.${branch}.clandLaunchBase`], undefined, undefined, env);
+        } catch (recovery) { throw new Error(`${String(err)}; territory branch ${branch} kept: ${String(recovery)}`); }
       }
       throw err;
     }
@@ -692,6 +726,15 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
           throw err;
         }
       } else await territoryGitAsync(root, ['branch', '-D', branch], undefined, undefined, env);
+    }
+    if (branch !== null) {
+      const territory = territoryPath(root);
+      const launchBase = await maybeGitAsync(territory, ['config', '--get', `branch.${branch}.clandLaunchBase`], env);
+      const remoteTip = await refAsync(territory, `refs/heads/${branch}`, env);
+      if (launchBase && remoteTip === launchBase) {
+        await territoryGitAsync(territory, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, launchBase], undefined, undefined, env);
+        await territoryGitAsync(territory, ['config', '--unset-all', `branch.${branch}.clandLaunchBase`], undefined, undefined, env);
+      }
     }
     return { path, branch };
   }, resumed);

@@ -101,8 +101,8 @@ export class TaskWorktrees {
   }
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
-  async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<TaskWorktree> {
-    const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env, this.#host);
+  async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}, host: Host = this.#host): Promise<TaskWorktree> {
+    const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env, host);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     resumed(authorize);
@@ -154,7 +154,7 @@ export class TaskWorktrees {
    * the project root; a Lead records its node in process.item without a task worktree.
    */
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null; note?: string } & WorktreeOutcome> {
-    sessions.validateLaunchHost(request);
+    const launchHost = sessions.validateLaunchHost(request);
     if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa' && !isCustomRole(request.role)) throw new Error('`item` is for an Implementer, custom worker, Lead, Reviewer or QA');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = await this.#tracker.viewAsync(request.item, resumed);
@@ -194,7 +194,7 @@ export class TaskWorktrees {
         let worktree: TaskWorktree | null = null;
         if (reason === null) {
           try {
-            worktree = await this.#make(now, request.name, resumed, authorize);
+            worktree = await this.#make(now, request.name, resumed, authorize, launchHost);
           } catch (err) {
             if (err instanceof ToolForbidden) throw err;
             throw new Error(`${view.id}: no worktree for the launch: ${err instanceof Error ? err.message : String(err)}`);
