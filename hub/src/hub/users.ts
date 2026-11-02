@@ -17,6 +17,7 @@ export class Users {
         mode text not null check(mode in ('single','users')), set_at integer not null);
       create table if not exists user_invites (digest text primary key, user_id text not null references users(id),
         expires integer not null, state text not null);
+      create table if not exists passkeys (user_id text not null references users(id), credential_id text primary key, public_key text not null, counter integer not null);
       create table if not exists user_passwords (user_id text primary key references users(id), hash text not null);
       create index if not exists user_invites_user on user_invites(user_id);`);
     this.onReset(() => { db.prepare("update user_invites set state='revoked' where state='open'").run(); });
@@ -104,6 +105,25 @@ export class Users {
       this.#db.exec('release register_password');
       return result;
     } catch (error) { this.#db.exec('rollback to register_password; release register_password'); throw error; }
+  }
+  passkeys(userId: string): Array<{ credentialId: string; publicKey: string; counter: number }> {
+    return this.#db.prepare('select credential_id as credentialId, public_key as publicKey, counter from passkeys where user_id=?').all(userId) as Array<{ credentialId: string; publicKey: string; counter: number }>;
+  }
+  registerPasskey<T>(token: string, credential: { credentialId: string; publicKey: string; counter: number }, now: number, issue: (user: User) => T): T {
+    this.#db.exec('savepoint register_passkey');
+    try {
+      if (this.mode() !== 'users') throw new Error('users mode required');
+      const user = this.consumeInvite(token, now);
+      this.#db.prepare('insert into passkeys values (?,?,?,?)').run(user.id, credential.credentialId, credential.publicKey, credential.counter);
+      this.#db.prepare("update users set state='active' where id=?").run(user.id);
+      const result = issue(this.get(user.id)!);
+      this.#db.exec('release register_passkey');
+      return result;
+    } catch (error) { this.#db.exec('rollback to register_passkey; release register_passkey'); throw error; }
+  }
+  advancePasskey(userId: string, credentialId: string, previous: number, counter: number): void {
+    if (this.mode() !== 'users' || this.get(userId)?.state !== 'active'
+      || this.#db.prepare('update passkeys set counter=? where user_id=? and credential_id=? and counter=?').run(counter, userId, credentialId, previous).changes !== 1) throw new Error('Passkey refused');
   }
   setMode(mode: SignInMode, now: number): void {
     this.#db.prepare('insert into auth_state values (1,?,?) on conflict(singleton) do update set mode=excluded.mode,set_at=excluded.set_at').run(mode, now);

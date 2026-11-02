@@ -1505,6 +1505,15 @@ without changing pending state; do not substitute a verdict to clear it.
 
 ## Sign-in mode storage and commands (T-1558)
 
+For passkey invite/sign-in integration, use the isolated Headless Shell CDP
+virtual authenticator seam in `docs/agents/tests/web-test-passkeys.test.ts.md`.
+Use `webPasskeys` as the bounded, volatile single-use challenge owner and
+T-1559's byte verifier; every cookie uses `webSessionCookie`. Keep ceremony
+responses inside bounded HTTP bodies, outside frames/logs/journals. Persist only
+user ownership, credential id, public key and counter. RP ID follows configured
+HTTPS origin or localhost, with preferred UV. Auth reset/edge close clears pending
+challenges. No new dependency, key binding or role permission is needed.
+
 For invite password registration, use the HTTP and credential seams in
 `docs/agents/tests/hub-test-web-signin.test.ts.md`,
 `docs/agents/tests/hub-test-passwords.test.ts.md` and the isolated browser form in

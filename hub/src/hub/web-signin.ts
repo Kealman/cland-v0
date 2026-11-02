@@ -1,11 +1,13 @@
-// Invite HTTP handlers: no password ever enters dispatch or the journal.
+// Credential HTTP handlers: no password or WebAuthn response enters dispatch or the journal.
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { webPasskeys } from './web-passkeys.ts';
 import type { Store } from './store.ts';
 import { WebAuth, webSessionCookie } from './web-auth.ts';
 import { hashPassword, verifyPassword } from './passwords.ts';
 
 export function createWebSignIn(store: Store, auth: WebAuth, now: () => number, origin: string, pageOrigin: (req: IncomingMessage) => string, revoke: (id: string) => Promise<unknown>) {
   let stopped = false;
+  const passkeys = webPasskeys(store.users, now, origin, pageOrigin);
   const failures = new Map<string, { count: number; until: number }>();
   const dummyHash = `scrypt$${'0'.repeat(64)}$${'0'.repeat(128)}`;
   function failed(keys: string[]) {
@@ -28,7 +30,7 @@ export function createWebSignIn(store: Store, auth: WebAuth, now: () => number, 
       res.setHeader('Cache-Control', 'no-store');
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ required: users && !auth.accepts(req.headers.cookie) })); return true;
     }
-    if (!['/invite', '/invite/details', '/invite/register', '/signin', '/signin/password', '/signout'].includes(path)) return false;
+    if (!['/invite', '/invite/details', '/invite/register', '/signin', '/signin/password', '/signout', '/invite/passkey/options', '/invite/passkey/finish', '/signin/passkey/options', '/signin/passkey/finish'].includes(path)) return false;
     const url = new URL(req.url!, 'http://localhost');
 
     res.setHeader('Cache-Control', 'no-store');
@@ -38,13 +40,21 @@ export function createWebSignIn(store: Store, auth: WebAuth, now: () => number, 
     if ((!['/invite', '/signin'].includes(url.pathname) || req.headers.origin !== undefined) && req.headers.origin !== pageOrigin(req)) {
       reply(403, { error: 'Foreign Origin' }); return true;
     }
-    const post = ['/invite/register', '/signin/password'].includes(url.pathname);
+    const post = ['/invite/register', '/signin/password'].includes(url.pathname) || url.pathname.includes('/passkey/');
     const method = ['/invite', '/signin'].includes(url.pathname) ? 'GET' : 'POST';
     if (req.method !== method) { res.setHeader('Allow', method); reply(405, { error: 'Method not allowed' }); return true; }
+    if (!origin && req.method === 'GET' && ['/invite', '/signin'].includes(path) && /^127\.0\.0\.1:\d+$/.test(req.headers.host ?? '')) {
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      res.writeHead(302, { Location: `http://localhost:${req.headers.host!.split(':')[1]}${req.url}` }).end();
+      return true;
+    }
     try {
       auth.assertAdmission();
       if (stopped) throw new Error('Sign-in closed');
-      if (url.pathname === '/signin') return false;
+      if (url.pathname === '/signin') {
+        if (auth.accepts(req.headers.cookie)) { res.writeHead(302, { Location: '/' }).end(); return true; }
+        return false;
+      }
       if (url.pathname === '/signout') {
         const session = auth.session(req.headers.cookie);
         if (!session) { reply(401, { error: 'Sign-in required' }); return true; }
@@ -63,12 +73,23 @@ export function createWebSignIn(store: Store, auth: WebAuth, now: () => number, 
       req.setTimeout(5000, () => req.destroy());
       for await (const chunk of req) {
         size += chunk.length;
-        if (size > 8192) { reply(413, { error: 'Body too large' }); return true; }
+        if (size > (path.includes('/passkey/') ? 131072 : 8192)) { reply(413, { error: 'Body too large' }); return true; }
         chunks.push(Buffer.from(chunk));
       }
       req.setTimeout(0);
       let body: { token?: unknown; password?: unknown; name?: unknown };
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new Error('Invalid registration body'); }
+      auth.assertAdmission();
+      if (stopped || res.destroyed) throw new Error('Sign-in closed');
+      if (path.includes('/passkey/')) {
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Passkey refused');
+        const result = passkeys.handle(path, body, req, id => auth.issue(id));
+        if (path.endsWith('/finish')) {
+          res.setHeader('Set-Cookie', webSessionCookie(auth, result as string, req, origin));
+          reply(200, { ok: true });
+        } else reply(200, result);
+        return true;
+      }
       if (url.pathname === '/signin/password') {
         const refusal = () => reply(401, { error: 'Name or password is incorrect' });
         if (!body || typeof body.name !== 'string' || typeof body.password !== 'string' || body.name.length > 128) { refusal(); return true; }
@@ -96,7 +117,7 @@ export function createWebSignIn(store: Store, auth: WebAuth, now: () => number, 
       reply(200, { ok: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      const safe = /^(unknown invite|used invite|revoked invite|expired invite|Password must contain|Invalid registration body|browser sign-in transition|Sign-in closed)/.test(message);
+      const safe = /^(unknown invite|used invite|revoked invite|expired invite|Password must contain|Invalid registration body|Passkey refused|browser sign-in transition|Sign-in closed)/.test(message);
       reply(400, { error: safe ? message : 'Registration failed' });
     }
     return true;
@@ -109,6 +130,6 @@ export function createWebSignIn(store: Store, auth: WebAuth, now: () => number, 
       void operation.finally(() => { work.delete(operation); requests.delete(req); }).catch(() => {});
       return operation;
     },
-    async close(): Promise<void> { stopped = true; for (const req of requests) if (!req.complete) req.destroy(); await Promise.allSettled(work); },
+    async close(): Promise<void> { stopped = true; passkeys.close(); for (const req of requests) if (!req.complete) req.destroy(); await Promise.allSettled(work); },
   };
 }

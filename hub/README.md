@@ -440,7 +440,7 @@ Auth reset keeps the first user's current binding for each messenger and revokes
 the others in the same reset transaction. Outbound publication currently uses
 the first user's destination; fan-out is a separate stage.
 
-In users mode `/invite?token=…` opens the password registration view. Invitations
+In users mode `/invite?token=…` opens the registration view, offering a passkey first and a password fallback. Invitations
 expire after 24 hours; unknown, expired, used and revoked tokens receive distinct
 refusals without a cookie. Single mode returns 404 for all invite routes.
 Navigation GETs accept an absent Origin; an Origin supplied on navigation must
@@ -466,6 +466,27 @@ other browser sessions remain active. Revoked tabs use `/signin/status` to retur
 to sign-in. Single mode retains its disconnected strip and one-time link flow;
 credential and sign-out routes return 404. There is no new CLI command or role
 permission.
+
+Passkeys are offered only where WebAuthn is available in a secure context. Plain
+HTTP LAN pages offer the password and explain availability in a tooltip. The RP
+ID is the hostname of configured HTTPS `[web] origin`, otherwise `localhost`;
+user verification is preferred. In users mode without a configured HTTPS origin,
+GET `/invite` and `/signin` at `127.0.0.1:<port>` redirect to the same path/query
+at `localhost:<port>` with no-store/no-referrer headers. Browser navigation and
+cookies remain on localhost; an authenticated `/signin` navigation returns to `/`; exact-Origin APIs refuse cross-host origins in both
+directions. Single-mode links are unchanged. No dependency or CLI command is added.
+`POST /invite/passkey/options` takes `{token}`; `/signin/passkey/options` takes
+`{name}`. Their `/finish` siblings take `{challenge, response}` with canonical
+base64url credential and response bytes. All require admitted Host and exact
+Origin. Options and response bodies are bounded; only HTTP carries responses,
+never frames, logs or journals. Challenges are volatile, capped at 1000 pending,
+expire after two minutes and are consumed on every finish attempt. Restart,
+edge close and auth reset discard them. Registration uses the shared WebAuthn
+verifier with attestation `none`, ES256 or Ed25519, atomically committing invite
+consumption, activation, public credential and session. Sign-in checks credential
+ownership and signature, then advances the counter synchronously before issuing
+a cookie. The `passkeys` table contains only user ownership, credential id,
+public key and counter; multiple credentials per user are supported.
 
 Every edge cookie goes through `webSessionCookie(auth, token, request, origin)`
 in `web-auth.ts`, including `/auth`, invite registration and password sign-in: Path=/, HttpOnly,

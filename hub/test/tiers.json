@@ -825,6 +825,7 @@
     "web/test/notifications.test.ts": "Web",
     "web/test/pairing.test.ts": "Web",
     "web/test/palette.test.ts": "Web",
+    "web/test/passkeys.test.ts": "Web",
     "web/test/phone-approvals.test.ts": "Web",
     "web/test/phone-asks.test.ts": "Web",
     "web/test/phone-composer.test.ts": "Web",
