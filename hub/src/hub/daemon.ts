@@ -34,7 +34,7 @@ import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } 
 import { createSocketEdge, type SocketEdge } from './socket.ts';
 import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
 import { lockHostIdentity } from './lock-identity.ts';
-import { acquireLock, HubLocked, type LockProcessTable } from './lock.ts';
+import { acquireLock, HUB_LOCK_HEARTBEAT_MS, HubLocked, type LockProcessTable } from './lock.ts';
 import { VERSION } from '../version.ts';
 import { AGENTS } from './core.ts';
 import { gitIn, type Git } from '../tracker/verdict-git.ts';
@@ -488,6 +488,22 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   let stopping: Promise<void> | null = null;
   let deliberateStop = false;
   let sweep: Promise<void> | null = null;
+  let heartbeatTimer: ClockTimer | null = null;
+  const scheduleHeartbeat = () => {
+    if (!lock.heartbeat) return;
+    heartbeatTimer = clock.setTimeout(() => {
+      heartbeatTimer = null;
+      if (stopping) return;
+      let owned = true;
+      try { owned = lock.heartbeat!(); }
+      catch (error) { log({ event: 'hub-lock-heartbeat-failed', error: String(error) }); }
+      if (!owned) {
+        log({ event: 'hub-lock-lost' });
+        void stop().catch(error => fatalLog({ event: 'stop-failed', error: String(error) }));
+      } else scheduleHeartbeat();
+    }, HUB_LOCK_HEARTBEAT_MS);
+    heartbeatTimer.unref();
+  };
   let maintenanceTimer: ClockTimer | null = null;
   let maintenance: Promise<void> | null = null;
   let maintenanceRecovery: Promise<void> | null = null;
@@ -524,6 +540,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
       try {
         hub.dispatcher.stopWaitMetrics();
         await attempt(() => log({ event: 'stopping' }));
+        clock.clearTimeout(heartbeatTimer);
         clock.clearTimeout(maintenanceTimer);
         maintenanceAbort.abort();
         // The collector's native close and receipt precede store/lock teardown.
@@ -631,6 +648,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     startMaintenanceRecovery();
     scheduleMaintenance();
+    scheduleHeartbeat();
     starting = false;
     hub.dispatcher.startExecutorRecovery();
     tracker.resumeReadyChecks();
@@ -663,6 +681,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   adapters.sessions.markServing();
   startMaintenanceRecovery();
   scheduleMaintenance();
+  scheduleHeartbeat();
   starting = false;
   hub.dispatcher.startExecutorRecovery();
   tracker.resumeReadyChecks();

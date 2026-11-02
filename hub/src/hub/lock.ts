@@ -319,7 +319,7 @@ export class HubLocked extends Error {
   readonly holder: LockHolder;
   constructor(holder: LockHolder) { super(`another hub holds the project's lock (pid ${holder.pid})`); this.holder = holder; }
 }
-export type HubLock = { holder: LockHolder; release: () => void };
+export type HubLock = { holder: LockHolder; release: () => void; /** False only on positive token replacement proof. */ heartbeat?: () => boolean };
 export type AsyncHubLock = { holder: LockHolder; release: () => Promise<void> };
 const pauseSync = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
 
@@ -347,7 +347,19 @@ export function acquireLock(path: string, processes: LockProcessTable = nativePr
       rmSync(path, { force: true }); // creators and releasers are excluded until this guard is released
       return false;
     });
-    if (acquired) return { holder: me, release: () => {
+    if (acquired) return { holder: me, ...(options ? { heartbeat: () => guarded(() => {
+      const record = recordSync(path);
+      if (record.holder?.token && record.holder.token !== me.token) return false;
+      if (!sameHolder(record.holder, me)) throw new Error('hub lock ownership could not be confirmed');
+      const next = { ...me, heartbeat: (options.now?.() ?? new Date()).toISOString() };
+      const tmp = `${path}.${randomUUID()}.tmp`;
+      withCleanup(() => {
+        writeFileSync(tmp, `${JSON.stringify(next)}\n`, { mode: 0o600, flag: 'wx' });
+        renameSync(tmp, path);
+        me.heartbeat = next.heartbeat;
+      }, () => rmSync(tmp, { force: true }));
+      return true;
+    }) } : {}), release: () => {
       // Shutdown and repeated release must not create a guard for an absent lock or directory.
       if (!sameHolder(recordSync(path).holder, me)) return;
       try { guarded(() => { if (sameHolder(recordSync(path).holder, me)) rmSync(path, { force: true }); }); }

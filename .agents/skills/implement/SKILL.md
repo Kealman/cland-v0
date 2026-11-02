@@ -1589,6 +1589,11 @@ identity refuses with `InvalidLockIdentity`, including through `readLock`, and
 never becomes legacy PID authority. Foreign holders and break-guard owners are
 never probed by PID; only a heartbeat older than 60 s proves lapse. Legacy
 records keep their prior rules; mixed versions on one volume are unsupported.
+For periodic refresh and lost-lock shutdown, use
+`docs/agents/tests/hub-test-hub-lock-heartbeat.test.ts.md`: drive time through the
+hub clock, retain whole-file and foreign-refusal receipts, and observe normal
+shutdown before checking the successor lock. A heartbeat write failure retries
+without shutdown; only a confirmed replacement token proves ownership lost.
 No command or role permission changes apply.
 
 ## Host agent protocol (T-1588)

@@ -14,7 +14,8 @@ retain legacy lock semantics without native probes. Production always captures
 hostname, native boot id and Linux PID namespace before acquiring the lock.
 
 Heartbeat timestamps use the injected hub clock. The initial heartbeat is not
-periodic refresh evidence; T-1616 owns refresh and lost-lock shutdown. T-1617
+periodic refresh evidence; see [heartbeat tests](hub-test-hub-lock-heartbeat.test.ts.md)
+for refresh and lost-lock shutdown. T-1617
 owns lifecycle consumers, including offline tracker migration. Mixed hub versions
 on a shared volume are unsupported.
 
