@@ -3,6 +3,7 @@ import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 // one socket per spoke, every frame handed to the shared dispatcher (`./dispatch.ts`).
 import { realClock, type Clock } from './clock.ts';
 import { join } from 'node:path';
+import { bindUnixSocket } from './unix-bind.ts';
 import { projectSessions, type AdapterFactory, type ProjectSessions } from '../adapters/index.ts';
 import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -175,10 +176,10 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   };
 }
 
-/** The WebSocket edge for spokes on `host:port`; rejects when it cannot listen, leaving nothing bound. */
+/** The WebSocket edge for spokes on `host:port` or a private Unix path; rejects when it cannot listen, leaving nothing bound. */
 export async function createWebSocketEdge(
   dispatcher: Dispatcher,
-  options: { port: number; host?: string; secret: string; keepaliveMs?: number; clock?: Clock; log?: HubBaseOptions['log'] },
+  options: { port: number; host?: string; path?: string; secret: string; keepaliveMs?: number; clock?: Clock; log?: HubBaseOptions['log'] },
 ): Promise<WebSocketEdge> {
   const log = options.log ?? (() => {});
   const clock = options.clock ?? realClock;
@@ -233,10 +234,17 @@ export async function createWebSocketEdge(
     });
   });
 
-  await new Promise<void>((resolve, reject) => {
-    http.once('error', reject);
-    http.listen(options.port, options.host ?? '127.0.0.1', () => resolve());
-  });
+  let removeBound: (() => void) | undefined;
+  try {
+    if (options.path) removeBound = await bindUnixSocket(http, options.path);
+    else await new Promise<void>((resolve, reject) => {
+      http.once('error', reject);
+      http.listen(options.port, options.host ?? '127.0.0.1', () => resolve());
+    });
+  } catch (error) {
+    await new Promise<void>(resolve => wss.close(() => resolve()));
+    throw error;
+  }
   // Two missed keepalives: the socket is dead as far as the hub is concerned — close it, which lets a
   // live spoke reconnect with a fresh hello.
   const keepaliveTimer = clock.setInterval(() => {
@@ -254,12 +262,12 @@ export async function createWebSocketEdge(
 
   const address = http.address() as AddressInfo;
   const host = options.host ?? '127.0.0.1';
-  const url = `ws://${host.includes(':') ? `[${host}]` : host}:${address.port}`;
+  const url = options.path ? `ws+unix:${options.path}:/` : `ws://${host.includes(':') ? `[${host}]` : host}:${address.port}`;
   log({ event: 'listening', url });
   return {
     url,
-    port: address.port,
-    bind: address.address,
+    port: options.path ? 0 : address.port,
+    bind: options.path ?? address.address,
     close: async () => {
       clock.clearInterval(keepaliveTimer);
       for (const ws of sockets) ws.terminate();
@@ -269,6 +277,7 @@ export async function createWebSocketEdge(
         new Promise<void>(resolve => wss.close(() => resolve())),
         new Promise<void>(resolve => http.close(() => resolve())),
       ]);
+      removeBound?.();
     },
   };
 }

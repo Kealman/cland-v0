@@ -71,16 +71,15 @@ export type Layout = {
   log: string;
   /** Where the hub binds its Unix socket: inside `.cland/`, then the temp dir, then `/tmp` if both are too long. */
   socket: string;
+  /** WebSocket spoke edge, separate from the JSON-lines human socket. */
+  spokeSocket: string;
 };
 
 export function layout(root: string): Layout {
   const dir = join(root, CLAND_DIR);
   const inside = join(dir, 'hub.sock');
   const name = `cland-${createHash('sha256').update(root).digest('hex').slice(0, 16)}.sock`;
-  const temporary = join(tmpdir(), name);
-  // A suite can nest TMPDIR inside its own temporary root. Budget the fallback
-  // too: a short staging bind can succeed while clients reject the final name.
-  const socket = [inside, temporary].find(path => Buffer.byteLength(path) <= SOCKET_PATH_MAX) ?? join('/tmp', name);
+  const socket = shortSocketPath(inside, name);
   return {
     root,
     dir,
@@ -97,7 +96,24 @@ export function layout(root: string): Layout {
     logDir: join(dir, 'log'),
     log: join(dir, 'log', 'hub.log'),
     socket,
+    spokeSocket: spokeSocketPath(root),
   };
+}
+
+/** Budget TMPDIR as well: nested suite roots can exceed the native path limit. */
+function shortSocketPath(inside: string, name: string, accepts: (path: string) => boolean = () => true): string {
+  return [inside, join(tmpdir(), name)].find(path => Buffer.byteLength(path) <= SOCKET_PATH_MAX && accepts(path)) ?? join('/tmp', name);
+}
+
+/** Stable spoke endpoint; no discovery change is needed for local clients. */
+export function spokeSocketPath(root: string): string {
+  const name = `cland-spoke-${createHash('sha256').update(root).digest('hex').slice(0, 16)}.sock`;
+  return shortSocketPath(join(root, CLAND_DIR, 'run', 'spoke.sock'), name, path => {
+    // ws uses URL.pathname literally, then splits at ':', without URL-decoding
+    // the native socket path. Screen TMPDIR too; the JSON-lines socket keeps its paths.
+    const url = new URL(`ws+unix:${path}:/`);
+    return !path.includes(':') && url.pathname === `${path}:/` && !url.search && !url.hash;
+  });
 }
 
 /** The nearest ancestor of `cwd` whose `.cland/hub.json` exists — where a spoke finds its hub — or null. */

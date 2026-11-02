@@ -1,7 +1,6 @@
 // The hub's Unix socket edge, for the UI and the CLI: JSON lines in and out, every frame handed to the
 // shared dispatcher. There is no upgrade request here to carry the secret, so the hello carries it (ADR 0003).
-import { chmodSync, lstatSync, renameSync, rmSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { bindUnixSocket } from './unix-bind.ts';
 import { createServer, type Socket } from 'node:net';
 import type { Dispatcher } from './dispatch.ts';
 import { MAX_FRAME_BYTES } from '../protocol.ts';
@@ -58,40 +57,14 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
     });
   });
 
-  // Bound under a name of this process's own, then renamed into place (replacing a stale file there).
-  // Node removes the name it bound when the server closes; that name is gone by then, so the close can
-  // never remove a socket another hub has put at `path` since.
-  const staging = join(dirname(options.path), `.h${process.pid}`);
-  rmSync(staging, { force: true });
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(staging, () => resolve());
-  });
-  try {
-    // only this user may even try the secret
-    chmodSync(staging, 0o600);
-    renameSync(staging, options.path);
-  } catch (err) {
-    // not in place: nothing this edge bound may outlive the failure
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-    rmSync(staging, { force: true });
-    throw err;
-  }
-  // the file this edge bound: on close, only that file is removed
-  const bound = lstatSync(options.path);
+  const removeBound = await bindUnixSocket(server, options.path);
   log({ event: 'listening', socket: options.path });
 
   return {
     close: async () => {
       for (const c of clients) c.destroy();
       await new Promise<void>((resolve) => server.close(() => resolve()));
-      try {
-        const now = lstatSync(options.path);
-        if (now.ino === bound.ino && now.dev === bound.dev) rmSync(options.path, { force: true });
-        else log({ event: 'socket-kept', socket: options.path, reason: 'the file at the path is no longer the socket this hub bound' });
-      } catch {
-        /* already gone */
-      }
+      if (!removeBound()) log({ event: 'socket-kept', socket: options.path, reason: 'the file at the path is no longer the socket this hub bound' });
     },
   };
 }

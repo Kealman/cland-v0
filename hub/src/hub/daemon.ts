@@ -264,6 +264,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   let web: WebEdge | null = null;
   let store: Store;
   let ws: WebSocketEdge | null = null;
+  let spoke: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
   try {
     log({ event: 'hub-startup-step', step: 'indexing tracker', pid: process.pid });
@@ -535,6 +536,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
         await attempt(() => roles.stop());
         await attempt(() => edge?.close());
         await attempt(() => ws?.close());
+        await attempt(() => spoke?.close());
         await attempt(() => web?.close());
         await attempt(() => sweep);
         await attempt(() => accountPoller?.close());
@@ -568,9 +570,12 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     try {
       log({ event: 'hub-startup-step', step: 'binding listeners', pid: process.pid });
       ws = await createWebSocketEdge(hub.dispatcher, { port: 0, host: '127.0.0.1', secret, log });
+      spoke = await createWebSocketEdge(hub.dispatcher, { port: 0, path: l.spokeSocket, secret, log });
       edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
     } catch (err) {
-      // both listeners or none: a hub.json naming only half of them would send its readers to a dead end
+      // All listeners or none: a hub.json naming only half of them would send its readers to a dead end
+      await spoke?.close();
+      spoke = null;
       await ws?.close();
       ws = null;
       if (listen === 'required') {

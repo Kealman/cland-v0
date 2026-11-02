@@ -1569,6 +1569,15 @@ commands check WebAuth admission before mutation; mode switching mints the first
 invite only after successful reload releases its fence. Keep session-shell and
 held/failed-transition refusal regressions. No role clause changes are needed.
 
+## Unix spoke edge (T-1592)
+
+Use `docs/agents/tests/hub-test-spoke-unix-edge.test.ts.md` for the scratch
+projectHub/WebSocket seam. Unix spokes share the loopback bearer admission and
+dispatcher identity; preserve client-hello refusal, mode 0600, byte-budgeted path
+fallback (including URL compatibility of root and TMPDIR) and inode-owned cleanup.
+Keep local discovery unchanged and leave
+per-host credential/principal admission to its owning module.
+
 ## Hub lock acquisition identity (T-1615)
 
 Hub acquisition opts into `HubLockOptions` with a captured hostname, boot id and

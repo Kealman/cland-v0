@@ -92,6 +92,17 @@ The glossary names the paired messenger chat a
 [Outbox](../../GLOSSARY.md#remotes). This amendment records the v0.3 design
 decision; it is not a claim that the gateway implementation has shipped.
 
+## Amendment — 2026-11-02: Unix WebSocket spoke edge (T-1592)
+
+The project hub also binds `.cland/run/spoke.sock`, mode 0600, with the existing
+short-path fallback for roots over the Unix byte limit or incompatible with a
+`ws+unix:` URL. The temporary-directory candidate is screened the same way. It carries the same
+WebSocket protocol and bearer admission as the loopback spoke port and refuses
+client hellos on a project hub. It binds no new network address. Local discovery
+is unchanged. The SSH transport will forward this endpoint; host-specific
+credential and principal admission is a separate layer and the socket itself
+grants no human authority. The per-host git socket is recorded by its owning item.
+
 ## 2026-11-02 amendment: users-mode browser admission
 
 The web edge admits users through one-time invitations and credential ceremonies.

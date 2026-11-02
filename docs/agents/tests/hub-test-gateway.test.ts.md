@@ -84,6 +84,12 @@ state sink and hub log; retain a readable reason and matching log/state values.
 T-1326's sink is intentionally independent of the hub.db table wiring owned by
 T-1323; its evidence proves the injected storage boundary.
 
+
+The project gateway lifecycle case asserts the exact multiset of listening
+identities: loopback spoke URL, human JSON-lines socket path and Unix spoke URL.
+Keep the complete-set assertion: an extra listener, including one opened by the
+gateway, must fail. Both Unix sockets use the shared binder's owner-only 0600
+mode; the Unix spoke edge's mode is exercised by `spoke-unix-edge.test.ts`.
 Users-mode native admission checks for missing pairing identity before using
 `userAuthorityRefusal` for the resolved user. The refusal names the missing
 pairing rather than an unknown role. Existing gateway transport refusals keep

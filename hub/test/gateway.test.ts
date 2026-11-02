@@ -1,5 +1,6 @@
 // T2: a real project hub and frame clients, with only the messenger platform faked.
 import assert from 'node:assert/strict';
+import { layout } from '../src/project.ts';
 import { test } from 'node:test';
 import { connectUi, inProcessSpoke, projectHub, tempProject, until } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -271,7 +272,11 @@ test('gateway mirrors General and delivers a reply as the human, then stops with
   const local = await connectUi(t, hub.discovery);
   assert.equal((await local.request({ type: 'hub.status' })).ok, true);
   assert.equal(log.filter(entry => entry.event === 'client' && entry.edge === 'gateway').length, 1);
-  assert.equal(log.filter(entry => entry.event === 'listening').length, 2, 'only the existing spoke and Unix socket listeners are bound');
+  assert.deepEqual(log.filter(entry => entry.event === 'listening').map(entry => entry.socket ?? entry.url).sort(), [
+    `ws://127.0.0.1:${hub.discovery.port}`,
+    hub.discovery.socket,
+    `ws+unix:${layout(root).spokeSocket}:/`,
+  ].sort(), 'only the loopback spoke, human Unix socket and Unix spoke listeners are bound; the gateway opens none');
   assert.ok(messenger.client.frames.every(frame => !JSON.stringify(frame).includes(hub.discovery.secret)), 'the remote receives no hub secret');
   await hub.stop();
   assert.equal(messenger.stopped, true, 'shutdown drains the gateway before closing storage');

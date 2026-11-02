@@ -8370,6 +8370,24 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+### Unix spoke edge
+
+A listening project hub also binds `.cland/run/spoke.sock` at 0600. If the path
+exceeds 100 UTF-8 bytes or cannot round-trip through a `ws+unix:` URL,
+`layout(root).spokeSocket` selects
+`cland-spoke-<root hash>.sock` in the system temp directory, then `/tmp` if needed. Both candidate directories
+are checked for the byte limit and URL compatibility; the human JSON-lines socket
+keeps its existing path selection.
+It speaks the existing WebSocket protocol at `ws+unix:<path>:/`, with the same
+bearer admission, keepalive and dispatcher identity as the loopback spoke edge.
+Missing or wrong bearers get HTTP 401 and an unauthorized refusal log; a client
+hello is refused on both spoke edges of a project hub. Startup atomically replaces
+stale endpoints under the project lock; shutdown drains connections and removes
+only the inode it bound. Listener mode `never` binds none, and `optional` rolls
+back all spoke and human listeners on bind failure. Local discovery and spoke URLs
+stay unchanged. This edge adds no host admission: per-host credentials and their
+principal restrictions are owned by the host admission layer.
+
 ### Host agent protocol
 
 `cland host serve` runs without systemd, listening on `agent.sock` (0600) under
