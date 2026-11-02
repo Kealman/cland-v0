@@ -27,3 +27,5 @@ only setup/doctor readiness wording; all other command bytes stay frozen.
 T-1558 adds AUTH_USAGE and USER_USAGE markers before MODELS_USAGE in the
 full-help template. Adding an export requires both an exports.json mapping and a
 help.txt marker when it appears in top-level help; every older block stays frozen.
+
+T-1588 adds real `host serve --help` and `host serve -h` launches against the same sealed project. They compare the independent frozen HOST_USAGE block and retain the unchanged-project assertion; aggregate help also includes its explicit fixture placeholder.

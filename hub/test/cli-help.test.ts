@@ -1,4 +1,4 @@
-// T2: five real CLI launches prove entry-point wiring; the full table is T1.
+// T2: seven real CLI launches prove entry-point wiring; the full table is T1.
 import './cover-quiet.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -61,4 +61,12 @@ for (const [command, flag, block] of [
   assert.equal(actual.stdout, frozenUsage()[block]);
   assert.equal(actual.stderr, '');
   assert.deepEqual(fixture.snapshot(), before);
+});
+
+for (const flag of ['--help', '-h']) test(`cland host serve ${flag} exits without starting an agent`, async t => {
+  const fixture = sealedHelpProject(t); const before = fixture.snapshot();
+  const actual = await clandCliLaunch(() => execCli(process.execPath, [entry, 'host', 'serve', flag], {
+    cwd: fixture.project, env: fixtureEnvironment(fixture.root, process.env), timeout: 5000,
+  }));
+  assert.equal(actual.stdout, frozenUsage().HOST_USAGE); assert.equal(actual.stderr, ''); assert.deepEqual(fixture.snapshot(), before);
 });

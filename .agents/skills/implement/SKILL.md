@@ -1554,6 +1554,21 @@ commands check WebAuth admission before mutation; mode switching mints the first
 invite only after successful reload releases its fence. Keep session-shell and
 held/failed-transition refusal regressions. No role clause changes are needed.
 
+## Host agent protocol (T-1588)
+
+For host agent operations use the authenticated Unix stream and native CLI seams
+in `docs/agents/tests/hub-test-host-agent.test.ts.md`, plus the T1 dependency
+boundary guide. Keep protocol version independent of cland version; persist birth
+identity before native execution through the durable admission/bootstrap gate,
+release only after the process checkpoint, and checkpoint exits before events. Kill/restart
+proof observes native agent close and rechecks the surviving child identity.
+Capture descendant births while PPID ancestry is intact and retain them across
+detachment, root close and restart. A descendant that escaped before any capture
+is outside both Hosts’ authority and is never signalled; host recycling clears it.
+An exit missed during agent downtime keeps unknown authority and refuses stop
+until host reboot/recycling; do not add a Node supervisor per launch. The agent
+has no systemd dependency or launch-memory gate. No role grant changes.
+
 ## Per-host Git socket (T-1591)
 
 For the Git listener and proxy, use the scratch bare-repository seam in

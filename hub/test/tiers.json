@@ -213,6 +213,8 @@
     "hub/test/homebrew-publication.test.ts": "T3",
     "hub/test/homebrew.test.ts": "T1",
     "hub/test/hook-bridge-doctor.test.ts": "T3",
+    "hub/test/host-agent-boundary.test.ts": "T1",
+    "hub/test/host-agent.test.ts": "T3",
     "hub/test/host-boundary.test.ts": "T1",
     "hub/test/host-contract-coverage.test.ts": "T1",
     "hub/test/host-git-daemon.test.ts": "T3",

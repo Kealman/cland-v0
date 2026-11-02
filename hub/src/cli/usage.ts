@@ -41,3 +41,8 @@ export const RELEASE_USAGE = PUBLISH_USAGE + RELEASE_COMMAND_USAGE + SYNC_USAGE;
 export const SUBSCRIPTIONS_USAGE = SUBSCRIBE_USAGE + UNSUBSCRIBE_USAGE + SUBSCRIPTIONS_COMMAND_USAGE;
 
 export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
+
+export const HOST_USAGE = `  host serve      run the host agent on agent.sock (no systemd required)
+                  CLAND_HOST_SECRET required; CLAND_HOST_RUN_DIR defaults to ~/.cland-host/run
+
+`;

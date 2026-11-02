@@ -1,4 +1,5 @@
 {
+  "HOST_USAGE": "  host serve      run the host agent on agent.sock (no systemd required)\n                  CLAND_HOST_SECRET required; CLAND_HOST_RUN_DIR defaults to ~/.cland-host/run\n\n",
   "IMPORT_USAGE": "  task import-github [--repo owner/name] [--all]\n                  GitHub Issues → items, through `gh`; open issues (--all: closed too); re-runs update in place\n",
 
   "ACCOUNT_USAGE": "  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n  account clear <name>              lift an account's limited mark by hand\n",

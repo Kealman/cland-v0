@@ -1,0 +1,1 @@
+T-1588 authorized single dev merge: preserve both Host agent protocol and per-host Git socket sections, plus incoming fake-SSH and other procedures. Resolve adjacent additions without changing their guidance or skill metadata.

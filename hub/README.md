@@ -8340,6 +8340,20 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+### Host agent protocol
+
+`cland host serve` runs without systemd, listening on `agent.sock` (0600) under
+`CLAND_HOST_RUN_DIR` (0700; default `~/.cland-host/run`). Supply the per-host
+`CLAND_HOST_SECRET` in the environment, never argv. The agent uses only Node
+built-ins. Its v1 JSON-lines protocol and recovery semantics are documented in
+[the agent protocol](../docs/agents/host-agent.md). Linux uses `/proc` birth
+identities; only fake hosts on macOS may use `CLAND_FAKE_HOSTS` with a UUID file
+in `CLAND_HOST_BOOT_ID_FILE`. Detached children survive agent termination.
+Memory reports are advisory samples and impose no launch floor. The agent retains
+captured descendants after root exit; an exit missed during downtime keeps
+unknown authority and refuses stop until host reboot or recycling. It adds no
+per-launch supervisor process.
+
 ### Per-host Git socket
 
 `startGitDaemon` (`host/git-daemon.ts`) serves one territory over a caller-owned
@@ -8383,6 +8397,15 @@ space. These sockets are per-machine runtime paths; private material stays in
 the project directory.
 
 ### Host process operations
+
+Local and remote Host stop capture descendants by PPID ancestry while the root
+is live and retain each native birth after changes of group/session or
+reparenting. Signals recheck each target individually. The remote agent persists
+these captures through restart; observed natural exit closes when the captured
+members are gone. Unknown authority remains for root exits missed during agent
+downtime. Neither path can discover an escape after its ancestry was lost.
+
+A descendant that escaped before any capture is outside cland’s authority on both Hosts and is never signalled; host recycling clears it.
 
 The test-only SSH pairing uses `CLAND_FAKE_HOSTS=f1,f2` and an absolute
 `CLAND_FAKE_HOST_ROOT`, containing `<name>/home/.cland-host/run` (0700),
