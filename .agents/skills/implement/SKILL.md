@@ -464,6 +464,12 @@ omissions and checkpoint accepted DELETE before its confirmation GET; failed
 reads keep the original 300 s droplet bound. Use
 `docs/agents/tests/hub-test-executor-recovery-collection.test.ts.md` for the
 recovery-completion wake-up after a short release attempt expires. Reuse the fake's split-answer and slow-GET faults for later providers.
+For reap and automatic sweep, use
+`docs/agents/tests/hub-test-executor-reap-confirmation.test.ts.md`: count only
+GET404-confirmed IDs, report unconfirmed IDs and retry DELETE on the next reap.
+Preserve leases/spend and the existing empty result shape for older clients.
+Checkpoint pending identity before mutation, retry independently of list presence
+and revalidate identity/live leases after recovery under the reap lock.
 
 For detached droplet watchdog PID ownership, use the T1 OS/checkpoint seam in
 `docs/agents/tests/hub-test-executor-watchdog.test.ts.md` and its native T3

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
-import { DigitalOceanApi, DigitalOceanError, apiTimeoutMs } from './api.ts';
+import { DigitalOceanApi, DigitalOceanError, DeletionUnconfirmed, apiTimeoutMs, type Droplet, type Key } from './api.ts';
 import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
@@ -19,6 +19,8 @@ import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitFor
 import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
+
+type Reaped = { deleted: number[]; deletedKeys: number[]; summary: string; unconfirmed?: { droplets: number[]; keys: number[] } };
 
 type PrepareJob = { state: 'running' | 'done' | 'failed'; started: string; finished?: string; step: string; key?: PrepareKey; result?: Prepared; error?: string };
 
@@ -42,6 +44,7 @@ export class DropletExecutor implements Executor {
   #sweepState: 'idle' | 'reconciling' | 'sweeping' | 'deferred' = 'idle';
   #taggedDroplets: number | null = null;
   #keyWork: Promise<PrepareKey> | null = null;
+  readonly #reaps = new Set<Promise<Reaped>>();
   readonly #releases = new Map<string, Promise<Released>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
   readonly #env: NodeJS.ProcessEnv;
@@ -309,6 +312,7 @@ export class DropletExecutor implements Executor {
     this.#closing = true; this.#prepareAbort?.abort();
     this.#abort.abort(new Error('hub is stopping; executor lease retained for reconciliation'));
     await this.#prepareWork;
+    await Promise.allSettled(this.#reaps);
   }
 
   async release(lease: DropletLease, deadline?: number): Promise<Released> {
@@ -467,25 +471,59 @@ export class DropletExecutor implements Executor {
     this.#sweepState = 'sweeping';
     if (!this.#closing && this.#env.DIGITALOCEAN_TOKEN) try {
       const result = await this.reap(); reapedDroplets = result.deleted.length; reapedKeys = result.deletedKeys.length;
+      failures += (result.unconfirmed?.droplets.length ?? 0) + (result.unconfirmed?.keys.length ?? 0);
     } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'provider sweep deferred' }); }
     this.#sweepState = failures ? 'deferred' : 'idle';
     this.logger({ event: 'executor-sweep', leases: (await readLeases(this.root)).filter(l => l.state !== 'released').length, reapedDroplets, reapedKeys, failures });
   }
-  reap(options?: ReapOptions): Promise<{ deleted: number[]; deletedKeys: number[]; summary: string }>;
+  reap(options?: ReapOptions): Promise<Reaped>;
   /** Compatibility for the hub's existing authorization callback. */
-  reap(authorize: () => void): Promise<{ deleted: number[]; deletedKeys: number[]; summary: string }>;
+  reap(authorize: () => void): Promise<Reaped>;
   async reap(options: ReapOptions | (() => void) = {}) {
     const authorize = typeof options === 'function' ? options : options.authorize ?? (() => {});
     authorize();
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
+    const work = this.#lockedReap(authorize);
+    this.#reaps.add(work);
+    try { return await work; }
+    finally { this.#reaps.delete(work); }
+  }
+
+  async #lockedReap(authorize: () => void): Promise<Reaped> {
+    const path = join(this.root, '.cland/run/executor/reap.lock');
+    await mkdir(join(this.root, '.cland/run/executor'), { recursive: true });
+    const lock = await acquireLockWithRetry(path, this.clock.now().getTime() + 15000, { signal: this.#abort.signal, clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
+    try { return await this.#reap(authorize); }
+    finally { await lock.release(); }
+  }
+
+  async #reap(authorize: () => void): Promise<Reaped> {
     const config = await this.#config();
     const tag = projectTag(this.root, config.name);
     const deadline = this.clock.now().getTime() + 15000;
     const api = boundedProvider(this.dependencies.api!, this.clock, 15000, deadline);
+    const pendingPath = join(this.root, '.cland/run/executor/reap-pending.json');
+    const pending: { droplets: Droplet[]; keys: Key[] } = await readFile(pendingPath, 'utf8').then(text => JSON.parse(text)).catch(error => {
+      if (error.code === 'ENOENT') return { droplets: [], keys: [] };
+      throw error;
+    });
+    const checkpoint = () => durableJson(pendingPath, pending);
     const deleted: number[] = [];
+    const unconfirmed = { droplets: [] as number[], keys: [] as number[] };
     const droplets = await api.droplets('cland');
     this.#taggedDroplets = droplets.length;
-    for (const droplet of droplets) {
+    const defer = (kind: 'droplet' | 'key', id: number) => {
+      (kind === 'droplet' ? unconfirmed.droplets : unconfirmed.keys).push(id);
+      this.logger({ event: 'executor-reap-unconfirmed', kind, id });
+    };
+    for (const droplet of new Map([...droplets, ...pending.droplets].map(row => [row.id, row])).values()) {
+      const retained = pending.droplets.some(row => row.id === droplet.id);
+      if (retained) {
+        try {
+          const current = await api.droplet(droplet.id);
+          if (current.id !== droplet.id || current.name !== droplet.name || !droplet.tags.every(tag => current.tags.includes(tag))) { defer('droplet', droplet.id); continue; }
+        } catch (error) { if (!(error instanceof DigitalOceanError) || error.status !== 404) throw error; }
+      }
       if (this.#closing) throw new Error('provider sweep deferred during shutdown');
       if (!droplet.tags.includes('cland')) continue;
       // Acquire persists ownership before its provider mutation. Read it after
@@ -493,39 +531,59 @@ export class DropletExecutor implements Executor {
       const known = await hostLeases(this.root, this.#env, this.dependencies.processes);
       // A renamed/retagged known resource is an identity refusal, not an
       // orphan. Keep it for operator attention even after its deadline.
-      if (known.some(lease => lease.state !== 'released' && lease.resource === droplet.id && !matchesLease(droplet, lease))) continue;
+      if (known.some(lease => lease.state !== 'released' && lease.resource === droplet.id && !matchesLease(droplet, lease))) { if (retained) defer('droplet', droplet.id); continue; }
       const owner = known.find(lease => matchesLease(droplet, lease));
-      if (known.some(lease => matchesLease(droplet, lease) && liveLease(lease, this.clock))) continue;
+      if (known.some(lease => matchesLease(droplet, lease) && liveLease(lease, this.clock))) { if (retained) defer('droplet', droplet.id); continue; }
       const age = this.clock.now().getTime() - Date.parse(droplet.created_at);
       const deadline = owner ? Date.parse(owner.deadline) : Date.parse(droplet.created_at) + config.verification.lifetimeMs;
-      const reason = droplet.tags.includes(tag) ? 'no live lease' : this.clock.now().getTime() > deadline + 600000 ? 'past lifetime' : null;
-      if (!reason) continue;
+      const reason = retained ? 'pending deletion' : droplet.tags.includes(tag) ? 'no live lease' : this.clock.now().getTime() > deadline + 600000 ? 'past lifetime' : null;
+      if (!reason) { if (retained) defer('droplet', droplet.id); continue; }
+      if (!retained) { pending.droplets.push(droplet); await checkpoint(); }
       authorize();
-      await api.deleteDroplet(droplet.id);
-      const limit = this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env);
-      let stillListed;
-      do {
-        stillListed = (await api.droplets('cland')).some(d => d.id === droplet.id);
-        if (stillListed) await this.#wait(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, this.#env));
-      } while (stillListed && this.clock.now().getTime() < limit);
-      if (stillListed) throw new Error(`droplet ${droplet.id} deletion not yet confirmed; run reap again`);
+      try { await api.deleteDroplet(droplet.id); }
+      catch (error) {
+        if (!(error instanceof DeletionUnconfirmed)) throw error;
+        defer('droplet', droplet.id);
+        continue;
+      }
+      pending.droplets = pending.droplets.filter(row => row.id !== droplet.id);
+      await checkpoint();
       deleted.push(droplet.id);
       this.logger({ event: 'executor-reaped', id: droplet.id, name: droplet.name, age, reason });
     }
     const deletedKeys: number[] = [];
-    for (const key of await api.keys()) {
+    const keys = await api.keys();
+    for (const key of new Map([...keys, ...pending.keys].map(row => [row.id, row])).values()) {
+      const retained = pending.keys.some(row => row.id === key.id);
+      if (retained) {
+        try {
+          const current = await api.key(key.id);
+          if (current.id !== key.id || current.name !== key.name || current.public_key !== key.public_key) { defer('key', key.id); continue; }
+        } catch (error) { if (!(error instanceof DigitalOceanError) || error.status !== 404) throw error; }
+      }
       if (this.#closing) throw new Error('provider sweep deferred during shutdown');
       const known = await hostLeases(this.root, this.#env, this.dependencies.processes);
       // Provider lists and lease updates can observe opposite sides of a rename.
-      if (known.some(lease => liveLease(lease, this.clock) && (lease.keyName === key.name || lease.keyId === key.id))) continue;
+      if (known.some(lease => liveLease(lease, this.clock) && (lease.keyName === key.name || lease.keyId === key.id))) { if (retained) defer('key', key.id); continue; }
       const legacy = key.name.startsWith(`cland-${projectName(config.name)}-`);
       const oldLease = known.find(lease => lease.keyName === key.name);
       // DO's key object has no creation time: an unaged legacy key stays untouched.
       const oldEnough = oldLease && this.clock.now().getTime() - Date.parse(oldLease.keyImportStarted ?? oldLease.created) > config.verification.lifetimeMs + 600000;
-      if (!key.name.startsWith(`${tag}-`) && !(legacy && oldEnough)) continue;
-      authorize(); await api.deleteKey(key.id); deletedKeys.push(key.id);
+      if (!retained && !key.name.startsWith(`${tag}-`) && !(legacy && oldEnough)) continue;
+      if (!retained) { pending.keys.push(key); await checkpoint(); }
+      authorize();
+      try { await api.deleteKey(key.id); }
+      catch (error) {
+        if (!(error instanceof DeletionUnconfirmed)) throw error;
+        defer('key', key.id);
+        continue;
+      }
+      pending.keys = pending.keys.filter(row => row.id !== key.id);
+      await checkpoint();
+      deletedKeys.push(key.id);
     }
-    return { deleted, deletedKeys, summary: `reaped: ${deleted.length} droplets` };
+    const hasPending = unconfirmed.droplets.length + unconfirmed.keys.length > 0;
+    return { deleted, deletedKeys, ...(hasPending ? { unconfirmed } : {}), summary: `reaped: ${deleted.length} droplets${deletedKeys.length ? `, ${deletedKeys.length} keys` : ''}${hasPending ? `; unconfirmed droplets: ${unconfirmed.droplets.join(', ') || 'none'}; keys: ${unconfirmed.keys.join(', ') || 'none'}; run reap again` : ''}` };
   }
 }
 

@@ -5015,6 +5015,15 @@ keeps its own atomic cleanup sidecar, merged by lease release on recovery.
 Recovery completion wakes pending suite and shard-parent collection after its
 native writes finish, including when an earlier short release attempt expired;
 collection need not wait for a later scheduler tick.
+`cland executor reap` and the automatic provider sweep use the same GET-by-id
+confirmation for droplets and keys. An unconfirmed ID is reported and excluded
+from reaped counts; the sweep stays deferred. Its lease and spend remain open.
+The next reap attempts DELETE again, including after DELETE 404 with GET 200;
+there is no tag-list confirmation loop. Pending identities are checkpointed in
+`.cland/run/executor/reap-pending.json` before DELETE and retried across restart
+or omitted provider listings, including after a project rename. A project lock serializes reaps; retries recheck
+provider identity and live leases and retain identity mismatches. JSON retains `deleted`, `deletedKeys`
+and `summary`, adding `unconfirmed: { droplets, keys }` only when needed.
 Snapshot deletion confirmation is documented with the snapshot recovery flow.
 
 Project test commands are configured under `[verification]`: `test_unit` (T1),
