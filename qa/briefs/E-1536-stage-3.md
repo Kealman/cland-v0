@@ -144,7 +144,7 @@ ENV
 ( . "$Q/env.sh"; env | cut -d= -f1 | grep -E '^CLAND_' | sort | tr '\n' ' '; echo )
 ```
 
-The probe. It prints one JSON line per fact and never prints a link, an invite token, a cookie, a password, a challenge, an assertion part or the hub secret; the ones it keeps for later rows stay in `$Q` (mode 600: `invite-*`, `cookie-*.json`, `pw-*`, `secrets3.json`). Frame lists are JSON arrays. A string value `"@file:<name>"` becomes the trimmed text of `$QA_Q/<name>`, `"@pw:<user>"` the password the probe generated for that user, and `@token:<invite label>` inside a path or body string that invite's token. `"@random64"` is a fresh random 64-hex token. A frame's `qaSave: [<name>, <dotted path>]` saves that path of the result value to `$QA_Q/<name>` and is not sent. Web conversations send `hello` with a forged `userId` field, so the welcome name proves the user comes from the cookie. The `facts()` order is the corrected one of commit 8807f67a (the `inbox.list` branch before the `messages` branch); keep it.
+The probe. It prints one JSON line per fact and never prints a link, an invite token, a cookie, a password, a challenge, an assertion part or the hub secret; the ones it keeps for later rows stay in `$Q` (mode 600: `invite-*`, `cookie-*.json`, `pw-*`, `secrets3.json`). Frame lists are JSON arrays. A string value `"@file:<name>"` becomes the trimmed text of `$QA_Q/<name>`, `"@pw:<user>"` the password the probe generated for that user, and `@token:<invite label>` inside a path or body string that invite's token. `"@random64"` is a fresh random 64-hex token. A `topic.send` frame's `qaSave: [<name>, <dotted path>]` is not sent: after the send succeeds the probe reads `topic.history` for that topic and saves the id of the newest message with exactly that text to `$QA_Q/<name>`, one id per file with a trailing newline (rule 22: created ids come from topic history, never from a `send` result); it prints `saved` with `matches` and `found`, and saves nothing when no message matches. The dotted path is kept for reference only. Web conversations send `hello` with a forged `userId` field, so the welcome name proves the user comes from the cookie. The `facts()` order is the corrected one of commit 8807f67a (the `inbox.list` branch before the `messages` branch); keep it.
 
 ```sh
 cat > "$Q/probe.mjs" <<'JS'
@@ -231,7 +231,14 @@ async function converse(send, onLine, close, hello, frames) {
     send(frame);
     const r = await got;
     out(`${frame.id} ${frame.type}`, r === null ? { timeout: true } : r.ok ? { ok: true, ...facts(r.value) } : { ok: false, code: r.code ?? null, error: r.error ?? null });
-    if (qaSave && r?.ok) writeFileSync(`${Q}/${qaSave[0]}`, String(qaSave[1].split('.').reduce((o, k) => o?.[k], r.value)));
+    if (qaSave && r?.ok) {  // rule 22: the created id comes from topic history, never from the send result
+      const hid = `${frame.id}h`, hist = wait(f => f.type === 'result' && f.id === hid, 30000);
+      send({ type: 'topic.history', topic: frame.topic, id: hid });
+      const h = await hist, mine = (h?.ok ? h.value.messages ?? [] : []).filter(m => m.text === frame.text);
+      const id = mine.length ? mine[mine.length - 1].id : null;
+      out('saved', { name: qaSave[0], fromHistory: true, matches: mine.length, found: id !== null });
+      if (id !== null) writeFileSync(`${Q}/${qaSave[0]}`, `${id}\n`);
+    }
   }
   close();
 }
