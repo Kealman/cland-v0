@@ -125,6 +125,8 @@ export type Message = {
   fromKind: FromKind;
   /** Durable human author; optional for single mode and older hubs. */
   userId?: string;
+  /** Current display name of a human author in users mode. */
+  userDisplayName?: string;
   /** The sender's role when a session wrote it; absent on the hub's own message. */
   fromRole?: string;
   via: Via;

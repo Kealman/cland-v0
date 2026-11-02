@@ -284,6 +284,10 @@ function Thread:_build(m, prev, answer)
       put(warn[1] .. ' ', warn[2])
     end
     local name = mine and 'you' or tostring(mm.from)
+    if mine and state.S.viewer_user_id and type(mm.userId) == 'string'
+      and mm.userId ~= state.S.viewer_user_id and type(mm.userDisplayName) == 'string' then
+      name = mm.userDisplayName:gsub('[\r\n]+', ' ')
+    end
     put(name, watch and 'ClandWatch' or 'ClandBold')
     if not mine and mm.fromRole and mm.fromRole ~= vim.NIL then
       -- name [Role], as everywhere (spec 4.4): the role's label, never its key

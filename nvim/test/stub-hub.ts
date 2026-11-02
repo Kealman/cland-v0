@@ -49,6 +49,7 @@ try {
 process.once('exit', () => { fixtureOwner?.close(); fixtureOwner?.remove(); });
 
 export type Scenario = {
+  users?: Array<{ id: string }>;
   // T-902: source-shaped account snapshots for the sessions panel.
   accounts?: Array<Record<string, unknown>>;
   marks?: import('../../shared/wire/index.ts').HumanMarks;
@@ -487,6 +488,8 @@ function answer(f: Frame) {
     case 'inbox.dismiss_all':
       return fail(f.id, 'Inbox notifications retired: use the events view (events.list) to see what happened.');
     // T-902: accounts use the ordinary snapshot/event projection seam.
+    case 'user.list':
+      return scenario.users ? ok(f.id, { users: scenario.users }) : fail(f.id, 'use cland auth mode users before cland user commands');
     case 'account.list':
       return scenario.accounts ? ok(f.id, { accounts: scenario.accounts }) : fail(f.id, 'the stub hub does not answer account.list');
     case 'task.list': {

@@ -347,6 +347,12 @@ local function wire_client(client)
   end)
   client:on('connected', function()
     state.S.remotes = nil -- reconnecting to an older hub must not retain stale facts
+    state.S.viewer_user_id = nil
+    client:request({ type = 'user.list' }, function(err, value)
+      state.S.viewer_user_id = not err and value and value.users and value.users[1] and value.users[1].id or nil
+      for _, thread in pairs(require('cland.thread').by_buf) do thread:render() end
+      state.changed()
+    end)
     refresh_accounts()
     M.refresh()
     require('cland.events').refresh_summary()

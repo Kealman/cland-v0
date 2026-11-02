@@ -426,6 +426,7 @@ active. Single-mode sends retain `from: human` and omit `userId`. The optional
 message `userId` supports older clients and hubs; agent delivery envelopes use
 the existing `from` attribute. The content-free `human-send` journal record
 includes `userId` for new users-mode messages; earlier journal rows stay unchanged.
+The optional `userDisplayName` is resolved from the users table on every message read in users mode; both threads compare `userId` with the authenticated viewer (the first user in Neovim) for “you”, otherwise show that display name, retaining “you” for single mode and older payloads.
 
 The spokes' authentication and refusal of client hellos are unchanged.
 Paths stay inside the bundle,

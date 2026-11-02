@@ -843,6 +843,7 @@ export class HubCore {
 
   /** A recorded topic message reaches the subscribers, with its stage as stored. */
   #emitMessage(message: Message): void {
+    if (message.fromKind === 'human') message = this.#store.message(message.id) ?? message;
     if (message.topic === undefined) return;
     const topic = this.#messageTopic(message.topic);
     if (!topic) return;

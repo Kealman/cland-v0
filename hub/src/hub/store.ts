@@ -925,7 +925,7 @@ export class Store implements HygieneMemory {
     if (message.fromKind !== 'human') return message;
     const user = typeof row.user_id === 'string' ? this.users.get(row.user_id)
       : this.users.mode() === 'users' ? this.users.first() : null;
-    return user ? { ...message, from: user.name, userId: user.id } : message;
+    return user ? { ...message, from: user.name, userId: user.id, ...(this.users.mode() === 'users' ? { userDisplayName: user.displayName } : {}) } : message;
   }
 
   /** Record a message and the state of each addressee's delivery, together: a message is never stored with

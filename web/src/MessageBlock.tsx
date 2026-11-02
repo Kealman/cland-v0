@@ -44,7 +44,7 @@ export function MessageBlock({ message, connection, showTopic = false }: { messa
   return <article tabIndex={-1} data-key-context={card ? 'ask' : undefined} data-thread-row={message.id} data-message-id={message.id} data-message-seq={message.seq} data-role={role} data-layer={message.layer} data-compact={verdict?.result === 'clear'} className={s.message}>
     <span aria-hidden="true" data-role-gutter className={s.gutter} />
     <div className={s.content}>
-      {!folded && <header className={s.header}><strong>{message.fromKind === 'human' ? 'you' : message.from}</strong>
+      {!folded && <header className={s.header}><strong>{message.fromKind === 'human' ? (!connection.viewerUserId || !message.userId || message.userId === connection.viewerUserId ? 'you' : message.userDisplayName ?? 'you') : message.from}</strong>
         <span data-message-role className={s.role}>{roles[role]}</span>
         <span>→ {message.to.length ? message.to.map(name => name === 'human' ? 'you' : name).join(', ') : 'you'}</span>
         <span>{shownKind}</span>
