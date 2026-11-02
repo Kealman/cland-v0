@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-10-31T18:22:54.988Z
+updated: 2026-11-02T03:34:37.602Z
 ---
 
 ## Goal
@@ -88,3 +88,67 @@ In a scratch project QA starts two fake hosts and launches an OpenCode, a Codex 
 - Prototype, on `prototype/agent-host` at 7f7ecb0f: `hub/src/host/README.md` (survival table, Linux facts, decisions), `agent.ts`, `supervisor.sh`, `git-proxy.ts`, `hosts.ts`, `cli.ts`; the spoke edge and `spokeSocket` changes marked `PROTOTYPE (Q-1517)`.
 - Code: `hub/src/spoke/spoke.ts`, `hub/src/hub/socket.ts`, `hub/src/hub/daemon.ts`, `hub/src/project.ts`, `shared/project-discovery.ts`, `hub/src/territory.ts`, `hub/src/adapters/{claude-code,codex,opencode}.ts`, `hub/src/executor/droplet/machine.ts` (the existing SSH use); `docs/adr/0003-*.md`, `docs/adr/0004-*.md`.
 - GLOSSARY: Host, Host agent, Tunnel (added for v0.4); Spoke, Territory, Task branch.
+
+## Plan
+
+```yaml
+stages:
+  - name: foundations
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1587
+      - - T-1588
+      - - T-1589
+      - - T-1590
+      - - T-1591
+      - - T-1592
+  - name: the tunnel
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1593
+        - T-1594
+        - T-1595
+      - - T-1596
+      - - T-1597
+      - - T-1601
+  - name: the ssh Host and the remote spoke
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1598
+        - T-1599
+        - T-1600
+      - - T-1602
+  - name: harnesses and git on hosts
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1603
+      - - T-1606
+      - - T-1607
+      - - T-1604
+        - T-1605
+      - - T-1608
+  - name: push, attach and survival
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1609
+        - T-1610
+      - - T-1611
+      - - T-1612
+        - T-1613
+  - name: relaunch elsewhere
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-1614
+```

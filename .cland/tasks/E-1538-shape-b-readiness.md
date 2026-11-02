@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-31T18:22:04.760Z
-updated: 2026-10-31T18:22:56.399Z
+updated: 2026-11-02T03:34:42.534Z
 ---
 
 ## Goal
@@ -69,3 +69,30 @@ In a scratch project QA writes a hub lock with another hostname and a fresh hear
 - Research: `docs/research/kubernetes-shape.md` on `research/kubernetes-shape` (b7f82197): "What breaks in cland's assumptions" and "Hub changes for shape B".
 - Code: `hub/src/hub/lock.ts`, `hub/src/project.ts`, `hub/src/executor/droplet/spend.ts`, `api.ts`, `droplet.ts`, `cleanup.ts`, `hub/src/hub/web-edge.ts`, `web-auth.ts`, `hub/src/web-address.ts`; `docs/adr/0003-*.md`.
 - GLOSSARY: Hub, Executor, Lease, Tunnel.
+
+## Plan
+
+```yaml
+stages:
+  - name: lock, deletion and paths
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1615
+        - T-1616
+        - T-1617
+      - - T-1618
+        - T-1619
+        - T-1620
+      - - T-1621
+        - T-1622
+        - T-1623
+  - name: secure cookie and the transport contract
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-1624
+      - - T-1625
+```
