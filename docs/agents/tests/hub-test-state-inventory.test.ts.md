@@ -7,7 +7,19 @@ window. The injected `openDatabase` seam captures native SQLite opens and fences
 their possible WAL/SHM/journal destinations, including transient companions.
 Companion destinations are conservative coverage, not claims that each file was
 created. Disposable escape controls prove the observer detects an actual SQLite
-row/WAL and a drained stream outside both HOME and the project. The test then
+row/WAL and a drained stream outside both HOME and the project. The observer attributes writes with a test-owned async context, including hub
+startup, requests and shutdown. A concurrent writer in a sibling allocation under
+the shared suite TMPDIR runs outside that context; its persisted bytes and
+observation prove it ran during the window. A second case injects a synchronous
+stray write from the hub's database-open callback into that same sibling and
+requires the inventory assertion to reject it. SQLite/stream escape controls and
+the ledger/lock controls remain active in both cases.
+
+Socket runtime exceptions use the production `layout` paths registered by
+`state-paths-inventory.ts`, with no blanket TMPDIR exemption. Only a successful
+observed rename from a same-directory `.h<hex>` staging name into this hub's
+chosen socket allows those exact paths and the parent mkdir. Other writes in
+that directory remain subject to ownership and HOME/project checks. The test then
 joins the executor and hub before checking every observed write. Lease acquisition
 and release use the shared fake-clock driver; the case has a 30-second native
 bound so a requested product delay cannot strand the test. It does not
@@ -36,3 +48,9 @@ macOS's 104-byte Unix socket limit. Host secrets and retained records remain in
 the project's host directory. Never exempt a whole file or add retained state
 to a runtime exception. Add an allowed-expression control and a rejected sibling
 expression control, then run `state-paths-lint.test.ts` and `state-paths.test.ts`.
+
+T-1636 C3 carries a seven-day, 13-second allowance for the full-source T1 AST scan,
+owned by C-216, expiring 2026-11-09. The Linux stage sample in A-15910 was 8.459 s;
+other same-day samples reported by the Coordinator were 1.1–2.2 s. This bounds
+platform I/O variance while preserving the scan and all planted controls; T-1638
+owns the optimization and allowance removal.

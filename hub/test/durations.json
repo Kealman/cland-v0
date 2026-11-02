@@ -9113,6 +9113,13 @@
     "hub/test/verifier-routing.test.ts::role-addressed reviewer request pins its explicit head before delivery": 0.093639
   },
   "allow": {
+    "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
+      "seconds": 13,
+      "owner": "C-216",
+      "added": "2026-11-02",
+      "expires": "2026-11-09",
+      "reason": "T-1636 C3: full hub source AST inventory is disk-sensitive. Linux stage cover cd742656 shard 2 (A-15910) observed 8.459 s against 5 s; other same-day samples were 1.1–2.2 s (Coordinator report). 13 s rounds up 1.5x the worst observed sample; seven-day allowance pending scan optimization in T-1638."
+    },
     "hub/test/inbox-query.test.ts": {
       "seconds": 61.355,
       "file": true,
