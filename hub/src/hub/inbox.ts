@@ -192,7 +192,14 @@ export class InboxBoard {
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'handover') {
           this.#notify('role', (event.message.text.split('\n')[0] ?? '').replace(/:$/, ''), event.message.detail && typeof event.message.detail.to === 'string' ? { session: event.message.detail.to } : {});
         }
+        // These notices cannot affect candidates, waits, or approval metadata.
+        if (event.message.kind === 'progress' || event.message.kind === 'event'
+          || event.message.fromKind === 'hub' && event.message.kind === 'agent-message') return;
         break;
+      case 'presence':
+        if (!this.#approvals.size && !event.sessions.some(s => s.state === 'waiting for approval')) return;
+        break;
+      case 'session.usage':
       case 'delivery':
       case 'inbox':
       case 'event': // Journal projections do not change any inbox section.

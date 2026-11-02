@@ -229,6 +229,7 @@
     "hub/test/import-github.test.ts": "T2",
     "hub/test/in-process-spoke.test.ts": "T2",
     "hub/test/inbox-actions.test.ts": "T2",
+    "hub/test/inbox-query.test.ts": "T2",
     "hub/test/inbox-requests-component.test.ts": "T2",
     "hub/test/inbox-requests.test.ts": "T3",
     "hub/test/inbox-verifier-load.test.ts": "T4",

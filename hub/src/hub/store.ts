@@ -279,8 +279,8 @@ create index if not exists messages_human_seq on messages (topic, seq) where fro
 create index if not exists messages_unread on messages (topic, seq, id) where from_kind != 'human';
 create index if not exists messages_inbox_latest on messages (topic, seq)
   where from_kind = 'agent' and coalesce(notice, '') not in ('progress', 'event', 'request');
-create index if not exists messages_inbox_human on messages (topic, seq)
-  where (from_kind = 'agent' or (from_kind = 'hub' and json_extract(notice_detail, '$.event') = 'verification-cleanup-incomplete'))
+create index if not exists messages_inbox_human_v2 on messages (topic, seq)
+  where (from_kind = 'agent' or (from_kind = 'hub' and (json_extract(notice_detail, '$.event') = 'verification-cleanup-incomplete' or notice = '${COORDINATOR_RETIRED}')))
     and coalesce(notice, '') not in ('progress', 'event', 'request') and json_array_length(to_json) = 0;
 create index if not exists messages_inbox_requests on messages (id) where notice = 'request';
 create index if not exists deliveries_topic_waits on deliveries (state, verifier_item, message_id, session, verifier_role);
@@ -472,6 +472,21 @@ export class Store implements HygieneMemory {
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
     this.#db.exec(SEQ_SETUP);
+    // Persist only unsettled request identities. Triggers cover older writers too.
+    this.#db.exec(`create table if not exists inbox_request_candidates (id text primary key references messages(id) on delete cascade);
+      create trigger if not exists inbox_request_insert after insert on messages when new.notice = 'request' begin
+        insert or ignore into inbox_request_candidates select new.id where not exists
+          (select 1 from inbox_departures where kind = 'request' and id = new.id);
+      end;
+      create trigger if not exists inbox_request_depart after insert on inbox_departures when new.kind = 'request' begin
+        delete from inbox_request_candidates where id = new.id;
+      end;`);
+    if (!this.meta('inbox-request-candidates')) this.#transaction(() => {
+      this.#db.exec(`insert or ignore into inbox_request_candidates select id from messages m where notice = 'request'
+        and not exists (select 1 from inbox_departures d where d.kind = 'request' and d.id = m.id)`);
+      this.setMeta('inbox-request-candidates', '1');
+    });
+
     // Backfill once for stores created before indexed placement re-projection.
     if (!this.meta('visibility-artifact-refs')) this.#transaction(() => {
       this.#db.exec(`insert or ignore into message_artifact_refs
@@ -1896,39 +1911,47 @@ export class Store implements HygieneMemory {
     const hubCandidate = `(m.from_kind = 'hub' and (json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete' or m.notice = '${COORDINATOR_RETIRED}'))`;
     // An addressed report becomes a human inbox candidate only on a waiting
     // topic. Unread direct messages and unsettled requests have separate paths.
-    const rows = this.#prepare(`with latest_messages as materialized (
+    const query = this.#prepare(`with latest_messages as materialized (
       select t.id as topic, (select m.seq from messages m where m.topic = t.id
         and m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
         and not exists (select 1 from asks a where a.id = m.id)
         order by m.seq desc limit 1) as seq from topics t where t.status = 'waiting for human'
+    ), topic_facts as materialized (
+      select t.*, coalesce((select h.seq from messages h where h.topic = t.id and h.from_kind = 'human' order by h.seq desc limit 1), 0) as human_seq from topics t
     ), candidates as materialized (
       -- Only unread human-addressed rows after the last same-topic human reply can become messages.
-      select m.id from topics t cross join messages m on m.topic = t.id
-        and m.seq > max(t.read_seq, coalesce((select max(h.seq) from messages h where h.topic = t.id and h.from_kind = 'human'), 0))
+      select m.rowid as row_id from topic_facts t cross join messages m indexed by messages_inbox_human_v2 on m.topic = t.id
+        and m.seq > max(t.read_seq, t.human_seq)
       where (m.from_kind = 'agent' or ${hubCandidate})
         and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0
       union
-      select m.id from latest_messages l cross join messages m on m.topic = l.topic and m.seq = l.seq
+      select m.rowid from latest_messages l cross join messages m on m.topic = l.topic and m.seq = l.seq
       union
       -- Requests ignore read watermarks. Even a request replied to before publication must depart once.
-      select r.id from messages r where r.notice = 'request'
-        and not exists (select 1 from inbox_departures d where d.kind = 'request' and d.id = r.id)
+      select m.rowid from inbox_request_candidates r cross join messages m on m.id = r.id
       union
       -- Keep settled waits until list() has recorded their durable departure.
-      select w.id from inbox_waits w where w.kind in ('message', 'request')
-    ) select m.*, (m.seq <= t.read_seq or exists (select 1 from message_reads r where r.id = m.id)) as was_read,
+      select m.rowid from inbox_waits w join messages m on m.id = w.id where w.kind in ('message', 'request')
+    ) select m.id, m.from_name, m.from_kind, m.from_role, m.via, m.to_json, m.text, m.reply_to, m.ts, m.topic, m.notice, m.notice_detail, m.answer_to, m.seq, m.request_kind, m.request_subject, m.artifact, m.artifacts, m.criteria, m.answer_attribution, (m.seq <= t.read_seq or exists (select 1 from message_reads r where r.id = m.id)) as was_read,
       json_array_length(m.to_json) = 0 as to_human,
       m.seq = latest.seq as latest,
-      (exists (select 1 from messages h where h.topic = m.topic and h.seq > m.seq and h.from_kind = 'human')
+      (t.human_seq > m.seq
         or (m.notice = 'request' and exists (select 1 from messages h where h.reply_to = m.id and h.seq > m.seq and h.from_kind = 'human'))) as replied
-      from candidates c cross join messages m on m.id = c.id join topics t on t.id = m.topic
+      from candidates c cross join messages m on m.rowid = c.row_id join topic_facts t on t.id = m.topic
       left join latest_messages latest on latest.topic = m.topic
       where (m.from_kind = 'agent' or ${hubCandidate}) and coalesce(m.notice, '') not in ('progress', 'event')
         and not exists (select 1 from asks a where a.id = m.id)
         and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
           or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))
-      order by m.seq desc`).all() as Row[];
-    return rows.map(r => ({ message: { ...this.#messageFromRow(r), seq: Number(r.seq), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 }));
+      order by m.seq desc`);
+    // Array rows avoid native property-name allocation for every retained candidate.
+    query.setReturnArrays(true);
+    const rows = query.all() as unknown as Array<Array<Row[string]>>;
+    return rows.map(values => {
+      const [id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, topic, notice, notice_detail, answer_to, seq, request_kind, request_subject, artifact, artifacts, criteria, answer_attribution, was_read, to_human, latest, replied] = values;
+      const r = { id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, topic, notice, notice_detail, answer_to, seq, request_kind, request_subject, artifact, artifacts, criteria, answer_attribution, was_read, to_human, latest, replied } as Row;
+      return { message: { ...this.#messageFromRow(r), seq: Number(r.seq), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 };
+    });
   }
 
   inboxWaits(): InboxWait[] {

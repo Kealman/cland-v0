@@ -9113,6 +9113,35 @@
     "hub/test/verifier-routing.test.ts::role-addressed reviewer request pins its explicit head before delivery": 0.093639
   },
   "allow": {
+    "hub/test/inbox-query.test.ts": {
+      "seconds": 61.355,
+      "file": true,
+      "owner": "E-880",
+      "added": "2026-11-02",
+      "expires": "2026-11-16",
+      "reason": "Aggregates required synthetic history and 1,000 real send/mirror receipts. A-15693 Linux c-8 workers 2 at d9f445e30 measured 40.903 s; cap is 1.5x rounded up. The failed C1 assertion does not count as passing coverage."
+    },
+    "hub/test/inbox-query.test.ts::1,000 real sends and their mirror notices across windows do not rebuild or emit": {
+      "seconds": 54.525,
+      "owner": "E-880",
+      "added": "2026-11-02",
+      "expires": "2026-11-16",
+      "reason": "C2 requires 1,000 real spoke sends, durable messages and companion notices with policies enabled. A-15693 Linux c-8 workers 2 at d9f445e30 passed this case in 36.35 s; cap is 1.5x."
+    },
+    "hub/test/inbox-query.test.ts::synthetic inbox candidates stay equivalent and indexed as retained history doubles": {
+      "seconds": 5,
+      "owner": "E-880",
+      "added": "2026-11-02",
+      "expires": "2026-11-16",
+      "reason": "C1 constructs 50,000 synthetic messages, compares an independent oracle, then doubles unrelated retained history while checking the same candidate count and bounded query plan. Initial local setup+assertions observed 2.63 s."
+    },
+    "hub/test/inbox-query.test.ts::existing large synthetic database migrates and serves hub.status within 15 seconds": {
+      "seconds": 10,
+      "owner": "E-880",
+      "added": "2026-11-02",
+      "expires": "2026-11-16",
+      "reason": "C4 constructs and copies a 50,000-message legacy fixture, then proves native index/backfill and frame readiness; local observed 5.30s."
+    },
     "hub/test/claude-code-sessions-lifecycle.test.ts::Claude relaunch stops the previous native job after its PID has exited": {
       "seconds": 8.967,
       "owner": "E-880",
