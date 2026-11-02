@@ -8277,8 +8277,11 @@ Concurrent probes share one in-flight check per captured row. Codex close return
 a promise that joins admitted launch, resume, stop, reconnect and probe work;
 late accepted launches roll back before it settles. Incomplete cleanup retains
 the PID/undo receipt and rejects close rather than claiming shutdown complete.
-Standalone adapters without Host lookup callbacks use the local Host. Sandbox root resolution is unchanged;
-launch files, sockets and RPC transport remain hub-local pending E-1532.
+Standalone adapters without Host lookup callbacks use the local Host.
+Codex sandbox profiles resolve writable roots, linked-worktree Git directories
+and local-network socket allow/deny paths through that captured Host's realpath,
+statDirectory and readFile. Local profiles retain their serialized bytes.
+Launch files, sockets and RPC transport remain hub-local pending E-1532.
 
 Sessions owns a registry containing `local`.
 `session.launch` frames accept an optional registered `host`, defaulting to `local`;

@@ -31,7 +31,7 @@ import type { Resumed } from '../hub/worktrees.ts';
 import type { Host } from '../host/host.ts';
 import { localHost } from '../host/local.ts';
 import { randomUUID } from 'node:crypto';
-import { access, readFile, realpath, rm, stat } from 'node:fs/promises';
+import { access, readFile, rm } from 'node:fs/promises';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
@@ -153,16 +153,16 @@ export function mcpOverrides(host: Pick<AdapterHost, 'node' | 'spoke' | 'discove
 /** The name of the permissions profile a launch defines for its thread. */
 export const CLAND_PROFILE = 'cland';
 
-const real = (path: string, resumed: Resumed = untimed): Promise<string> => realpath(path).then(value => resumed(() => value), () => resumed(() => path));
-const isDir = (path: string, resumed: Resumed = untimed): Promise<boolean> => stat(path).then(info => resumed(() => info.isDirectory()), () => resumed(() => false));
+const real = (path: string, resumed: Resumed = untimed, machine: Host = localHost()): Promise<string> => machine.realpath(path).then(value => resumed(() => value), () => resumed(() => path));
+const isDir = (machine: Host, path: string, resumed: Resumed): Promise<boolean> => machine.statDirectory(path).then(info => resumed(() => info.refusal === null), () => resumed(() => false));
 const under = (path: string, dir: string): boolean => path === dir || path.startsWith(dir + sep);
 
 /** The git directory a worktree's `.git` file points at, or null (a main worktree, or no repository). */
-async function worktreeGitDir(cwd: string, resumed: Resumed = untimed): Promise<string | null> {
+async function worktreeGitDir(machine: Host, cwd: string, resumed: Resumed = untimed): Promise<string | null> {
   return continueWith((function* (): Generator<Promise<unknown>, string | null, unknown> {
     try {
-      const m = /^gitdir: (.+)$/m.exec((yield* wait(readFile(join(cwd, '.git'), 'utf8'))));
-      return m ? yield* wait(real(isAbsolute(m[1] as string) ? (m[1] as string) : resolve(cwd, m[1] as string), resumed)) : null;
+      const m = /^gitdir: (.+)$/m.exec(Buffer.from(yield* wait(machine.readFile(join(cwd, '.git')))).toString('utf8'));
+      return m ? yield* wait(real(isAbsolute(m[1] as string) ? (m[1] as string) : resolve(cwd, m[1] as string), resumed, machine)) : null;
     } catch {
       return null;
     }
@@ -200,7 +200,7 @@ export type ThreadPolicy = { thread: { approvalPolicy: string; permissions?: str
  *               one of them takes `command/exec` under any profile, which would be a way out of the sandbox.
  *               `full`: the whole network, the proxy off.
  */
-export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: string, policy: LaunchPolicy, resumed: Resumed = untimed): Promise<ThreadPolicy> {
+export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: string, policy: LaunchPolicy, resumed: Resumed = untimed, machine: Host = localHost()): Promise<ThreadPolicy> {
   return continueWith((function* (): Generator<Promise<unknown>, ThreadPolicy, unknown> {
     const approvalPolicy = policy.approval ?? 'never';
     const box = policy.sandbox;
@@ -213,21 +213,21 @@ export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd
       return { thread: { approvalPolicy, permissions: base }, overrides: [] };
     const filesystem: Record<string, string> = {};
     const gitDirs: string[] = [];
-    for (const root of yield* wait(Promise.all(box.writableRoots.map(root => real(root, resumed))))) {
+    for (const root of yield* wait(Promise.all(box.writableRoots.map(root => real(root, resumed, machine))))) {
       filesystem[root] = 'write';
       const git = join(root, '.git');
-      if (yield* wait(isDir(git, resumed)))
+      if (yield* wait(isDir(machine, git, resumed)))
         gitDirs.push(git);
     }
-    const own = yield* wait(worktreeGitDir(cwd, resumed));
+    const own = yield* wait(worktreeGitDir(machine, cwd, resumed));
     for (const git of gitDirs)
       filesystem[git] = 'write';
     if (own !== null && gitDirs.some((git) => under(own, git)))
       filesystem[own] = 'write';
     let network: Record<string, unknown> | null = null;
     if (box.network === 'local') {
-      const cland = yield* wait(real(dirname(host.discoveryFile), resumed));
-      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed))]: 'allow', [yield* wait(real(tmpdir(), resumed))]: 'allow', [join(cland, 'run')]: 'deny', [yield* wait(tmpRunDir(resumed))]: 'deny' };
+      const cland = yield* wait(real(dirname(host.discoveryFile), resumed, machine));
+      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed, machine))]: 'allow', [yield* wait(real(tmpdir(), resumed, machine))]: 'allow', [join(cland, 'run')]: 'deny', [join(yield* wait(real(tmpdir(), resumed, machine)), 'cland-run')]: 'deny' };
       network = { enabled: true, allow_local_binding: true, unix_sockets };
     }
     else if (box.network === 'full')
@@ -897,7 +897,7 @@ export class CodexAdapter implements HarnessAdapter {
       let pid: number | undefined;
       let client: AppServerConnection | undefined;
       try {
-        const policy = yield* this.#activeWait(this.#threadPolicy(request.cwd, request, files, resumed));
+        const policy = yield* this.#activeWait(this.#threadPolicy(machine, request.cwd, request, files, resumed));
         ({ pid, client } = yield* wait(this.#startServer(machine, base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));
         this.#assertOpen();
         authorize();
@@ -949,12 +949,12 @@ export class CodexAdapter implements HarnessAdapter {
 
   /** The launch's settings for Codex; the directories the sandbox denies sockets in exist first (Codex ignores a
    *  socket path it cannot normalize, and a deny that is ignored is a hole). */
-  async #threadPolicy(cwd: string, policy: LaunchPolicy, files: LaunchFiles, resumed: Resumed = untimed): Promise<ThreadPolicy> {
+  async #threadPolicy(machine: Host, cwd: string, policy: LaunchPolicy, files: LaunchFiles, resumed: Resumed = untimed): Promise<ThreadPolicy> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ThreadPolicy, unknown> {
       if (policy.sandbox?.network === 'local')
         for (const dir of [join(dirname(this.#host.discoveryFile), 'run'), yield* this.#activeWait(tmpRunDir(resumed))])
           yield* this.#activeWait(files.directory(dir, 0o700));
-      return yield* this.#activeWait(threadPolicy(this.#host, cwd, policy, resumed));
+      return yield* this.#activeWait(threadPolicy(this.#host, cwd, policy, resumed, machine));
     }).call(this), resumed);
   }
 
@@ -1385,7 +1385,7 @@ export class CodexAdapter implements HarnessAdapter {
       let client: AppServerConnection | undefined;
       try {
         yield* this.#activeWait(this.#checkVersion(machine, p.cwd, p.accountEnv, resumed));
-        const policy = yield* this.#activeWait(this.#threadPolicy(p.cwd, options.policy ?? {}, files, resumed));
+        const policy = yield* this.#activeWait(this.#threadPolicy(machine, p.cwd, options.policy ?? {}, files, resumed));
         ({ pid, client } = yield* wait(this.#startServer(machine, p, socket, policy.overrides, files, resumed, options.launchToken, options.authorize)));
         this.#assertOpen();
         this.#attach(live, client);

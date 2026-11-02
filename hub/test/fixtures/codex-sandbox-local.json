@@ -1,0 +1,43 @@
+[
+  {
+    "thread": {
+      "approvalPolicy": "never",
+      "permissions": "cland"
+    },
+    "overrides": [
+      "default_permissions=\"cland\"",
+      "permissions.cland={\"extends\"=\":workspace\",\"filesystem\"={\"<root>\"=\"write\",\"<root>/.git\"=\"write\"}}"
+    ]
+  },
+  {
+    "thread": {
+      "approvalPolicy": "never",
+      "permissions": "cland"
+    },
+    "overrides": [
+      "default_permissions=\"cland\"",
+      "permissions.cland={\"extends\"=\":workspace\",\"filesystem\"={\"<root>\"=\"write\",\"<root>/.git\"=\"write\",\"<root>/.git/worktrees/task\"=\"write\"}}"
+    ]
+  },
+  {
+    "thread": {
+      "approvalPolicy": "never",
+      "permissions": "cland"
+    },
+    "overrides": [
+      "default_permissions=\"cland\"",
+      "permissions.cland={\"extends\"=\":workspace\",\"filesystem\"={\"<root>\"=\"write\",\"<root>/.git\"=\"write\",\"<root>/.git/worktrees/task\"=\"write\"}}"
+    ]
+  },
+  {
+    "thread": {
+      "approvalPolicy": "never",
+      "permissions": "cland"
+    },
+    "overrides": [
+      "default_permissions=\"cland\"",
+      "permissions.cland={\"extends\"=\":workspace\",\"filesystem\"={\"<root>\"=\"write\",\"<root>/.git\"=\"write\",\"<root>/.git/worktrees/task\"=\"write\"},\"network\"={\"enabled\"=true,\"allow_local_binding\"=true,\"unix_sockets\"={\"<root>/.cland\"=\"allow\",\"<root>/task\"=\"allow\",\"<temp>\"=\"allow\",\"<root>/.cland/run\"=\"deny\",\"<temp>/cland-run\"=\"deny\"}}}",
+      "features.network_proxy=true"
+    ]
+  }
+]

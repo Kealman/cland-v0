@@ -1486,7 +1486,9 @@ Capture the launch Host once and retain its name on internal and returned rows.
 Await Codex close in fixture cleanup; held probes coalesce, admitted lifecycle
 work drains, and a late accepted launch retains ownership through rollback.
 Keep the four existing Codex preservation files unedited. Sandbox roots and
-hub-local sockets/files remain separate work; no role clause or CLI change applies.
+socket policy paths use the captured session Host; preserve exact local profile
+bytes using the fixture in `codex-sandbox-host.test.ts` (see its per-test guide).
+Hub-local socket/file creation remains separate work; no role clause or CLI change applies.
 
 For OpenCode lifecycle routing, use the recording Host and scripted transport in
 `docs/agents/tests/hub-test-opencode-host.test.ts.md`; keep the existing adapter and
