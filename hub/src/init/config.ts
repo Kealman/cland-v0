@@ -1,3 +1,4 @@
+import { validateHostTransports } from '../host/transport-config.ts';
 import { canonicalAddress } from '../web-address.ts';
 import { isIP } from 'node:net';
 // `.cland/config.toml` (spec 4.9, decision #17): the project's name and the hub's hygiene thresholds, committed.
@@ -253,6 +254,7 @@ const positive = (v: unknown): number | undefined => (typeof v === 'number' && N
 /** The file's values over the defaults. Legacy wrong types are ignored unless strict validation is requested. */
 export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env, { strict = false }: { strict?: boolean } = {}): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
+  validateHostTransports(doc.hosts);
   const c = defaultConfig(fallbackName);
   const table = (value: unknown, key: string): Record<string, unknown> => {
     if (value === undefined) return {};

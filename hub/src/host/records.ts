@@ -4,9 +4,10 @@ import { chmodSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { parseTransportKind, type TransportKind } from './transport-kind.ts';
 import { SOCKET_PATH_MAX } from '../project.ts';
 
-export type HostRecord = { id: string; transport: 'ssh'; address: string; user: string; state: 'registered' | 'revoked' };
+export type HostRecord = { id: string; transport: TransportKind; address: string; user: string; state: 'registered' | 'revoked' };
 export type HostRegistration = { id: string; address: string; user: string; clientKeyPath: string; knownHosts: string };
 const digest = (secret: string) => createHash('sha256').update(secret).digest('hex');
 function hostId(id: string): void {
@@ -23,9 +24,9 @@ export class HostRecords {
   }
   get(id: string): HostRecord | null {
     const row = this.#db.prepare('select id,transport,address,user,state from hosts where id=?').get(id);
-    return row ? { ...row } as HostRecord : null;
+    return row ? { ...row, transport: parseTransportKind(row.transport) } as HostRecord : null;
   }
-  list(): HostRecord[] { return this.#db.prepare('select id,transport,address,user,state from hosts order by id').all().map(row => ({ ...row })) as HostRecord[]; }
+  list(): HostRecord[] { return this.#db.prepare('select id,transport,address,user,state from hosts order by id').all().map(row => ({ ...row, transport: parseTransportKind(row.transport) })) as HostRecord[]; }
   /** Storage primitive; callers own admission and connection revocation. */
   revoke(id: string): void { this.#db.prepare("update hosts set state='revoked' where id=?").run(id); }
   insert(input: HostRegistration, secret: string): HostRecord {

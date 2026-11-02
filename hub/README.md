@@ -8375,6 +8375,14 @@ install the territory hook or grant branch leases.
 
 ### Host records and bootstrap secrets
 
+`host/transport-kind.ts` owns `TransportKind` and `parseTransportKind(unknown)`.
+0.4.0 accepts only `ssh`; `outbound` requires 0.4.x. Explicit transport values in
+any `[hosts.<pool>]` are validated at start and `cland hub reload`; a refusal
+names `hosts.<pool>.transport` and prevents startup or retains the last loaded
+configuration on reload. Omitted transport is accepted. The interim validator
+leaves other host keys untouched; pool parsing belongs to E-1534. Persisted host
+record reads use the same parser, preserving the existing `ssh` record shape.
+
 Opening `hub.db` adds `hosts` in place. `Store.hosts` stores the id, `ssh`
 transport, address, user, state and SHA-256 secret digest. `HostSecretStore`
 writes a random 32-byte secret, `known_hosts` pin and `client-key-path` reference

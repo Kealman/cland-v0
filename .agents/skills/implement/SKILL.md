@@ -1708,6 +1708,13 @@ its PID. Explicit stop and native-identity hook reconciliation still use Host
 commands. Local directory polling and its persisted schedule stay unchanged.
 No CLI, setting or role permission changes apply.
 
+Host transport readers import `TransportKind` and `parseTransportKind` from
+`hub/src/host/transport-kind.ts`; no second kind allowlist. The interim config
+validator checks only explicit pool transports. Startup classifies only
+`hosts.<pool>.transport:` refusals as fatal; preserve unrelated host keys when
+replacing the validator with pool parsing. Use the sealed scratch start/reload
+cases in `docs/agents/tests/hub-test-transport-config.test.ts.md`.
+
 For Claude Code Host routing, use the recording seam in
 `docs/agents/tests/hub-test-claude-code-host.test.ts.md`. Preserve the unchanged
 adapter, sessions, schedule, accounts and environment files as controls. New
