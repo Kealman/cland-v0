@@ -47,12 +47,13 @@ test('names reject reserved words, roles, sessions, duplicates and non-slugs wit
   assert.throws(() => users.add('alex', 'Alex', [], 1), /unique/);
 });
 
-test('invite frames retain explicit local authority and validate their fields', async () => {
+test('user creation admits web authority while invite renewal stays local and fields validate', async () => {
   const { WEB_AUTHORITY } = await import('../src/hub/web-authority.ts');
   const { GATEWAY_AUTHORITY } = await import('../src/remote/authority.ts');
   const { isClientRequest } = await import('../src/protocol.ts');
   for (const type of ['user.add', 'user.invite'] as const) {
-    assert.equal(typeof WEB_AUTHORITY[type], 'string');
+    if (type === 'user.add') assert.equal(WEB_AUTHORITY[type], true);
+    else assert.equal(typeof WEB_AUTHORITY[type], 'string');
     assert.equal(Object.hasOwn(GATEWAY_AUTHORITY, type), false);
     assert.equal(isClientRequest({ type, id: 'x', name: 'alex' }), true);
     assert.equal(isClientRequest({ type, id: 'x', name: 1 }), false);

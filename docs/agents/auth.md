@@ -9,10 +9,10 @@ From a human shell on the hub machine, `cland auth mode users` creates the first
 admin from Git's `user.name` (the OS user name when unset). Its name is the
 lowercase ASCII slug with hyphens. Reserved addresses, roles and existing session
 names cannot be user names. The command prints the first user's name and role, plus a 24-hour invite when the web edge is available. `cland user list` prints name, display name, role and state
-in users mode. These commands use the local Unix socket; agents, web clients and
-remotes cannot invoke their frames. Generic `cland config set auth.mode` refuses
-all values and points to `cland auth`. All five auth/user handlers share a
-local-human guard; an authenticated session shell is refused before any read or
+in users mode. The CLI uses the local Unix socket. Auth mode/reset and invite renewal stay
+local-only. In users mode authenticated web admins may also call user.add and
+user.list; agents and remotes remain refused. Generic `cland config set auth.mode` refuses
+all values and points to `cland auth`. Auth/user handlers retain a human guard; an authenticated session shell is refused before any read or
 mutation. Invite commands also refuse while a sign-in transition is draining or
 retains a fence after failed reload. Successful recovery reload restores admission.
 
@@ -30,7 +30,12 @@ In users mode, `cland user add <name> [--display <name>]` creates an invited
 admin and prints a one-time 24-hour invite URL. Names are unique lowercase
 ASCII slugs, excluding `human`, `hub`, `all`, roles and current sessions.
 `cland user invite <name>` replaces any open invite for an existing user.
-Both require a local human shell and an available web edge. URLs use `[web]
+The CLI requires a local human shell; both minting commands require an available web edge.
+Accounts also offers user creation to authenticated admins in users mode, with
+the same name rules and refusals. Its Users fold lists every user and the count.
+The invite is shown for copying only until dismissed or the view is left; it is
+not stored in browser settings. Single mode shows no users list and refuses web
+user.add/user.list with guidance naming users mode. URLs use `[web]
 origin when configured, otherwise the edge address (wildcard binds use loopback).
 Tokens are stored only as SHA-256 digests with expiry and state, and appear only
 in minting results. Used, expired, unknown and revoked invites are refused with

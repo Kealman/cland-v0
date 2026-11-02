@@ -1739,6 +1739,10 @@ export class Dispatcher {
         if (caller) throw new ToolForbidden(caller.role, frame.type, reason);
         if (transport.edge !== 'socket') throw new Error(reason);
       };
+      const requireUserManagement = () => {
+        if (transport.edge !== 'web') return requireLocalHuman();
+        if (!humanUser() || core.store.users.mode() !== 'users') throw new Error('web user commands require users mode');
+      };
       try {
         switch (frame.type) {
           case 'resume':
@@ -2054,16 +2058,16 @@ export class Dispatcher {
             later(frame.type, control.authMode(frame.type === 'auth.reset' ? 'single' : frame.mode, this.#guard.resumer(frame.type, client)).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
             break;
           case 'user.add':
-            requireLocalHuman();
-            if (transport.edge !== 'socket' || !control.userAdd) throw new Error('cland user requires the local Unix socket');
+            requireUserManagement();
+            if (!control.userAdd) throw new Error('cland user requires the local Unix socket');
             return answer(control.userAdd(frame.name, frame.displayName));
           case 'user.invite':
             requireLocalHuman();
             if (transport.edge !== 'socket' || !control.userInvite) throw new Error('cland user requires the local Unix socket');
             return answer(control.userInvite(frame.name));
           case 'user.list':
-            requireLocalHuman();
-            if (transport.edge !== 'socket' || !control.userList) throw new Error('cland user requires the local Unix socket');
+            requireUserManagement();
+            if (!control.userList) throw new Error('cland user requires the local Unix socket');
             return answer(control.userList());
           case 'web.link':
             if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');

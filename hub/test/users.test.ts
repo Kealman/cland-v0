@@ -48,12 +48,13 @@ test('reset joins registered durable revokers in one transaction', t => {
   assert.throws(() => store.users.validateMode('single'), /cland auth reset/);
 });
 
-test('new auth frames are explicitly local and absent from gateway authority', async () => {
+test('auth changes stay local while user listing admits web authority and all stay absent from gateway', async () => {
   const { WEB_AUTHORITY } = await import('../src/hub/web-authority.ts');
   const { GATEWAY_AUTHORITY } = await import('../src/remote/authority.ts');
   const { isClientRequest } = await import('../src/protocol.ts');
   for (const type of ['auth.mode', 'auth.reset', 'user.list'] as const) {
-    assert.equal(typeof WEB_AUTHORITY[type], 'string');
+    if (type === 'user.list') assert.equal(WEB_AUTHORITY[type], true);
+    else assert.equal(typeof WEB_AUTHORITY[type], 'string');
     assert.equal(Object.hasOwn(GATEWAY_AUTHORITY, type), false);
     assert.equal(isClientRequest({ type, id: 'x', ...(type === 'auth.mode' ? { mode: 'users' } : {}) }), true);
   }

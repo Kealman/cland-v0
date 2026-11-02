@@ -72,5 +72,5 @@
 
   "AUTH_USAGE": "  auth mode users  switch sign-in mode and print the first user's name, role and 24-hour invite (when web is available)\n  auth reset       return to single mode, retaining users and revoking web sessions and open invites\n                   local human shell only\n",
 
-  "USER_USAGE": "  user add <name> [--display <name>]  create an invited admin and print a 24-hour link\n  user invite <name>                replace open invites with a fresh 24-hour link\n  user list        print name, display name, role and state\n                   requires cland auth mode users; add/invite require an available web edge\n                   local human shell only\n"
+  "USER_USAGE": "  user add <name> [--display <name>]  create an invited admin and print a 24-hour link\n  user invite <name>                replace open invites with a fresh 24-hour link\n  user list        print name, display name, role and state\n                   web admins can also create/list users in Accounts in users mode\n                   requires cland auth mode users; add/invite require an available web edge\n                   local human shell only\n"
 }

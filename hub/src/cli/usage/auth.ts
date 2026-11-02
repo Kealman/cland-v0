@@ -6,6 +6,7 @@ export const AUTH_USAGE = `  auth mode users  switch sign-in mode and print the 
 export const USER_USAGE = `  user add <name> [--display <name>]  create an invited admin and print a 24-hour link
   user invite <name>                replace open invites with a fresh 24-hour link
   user list        print name, display name, role and state
+                   web admins can also create/list users in Accounts in users mode
                    requires cland auth mode users; add/invite require an available web edge
                    local human shell only
 `;

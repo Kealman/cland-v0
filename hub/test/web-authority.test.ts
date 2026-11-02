@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { createHubBase } from '../src/hub/server.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { WebSocket } from 'ws';
-import { connectUi, frameClient, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { connectUi, frameClient, inProcessSpoke, projectHub, tempProject, flushProjectLogs } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import type { FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -35,7 +35,7 @@ async function clients(t: TestContext, greet = true, largeTraffic = false) {
   return { root, hub, clock, local: withCodes(local), ...browser, newBrowser: () => signIn(t, local) };
 }
 
-async function signIn(t: TestContext, local: FrameClient, greet = true) {
+async function signIn(t: TestContext, local: FrameClient, greet = true, expectedName = 'human') {
   const link = await local.request({ type: 'web.link' });
   assert.equal(link.ok, true, link.error);
   const { url } = link.value as { url: string };
@@ -49,10 +49,10 @@ async function signIn(t: TestContext, local: FrameClient, greet = true) {
     req.on('error', reject);
   });
   const origin = new URL(url).origin;
-  return { ...await browserSocket(t, origin, cookie, greet), cookie, origin };
+  return { ...await browserSocket(t, origin, cookie, greet, expectedName), cookie, origin };
 }
 
-async function browserSocket(t: TestContext, origin: string, cookie: string, greet = true) {
+async function browserSocket(t: TestContext, origin: string, cookie: string, greet = true, expectedName = 'human') {
   const ws = new WebSocket(`${origin.replace('http:', 'ws:')}/ws`, { origin, headers: { Cookie: cookie } });
   onCleanup(t, () => ws.terminate());
   const web = frameClient(line => ws.send(line.trim()), fn => ws.on('message', data => fn(`${data.toString()}\n`)), () => ws.terminate());
@@ -60,7 +60,7 @@ async function browserSocket(t: TestContext, origin: string, cookie: string, gre
   if (greet) {
     const welcome = web.waitFor(frame => frame.type === 'welcome');
     web.send({ type: 'hello', protocol: 2, client: 'pretend-session' });
-    assert.equal((await welcome).name, 'human');
+    assert.equal((await welcome).name, expectedName);
   }
   return { web: withCodes(web) };
 }
@@ -421,4 +421,42 @@ test('web authority admits artifact.upload without local filesystem access', asy
   assert.equal(value.message.text, 'Attached');
   assert.deepEqual(value.message.artifacts, value.artifacts);
   assert.equal(value.artifacts[0]!.creator, 'human');
+});
+
+test('web user commands name users mode in single mode and admit an authenticated admin in users mode', async t => {
+  const { root, web, local } = await clients(t);
+  for (const frame of [{ type: 'user.list' }, { type: 'user.add', name: 'alex' }]) {
+    const refused = await web.request(frame);
+    assert.equal(refused.ok, false);
+    assert.match(refused.error!, /users mode/);
+  }
+  assert.equal((await local.request({ type: 'auth.mode', mode: 'users' })).ok, true);
+  const profile = (await local.request({ type: 'user.list' })).value as { users: { name: string }[] };
+  const { web: admin } = await signIn(t, local, true, profile.users[0]!.name);
+  const added = await admin.request({ type: 'user.add', name: 'alex', displayName: 'Alex Smith' });
+  assert.equal(added.ok, true, added.error);
+  const value = added.value as { user: { name: string; displayName: string; role: string; state: string }; url: string };
+  assert.equal(value.user.name, 'alex');
+  assert.equal(value.user.displayName, 'Alex Smith');
+  assert.equal(value.user.role, 'admin');
+  assert.equal(value.user.state, 'invited');
+  assert.match(value.url, /\/invite\?token=[a-f0-9]{64}/);
+  const listed = await admin.request({ type: 'user.list' });
+  assert.equal(listed.ok, true, listed.error);
+  assert.ok((listed.value as { users: { name: string }[] }).users.some(user => user.name === 'alex'));
+  for (const name of ['alex', 'Bad Name', 'reviewer']) {
+    const browser = await admin.request({ type: 'user.add', name });
+    const cli = await local.request({ type: 'user.add', name });
+    assert.equal(browser.ok, false);
+    assert.equal(browser.error, cli.error);
+  }
+  const token = new URL(value.url).searchParams.get('token')!;
+  await flushProjectLogs(t, root);
+  assert.equal((await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).includes(token), false);
+  assert.equal(JSON.stringify([...admin.frames, ...local.frames]).includes(token), false);
+  for (const type of ['user.list', 'events.list', 'hub.status']) {
+    const receipt = await admin.request({ type });
+    assert.equal(receipt.ok, true, receipt.error);
+    assert.equal(JSON.stringify(receipt).includes(token), false);
+  }
 });

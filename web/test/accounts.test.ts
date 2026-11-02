@@ -25,6 +25,7 @@ test('Accounts profile shows this browser sign-in, last use and fixed 30-day coo
     assert.equal(sessions[0]!.createdAt, '2026-10-23T12:00:00.000Z');
     assert.deepEqual(await profile.locator('time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [sessions[0]!.createdAt, sessions[0]!.lastUsedAt, '2026-11-22T12:00:00.000Z']);
     for (const fact of ['This browser', 'Created', 'Last used', 'Cookie expires', 'Oct 23, 2026', 'Nov 22, 2026', '12:00 PM']) assert.ok((await profile.textContent())?.includes(fact), fact);
+    assert.equal(await page.getByRole('region', { name: 'Users', exact: true }).count(), 0, 'single mode has no users list');
     assert.equal(await profile.locator('[data-account-id]').count(), 0, 'the profile is not a harness account');
     assert.equal(await profile.getByRole('button', { name: /revoke/i }).count(), 0);
     assert.deepEqual(await visibleProse(page), []);
@@ -240,5 +241,91 @@ test('Accounts profile shows the signed-in user display name in users mode', asy
     await page.getByRole('button', { name: 'Accounts', exact: true }).click();
     await rendered;
     assert.equal(await profile.getByText(users[0]!.displayName, { exact: true }).count(), 1);
+  });
+});
+
+test('Accounts users fold lists facts and creates one invited admin with an ephemeral invite', async t => {
+  const { projectHub } = await import('../../hub/test/harness.ts');
+  const fixture = await webFixture(t, { prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    const config = defaultConfig('Users'); config.verification.lockPath = join(root, 'suite.lock');
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  }, startHub: async (root, env, options) => {
+    const hub = await projectHub(t, root, env, { ...options, git: async () => 'Jane Doe\n' });
+    await askHubFrame(hub.discovery, { type: 'auth.mode', mode: 'users' }, 5000, {});
+    return hub;
+  } });
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+    const users = page.getByRole('region', { name: 'Users', exact: true });
+    await users.getByRole('cell', { name: 'Jane Doe', exact: true }).waitFor();
+    assert.deepEqual(await users.locator('tbody tr').first().locator('td').allTextContents(), ['jane-doe', 'Jane Doe', 'admin', 'active']);
+    await users.getByLabel('Name', { exact: true }).fill('alex');
+    await users.getByLabel('Display name', { exact: true }).fill('Alex Smith');
+    await users.getByRole('button', { name: 'Create user', exact: true }).click();
+    await users.getByRole('cell', { name: 'Alex Smith', exact: true }).waitFor();
+    assert.deepEqual(await users.locator('tbody tr').last().locator('td').allTextContents(), ['alex', 'Alex Smith', 'admin', 'invited']);
+    assert.match((await users.locator('header').textContent())!, /Users2/);
+    const link = await users.getByLabel('Invite link', { exact: true }).inputValue();
+    assert.match(link, /\/invite\?token=[a-f0-9]{64}/);
+    for (const missing of [true, false]) {
+      await page.evaluate(missing => Object.defineProperty(navigator, 'clipboard', {
+        configurable: true, value: missing ? undefined : { writeText: async () => { throw new Error('denied'); } },
+      }), missing);
+      await users.getByRole('button', { name: 'Copy invite' }).click();
+      await users.getByRole('alert').filter({ hasText: 'Select and copy the invite link' }).waitFor();
+      assert.equal(await users.getByLabel('Invite link', { exact: true }).inputValue(), link);
+    }
+    await users.getByRole('button', { name: 'Dismiss invite' }).click();
+    assert.equal(await users.getByLabel('Invite link', { exact: true }).count(), 0);
+    await users.getByLabel('Name', { exact: true }).fill('alex');
+    await users.getByRole('button', { name: 'Create user', exact: true }).click();
+    await users.getByRole('alert').waitFor();
+    assert.equal(await users.locator('tbody tr').count(), 2);
+    await page.reload();
+    await users.getByRole('cell', { name: 'Alex Smith', exact: true }).waitFor();
+    assert.equal(await users.getByLabel('Invite link', { exact: true }).count(), 0);
+  });
+});
+
+
+test('mounted Accounts clears its users and invite when reconnecting from users to single mode', async t => {
+  const fixture = await webFixture(t, { prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    const config = defaultConfig('Reconnect'); config.verification.lockPath = join(root, 'suite.lock');
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  } });
+  await askHubFrame(fixture.hub.discovery, { type: 'auth.mode', mode: 'users' }, 3000, {});
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+    const users = page.getByRole('region', { name: 'Users', exact: true });
+    await users.locator('tbody tr').first().waitFor();
+    await users.getByLabel('Name', { exact: true }).fill('alex');
+    await users.getByRole('button', { name: 'Create user', exact: true }).click();
+    await users.getByLabel('Invite link', { exact: true }).waitFor();
+    await page.evaluate(() => { document.body.dataset.mountedReceipt = 'same-document'; });
+    let singleProfileReceipt = false;
+    page.on('websocket', socket => {
+      const profileIds = new Set<string>();
+      socket.on('framesent', event => {
+        const frame = JSON.parse(String(event.payload));
+        if (frame.type === 'web.session') profileIds.add(frame.id);
+      });
+      socket.on('framereceived', event => {
+        const frame = JSON.parse(String(event.payload));
+        if (frame.type === 'result' && profileIds.has(frame.id) && frame.ok && frame.value?.createdAt && !frame.value.user) singleProfileReceipt = true;
+      });
+    });
+    const reset = await askHubFrame(fixture.hub.discovery, { type: 'auth.reset' }, 3000, {}) as { mode: string };
+    assert.equal(reset.mode, 'single');
+    // Redeem the new single-mode cookie in a second tab of the same context.
+    const { url } = await askHubFrame(fixture.hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+    const other = await page.context().newPage();
+    try { await other.goto(url); } finally { await other.close(); }
+    // A new web.session result is the exact reconnect/profile receipt, not a title or timer.
+    await until(() => singleProfileReceipt, { timeoutMs: 15_000, what: 'single-mode web.session receipt on original mounted tab' });
+    assert.equal(await page.evaluate(() => document.body.dataset.mountedReceipt), 'same-document');
+    assert.equal(await users.count(), 0);
+    assert.equal(await page.getByLabel('Invite link', { exact: true }).count(), 0);
   });
 });

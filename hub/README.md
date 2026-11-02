@@ -473,13 +473,18 @@ active user adding a device. `cland auth mode users` also prints the first user'
 invite when the web edge is available. An unavailable edge refuses user creation
 and invite commands; the mode switch still works without an invite.
 
-The `auth.mode`, `auth.reset`, `user.list`, `user.add` and `user.invite` handlers
-share a local-human guard that refuses authenticated session shells before reads
-or mutations. Invite commands share WebAuth's admission fence and refuse during
+All auth/user handlers refuse authenticated session shells before reads or
+mutations. Mode/reset and invite renewal require a local human socket; creation
+and listing also admit an authenticated web user in users mode. Invite commands
+share WebAuth's admission fence and refuse during
 held or failed sign-in transitions, before changing users or replacing invites.
 The first-user invite is minted after successful mode publication releases the
-fence. The `user.add` and `user.invite` frames require local human socket authority;
-web user management is separately integrated. Minting replies alone carry the
+fence. The `user.invite` frame requires local human socket authority. In users mode,
+`user.add` and `user.list` also admit authenticated web admins through the shared
+role check; agent sessions remain refused. Single-mode web requests name users
+mode in their refusal. Accounts shows a Users fold with the complete count, name,
+display name, role and state. Creating a user shows the invite for copying until
+dismissed or the view is left; it is never stored in browser settings. Minting replies alone carry the
 URL. SQLite keeps SHA-256 digests, user ids, expiry timestamps and open/used/revoked
 states. `Users.checkInvite` validates without consuming; `consumeInvite` checks
 and spends synchronously, and can join the registration owner's transaction.
@@ -650,8 +655,9 @@ Managed init/update configs default to `[auth] mode = "single"`; missing setting
 also keep single mode. `cland auth mode users` creates and prints the first admin
 from Git's user.name, with OS user-name fallback. `cland user list` prints names,
 display names, roles and states. `cland auth reset` returns to single, retains
-users and revokes browser sessions and links. All three frames are local CLI-only;
-the gateway has no authority for them. Generic config writes cannot change the mode.
+users and revokes browser sessions and links. Mode changes and reset are local
+human-only. In users mode authenticated web admins can list and create users in
+Accounts; the gateway and agent sessions have no authority for these commands. Generic config writes cannot change the mode.
 See [sign-in mode](../docs/agents/auth.md) for the durable mode fence, startup
 recovery and reset revoker seam. Config's `[auth]` is independent of secrets'
 `[auth]` login key storage settings.
