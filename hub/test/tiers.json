@@ -208,6 +208,7 @@
     "hub/test/homebrew-publication.test.ts": "T3",
     "hub/test/homebrew.test.ts": "T1",
     "hub/test/hook-bridge-doctor.test.ts": "T3",
+    "hub/test/host-boundary.test.ts": "T1",
     "hub/test/host-contract-coverage.test.ts": "T1",
     "hub/test/host-limit-poller.test.ts": "T1",
     "hub/test/host-local-contract.test.ts": { "tier": "T3", "scenario": "local-host" },

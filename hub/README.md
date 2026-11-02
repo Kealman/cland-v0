@@ -5398,6 +5398,12 @@ Remote `qa-record.sh run` accepts `QA_EXPECTED_FACTS`, a local JSON-array file o
 
 ### Tests
 
+The T1 `host-boundary.test.ts` lint recursively scans adapter source for native
+process and filesystem metadata bypasses of Host. It reports file/line/use and
+keeps named native implementation, hub-file metadata and crash-test exceptions.
+Fixture sources prove forbidden uses fail without editing the adapters. See
+[Host boundary test guidance](../docs/agents/tests/hub-test-host-boundary.test.ts.md).
+
 Verification runs the project's configured check and test commands; see
 [Verification commands](#verification-commands). The following runner details
 and package commands describe cland's own suite.

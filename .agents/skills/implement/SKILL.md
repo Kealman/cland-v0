@@ -687,6 +687,11 @@ Targeted admission prints one warning per admission on unsupported Node,
 including standalone runs; treat that evidence as unsupported and rerun on the
 supported version. This warning does not replace cover-quiet admission.
 
+For adapter Host boundary changes, run `hub/test/host-boundary.test.ts` (T1).
+Its recursive discovery covers new adapter files. Keep each native exception
+named with a reason, and prove forbidden calls with fixture sources; never plant
+a bypass in the real adapters. See `docs/agents/tests/hub-test-host-boundary.test.ts.md`.
+
 Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers and add Web after T1 for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 For README/docs edits, run `node hub/test/lint-closed-item-wording.ts` against the
