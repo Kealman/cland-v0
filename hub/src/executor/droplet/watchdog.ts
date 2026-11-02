@@ -9,7 +9,7 @@ import { DigitalOceanApi } from './api.ts';
 import { settleSpend } from './spend.ts';
 import { within } from './deadline.ts';
 import { deleteLeaseResources } from './cleanup.ts';
-import { accountRelease, durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { restoreWatchdogDeletions, accountRelease, durableJson, readLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 
 export const pause = (ms: number, clock: Clock = realClock): Promise<void> => new Promise(r => clock.setTimeout(r, ms));
 export const testTiming = (key: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number => {
@@ -179,11 +179,11 @@ export async function watchdog(dir: string, clock: Clock = realClock): Promise<v
       const lease = await readLease(dir);
       lease.resource ??= discoveredResource;
       lease.keyId ??= discoveredKey;
-      if (deleteStarted) lease.deleteStarted ??= deleteStarted;
       if (lease.state === 'released') return;
       lease.state = 'releasing';
+      await restoreWatchdogDeletions(dir, lease);
       try {
-        const result = await deleteLeaseResources(api, lease, undefined, attention => appendFile(join(dir, 'watchdog.log'), `${JSON.stringify({ ts: clock.now().toISOString(), event: 'executor-release-identity-recheck', attention })}\n`, { mode: 0o600 }), 300000, clock);
+        const result = await deleteLeaseResources(api, lease, undefined, attention => appendFile(join(dir, 'watchdog.log'), `${JSON.stringify({ ts: clock.now().toISOString(), event: 'executor-release-identity-recheck', attention })}\n`, { mode: 0o600 }), 300000, clock, undefined, () => durableJson(join(dir, 'watchdog-cleanup.json'), lease.deletions));
         deleteStarted ??= lease.deleteStarted;
         for (const id of result.deleted) deleted.add(id);
         if (result.confirmed) {

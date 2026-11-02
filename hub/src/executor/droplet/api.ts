@@ -19,6 +19,13 @@ export class DigitalOceanError extends Error {
   constructor(status: number, id: string, message: string) { super(`DigitalOcean ${status} ${id}: ${message}`); this.status = status; this.id = id; }
 }
 
+/** The mutation may be accepted, but only a GET 404 confirms absence. */
+export class DeletionUnconfirmed extends DigitalOceanError {
+  readonly path: string;
+  readonly accepted: boolean;
+  constructor(path: string, accepted: boolean, cause?: unknown) { super(409, 'deletion-unconfirmed', `deletion not confirmed for ${path}`); this.path = path; this.accepted = accepted; if (cause !== undefined) this.cause = cause; }
+}
+
 export type ProviderCall = (method: string, path: string, body: unknown, deadline?: number) => Promise<unknown>;
 
 /** Only this call scope holds the token. Transport failures never expose fetch's request. */
@@ -81,9 +88,10 @@ export class DigitalOceanApi {
   keys(deadline?: number): Promise<Key[]> { return this.#list('/account/keys', 'ssh_keys', deadline); }
   async create(input: CreateDroplet, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('POST', '/droplets', input, deadline)).droplet; }
   async droplet(id: number, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('GET', `/droplets/${id}`, undefined, deadline)).droplet; }
+  async key(id: number, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('GET', `/account/keys/${id}`, undefined, deadline)).ssh_key; }
   async importKey(name: string, publicKey: string, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey }, deadline)).ssh_key; }
-  async deleteDroplet(id: number, deadline?: number): Promise<void> { await this.#delete(`/droplets/${id}`, deadline); }
-  async deleteKey(id: number, deadline?: number): Promise<void> { await this.#delete(`/account/keys/${id}`, deadline); }
+  async deleteDroplet(id: number, deadline?: number, accepted?: () => Promise<void>): Promise<void> { await this.#confirmedDelete(`/droplets/${id}`, deadline, accepted); }
+  async deleteKey(id: number, deadline?: number, accepted?: () => Promise<void>): Promise<void> { await this.#confirmedDelete(`/account/keys/${id}`, deadline, accepted); }
   async dropletAction(id: number, type: 'power_off' | 'snapshot', name?: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/droplets/${id}/actions`, { type, ...(name ? { name } : {}) }, deadline)).action; }
   async action(id: number, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('GET', `/actions/${id}`, undefined, deadline)).action; }
   actions(deadline?: number): Promise<Action[]> { return this.#list('/actions', 'actions', deadline); }
@@ -91,8 +99,18 @@ export class DigitalOceanApi {
     // The snapshots endpoint represents ids as strings; create and image actions use numbers.
     return (await this.#list<SnapshotImage>('/snapshots?resource_type=droplet', 'snapshots', deadline)).map(image => ({ ...image, id: Number(image.id) }));
   }
+  async snapshot(id: number, deadline?: number): Promise<SnapshotImage> { return (await this.#call<{ snapshot: SnapshotImage }>('GET', `/snapshots/${id}`, undefined, deadline)).snapshot; }
   async transferImage(id: number, region: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/images/${id}/actions`, { type: 'transfer', region }, deadline)).action; }
   async tagImage(id: number, tag: string, deadline?: number): Promise<void> { await this.#call('POST', '/tags', { name: tag }, deadline); await this.#call('POST', `/tags/${encodeURIComponent(tag)}/resources`, { resources: [{ resource_id: String(id), resource_type: 'image' }] }, deadline); }
   deleteSnapshot(id: number, deadline?: number): Promise<void> { return this.#delete(`/snapshots/${id}`, deadline); }
+  async #confirmedDelete(path: string, deadline?: number, checkpoint?: () => Promise<void>): Promise<void> {
+    let accepted = true;
+    try { await this.#call('DELETE', path, undefined, deadline); }
+    catch (error) { if (!(error instanceof DigitalOceanError) || error.status !== 404) throw error; accepted = false; }
+    if (accepted) await checkpoint?.();
+    try { await this.#call('GET', path, undefined, deadline); }
+    catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return; throw new DeletionUnconfirmed(path, accepted, error); }
+    throw new DeletionUnconfirmed(path, accepted);
+  }
   async #delete(path: string, deadline?: number): Promise<void> { try { await this.#call('DELETE', path, undefined, deadline); } catch (err) { if (!(err instanceof DigitalOceanError) || err.status !== 404) throw err; } }
 }

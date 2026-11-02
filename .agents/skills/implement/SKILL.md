@@ -452,6 +452,16 @@ For startup lease recovery and phase timing, follow the sealed T2 fake-provider 
 
 For remote watchdog changes, use the executor-fake guidance in `docs/agents/tests.md#implementer-test-selection`: observe mirrored byte progress, the terminal timeout receipt and released resource; preserve the admitted stall limit across restart.
 
+For provider deletion confirmation, use the fake-only seams in
+`docs/agents/tests/hub-test-executor-deletion-confirmation.test.ts.md` and
+`docs/agents/tests/hub-test-executor-deletion-watchdog.test.ts.md`. Droplet/key
+DELETE success requires GET-by-id 404, including DELETE 404. Keep unconfirmed
+leases and spend reservations open. Retain every discovered id across list
+omissions and checkpoint accepted DELETE before its confirmation GET; failed
+reads keep the original 300 s droplet bound. Use
+`docs/agents/tests/hub-test-executor-recovery-collection.test.ts.md` for the
+recovery-completion wake-up after a short release attempt expires. Reuse the fake's split-answer and slow-GET faults for later providers.
+
 For detached droplet watchdog PID ownership, use the T1 OS/checkpoint seam in
 `docs/agents/tests/hub-test-executor-watchdog.test.ts.md` and its native T3
 launch/rearm controls. Arm retries unreadable proof for at most 10 seconds;

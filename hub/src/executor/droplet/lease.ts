@@ -6,11 +6,13 @@ import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
 
 export type ReleaseAttention = {
-  reason?: 'deletion-timeout';
+  reason?: 'deletion-timeout' | 'deletion-unconfirmed';
   fields: Array<'id' | 'name' | 'tags'>;
   expected: { id?: number | null; name: string; tags: string[] };
   observed: { id?: number; name: string; tags: string[]; status: string };
 };
+
+export type DeletionTracking = { droplets: { id: number; started?: string }[]; keys: number[] };
 
 export type DropletLease = Lease & {
   kind: 'droplet'; provider: 'digitalocean'; lease: string; name: string;
@@ -21,6 +23,7 @@ export type DropletLease = Lease & {
   createStarted?: string; createFinished?: string; deleteStarted?: string; released?: string;
   lifetimeMs?: number; costUsd?: number; watchdogFired?: string;
   attention?: ReleaseAttention;
+  deletions?: DeletionTracking;
   snapshot?: import('./prepare.ts').Snapshot;
   demo?: { epic: string; commit: string; ready?: boolean; commands?: import('../../verification-commands.ts').VerificationCommands };
   execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
@@ -102,4 +105,23 @@ export function accountRelease(lease: DropletLease, deletedAt: string, clock: Cl
   lease.lifetimeMs = billable ? Math.max(0, Date.parse(lease.deleteStarted) - Date.parse(lease.createStarted!)) : 0;
   lease.costUsd = billable ? Math.max(60000, lease.lifetimeMs) / 3600000 * lease.priceHourly : 0;
   lease.state = 'released'; lease.released = clock.now().toISOString();
+}
+
+/** Tracking only grows: absence must be reconfirmed by id, never inferred from a list. */
+export function mergeDeletions(lease: DropletLease, other?: DeletionTracking): DeletionTracking {
+  const droplets = new Map<number, { id: number; started?: string }>();
+  for (const row of [...(lease.deletions?.droplets ?? []), ...(other?.droplets ?? []), ...(lease.resource === null ? [] : [{ id: lease.resource, ...(!lease.deletions && lease.deleteStarted ? { started: lease.deleteStarted } : {}) }])]) {
+    const old = droplets.get(row.id);
+    droplets.set(row.id, { id: row.id, ...(old?.started || row.started ? { started: [old?.started, row.started].filter((v): v is string => Boolean(v)).sort()[0]! } : {}) });
+  }
+  lease.deletions = { droplets: [...droplets.values()], keys: [...new Set([...(lease.deletions?.keys ?? []), ...(other?.keys ?? []), ...(lease.keyId === null ? [] : [lease.keyId])])] };
+  const started = lease.deletions.droplets.map(row => row.started).filter((v): v is string => Boolean(v)).sort()[0];
+  if (started && (!lease.deleteStarted || started < lease.deleteStarted)) lease.deleteStarted = started;
+  return lease.deletions;
+}
+export async function restoreWatchdogDeletions(dir: string, lease: DropletLease): Promise<void> {
+  let tracking: DeletionTracking | undefined;
+  try { tracking = JSON.parse(await readFile(join(dir, 'watchdog-cleanup.json'), 'utf8')) as DeletionTracking; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  mergeDeletions(lease, tracking);
 }

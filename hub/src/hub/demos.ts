@@ -47,7 +47,7 @@ export class Demos {
     return { executor: 'droplet', epic: lease.demo!.epic, lease: lease.lease, commit: lease.demo!.commit, state, ...(lease.attention ? { attention: lease.attention } : {}),
       created: lease.created, deadline: lease.deadline, maxLifetimeMs: Date.parse(lease.deadline) - Date.parse(lease.created), lifetimeMs: lease.lifetimeMs ?? Math.max(0, this.executor.clock.now().getTime() - Date.parse(lease.created)),
       costUsd: lease.costUsd ?? Math.max(60000, this.executor.clock.now().getTime() - Date.parse(lease.created)) / 3600000 * lease.priceHourly,
-      summary: `demo ${lease.demo!.epic}: ${lease.lease} commit ${lease.demo!.commit} ${state}; deadline ${lease.deadline}; lifetime ${Math.round((lease.lifetimeMs ?? this.executor.clock.now().getTime() - Date.parse(lease.created)) / 1000)} s; cost $${(lease.costUsd ?? Math.max(60000, this.executor.clock.now().getTime() - Date.parse(lease.created)) / 3600000 * lease.priceHourly).toFixed(4)}${lease.attention ? `; operator attention: ${lease.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${lease.attention.fields.join(', ')})`}, provider status ${lease.attention.observed.status}` : ''}` };
+      summary: `demo ${lease.demo!.epic}: ${lease.lease} commit ${lease.demo!.commit} ${state}; deadline ${lease.deadline}; lifetime ${Math.round((lease.lifetimeMs ?? this.executor.clock.now().getTime() - Date.parse(lease.created)) / 1000)} s; cost $${(lease.costUsd ?? Math.max(60000, this.executor.clock.now().getTime() - Date.parse(lease.created)) / 3600000 * lease.priceHourly).toFixed(4)}${lease.attention ? `; operator attention: ${lease.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : lease.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${lease.attention.fields.join(', ')})`}, provider status ${lease.attention.observed.status}` : ''}` };
   }
   async #comment(lease: DropletLease, text: string) {
     if (!this.tracker.view(lease.demo!.epic).comments.some(c => c.author === 'hub' && c.text === text)) await this.tracker.comment(hub, lease.demo!.epic, text);
@@ -56,9 +56,9 @@ export class Demos {
     if (lease.resource !== null) await this.#comment(lease, `demo ${lease.lease} created: droplet ${lease.name}, commit ${lease.demo!.commit}, deadline ${lease.deadline}.`);
     if (lease.state === 'released') await this.#comment(lease, `demo ${lease.lease} destroyed: lifetime ${lease.lifetimeMs ?? 0} ms; cost $${(lease.costUsd ?? 0).toFixed(4)}.`);
     if (lease.attention) {
-      const text = `demo ${lease.demo!.epic} lease ${lease.lease} droplet ${lease.resource}: operator attention required; ${lease.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out; accepted DELETE remains unconfirmed' : 'identity mismatch; deletion refused'}. ${JSON.stringify(lease.attention)}`;
+      const text = `demo ${lease.demo!.epic} lease ${lease.lease} droplet ${lease.resource}: operator attention required; ${lease.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : lease.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out; accepted DELETE remains unconfirmed' : 'identity mismatch; deletion refused'}. ${JSON.stringify(lease.attention)}`;
       await this.#comment(lease, text);
-      this.#alert(lease, text);
+      if (lease.attention.reason !== 'deletion-unconfirmed') this.#alert(lease, text);
     }
   }
   start(raw: string, commit?: string, authorize = () => {}) {

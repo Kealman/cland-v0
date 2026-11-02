@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { flushProjectLogs } from './harness.ts';
 import { fixture } from './remote-fixture.ts';
 import { startDemo } from './demo-start.ts';
+import { DeletionUnconfirmed } from '../src/executor/droplet/api.ts';
 import { readLease } from '../src/executor/droplet/lease.ts';
 import { drive } from './remote-clock.ts';
 
@@ -17,15 +18,15 @@ test('demo stop keeps an accepted active deletion pending beyond two seconds and
   f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = true;
   const stopped = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(stopped.ok, true, stopped.error);
   assert.equal((stopped.value as { state: string }).state, 'releasing');
-  assert.equal((stopped.value as { attention?: unknown }).attention, undefined);
+  assert.equal((stopped.value as { attention: { reason: string } }).attention.reason, 'deletion-unconfirmed');
   const pending = await readLease(dir);
-  assert.ok(pending.deleteStarted); assert.equal(pending.attention, undefined);
+  assert.ok(pending.deleteStarted); assert.equal(pending.attention?.reason, 'deletion-unconfirmed');
   await f.clock.advance(2101);
   assert.ok(f.clock.now().getTime() - Date.parse(pending.deleteStarted!) > 2100);
   assert.equal(f.api.droplets[0]!.status, 'active'); assert.deepEqual(f.api.droplets[0]!.tags, []);
   const stillPending = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(stillPending.ok, true, stillPending.error);
   assert.equal((stillPending.value as { state: string }).state, 'releasing');
-  assert.equal((stillPending.value as { attention?: unknown }).attention, undefined);
+  assert.equal((stillPending.value as { attention: { reason: string } }).attention.reason, 'deletion-unconfirmed');
   f.api.droplets.splice(0);
   const confirmed = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(confirmed.ok, true, confirmed.error);
   assert.equal((confirmed.value as { state: string }).state, 'released');
@@ -47,7 +48,7 @@ test('demo stop reports accepted deletion timeouts with either tag state', async
     try {
       const pending = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(pending.ok, true, pending.error);
       assert.equal((pending.value as { state: string }).state, 'releasing');
-      assert.equal((pending.value as { attention?: unknown }).attention, undefined);
+      assert.equal((pending.value as { attention: { reason: string } }).attention.reason, 'deletion-unconfirmed');
       const accepted = (await readLease(dir)).deleteStarted!; assert.ok(accepted);
       await f.clock.advance(501);
       assert.ok(f.clock.now().getTime() - Date.parse(accepted) > 500);
@@ -91,7 +92,7 @@ test('demo stop confirms a slow earlier deletion with empty tags and frees its s
   f.api.faults.deletePolls = 16;
   f.api.faults.stripTagsOnDelete = true;
   const provider = f.api.provider;
-  await provider.deleteDroplet(droplet.id);
+  await assert.rejects(provider.deleteDroplet(droplet.id), DeletionUnconfirmed);
   const tearingDown = await provider.droplet(droplet.id);
   assert.equal(tearingDown.status, 'active'); assert.deepEqual(tearingDown.tags, []);
   const before = f.clock.now().getTime();
@@ -126,7 +127,7 @@ test('demo stop refuses changed resource identities after accepted deletion', as
     f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = true;
     try {
       const pending = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(pending.ok, true, pending.error);
-      assert.equal((pending.value as { attention?: unknown }).attention, undefined);
+      assert.equal((pending.value as { attention: { reason: string } }).attention.reason, 'deletion-unconfirmed');
       if (field === 'id') f.api.faults.dropletResponseId = droplet.id + 1;
       else if (field === 'name') droplet.name = 'foreign-resource';
       else droplet.tags = ['cland', 'cland-p-foreign'];

@@ -11,7 +11,7 @@ import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError, apiTimeoutMs } from './api.ts';
-import { accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
@@ -324,6 +324,7 @@ export class DropletExecutor implements Executor {
       const persisted = await readLease(leaseDir(this.root, lease));
       if (persisted.name !== lease.name || persisted.lease !== lease.lease) throw new Error('droplet lease identity changed; refusing release');
       Object.assign(lease, persisted);
+      await restoreWatchdogDeletions(leaseDir(this.root, lease), lease);
       if (lease.state === 'released') return;
       lease.state = 'releasing';
       await this.#save(lease);
@@ -337,8 +338,7 @@ export class DropletExecutor implements Executor {
       try {
         const result = await deleteLeaseResources((this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)), lease, limit, attention => {
           this.logger({ event: 'executor-release-identity-recheck', lease: lease.lease, id: lease.resource, attention });
-        }, testTiming('CLAND_TEST_DROPLET_DELETE_MS', 300000, this.#env), this.clock, this.dependencies.wait);
-        delete lease.attention;
+        }, testTiming('CLAND_TEST_DROPLET_DELETE_MS', 300000, this.#env), this.clock, this.dependencies.wait, () => this.#save(lease));
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? this.clock.now().toISOString(), this.clock);
           await this.#save(lease);
@@ -395,7 +395,7 @@ export class DropletExecutor implements Executor {
       // A job may replace/restore the record while provider and Git reads yield.
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
-      const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} key=${JSON.stringify({ ...snapshot.key, nvim: snapshot.key.nvim ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} key=${JSON.stringify({ ...snapshot.key, nvim: snapshot.key.nvim ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
       return { reconciliation: this.#sweepState, spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshnessText } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
     }
   }

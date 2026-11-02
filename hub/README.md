@@ -4969,6 +4969,19 @@ are documented in [agent test guidance](../docs/agents/tests.md#this-repositorys
 
 ### Remote executors: droplets
 
+Droplet and SSH key deletion succeeds only after a GET by id answers 404,
+including when DELETE itself answers 404. Release and the detached watchdog
+retain ownership and the spend reservation while reads still show a resource;
+release records `deletion-unconfirmed` attention and retries on the next bounded
+attempt. Every discovered id remains in the lease cleanup record until its own GET 404;
+list omission never discharges it. Accepted DELETE is checkpointed before GET,
+so a failed confirmation keeps the original 300 s droplet bound. The watchdog
+keeps its own atomic cleanup sidecar, merged by lease release on recovery.
+Recovery completion wakes pending suite and shard-parent collection after its
+native writes finish, including when an earlier short release attempt expired;
+collection need not wait for a later scheduler tick.
+Snapshot deletion confirmation is documented with the snapshot recovery flow.
+
 Project test commands are configured under `[verification]`: `test_unit` (T1),
 `test_component` (T2), `test_integration` (T3), and `test_soak` (T4).
 Each is a POSIX shell command; empty means unset. Use

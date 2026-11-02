@@ -218,6 +218,7 @@ export class Suites {
   #soaking: Promise<void> | null = null;
   #periodic: Promise<void> | null = null;
   #nextDevT3Check = 0;
+  readonly #pendingCollections = new Set<SuiteJob>();
   readonly #inspecting = new Map<string, Promise<void>>();
   readonly #isolatedAdmissions = new Map<string, Promise<void>>();
   #landedIdentities: Promise<string[]> | undefined;
@@ -1321,7 +1322,11 @@ export class Suites {
     const pending = this.#inspecting.get(job.id);
     if (pending) return pending;
     if (this.#closed || job.reported || job.reportFailedPermanently || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
-    const work = this.#inspect(job).catch(() => { /* saved errors are retried on the next tick */ }).finally(() => { this.#inspecting.delete(job.id); });
+    if (job.executor === 'droplet' && (job.lease || job.shards)) this.#pendingCollections.add(job);
+    const work = this.#inspect(job).catch(() => { /* saved errors are retried on the next tick */ }).finally(() => {
+      this.#inspecting.delete(job.id);
+      if (job.reported || job.reportFailedPermanently) this.#pendingCollections.delete(job);
+    });
     this.#inspecting.set(job.id, work);
     return work;
   }
@@ -1755,6 +1760,15 @@ export class Suites {
         else localEta = nextEta;
         return waiter;
       }), metrics };
+  }
+
+  /** Recovery has finished its native writes. Reinspect active collections now,
+   * including parent groups, rather than waiting for another scheduler tick. */
+  async executorRecovered(): Promise<void> {
+    if (this.#closed) return;
+    const pending = [...this.#pendingCollections].filter(job => job.accountingWaitStarted || job.shards?.some(shard => shard.accountingWaitStarted));
+    await Promise.allSettled(pending.map(job => this.#inspecting.get(job.id)));
+    if (!this.#closed) await Promise.all(pending.map(job => this.#inspectJob(job)));
   }
 
   /** Observe completion of already admitted I/O; does not tick or advance time. */

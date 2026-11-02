@@ -1,7 +1,7 @@
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { Provider } from './dependencies.ts';
-import { DigitalOceanError, type Droplet } from './api.ts';
-import { matchesLease, type DropletLease, type ReleaseAttention } from './lease.ts';
+import { DeletionUnconfirmed, DigitalOceanError, type Droplet } from './api.ts';
+import { mergeDeletions, matchesLease, type DropletLease, type ReleaseAttention } from './lease.ts';
 import { pause } from './watchdog.ts';
 
 export class DropletIdentityMismatch extends Error {
@@ -66,26 +66,62 @@ async function resource(api: Provider, lease: DropletLease, deadline: number | u
   } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return null; throw error; }
 }
 
+const trackedLease = (lease: DropletLease, row: { id: number; started?: string }): DropletLease => {
+  const view = { ...lease, resource: row.id };
+  delete view.deleteStarted;
+  if (row.started) view.deleteStarted = row.started;
+  return view;
+};
+
 /** One bounded attempt. A failed create can still have made a resource: always discover by name. */
-export async function deleteLeaseResources(api: Provider, lease: DropletLease, deadline?: number, onMismatch?: (attention: ReleaseAttention) => void | Promise<void>, deletionTimeoutMs = 300000, clock: Clock = realClock, wait: (ms: number) => Promise<void> = ms => pause(ms, clock)): Promise<{ confirmed: boolean; deleted: number[] }> {
-  // The per-id response is newer and authoritative for a known resource, even
-  // if a tagged listing still contains its pre-deletion metadata.
-  const droplets = (await api.droplets('cland', deadline)).filter(d => d.id !== lease.resource);
-  const current = await resource(api, lease, deadline, onMismatch, deletionTimeoutMs, clock, wait);
-  if (current) droplets.push(current);
-  const owned = droplets.filter(d => matchesLease(d, lease) && !deleting(d, lease));
-  for (const droplet of owned) {
-    lease.resource ??= droplet.id;
+export async function deleteLeaseResources(api: Provider, lease: DropletLease, deadline?: number, onMismatch?: (attention: ReleaseAttention) => void | Promise<void>, deletionTimeoutMs = 300000, clock: Clock = realClock, wait: (ms: number) => Promise<void> = ms => pause(ms, clock), checkpoint: () => Promise<void> = async () => {}): Promise<{ confirmed: boolean; deleted: number[] }> {
+  const tracking = mergeDeletions(lease);
+  const discover = async () => {
+    for (const d of await api.droplets('cland', deadline)) if (matchesLease(d, lease) && !tracking.droplets.some(row => row.id === d.id)) tracking.droplets.push({ id: d.id });
+    for (const k of await api.keys(deadline)) if (k.name === lease.keyName && !tracking.keys.includes(k.id)) tracking.keys.push(k.id);
+    // Record every discovered identity before starting any mutation.
+    await checkpoint();
+  };
+  await discover();
+  const deleted: number[] = [];
+  for (const row of tracking.droplets) {
+    const view = trackedLease(lease, row);
+    const current = await resource(api, view, deadline, onMismatch, deletionTimeoutMs, clock, wait);
+    if (!current || !matchesLease(current, view) || deleting(current, view)) continue;
+    lease.resource ??= row.id;
     const deletedAt = clock.now().toISOString();
-    await api.deleteDroplet(droplet.id, deadline);
-    lease.deleteStarted ??= deletedAt;
+    const accepted = async () => {
+      row.started ??= deletedAt;
+      lease.deleteStarted ??= deletedAt;
+      await checkpoint();
+    };
+    try { await api.deleteDroplet(row.id, deadline, accepted); await accepted(); }
+    catch (error) { if (!(error instanceof DeletionUnconfirmed)) throw error; if (error.accepted) await accepted(); }
+    deleted.push(row.id);
   }
-  for (const key of await api.keys(deadline)) if (key.name === lease.keyName) { lease.keyId ??= key.id; await api.deleteKey(key.id, deadline); }
-  const remaining = await api.droplets('cland', deadline);
-  const remainingResource = await resource(api, lease, deadline, onMismatch, deletionTimeoutMs, clock, wait);
-  const keys = await api.keys(deadline);
-  // A lost create response must not let a watchdog exit before the in-flight create can settle.
+  for (const id of tracking.keys) {
+    let key;
+    try { key = await api.key(id, deadline); }
+    catch (error) { if (error instanceof DigitalOceanError && error.status === 404) continue; throw error; }
+    if (key.id !== id || key.name !== lease.keyName) throw new Error('SSH key identity differs from its lease; refusing deletion');
+    lease.keyId ??= id;
+    try { await api.deleteKey(id, deadline); }
+    catch (error) { if (!(error instanceof DeletionUnconfirmed)) throw error; }
+  }
+  await discover();
+  let pending: ReleaseAttention | undefined;
+  // Lists can discover identities, but only per-id 404 can discharge them.
+  for (const row of tracking.droplets) {
+    const view = trackedLease(lease, row);
+    const current = await resource(api, view, deadline, onMismatch, deletionTimeoutMs, clock, wait);
+    if (current) pending = { reason: 'deletion-unconfirmed', fields: [], expected: { id: row.id, name: lease.name, tags: lease.tags }, observed: { id: current.id, name: current.name, tags: [...current.tags], status: current.status } };
+  }
+  for (const id of tracking.keys) {
+    try { const key = await api.key(id, deadline); pending = { reason: 'deletion-unconfirmed', fields: [], expected: { id, name: lease.keyName, tags: [] }, observed: { id: key.id, name: key.name, tags: [], status: 'present' } }; }
+    catch (error) { if (!(error instanceof DigitalOceanError) || error.status !== 404) throw error; }
+  }
   const uncertainCreate = lease.resource === null && lease.createStarted && !lease.createFinished && clock.now().getTime() < Math.max(Date.parse(lease.deadline), Date.parse(lease.createStarted) + 30000);
   const uncertainKey = lease.keyId === null && lease.keyImportStarted && !lease.keyImportFinished && clock.now().getTime() < Math.max(Date.parse(lease.deadline), Date.parse(lease.keyImportStarted) + 30000);
-  return { confirmed: !uncertainCreate && !uncertainKey && !remainingResource && !remaining.some(d => matchesLease(d, lease) || d.id === lease.resource) && !keys.some(k => k.name === lease.keyName), deleted: owned.map(d => d.id) };
+  if (pending) { lease.attention = pending; await onMismatch?.(pending); }
+  return { confirmed: !pending && !uncertainCreate && !uncertainKey, deleted };
 }

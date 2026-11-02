@@ -74,8 +74,23 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     else deleting.set(id, left - 1);
   };
   const account = { status: 'active' };
-  const faults = { create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  // Split-answer state advances only on GET-by-id, never on lists or repeated DELETE.
+  const splitReads = new Map<string, number>();
+  const splitDelete = (path: string, reads: number): boolean => {
+    if (splitReads.has(path)) return true;
+    if (reads <= 0) return false;
+    splitReads.set(path, reads); return true;
+  };
+  const splitGone = (path: string): boolean => {
+    const left = splitReads.get(path);
+    if (left === undefined) return false;
+    if (left > 0) { splitReads.set(path, left - 1); return false; }
+    splitReads.delete(path); return true;
+  };
+  const faults = { omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
+  let beforeKeyRead: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
   let beforeSizes: (() => Promise<void>) | undefined;
@@ -86,6 +101,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     const path = url.pathname.replace(/^\/v2/, '');
     requests.push({ method, path: `${url.pathname}${url.search}`, body });
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
+    if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await wait(faults.getDelayMs);
     const answer = (status: number, value?: unknown) => ({ status, value });
     if (method === 'GET' && path === '/account') return answer(200, { account });
     if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
@@ -138,7 +154,14 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       return answer(200, { snapshots: visible });
     }
     const snapshotId = /^\/snapshots\/(\d+)$/.exec(path);
+    if (snapshotId && method === 'GET') {
+      const index = images.findIndex(i => i.id === Number(snapshotId[1]));
+      if (splitGone(path) && index >= 0) images.splice(index, 1);
+      const snapshot = images.find(i => i.id === Number(snapshotId[1]));
+      return snapshot ? answer(200, { snapshot }) : answer(404, { id: 'not_found', message: 'absent' });
+    }
     if (snapshotId && method === 'DELETE') {
+      if (splitDelete(path, faults.snapshotDelete404Reads)) return answer(404, { id: 'not_found', message: 'split answer' });
       await beforeSnapshotDelete?.(Number(snapshotId[1]));
       if (Number(snapshotId[1]) === faults.deleteSnapshot) return answer(422, { id: 'delete_failed', message: 'snapshot deletion refused' });
       const index = images.findIndex(i => i.id === Number(snapshotId[1])); if (index >= 0) images.splice(index, 1);
@@ -186,15 +209,20 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       await beforeDropletList?.();
       const tag = url.searchParams.get('tag_name');
       for (const id of deleting.keys()) advanceDeletion(id);
-      return answer(200, { droplets: droplets.filter(d => !tag || d.tags.includes(tag)) });
+      return answer(200, { droplets: droplets.filter(d => !faults.omitDropletIds.includes(d.id) && (!tag || d.tags.includes(tag))) });
     }
     const dropletId = /^\/droplets\/(\d+)$/.exec(path);
     if (dropletId) {
       const id = Number(dropletId[1]);
-      if (method === 'GET') advanceDeletion(id);
+      if (method === 'GET') {
+        await beforeDropletRead?.(id);
+        if (splitGone(path)) { const index = droplets.findIndex(d => d.id === id); if (index >= 0) droplets.splice(index, 1); }
+        advanceDeletion(id);
+      }
       const droplet = droplets.find(d => d.id === id);
       if (!droplet) return answer(404, { id: 'not_found', message: 'absent' });
       if (method === 'DELETE') {
+        if (splitDelete(path, faults.dropletDelete404Reads)) return answer(404, { id: 'not_found', message: 'split answer' });
         const failure = faults.deleteFailures.shift();
         if (failure === 'timeout') {
           // Fault injection: exceed the caller's API deadline before returning the delete failure.
@@ -217,10 +245,17 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (path === '/account/keys') {
       if (method === 'POST') { await beforeImport?.(); const ssh_key = { id: nextId++, name: String(body!.name), public_key: String(body!.public_key) }; keys.push(ssh_key); publicKeys.set(ssh_key.id, ssh_key.public_key); return answer(201, { ssh_key }); }
       await beforeKeyList?.();
-      return answer(200, { ssh_keys: keys });
+      return answer(200, { ssh_keys: keys.filter(k => !faults.omitKeyIds.includes(k.id)) });
     }
     const keyId = /^\/account\/keys\/(\d+)$/.exec(path);
+    if (keyId && method === 'GET') {
+      await beforeKeyRead?.();
+      if (splitGone(path)) { const index = keys.findIndex(k => k.id === Number(keyId[1])); if (index >= 0) keys.splice(index, 1); }
+      const ssh_key = keys.find(k => k.id === Number(keyId[1]));
+      return ssh_key ? answer(200, { ssh_key }) : answer(404, { id: 'not_found', message: 'absent' });
+    }
     if (keyId && method === 'DELETE') {
+      if (splitDelete(path, faults.keyDelete404Reads)) return answer(404, { id: 'not_found', message: 'split answer' });
       const failure = faults.keyDeleteFailures.shift();
       if (failure !== undefined) return answer(failure, { id: 'key_delete_failed', message: faults.echoToken ? token : 'key deletion refused; try later' });
       const i = keys.findIndex(k => k.id === Number(keyId[1]));
@@ -267,7 +302,9 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   let closing: Promise<void> | undefined;
   return { provider, url, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot: (image: SnapshotImage, key: unknown) => admit(() => seedSnapshot(image, key)),
     setMachineFaults: (value: Partial<typeof machineFaults>) => admit(async () => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); }),
+    beforeDropletRead: (check: (id: number) => Promise<void>) => { beforeDropletRead = check; },
     beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },
+    beforeKeyRead: (check: () => Promise<void>) => { beforeKeyRead = check; },
     beforeKeyList: (check: () => Promise<void>) => { beforeKeyList = check; },
     beforeSizes: (check: () => Promise<void>) => { beforeSizes = check; },
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
