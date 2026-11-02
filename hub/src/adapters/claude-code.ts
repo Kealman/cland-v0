@@ -573,7 +573,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ account: request.account ?? null, accountEnv: { ...this.#inheritedEnv(), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    return this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...this.#inheritedEnv(), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
   }
 
   nativeSessionHint(p: HarnessProcess, result?: import('./contract.ts').NativeJobInspection): void {

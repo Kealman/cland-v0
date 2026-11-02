@@ -8275,6 +8275,12 @@ Standalone adapters without Host lookup callbacks use the local Host. Sandbox ro
 launch files, sockets and RPC transport remain hub-local pending E-1532.
 
 Sessions owns a registry containing `local`.
+`session.launch` frames accept an optional registered `host`, defaulting to `local`;
+unknown names are refused before launch or item-worktree admission. Coordinator
+and Aide roles run only on the local host: launch, relaunch, fresh resume, role
+assignment and handover refuse other hosts with the same placement reason.
+Assignment and handover read the owning Host from the durable process row;
+names without a process row retain local behavior. No CLI placement flag is added.
 Process rows persist an owning `host`; opening an older database adds the column
 in place with `local` as its default. Older adapter results and pending-stop
 receipts without a host retain local semantics. Local session wire views omit

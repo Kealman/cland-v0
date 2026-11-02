@@ -219,7 +219,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'host' | 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -328,7 +328,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#operation(scope => this.#launch({ account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, scope, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined));
+    return this.#operation(scope => this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, scope, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined));
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -815,7 +815,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason, alive: yield* this.#activeWait(this.#processHost(p).alive(p)) };
       yield* this.#activeWait(this.stop(p, options.resumed));
-      const process_ = yield* this.#activeWait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, scope, true, resumed, options.launchToken, options.authorize));
+      const process_ = yield* this.#activeWait(this.#launch({ ...(p.host !== undefined ? { host: p.host } : {}), account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, scope, true, resumed, options.launchToken, options.authorize));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
   }

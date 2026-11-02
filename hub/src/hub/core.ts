@@ -1,3 +1,4 @@
+import { checkRoleHost } from '../host/role-placement.ts';
 import { launchGenerationKey, launchOwnerKey, earlierLaunch } from '../adapters/launch-generation.ts';
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
 import { mergeHumanMarks } from './human-marks.ts';
@@ -718,6 +719,13 @@ export class HubCore {
   #processRows: () => HarnessProcessView[] = () => [...this.#heartbeatProcesses.values()].filter(p => !p.archived);
   #rowsImmediate: NodeJS.Immediate | null = null;
   readonly #publishedRows = new Map<string, string>();
+
+  #sessionHost: (name: string) => string | undefined = () => undefined;
+  useSessionHost(read: (name: string) => string | undefined): void { this.#sessionHost = read; }
+
+  #checkRolePlacement(name: string, role: string | null): void {
+    checkRoleHost(role, this.#sessionHost(name));
+  }
 
   useSessionRows(read: () => HarnessProcessView[]): void { this.#processRows = read; }
 
@@ -2544,6 +2552,7 @@ export class HubCore {
    * when a session takes the name. An exclusive role another session holds is refused with the reason.
    */
   assignRole(name: string, role: string): RoleHolder {
+    this.#checkRolePlacement(name, role);
     const launch = this.#launchMutationRefusal(name);
     if (launch) throw new Error(launch);
     if (!this.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.roleNames().join(', ')})`);
@@ -2658,6 +2667,8 @@ export class HubCore {
    */
   moveRole(move: { role: string; from: string | null; to: string; by: string; note: HandoverNote | null; then: string | null; claims?: PendingClaims | null; item?: string }): RoleHolder {
     const { role, from, to, by, note, then } = move;
+    this.#checkRolePlacement(to, role);
+    if (from !== null && then !== null) this.#checkRolePlacement(from, then);
     for (const name of from === null ? [to] : [from, to]) {
       const launch = this.#launchMutationRefusal(name);
       if (launch) throw new Error(launch);

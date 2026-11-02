@@ -19,6 +19,7 @@ import { artifactEntry } from '../hub/artifact-folder.ts';
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
 import { readFile } from 'node:fs/promises';
+import { checkRoleHost } from '../host/role-placement.ts';
 import { localHost } from '../host/local.ts';
 import type { Host } from '../host/host.ts';
 import { randomUUID } from 'node:crypto';
@@ -43,7 +44,7 @@ import { durationMs } from '../duration.ts';
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
 /** `item`: the Lead’s node, or the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
-export type LaunchRequest = { name: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
+export type LaunchRequest = { name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
 type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection };
 
@@ -102,7 +103,17 @@ export class Sessions {
     if (!host) throw new Error(`unknown host ${name}`);
     return host;
   }
-  #hostForLaunch(_request: { cwd?: string }): Host { return this.#hosts.get('local')!; }
+  #hostForLaunch(request: { host?: string }): Host {
+    const name = request.host ?? 'local';
+    const host = this.#hosts.get(name);
+    if (!host) throw new Error(`unknown host ${name}`);
+    return host;
+  }
+
+  validateLaunchHost(request: LaunchRequest): void {
+    const host = this.#hostForLaunch(request);
+    checkRoleHost(request.role ?? this.#core.store.roleOf(request.name), host.name);
+  }
   /** File operations use the same placement lookup as the captured session row. */
   hostForSession(sessionId: string): Host {
     const row = this.#table.bySessionId(sessionId);
@@ -203,6 +214,7 @@ export class Sessions {
     if (!request.item || (!implementer && !this.retainedPool(role))) return null;
     const cwd = resolve(this.#root, request.cwd ?? '.');
     const candidate = this.#table.running().find(p => !this.#reusing.has(p.sessionId)
+      && (p.host ?? 'local') === (request.host ?? 'local')
       && request.harness === p.harness
       && (p.account ?? null) === (request.resolvedAccount.account)
       && this.#reuseEligible(p, role, implementer ? p.cwd : cwd));
@@ -330,6 +342,7 @@ export class Sessions {
     this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, host] as const)]);
     this.#core = options.core;
     this.#table = options.table;
+    this.#core.useSessionHost(name => this.#table.get(name)?.host);
     this.#root = options.root;
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
     const usageEventMs = Number(this.#env.CLAND_TEST_USAGE_EVENT_MS);
@@ -1032,6 +1045,7 @@ export class Sessions {
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
     const role = resumed(() => {
       authorize();
+      this.validateLaunchHost(request);
       const refusal = nameRefusal(request.name, new Set(['human']));
       if (refusal) throw new Error(refusal);
       const role = request.role ?? this.#core.store.roleOf(request.name);
@@ -1052,6 +1066,7 @@ export class Sessions {
   }
 
   async #launchNew(request: LaunchRequest | AccountLaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message, retainedId?: string): Promise<HarnessProcessView> {
+    checkRoleHost(role, this.#hostForLaunch(request).name);
     const effectiveRequest = { ...request, role };
     const existing = this.#table.get(request.name);
     if (retainedId && existing?.sessionId !== retainedId) throw new Error(`session "${request.name}" was replaced; retry the fresh resume`);
@@ -1184,7 +1199,8 @@ export class Sessions {
     let accepted = false;
     try {
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ ...selected, name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, () => { authorize(); this.#core.checkAccountLimit(selected.account ?? `default:${harness}`); });
+      owned = await adapter.spawn({ ...selected, ...(request.host !== undefined ? { host: request.host } : {}), name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, () => { authorize(); this.#core.checkAccountLimit(selected.account ?? `default:${harness}`); });
+      owned = { ...owned, host: request.host ?? 'local' };
       resumed(() => {
         if (resumeConversation && owned!.harnessSessionId !== resumeConversation) throw new Error(`harness did not retain conversation ${resumeConversation}`);
         if (retainedId && owned!.sessionId !== retainedId) throw new Error(`fresh resume did not retain cland identity ${retainedId}`);
@@ -1393,7 +1409,9 @@ export class Sessions {
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false): Promise<SessionResumeAnswer> {
     authorize();
-    this.#hostForProcess(this.#process(name));
+    const placement = this.#process(name);
+    this.#hostForProcess(placement);
+    if (relaunch || fresh) checkRoleHost(placement.role, placement.host);
     if (fresh) return this.#freshResume(name, resumed, authorize);
     const original = this.#process(name);
     const identity = original.sessionId;
@@ -1430,8 +1448,9 @@ export class Sessions {
       authorize();
       const current = this.#process(name);
       if (current.sessionId !== original.sessionId) throw new Error(`session "${name}" was replaced; retry`);
+      checkRoleHost(current.role, current.host);
       const role = current.role && this.#core.holderOf(current.role, name) ? null : current.role;
-      return { name, role, resolvedAccount: { account: current.account ?? null, accountEnv: current.accountEnv ?? null }, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
+      return { name, host: current.host ?? 'local', role, resolvedAccount: { account: current.account ?? null, accountEnv: current.accountEnv ?? null }, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
     });
     const process = await resumed(() => this.#launchNew(request, request.role, resumed, authorize, undefined, undefined, original.sessionId));
     return resumed(() => {
@@ -1475,6 +1494,7 @@ export class Sessions {
       if (!current) throw new Error(`session "${p.name}" was replaced while resuming`);
       p = current;
       if (relaunch) {
+        checkRoleHost(p.role, p.host);
         this.#checkRolesLaunch(p.role);
         this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
       }

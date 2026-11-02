@@ -312,6 +312,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
             {
               type: 'session.launch',
               name: args.name,
+              ...(typeof args.host === 'string' ? { host: args.host } : {}),
               ...(typeof args.role === 'string' ? { role: args.role } : {}),
               ...(typeof args.model === 'string' ? { model: args.model } : {}),
               ...(typeof args.account === 'string' ? { account: args.account } : {}),

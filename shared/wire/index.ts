@@ -1154,7 +1154,7 @@ export type ConfigStatus = { loadedAt: string; sourceCommit: string | null };
 
 // hub/src/adapters/requests.ts
 export type SessionRequest =
-  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; account?: string; cwd?: string; effort?: string; item?: string; brief?: string }
+  | { type: 'session.launch'; id: string; name: string; host?: string; role?: string; model?: string; harness?: string; account?: string; cwd?: string; effort?: string; item?: string; brief?: string }
   | { type: 'session.list'; id: string; archived?: boolean }
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.archive'; id: string; session: string }

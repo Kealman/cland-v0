@@ -150,6 +150,7 @@ const BASE_TOOLS = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'The new session\'s name (lowercase letters, digits, hyphens)' },
+        host: { type: 'string', description: 'Registered Host name; local by default. Coordinator and Aide run only on local' },
         role: { type: 'string', description: 'The role it runs under (coordinator, lead, implementer, reviewer, qa, aide); its launch defaults in .cland/roles.toml fill the harness, model, effort and account not given' },
         model: { type: 'string', description: "The model; the role's default, else the harness's, when absent" },
         harness: { type: 'string', description: "The harness (`claude-code`, `opencode`, `codex`); the role's default, else `claude-code`, when absent" },

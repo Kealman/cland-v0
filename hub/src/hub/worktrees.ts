@@ -154,6 +154,7 @@ export class TaskWorktrees {
    * the project root; a Lead records its node in process.item without a task worktree.
    */
   async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null; note?: string } & WorktreeOutcome> {
+    sessions.validateLaunchHost(request);
     if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa' && !isCustomRole(request.role)) throw new Error('`item` is for an Implementer, custom worker, Lead, Reviewer or QA');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
     const view = await this.#tracker.viewAsync(request.item, resumed);

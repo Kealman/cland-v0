@@ -1,3 +1,4 @@
+// T3: claim/worktree races with disposable native Git projects; local Sessions doubles admit placement.
 // A launch with an item never overwrites a claim another session took while the harness started (rev-cc on T-58): it
 // is refused and the session it started is stopped. A real tracker, and a stand-in for the sessions whose launch lets
 // another session claim the item meanwhile.
@@ -30,7 +31,7 @@ test('an offline Lead successor adopts its provisional claim before its first he
   let published = false;
   tracker.useSessionIdentity(id => published && id === 'name:later' ? process.sessionId : id);
   // The adapter returns its proven identity without any spoke hello to adopt it first.
-  const sessions = { retainedPool: () => false, launch: async () => { published = true; return process; }, stop: async () => process } as unknown as Sessions;
+  const sessions = { validateLaunchHost: () => {}, retainedPool: () => false, launch: async () => { published = true; return process; }, stop: async () => process } as unknown as Sessions;
   const launched = await new TaskWorktrees({ tracker }).launch(sessions, { name: 'later', role: 'lead', item: 'T-1' });
   assert.deepEqual(launched.claim, { ...before, sessionId: 'sess-later' });
 });
@@ -48,7 +49,7 @@ test('a claim another session takes during the launch refuses it: the claim stay
   const process = { name: 'impl-1', role: 'implementer', sessionId: 'sess-impl-1', cwd: root, item: null } as HarnessProcessView;
   const stopped: string[] = [];
   const sessions = {
-    retainedPool: () => false,
+    validateLaunchHost: () => {}, retainedPool: () => false,
     launch: async () => {
       await tracker.claim({ id: 'sess-impl-9', name: 'impl-9', role: 'implementer' }, 'T-1', { force: true });
       return process;
@@ -68,7 +69,7 @@ test('a claim another session takes during the launch refuses it: the claim stay
 
   // the Coordinator's claim, still in place after the spawn, is taken over as before
   await tracker.claim({ id: 'sess-coord', name: 'coord', role: 'coordinator' }, 'T-1', { force: true });
-  const quiet = { retainedPool: () => false, launch: async () => process } as unknown as Sessions;
+  const quiet = { validateLaunchHost: () => {}, retainedPool: () => false, launch: async () => process } as unknown as Sessions;
   const taken = await new TaskWorktrees({ tracker }).launch(quiet, { name: 'impl-1', role: 'implementer', item: 'T-1' });
   assert.equal(taken.claim?.session, 'impl-1');
 });
@@ -154,7 +155,7 @@ test('while a launch for an item is under way, a prune leaves its worktree alone
   const process = { name: 'impl-1', role: 'implementer', sessionId: 'sess-impl-1', cwd: path, item: 'T-1' } as HarnessProcessView;
   let pruned: Awaited<ReturnType<TaskWorktrees['prune']>> | null = null;
   const sessions = {
-    retainedPool: () => false,
+    validateLaunchHost: () => {}, retainedPool: () => false,
     // while the harness starts, the item is closed and the human prunes it
     launch: async () => {
       await assert.rejects(worktrees.launch(sessions, { name: 'impl-3', role: 'implementer', item: 'T-1' }), /^Error: T-1: another session is being launched for it$/);
@@ -180,7 +181,7 @@ test('two launches for one item at once: only one goes on; its failed spawn rele
   const failSpawn = Promise.withResolvers<void>();
   const spawned: string[] = [];
   const first = {
-    retainedPool: () => false,
+    validateLaunchHost: () => {}, retainedPool: () => false,
     launch: async () => {
       spawned.push('impl-1');
       spawning.resolve();
@@ -189,7 +190,7 @@ test('two launches for one item at once: only one goes on; its failed spawn rele
     },
   } as unknown as Sessions;
   const second = {
-    retainedPool: () => false,
+    validateLaunchHost: () => {}, retainedPool: () => false,
     launch: async () => {
       spawned.push('impl-2');
       return { name: 'impl-2', role: 'implementer', sessionId: 'sess-impl-2', cwd: path, item: 'T-1' } as HarnessProcessView;
@@ -212,7 +213,7 @@ test('two launches for one item at once: only one goes on; its failed spawn rele
   // the next launch reserves the item afresh: a prune while it spawns is refused, and it ends with the claim
   let prunedDuring: Awaited<ReturnType<TaskWorktrees['prune']>> | null = null;
   const third = {
-    retainedPool: () => false,
+    validateLaunchHost: () => {}, retainedPool: () => false,
     launch: async () => {
       await tracker.close(HUMAN, 'T-1');
       prunedDuring = await worktrees.prune(['T-1']);

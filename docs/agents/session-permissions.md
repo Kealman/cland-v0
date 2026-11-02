@@ -134,3 +134,12 @@ Verifier sessions must be relaunched after this tool lands: tools are fixed at
 launch. Inherited roles with explicit tool lists must grant `verification.decline`
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
+
+## Local-only role placement
+
+Coordinator and Aide launch, relaunch, fresh resume, assignment and handover
+require the local Host. `session.launch` frames may name a registered `host`;
+omitting it keeps local behavior. Unknown hosts are refused before admission.
+The owning process row supplies placement for role changes, including stopped
+sessions; names with no row keep local semantics. Existing role permissions and
+CLI launch flags remain unchanged.

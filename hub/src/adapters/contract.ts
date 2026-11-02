@@ -121,6 +121,8 @@ export type LaunchPolicy = {
 };
 
 export type SpawnRequest = LaunchPolicy & {
+  /** Registered Host selected at admission; omitted means local. */
+  host?: string;
   account?: string | null;
   accountEnv?: Record<string, string> | null;
   name: string;

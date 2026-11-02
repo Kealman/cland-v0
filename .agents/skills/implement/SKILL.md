@@ -1519,8 +1519,8 @@ For sessions routing, use the recording local Host seam documented in
 are optional for older standalone adapter fixtures. Inject `hosts: [local]` into
 Sessions rather than separate process probe functions. For default-adapter
 environment wiring, `projectHub`/`serveProject` also accept `hosts`; see
-`docs/agents/tests/hub-test-project-hub.test.ts.md`. Every production lookup
-currently resolves local. Keep rollback file metadata hub-local and preserve
+`docs/agents/tests/hub-test-project-hub.test.ts.md`. Production lookups resolve hosts through the registry (T-1552)
+and refuse unregistered hosts. Keep rollback file metadata hub-local and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
 
 For Claude Code Host routing, use the recording seam in

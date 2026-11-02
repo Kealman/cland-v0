@@ -1,7 +1,7 @@
 // The `session.*` frames: launching and managing harness sessions (UI, CLI, spokes), and the signals and
 // bridge that come from inside a launched session (`cland hook`). Called from the dispatcher.
 //
-//   session.launch  {name, role?, model?, harness?, cwd?, effort?, item?, brief?} → {process}   the human, and a spoke whose role grants it; a role's
+//   session.launch  {name, host?, role?, model?, harness?, cwd?, effort?, item?, brief?} → {process}   the human, and a spoke whose role grants it; a role's
 //                                                              launch defaults (roles.toml) fill what is not given; with `item`
 //                                                              (an Implementer's task or a Lead's epic/release): {process, claim, worktree, reason?}, in the
 //                                                              item's worktree (`src/hub/worktrees.ts`)
@@ -24,7 +24,7 @@ import type { Resumed, TaskWorktrees } from '../hub/worktrees.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
 export type SessionRequest =
-  | { type: 'session.launch'; id: string; name: string; role?: string; model?: string; harness?: string; account?: string; cwd?: string; effort?: string; item?: string; brief?: string }
+  | { type: 'session.launch'; id: string; name: string; host?: string; role?: string; model?: string; harness?: string; account?: string; cwd?: string; effort?: string; item?: string; brief?: string }
   | { type: 'session.list'; id: string; archived?: boolean }
   | { type: 'session.attach'; id: string; session: string }
   | { type: 'session.archive'; id: string; session: string }
@@ -44,7 +44,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
   if (typeof f.id !== 'string' || typeof f.type !== 'string' || !f.type.startsWith('session.')) return false;
   switch (f.type) {
     case 'session.launch':
-      return typeof f.name === 'string' && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.account) && optString(f.cwd) && optString(f.effort) && optString(f.item) && optString(f.brief);
+      return typeof f.name === 'string' && optString(f.host) && optString(f.role) && optString(f.model) && optString(f.harness) && optString(f.account) && optString(f.cwd) && optString(f.effort) && optString(f.item) && optString(f.brief);
     case 'session.list':
       return f.archived === undefined || typeof f.archived === 'boolean';
     case 'session.prune':
@@ -86,6 +86,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.launch': {
         const request = {
           name: frame.name,
+          ...(frame.host !== undefined ? { host: frame.host } : {}),
           ...(frame.account !== undefined ? { account: frame.account } : {}),
           ...(frame.role !== undefined ? { role: frame.role } : {}),
           ...(frame.model !== undefined ? { model: frame.model } : {}),
@@ -94,6 +95,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
           ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
           ...(frame.brief !== undefined ? { brief: frame.brief } : {}),
         };
+        sessions.validateLaunchHost(request);
         if (frame.item === undefined) return ok({ process: await sessions.launch(request, resumed, authorize) });
         if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
         return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
