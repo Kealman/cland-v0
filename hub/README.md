@@ -8280,6 +8280,22 @@ the project directory.
 
 ### Host process operations
 
+The test-only SSH pairing uses `CLAND_FAKE_HOSTS=f1,f2` and an absolute
+`CLAND_FAKE_HOST_ROOT`, containing `<name>/home/.cland-host/run` (0700),
+`boot-id`, `host-key.pub`, `client-key` and `known_hosts`. `sshBinaries(env)`
+selects system `ssh`/`scp` for the host carrier unless both controls are nonempty; only then may
+`CLAND_SSH_BIN`/`CLAND_SCP_BIN` select the executable Node stand-ins under
+`hub/test/fakes/`. They pin keys, relay Unix sockets (0600), run commands with
+a sealed host HOME and copy files into that HOME. Loopback destination ports
+map through `<name>/ports.json` to host Unix sockets; no network socket is opened.
+`fake-host.ts create|kill-master|gone <name>` controls disposable hosts; killing
+asks the live master to signal itself after checking host/boot identity and its
+per-master token; the ownership record publishes only after bind. Commands
+are trusted fixture code, not an operating-system sandbox. The separate droplet
+executor (`executor/droplet/machine.ts`) still reads these binary overrides
+ungated for its own fixtures; T-1626 owns its migration. See
+`docs/agents/tests/hub-test-fake-ssh.test.ts.md` for setup and limits.
+
 `hub/src/host/host.ts` defines the process seam for session Hosts.
 `localHost(env)` implements `spawn`, `run`, `identity`, `alive`, `stop` and
 `processes`; session callers migrate in the following Host items. Spawn accepts

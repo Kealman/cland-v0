@@ -1,0 +1,60 @@
+# hub/test/fake-ssh.test.ts
+
+`hub/test/fake-ssh.test.ts` is T3. Run it alone with Node 24 after checking disk
+and load, under the standing cover-quiet rules. It creates disposable roots and
+sealed environments, joins native children, closes sockets, then removes roots.
+It launches no hub, browser, real SSH, provider or account.
+
+Use `createFakeHost(root, name)` from `hub/test/fakes/fake-host.ts`. Set
+`CLAND_FAKE_HOSTS` to comma-separated names and `CLAND_FAKE_HOST_ROOT` to the
+absolute disposable root. Each host has `home/.cland-host/run` at 0700,
+`boot-id`, synthetic `host-key.pub`, synthetic `client-key` and `known_hosts`.
+`CLAND_FAKE_BOOT_ID_FILE` is supplied to host commands. Only both fake controls
+enable `sshBinaries(env)` overrides via `CLAND_SSH_BIN` / `CLAND_SCP_BIN`.
+The separate droplet executor (`executor/droplet/machine.ts`) still reads these
+overrides ungated for its own fixtures (migration: T-1626).
+Point these at the executable `.ts` stand-ins on a PATH with Node 24.
+
+The subset is `-N` master, `-S`/ControlPath, `-O check|exit|forward|cancel`,
+Unix `-R`/`-L`, `-t` one-shot commands and local-to-host scp. Every invocation
+requires StrictHostKeyChecking=yes and UserKnownHostsFile with the named host's
+exact key. Host paths may be absolute within its HOME or start with `~/`.
+SCP refuses traversal and symlink escapes. Shell commands are trusted fixture
+code and run in the host HOME with fixtureEnvironment after the final overlay;
+they are not filesystem-sandboxed. `-t` accepts the carrier's attach argv but
+does not emulate a terminal/PTY. Unsupported flags are refused.
+
+A local Unix listener may target a host loopback port. Declare that port in
+`<root>/<name>/ports.json`, mapping its string to a Unix socket in host HOME.
+This models the OpenCode port without TCP. A preloaded network guard in the
+forwarding tests rejects every TCP listen/connect; the same guard accompanies
+the successful relay positive controls. TCP listening forwards are rejected.
+
+The control endpoint answers check only after initial forwards bind. Tests
+assert exact relayed bytes, cancellation refusal on a removed listener, native
+master close, stale control file, key mismatch and bind failure. `kill-master`
+uses the live control socket to self-SIGKILL, never a persisted PID. Every
+control request carries canonical host directory and boot identity; kill additionally
+requires the random token captured by that master. `master-control` is atomically
+published JSON `{control, owner: {directory, boot}, token}` only after the control
+socket binds and its mode is set. Copied and stale records refuse without signals;
+a failed bind cannot overwrite the live receipt. Tests retain a fresh cleanup
+positive control and a copied/stale receipt negative control. `gone`
+writes a marker and refuses subsequent connections; it does not shut down
+existing commands or the master. Owners must join their processes before root
+removal. All subprocesses register native identity ownership immediately, share abort and
+teardown cleanup, and join their process trees and close receipts within separate
+five-second bounds started when termination/cleanup is requested. Raw close
+observers are armed at launch without a deadline for long-lived masters; setup
+and one-shot commands receive their own phase bounds. The regression injects the shared Clock scheduling subset only into the master
+close deadline, advances 5.5 seconds, and checks actual control liveness. As a
+positive timer control, an explicitly requested join expires after a further
+5-second advance and its rejection is observed; the test then requests exit and
+asserts native close. Setup, cleanup, subprocess dates and native I/O remain real.
+No wall-clock delay or duration allowance is needed.
+Missing receipts retain the root and report native exit/signal
+plus a bounded diagnostic tail. A held writer cancellation regression proves this
+cleanup before removal. Byte-stream assertions accumulate partial chunks.
+The scripts intentionally leave stale control and forward sockets on
+abrupt exit to exercise carrier cleanup/reconnect. No second transport carrier
+or transport contract is defined here (T-1625 owns the reusable contract).

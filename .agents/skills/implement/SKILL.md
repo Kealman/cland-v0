@@ -1493,6 +1493,15 @@ held/failed-transition refusal regressions. No role clause changes are needed.
 
 ## Local Host process contract (T-1542)
 
+Fake SSH tests use the real carrier with `sshBinaries(env)` from
+`host/ssh-binaries.ts`; set both `CLAND_FAKE_HOSTS` (names) and
+`CLAND_FAKE_HOST_ROOT` (scratch root) before overriding binaries. Use
+`createFakeHost` and the subprocess seam in
+`docs/agents/tests/hub-test-fake-ssh.test.ts.md`; loopback destination ports
+are Unix mappings, and no stand-in opens TCP. The droplet executor still reads
+these overrides ungated for its separate fixtures (migration: T-1626).
+No new role permission applies.
+
 For Host process operations, use the reusable factory contract described in
 `docs/agents/tests/hub-test-host-local-contract.test.ts.md`. Preserve native birth
 and legacy timestamp semantics through the existing identity/liveness/termination
