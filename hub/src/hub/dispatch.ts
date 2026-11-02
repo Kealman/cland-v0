@@ -1902,7 +1902,7 @@ export class Dispatcher {
             return later(frame.type, core.inbox.answerApproval(frame.approval, frame.choice, frame.note, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), (sessionId, requestId, value) => {
               if (!this.#sessions) throw new Error('the hub has no adapters');
               return this.#sessions.answerApproval(sessionId, requestId, value);
-            }, resumed).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+            }, resumed, humanUser() ?? undefined).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'remote.test':
           case 'remote.unpair':
@@ -1946,7 +1946,7 @@ export class Dispatcher {
             return answer({ pairing });
           }
           case 'topic.answer': {
-            const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'));
+            const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), humanUser() ?? undefined);
             if (!messageId || !via) return answer(apply()); // Previous clients keep the ordinary first-answer gate.
             const state = core.store.remotes.forMessenger(via);
             const key = `gateway.answer:${messageId}`;

@@ -237,3 +237,18 @@ test('phone approval Escape, close, scrim and swipe leave the native request pen
     assert.deepEqual(sent, [], 'dismissals and swipe never send approval.answer');
   }, page => { page.on('websocket', socket => socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)); if (frame.type === 'approval.answer') sent.push(frame.type); })); }, { phone: true });
 });
+
+for (const by of ['human', 'alex']) test(`approval card renders ${by} from the saved outcome`, async t => {
+  const fixture = await approvalFixture(t);
+  await fixture.pageCase(t, async page => {
+    const target = row(page, fixture.approval.id);
+    await target.waitFor();
+    const outcome = target.locator('..').locator('[data-approval-outcome]');
+    const rendered = outcome.waitFor();
+    fixture.fakes.codex!.closeApproval('phone-worker', 'phone-native', {
+      choice: 'once', by, ...(by === 'alex' ? { userId: 'alex-id' } : {}), via: 'web', at: fixture.clock.now().toISOString(),
+    });
+    await rendered;
+    assert.match(await outcome.innerText(), new RegExp(`Approved once by ${by === 'human' ? 'the human' : by}`));
+  }, undefined, { phone: true });
+});

@@ -190,16 +190,16 @@ async function approvalClient(t: Parameters<typeof tempProject>[0], view: string
 async function approvalRequests(c: Awaited<ReturnType<typeof approvalClient>>) {
   return (await c.control({ requests: true })).requests as Array<Record<string, unknown>>;
 }
-for (const view of ['panel', 'full']) test(`${view}: 1 approves once and folds the recorded approval to its attributed outcome`, { skip }, async t => {
+for (const by of ['human', 'alex']) for (const view of ['panel', 'full']) test(`${view}: ${by} 1 approves once and folds the recorded approval to its attributed outcome`, { skip }, async t => {
   const c = await approvalClient(t, view);
-  const outcome = { choice: 'once', by: 'human', via: 'neovim', at: approvalTime };
+  const outcome = { choice: 'once', by, ...(by === 'alex' ? { userId: 'alex-id' } : {}), via: 'neovim', at: approvalTime };
   // A scripted result is a recorded wire boundary, not an approval gate reimplementation.
   await c.control({ set: { approvalAnswer: { approval: approvalRecord({ state: 'closed', outcome }) } } });
   await c.input('1');
   await eventually('one approval answer reached the stub', async () => (await approvalRequests(c)).find(f => f.type === 'approval.answer'));
-  await c.waitScreen(s => s.includes('approved once by the human') && s.includes(approvalTime), 'folded outcome and full attribution in status');
+  await c.waitScreen(s => s.includes(`approved once by ${by === 'human' ? 'the human' : by}`) && s.includes(approvalTime), 'folded outcome and full attribution in status');
   const lines = await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)");
-  const folded = lines.find(l => l.includes('approved once by the human'));
+  const folded = lines.find(l => l.includes(`approved once by ${by === 'human' ? 'the human' : by}`));
   assert.ok(folded); assert.match(folded, /\d{2}:\d{2}/);
   if (view === 'full') { assert.match(folded, /neovim/); assert.ok(folded.includes(approvalTime)); }
   const frames = (await approvalRequests(c)).filter(f => f.type === 'approval.answer');

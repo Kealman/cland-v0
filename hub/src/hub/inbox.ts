@@ -420,7 +420,7 @@ export class InboxBoard {
     return true;
   }
 
-  async answerApproval(id: string, choice: ApprovalChoice, note: string | undefined, via: HumanActionVia, deliver: (sessionId: string, requestId: string, answer: { choice: ApprovalChoice; note?: string }) => Promise<{ noteDelivered: boolean }>, resumed: Resumed): Promise<InboxApproval> {
+  async answerApproval(id: string, choice: ApprovalChoice, note: string | undefined, via: HumanActionVia, deliver: (sessionId: string, requestId: string, answer: { choice: ApprovalChoice; note?: string }) => Promise<{ noteDelivered: boolean }>, resumed: Resumed, user?: { id: string; name: string }): Promise<InboxApproval> {
     const record = this.#approvals.get(id);
     const previous = record?.outcome ?? this.#port.store.inboxOutcome('approval', id);
     if (previous && 'via' in previous) throw new Error(`approval already answered by ${previous.by} via ${previous.via} at ${previous.at}`);
@@ -430,7 +430,7 @@ export class InboxBoard {
     if (!record.choices.includes(choice)) throw new Error(`choice ${choice} is not offered by this approval`);
     const noteRefusal = note === undefined ? null : this.#port.sizeRefusal(note);
     if (noteRefusal) throw new HygieneError(noteRefusal, { code: 'hygiene', rule: 'size' });
-    const outcome: ApprovalOutcome = { choice, by: 'human', via, at: this.#port.now().toISOString(), ...(note !== undefined ? { note } : {}) };
+    const outcome: ApprovalOutcome = { choice, by: user?.name ?? 'human', ...(user ? { userId: user.id } : {}), via, at: this.#port.now().toISOString(), ...(note !== undefined ? { note } : {}) };
     const answering: InboxApproval = { ...record, state: 'answering', outcome };
     this.#approvals.set(id, answering);
     this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', answering, 'approval') });
@@ -499,6 +499,7 @@ export class InboxBoard {
   #closeApproval(record: InboxApproval, reported: ApprovalOutcome): InboxApproval {
     // Copy the outcome too: adapters must not smuggle arbitrary native payload into a delta or archive.
     const outcome: ApprovalOutcome = { choice: reported.choice, by: reported.by, via: reported.via, at: reported.at,
+      ...(reported.userId !== undefined ? { userId: reported.userId } : {}),
       ...(reported.note !== undefined ? { note: reported.note } : {}) };
     const closed: InboxApproval = { ...record, state: 'closed', outcome };
     this.#approvals.set(record.id, closed);

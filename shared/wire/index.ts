@@ -168,7 +168,7 @@ export type Message = {
 
 // hub/src/protocol.ts
 /** The durable decision carried by an ask and its inbox departure. */
-export type AskOutcome = { by: string; at: string; via?: Via | HumanActionVia } & (
+export type AskOutcome = { userId?: string; by: string; at: string; via?: Via | HumanActionVia } & (
   | { status: 'answered'; text: string; option?: number }
   | { status: 'declined'; reason: string }
 );
@@ -254,7 +254,7 @@ export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: s
 
 // hub/src/protocol.ts
 export type ApprovalChoice = 'once' | 'always' | 'deny';
-export type ApprovalOutcome = { choice: ApprovalChoice | 'answered in the harness' | 'withdrawn'; note?: string; by: string; via: HumanActionVia | 'harness'; at: string };
+export type ApprovalOutcome = { userId?: string; choice: ApprovalChoice | 'answered in the harness' | 'withdrawn'; note?: string; by: string; via: HumanActionVia | 'harness'; at: string };
 export type ApprovalSubject = { command?: string; cwd?: string; reason?: string; files?: string[]; change?: string };
 /** One harness request, retaining the original inbox fields for existing clients. */
 export type ApprovalRecord = { layer?: Layer; id: string; session: string; sessionId: string; role?: string; label: string; harness: string | null; kind: 'command' | 'file change' | 'other'; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn: 'hub' | 'tui'; attach: string | null; since: string; topic?: string; state: 'pending' | 'answering' | 'closed'; outcome?: ApprovalOutcome; command?: string };

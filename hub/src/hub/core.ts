@@ -555,7 +555,7 @@ export class HubCore {
       identity: id => this.sessionIdentity(id),
       nextLead: (from, topic, forwarding) => this.#questionLead(from, topic, forwarding),
       sendFromSession: (from, topic, to, text, replyTo, kind, answerTo, attribution) => this.sendFromSession(from, [to], text, replyTo, topic, undefined, undefined, undefined, kind, undefined, false, answerTo, undefined, undefined, attribution),
-      sendFromHuman: (topic, text, to, answerTo, attribution, via) => this.sendFromHuman(topic, text, to, undefined, answerTo, undefined, undefined, undefined, attribution, undefined, via),
+      sendFromHuman: (topic, text, to, answerTo, attribution, via, userId) => this.sendFromHuman(topic, text, to, undefined, answerTo, undefined, undefined, undefined, attribution, undefined, via, false, userId),
       // an ask withdrawn or cancelled: a notice in its topic to the asker, through the one notice path
       noteTo: (topic, session, text) => {
         if (this.noticeInTopic(topic, { kind: 'ask-closed', text, to: [session] }) === null) throw new Error(`no topic "${topic}"`);

@@ -455,6 +455,14 @@ shows the display name. Human request audit records add `userId`; single mode
 omits both optional fields and keeps the existing link and cookie flow. Agent
 session identity and role permissions are unchanged.
 
+Ask and approval outcomes add optional `userId` and set `by` to the authenticated
+user name in users mode. The posted ask-answer message carries the same user
+id through the human-message producer. A second ask answer is refused with the winner’s name.
+The `ask-answered` journal event carries `userId`; `inbox-departure` retains it
+in `outcome.userId`. Web approval cards and the Neovim inbox show that name.
+Single mode keeps `human` (displayed as “the human” on approval cards) and
+stand-in attribution; outcomes from older hubs may omit `userId`.
+
 Human artifact creation and uploads in users mode persist `creatorUserId` and
 use the authenticated user's name as `creator`; artifact journal events carry
 `userId` alongside the human request audit. Local human CLI connections use the

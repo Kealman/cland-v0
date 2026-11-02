@@ -42,7 +42,7 @@ export type AskPort = {
   nextLead: (from: string, topic: Topic, forwarding?: boolean) => string | null;
   sendFromSession: (from: string, topic: string, to: string, text: string, replyTo: string, kind: 'question' | 'decision', answerTo?: string, attribution?: AnswerAttribution) => { message: Message; outcomes: SendOutcome[] };
   /** The human writes into a topic: the answer goes this way. */
-  sendFromHuman: (topic: string, text: string, to: string[], answerTo: string, attribution: AnswerAttribution, via?: RemoteVia) => { message: TopicMessage; outcomes: SendOutcome[] };
+  sendFromHuman: (topic: string, text: string, to: string[], answerTo: string, attribution: AnswerAttribution, via?: RemoteVia, userId?: string) => { message: TopicMessage; outcomes: SendOutcome[] };
   /** A hub note in a topic to one session: recorded, delivered now or queued. */
   noteTo: (topic: string, session: string, text: string) => void;
 };
@@ -211,11 +211,11 @@ export class Asks {
    * carrying `answer_to`, addressed to the session that asked; the ask is answered. With no other ask open the topic
    * no longer waits for the human: the human spoke last, so it waits for the agent.
    */
-  answer(id: string, option?: number, text?: string, standIn?: string, declined = false, reason?: string, via: HumanActionVia = 'neovim'): { message: TopicMessage; outcomes: SendOutcome[] } {
+  answer(id: string, option?: number, text?: string, standIn?: string, declined = false, reason?: string, via: HumanActionVia = 'neovim', user?: { id: string; name: string }): { message: TopicMessage; outcomes: SendOutcome[] } {
     const p = this.#port;
     const a = p.store.ask(id);
     if (!a) throw new TopicRefusal(`no ask "${id}"`);
-    if (a.state !== 'open') throw new TopicRefusal(`the ask is ${a.state}: "${a.question}" takes no answer any more`);
+    if (a.state !== 'open') throw new TopicRefusal(`the ask is ${a.state}${a.outcome?.userId ? ` by ${a.outcome.by}` : ''}: "${a.question}" takes no answer any more`);
     if (a.to !== undefined) throw new TopicRefusal('this ask waits for an agent; only its receiving lead may answer it');
     let body: string;
     if (declined) {
@@ -243,8 +243,8 @@ export class Asks {
     p.store.closeAsk(a.id, 'answered', at, {
       id: '', attribution,
       outcome: declined
-        ? { status: 'declined', reason: reason?.trim() ?? '', by: standIn ?? 'human', at, via }
-        : { status: 'answered', text: body, by: standIn ?? 'human', at, via, ...(option !== undefined ? { option } : {}) },
+        ? { status: 'declined', reason: reason?.trim() ?? '', by: user?.name ?? standIn ?? 'human', ...(user ? { userId: user.id } : {}), at, via }
+        : { status: 'answered', text: body, by: user?.name ?? standIn ?? 'human', ...(user ? { userId: user.id } : {}), at, via, ...(option !== undefined ? { option } : {}) },
       ...(option !== undefined ? { option } : {}),
     });
     let sent: { message: TopicMessage; outcomes: SendOutcome[] };
@@ -253,13 +253,13 @@ export class Asks {
       // whose current holder inherited the question (`role.state` lists it)
       const askedAs = p.store.message(a.id)?.fromRole;
       const to = askedAs !== undefined && p.store.roleOf(a.from) !== askedAs ? askedAs : a.from;
-      sent = p.sendFromHuman(a.topic, body, [to], a.id, attribution, via === 'telegram' || via === 'discord' ? via : undefined);
+      sent = p.sendFromHuman(a.topic, body, [to], a.id, attribution, via === 'telegram' || via === 'discord' ? via : undefined, user?.id);
     } catch (err) {
       p.store.reopenAsk(a.id);
       throw err;
     }
     p.store.setAskAnswer(a.id, sent.message.id);
-    p.log({ event: 'ask-answered', id: a.id, topic: a.topic, answer: sent.message.id, option: option ?? null, ...attribution });
+    p.log({ event: 'ask-answered', id: a.id, topic: a.topic, answer: sent.message.id, option: option ?? null, ...attribution, ...(user ? { userId: user.id } : {}) });
     this.#changed(a.id);
     return sent;
   }
