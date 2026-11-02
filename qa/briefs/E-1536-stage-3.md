@@ -155,7 +155,7 @@ cat > "$Q/probe.mjs" <<'JS'
 // plantpair <names> | pairdb
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, appendFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { request as httpRequest } from 'node:http';
 import { once } from 'node:events';
@@ -179,6 +179,13 @@ const addSecret = (kind, label, value) => {
   if (typeof value !== 'string' || value.length < 12) return;
   const file = `${Q}/secrets3.json`, list = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
   list.push({ kind, label, value }); writeFileSync(file, JSON.stringify(list), { mode: 0o600 });
+};
+// rule 15: before an error text is captured, every known secret is replaced by its kind, then any token/cookie/password/challenge parameter and any 64-hex run; the rest of the diagnostic stays
+const redact = text => {
+  let t = String(text);
+  const file = `${Q}/secrets3.json`, known = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  for (const k of known) if (typeof k.value === 'string' && k.value.length >= 12) t = t.split(k.value).join(`<${k.kind}>`);
+  return t.replace(/\b(token|cookie|password|challenge|credential|response)=([^&\s"'<>]+)/gi, '$1=<redacted>').replace(/[0-9a-f]{64}/gi, '<hex64>').replace(/qa3-[A-Za-z0-9-]+-[0-9a-f]{24}/g, '<password>');
 };
 const newPassword = user => { const pw = `qa3-${user}-${randomBytes(12).toString('hex')}`; writeFileSync(`${Q}/pw-${user}`, pw, { mode: 0o600 }); addSecret('password', user, pw); return pw; };
 // the web edge port, from `cland hub status` (the line `web      http://127.0.0.1:<port>/`)
@@ -289,7 +296,7 @@ async function withBrowser(body) {
   appendFileSync(`${Q}/pids`, `${group}\n`);
   out('profileInScratch', (child.spawnargs.find(a => a.startsWith('--user-data-dir=')) ?? '').startsWith(`--user-data-dir=${process.env.TMPDIR}/`));
   try { const browser = await chromium.connect(server.wsEndpoint(), { timeout: 15000 }); await body(browser); await browser.close(); }
-  catch (error) { out('step', String(error?.message ?? error)); }
+  catch (error) { out('step', redact(String(error?.message ?? error))); }  // rule 15: a Playwright call log can carry an invite URL or token
   finally { await server.close(); await exited; }
   out('browserGroupAfter', execFileSync('ps', ['-e', '-o', 'pid=,pgid='], { encoding: 'utf8' }).split('\n').map(l => l.trim().split(/\s+/).map(Number)).filter(([, g]) => g === group).length);
 }
@@ -605,6 +612,10 @@ switch (mode) {
     }
     const files = [];
     const walk = dir => { for (const e of readdirSync(dir, { withFileTypes: true })) { const q = `${dir}/${e.name}`; if (e.isDirectory()) walk(q); else if (e.isFile()) files.push(q); } };
+    // rule 17 positive control: a fresh sentinel planted in p1's .cland tree must be found exactly once, at its own file, by the same search
+    const controlFile = `${root}/.cland/qa-scan-control.txt`, control = randomBytes(32).toString('base64url');
+    writeFileSync(controlFile, `control ${control}\n`, { mode: 0o600 });
+    secrets.push({ kind: 'control', label: 'control', value: control });
     walk(`${root}/.cland`); walk(EV);
     const contents = files.map(f => [f, readFileSync(f)]);
     const kinds = {};
@@ -616,6 +627,7 @@ switch (mode) {
     }
     out('filesScanned', files.length);
     for (const k of Object.values(kinds)) out('scan', k);
+    unlinkSync(controlFile); out('controlRemoved', !existsSync(controlFile));
     break;
   }
   default: out('refused', `unknown mode ${mode}`); process.exit(2);
@@ -822,8 +834,8 @@ Run in this order. Rows E1536S3-03 to E1536S3-06 run their test files serially f
 | E1536S3-14 | web-terminal | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m14 ) > "$EV/E1536S3-14.txt" 2>&1` | PRE: users, hub up, jane, alex and dana active, two legacy ids saved. Sign-ins `saved` j and d. Sends ok: `QA3 jane words` `from` `jane-q-doe`; alex's `from` `alex` and dana's `from` `dana`, each with its own `userId` (the welcome names are `alex` and `dana` despite the forged hello field). Refusals (T-1584 C2, C5), `ok` false with `error` `cannot withdraw: message ownership requires its author (legacy messages require admin)`: dana withdrawing jane's message, and alex withdrawing dana's (both display names are `Alex Smith`). With dana's stored role `qa-test-role` (`role` line shows `["admin","qa-test-role"]`): withdrawing the legacy message and dana's own message are refused with `code` `forbidden` and an `error` naming `User role qa-test-role cannot request topic.withdraw` (C4: a non-admin cannot withdraw legacy input; the authority table runs first); the restore line shows `role` `admin`. The history shows jane's, alex's, dana's and the legacy message still `queued`, `withdrawable` true, and `QA3 legacy words` with `legacyUser` true, `from` `jane-q-doe`, `userDisplayName` `Jane Q. Doe`. `withdrawui` as dana, desktop (`layoutPhone` `false`) then phone (`true`): `withdraw` buttons `dana` 1, `alex` 0, `jane` 0, `legacy` 1; as jane: `jane` 1, `alex` 0, `dana` 0, `legacy` 1 (C3, C5); screenshots named; no `step` line; `browserGroupAfter` 0 each. Then alex withdraws alex's own message: ok, `stage` `withdrawn` (C1); dana (an admin) withdraws the legacy message: ok, `stage` `withdrawn` (C4). The final history shows alex's and the legacy message `withdrawn`, jane's and dana's still `queued` |
 | E1536S3-15 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m15 ) > "$EV/E1536S3-15.txt" 2>&1` | PRE: users, hub up, every user created. `planted` lists jane-q-doe 1001, alex 1002, dana 1003 (a fixture: no messenger pairs in the scratch run; the pairing round trip is E1536S3-06). `unpair without --user` exit 1 with `cland: users mode unpair requires --user <name>; paired users: ` naming jane-q-doe, alex and dana (any order); `unpair --user nobody` exit 1 `cland: unknown pairing user`; `approve without a live code` exit 1 `cland: no live pairing code for this messenger` (the code lookup comes first, so the `--user` refusal of T-1572 C1 needs a live code: E1536S3-06); `unpair --user alex` exit 0 `unpaired telegram`. `pairdb`: `userPairings` jane-q-doe 1001 and dana 1003 only, `singlePairing` empty |
 | E1536S3-16 | web-terminal | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m16 ) > "$EV/E1536S3-16.txt" 2>&1` | PRE: users, hub up, the two planted pairings listed. `reset exit 0` printing `Sign-in mode: single`; `mode = "single"`. `db`: `authState` `["single"]`, all the users retained, no `invites` row in state `open`, `webSessions` empty. Single mode again: `GET /signin/status` 200 `required` false; `GET /` 200 with `html` true and no `location`; every other line (`GET invite`, `POST invite details`, `POST signin password`, `POST signout` with the old cookie, `POST signin passkey options`, `GET signin`) 404 `Not found` (T-1566 C6, T-1567 C4). `wsend j`: `upgrade` 401 (the reset revoked the web sessions). `pairdb`: `userPairings` empty and `singlePairing` holding telegram with `native` 1001 (jane-q-doe's, kept) and none of dana's (T-1572 C8; fixture). `withdrawui` through a fresh link: `layoutPhone` `false`, `legacy two` `buttons` 1 and `jane` `buttons` 0, no `step` line, `browserGroupAfter` 0. `web s` (the printed link flow in single mode): `linkShape` true, `redeem` 302, `cookie` `attrs` exactly the four of E1536S3-07, `redeemAgain` 401, `upgrade` 101, welcome `human`; jane's message is refused with `error` `only the human’s own ordinary messages can be withdrawn` (the single-mode `from` `human` fence, T-1584 C3), the legacy message is withdrawn (`stage` `withdrawn`), the new send is ok with `from` `human` and `userId` null, and the history shows every `userDisplayName` null |
-| E1536S3-17 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m17 ) > "$EV/E1536S3-17.txt" 2>&1` | PRE: hub up, the secret files present. `filesScanned` above 0. For each `scan` line, kinds `password`, `invite-token`, `cookie`, `challenge` and `passkey-response`: `sentinels` above 0, `tooShort` 0, `hits` `[]` — no password, invite token, cookie, challenge or assertion part is in p1's `.cland` tree (`hub.db` and its WAL, `hub.log`, the journal) or under `$EV` (T-1566 C2, T-1568 C4). A hit under `<EV>` is a QA fault to fix before publication (never print the value); a hit under `<p1>` is a FAIL naming the kind and file only |
-| E1536S3-18 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m18 ) > "$EV/E1536S3-18.txt" 2>&1` | Cleanup, judged by the fixture-owned census only (never a machine-wide `pgrep`): `hub stop exit 0`. No `alive` line names a fixture process: a `cland` hub or `hub serve`, `probe.mjs` or a Headless Shell. An `alive` line whose command is unrelated is pid reuse, recorded, not a failure. `processes naming the scratch root: 0` (any listed process is a leftover finding). The second scan, with the hub stopped and `hub.db` checkpointed, reads like E1536S3-17 (`hits` `[]` for every kind). Then remove `$Q` and the worktree as Build says |
+| E1536S3-17 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m17 ) > "$EV/E1536S3-17.txt" 2>&1` | PRE: hub up, the secret files present. `filesScanned` above 0. The positive control first (rule 17): the `scan` line of kind `control` reads `sentinels` 1, `tooShort` 0 and exactly one hit, `control: <p1>/.cland/qa-scan-control.txt`, then `controlRemoved` true; a control with no hit makes the row INCONCLUSIVE (the search proves nothing), never PASS. Then for each `scan` line, kinds `password`, `invite-token`, `cookie`, `challenge` and `passkey-response`: `sentinels` above 0, `tooShort` 0, `hits` `[]` — no password, invite token, cookie, challenge or assertion part is in p1's `.cland` tree (`hub.db` and its WAL, `hub.log`, the journal) or under `$EV` (T-1566 C2, T-1568 C4). A hit under `<EV>` is a QA fault to fix before publication (never print the value); a hit under `<p1>` is a FAIL naming the kind and file only |
+| E1536S3-18 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m18 ) > "$EV/E1536S3-18.txt" 2>&1` | Cleanup, judged by the fixture-owned census only (never a machine-wide `pgrep`): `hub stop exit 0`. No `alive` line names a fixture process: a `cland` hub or `hub serve`, `probe.mjs` or a Headless Shell. An `alive` line whose command is unrelated is pid reuse, recorded, not a failure. `processes naming the scratch root: 0` (any listed process is a leftover finding). The second scan, with the hub stopped and `hub.db` checkpointed, reads like E1536S3-17 (the `control` kind with its one hit and `controlRemoved` true, `hits` `[]` for every other kind). Then remove `$Q` and the worktree as Build says |
 
 After the rows, recheck `git -C "$W" rev-parse HEAD` and `git -C "$R" rev-parse refs/heads/dev` against the request: a moved dev keeps the evidence and makes the run BLOCKED.
 
