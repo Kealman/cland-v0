@@ -8,4 +8,4 @@ import './global.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing shell root');
-createRoot(root).render(<StrictMode>{location.pathname === '/invite' ? <SignIn /> : <Shell />}</StrictMode>);
+createRoot(root).render(<StrictMode>{['/invite', '/signin'].includes(location.pathname) ? <SignIn /> : <Shell />}</StrictMode>);

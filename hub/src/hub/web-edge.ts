@@ -247,7 +247,7 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
       uploads.delete(state); completion.resolve();
     }
   };
-  const signin = createWebSignIn(options.store, auth, () => clock.now().getTime(), origin, pageOrigin);
+  const signin = createWebSignIn(options.store, auth, () => clock.now().getTime(), origin, pageOrigin, id => revoke(id));
   const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin, options.projectName ?? (() => basename(options.root)), upload, maxUpload, signin); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: FRAME_LIMITS_BYTES.json });
   const sockets = new Map<WebSocket, { seen: number; session: string }>();

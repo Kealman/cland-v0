@@ -13,3 +13,6 @@
 .notifications button[aria-checked="true"] { border-color: var(--link); }
 .notifications button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .notifications button:disabled { cursor: wait; }
+
+.signout { padding: 8px 12px; margin-bottom: 12px; background: var(--ground); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font: inherit; cursor: pointer; }
+.signout:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }

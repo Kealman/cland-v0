@@ -1,5 +1,6 @@
 // T2: HTTP invite registration on a disposable in-process project hub; no native lifecycle assertions.
 import test from 'node:test';
+import { FakeClock } from './fake-clock.ts';
 import { askHubFrame } from '../src/cli/socket-client.ts';
 import { request } from 'node:http';
 import assert from 'node:assert/strict';
@@ -87,4 +88,45 @@ test('invite admission refuses foreign origins, wrong methods, short passwords a
   assert.equal(method.status, 405);
   assert.equal((await cland(root, 'auth', 'reset')).code, 0);
   for (const path of ['/invite', '/invite/details', '/invite/register']) assert.equal((await httpFetch(invite.origin + path, { method: 'POST' })).status, 404);
+});
+
+test('password sign-in hides credential failures and sign-out revokes only its browser', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Sign in'); config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const clock = new FakeClock(Date.now());
+  const hub = await projectHub(t, root, {}, { clock, git: async () => 'Jane Doe\n' });
+  const switched = await cland(root, 'auth', 'mode', 'users');
+  const invite = new URL(switched.stdout.trim().split('\n').at(-1)!);
+  const post = (path: string, body: unknown, cookie = '', origin = invite.origin) => httpFetch(invite.origin + path, { method: 'POST', headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const password = 'private password for signin';
+  assert.equal((await post('/invite/register', { token: invite.searchParams.get('token'), password })).status, 200);
+  await askHubFrame(hub.discovery, { type: 'user.add', name: 'invited' }, 3000, {});
+  assert.equal((await httpFetch(invite.origin, { redirect: 'manual' })).headers.get('location'), '/signin');
+  const failures = [];
+  for (const name of ['jane-doe', 'unknown', 'invited']) {
+    const response = await post('/signin/password', { name, password: 'wrong' });
+    assert.equal(response.status, 401); assert.equal(response.headers.get('set-cookie'), null);
+    failures.push(await response.text());
+  }
+  assert.equal(new Set(failures).size, 1);
+  assert.equal((await post('/signin/password', { name: 'jane-doe', password }, '', 'https://foreign.example')).status, 403);
+  const login = async () => {
+    const response = await post('/signin/password', { name: 'jane-doe', password });
+    assert.equal(response.status, 200); return response.headers.get('set-cookie')!.split(';')[0]!;
+  };
+  const first = await login(); const second = await login();
+  assert.equal((await post('/signout', {}, first, 'https://foreign.example')).status, 403);
+  assert.equal((await post('/signout', {}, first)).status, 200);
+  const status = async (cookie: string) => (await httpFetch(invite.origin + '/signin/status', { headers: { Cookie: cookie } })).json();
+  assert.equal((await status(first)).required, true);
+  assert.equal((await status(second)).required, false);
+  for (let attempt = 0; attempt < 5; attempt++) assert.equal((await post('/signin/password', { name: 'jane-doe', password: 'wrong' })).status, 401);
+  assert.equal((await post('/signin/password', { name: 'jane-doe', password })).status, 401, 'correct credential is delayed after five failures');
+  assert.equal((await post('/signin/password', { name: 'another-name', password })).status, 401, 'address delay covers other names');
+  clock.block(1000);
+  await login();
+  const db = new DatabaseSync(join(root, '.cland/hub.db'));
+  try { assert.equal(db.prepare('select count(*) as n from web_sessions').get()!.n, 3); } finally { db.close(); }
 });

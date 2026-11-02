@@ -662,6 +662,10 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     };
     socket.onerror = () => socket.close();
     socket.onclose = () => {
+      // Older hubs have no status route; retain their reconnect behaviour.
+      void fetch('/signin/status', { signal: AbortSignal.timeout(5000) }).then(async response => {
+        if (response.ok && (await response.json()).required === true && !stopped) location.replace('/signin');
+      }).catch(() => {});
       clearTimeout(deadline);
       eventsFeed?.stop(); eventsFeed = undefined;
       rejectCommands();

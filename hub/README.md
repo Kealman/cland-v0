@@ -454,8 +454,21 @@ commits credential, activation, invite consumption and user-bound session in one
 transaction. A failed commit leaves the invite usable. Edge shutdown drains
 registration work before closing storage.
 
+In users mode an unauthenticated root navigation redirects to `/signin`.
+`POST /signin/password` takes bounded JSON `{name, password}`; wrong passwords,
+unknown names and invited-only names receive the same refusal. Admission and
+credentials are rechecked after scrypt completes. After five failures, per-name
+and per-client-address retries have an exponential delay capped at 15 minutes;
+these bounded, volatile counters reset on hub restart. These APIs require exact
+Origin and admitted Host. Profile's `POST /signout` revokes only the authenticated
+cookie's session, drains its uploads and closes its sockets before returning;
+other browser sessions remain active. Revoked tabs use `/signin/status` to return
+to sign-in. Single mode retains its disconnected strip and one-time link flow;
+credential and sign-out routes return 404. There is no new CLI command or role
+permission.
+
 Every edge cookie goes through `webSessionCookie(auth, token, request, origin)`
-in `web-auth.ts`, including `/auth` and invite registration: Path=/, HttpOnly,
+in `web-auth.ts`, including `/auth`, invite registration and password sign-in: Path=/, HttpOnly,
 SameSite=Strict and a fixed 30-day lifetime. The current Secure condition requires
 configured web origin, matching Host and exact request Origin. Existing local
 one-time links retain their behavior. No new CLI verb or session permission is

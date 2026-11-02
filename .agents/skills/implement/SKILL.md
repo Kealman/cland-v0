@@ -1512,6 +1512,15 @@ bodies and independently salted scrypt storage, outside frames/logs/journal.
 Single mode keeps invite paths at 404 and the existing link flow. No new role
 permission applies.
 
+Password sign-in and Profile sign-out use those same HTTP/browser test seams.
+Keep wrong-password, unknown-name and invited-only refusals identical, and the
+per-name/address exponential retry delays after five failures capped at 15 minutes.
+Use the edge's session revoke owner to drain uploads and close only that browser's
+sockets before replying to sign-out. A revoked sibling tab returns through the
+optional `/signin/status` probe; an older hub's missing route retains reconnect.
+Keep single-mode connection and phone-disconnected tests unchanged. No CLI or
+role permission is added.
+
 In users mode local human writes default to the first user. `--as <user>` on
 `cland topic create`, `topic answer` and `artifact create` selects an existing
 active user's exact name; display names are never selectors. The `topic.send`
