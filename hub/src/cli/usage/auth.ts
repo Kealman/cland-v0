@@ -1,6 +1,7 @@
 // Pure command help text.
 export const AUTH_USAGE = `  auth mode users  switch sign-in mode and print the first user's name, role and 24-hour invite (when web is available)
   auth reset       return to single mode, retaining users and revoking web sessions and open invites
+                   invite recipients set a password of at least 12 characters in the browser
                    local human shell only
 `;
 export const USER_USAGE = `  user add <name> [--display <name>]  create an invited admin and print a 24-hour link
@@ -8,5 +9,6 @@ export const USER_USAGE = `  user add <name> [--display <name>]  create an invit
   user list        print name, display name, role and state
                    web admins can also create/list users in Accounts in users mode
                    requires cland auth mode users; add/invite require an available web edge
+                   invite recipients set a password of at least 12 characters in the browser
                    local human shell only
 `;

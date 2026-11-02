@@ -418,6 +418,27 @@ plain HTTP carries the cookie in clear and gives phones no notifications or inst
 
 ### Browser sign-in and protocol
 
+In users mode `/invite?token=…` opens the password registration view. Invitations
+expire after 24 hours; unknown, expired, used and revoked tokens receive distinct
+refusals without a cookie. Single mode returns 404 for all invite routes.
+Navigation GETs accept an absent Origin; an Origin supplied on navigation must
+match exactly. `POST /invite/details?token=…` reads the invited user's name;
+`POST /invite/register` accepts only a bounded JSON body `{token, password}`.
+Both API routes require the exact page Origin, and every route checks Host.
+Passwords require at least 12 characters (maximum 1024 UTF-8 bytes) and are stored
+as independently salted scrypt records in `user_passwords`, never sent as frames
+or written to logs/journal. Registration rechecks admission after hashing and
+commits credential, activation, invite consumption and user-bound session in one
+transaction. A failed commit leaves the invite usable. Edge shutdown drains
+registration work before closing storage.
+
+Every edge cookie goes through `webSessionCookie(auth, token, request, origin)`
+in `web-auth.ts`, including `/auth` and invite registration: Path=/, HttpOnly,
+SameSite=Strict and a fixed 30-day lifetime. The current Secure condition requires
+configured web origin, matching Host and exact request Origin. Existing local
+one-time links retain their behavior. No new CLI verb or session permission is
+introduced; password sign-in and passkey ceremonies use this same cookie seam.
+
 In users mode ordinary queued messages can be withdrawn only by their persisted
 user id's author. The authenticated connection supplies the caller id; names and
 `userDisplayName` never grant ownership. Legacy null-user messages retain the

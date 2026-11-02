@@ -1458,6 +1458,19 @@ without changing pending state; do not substitute a verdict to clear it.
 
 ## Sign-in mode storage and commands (T-1558)
 
+For invite password registration, use the HTTP and credential seams in
+`docs/agents/tests/hub-test-web-signin.test.ts.md`,
+`docs/agents/tests/hub-test-passwords.test.ts.md` and the isolated browser form in
+`docs/agents/tests/web-test-signin.test.ts.md`. All edge cookies use
+`webSessionCookie(auth, token, request, configuredOrigin)` from `web-auth.ts`;
+change cookie policy there once. API requests require exact Origin and admitted
+Host; navigation permits absent Origin. Recheck admission after asynchronous
+hashing, then commit invite consumption, hash, activation and session together.
+Shutdown drains registration before storage closes. Keep passwords in HTTP POST
+bodies and independently salted scrypt storage, outside frames/logs/journal.
+Single mode keeps invite paths at 404 and the existing link flow. No new role
+permission applies.
+
 In users mode local human writes default to the first user. `--as <user>` on
 `cland topic create`, `topic answer` and `artifact create` selects an existing
 active user's exact name; display names are never selectors. The `topic.send`

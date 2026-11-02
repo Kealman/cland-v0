@@ -17,6 +17,7 @@ export class Users {
         mode text not null check(mode in ('single','users')), set_at integer not null);
       create table if not exists user_invites (digest text primary key, user_id text not null references users(id),
         expires integer not null, state text not null);
+      create table if not exists user_passwords (user_id text primary key references users(id), hash text not null);
       create index if not exists user_invites_user on user_invites(user_id);`);
     this.onReset(() => { db.prepare("update user_invites set state='revoked' where state='open'").run(); });
   }
@@ -86,6 +87,23 @@ export class Users {
     const user = this.checkInvite(token, now);
     this.#db.prepare("update user_invites set state='used' where digest=? and state='open'").run(createHash('sha256').update(token).digest('hex'));
     return user;
+  }
+  password(userId: string): string | null {
+    const row = this.#db.prepare('select hash from user_passwords where user_id=?').get(userId);
+    return row ? String(row.hash) : null;
+  }
+  /** Credential, activation, invite spend and the bound session commit together. */
+  registerPassword<T>(token: string, hash: string, now: number, issue: (user: User) => T): T {
+    this.#db.exec('savepoint register_password');
+    try {
+      if (this.mode() !== 'users') throw new Error('users mode required');
+      const user = this.consumeInvite(token, now);
+      this.#db.prepare('insert into user_passwords values (?,?) on conflict(user_id) do update set hash=excluded.hash').run(user.id, hash);
+      this.#db.prepare("update users set state='active' where id=?").run(user.id);
+      const result = issue(this.get(user.id)!);
+      this.#db.exec('release register_password');
+      return result;
+    } catch (error) { this.#db.exec('rollback to register_password; release register_password'); throw error; }
   }
   setMode(mode: SignInMode, now: number): void {
     this.#db.prepare('insert into auth_state values (1,?,?) on conflict(singleton) do update set mode=excluded.mode,set_at=excluded.set_at').run(mode, now);

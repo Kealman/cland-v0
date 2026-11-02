@@ -1,0 +1,6 @@
+.shell { min-height: 100dvh; display: grid; place-items: center; background: var(--ground); color: var(--text); }
+.card { box-sizing: border-box; width: min(100%, 420px); padding: 32px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+.brand { font-family: var(--mono); font-weight: 700; color: var(--text-strong); }
+.card h1 { font-size: 24px; }
+.card form { display: flex; flex-direction: column; gap: 12px; }
+.card input, .card button { padding: 10px; border: 1px solid var(--control-border); border-radius: 6px; color: var(--text); background: var(--control); font: inherit; }

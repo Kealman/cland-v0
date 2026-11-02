@@ -1,3 +1,4 @@
+import { createWebSignIn } from './web-signin.ts';
 import { readUpload, UploadFailure } from './web-upload.ts';
 import { networkInterfaces } from 'node:os';
 import { addressHost, phoneOrigin } from '../web-address.ts';
@@ -16,7 +17,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { FRAME_LIMITS_BYTES, BINARY_RESERVED_CLOSE_CODE, PROTOCOL_VERSION } from '../protocol.ts';
 import type { WebEdgeStatus, WebLinkResult, WebSessionsResult, WebRevokeResult } from '../protocol.ts';
 import { WebArtifacts } from './web-artifacts.ts';
-import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
+import { WebAuth, webSessionCookie } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
 
@@ -40,7 +41,7 @@ function allowedHost(req: IncomingMessage, hostsAllowed: string[], origin: strin
   return hosts.length === 1 && [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`, ...hostsAllowed.map(host => `${host}:${port}`), ...(origin ? [new URL(origin).host] : [])].includes(req.headers.host?.toLowerCase() ?? '');
 }
 
-async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string, projectName: () => string, upload: (req: IncomingMessage, res: ServerResponse) => Promise<void>, maxUpload: () => number): Promise<void> {
+async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string, projectName: () => string, upload: (req: IncomingMessage, res: ServerResponse) => Promise<void>, maxUpload: () => number, signin: ReturnType<typeof createWebSignIn>): Promise<void> {
   // Supply Date directly: Node's automatic Date cache creates a process-global timer.
   res.setHeader('Date', new Date().toUTCString());
   res.setHeader('Content-Security-Policy', CSP);
@@ -57,6 +58,7 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
   }
   res.setHeader('X-Upload-Max-Bytes', maxUpload());
   if ((req.url ?? '').split('?')[0] === '/upload') { await upload(req, res); return; }
+  if (await signin.handle(req, res)) return;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');
     reply(405, 'Method not allowed');
@@ -98,7 +100,7 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
     const tokens = new URL(req.url!, 'http://localhost').searchParams.getAll('token');
     const session = tokens.length === 1 ? auth.redeem(tokens[0]!) : null;
     if (!session) { reply(401, 'Invalid or expired sign-in link'); return; }
-    res.setHeader('Set-Cookie', `${auth.cookieName}=${session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_SECONDS}${origin && req.headers.host?.toLowerCase() === new URL(origin).host && req.headers.origin === origin ? '; Secure' : ''}`);
+    res.setHeader('Set-Cookie', webSessionCookie(auth, session, req, origin));
     res.setHeader('Location', '/');
     res.writeHead(302).end();
     return;
@@ -245,7 +247,8 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
       uploads.delete(state); completion.resolve();
     }
   };
-  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin, options.projectName ?? (() => basename(options.root)), upload, maxUpload); });
+  const signin = createWebSignIn(options.store, auth, () => clock.now().getTime(), origin, pageOrigin);
+  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin, options.projectName ?? (() => basename(options.root)), upload, maxUpload, signin); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: FRAME_LIMITS_BYTES.json });
   const sockets = new Map<WebSocket, { seen: number; session: string }>();
   http.on('upgrade', (req, socket, head) => {
@@ -328,6 +331,7 @@ export async function createWebEdge(options: { uploadAllocate?: (size: number) =
   let closing: Promise<void> | undefined;
   const close = () => closing ??= (async () => {
     stopping = true;
+    await signin.close();
     clock.clearInterval(ping);
     const activeUploads = [...uploads];
     for (const upload of activeUploads) upload.stop();

@@ -64,6 +64,15 @@ export class WebAuth {
     return session;
   }
 
+  /** Issue only after the caller's credential validation; may join its Store transaction. */
+  issue(userId: string): string {
+    this.assertAdmission();
+    if (this.#store.users.mode() !== 'users' || this.#store.users.get(userId)?.state !== 'active') throw new Error('unknown or inactive user');
+    const session = randomBytes(32).toString('hex');
+    this.#store.createWebSession(randomUUID(), digest(session), this.#now(), userId);
+    return session;
+  }
+
   accepts(cookie: string | undefined): boolean {
     return this.session(cookie) !== null;
   }
@@ -112,4 +121,9 @@ export class WebAuth {
   }
 
   revoke(id: string): boolean { return this.#store.revokeWebSession(id); }
+}
+
+/** The single cookie policy seam for link, invite and credential sign-in. */
+export function webSessionCookie(auth: WebAuth, token: string, req: import('node:http').IncomingMessage, origin: string): string {
+  return `${auth.cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_SECONDS}${origin && req.headers.host?.toLowerCase() === new URL(origin).host && req.headers.origin === origin ? '; Secure' : ''}`;
 }

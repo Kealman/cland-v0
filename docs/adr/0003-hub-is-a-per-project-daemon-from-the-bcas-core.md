@@ -91,3 +91,30 @@ The glossary names the paired messenger chat a
 [Remote](../../GLOSSARY.md#remotes) and its durable outbound queue an
 [Outbox](../../GLOSSARY.md#remotes). This amendment records the v0.3 design
 decision; it is not a claim that the gateway implementation has shipped.
+
+## 2026-11-02 amendment: users-mode browser admission
+
+The web edge admits users through one-time invitations and credential ceremonies.
+Invites identify a persisted user by a digest-only token, with a 24-hour lifetime;
+opening one does not consume it. Password registration accepts only an HTTP POST
+body, hashes with node:crypto scrypt and an independent random salt, and commits
+the credential, invite spend, user activation and browser session together. A
+failed commit spends nothing. Passwords never enter WebSocket frames, journal or
+logs. Single mode returns 404 on invite paths and retains one-time `/auth` links.
+
+Host is checked on every path. Navigation GETs may omit Origin; a supplied Origin
+must match exactly. Invite APIs require exact Origin before reading input. Browser
+sessions store only cookie digests, bound to persisted user ids, never a name from
+a frame. All cookie writers call one policy function, `webSessionCookie`, retaining
+Path=/, HttpOnly, SameSite=Strict and fixed 30-day expiry, with the existing
+configured-origin/Host/Origin Secure condition.
+
+The users-mode design also admits password sign-in and WebAuthn passkeys. Those
+ceremonies validate credentials before calling the same session/cookie seams;
+WebAuthn binds challenge, RP ID, origin, credential owner and signature/counter.
+Passkeys are offered in secure contexts only; plain HTTP LAN access uses password
+fallback. This amendment records their admission design; T-1566 implements invite
+password registration, with sign-in and passkey HTTP integration in T-1567/T-1568.
+The authenticated user remains a human under ADR 0001. The existing shared
+`userAuthorityRefusal` role check applies alongside the web edge's allowlist;
+credential admission grants no new session or gateway authority.
