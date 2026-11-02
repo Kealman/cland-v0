@@ -440,6 +440,8 @@ export type ProjectHubOptions = {
   hasTerritory?: typeof import('../src/territory.ts').hasTerritory;
   territoryLock?: typeof import('../src/territory.ts').withTerritoryLockAsync;
   readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
+  /** Native-to-embedded lifecycle fixtures retain the local PID-table identity. */
+  lockIdentity?: import('../src/hub/lock.ts').LockHostIdentity;
   processes?: import('../src/hub/lock.ts').LockProcessTable;
   candidate?: import('../src/hub/suite-candidate.ts').SuiteCandidate;
   selectSuite?: import('../src/hub/dispatch.ts').DispatcherOptions['selectSuite'];
@@ -497,6 +499,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),
     // Unknown start identity keeps a live native holder conservative too; an
     // invented stamp could make another reader mistake this fixture for PID reuse.
+    lockIdentity: { hostname: 'fixture', bootId: 'fixture', pidNamespace: null },
     processes: { alive: pidAlive, started: () => null },
   } : {};
   let daemon;

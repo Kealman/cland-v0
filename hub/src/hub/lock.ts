@@ -18,8 +18,15 @@ import { run } from '../doctor/report.ts';
 import type { Resumed } from './worktrees.ts';
 import { pidAlive } from '../project.ts';
 
+export type LockHostIdentity = { hostname: string; bootId: string | null; pidNamespace: string | null };
+export const HUB_LOCK_HEARTBEAT_MS = 10_000;
+export const HUB_LOCK_LAPSE_MS = 60_000;
+export type HubLockOptions = { hostIdentity: LockHostIdentity; now?: () => Date; lapseMs?: number };
+
 export type LockHolder = {
   pid: number;
+  hostIdentity?: LockHostIdentity;
+  heartbeat?: string;
   /** The holder's process start time as `ps -o lstart=` prints it; null when `ps` could not tell. */
   started: string | null;
   /** New ownership records use a pinned ps timezone; older records have no basis. */
@@ -106,10 +113,9 @@ let ownSynchronousStarted: string | null = null;
 
 export function readLock(path: string): LockHolder | null {
   try {
-    const v = JSON.parse(readFileSync(path, 'utf8')) as Partial<LockHolder>;
-    if (typeof v.pid !== 'number') return null;
-    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null, ...(typeof v.startedUtc === 'string' || v.startedUtc === null ? { startedUtc: v.startedUtc } : {}) };
-  } catch {
+    return parseHolder(readFileSync(path, 'utf8'));
+  } catch (error) {
+    if (error instanceof InvalidLockIdentity) throw error;
     return null;
   }
 }
@@ -159,13 +165,32 @@ export async function liveHolderAsync(path: string, startedOf: (pid: number, tim
 // release their own live token through serialized async I/O (see acquireLockAsync). The guard is installed nonempty in one
 // rename. Recovery removes only the dead owner's unique filename, then rmdir (which preserves a successor's
 // nonempty directory). This avoids check/unlink races, including two recoverers and an empty-directory rename.
+export class InvalidLockIdentity extends Error {
+  constructor() { super('lock record has invalid host identity'); this.name = 'InvalidLockIdentity'; }
+}
 type RecordSnapshot = { exists: boolean; holder: LockHolder | null };
 const parseHolder = (text: string): LockHolder | null => {
   try {
     const v = JSON.parse(text) as Partial<LockHolder>;
+    if (!v || typeof v !== 'object') return null;
+    const host = v.hostIdentity;
+    const hostIdentity = host && typeof host.hostname === 'string' && host.hostname.length > 0
+      && (typeof host.bootId === 'string' && host.bootId.length > 0 || host.bootId === null)
+      && (typeof host.pidNamespace === 'string' && host.pidNamespace.length > 0 || host.pidNamespace === null) ? host : undefined;
+    // Only genuinely old records lack both fields. Never turn partial new identity into local PID authority.
+    if ((Object.hasOwn(v, 'hostIdentity') || Object.hasOwn(v, 'heartbeat')) && !hostIdentity) throw new InvalidLockIdentity();
     if (typeof v.pid !== 'number') return null;
-    return { pid: v.pid, started: typeof v.started === 'string' ? v.started : null, ...(typeof v.startedUtc === 'string' || v.startedUtc === null ? { startedUtc: v.startedUtc } : {}), ...(typeof v.token === 'string' ? { token: v.token } : {}) };
-  } catch { return null; } // malformed bytes are distinct from a failed filesystem read
+    return {
+      pid: v.pid, started: typeof v.started === 'string' ? v.started : null,
+      ...(typeof v.startedUtc === 'string' || v.startedUtc === null ? { startedUtc: v.startedUtc } : {}),
+      ...(typeof v.token === 'string' ? { token: v.token } : {}),
+      ...(hostIdentity ? { hostIdentity } : {}),
+      ...(typeof v.heartbeat === 'string' ? { heartbeat: v.heartbeat } : {}),
+    };
+  } catch (error) {
+    if (error instanceof InvalidLockIdentity) throw error;
+    return null;
+  } // malformed bytes are distinct from a failed filesystem read
 };
 const absent = (err: unknown) => (err as NodeJS.ErrnoException).code === 'ENOENT';
 const occupied = (err: unknown) => ['EEXIST', 'ENOTEMPTY'].includes((err as NodeJS.ErrnoException).code ?? '');
@@ -190,7 +215,7 @@ async function emptyGuardAsync(path: string, resumed: Resumed): Promise<void> {
   catch (err) { resumed(() => { if (!absent(err) && !occupied(err)) throw err; }); }
 }
 
-function recoverGuardSync(path: string, processes: LockProcessTable): void {
+function recoverGuardSync(path: string, processes: LockProcessTable, options?: HubLockOptions): void {
   let names: string[];
   try {
     if (!lstatSync(path).isDirectory()) throw new Error(`lock guard ${path} is not a directory; preserve it and remove it after its owner stops`);
@@ -201,7 +226,7 @@ function recoverGuardSync(path: string, processes: LockProcessTable): void {
     const record = recordSync(`${path}/${name}`);
     if (!record.exists) continue;
     if (!record.holder) throw new Error(`unreadable lock guard owner ${path}/${name}`);
-    if (holderAlive(record.holder, processes)) return;
+    if (lockHolderActive(record.holder, processes, options)) return;
     rmSync(`${path}/${name}`, { force: true });
   }
   emptyGuardSync(path);
@@ -230,14 +255,15 @@ async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: numb
   await emptyGuardAsync(path, resumed);
 }
 
-function takeGuardSync(path: string, me: LockHolder, processes: LockProcessTable): (() => void) | null {
+function takeGuardSync(path: string, me: LockHolder, processes: LockProcessTable, options?: HubLockOptions): (() => void) | null {
   const name = `${randomUUID()}.owner`;
   const tmp = `${path}.${name}.tmp`;
   mkdirSync(tmp, { mode: 0o700 });
   return withCleanup(() => {
-    writeFileSync(`${tmp}/${name}`, JSON.stringify(me), { mode: 0o600, flag: 'wx' });
+    const owner = options ? { ...me, heartbeat: (options.now?.() ?? new Date()).toISOString() } : me;
+    writeFileSync(`${tmp}/${name}`, JSON.stringify(owner), { mode: 0o600, flag: 'wx' });
     try { renameSync(tmp, path); }
-    catch (err) { if (!occupied(err)) throw err; recoverGuardSync(path, processes); return null; }
+    catch (err) { if (!occupied(err)) throw err; recoverGuardSync(path, processes, options); return null; }
     return () => { rmSync(`${path}/${name}`, { force: true }); emptyGuardSync(path); };
   }, () => rmSync(tmp, { recursive: true, force: true }));
 }
@@ -275,6 +301,20 @@ async function createExclusiveAsync(path: string, text: string, resumed: Resumed
   }, () => fs.rm(tmp, { force: true }), resumed);
 }
 
+/** Compare the PID tables before asking anything about the recorded PID. */
+export function foreignLockHolder(holder: LockHolder, local: LockHostIdentity): boolean {
+  const host = holder.hostIdentity;
+  return !!host && (host.hostname !== local.hostname || host.bootId !== local.bootId || host.pidNamespace !== local.pidNamespace);
+}
+function lockHolderActive(holder: LockHolder, processes: LockProcessTable, options?: HubLockOptions): boolean {
+  if (options && foreignLockHolder(holder, options.hostIdentity)) {
+    const heartbeat = Date.parse(holder.heartbeat ?? '');
+    // Missing/invalid heartbeats supply no proof of lapse. Future timestamps stay fresh.
+    return !Number.isFinite(heartbeat) || (options.now?.() ?? new Date()).getTime() - heartbeat <= (options.lapseMs ?? HUB_LOCK_LAPSE_MS);
+  }
+  return holderAlive(holder, processes);
+}
+
 export class HubLocked extends Error {
   readonly holder: LockHolder;
   constructor(holder: LockHolder) { super(`another hub holds the project's lock (pid ${holder.pid})`); this.holder = holder; }
@@ -283,15 +323,14 @@ export type HubLock = { holder: LockHolder; release: () => void };
 export type AsyncHubLock = { holder: LockHolder; release: () => Promise<void> };
 const pauseSync = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
 
-export function acquireLock(path: string, processes: LockProcessTable = nativeProcesses): HubLock {
+export function acquireLock(path: string, processes: LockProcessTable = nativeProcesses, options?: HubLockOptions): HubLock {
   // Only this process's own lock identity is immutable while it lives. Null is
   // retried; processStarted and every inspection of another PID remain fresh.
   const started = processes === nativeProcesses ? (ownSynchronousStarted ??= processStarted(process.pid)) : processes.started(process.pid);
-  const me = { pid: process.pid, started, token: randomUUID() };
-  const text = `${JSON.stringify(me)}\n`;
+  const me = { pid: process.pid, started, token: randomUUID(), ...(options ? { hostIdentity: options.hostIdentity, heartbeat: (options.now?.() ?? new Date()).toISOString() } : {}) };
   const guarded = <T>(work: () => T): T => {
     for (let attempt = 0; attempt < 250; attempt++) {
-      const release = takeGuardSync(`${path}.break`, me, processes);
+      const release = takeGuardSync(`${path}.break`, me, processes, options);
       if (!release) { pauseSync(); continue; }
       return withCleanup(work, release);
     }
@@ -299,10 +338,12 @@ export function acquireLock(path: string, processes: LockProcessTable = nativePr
   };
   for (let attempt = 0; attempt < 50; attempt++) {
     const acquired = guarded(() => {
-      if (createExclusive(path, text)) return true;
+      // Guard waits can outlive the lapse: initial ownership starts at installation, never before retries.
+      if (options) me.heartbeat = (options.now?.() ?? new Date()).toISOString();
+      if (createExclusive(path, `${JSON.stringify(me)}\n`)) return true;
       const record = recordSync(path);
       if (!record.exists) return false; // absent means retry creation, never unlink
-      if (record.holder && holderAlive(record.holder, processes)) throw new HubLocked(record.holder);
+      if (record.holder && lockHolderActive(record.holder, processes, options)) throw new HubLocked(record.holder);
       rmSync(path, { force: true }); // creators and releasers are excluded until this guard is released
       return false;
     });

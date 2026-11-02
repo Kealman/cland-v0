@@ -15,12 +15,13 @@ import type { TopicMessage } from '../src/protocol.ts';
 import { fakeTelegram, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { pairing, control } from './telegram-polling-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
+import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { recordedProcess } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 
 test('SIGKILL mid-update leaves the Telegram offset unconfirmed and restart handles it once', async t => {
-  const owner = pacingOwner(t);
+  const owner = pacingOwner(t, { lockIdentity: lockHostIdentity() });
   let nativePid: number | undefined;
   owner.close(async () => { if (nativePid !== undefined) await killDaemon(nativePid); });
   const root = await tempProject(t);
@@ -106,7 +107,7 @@ test('SIGKILL mid-update leaves the Telegram offset unconfirmed and restart hand
 });
 
 test('SIGKILL after Telegram human commit before adapter receipt replays the durable message once', async t => {
-  const owner = pacingOwner(t);
+  const owner = pacingOwner(t, { lockIdentity: lockHostIdentity() });
   let nativePid: number | undefined;
   owner.close(async () => { if (nativePid !== undefined) await killDaemon(nativePid); });
   const root = await tempProject(t);
@@ -218,7 +219,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram restart ob
 
 async function discordHistoryCrashOwner(t: import('node:test').TestContext) {
   const { discordExchangeOwner } = await import('./fakes/discord/exchange.ts');
-  const lifetime = pacingOwner(t);
+  const lifetime = pacingOwner(t, { lockIdentity: lockHostIdentity() });
   const exchange = await discordExchangeOwner(t).start();
   exchange.stop(() => lifetime.dispose());
   const { root } = await exchange.project();

@@ -81,6 +81,12 @@ through projectHub with actual native process facts and require both ordered
 messages exactly once, preserving the original ids for the committed case.
 These prove the selected transaction/receipt boundaries, not every SQLite
 instruction boundary. Only fake credentials and loopback endpoints are used.
+The native-to-embedded restart owner captures `lockHostIdentity()` explicitly
+and forwards it through `pacingOwner` to `projectHub`. The default T2 identity is
+synthetic and cannot describe a native child lock. All three crash owners use
+this captured local identity; offset/history, native-exit and drainage assertions
+remain intact. The lower-tier handoff regression in `hub-lock-identity.test.ts`
+keeps both matching-identity dead-holder reclamation and foreign refusal.
 Report Linux duration for the native admission wait and restart.
 
 The Discord native fixture pre-owns acquisition, Store and exit/setup observations

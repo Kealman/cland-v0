@@ -1554,6 +1554,19 @@ commands check WebAuth admission before mutation; mode switching mints the first
 invite only after successful reload releases its fence. Keep session-shell and
 held/failed-transition refusal regressions. No role clause changes are needed.
 
+## Hub lock acquisition identity (T-1615)
+
+Hub acquisition opts into `HubLockOptions` with a captured hostname, boot id and
+PID namespace. Keep generic locks unchanged. Use the injected acquisition/reader
+seams in `docs/agents/tests/hub-test-hub-lock-identity.test.ts.md`; `projectHub`
+supplies synthetic identity without native probes. Initial heartbeat persistence
+does not prove periodic refresh. Stamp it after guard retries; malformed new
+identity refuses with `InvalidLockIdentity`, including through `readLock`, and
+never becomes legacy PID authority. Foreign holders and break-guard owners are
+never probed by PID; only a heartbeat older than 60 s proves lapse. Legacy
+records keep their prior rules; mixed versions on one volume are unsupported.
+No command or role permission changes apply.
+
 ## Host agent protocol (T-1588)
 
 For host agent operations use the authenticated Unix stream and native CLI seams

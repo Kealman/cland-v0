@@ -6,7 +6,7 @@ import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { Clock } from '../src/hub/clock.ts';
 
 /** Own resources before acquisition, including setup whose serving receipt is lost. */
-export function pacingOwner(t: TestContext, options: { setupTimeoutMs?: number } = {}) {
+export function pacingOwner(t: TestContext, options: { setupTimeoutMs?: number; lockIdentity?: ProjectHubOptions['lockIdentity'] } = {}) {
   let db: Store | undefined;
   const hubs = new Set<Awaited<ReturnType<typeof projectHub>>>();
   const acquiring = new Set<Promise<Awaited<ReturnType<typeof projectHub>>>>();
@@ -71,7 +71,7 @@ export function pacingOwner(t: TestContext, options: { setupTimeoutMs?: number }
       void observed.then(() => observing.delete(observed), () => observing.delete(observed));
       const native = Promise.resolve().then(() => {
         signal.throwIfAborted();
-        return projectHub(t, root, extra, { clock, ...setup.hubOptions });
+        return projectHub(t, root, extra, { clock, ...(options.lockIdentity ? { lockIdentity: options.lockIdentity } : {}), ...setup.hubOptions });
       });
       acquiring.add(native);
       void native.then(hub => {

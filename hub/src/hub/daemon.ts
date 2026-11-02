@@ -33,6 +33,7 @@ import { Store } from './store.ts';
 import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
 import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
+import { lockHostIdentity } from './lock-identity.ts';
 import { acquireLock, HubLocked, type LockProcessTable } from './lock.ts';
 import { VERSION } from '../version.ts';
 import { AGENTS } from './core.ts';
@@ -80,7 +81,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -90,7 +91,9 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   // before anything is prepared: a second hub must not even write the secret
   let lock;
   try {
-    lock = acquireLock(l.lock, options.processes);
+    // A fully injected process table keeps legacy synthetic fixtures native-probe free.
+    // projectHub supplies a synthetic lock identity; production captures the native PID table.
+    lock = acquireLock(l.lock, options.processes, options.processes && !options.lockIdentity ? undefined : { hostIdentity: options.lockIdentity ?? lockHostIdentity(), now: () => clock.now() });
   } catch (err) {
     if (err instanceof HubLocked) {
       throw new Error(`a hub already runs for ${root} (pid ${err.holder.pid} holds ${l.lock}); talk to it over its socket, or stop it first with \`cland hub stop\``);
