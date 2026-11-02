@@ -8,6 +8,7 @@
 //                credentials (`--standalone`: a private server for the call, not the background service)
 //   gh           `gh --version`; `gh auth status` → exit 0
 //   Neovim       `CLAND_NVIM`, else the pinned release in the launcher's cache; `<nvim> --version`
+import { parseStarted } from '../hub/lock.ts';
 import { findNvim, NVIM_VERSION } from '../../../nvim/bin/nvim-path.ts';
 import { fail, firstLine, ok, run, warn, which, type Check } from './report.ts';
 import { formatVersion, parseVersion, TESTED_RANGES, type HarnessId, type Version } from './ranges.ts';
@@ -187,6 +188,15 @@ async function checkNvim(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Che
   return ok('neovim', `${NVIM_VERSION} at ${bin}${env.CLAND_NVIM ? ' (CLAND_NVIM)' : ''}`);
 }
 
+async function checkPs(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Check> {
+  const result = await probe('ps', ['-o', 'lstart=', '-p', String(process.pid)], env);
+  const started = parseStarted(result.stdout);
+  if (result.error !== undefined || result.code !== 0 || !started) {
+    return fail('ps', 'cannot read this process start time with ps -o lstart=', 'install procps on Linux (or repair ps on macOS); the hub lock needs process start times');
+  }
+  return ok('ps', `process start time: ${started}`);
+}
+
 export type ToolchainRequirements = {
   harnesses: readonly string[];
   github: boolean;
@@ -195,10 +205,10 @@ export type ToolchainRequirements = {
 
 /** Every toolchain check, run concurrently, reported in a fixed order. */
 export async function checkToolchain(env: NodeJS.ProcessEnv, probe: typeof run = run, requirements: ToolchainRequirements = { harnesses: [], github: false }): Promise<Check[]> {
-  const [harnesses, gh, nvim, databases] = await Promise.all([
+  const [harnesses, gh, nvim, databases, ps] = await Promise.all([
     Promise.all(HARNESSES.map(h => probeHarness(h.id, env, probe, requirements.installation))),
     requirements.github ? checkGh(env, probe) : [ok('gh', 'not needed: no github remote')],
-    checkNvim(env, probe), checkOpenCodeDatabases(env),
+    checkNvim(env, probe), checkOpenCodeDatabases(env), checkPs(env, probe),
   ]);
   const checks = harnesses.flatMap(h => {
     if (requirements.harnesses.includes(h.id)) return h.checks;
@@ -208,5 +218,5 @@ export async function checkToolchain(env: NodeJS.ProcessEnv, probe: typeof run =
   if (requirements.harnesses.length === 0 && !harnesses.some(h => h.bin !== null)) {
     checks.push(fail('harnesses', 'cland needs at least one harness', HARNESSES.map(h => h.install).join('; ')));
   }
-  return [...checks, ...gh, nvim, ...databases];
+  return [ps, ...checks, ...gh, nvim, ...databases];
 }

@@ -103,6 +103,7 @@ cland doctor
 | What | Needed for |
 | --- | --- |
 | macOS or Linux | Everything. |
+| `procps` (Linux) | Provides `ps -o lstart=` for the hub lock’s process start-time and PID-reuse checks. `cland doctor` reports a failure if it cannot read its own start time. |
 | Git | Every project. cland keeps the crew's work in a local Git territory. |
 | At least one harness | Claude Code (`claude`), Codex (`codex`) or OpenCode (`opencode`). Each one a role uses must be installed, with any login required by its selected provider/model. |
 | `gh`, signed in | Importing GitHub issues and the GitHub checks in doctor. Git publication itself uses Git authentication. |

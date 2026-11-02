@@ -86,7 +86,10 @@ test('without role requirements only a machine with no harness installed fails a
 });
 
 test('gh is required only with the named github remote', async () => {
-  const noProbe: typeof run = async bin => { throw new Error(`unexpected probe ${bin}`); };
+  const noProbe: typeof run = async bin => {
+    assert.equal(bin, 'ps');
+    return { code: 0, stdout: 'Mon Nov  2 12:00:00 2026', stderr: '' };
+  };
   for (const github of [false, true]) {
     const checks = await checkToolchain({ ...env, PATH: '' }, noProbe, { harnesses: [], github, installation: async () => ({ bin: null }) });
     const gh = checks.filter(c => c.name.startsWith('gh'));
@@ -155,4 +158,27 @@ test('OpenCode login counts stored credentials and excludes environment connecti
     { name: 'Environment OpenAI', connections: [{ type: 'env', name: 'OPENAI_API_KEY' }] }, { name: 'Stored Anthropic', connections: [{ type: 'credential', label: 'Anthropic' }] },
   ])), installed);
   assert.deepEqual(mixed.checks[1], { name: 'opencode auth', verdict: 'ok', detail: 'credentials for Stored Anthropic' });
+});
+
+test('doctor ps row requires its own process start time and names procps as the fix', async () => {
+  for (const [result, verdict] of [
+    [{ code: null, stdout: '', stderr: '', error: 'ENOENT' }, 'fail'],
+    [{ code: 1, stdout: '', stderr: 'unsupported option' }, 'fail'],
+    [{ code: 0, stdout: '  \n', stderr: '' }, 'fail'],
+    [{ code: 0, stdout: 'Mon Nov  2 12:00:00 2026\n', stderr: '' }, 'ok'],
+  ] as const) {
+    const calls: Array<readonly string[]> = [];
+    const probe: typeof run = async (bin, args) => {
+      assert.equal(bin, 'ps');
+      calls.push(args);
+      return result;
+    };
+    const checks = await checkToolchain(env, probe, { harnesses: [], github: false, installation: async () => ({ bin: null }) });
+    assert.deepEqual(calls, [['-o', 'lstart=', '-p', String(process.pid)]]);
+    const ps = checks.find(c => c.name === 'ps');
+    assert.ok(ps);
+    assert.equal(ps.verdict, verdict);
+    if (ps.verdict === 'fail') assert.match(ps.fix ?? '', /procps/);
+    else assert.match(ps.detail, /Mon Nov 2 12:00:00 2026/);
+  }
 });

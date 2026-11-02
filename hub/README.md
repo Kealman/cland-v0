@@ -272,7 +272,7 @@ Enforcing finer disjointness rules requires the separate T-1486 replay rollout.
 | `src/cli/worktree.ts` | `cland worktree list`, `cland worktree prune [--yes]`. |
 | `src/cli/setup.ts` | `cland setup [dir]`: root and terminal policy, text/JSON output; `src/setup/` holds the ordered runner, step modules and terminal child helper. |
 | `src/cli/doctor.ts` | `cland doctor [dir]` (below). |
-| `src/doctor/` | Its checks: `toolchain.ts` (the harnesses, `gh`, Neovim), `project.ts` (the hub, the config files, what `cland init` provisioned), `ranges.ts` (`TESTED_RANGES`, the harness versions each adapter was built against), `report.ts` (the verdicts, the text and the runner). |
+| `src/doctor/` | Its checks: `toolchain.ts` (`ps` process start times for the hub lock, the harnesses, `gh`, Neovim; Linux needs `procps`), `project.ts` (the hub, the config files, what `cland init` provisioned), `ranges.ts` (`TESTED_RANGES`, the harness versions each adapter was built against), `report.ts` (the verdicts, the text and the runner). |
 | `src/init/provision.ts` | What `cland init` and `cland update` provision, step by step (below); `src/init/` holds one module per managed part: `config.ts` (`config.toml`, also read by the hub), `skills.ts`, `instructions.ts` (`AGENTS.md`, `CLAUDE.md`, `docs/agents/*`), `claude-settings.ts` (the hooks and background worktree policy), `files.ts` (write-only-when-changed and the report). |
 | `src/roles/config.ts` | `.cland/roles.toml`: parsed (smol-toml), written with the defaults when missing, refreshed asynchronously every 500 ms; permission checks read memory only. |
 | `src/roles/default-roles.ts` | The default `roles.toml`: the four roles' clauses, skills, launch defaults, permissions. |

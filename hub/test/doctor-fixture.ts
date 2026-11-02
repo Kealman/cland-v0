@@ -99,6 +99,10 @@ export const probeTools: typeof import('../src/doctor/report.ts').run = async (b
   let stdout = '';
   let code = 0;
   switch (basename(bin)) {
+    case 'ps':
+      assert.deepEqual(args, ['-o', 'lstart=', '-p', String(process.pid)]);
+      stdout = 'Mon Nov  2 12:00:00 2026';
+      break;
     case 'claude':
       if (args[0] === '--version') stdout = `${env.FAKE_CLAUDE_VERSION ?? '2.1.294'} (Claude Code)`;
       else { assert.deepEqual(args, ['auth', 'status', '--json']); code = env.FAKE_CLAUDE_LOGGED_OUT === '1' ? 1 : 0; stdout = JSON.stringify({ loggedIn: code === 0, authMethod: 'claude.ai' }); }

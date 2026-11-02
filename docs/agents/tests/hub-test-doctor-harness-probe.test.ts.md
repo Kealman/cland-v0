@@ -7,3 +7,8 @@ Prove a missing Console provider warns even when another provider is connected;
 compare provider ids, exclude environment connections, and label failed,
 malformed or timed-out default-store reads incomplete without exposing their
 raw output. No executable, account or credential store is opened by these cases.
+
+The `ps` doctor row uses the existing injected command probe: assert the own-PID
+`-o lstart= -p <pid>` request, failure with a `procps` fix for missing, nonzero
+and empty replies, and success for a returned start time. Never remove or shadow
+the machine's real `ps`.

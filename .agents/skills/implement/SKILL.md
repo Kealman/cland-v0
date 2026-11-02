@@ -155,6 +155,9 @@ For public remote documentation, use `docs/agents/tests/hub-test-remote-docs.tes
 and `docs/agents/tests/hub-test-remote-docs-pairing.test.ts.md`: keep site-only
 dependency isolation, vocabulary checks, executable pairing blocks and README's
 built-in Discord and dual-messenger media/history checks in step.
+Doctor's `ps` prerequisite uses the injected command probe in
+`docs/agents/tests/hub-test-doctor-harness-probe.test.ts.md`; Linux requires
+`procps` for the hub lock. Never remove or shadow the machine's `ps` in tests.
 For doctor's remote diagnostics, use
 `docs/agents/tests/hub-test-doctor-remotes.test.ts.md`: local secret resolution
 and Unix status frames only, with the shared General cause/fix table and optional
