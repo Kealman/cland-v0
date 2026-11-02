@@ -8,6 +8,7 @@
 // Every lifecycle change holds a crash-recoverable directory guard (`hub.lock.break`), so a stale-lock
 // recoverer cannot remove what another starter just created.
 import fs from 'node:fs/promises';
+import { lockHostIdentity } from './lock-identity.ts';
 import { realClock, type Clock } from './clock.ts';
 import { withCleanup, withCleanupAsync } from '../cleanup.ts';
 import { randomUUID } from 'node:crypto';
@@ -144,19 +145,47 @@ export function holderAlive(holder: LockHolder, processes: LockProcessTable = na
   return holder.started === null || sameProcess(holder, processes.started(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC'));
 }
 
-/** The live holder of the lock at `path`, or null when nobody (live) holds it. */
-export function liveHolder(path: string): LockHolder | null {
+/** Foreign ownership is classified before any local PID observation. Missing time is unknown, never lapsed. */
+export function foreignHolderInfo(holder: LockHolder, options: HubLockOptions): { holder: LockHolder; active: boolean; ageMs: number | null } | null {
+  if (!foreignLockHolder(holder, options.hostIdentity)) return null;
+  const stamp = Date.parse(holder.heartbeat ?? '');
+  const ageMs = Number.isFinite(stamp) ? (options.now?.() ?? new Date()).getTime() - stamp : null;
+  return { holder, ageMs, active: ageMs === null || ageMs <= (options.lapseMs ?? HUB_LOCK_LAPSE_MS) };
+}
+export function readForeignHolder(path: string, options?: HubLockOptions) {
   const holder = readLock(path);
-  return holder && holderAlive(holder) ? holder : null;
+  return holder?.hostIdentity ? foreignHolderInfo(holder, options ?? { hostIdentity: lockHostIdentity() }) : null;
+}
+export function describeForeignHolder(info: NonNullable<ReturnType<typeof foreignHolderInfo>>): string {
+  const age = info.ageMs === null ? 'unknown' : `${Math.floor(info.ageMs / 1000)}s`;
+  return `hub on another host ${info.holder.hostIdentity!.hostname} (pid ${info.holder.pid}, heartbeat age ${age})${info.active ? '' : '; heartbeat lapsed, startable'}`;
+}
+
+/** Local PID ownership only, for callers that may signal or remove local discovery. */
+export function localLiveHolder(path: string): LockHolder | null {
+  const holder = readLock(path);
+  if (!holder || holder.hostIdentity && foreignLockHolder(holder, lockHostIdentity())) return null;
+  return holderAlive(holder) ? holder : null;
+}
+
+/** The live holder of the lock at `path`, or null when nobody (live) holds it. */
+export function liveHolder(path: string, options?: HubLockOptions): LockHolder | null {
+  const holder = readLock(path);
+  if (!holder) return null;
+  const foreign = holder.hostIdentity ? foreignHolderInfo(holder, options ?? { hostIdentity: lockHostIdentity() }) : null;
+  return (foreign ? foreign.active : holderAlive(holder)) ? holder : null;
 }
 
 /**
  * `liveHolder` without blocking: the start-time probe is `startedOf`, which the caller bounds (`cland doctor` runs
  * `ps` with a deadline and kills its process group when it passes). A probe that cannot say counts as the holder.
  */
-export async function liveHolderAsync(path: string, startedOf: (pid: number, timezone?: 'UTC') => Promise<string | null>): Promise<LockHolder | null> {
+export async function liveHolderAsync(path: string, startedOf: (pid: number, timezone?: 'UTC') => Promise<string | null>, options?: HubLockOptions): Promise<LockHolder | null> {
   const holder = readLock(path);
-  if (!holder || !pidAlive(holder.pid)) return null;
+  if (!holder) return null;
+  const foreign = holder.hostIdentity ? foreignHolderInfo(holder, options ?? { hostIdentity: lockHostIdentity() }) : null;
+  if (foreign) return foreign.active ? holder : null;
+  if (!pidAlive(holder.pid)) return null;
   if (holder.started === null) return holder;
   return sameProcess(holder, await startedOf(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC')) ? holder : null;
 }
@@ -307,11 +336,8 @@ export function foreignLockHolder(holder: LockHolder, local: LockHostIdentity): 
   return !!host && (host.hostname !== local.hostname || host.bootId !== local.bootId || host.pidNamespace !== local.pidNamespace);
 }
 function lockHolderActive(holder: LockHolder, processes: LockProcessTable, options?: HubLockOptions): boolean {
-  if (options && foreignLockHolder(holder, options.hostIdentity)) {
-    const heartbeat = Date.parse(holder.heartbeat ?? '');
-    // Missing/invalid heartbeats supply no proof of lapse. Future timestamps stay fresh.
-    return !Number.isFinite(heartbeat) || (options.now?.() ?? new Date()).getTime() - heartbeat <= (options.lapseMs ?? HUB_LOCK_LAPSE_MS);
-  }
+  const foreign = options && foreignHolderInfo(holder, options);
+  if (foreign) return foreign.active;
   return holderAlive(holder, processes);
 }
 

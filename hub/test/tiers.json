@@ -228,6 +228,7 @@
     "hub/test/host-registry.test.ts": "T2",
     "hub/test/hub-lock-heartbeat.test.ts": "T2",
     "hub/test/hub-lock-identity.test.ts": "T2",
+    "hub/test/hub-lock-readers.test.ts": "T2",
     "hub/test/hub-priority.test.ts": "T2",
     "hub/test/hub-status-component.test.ts": "T2",
     "hub/test/human-hold.test.ts": "T2",

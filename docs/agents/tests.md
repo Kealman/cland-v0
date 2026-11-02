@@ -869,10 +869,13 @@ Hub rules use `projectHub(t, root, env, { clock })` by default,
 with a `FakeClock`. It replaces Claude Code, Codex and OpenCode under their real
 harness names, so `roles.toml` launch choices still work. The returned `fakes`
 map exposes each adapter. `probes: 'fake'` supplies no-repository Git answers and
-an in-process lock identity, so startup and teardown spawn no infrastructure
-processes either. A test needing branch/provenance facts may override `git` and
+an injected process table; startup and teardown keep their infrastructure probes fake. A test needing branch/provenance facts may override `git` and
 `readBase`; a lock test may override `processes` (`alive` and `started`).
-`projectHub` defaults to fake harnesses and probes; explicitly supplied adapters,
+`projectHub` captures this machine’s native lock identity by default, shared with
+doctor fixture readers; explicit synthetic identity is reserved for foreign-holder
+controls. Linux reads native identity files; macOS uses one bounded sysctl per test
+worker under the sealed fixture environment. `projectHub` defaults to fake
+harnesses and process probes; explicitly supplied adapters,
 Git, base-reader, territory and process facts take precedence. T3 contracts and lifecycle
 files opt into production defaults by importing `nativeProjectHub` (which passes
 `harnesses: 'native', probes: 'native'`). Either option can also be selected

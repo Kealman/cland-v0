@@ -15,3 +15,5 @@ tightens/refuses credentials before serving and releases the lock on refusal.
 The auth/user commands add one shared pure help module (37 total). Keep the
 non-help implementation budgets unchanged. Native no-hub auth/user calls remain
 database-free, and both dispatch paths preserve their import-failure stderr/exit.
+
+Hub lifecycle readers load dynamically only when their operation needs a lock. Empty-project status and stop avoid importing lock/host-identity/process probes; keep the existing module budgets and full command-closure assertions. Foreign-lock behavior remains covered by the reader tests.

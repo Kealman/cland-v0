@@ -3,7 +3,7 @@ import { fixtureOwnership } from '../../../shared/fixture-ownership.ts';
 // anywhere inside it).
 import { AutostartDeferred, autostartDeferred, markHubStop, type Starter } from '../hub/startup.ts';
 import { spawn } from 'node:child_process';
-import { closeSync, fstatSync, mkdirSync, openSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
@@ -13,7 +13,7 @@ import { withRole } from '../names.ts';
 import { askHub, askHubFrame, probe } from './socket-client.ts';
 import { sessionOf } from './actor.ts';
 import { journalPath, readJournal } from '../hub/journal.ts';
-import { liveHolder } from '../hub/lock.ts';
+import type { readForeignHolder } from '../hub/lock.ts';
 import { formatAudit, parseSince, readAudit, type AuditFilter } from '../hub/audit.ts';
 
 const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
@@ -66,18 +66,21 @@ async function describe(s: HubStatus): Promise<string> {
 }
 
 /** Whether `pid` is the project's hub: the process holding `.cland/hub.lock`, started when the lock says. */
-const ownsProject = (lockFile: string, pid: number): boolean => liveHolder(lockFile)?.pid === pid;
+const ownsProject = (lockFile: string, pid: number, readers: typeof import('../hub/lock.ts')): boolean => readers.localLiveHolder(lockFile)?.pid === pid;
 
 /**
  * What `hub.json` says and whether it is true: a live hub, a stale file (its pid is gone, or is a live
  * process that does not hold the project's lock — a reused pid), a hub that does not answer, or nothing.
  */
-export async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery }> {
+export async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'foreign'; info: NonNullable<ReturnType<typeof readForeignHolder>> } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery }> {
+  const readers = existsSync(l.lock) ? await import('../hub/lock.ts') : null;
+  const foreign = readers?.readForeignHolder(l.lock);
+  if (foreign) return { kind: 'foreign', info: foreign };
   const d = readDiscovery(l.discovery);
   if (!d) return { kind: 'none' };
   if (!pidAlive(d.pid)) return { kind: 'stale', d, why: `pid ${d.pid} is gone` };
   if (await probe(d)) return { kind: 'live', d };
-  return ownsProject(l.lock, d.pid) ? { kind: 'mute', d } : { kind: 'stale', d, why: `pid ${d.pid} is not this project's hub` };
+  return readers && ownsProject(l.lock, d.pid, readers) ? { kind: 'mute', d } : { kind: 'stale', d, why: `pid ${d.pid} is not this project's hub` };
 }
 
 async function waitForExit(pid: number, ms: number): Promise<boolean> {
@@ -97,6 +100,11 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
     return 0;
   }
   const found = await inspect(l);
+  const { readForeignHolder, describeForeignHolder, liveHolder } = await import('../hub/lock.ts');
+  if (found.kind === 'foreign' && found.info.active) {
+    io.err(`cland: ${describeForeignHolder(found.info)}\n`);
+    return 1;
+  }
   if (found.kind === 'live') {
     io.out(`hub already running for ${root} (pid ${found.d.pid})\n`);
     return 0;
@@ -132,6 +140,16 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
       logSize = size;
     } catch { /* no progress logged */ }
     if (Date.now() >= deadline) break;
+    const foreign = readForeignHolder(l.lock);
+    if (foreign?.active) {
+      // The losing child will refuse acquisition. Observe its exit before returning.
+      if (exited !== null) {
+        io.err(`cland: ${describeForeignHolder(foreign)}\n`);
+        return 1;
+      }
+      await sleep(50);
+      continue;
+    }
     const holder = liveHolder(l.lock);
     if (exited !== null && holder === null) {
       if (autostart && autostartDeferred(root)) {
@@ -183,6 +201,11 @@ async function status(l: Layout, json: boolean, io: Io, history = false): Promis
       }
       return 0;
     }
+    case 'foreign': {
+      const { describeForeignHolder } = await import('../hub/lock.ts');
+      io.out(json ? `${JSON.stringify({ running: found.info.active, root, foreign: true, hostname: found.info.holder.hostIdentity!.hostname, pid: found.info.holder.pid, heartbeatAgeMs: found.info.ageMs, startable: !found.info.active })}\n` : `${describeForeignHolder(found.info)}\n`);
+      return found.info.active ? 0 : 1;
+    }
     case 'none':
       io.out(json ? `${JSON.stringify({ running: false, root })}\n` : `no hub running for ${root}\n`);
       return 1;
@@ -197,13 +220,24 @@ async function status(l: Layout, json: boolean, io: Io, history = false): Promis
 
 async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
   const root = l.root;
+  if (!existsSync(l.lock) && !readDiscovery(l.discovery)) {
+    io.out(`no hub running for ${root}\n`);
+    return 0;
+  }
+  const readers = await import('../hub/lock.ts');
+  const { readForeignHolder, describeForeignHolder, liveHolder } = readers;
+  const foreign = readForeignHolder(l.lock);
+  if (foreign) {
+    io.err(`cland: ${describeForeignHolder(foreign)}; stop it on that host; no local process signalled\n`);
+    return 1;
+  }
   const d = readDiscovery(l.discovery);
   if (!d) {
     io.out(`no hub running for ${root}\n`);
     return 0;
   }
   if (pidAlive(d.pid)) {
-    const ownedBeforeStop = ownsProject(l.lock, d.pid);
+    const ownedBeforeStop = ownsProject(l.lock, d.pid, readers);
     let asked = true;
     try {
       await askHub(d, 'hub.stop');
@@ -222,6 +256,11 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
       }
       asked = false;
     }
+    const successor = readForeignHolder(l.lock);
+    if (successor) {
+      io.err(`cland: ${describeForeignHolder(successor)}; no local process signalled\n`);
+      return 1;
+    }
     if (!(asked && (await waitForExit(d.pid, STOP_DEADLINE_MS)))) {
       if (!rootKnown) {
         io.err(`cland: cannot verify the project root for ${l.discovery}; pid ${d.pid} is left running\n`);
@@ -229,7 +268,8 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
       }
       // The socket did not take the request, or the hub did not leave in time: the signal's turn — but only
       // for the process that holds the project's lock. Any other is a stranger behind a reused pid.
-      if (!ownsProject(l.lock, d.pid)) {
+      if (readForeignHolder(l.lock)) return 1;
+      if (!ownsProject(l.lock, d.pid, readers)) {
         if (asked && ownedBeforeStop) {
           io.err(`cland: hub stopped, lock released, process still alive (pid ${d.pid}); left it running\n`);
           return 1;
@@ -252,6 +292,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
   // A hub that stopped cleanly removed its own files. One that died without cleaning up leaves hub.json
   // naming it, and its socket: those go, unless another hub holds the project's lock by now (its socket
   // may already stand at that path). A newer hub's hub.json is never touched.
+  if (readForeignHolder(l.lock)) return 0;
   if (readDiscovery(l.discovery)?.pid === d.pid) {
     removeDiscovery(l.discovery, d.pid);
     // A copied discovery may still name the old hub after the canonical file names a replacement.

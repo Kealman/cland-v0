@@ -1,3 +1,4 @@
+import { lockHostIdentity } from './hub/lock-identity.ts';
 import { findFixtureOrphans, sweepFixtureOrphans } from './fixture-processes.ts';
 import { processPaths as pathsOf } from './process-paths.ts';
 // Project-owned servers without a running session. OS paths establish ownership; argv is only a candidate hint.
@@ -8,7 +9,7 @@ import { mkdir, stat } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from './database.ts';
-import { acquireLockAsync, HubLocked, readLock } from './hub/lock.ts';
+import { acquireLockAsync, HubLocked, readLock, foreignLockHolder, type LockHolder, type LockHostIdentity } from './hub/lock.ts';
 import { endProcess, systemProcesses, type SystemProcess } from './system-processes.ts';
 
 export type Orphan = { process: SystemProcess; kind: 'harness' | 'hub' | 'bridge' | 'fixture'; root: string; owned: boolean; reason: string };
@@ -20,6 +21,12 @@ const directoryMissing = (path: string) => {
 };
 const within = (path: string, root: string) => path === root || path.startsWith(root + sep);
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** A foreign PID table grants no local reservation, even when its number collides. */
+export function localHubInRows(holder: LockHolder, rows: readonly { pid: number; started: string }[], local: LockHostIdentity): boolean {
+  return !foreignLockHolder(holder, local) && holder.pid !== process.pid
+    && rows.some(row => row.pid === holder.pid && (!holder.started || row.started === holder.started));
+}
 
 /** Doctor's read-only ownership snapshot; null preserves processes when inspection fails. */
 export function orphanSessions(root: string): Session[] | null {
@@ -231,7 +238,7 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
       // A captured recorded wrapper's descendants stay published even after that wrapper exits.
       const holder = readLock(join(root, '.cland', 'hub.lock'));
       const recorded = table.some(p => p.pid === candidate.process.pid && p.pid_started === candidate.process.started);
-      if (!owner && !recorded && holder && holder.pid !== process.pid && rows.some(row => row.pid === holder.pid && (!holder.started || row.started === holder.started))) return false;
+      if (!owner && !recorded && holder && localHubInRows(holder, rows, lockHostIdentity())) return false;
       if (proof.wrapper) {
         if (!owner || owner.process.pid !== proof.wrapper.pid || owner.process.started !== proof.wrapper.started) return false;
       }

@@ -1589,7 +1589,7 @@ per-host credential/principal admission to its owning module.
 Hub acquisition opts into `HubLockOptions` with a captured hostname, boot id and
 PID namespace. Keep generic locks unchanged. Use the injected acquisition/reader
 seams in `docs/agents/tests/hub-test-hub-lock-identity.test.ts.md`; `projectHub`
-supplies synthetic identity without native probes. Initial heartbeat persistence
+captures the native lock identity by default so local CLI readers share its PID table. Identity-only foreign controls opt into explicit synthetic identity. Initial heartbeat persistence
 does not prove periodic refresh. Stamp it after guard retries; malformed new
 identity refuses with `InvalidLockIdentity`, including through `readLock`, and
 never becomes legacy PID authority. Foreign holders and break-guard owners are
@@ -1600,7 +1600,7 @@ For periodic refresh and lost-lock shutdown, use
 hub clock, retain whole-file and foreign-refusal receipts, and observe normal
 shutdown before checking the successor lock. A heartbeat write failure retries
 without shutdown; only a confirmed replacement token proves ownership lost.
-No command or role permission changes apply.
+Lifecycle readers use `readForeignHolder`/`foreignHolderInfo` before PID or socket work; offline migration uses synchronous hub-aware acquisition while generic async locks remain host-unaware. For CLI/doctor/orphan preservation and the foreign-reader seam, use `docs/agents/tests/hub-test-hub-lock-readers.test.ts.md`. Stop refuses foreign holders even after lapse and retains their files. Capture native lock identity across every native-to-embedded restart. No role permission changes apply.
 
 ## Host agent protocol (T-1588)
 

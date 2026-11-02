@@ -2,6 +2,7 @@
 import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { runTask } from '../src/cli/task.ts';
 import { inProcessSpoke, projectHub } from './harness.ts';
@@ -252,7 +253,7 @@ test('a renamed file with its old id completes after interruption without duplic
   assert.ok(text.endsWith(prose));
   assert.match(text, /custom: untouched/);
   assert.match(text, /id: R-1/);
-  const restarted = await projectHub(t, root, {}, { probes: 'fake', harnesses: 'fake' });
+  const restarted = await projectHub(t, root, {}, { probes: 'fake', harnesses: 'fake', lockIdentity: lockHostIdentity() });
   const ui = await connectUi(t, restarted.discovery);
   const view = await ui.request({ type: 'task.view', item: 'T-1' });
   assert.equal(view.ok, true, view.error);
@@ -404,7 +405,7 @@ test('offline size backfill uses explicit decisions, previews without writes and
     assert.deepEqual(await filesSnapshot(root), changed);
     assert.deepEqual(indexSnapshot(root), dbAfter);
   }
-  await projectHub(t, root, {}, { probes: 'fake', harnesses: 'fake' });
+  await projectHub(t, root, {}, { probes: 'fake', harnesses: 'fake', lockIdentity: lockHostIdentity() });
   for (const id of ['T-328', 'E-328', '328']) {
     const result = await cland(root, 'task', 'view', id, '--json');
     assert.equal(result.code, 0, result.stderr);

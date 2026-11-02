@@ -1,3 +1,5 @@
+import { realClock, type Clock } from '../hub/clock.ts';
+import { lockHostIdentity } from '../hub/lock-identity.ts';
 // Prefix migration is an offline maintenance operation. Hold the same lock as hub
 // startup, so neither a new hub nor a second migrator can race the file/index writes.
 import { execFile } from 'node:child_process';
@@ -8,7 +10,7 @@ import { readdir, readFile, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { layout, projectRoot, readDiscovery } from '../project.ts';
-import { acquireLockAsync, HubLocked } from '../hub/lock.ts';
+import { acquireLock, HUB_LOCK_HEARTBEAT_MS, HubLocked, readForeignHolder, describeForeignHolder } from '../hub/lock.ts';
 import { Journal, journalPath, readJournal } from '../hub/journal.ts';
 import { jsonLinesLog } from '../log.ts';
 import { defaultConfig, parseConfig } from '../init/config.ts';
@@ -21,25 +23,43 @@ import { Ladder, kindsFor } from './kinds.ts';
 import { planMigration, type MigrationPlan, type ClosingTime, parseSizeAssignments } from './migrate.ts';
 import { Tracker, type Actor } from './tracker.ts';
 
-export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor, sizesFile?: string): Promise<MigrationPlan> {
+export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor, sizesFile?: string, options: { clock?: Clock; readText?: (path: string) => Promise<string> } = {}): Promise<MigrationPlan> {
   const root = projectRoot(cwd);
   if (await realpath(cwd) !== await realpath(root)) throw new Error('task migrate must run from the project root shell, not a linked worktree or subdirectory');
   const l = layout(root);
   if (!existsSync(l.tasks)) throw new Error('task migrate requires an existing tracker; run cland init before migrating');
-  const discovery = readDiscovery(l.discovery);
+  const clock = options.clock ?? realClock;
+  const readText = options.readText ?? (path => readFile(path, 'utf8'));
+  const lockOptions = { hostIdentity: lockHostIdentity(), now: () => clock.now() };
+  const foreign = readForeignHolder(l.lock, lockOptions);
+  if (foreign?.active) throw new Error(describeForeignHolder(foreign));
+  const discovery = foreign ? null : readDiscovery(l.discovery);
   if (discovery) {
     const answering = await probe(discovery, 1000);
     if (answering) throw new Error('the hub is running; stop the hub before task migrate');
   }
   let lock;
-  try { lock = await acquireLockAsync(l.lock); }
+  try { lock = acquireLock(l.lock, undefined, lockOptions); }
   catch (err) {
-    if (err instanceof HubLocked) throw new Error('the hub or another migration is running; stop the hub before task migrate');
+    if (err instanceof HubLocked) {
+      const holder = readForeignHolder(l.lock, lockOptions);
+      throw new Error(holder?.active ? describeForeignHolder(holder) : 'the hub or another migration is running; stop the hub before task migrate');
+    }
     throw err;
   }
+  let lost = false;
+  const authorize = () => {
+    if (lost) throw new Error('migration lost its hub lock');
+    if (!lock.heartbeat!()) { lost = true; throw new Error('migration lost its hub lock'); }
+  };
+  const heartbeat = clock.setInterval(() => {
+    // A failed I/O is retried; every publication independently proves current ownership.
+    try { authorize(); } catch { /* authorize fences writes while ownership cannot be proven */ }
+  }, HUB_LOCK_HEARTBEAT_MS);
+  heartbeat.unref();
   try {
     const actor = offlineActor(l.db, caller);
-    const config = existsSync(l.config) ? parseConfig(await readFile(l.config, 'utf8'), root) : defaultConfig(root);
+    const config = existsSync(l.config) ? parseConfig(await readText(l.config), root) : defaultConfig(root);
     const ladder = new Ladder(config.tracker.levels);
     if (!ladder.roots.includes('category')) throw new Error('task migrate requires category at the root of [tracker] levels; run cland update and restart the hub before stopping it for migration');
     for (const [path, reason] of [
@@ -87,7 +107,7 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
     }
     const entries = [];
     for (const file of names.filter(name => fileNumber(name, kindsFor(ladder)) !== null)) {
-      const text = await readFile(join(l.tasks, file), 'utf8');
+      const text = await readText(join(l.tasks, file));
       entries.push({ file, item: parseItem(text, file, ladder), hash: createHash('sha256').update(text).digest('hex') });
       highWater = Math.max(highWater, fileNumber(file, kindsFor(ladder))!);
     }
@@ -114,14 +134,15 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
     });
     // A crash can publish the last file before indexing it. Only a genuinely
     // current index may take the no-write fast path, even when the file plan is empty.
+    authorize();
     if (dryRun || !filesChange && indexCurrent) return plan;
     mkdirSync(l.logDir, { recursive: true });
     const journal = new Journal(journalPath(l.dir));
     const log = journal.tap(jsonLinesLog(line => appendFileSync(l.log, line)));
-    const tracker = new Tracker({ root: resolve(root), db: l.db, levels: config.tracker.levels, log });
-    try { return await tracker.migrate(actor, closingTimes, sizes); }
+    const tracker = new Tracker({ clock, root: resolve(root), db: l.db, levels: config.tracker.levels, log });
+    try { return await tracker.migrate(actor, closingTimes, sizes, authorize); }
     finally { await tracker.stop(); await journal.close(); }
-  } finally { await lock.release(); }
+  } finally { clock.clearInterval(heartbeat); lock.release(); }
 }
 
 function offlineActor(path: string, caller?: FrameActor): Actor {

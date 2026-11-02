@@ -7,7 +7,8 @@ import { acquireLock, acquireLockAsync, HubLocked, readLock } from '../src/hub/l
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
-import { tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureLockIdentity, tempProject } from './harness.ts';
 
 const identity = { hostname: 'host-a', bootId: 'boot-a', pidNamespace: 'pid:[1]' };
 const now = () => new Date('2026-11-02T05:00:00.000Z');
@@ -147,16 +148,16 @@ test('native-to-embedded fixture handoff reclaims a dead same-host holder and pr
   const path = join(root, '.cland', 'hub.lock');
   mkdirSync(join(path, '..'), { recursive: true });
   const clock = new FakeClock();
-  const nativeIdentity = { hostname: 'native-fixture-machine', bootId: 'native-boot', pidNamespace: 'pid:[7]' };
+  const nativeIdentity = fixtureLockIdentity(fixtureEnvironment(root, process.env));
   const prior = { pid: foreignPid, started: 'native-start', token: 'native-lock', hostIdentity: nativeIdentity, heartbeat: clock.now().toISOString() };
   writeFileSync(path, JSON.stringify(prior));
   const probes: number[] = [];
   const deadProcesses = { alive: (pid: number) => { probes.push(pid); return false; }, started: () => null };
-  const defaultOwner = pacingOwner(t);
-  await assert.rejects(defaultOwner.start(root, {}, clock, { hubOptions: { processes: deadProcesses } }), /a hub already runs/);
+  const foreignOwner = pacingOwner(t, { lockIdentity: { hostname: 'explicit-foreign-fixture', bootId: 'foreign', pidNamespace: null } });
+  await assert.rejects(foreignOwner.start(root, {}, clock, { hubOptions: { processes: deadProcesses } }), /a hub already runs/);
   assert.deepEqual(probes, [], 'a different identity never probes the numeric PID');
   assert.deepEqual(readLock(path), prior, 'foreign refusal preserves the held record');
-  const nativeOwner = pacingOwner(t, { lockIdentity: nativeIdentity });
+  const nativeOwner = pacingOwner(t);
   const hub = await nativeOwner.start(root, {}, clock, { hubOptions: { processes: deadProcesses } });
   try {
     const installed = readLock(path);

@@ -9,7 +9,7 @@ import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSyn
 import { basename, join, relative, resolve } from 'node:path';
 import { HOOK_EVENTS, MOD_DIR } from '../adapters/claude-code.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
-import { liveHolderAsync, parseStarted } from '../hub/lock.ts';
+import { liveHolderAsync, parseStarted, readForeignHolder, describeForeignHolder, type HubLockOptions } from '../hub/lock.ts';
 import { parseConfig } from '../init/config.ts';
 import { isManagedFile, readText } from '../init/files.ts';
 import { BLOCK_END, DOCS } from '../init/instructions.ts';
@@ -47,6 +47,7 @@ async function checkCaptures(root: string): Promise<Check> {
 
 /** Native facts are separate from project-file parsing and the hub socket proof. */
 export type ProjectReaders = {
+  lockOptions?: HubLockOptions;
   started?: Parameters<typeof liveHolderAsync>[1];
   territoryProblems?: typeof territoryProblems;
 };
@@ -57,14 +58,19 @@ async function checkHub(l: Layout, readers: ProjectReaders, env: NodeJS.ProcessE
   const text = readText(l.discovery);
   const d = text === null ? null : readDiscovery(l.discovery);
   // the lock's holder, its start time asked of `ps` with a deadline: a hung `ps` cannot hold the doctor up
-  const holder = await liveHolderAsync(l.lock, readers.started ?? (async (pid, timezone) => {
+  const foreign = readForeignHolder(l.lock, readers.lockOptions);
+  const holder = foreign ? null : await liveHolderAsync(l.lock, readers.started ?? (async (pid, timezone) => {
     const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...env, TZ: timezone, LC_ALL: 'C' } : env, probeTimeout(env, 3000));
     return r.code === 0 && r.error === undefined ? parseStarted(r.stdout) : null;
-  }));
+  }), readers.lockOptions);
   const out: Check[] = [];
   let running = false;
 
-  if (text === null) {
+  if (foreign) {
+    running = foreign.active;
+    out.push(warn('hub', describeForeignHolder(foreign), foreign.active ? 'manage the hub on its owning host' : 'cland hub start'));
+    out.push(ok('hub.json', text === null ? 'absent; foreign lock retained' : 'retained for the foreign holder'));
+  } else if (text === null) {
     if (holder) {
       out.push(fail('hub', `pid ${holder.pid} holds ${rel(l.lock)}, but ${rel(l.discovery)} is missing: sessions and the CLI cannot find the hub`, `stop pid ${holder.pid} (kill ${holder.pid}), then cland hub start`));
       out.push(fail('hub.json', `missing while pid ${holder.pid} holds the hub lock`, `kill ${holder.pid}, then cland hub start (it writes ${rel(l.discovery)})`));

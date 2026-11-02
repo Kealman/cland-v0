@@ -1,3 +1,4 @@
+import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { fakePollerProcesses } from './fakes/poller-processes.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
@@ -452,6 +453,10 @@ export type ProjectHubOptions = {
   transportClock?: Clock;
 };
 
+let capturedLockIdentity: ReturnType<typeof lockHostIdentity> | undefined;
+/** Embedded hubs share the local CLI's PID table; only identity-only fixtures opt into synthetic hosts. */
+export const fixtureLockIdentity = (env: NodeJS.ProcessEnv) => capturedLockIdentity ??= lockHostIdentity(process.platform, undefined, env);
+
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
@@ -499,7 +504,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),
     // Unknown start identity keeps a live native holder conservative too; an
     // invented stamp could make another reader mistake this fixture for PID reuse.
-    lockIdentity: { hostname: 'fixture', bootId: 'fixture', pidNamespace: null },
+    lockIdentity: options.lockIdentity ?? fixtureLockIdentity(env),
     processes: { alive: pidAlive, started: () => null },
   } : {};
   let daemon;

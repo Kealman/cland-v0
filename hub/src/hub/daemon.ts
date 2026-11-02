@@ -92,7 +92,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   let lock;
   try {
     // A fully injected process table keeps legacy synthetic fixtures native-probe free.
-    // projectHub supplies a synthetic lock identity; production captures the native PID table.
+    // projectHub captures the local identity by default; identity controls may supply a foreign tuple.
     lock = acquireLock(l.lock, options.processes, options.processes && !options.lockIdentity ? undefined : { hostIdentity: options.lockIdentity ?? lockHostIdentity(), now: () => clock.now() });
   } catch (err) {
     if (err instanceof HubLocked) {

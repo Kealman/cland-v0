@@ -1384,8 +1384,9 @@ export class Tracker {
 
   /** Offline applier: one storage admission, rename first, then patch only frontmatter.
    * The caller owns the project hub lock; no watcher or serving client runs here. */
-  migrate(actor: Actor, closingTimes: ClosingTimes = new Map(), sizes?: SizeAssignments): Promise<MigrationPlan> {
+  migrate(actor: Actor, closingTimes: ClosingTimes = new Map(), sizes?: SizeAssignments, authorize: () => void = () => {}): Promise<MigrationPlan> {
     return this.#serial(async resumed => {
+      authorize();
       const entries: Array<{ file: string; item: Item; text: string }> = [];
       for (const file of (await this.#files.readdir(this.#dir)).filter(name => this.#fileNumber(name) !== null)) {
         const text = await this.#files.readFile(join(this.#dir, file), 'utf8');
@@ -1419,6 +1420,7 @@ export class Tracker {
         if (size) set('size', size.size);
         if (closed) set('closed', closed.time);
         const name = plan.renames.find(c => c.from === file)?.to ?? file;
+        authorize();
         if (name !== file) await this.#files.rename(join(this.#dir, file), join(this.#dir, name));
         let text = entry.text;
         if (changed) {
@@ -1431,10 +1433,13 @@ export class Tracker {
             : `---${newline}${yaml}---${newline}` + entry.text.slice(match[0].length);
           const tmp = join(this.#dir, `.${name}.${process.pid}.tmp`);
           try {
+            authorize();
             await this.#files.writeFile(tmp, text);
+            authorize();
             await this.#files.rename(tmp, join(this.#dir, name));
           } finally { await this.#files.unlink(tmp).catch(() => {}); }
         }
+        authorize();
         const written = parseItem(text, name, this.ladder);
         const meta = this.#index.metaOf(written.fm.id);
         if (meta?.file !== name || meta.hash !== hashOf(text)) {
@@ -1444,14 +1449,16 @@ export class Tracker {
           this.#changed(written.fm.id);
         }
       }
+      authorize();
       const present = new Set(entries.map(entry => this.#fileNumber(entry.file)!));
       for (const id of this.#index.ids()) if (!present.has(idNumber(id))) {
         this.#index.remove(id); this.#planSources.delete(id); this.#summaries.delete(id); this.#cards.delete(id); this.#reasons.delete(id); this.#changed(id);
       }
       for (const category of plan.categories) if (category.action === 'create') {
-        const created = await this.#create(actor, { title: category.title, kind: category.kind }, resumed, () => {});
+        const created = await this.#create(actor, { title: category.title, kind: category.kind }, resumed, authorize);
         if (created.id !== category.id) throw new TrackerError(`migration counter changed: expected ${category.id}, got ${created.id}`);
       }
+      authorize();
       if (filesChange) this.#log({ event: 'task-migrated', counts: Object.fromEntries(Object.entries(plan).map(([part, changes]) => [part, changes.length])), by: actor.name });
       else this.#log({ event: 'task-migration-index-repaired', by: actor.name });
       return plan;
