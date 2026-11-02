@@ -2,8 +2,8 @@
 id: T-1632
 kind: task
 title: "Config: merge batches of five, T1+T3 batch tiers and eight remote slots"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1336
 branch: t/T-1632-config-merge-batches-of-five-t1-t3-batch
 created: 2026-11-02T09:40:22.301Z
-updated: 2026-11-02T10:01:07.828Z
+updated: 2026-11-02T12:40:01.605Z
+closed: 2026-11-02T12:40:01.605Z
 ---
 
 ## Summary
@@ -73,3 +74,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, C1–C3 verified. Independently matched A-15782 same-head init-config17 pass facts including repository parser pin line1984 for all5/[T1,T3]/8 values;16 other config cases unchanged. Merge-queue38/config-reload-component12 pass. C1 dated comments/settings established by source review. Queuedc751ed55 exit0/4712pass/zero fail,cancel,skip,todo; T0/T1/all fallbackT2/Web complete, config unsupported path causes fallback. T3 deferred to batch,T4 unexecuted, no full premerge claim. Treeea8726022934292e9b664bf6ef5ce2cf74ade714; host typecheck at that tree not repeated remotely. Linuxx64 6.8.0-142-generic c8sfo2 Node24.21/Nvim.12.5 workers2; isolatedHeadlessShell1248/ChromeForTesting156.0.8078.4; cache/occasionnull,skips[],skipreasonreport/missing0. Duration/lint/ratchet report-only; executor970s not suite walltime. A-15783 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15783-t-1632-final-evidence-review-at-8f4f5c407.md) records evidence. No findings; reviewer ran no tests/browser and made no edits.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-02T12:40:01.605Z
+
+Merged 3c91205ada35700860f943cd56f4f6c9a8059ac4 onto dev.

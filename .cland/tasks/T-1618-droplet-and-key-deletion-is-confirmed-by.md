@@ -2,8 +2,8 @@
 id: T-1618
 kind: task
 title: Droplet and key deletion is confirmed by a GET on release and in the watchdog
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1330
 branch: t/T-1618-droplet-and-key-deletion-is-confirmed-by
 created: 2026-11-02T03:34:16.979Z
-updated: 2026-11-02T08:06:10.590Z
+updated: 2026-11-02T13:19:38.114Z
+closed: 2026-11-02T13:19:38.114Z
 ---
 
 ## Summary
@@ -158,3 +159,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; C1–C7 verified, no findings. Independently streamed exact-head uncached A-15748/f858dea5 exit0,4708/4708: confirmation7+35 load repetitions, recovery1+5 repetitions, watchdog1, original suite-close14 (formerly failing case0.275s), component1/demo9 pass. A-15752 full native TAP/manifests independently establish unchanged C7 droplet14/safety17 at same head on macOSarm64 Node24.21, exit0/signalnull; component1 is Linux. Linux droplet Node24.21/Neovim0.12.5 T0/T1/fallback allT2/changedT3/Web complete; remainingT3/T4 unexecuted. Isolated HeadlessShell1248 Chrome156.0.8078.4; advisory/skip checks report-only, missing0. Prior failed runs retained; T1629 non-independent per Coordinator. No Reviewer execution; merge batch/after-stage QA separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-02T13:19:38.114Z
+
+Merged 31f90e6bae7262257595978a8da3d448e48b8f1a onto dev.

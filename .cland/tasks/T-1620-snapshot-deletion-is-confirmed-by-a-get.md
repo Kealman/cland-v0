@@ -3,7 +3,7 @@ id: T-1620
 kind: task
 title: Snapshot deletion is confirmed by a GET
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1538
 blocked_by:
   - T-1618
-topic: null
-branch: null
+topic: topic-1343
+branch: t/T-1620-snapshot-deletion-is-confirmed-by-a-get
 created: 2026-11-02T03:34:17.445Z
-updated: 2026-11-02T03:34:46.002Z
+updated: 2026-11-02T15:50:36.287Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1592
 kind: task
 title: The spoke edge on a Unix socket
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1329
 branch: t/T-1592-the-spoke-edge-on-a-unix-socket
 created: 2026-11-02T03:33:53.512Z
-updated: 2026-11-02T07:42:41.893Z
+updated: 2026-11-02T15:42:47.255Z
 ---
 
 ## Summary
@@ -27,18 +27,26 @@ Hot files: `hub/src/hub/server.ts`, `hub/src/hub/daemon.ts`, `hub/test/spoke-uni
 
 - [x] C1. A started hub binds `.cland/run/spoke.sock` at 0600 (with the short-path fallback), and a spoke connecting through `ws+unix:` with the project secret gets a welcome like one on the loopback port (test).
   - verified: rev-38 [reviewer] · run rev-38-1592-evidence-2 · 2026-11-02T06:58:41.213Z · commit 48d290e775a1e0ff5ccc36d01cec35c3f6e54020
-  - done: impl-1592 · 2026-11-02T07:16:49.954Z
   - verified: rev-38 [reviewer] · run rev-38-1592-evidence-4 · 2026-11-02T07:42:41.134Z · commit 0220773c00c4d8ccd6864b26b51fecad1d41b313
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-5 · 2026-11-02T11:39:18.402Z · commit d3c8f5243b7c467c00416b5fe88ecbd137b27a9a
+  - done: impl-1592 · 2026-11-02T15:19:10.800Z
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-6 · 2026-11-02T15:42:46.844Z · commit 5bd5840cae82f9b846b54d79ee74a1b5e2a0c8fb
 - [x] C2. A connection there without the bearer secret, or with a wrong one, is refused and logged as on the loopback edge (test).
   - verified: rev-38 [reviewer] · run rev-38-1592-evidence-2 · 2026-11-02T06:58:41.213Z · commit 48d290e775a1e0ff5ccc36d01cec35c3f6e54020
-  - done: impl-1592 · 2026-11-02T07:16:52.021Z
   - verified: rev-38 [reviewer] · run rev-38-1592-evidence-4 · 2026-11-02T07:42:41.268Z · commit 0220773c00c4d8ccd6864b26b51fecad1d41b313
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-5 · 2026-11-02T11:39:18.402Z · commit d3c8f5243b7c467c00416b5fe88ecbd137b27a9a
+  - done: impl-1592 · 2026-11-02T15:19:12.199Z
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-6 · 2026-11-02T15:42:46.844Z · commit 5bd5840cae82f9b846b54d79ee74a1b5e2a0c8fb
 - [x] C3. A stale socket file left by a dead hub is replaced at start, and a hub stop removes only the file it bound (test).
   - verified: rev-38 [reviewer] · run rev-38-1592-evidence-2 · 2026-11-02T06:58:41.213Z · commit 48d290e775a1e0ff5ccc36d01cec35c3f6e54020
-  - done: impl-1592 · 2026-11-02T07:16:54.444Z
   - verified: rev-38 [reviewer] · run rev-38-1592-evidence-4 · 2026-11-02T07:42:41.399Z · commit 0220773c00c4d8ccd6864b26b51fecad1d41b313
-- [ ] C4. A client hello is refused on the Unix spoke edge exactly as on the spokes' WebSocket, and the spoke-reconnect and hub-socket test files pass with no test edited.
-  - failed: rev-38 [reviewer] · 2026-11-02T07:42:41.893Z · note Daemon preservation remains 17/18 failed under acknowledged T-1627; pending explicit criterion exception or shared-fix/native green receipt.
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-5 · 2026-11-02T11:39:18.402Z · commit d3c8f5243b7c467c00416b5fe88ecbd137b27a9a
+  - done: impl-1592 · 2026-11-02T15:19:12.529Z
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-6 · 2026-11-02T15:42:46.844Z · commit 5bd5840cae82f9b846b54d79ee74a1b5e2a0c8fb
+- [x] C4. A client hello is refused on the Unix spoke edge exactly as on the spokes' WebSocket, and the spoke-reconnect and hub-socket test files pass with no test edited.
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-5 · 2026-11-02T11:39:18.402Z · commit d3c8f5243b7c467c00416b5fe88ecbd137b27a9a
+  - done: impl-1592 · 2026-11-02T15:19:12.758Z
+  - verified: rev-38 [reviewer] · run rev-38-1592-evidence-6 · 2026-11-02T15:42:46.844Z · commit 5bd5840cae82f9b846b54d79ee74a1b5e2a0c8fb
 
 ## Notes
 
@@ -181,3 +189,63 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Partial evidence: A-15735/run f0ecd0aa at exact source-clear0220773c is finished/passed; independently checked all12 named Unix edge base passes and corrected gateway pass. C1–C3 separately verified under this run. Uncached Linux x64 droplet Node24.21/Neovim0.12.5, Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/T2/Web exit0,4721 reported pass,zero fail/cancel/skip in selected scope. Budgets/lint report-only; T3 deferred. C4 client-refusal component is green, but unchanged daemon native file remains failed in A-15718, already attributed to clean-dev-red T-1627 by Coordinator decision625aceae. Source remains clear. This not-clear is confined to C4's literal preservation requirement, pending explicit exception/amendment or shared-fix green evidence; no T-1592 production fix requested. No tests/browser run by reviewer.
 
 Criteria: C4 failed (Daemon preservation remains 17/18 failed under acknowledged T-1627; pending explicit criterion exception or shared-fix/native green receipt.).
+
+### rev-38 · 2026-11-02T11:17:35.286Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1592-source-4
+commit: d3c8f5243b7c467c00416b5fe88ecbd137b27a9a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Two-authorized-merge delta source clear; Standards 0 findings, Spec 0 findings. Compared0220773c through85d2613e/d3c8f5243 and final head against incoming dev4e8aa7ee. README+implement/SKILL retain Unix spoke/Per-host Git guidance; no task runtime resolution introduced. Spoke server/binder/path/admission and required native files unchanged. Incoming T-1627 clears wait-metrics synchronously before stopping log, so delayed snapshot cannot interleave shutdown; native daemon assertion retained. Incoming Host/inbox/Git interaction reviewed; per-host Git listener remains separately owned with distinct paths and no serveProject bind. A-15803 raw merged staged-tree (then committed unchanged) macOS arm64 Node24.21 outputs show daemon18/resilience3/edge12/gateway20 pass/native exits0, including former daemon shutdown failure. No reviewer tests/browser. Broader runtime delta means NO verification carry-over waiver; A-15735 remains pre-merge0220773c. Fresh exact-d3c8f5243 mode-free verify and final evidence required. Review note in this topic.
+
+### rev-38 · 2026-11-02T11:39:18.402Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1592-evidence-5
+commit: d3c8f5243b7c467c00416b5fe88ecbd137b27a9a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; no findings. Source-clear rev-38-1592-source-4/A-15804 carries forward. Independently inspected A-15807/run d72ff216: exact head/tree fc50ac38,all12 named spoke edge base passes and5/5 load receipts each, corrected gateway pass. C1 0600/welcome/path fallback,C2 bearer refusal/log parity,C3 stale/owned cleanup,C4 client refusal established. A-15803 raw merged staged-tree then committed-unchanged native daemon18/resilience3 passes (macOS arm64 Node24.21 local,pre-commit invocation) closes literal C4 preservation; former shutdown identity passes after T-1627, no exception/amendment. Required native files unedited. Current uncached Linux x64 droplet Node24.21/Neovim0.12.5: T0/T1/T2/Web exit0,two selected T3 duration files13 identities exit0/base only,4743 reported pass,zero fail/cancel/skip. Isolated Headless Shell1248/Chrome for Testing156.0.8078.4. Timing/lint report-only; remaining T3 deferred to merge batch,no full T3/T4 claim. Reviewer ran no tests/browser. C1–C4 verified. Final merged-head evidence note in topic.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1592 · 2026-11-02T11:39:50.414Z
+
+Final evidence clear rev-38-1592-evidence-5 at d3c8f5243b7c467c00416b5fe88ecbd137b27a9a, all C1–C4 verified. Exact-head run d72ff216/A-15807 passes 4743/4743, T0/T1/T2/two selected T3/Web; remaining T3 deferred. Uncached Linux x64 6.8.0-142, Node24.21.0,Nvim0.12.5,Chrome Headless Shell156.0.8078.4 binary1248; droplet c-8nyc1,1176s lifetime,$0.0816. Independent named-fact scan:12 edge cases pass base+5 load each, corrected gateway case passes; same-tree native raw daemon18/resilience3 passes A-15803. Duration/lint budgets report-only. Coordinator26f01bef now holds enqueue for queued README/SKILL conflicts with T-1566/T-1621/T-1618/T-1615; subscribed to all four, keeping claim/head unchanged until all land, then one authorized dev merge and delta review/verify.
+
+### rev-38 · 2026-11-02T15:20:56.477Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1592-source-5
+commit: 5bd5840cae82f9b846b54d79ee74a1b5e2a0c8fb
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized final-merge delta source clear; Standards0 findings/Spec0 findings. Compared both parents; relative to incoming devc3cb1eeb5 task runtime is the already-reviewed Unix spoke implementation/gateway migration. README/SKILL and ADR retain both sides, no runtime manual resolution. Server/socket/binder/path selectors and daemon/resilience/edge/gateway tests unchanged fromd3c8f5243. Incoming lock-host identity preserves acquisition before listeners; transport validation/Host agent and gateway user admission retain edge separation. Shared state resolver/inventory do not redirect project socket selection. A-15882 raw merged staged-tree then committed unchanged macOS arm64 Node24.21 daemon18/resilience3/edge12/gateway20 passes, exits0; former shutdown identity remains green. Local typecheck/lint and state lint/inventory controls reported green, report-only advisories retained. Reviewer ran no tests/browser. Broad runtime delta: NO carry-over waiver; A-15807 is pre-merge only. Fresh exact5bd5840c mode-free verification/evidence required; C1–C4 remain stale/unverified until final evidence. Review note in topic.
+
+### rev-38 · 2026-11-02T15:42:46.844Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1592-evidence-6
+commit: 5bd5840cae82f9b846b54d79ee74a1b5e2a0c8fb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear,no findings. Source-clear rev-38-1592-source-5/A-15883 carries forward at unchanged5bd5840c. Independently checked A-15886/run e777300d exact-head provenance/tree52ee2274,all12 named Unix-edge base passes and12x5/5 load receipts plus corrected gateway pass. C1 mode/welcome/path fallback,C2 bearer/log parity,C3 stale/owned cleanup,C4 client refusal established. A-15882 raw merged staged-tree then committed-unchanged macOS arm64 Node24.21 daemon18/resilience3 native passes close C4 literal preservation; pre-commit boundary retained,required files unedited,no exception. Current uncached Linux x64 droplet Node24.21/Neovim0.12.5: T0/T1/T2/Web exit0,six selected T3 duration files44 identities exit0/base-only,4848 reported pass,zero fail/cancel/skip. Isolated Headless Shell1248/Chrome for Testing156.0.8078.4. Budgets/lint report-only; remaining T3 deferred to merge batch,no full T3/T4 claim. Reviewer ran no tests/browser. C1–C4 verified. A-15887 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15887-t-1592-final-evidence-at-5bd5840c.md).
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

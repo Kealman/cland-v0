@@ -2,8 +2,8 @@
 id: T-1621
 kind: task
 title: One resolver for the hub's per-user state, and an inventory of what the hub writes outside the project
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1332
 branch: t/T-1621-one-resolver-for-the-hub-s-per-user
 created: 2026-11-02T03:34:17.764Z
-updated: 2026-11-02T07:43:14.251Z
+updated: 2026-11-02T12:40:27.543Z
+closed: 2026-11-02T12:40:27.543Z
 ---
 
 ## Summary
@@ -154,3 +155,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final repaired-head evidence clear, no findings; all C1–C5 verified. A-15736 run e809dbcf-254a-44b9-af73-e2df12639c16 at source-clear37d8df657 exits0,4716/4716 with no fail/cancel/skip/todo. Independently streamed finish outcomes: resolver1/scanner5/inventory1/unchanged spend20 all pass, including new exact host fallback exception/rejected sibling and complete source scan. Merged guards host-records7/topic-withdraw7/web-authority-unit7/web withdraw9 all pass. A-15737 maps criteria and run limits. Linux x64 droplet Node24.21.0 Neovim0.12.5 isolated Headless Shell156.0.8078.4r1248; T0/T1/all-T2/Web complete, T3 deferred merge batch/T4 unexecuted; uncached, canonical treef1e55b82a07c5491b71cb022aa445cc319795eb1. Lint122/59files and budget/ratchet notices report-only, skip reason report missing0. Reviewer inspection only, no tests/browser/edits. Failed predecessor batch remains failed.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-02T12:40:27.543Z
+
+Merged 6d0c8efdaa171187f4b0c7a143fabe3ec7239ac3 onto dev.

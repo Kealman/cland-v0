@@ -2,8 +2,8 @@
 id: T-1566
 kind: task
 title: The invite page with a password
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1321
 branch: t/T-1566-the-invite-page-with-a-password
 created: 2026-10-31T23:47:51.938Z
-updated: 2026-11-02T07:36:59.446Z
+updated: 2026-11-02T12:40:15.013Z
+closed: 2026-11-02T12:40:15.013Z
 ---
 
 ## Summary
@@ -129,3 +130,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at merged delta-source-reviewed head. Independently streamed A-15732 run29f01828: uncached exit0,4707/4707; five named password/HTTP/browser cases all pass, unchanged web-auth29/web-authority46 pass. Incoming guards topic-withdraw7/unit-authority7/Webwithdraw6 pass (actual distinct Webwithdraw count6, correcting request9). Assertion facts plus source-verified C5/C7 establish C1–C7; no findings. Linux x64 droplet Node24.21.0/Neovim0.12.5; isolated HeadlessShell1248 Chrome156.0.8078.4. T0/T1/fallback allT2/Web complete; T3batch/T4 unexecuted, stageQA separate. Advisory/skip checks report-only, missing0. A-15608 predecessor-only; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-02T12:40:15.013Z
+
+Merged bc8c9a73cfb2bede9f1192bdc416dc61bcabd68d onto dev.

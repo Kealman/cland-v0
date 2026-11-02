@@ -2,8 +2,8 @@
 id: T-1588
 kind: task
 title: The host agent's protocol, its client and its process operations
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1325
 branch: t/T-1588-the-host-agent-s-protocol-its-client-and
 created: 2026-11-02T03:33:52.542Z
-updated: 2026-11-02T07:58:24.552Z
+updated: 2026-11-02T14:00:51.578Z
+closed: 2026-11-02T14:00:51.578Z
 ---
 
 ## Summary
@@ -28,27 +29,35 @@ Hot files: `hub/src/host/agent/` (new: `protocol.ts`, `server.ts`, `processes.ts
 - [x] C1. A hello without the agent's per-host secret, or with another, gets an error reply and the connection is closed, and no other op is answered before a successful hello (test).
   - done: impl-1588 · 2026-11-02T06:00:46.087Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C2. The hello reply carries the agent's cland version, pid and boot id, and an unknown op or a malformed line gets an error reply without closing the connection (test).
   - done: impl-1588 · 2026-11-02T06:27:07.600Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C3. A spawn starts a child in its own session and process group with the given argv, environment, cwd and log file. The child survives the agent's exit, the agent's own `CLAND_HOST_*` variables never reach it, and the env never reaches its argv (test).
   - done: impl-1588 · 2026-11-02T06:27:07.805Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C4. Identities are `linux:<boot id>:<start ticks>`, from `/proc` on Linux; on another platform, and only for a fake host, the start time comes from `ps` and the boot id from the file named by the agent's boot-id variable (test).
   - done: impl-1588 · 2026-11-02T06:00:49.023Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C5. A signal or stop with a stale identity (reused pid, other boot id) signals nothing and says so, and a live identity's process group gets the signal (test).
   - done: impl-1588 · 2026-11-02T06:27:08.228Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C6. The process table survives an agent restart, and a restarted agent reports each recorded process's liveness and its tree's RSS and CPU (test).
   - done: impl-1588 · 2026-11-02T07:26:38.799Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C7. A `process-exited` event reaches a connected client with the process's identity and exit status, and a `memory` event reports total and available memory at a fixed interval (test).
   - done: impl-1588 · 2026-11-02T06:53:04.670Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.459Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 - [x] C8. A T1 lint fails when a module under `hub/src/host/agent/` imports anything but `node:` built-ins or another agent module (test).
   - done: impl-1588 · 2026-11-02T06:00:51.980Z
   - verified: rev-35 [reviewer] · run rev-35-1588-final-1 · 2026-11-02T07:58:23.951Z · commit 78c9f40f8bb354935a957804adc9285c69a3743e
+  - verified: rev-35 [reviewer] · run rev-35-1588-final-2 · 2026-11-02T13:13:58.460Z · commit da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
 
 ## Notes
 
@@ -187,3 +196,43 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, C1–C8 verified, no findings. A-15744 exact-head00d02cd8 exit0/4721pass/zero fail,cancel,skip,todo. Independently matched named host-agent18 (all native auth/framing/spawn/env/session/identity/stale signals/restart/resources/exit/memory/admission/crash/descendant/unknown/dedup controls), boundary2, unedited identity6, frozen usage1 and native CLI help7 pass facts. C4 non-Linux supplement A-15746 retains originalMac18 outputs/native normal completion via check=True+wrapperexit0; pre-commit source linkage reconstructed from retained no-edit run/commit sequence, not producer-pinned HEAD. Two listed source/test blobs independently match78c9f40. Macarm64Node24.21 local/no browser; exact-pinned Linux proc branch separate. T0/T1/all fallbackT2/changed T3host-agent18/Web completed; remainingT3 merge batch,T4 unexecuted, base changed-file once/no repetitions. Duration-check10.365s excludes machinewait, not suite walltime. Budget/lint/ratchet/skipreason advisories report-only. Linuxx64 6.8.0-142-generic c8lon1 Node24.21/Nvim.12.5 workers2; tree0c56e81f8a927b423fb38c27d644b5082a11a012; isolatedHeadlessShell1248/ChromeForTesting156.0.8078.4; cache/occasionnull,skips[],skipReasonCheckreport/missing0. No full integrated-premerge claim; reviewer ran no tests/browser. A-15747 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15747-t-1588-final-evidence-review-at-78c9f40f8.md) maps all criteria and records provenance limits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### impl-1588 · 2026-11-02T12:46:25.028Z
+
+All four authorized prerequisites have durable merged=true/closed receipts: T-1589, T-1591, T-1566, T-1621. Started the single Coordinator-requested merge of origin/dev 6d0c8efdaa171187f4b0c7a143fabe3ec7239ac3 into reviewed 78c9f40f8. Only README and implement SKILL conflicted; preserved all headings/sections from both parents, kept one Host process heading and both protocols/Git/records/fake-SSH text. Incoming runtime merged automatically. State inventory integration exposed `cli/host.ts:7: home/temp resolver: homedir()`; migrated this owned caller to landed userHome(env), preserving default ~/.cland-host/run and override. Red inventory test then green 5/5. No new dependency or agent protocol/ownership change. Preparing merged-head delta review and requesting Reviewer's fresh-verify decision before any run.
+
+### impl-1588 · 2026-11-02T12:49:30.808Z
+
+Coordinator-authorized single merge completed and pushed: da0e7d2cf8a2a233106be8d4e004b1c5a16faf06, parents reviewed78c9f40f8 and dev6d0c8efdaa. All four prerequisite items landed. README/SKILL conflicts combined with every section retained; agent source/test/client/identity unchanged. New state-inventory coupling fixed by using existing userHome(env) in cli/host.ts, preserving the same default/override without an exception. Root/final-hub typecheck, lint zero refusals, state inventory5/5, state resolver1/1 and frozen usage1/1 pass locally. Old Linux green receipt is pre-merge only. Delta review/fresh-verify decision requested next; no verification before clear.
+
+### rev-35 · 2026-11-02T12:50:42.118Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1588-delta-source-1
+commit: da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear,no findings. Read Coordinatore1e4ac69 one-merge/prerequisite/preserve-sections instruction. Parents78c9+6d0; agent/client/identity/processidentity/native tests unchanged. Combined README/SKILL keeps complete agent+incomingHost/Git/fakeSSH content; independent parentheading inventory none missing,oneHost operations heading. CLIhost manual integration reuses shareduserHome(env)=env.HOME??homedir for default .cland-host/run, explicitCLAND_HOST_RUN_DIR still first; helper remains outsideagent built-ins boundary,no parallelresolver/exception. Normal default preserved,explicit suppliedHOME honored. Fresh mode-free verify REQUIRED at exact merged head: incomingruntime/CLI change cannot reuse78c9 A-15744 as current run. C1–C8 runtime marks remain stale pending named newhead agent18/boundary2/identity6/help/stateinventory facts. PremergeMac supplements retain oldhead/source-equality labels; no newhead claim. Reported localMac inventory5/resolver1/frozen1/static are targeted. A-15824 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15824-t-1588-authorized-merge-delta-review-at-da0e7d2cf.md). Reviewer ran no tests/browser and made no edits.
+
+### rev-35 · 2026-11-02T13:13:58.460Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1588-final-2
+commit: da0e7d2cf8a2a233106be8d4e004b1c5a16faf06
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear,C1–C8 verified,no findings. Independently matched A-15834 current agent18/boundary2/identity6/CLIhelp7/frozenusage1/state-inventory1/state-pathslint5/resolver1/fakeSSH9/Gitdaemon4 pass facts. Full auth/framing/detachedspawn/admission/nativeexit/restart/stalebirth/unknownauthority/retainedresources/dedup controls pass; delta's sharedhome integration covered. C4 Linux proc currenthead; retainedMac18 A-15746 remains premerge78c9 unchanged-source supplement,not newhead execution: agent/native/identity/tests byte-identical and MacCLIfixtures explicitCLAND_HOST_RUN_DIR bypass changed default. Reconstructed provenance limits retained. Exact-head5fdd29f1 exit0/4765pass/zero fail,cancel,skip,todo;T0/T1/allfallbackT2/selectedT3threefiles31cases/Web complete,remainingT3batch,T4unexecuted. Baseonce/no reps;11.785s selectedaddedwall excludesmachinewait,not suitewall. Linuxx64 6.8.0-142-generic c8nyc1 Node24.21/Nvim.12.5 workers2;tree988fc70c883b82118964a163c938fc85eadbe75f;isolatedHeadlessShell1248/ChromeForTesting156.0.8078.4;cache/occasionnull,skips[],skipreasonreport/missing0. Budget/lint/ratchet advisoryonly,no fullpremerge claim. A-15835 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15835-t-1588-merged-head-final-evidence-at-da0e7d2cf.md). Reviewer ran no tests/browser and made no edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-11-02T14:00:51.578Z
+
+Merged b8b1a95be01a62cba4a0d986d677b1bb2dbb9c0a onto dev.

@@ -2,8 +2,8 @@
 id: T-1572
 kind: task
 title: Remote pairings belong to a user
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1322
 branch: t/T-1572-remote-pairings-belong-to-a-user
 created: 2026-10-31T23:47:53.485Z
-updated: 2026-11-02T07:55:15.846Z
+updated: 2026-11-02T14:00:06.682Z
+closed: 2026-11-02T14:00:06.682Z
 ---
 
 ## Summary
@@ -31,18 +32,22 @@ Hot files: `hub/src/remote/state.ts` (a new per-user pairings table; `remote_pai
   - done: impl-1572 · 2026-11-02T05:43:46.454Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.717Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.235Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C2. The Neovim pairing card asks for the user in users mode and approves the pairing for the chosen user.
   - done: impl-1572 · 2026-11-02T05:43:47.725Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.717Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.235Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C3. Two users pair two Telegram chats, and each chat's messages and answers arrive in the hub as its own user.
   - done: impl-1572 · 2026-11-02T06:01:21.933Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.718Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.235Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C4. A new pairing of one user and messenger replaces only that user's old pairing.
   - done: impl-1572 · 2026-11-02T05:43:49.851Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.718Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.236Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C5. The pairing's journal record carries the paired user's id and the approving user's id, and never the code.
   - done: impl-1572 · 2026-11-02T05:43:50.489Z
   - verified: rev-37 [reviewer] · run rev-37-1572-source-1 · 2026-11-02T06:06:10.836Z · commit 15f7c70d19bed4f497e633b50027273ffec2f396
@@ -50,18 +55,23 @@ Hot files: `hub/src/remote/state.ts` (a new per-user pairings table; `remote_pai
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.718Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-delta-1 · 2026-11-02T07:26:46.068Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-delta-2 · 2026-11-02T12:43:35.811Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.236Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C6. The gateway's authority table and its refusals are unchanged, and the user of a remote input comes only from its pairing, never from the frame.
   - done: impl-1572 · 2026-11-02T06:28:09.002Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.718Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.236Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C7. In single mode pairing, replacement and inbound tests pass unchanged.
   - done: impl-1572 · 2026-11-02T06:28:10.261Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.718Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.236Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 - [x] C8. `cland auth reset` keeps the first user's pairing per messenger and revokes the other users' pairings through T-1558's reset step (A-15078 A3), proven by a test.
   - done: impl-1572 · 2026-11-02T05:43:53.067Z
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-2 · 2026-11-02T06:55:15.718Z · commit b366262ea6cbf34c1bdcb8656e6e8410fbc53c43
   - verified: rev-37 [reviewer] · run rev-37-1572-evidence-3 · 2026-11-02T07:55:15.261Z · commit 3fb6f1f0a0aa7a430ed0ab87b181c1bcd2f431c1
+  - verified: rev-37 [reviewer] · run rev-37-1572-evidence-4 · 2026-11-02T13:06:31.236Z · commit fc8c98ba6964891979eb7eaeb67fde657fccb691
 
 ## Comments
 
@@ -185,3 +195,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Post-merge final evidence clear; no findings, all C1–C8 verified. A-15743 exact-head run51e8691c-1497-41d0-affd-e9d63ae8f54d exits0,4725/4725, zero fail/cancel/skip/todo. Independently streamed named finish receipts: host-records9 incl both preexisting-DB migration/reset/host preservation controls; pairing approval12/service5/CLI23, Telegram native exact users answers45, native Neovim chooser/card6incl subtests, media reassignment16/cards70, gateway20/artifact4, foreign approval23/cards62/remote state5, frozen CLI1 all pass. Merged ownership topic-withdraw7/unit7/web9 all pass. A-15745 maps each criterion and provenance. Linux x64 droplet Node24.21.0 Neovim0.12.5 Headless Shell156.0.8078.4r1248; T0/T1/all-T2/Web/changed Neovim T3 once complete,3 top-level identities; remaining T3 deferred, no T4/repetitions. Uncached, canonical treefff097bd1b51021019402797c7ea730d824bacc7. Lint122/59files/duration/budget/ratchet report-only; skip-reason report missing0. No Reviewer tests/browser/edits; QA after-stage. Previous-head receipts remain historical.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-37 · 2026-11-02T12:43:35.811Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1572-delta-2
+commit: fc8c98ba6964891979eb7eaeb67fde657fccb691
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Second merge delta source clear, Standards/Spec no findings; A-15816. README preserves pairing+invitation/cookie+withdrawal+state sections, frozen usage retains both selector and password help. Store keeps Users→HostRecords→RemoteState(db,users) and reset hook; password registration activates existing durable user id. Pairing/native/gateway/authority/chooser source unchanged; id-only journal reread and C5 refreshed. Incoming inbox, schema, shutdown metrics, Host and web-cookie integration inspected; no pairing regression found in source. Fresh mode-free verification REQUIRED at this exact head, both due incoming runtime and Coordinator9a87d4a6. No tests at new head; prior A-15743 is historical. C1–C4/C6–C8 await new named pairing/host-upgrade/native chooser/authority evidence plus merged invitation/state/inbox/metrics controls. Reviewer read-only, no tests/browser/edits; QA after-stage.
+
+Criteria: C5 verified.
+
+### rev-37 · 2026-11-02T13:06:31.236Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1572-evidence-4
+commit: fc8c98ba6964891979eb7eaeb67fde657fccb691
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at second-merge head; no findings, all C1–C8 verified. A-15825 run b5d92f88-43b1-4ade-b368-a14037ae041b completes exit0, 4759/4759, zero fail/cancel/skip/todo. Independently streamed named finish records for pairing approval/CLI/reset/replace/journal, host upgrade9, exact native Telegram users/answers, Discord reassignment/modals, artifact/gateway refusals, single-mode/foreign-alert controls and native Neovim chooser/card. All pass. Merged password/invite/cookie, resolver/scanner/inventory/spend, inbox structural/oracle/native-send, wait-metrics shutdown/hourly and ownership guards also pass; A-15826 maps counts/cases. Linux x64 droplet c-8 nyc1, Node24.21.0 Neovim0.12.5 isolated Headless Shell156.0.8078.4r1248; T0/T1/all-T2/Web and selected T3 once complete (3files/16top-level identities), remaining T3 deferred/T4 unexecuted/no repetitions. Uncached; canonical tree82d88dec898dbab3cc9e4400fe5f8302e4057246. Lint122/59files and duration/budget/ratchet notices report-only, skip-reason report missing0. No Reviewer tests/browser/edits; QA after-stage. Predecessor receipts remain historical.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-11-02T14:00:06.682Z
+
+Merged 114afd57ae3ca982efd4f2ade06cb794a408dab6 onto dev.
