@@ -149,3 +149,60 @@ test('Implementer pool restart checks the requested cwd through Host before stop
   assert.deepEqual(calls, [cwd]);
   assert.deepEqual(fake.stops, []);
 });
+
+test('remote process liveness and signals require its matching Linux birth, never a local probe', async t => {
+  const root = await tempProject(t);
+  const core = new HubCore();
+  const table = new ProcessTable();
+  const calls: string[] = [];
+  let birth: string | null = 'linux:boot:123';
+  const remote = { ...localHost(), name: 't1',
+    identity: async (pid: number) => { calls.push('t1:identity'); return { pid, pidStarted: null, pidIdentity: birth }; },
+    alive: async () => { calls.push('t1:alive'); return true; },
+    stop: async () => { calls.push('t1:stop'); return true; },
+  };
+  const local = { ...localHost(), identity: async () => { throw new Error('local probe'); }, alive: async () => { throw new Error('local probe'); }, stop: async () => { throw new Error('local signal'); } };
+  const sessions = new Sessions({ root, core, table, hosts: [local, remote] });
+  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  const row = { ...await fakeHarness('codex').spawn({ name: 'remote', cwd: root, role: null, model: null }), host: 't1', pid: process.pid, pidStarted: null, pidIdentity: 'linux:boot:123' };
+  const host = sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }).hostForProcess!(row);
+  assert.equal(await host.alive(row), true);
+  assert.equal(await host.stop(row), true);
+  for (const identity of [null, 'darwin:123', 'linux:boot:124', 'linux:other:123']) {
+    birth = identity;
+    assert.equal(await host.alive(row), false, `mismatched observed birth ${identity}`);
+    assert.equal(await host.stop(row), false);
+  }
+  const signals = calls.filter(c => c === 't1:stop').length;
+  birth = 'linux:boot:123';
+  for (const identity of [null, 'darwin:123', 'linux:bad', 'linux:boot:abc']) {
+    assert.equal(await host.alive({ ...row, pidIdentity: identity }), false);
+    assert.equal(await host.stop({ ...row, pidIdentity: identity }), false);
+  }
+  assert.equal(calls.filter(c => c === 't1:stop').length, signals);
+  assert.ok(calls.includes('t1:identity'));
+  assert.equal(calls.filter(c => c === 't1:stop').length, 1);
+});
+
+test('remote legacy timestamps never acquire signal authority during stop or LaunchFiles recovery', async t => {
+  const { OpenCodeAdapter } = await import('../src/adapters/opencode.ts');
+  const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
+  const { fixtureEnvironment } = await import('./fixture-environment.ts');
+  const root = await tempProject(t);
+  const core = new HubCore();
+  const table = new ProcessTable();
+  const calls: string[] = [];
+  const remote = { ...localHost(), name: 't1', identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'legacy', pidIdentity: 'linux:boot:1' }; }, stop: async () => { calls.push('stop'); return true; } };
+  const sessions = new Sessions({ root, core, table, hosts: [remote] });
+  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  sessions.register(new OpenCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { env: fixtureEnvironment(root, process.env) }));
+  const row = { ...await fakeHarness('opencode').spawn({ name: 'legacy', role: null, model: null, cwd: root }), host: 't1', pid: process.pid, pidStarted: 'legacy', pidIdentity: null };
+  table.put(row);
+  await assert.rejects(sessions.stop(row.name), /could not stop/);
+  assert.equal(table.get(row.name)?.pidIdentity, null);
+  const host = sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }).hostForProcess!(row);
+  const files = LaunchFiles.restore({ undo: [], children: [{ pid: process.pid, pidStarted: 'legacy', graceMs: 1 }] }, work => work(), host);
+  await assert.rejects(files.rollback(), /could not roll back/);
+  assert.equal((await files.snapshot()).children[0]?.pidIdentity, null);
+  assert.equal(calls.includes('stop'), false);
+});

@@ -128,7 +128,7 @@ export class LaunchFiles {
         let pidIdentity = yield* wait(birth);
         if (!pidIdentity && pidStarted) {
           const observed = yield* wait(this.#host.identity(pid));
-          if (observed?.pidStarted === pidStarted && observed.pidIdentity) {
+          if (this.#host.name === 'local' && observed?.pidStarted === pidStarted && observed.pidIdentity) {
             pidIdentity = observed.pidIdentity;
             this.#children[0]!.birth = Promise.resolve(pidIdentity);
             // A restored legacy receipt gains its precise proof durably before a signal.

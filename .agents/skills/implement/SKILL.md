@@ -1486,6 +1486,15 @@ module tests alone do not prove those flows. No new role permission applies.
 
 ## Local Host files and polling (T-1543)
 
+For remote row liveness and signals, use the recording registry Host and
+projectHub frame seams in `docs/agents/tests/hub-test-session-host-routing.test.ts.md`.
+Keep Linux boot/start proof matching at the registry boundary, timestamp upgrades
+local-only, and unknown hosts fenced. Preserve the unedited local stop-races and
+async-processes files. Remote pending-stop recovery does not require `pid_started`.
+Remote Claude pending/replacement PID discovery also accepts Linux proof without
+a legacy timestamp, bound to its captured native job and conversation; retain
+stale owner, changed birth and close controls.
+
 For Codex process routing, use the recording Host and scripted app-server seam in
 `docs/agents/tests/hub-test-codex-host.test.ts.md`. Preserve one version check per
 launch, the log path, final credential filtering, birth identity and Host stop.

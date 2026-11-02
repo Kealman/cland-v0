@@ -1,3 +1,4 @@
+import { isLinuxIdentity, processHost } from '../host/process-host.ts';
 import { launchGenerationKey, launchOwnerKey, earlierLaunch } from './launch-generation.ts';
 import { COORDINATOR_RETIRED } from '../hub/retirement.ts';
 import { removeSessionRunDirectory, writeSessionCredential } from '../../../shared/session-credential.ts';
@@ -339,7 +340,7 @@ export class Sessions {
     this.#transportClock = options.transportClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#log = options.log ?? (() => {});
-    this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, host] as const)]);
+    this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, processHost(host)] as const)]);
     this.#core = options.core;
     this.#table = options.table;
     this.#core.useSessionHost(name => this.#table.get(name)?.host);
@@ -569,7 +570,7 @@ export class Sessions {
         const p = this.#table.bySessionId(sessionId);
         if (p) {
           const publish = (started: string | null, identity: string | null) => {
-            if (this.#closed || started === null) return;
+            if (this.#closed || (started === null && ((p.host ?? 'local') === 'local' || !isLinuxIdentity(identity)))) return;
             const current = this.#table.bySessionId(sessionId);
             // Keep the native stop path until PID and identity can be published together.
             // A stop or relaunch during the probe must not acquire this earlier launch's PID.
@@ -979,7 +980,7 @@ export class Sessions {
               if (p.pid === null) throw new Error('failed launch process identity is unknown; cleanup remains pending');
               const current = rows.find(row => row.pid === p.pid);
               if (!current) return true;
-              if (!p.pidStarted) throw new Error('failed launch start identity is unknown; cleanup remains pending');
+              if ((p.host ?? 'local') === 'local' && !p.pidStarted) throw new Error('failed launch start identity is unknown; cleanup remains pending');
               if (!p.pidIdentity || !proof?.pidIdentity) throw new Error('failed launch native identity is unknown; cleanup remains pending');
               return proof!.pidIdentity !== p.pidIdentity;
             });
@@ -1318,7 +1319,7 @@ export class Sessions {
    * ownership before the first stop/resume. Same-second reuse before this first
    * observation retains the old risk; a precise row never re-enters this window. */
   async #upgradeLegacyIdentity(p: HarnessProcess, resumed: Resumed, checkpoint?: (upgraded: HarnessProcess) => void): Promise<HarnessProcess> {
-    if (p.pid === null || p.pidIdentity || !p.pidStarted) return p;
+    if ((p.host ?? 'local') !== 'local' || p.pid === null || p.pidIdentity || !p.pidStarted) return p;
     let observed;
     try { observed = await this.#hostForProcess(p).identity(p.pid); }
     catch { return p; } // unavailable proof cannot grant ownership

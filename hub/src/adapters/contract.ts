@@ -199,8 +199,9 @@ export type AdapterHost = {
   turnFailed?: (sessionId: string, error: string, messages: string[], replay?: TurnReplay) => void;
   /** Sender attribution learned after the failure notice (a pending admission just settled). */
   notifyFailureSenders?: (sessionId: string, error: string, messages: string[]) => void;
-  /** The adapter learnt the session's pid after launch or re-exec; include an observed start identity when known. */
-  recordPid: (sessionId: string, pid: number, pidStarted?: string, harnessSessionId?: string, pidIdentity?: string | null) => void;
+  /** The adapter learnt the session's pid after launch or re-exec. Omitted start requests observation;
+   * explicit null plus Linux birth publishes remote proof without a legacy timestamp. */
+  recordPid: (sessionId: string, pid: number, pidStarted?: string | null, harnessSessionId?: string, pidIdentity?: string | null) => void;
   /** The adapter's own connection to the session came back (a reconnect): what waits for an inject is retried now,
    *  whether or not the state changed (an idle session reconnected to is still idle). */
   reconnected?: (sessionId: string) => void;

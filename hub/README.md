@@ -8298,6 +8298,16 @@ statDirectory and readFile. Local profiles retain their serialized bytes.
 Launch files, sockets and RPC transport remain hub-local pending E-1532.
 
 Sessions owns a registry containing `local`.
+Remote liveness and stop use only that row's registered Host and require its
+recorded `linux:<boot-id>:<start-ticks>` birth to match the Host's current identity.
+Missing or mismatched proof grants no signal authority. Legacy `pid_started`
+upgrades apply only to `local`; remote pending-stop recovery accepts Linux proof
+without a legacy timestamp. Unknown hosts remain `unknown` and refuse lifecycle
+operations, with no local fallback. Remote Claude rows without a PID cannot use
+native job-id stop as a substitute for process proof. Claude PID discovery binds
+fresh Linux proof to the captured native job and conversation before checking
+liveness; poll and resume can publish it without `pid_started`. Changed owners,
+changed births and adapter shutdown fence acquisition.
 `session.launch` frames accept an optional registered `host`, defaulting to `local`;
 unknown names are refused before launch or item-worktree admission. Coordinator
 and Aide roles run only on the local host: launch, relaunch, fresh resume, role
