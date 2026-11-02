@@ -2,8 +2,8 @@
 id: T-1556
 kind: task
 title: Claude Code found once on another host
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1320
 branch: t/T-1556-claude-code-found-once-on-another-host
 created: 2026-10-31T23:47:43.786Z
-updated: 2026-11-02T03:33:00.864Z
+updated: 2026-11-02T04:36:58.203Z
+closed: 2026-11-02T04:36:58.203Z
 ---
 
 ## Summary
@@ -29,12 +30,16 @@ Hot files: `hub/src/adapters/claude-code.ts`
 
 - [x] C1. A contract test with a recording host other than `local` counts exactly one `claude agents --json` per launch (test).
   - done: impl-1556 · 2026-11-02T03:33:00.864Z
+  - verified: rev-35 [reviewer] · run rev-35-1556-final-1 · 2026-11-02T03:50:37.776Z · commit dc7d07ac8e77509b503c898c1de2a42e547ceb02
 - [x] C2. Over several poll intervals, no short-lived `claude` command runs through that host for a running row, and its liveness comes from the Host's alive (test).
   - done: impl-1556 · 2026-11-02T03:24:34.332Z
+  - verified: rev-35 [reviewer] · run rev-35-1556-final-1 · 2026-11-02T03:50:37.776Z · commit dc7d07ac8e77509b503c898c1de2a42e547ceb02
 - [x] C3. A resume of such a row after a hub restart runs at most one discovery (test).
   - done: impl-1556 · 2026-11-02T03:24:34.443Z
+  - verified: rev-35 [reviewer] · run rev-35-1556-final-1 · 2026-11-02T03:50:37.776Z · commit dc7d07ac8e77509b503c898c1de2a42e547ceb02
 - [x] C4. Rows on `local` keep today's `agents --json` schedule, and `claude-code-schedule.test.ts` passes with no test edited.
   - done: impl-1556 · 2026-11-02T03:24:34.768Z
+  - verified: rev-35 [reviewer] · run rev-35-1556-final-1 · 2026-11-02T03:50:37.776Z · commit dc7d07ac8e77509b503c898c1de2a42e547ceb02
 
 ## Comments
 
@@ -88,3 +93,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Fresh source clear, no findings. A-15558 resolved: fixture-owned gate releases registered at acquisition run before bounded adapter joins; later after-hook removed; before/after-entry abandonment controls close in finally and join inspection, preserving final assertions. Runtime A-15556 predecessor drain/fresh query fix remains unchanged and new PID/birth/query-count regression retained. No-timer/unknown-PID/restart/mixed local schedule source plus authorized prior poll migrations inspected; local schedule file unchanged. C1–C4 runtime criteria await same-head queued mode-free evidence/named Host18/routing16/schedule46. Local targeted/static reports supplemental. C1 done still unchecked in task.view; claimant should re-mark done for fix. Details A-15560. No Reviewer execution/browser/edits; QA full after-stage separate.
+
+### rev-35 · 2026-11-02T03:50:37.776Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1556-final-1
+commit: dc7d07ac8e77509b503c898c1de2a42e547ceb02
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C4 verified, no findings. Exact-head uncached6cdbd4d4/A-15562 exit0,4693 pass, zero fail/cancel/skip/todo. Actual named Host18 pass incl per-launch query, Host-only timers/death, missing PID, listed/missing restart, mixed local schedule, held predecessor relaunch new PID/birth and both abandoned-setup cleanup controls. Routing16/session-host8/registry4 pass with authorized poll migrations and retained resume proof; unedited local schedule46 pass. Linux x64 droplet Node24.21/Neovim0.12.5/isolated HeadlessShell1248 Chrome156.0.8078.4, candidate tree183e2061d903c0c1b9d862c65f899dfd3cbd0143. T0/T1/allT2/Web complete; T3 deferred/T4 unexecuted, diagnostics report-only. A-15563 provenance/limits. Source head unchanged, previous findings resolved; merge-batch/QA full after-stage separate. No Reviewer execution/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-02T04:36:58.203Z
+
+Merged c1a531a5397acd35e7ebd1f877171aee37bc1366 onto dev.

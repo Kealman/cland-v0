@@ -2,8 +2,8 @@
 id: T-1571
 kind: task
 title: "`--as <user>` in users mode"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1319
 branch: t/T-1571-as-user-in-users-mode
 created: 2026-10-31T23:47:53.293Z
-updated: 2026-11-02T03:15:32.049Z
+updated: 2026-11-02T03:58:22.155Z
+closed: 2026-11-02T03:58:22.155Z
 ---
 
 ## Summary
@@ -98,3 +99,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C5 verified, no findings. Exact-head uncachedff5cd0e1/A-15549 exit0,4662 pass, zero fail/cancel/skip/todo. Actual named cli-as-user6 establishes selected/default answer+journal, refusals/current roles, single stand-in and credentialed session-shell authority plus topic-created journal. Recorded unchanged answer2/artifact4/message1/asksCLI6, frozen compatibility1/nativehelp5/commandhelp18, events7/rolepolicy6/web-authority46 pass. cli-identity has no remote rows: deferred T3, no native/current-head pass claimed; C5 directly established by new CLI matrix. Linux x64 droplet Node24.21/Neovim0.12.5/isolated HeadlessShell1248 Chrome156.0.8078.4, treeffecb897edb99c71284c9510c63dde67d9c0e00f. T0/T1/allT2/mappedT4base/Web complete; T3 deferred/T4reps skipped, advisories report-only. A-15550 details scope. Source unchanged; merge-batch/QA affected after-stage separate. No Reviewer execution/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-02T03:58:22.155Z
+
+Merged a521e580a6513e3f548bbccf66ed77251ed93930 onto dev.
