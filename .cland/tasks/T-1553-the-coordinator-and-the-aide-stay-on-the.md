@@ -2,8 +2,8 @@
 id: T-1553
 kind: task
 title: The Coordinator and the Aide stay on the local host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1305
 branch: t/T-1553-the-coordinator-and-the-aide-stay-on-the
 created: 2026-10-31T23:47:42.983Z
-updated: 2026-11-01T23:27:24.591Z
+updated: 2026-11-02T00:23:04.477Z
+closed: 2026-11-02T00:23:04.477Z
 ---
 
 ## Summary
@@ -224,3 +225,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C6 verified, no findings. Queued16721988/A-15484 uncached exit0,4692 pass, zero fail/cancel/skip/todo. Streamed actual outcomes: all6 colocated worktree identities including four failed-batch cases; placement11 incl production OpenCode Host spawn; admission16; unchanged C5 role-launch13/permissions12/session-launch2; frozen usage1/native help5; native-boundary68/OpenCode-host9/policy5. C6 source retained with clause exception. Linux x64 droplet Node24.21/Neovim0.12.5/isolated HeadlessShell1248 Chrome156.0.8078.4; candidate treee2fd0396bb30d35a93827e227146bf74043fe1a7. T0/T1/allT2/selectedT3/mappedT4base/Web complete; remainingT3 deferred/T4reps skipped, advisories report-only. Prior OpenCode-adapter local21 remains source-equivalent supplemental evidence, not remote rerun. Old A-15476/A-15405 remain failed; merge-batch and after-stage QA separate. Details A-15485. No Reviewer execution/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-02T00:23:04.477Z
+
+Merged 051fca896f805f08af7fefcb772de46917f80b6e onto dev.

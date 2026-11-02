@@ -2,8 +2,8 @@
 id: T-1564
 kind: task
 title: Both workbenches show who wrote
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1311
 branch: t/T-1564-both-workbenches-show-who-wrote
 created: 2026-10-31T23:47:51.380Z
-updated: 2026-11-01T23:08:32.790Z
+updated: 2026-11-02T00:22:49.887Z
+closed: 2026-11-02T00:22:49.887Z
 ---
 
 ## Summary
@@ -114,3 +115,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C4 verified. Exact-head uncached queuede0a524d8/A-15477 exit0,4642 pass, zero fail/cancel/skip/todo. Actual named timing records confirm read-time rename/single mode, stored ownership, production live Neovim raw multiline frame+normalized header/body, duplicate-name/old-wire Neovim, desktop/phone history/live/old-wire, unchanged Neovim thread24 and web messages5. T0 typecheck includes token-only colour sources and23 text tokens≥4.5:1; source has no new colours/key listeners. Linux x64 droplet Node24.21/Neovim0.12.5/isolated HeadlessShell1248 Chrome156.0.8078.4, treeeb61375a48dec1eeb484701219fb67cecde58020. T0/T1/allT2/Web/changedT3/two mappedT4 base complete; remainingT3 deferred, T4 repetitions skipped, diagnostics report-only. Source-clear head unchanged. QA after-stage separate. No Reviewer execution/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-02T00:22:49.887Z
+
+Merged 040146338b147d102b0cceb8616bbde8efbe17aa onto dev.

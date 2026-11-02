@@ -2,8 +2,8 @@
 id: T-1569
 kind: task
 title: The admin's users list and invites from the web
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1312
 branch: t/T-1569-the-admin-s-users-list-and-invites-from
 created: 2026-10-31T23:47:52.767Z
-updated: 2026-11-01T23:41:44.989Z
+updated: 2026-11-02T01:04:49.801Z
+closed: 2026-11-02T01:04:49.801Z
 ---
 
 ## Summary
@@ -30,15 +31,19 @@ Hot files: `hub/src/hub/web-authority.ts` [Host] (`user.add`, `user.list` open o
 - [x] C1. In users mode the accounts area lists every user with name, display name, role and state, and its fold shows the count.
   - done: impl-1569 · 2026-11-01T22:35:12.539Z
   - verified: rev-36 [reviewer] · run rev-36-1569-final-1 · 2026-11-01T23:12:07.266Z · commit 30dd332157ad3ce271cf4e14bd4c6995ef15f6ff
+  - verified: rev-36 [reviewer] · run rev-36-1569-final-2 · 2026-11-02T00:02:31.603Z · commit 45d59adaf0117f6ece902a33e9a46400b5116fb1
 - [x] C2. Creating a user from the web adds an invited admin row and shows its invite link once, with the same name rules and refusals as the CLI.
   - done: impl-1569 · 2026-11-01T22:54:18.562Z
   - verified: rev-36 [reviewer] · run rev-36-1569-final-1 · 2026-11-01T23:12:07.266Z · commit 30dd332157ad3ce271cf4e14bd4c6995ef15f6ff
+  - verified: rev-36 [reviewer] · run rev-36-1569-final-2 · 2026-11-02T00:02:31.603Z · commit 45d59adaf0117f6ece902a33e9a46400b5116fb1
 - [x] C3. In single mode the users list is absent and `user.add` and `user.list` from the web are refused with a message naming users mode.
   - done: impl-1569 · 2026-11-01T22:54:18.692Z
   - verified: rev-36 [reviewer] · run rev-36-1569-final-1 · 2026-11-01T23:12:07.266Z · commit 30dd332157ad3ce271cf4e14bd4c6995ef15f6ff
+  - verified: rev-36 [reviewer] · run rev-36-1569-final-2 · 2026-11-02T00:02:31.603Z · commit 45d59adaf0117f6ece902a33e9a46400b5116fb1
 - [x] C4. The view passes the web typecheck's colour and contrast checks and adds no key listener outside `keymap.ts`.
   - done: impl-1569 · 2026-11-01T22:35:13.986Z
   - verified: rev-36 [reviewer] · run rev-36-1569-final-1 · 2026-11-01T23:12:07.266Z · commit 30dd332157ad3ce271cf4e14bd4c6995ef15f6ff
+  - verified: rev-36 [reviewer] · run rev-36-1569-final-2 · 2026-11-02T00:02:31.603Z · commit 45d59adaf0117f6ece902a33e9a46400b5116fb1
 
 ## Comments
 
@@ -136,3 +141,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards/Spec no findings. Current sourceA-15469 unchanged. A-15482/28c4d79f exact-head exit0,4608pass,zero fail/cancel/skip/todo; named Accounts9 include facts/invitedadmin/transientinvite and same-mounted users→single reconnect. Authority46/unit6,invites4/users4/user-invites5 all namedpass including single/users admin admission and unchanged session-shell refusal. Current token-only/23contrast checks pass; no source key/colour additions. Uncached Linuxx64 dropletNode24.21.0/Neovim0.12.5,isolatedHeadlessShell1248/ChromeTesting156.0.8078.4; T0,T1,fallbackallT2,Web completed;T3batch/T4unexecuted. Advisory budgets/lint/skipcheck report-only. EarlierA-15465 stays failedpartial. C1–C4 verified;premergebatch/after-stageQA separate. No Reviewer tests/browser/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-36 · 2026-11-01T23:43:15.383Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1569-delta-source-1
+commit: 45d59adaf0117f6ece902a33e9a46400b5116fb1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; Standards/Spec no findings. Coordinator0ea925c6 authorized dev merge; sole skill conflict preserves complete Users and artifact attribution guidance/change records. Actual incoming Git delta isT-1563(14files); inspected trusted creator/journal/visibility/draft composition. Task Users/Accounts/authority/policy tests/runtime unchanged except independent artifact dispatch hunks; no manual runtime edit. IncomingT-1563 reviewedA-15437/A-15458. A-15490 local macOSarm64 Node24.21.0 targeted/typecheck/build summary evidence,isolatedHeadlessShell1248 forAccounts; not new queued evidence. C1–C4 await exact-head mode-free verify/final review. PriorA-15482 historical to30dd3321. Premergebatch/after-stageQA separate;no Reviewer execution/edits.
+
+### rev-36 · 2026-11-02T00:02:31.603Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1569-final-2
+commit: 45d59adaf0117f6ece902a33e9a46400b5116fb1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear; Standards/Spec no findings. Current sourceA-15491 unchanged. A-15495/a2cc2c45 exact-head exit0,4612pass,zero fail/cancel/skip/todo. Named Accounts9/authority46/unit6/users4/invites4/user-invites5/artifact-user4 allpass,including same-mounted reconnect,mode/admin admission,session refusal and incoming artifact compatibility. Current check/typecheck token-only23contrast pass;no source keycolour addition. Execution tree6b9d0b4 differs from commit tree only by excluded.cland files,not source/tests. UncachedLinuxx64 dropletNode24.21.0/Neovim0.12.5,isolatedHeadlessShell1248/ChromeTesting156.0.8078.4;T0,T1,fallbackallT2,Webcomplete;T3batch/T4unexecuted. Advisoriesreportonly;priorgreenshistorical/failedA-15465stillfailed. C1–C4verified;premergebatch/after-stageQA separate. No Reviewer execution/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-02T01:04:49.801Z
+
+Merged 91a4aaf36aeb58c39d84e50d4a079bd5242d4e83 onto dev.
