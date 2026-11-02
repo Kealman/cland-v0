@@ -1,3 +1,4 @@
+import { HostRecords } from '../host/records.ts';
 import { Users } from './users.ts';
 import { COORDINATOR_RETIRED } from './retirement.ts';
 import { suiteHistoryProjection } from './suite-history.ts';
@@ -431,6 +432,7 @@ export function hasRoleMappedSession(path: string, sessionId: string): boolean {
 export class Store implements HygieneMemory {
   readonly remotes: RemoteState;
   readonly users: Users;
+  readonly hosts: HostRecords;
   readonly #db: DatabaseSync;
   readonly #statements = new Map<string, StatementSync>();
   #itemResolver: (id: string) => string | null = () => null;
@@ -465,6 +467,7 @@ export class Store implements HygieneMemory {
       delete from suite_job_summaries where key = old.key;
     end;`);
     this.users = new Users(this.#db);
+    this.hosts = new HostRecords(this.#db);
     this.remotes = new RemoteState(this.#db);
     this.#migrate();
     this.#db.exec(LATE_INDEXES);

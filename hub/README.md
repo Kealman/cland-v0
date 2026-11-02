@@ -8255,6 +8255,29 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+### Host records and bootstrap secrets
+
+Opening `hub.db` adds `hosts` in place. `Store.hosts` stores the id, `ssh`
+transport, address, user, state and SHA-256 secret digest. `HostSecretStore`
+writes a random 32-byte secret, `known_hosts` pin and `client-key-path` reference
+as 0600 files under `.cland/run/hosts/<id>/` (0700). Registration takes the
+client key path and pin as inputs; it generates no SSH keys. Public record reads
+omit the secret and digest. Bootstrap callers read the private secret explicitly
+and deliver it only on stdin, never argv, logs or frames. Startup restores these
+values into the project output redactor. Revocation storage fences matching and
+secret reads; admission and connection shutdown are separate consumers.
+
+Both `CLAND_FAKE_HOSTS=f1,f2` and `CLAND_FAKE_HOST_ROOT=/absolute/scratch/root`
+are required to register fake records at startup. Each named directory supplies
+`host-key.pub` and the synthetic `client-key` path; pins use `<id> <public key>`.
+Existing records, including revoked records, are never reminted at startup.
+The hook creates records only; remote Host operations require the transport.
+`hostPaths` owns agent, git, control and hashed session socket paths. It uses
+private short directories in the temporary directory, then `/tmp`, when the
+project path exceeds the shared 100-byte socket budget, reserving SSH suffix
+space. These sockets are per-machine runtime paths; private material stays in
+the project directory.
+
 ### Host process operations
 
 `hub/src/host/host.ts` defines the process seam for session Hosts.

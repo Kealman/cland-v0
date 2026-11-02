@@ -1,3 +1,4 @@
+import { registerFakeHosts } from '../host/records.ts';
 import { userInfo } from 'node:os';
 import { prepareAuthMode } from '../init/config-set.ts';
 import { speechProvider } from '../speech/provider.ts';
@@ -245,6 +246,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   let releaseAuthFence: (() => void) | undefined;
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; releaseAuthFence?.(); releaseAuthFence = undefined; remoteWorkbench?.changed(); }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined, async next => {
+    registerFakeHosts(root, store.hosts, env, remoteOutput.register);
     store.users.validateMode(next.auth.mode);
     const secrets = resolveRemoteSecrets();
     if (gateway instanceof ConfiguredGateway) await gateway.update(next, secrets);
@@ -298,6 +300,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     }
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
     store = new Store(l.db, options.openDatabase);
+    registerFakeHosts(root, store.hosts, env, remoteOutput.register);
     store.users.validateMode(config?.auth.mode ?? 'single', l.config);
     log({ event: 'hub-startup-step', step: 'restoring core and suites', pid: process.pid });
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });

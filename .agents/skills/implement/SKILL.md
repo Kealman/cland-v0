@@ -1509,6 +1509,16 @@ parsing and distinct ceremony/signature/counter refusals. Sign-in integration
 owns challenge consumption, user/credential binding and atomic counter updates;
 module tests alone do not prove those flows. No new role permission applies.
 
+## Host records and private bootstrap material (T-1590)
+
+Use `Store.hosts`, `HostSecretStore` and `hostPaths` from `host/records.ts` for
+host persistence and private paths. Registration takes a client key path and
+known_hosts line; bootstrap transports deliver private secret bytes only on stdin.
+The fake hook requires the comma-separated `CLAND_FAKE_HOSTS` list and absolute
+`CLAND_FAKE_HOST_ROOT` together. Never remint revoked records during startup.
+See `docs/agents/tests/hub-test-host-records.test.ts.md` for isolated coverage.
+Admission and connection revocation stay with the host authority owner.
+
 ## Local Host files and polling (T-1543)
 
 For remote row liveness and signals, use the recording registry Host and
