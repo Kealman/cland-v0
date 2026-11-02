@@ -6,7 +6,7 @@ import type { ChildProcess } from 'node:child_process';
 import { dirname } from 'node:path';
 import type { Resumed } from '../hub/worktrees.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
-import { mkdir, readFile, rm, rmdir, stat, truncate, writeFile, chmod } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 
 /** Metadata belongs to the hub's undo files, never to a session cwd. */
 const hubFileMeta = (path: string) => stat(path);
@@ -57,14 +57,14 @@ export class LaunchFiles {
 
   async directory(path: string, mode?: number): Promise<void> {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
-      try { yield* wait(mkdir(path, mode ? { mode } : {})); } catch (err) {
+      try { yield* wait(this.#host.makeDirectory(path, mode)); } catch (err) {
         const code = (err as NodeJS.ErrnoException).code;
         if (code === 'ENOENT' && dirname(path) !== path) {
           yield* wait(this.directory(dirname(path), mode));
           yield* wait(this.directory(path, mode));
           return;
         }
-        if (code === 'EEXIST' && (yield* wait(hubFileMeta(path))).isDirectory()) return;
+        if (code === 'EEXIST' && (yield* wait(this.#host.statDirectory(path))).refusal === null) return;
         throw err;
       }
       // Record each parent as it is created: a later mkdir failure cannot strand earlier parents.
@@ -81,10 +81,17 @@ export class LaunchFiles {
       else if (append)
         this.#undo.push({ kind: 'truncate', path, size: before.size });
       else {
-        const content = yield* wait(readFile(path));
+        const content = yield* wait(this.#host.readFile(path));
         const mode = before.mode;
-        this.#undo.push({ kind: 'restore', path, content: content.toString('base64'), mode });
+        this.#undo.push({ kind: 'restore', path, content: Buffer.from(content).toString('base64'), mode });
       }
+    }).call(this), this.resumed);
+  }
+
+  async write(path: string, bytes: Uint8Array, mode?: number): Promise<void> {
+    return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
+      yield* wait(this.file(path));
+      yield* wait(this.#host.writeFile(path, bytes, mode === undefined ? undefined : { mode }));
     }).call(this), this.resumed);
   }
 
@@ -149,14 +156,13 @@ export class LaunchFiles {
       }
       while (this.#undo.length) {
         const undo = this.#undo[this.#undo.length - 1]!;
-        if (undo.kind === 'remove') yield* wait(rm(undo.path, { force: true }));
-        else if (undo.kind === 'directory') yield* wait(rmdir(undo.path).catch(err => this.resumed(() => {
+        if (undo.kind === 'remove') yield* wait(this.#host.removePath(undo.path));
+        else if (undo.kind === 'directory') yield* wait(this.#host.removePath(undo.path, { directory: true }).catch(err => this.resumed(() => {
           if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(err.code)) throw err;
         })));
-        else if (undo.kind === 'truncate') yield* wait(truncate(undo.path, undo.size));
+        else if (undo.kind === 'truncate') yield* wait(this.#host.writeFile(undo.path, new Uint8Array(), { truncate: undo.size }));
         else if (undo.kind === 'restore') {
-          yield* wait(writeFile(undo.path, Buffer.from(undo.content, 'base64')));
-          yield* wait(chmod(undo.path, undo.mode));
+          yield* wait(this.#host.writeFile(undo.path, Buffer.from(undo.content, 'base64'), { mode: undo.mode }));
         }
         this.#undo.pop();
         if (checkpoint) checkpoint(yield* wait(this.snapshot()));

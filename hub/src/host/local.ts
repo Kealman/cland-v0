@@ -1,7 +1,9 @@
+import { createServer } from 'node:net';
+import { dirname, join } from 'node:path';
 import { statDirectory } from '../adapters/session-cwd.ts';
 import { occupants } from './occupants.ts';
 import { worktreeInstall } from './worktree-install.ts';
-import { stat, lstat, realpath, readFile, open } from 'node:fs/promises';
+import { mkdir, rm, rmdir, truncate, writeFile, chmod, stat, lstat, realpath, readFile, open } from 'node:fs/promises';
 import { folderFiles } from '../hub/artifact-folder.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
@@ -13,6 +15,36 @@ import type { Host, HostProcessUsage } from './host.ts';
 export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Record<string, unknown>) => void = () => {}): Host {
   return {
     name: 'local',
+    layout: input => Object.freeze({ ...input, runDirectory: join(dirname(input.discoveryFile), 'run'), logDirectory: join(dirname(input.discoveryFile), 'log') }),
+    writeFile: async (path, bytes, options) => {
+      if (options?.truncate !== undefined) {
+        if (bytes.byteLength) throw new Error('Host truncate requires empty bytes');
+        await truncate(path, options.truncate);
+      } else await writeFile(path, bytes, options?.mode === undefined ? {} : { mode: options.mode });
+      if (options?.mode !== undefined) await chmod(path, options.mode);
+    },
+    makeDirectory: async (path, mode) => { await mkdir(path, mode === undefined ? {} : { mode }); },
+    removePath: async (path, options) => {
+      if (options?.directory) await rmdir(path);
+      else await rm(path, { force: true });
+    },
+    freePort: async () => {
+      const server = createServer();
+      return new Promise<number>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(0, '127.0.0.1', () => {
+          const address = server.address();
+          server.close(error => {
+            if (error) reject(error);
+            else if (address && typeof address === 'object') resolve(address.port);
+            else reject(new Error('could not choose a Host loopback port'));
+          });
+        });
+      });
+    },
+    forward: async (_sessionId, endpoint) => endpoint,
+    unforward: async () => {},
+
     limitPolls: true,
     worktreeAdd: async ({ root, path, branch, territory, reuseOnly, detached, beforeInstall }) => {
       if (!reuseOnly) {

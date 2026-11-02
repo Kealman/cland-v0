@@ -8328,6 +8328,17 @@ signature. This module adds no sign-in route or changes to single mode. See the
 
 ### Local Host files, worktrees and polling
 
+Host launch primitives include exact byte writes with explicit modes (including
+existing files), single-directory creation, nonrecursive path removal, and a
+loopback port probe that releases the port before returning. Forwarding is
+session-owned: local returns the supplied Unix-socket or loopback-port endpoint
+and cancellation is a no-op. The read-only layout resolver preserves the supplied
+discovery, node, CLI and spoke entries and derives run/log directories beside
+discovery. LaunchFiles journals and mutates through its Host, retaining hub-local
+undo metadata reads and the previous pending-stop journal format. Remote test
+Hosts refuse these operations by name. Adapter layout adoption is separate from
+these primitives.
+
 Claude Code rows on a Host other than `local` run one `claude agents --json`
 for each launch and at most one for an explicit restart resume. Discovery is
 isolated by host and session and never writes the local directory schedule.
@@ -8370,7 +8381,8 @@ Standalone adapters without Host lookup callbacks use the local Host.
 Codex sandbox profiles resolve writable roots, linked-worktree Git directories
 and local-network socket allow/deny paths through that captured Host's realpath,
 statDirectory and readFile. Local profiles retain their serialized bytes.
-Launch files, sockets and RPC transport remain hub-local pending E-1532.
+Adapter launch path selection, sockets and RPC transport remain hub-local;
+Host layout adoption is handled by the adapter migration item.
 
 Sessions owns a registry containing `local`.
 Remote liveness and stop use only that row's registered Host and require its
@@ -8431,7 +8443,7 @@ After successful spawn, descriptor-close failure reports
 completion receipt; a diagnostic cannot discard an accepted child. `LaunchFiles.spawned` registers that PID and
 completion receipt immediately: failed handshakes stop through the same Host
 and join completion before undoing files. The SSH transport must supply the
-same receipt, as must test Hosts. Native launch-file preparation stays hub-local.
+same receipt, as must test Hosts. LaunchFiles mutations use the session Host; undo metadata stays hub-local.
 
 LaunchFiles captures child identity and rolls failed launches back through the
 Host. The local Host retains its owner's termination logger, including the

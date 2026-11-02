@@ -58,3 +58,10 @@ captures a separate native child/exit owner before injection, closes the real
 descriptor then raises the synthetic error, and drains that owner even on red
 before fixture removal. Assert returned PID, diagnostic PID, live birth, stop
 and final native completion. Other providers supply an equivalent fault hook.
+
+Launch primitive cases assert exact bytes and explicit file modes, truncation,
+single-directory creation, empty-only removal and symlink unlink safety. Bind a
+server to the returned freePort and observe listening before asserting its port;
+close it before root removal. Local forward/unforward preserve Unix-socket and
+loopback-port endpoints. The frozen layout keeps all supplied entries and derives
+run/log directories from the discovery file's parent.

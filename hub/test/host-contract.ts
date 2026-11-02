@@ -1,6 +1,7 @@
 // Reusable Host process contract; native cases are registered by the T3 wrapper.
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, writeFile, realpath, mkdir, symlink, stat } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ownProcess } from './process-cleanup.ts';
@@ -16,6 +17,64 @@ async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
 }
 
 export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
+  register('Host writes exact bytes and mode, truncates, makes and removes only owned paths', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-writes-'));
+    try {
+      const host = factory(fixtureEnvironment(root, process.env));
+      const dir = join(root, 'owned');
+      await host.makeDirectory(dir, 0o700);
+      assert.equal((await stat(dir)).mode & 0o777, 0o700);
+      const path = join(dir, 'bytes');
+      const bytes = Buffer.from([0, 255, 10, 13]);
+      await host.writeFile(path, bytes, { mode: 0o600 });
+      assert.deepEqual(await readFile(path), bytes);
+      assert.equal((await stat(path)).mode & 0o777, 0o600);
+      await host.writeFile(path, new Uint8Array(), { truncate: 2 });
+      assert.deepEqual(await readFile(path), bytes.subarray(0, 2));
+      await assert.rejects(host.removePath(dir, { directory: true }));
+      const link = join(root, 'link');
+      await symlink(dir, link);
+      await host.removePath(link);
+      assert.deepEqual(await readFile(path), bytes.subarray(0, 2));
+      await host.removePath(path);
+      await host.removePath(dir, { directory: true });
+      assert.equal(existsSync(dir), false);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  register('Host freePort releases a bindable IPv4 loopback port', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-port-'));
+    const server = createServer();
+    try {
+      const host = factory(fixtureEnvironment(root, process.env));
+      const port = await host.freePort();
+      assert.ok(Number.isInteger(port) && port > 0 && port <= 65535);
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(port, '127.0.0.1', resolve);
+      });
+      assert.equal((server.address() as import('node:net').AddressInfo).port, port);
+    } finally {
+      if (server.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  register('Host local forwards preserve both endpoints and launch layout preserves current paths', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'host-layout-'));
+    try {
+      const host = factory(fixtureEnvironment(root, process.env));
+      for (const endpoint of [{ socket: join(root, 'session.sock') }, { port: 12345 }]) {
+        assert.deepEqual(await host.forward('session-id', endpoint), endpoint);
+        await host.unforward('session-id');
+      }
+      const input = { discoveryFile: join(root, '.cland', 'hub.json'), node: '/node', cli: '/cli', spoke: '/spoke' };
+      const paths = host.layout(input);
+      assert.deepEqual(paths, { ...input, runDirectory: join(root, '.cland', 'run'), logDirectory: join(root, '.cland', 'log') });
+      assert.ok(Object.isFrozen(paths));
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   register('Host file operations preserve cwd refusals, identity, paths, bytes and folder safety', async () => {
     const root = await mkdtemp(join(tmpdir(), 'host-files-'));
     try {

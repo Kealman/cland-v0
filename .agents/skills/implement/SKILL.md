@@ -1643,6 +1643,15 @@ listing and bytes on the caller Host; human and hub-owned sources stay local.
 Upload bytes remain frame-owned; stored attachment types use local. Preserve
 legacy createArtifact callers and leave creator attribution to its own item.
 
+For Host launch files, use the recording cases in
+`docs/agents/tests/hub-test-launch-files.test.ts.md`. Journal writes with
+LaunchFiles.write; rollback uses Host write/truncate/remove operations and retains
+the previous durable journal format. Undo metadata reads stay hub-local. The local
+layout resolver preserves discovery/node/CLI/spoke inputs and derives run/log
+paths beside discovery; freePort probes then releases IPv4 loopback, and local
+forward/unforward preserve endpoints. Adapter layout adoption belongs to its
+own item; keep session-launch and session-stop-races controls unedited.
+
 Use the reusable Host contract for directory identity/refusals, exact file bytes,
 folder safety, worktree add/remove and alias containment. Keep shared install
 diagnostics in host/worktree-install.ts. The local limitPolls flag preserves idle

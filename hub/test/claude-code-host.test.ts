@@ -195,7 +195,13 @@ async function remoteFixture(t: import('node:test').TestContext) {
   const secondLaunch = Promise.withResolvers<void>();
   let listed = true;
   let living = true;
+  // File preparation is real but confined to this disposable project's Host.
+  const fileHost = localHost(fixtureEnvironment(root, process.env));
   const machine = processHost({ ...testHost('t1', () => {}),
+    makeDirectory: fileHost.makeDirectory,
+    writeFile: fileHost.writeFile,
+    removePath: fileHost.removePath,
+    statDirectory: fileHost.statDirectory,
     readFile: async () => Buffer.from('{}'),
     run: async (command: HostCommand) => {
       commands.push(command);

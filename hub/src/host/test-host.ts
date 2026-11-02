@@ -10,6 +10,13 @@ export function testHost(name: string, log: LogFn): Host {
   };
   return {
     name,
+    layout() { return refuse('layout'); },
+    async writeFile() { return refuse('writeFile'); },
+    async makeDirectory() { return refuse('makeDirectory'); },
+    async removePath() { return refuse('removePath'); },
+    async freePort() { return refuse('freePort'); },
+    async forward() { return refuse('forward'); },
+    async unforward() { return refuse('unforward'); },
     get limitPolls() { record('limitPolls'); return false; },
     async spawn() { return refuse('spawn'); },
     async run() { return refuse('run'); },

@@ -259,6 +259,7 @@
     "hub/test/journal-flush.test.ts": "T1",
     "hub/test/journal-subagents.test.ts": "T1",
     "hub/test/launch-admission.test.ts": "T2",
+    "hub/test/launch-files.test.ts": "T2",
     "hub/test/launch-recovery.test.ts": "T3",
     "hub/test/lead-handover-process.test.ts": "T3",
     "hub/test/lead-handover.test.ts": "T2",

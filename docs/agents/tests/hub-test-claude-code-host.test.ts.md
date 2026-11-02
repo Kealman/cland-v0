@@ -26,7 +26,10 @@ claude-code-schedule.test.ts, claude-code-accounts.test.ts and
 claude-code-environment.test.ts unedited as behavior controls. The shared Host
 contract covers native capture/callback/signal order and absent/reused identities.
 
-Nonlocal cases build from testHost and processHost, never localHost. They count
+Nonlocal process cases build from testHost and processHost. File preparation
+explicitly uses localHost operations with fixtureEnvironment on the disposable
+project; directory/stat/write/remove operations must succeed before the synthetic
+process boundary. Production testHost keeps its named file refusals. They count
 one discovery for each of two launches in one interval, observe several Host
 liveness receipts and death, retain a missing PID as supervised/running with an
 unknown-PID diagnostic, and reopen the adapter for listed and missing restart

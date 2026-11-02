@@ -163,10 +163,17 @@ test('production OpenCode launch reaches the explicitly selected nonlocal Host s
   const root = await tempProject(t);
   const operations: string[] = [];
   const launches: Array<{ host: string; role: string | undefined }> = [];
+  const { localHost } = await import('../src/host/local.ts');
+  const fileHost = localHost(fixtureEnvironment(root, process.env));
   const recording = (name: string) => {
     const machine = testHost(name, e => operations.push(`${name}:${e.operation}`));
     return {
       ...machine,
+      // Reach the intended spawn boundary after scratch-local preparation.
+      makeDirectory: fileHost.makeDirectory,
+      writeFile: fileHost.writeFile,
+      removePath: fileHost.removePath,
+      freePort: fileHost.freePort,
       statDirectory: async () => ({ refusal: null, identity: null }),
       spawn: async (command: import('../src/host/host.ts').HostCommand) => {
         launches.push({ host: name, role: command.env.CLAND_ROLE });

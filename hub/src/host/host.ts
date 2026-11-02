@@ -27,9 +27,24 @@ export type HostStopOptions = {
   log?: (entry: Record<string, unknown>) => void;
 };
 
+export type HostEndpoint = { socket: string } | { port: number };
+export type HostLaunchLayoutInput = { discoveryFile: string; node: string; cli: string; spoke: string };
+export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: string; logDirectory: string }>;
+
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
   readonly name: string;
+  readonly layout: (input: HostLaunchLayoutInput) => HostLaunchLayout;
+  /** Exact bytes; an explicit mode applies to existing files too. truncate requires empty bytes. */
+  writeFile(path: string, bytes: Uint8Array, options?: { mode?: number; truncate?: number }): Promise<void>;
+  /** One directory; parents are owned and journaled separately by the caller. */
+  makeDirectory(path: string, mode?: number): Promise<void>;
+  /** Never recursive. directory removes an empty directory only; otherwise unlink the path itself. */
+  removePath(path: string, options?: { directory?: boolean }): Promise<void>;
+  /** Probe and release an IPv4 loopback port, not a reservation through child bind. */
+  freePort(): Promise<number>;
+  forward(sessionId: string, endpoint: HostEndpoint): Promise<HostEndpoint>;
+  unforward(sessionId: string): Promise<void>;
   /** Native exit receipt resolves once; no process handle crosses the Host seam. */
   spawn(command: HostCommand, options?: HostSpawnOptions): Promise<{ pid: number; exited: Promise<{ code: number | null; signal: string | null }> }>;
   run(command: HostCommand): Promise<HostRunResult>;

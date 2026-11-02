@@ -8,7 +8,6 @@
 // Nothing is written into the project's committed files.
 import type { Resumed } from '../../hub/worktrees.ts';
 import { continueWith, wait, untimed } from '../continuations.ts';
-import { createServer } from 'node:net';
 import { OpenCodeClient } from './client.ts';
 import type { Host } from '../../host/host.ts';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -87,22 +86,6 @@ export async function readPassword(files: ServerFiles, resumed: Resumed = untime
   })(), resumed);
 }
 
-/** Reserve an ephemeral loopback port long enough to choose it, then let the child bind it. */
-async function freePort(): Promise<number> {
-  const server = createServer();
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      server.close(error => {
-        if (error) reject(error);
-        else if (address && typeof address === 'object') resolve(address.port);
-        else reject(new Error('could not choose an OpenCode loopback port'));
-      });
-    });
-  });
-}
-
 export async function startServer(options: { host: Host; bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
   return continueWith((function* (): Generator<Promise<unknown>, {
     pid: number;
@@ -116,7 +99,7 @@ export async function startServer(options: { host: Host; bin: string; cwd: strin
     let explanation = '';
     const attempted = new Set<number>();
     while (Date.now() < deadline) {
-      const port = yield* wait(freePort());
+      const port = yield* wait(options.host.freePort());
       if (attempted.has(port)) continue;
       attempted.add(port);
       const url = `http://127.0.0.1:${port}`;
