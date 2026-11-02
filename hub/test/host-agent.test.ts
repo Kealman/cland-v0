@@ -433,7 +433,7 @@ test('detached descendant captured before reparenting stays owned; uncaptured es
   }
   const sentence='A descendant that escaped before any capture is outside cland’s authority on both Hosts and is never signalled; host recycling clears it.';
   assert.ok((await readFile(new URL('../../docs/agents/host-agent.md',import.meta.url),'utf8')).includes(sentence));
-  assert.ok((await readFile(new URL('../README.md',import.meta.url),'utf8')).includes(sentence));
+  assert.ok((await readFile(new URL('../../docs/hub/declining-an-accepted-verifier-request-t-1494.md',import.meta.url),'utf8')).includes(sentence));
 });
 
 test('live-root resource samples retain a captured reparented writer and count each PID once', {timeout:25000}, async t=>{

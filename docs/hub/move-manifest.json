@@ -1,0 +1,3595 @@
+{
+  "base": "260a8f2c7751e5423b6804478013cd0eedef0ea8",
+  "previousBase": "ef7b25068a75c9166e3134a59465a4bdfdd449a0",
+  "blocks": [
+    {
+      "source": "hub/README.md",
+      "title": "Prerequisite and packaging reports",
+      "destination": "docs/hub/prerequisite-and-packaging-reports.md",
+      "sha256": "746e032b29dda635310674db2e9d359f24e335fd03add3e604cea2398b6504ba",
+      "length": 1118,
+      "start": 0,
+      "end": 1118
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Start a project with cland",
+      "destination": "docs/hub/start-a-project-with-cland.md",
+      "sha256": "5a47ef10969073a7a891ab1f68f609e6954fa72a812cd02b84ec16aa34f377e9",
+      "length": 6826,
+      "start": 1118,
+      "end": 7940
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Web workspace",
+      "destination": "docs/hub/web-workspace.md",
+      "sha256": "0eaa989e9371783a04ff294592a8a524ad3593bf6aba283896781773f412d348",
+      "length": 6071,
+      "start": 7940,
+      "end": 14011
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Modules",
+      "destination": "docs/hub/modules.md",
+      "sha256": "665ca4b41f3cc54e391c318c9632198faebbff4f44e9e32157e859ec3a785c52",
+      "length": 17575,
+      "start": 14011,
+      "end": 31551
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Web edge",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "53cb7cfe01680a0614453ae4e03c48f5a404319d20812625e624438f3e3bdacf",
+      "length": 40344,
+      "start": 31551,
+      "end": 71851
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Gateway authority",
+      "destination": "docs/hub/gateway-authority.md",
+      "sha256": "ee2f4fe8c87ebed34196d6690ac2cdfd888b8a652c0e1c1c65068dc7bb5d5f7e",
+      "length": 15624,
+      "start": 71851,
+      "end": 87475
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Durable remote outbox",
+      "destination": "docs/hub/durable-remote-outbox.md",
+      "sha256": "7f589d7b7d26a120e21b664fd95548db25b96c8d05cb927143a6571bd1c2786e",
+      "length": 5445,
+      "start": 87475,
+      "end": 92920
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Connection events filter",
+      "destination": "docs/hub/connection-events-filter.md",
+      "sha256": "8864875480226271695365034a0c4bd6df4a31951fb8100bf482c3dba6d8572d",
+      "length": 2260,
+      "start": 92920,
+      "end": 95180
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Negotiated connection snapshot",
+      "destination": "docs/hub/negotiated-connection-snapshot.md",
+      "sha256": "18b18f0f980400a02178e00d587f38625726a96e963836d87a23a7644b2e1f20",
+      "length": 12653,
+      "start": 95180,
+      "end": 107828
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Human last looks and read marks",
+      "destination": "docs/hub/human-last-looks-and-read-marks.md",
+      "sha256": "f5a0bed9f38f67e81d82ab1b887045b300984c42e1a5dd6f32b4a021b16f6538",
+      "length": 2201,
+      "start": 107828,
+      "end": 110029
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Identity and delivery",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "8dadcbe00e7706376c480ba7497c135ab28aa80cfc0a1e6b0c756b6771539eb5",
+      "length": 8502,
+      "start": 110029,
+      "end": 118527
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Topics",
+      "destination": "docs/hub/topics.md",
+      "sha256": "4bb8b299f43473b957dd5adde654a13b9c603f17833c138c6188b4b4e52104f3",
+      "length": 24104,
+      "start": 118527,
+      "end": 142617
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Thread runs and fold lines",
+      "destination": "docs/hub/thread-runs-and-fold-lines.md",
+      "sha256": "62cd522f71aed0f46cedd0a1919ebd5c13354031edf2275fc22ed4cd9b106dbf",
+      "length": 4222,
+      "start": 142617,
+      "end": 146834
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Asks and the inbox",
+      "destination": "docs/hub/asks-and-the-inbox.md",
+      "sha256": "d1ed89a4ffefb5e8eb82fd463d50d17b97624f55cec4534bcab61c45549ec892",
+      "length": 27463,
+      "start": 146834,
+      "end": 174262
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Roles",
+      "destination": "docs/hub/roles.md",
+      "sha256": "87ffd142be4e5a9d7c81deb419b07b12073178212aca8747fdeffe8ae72d4b26",
+      "length": 60514,
+      "start": 174262,
+      "end": 234628
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Rulebook",
+      "destination": "docs/hub/rulebook.md",
+      "sha256": "c447bf1d226e59e7dcf1e544fe44e94f57a233461971b986f29a1189ad953ffc",
+      "length": 6375,
+      "start": 234628,
+      "end": 241001
+    },
+    {
+      "source": "hub/README.md",
+      "title": "The Agents record, the journal and hygiene",
+      "destination": "docs/hub/the-agents-record-the-journal-and-hygiene.md",
+      "sha256": "2119b7d817fdb62390f7a19a65c1c016b9b86d4dc8b7727e26151cd1efd3b04a",
+      "length": 17176,
+      "start": 241001,
+      "end": 258169
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Per-user state",
+      "destination": "docs/hub/per-user-state.md",
+      "sha256": "284fc709e399242fe21908bf3b703f6969abe3e3a38cef7f0459b93937d9afb4",
+      "length": 2647,
+      "start": 258169,
+      "end": 260816
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Accounts and limits",
+      "destination": "docs/hub/accounts-and-limits.md",
+      "sha256": "80c3c27d3050039f3f3e0d09bddc741b7aa9a2827c7fc6c867e4f7cdb208a0f7",
+      "length": 15427,
+      "start": 260816,
+      "end": 276229
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Lifecycle notes",
+      "destination": "docs/hub/lifecycle-notes.md",
+      "sha256": "851fa83903adfd5e81c9a99dc1571cef2fa2a8c8fee59b9722da04096e816b8c",
+      "length": 503,
+      "start": 276229,
+      "end": 276732
+    },
+    {
+      "source": "hub/README.md",
+      "title": "The cland CLI",
+      "destination": "docs/hub/the-cland-cli.md",
+      "sha256": "54ab5e103aa49e15c45c4e4ae5b06c90eef875cad1591eb458554e1e66b9ba8b",
+      "length": 2614,
+      "start": 276732,
+      "end": 279346
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Telegram voice transcripts",
+      "destination": "docs/hub/telegram-voice-transcripts.md",
+      "sha256": "045cdf3f8be4fb1b7656da18ee5fa192cf477a6eea60ac118e6335b1d29667fd",
+      "length": 3552,
+      "start": 279346,
+      "end": 282869
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Project secrets",
+      "destination": "docs/hub/project-secrets.md",
+      "sha256": "c345bef5584595f187376c6e40849ec0a7d01d8eeab22024eeaac2acbcb6521f",
+      "length": 3646,
+      "start": 282869,
+      "end": 286515
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Remote commands",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "76f57cc53ad035d1e78d9c0716077d6dd522d35a2576467e98c06fd95dbda201",
+      "length": 48543,
+      "start": 286515,
+      "end": 334986
+    },
+    {
+      "source": "hub/README.md",
+      "title": "cland setup",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "b859dec9af4ca43bf2859d866818d7b42114db7107f47c724598c11d60230eb6",
+      "length": 11005,
+      "start": 334986,
+      "end": 345991
+    },
+    {
+      "source": "hub/README.md",
+      "title": "cland init and cland update",
+      "destination": "docs/hub/cland-init-and-cland-update.md",
+      "sha256": "8300c9b0ab12715354dd5753f2d43f51218f601f2668c3bfc0b34e9728caf0c0",
+      "length": 51859,
+      "start": 345991,
+      "end": 397820
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Prebuilt Web release assets",
+      "destination": "docs/hub/prebuilt-web-release-assets.md",
+      "sha256": "0affac7417c6f348f4ac845baa2d4f823aa409de040fabc2b9cbb5bd7d40bd66",
+      "length": 2224,
+      "start": 397820,
+      "end": 400042
+    },
+    {
+      "source": "hub/README.md",
+      "title": "cland doctor",
+      "destination": "docs/hub/cland-doctor.md",
+      "sha256": "8d3603792b3306c7afc16345921bce750160606e85ab89939ae3402a192d9161",
+      "length": 10915,
+      "start": 400042,
+      "end": 410951
+    },
+    {
+      "source": "hub/README.md",
+      "title": "The project's hub",
+      "destination": "docs/hub/the-projects-hub.md",
+      "sha256": "6b49604fb6a699e6cf96eafd752a15c0100ebd3d64c929e1324faba1aae284a6",
+      "length": 26423,
+      "start": 410951,
+      "end": 437248
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Adapters and sessions",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "1239bb070a9feda6924a5818fc9bfc322458c384563ae915c60f5adda4b6e5ce",
+      "length": 67711,
+      "start": 437248,
+      "end": 504824
+    },
+    {
+      "source": "hub/README.md",
+      "title": "The tracker",
+      "destination": "docs/hub/the-tracker.md",
+      "sha256": "9f4039543997b49fa102055ef3eccca6917e8fdf2cec258d626a9d7e247bb036",
+      "length": 70596,
+      "start": 504824,
+      "end": 575330
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Running",
+      "destination": "docs/hub/running.md",
+      "sha256": "beb5b867ee7009e231f2c00bd3ac356fc2f4156715ca659e08ac054761881f5d",
+      "length": 135964,
+      "start": 575330,
+      "end": 711219
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Artifacts",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "0dd9787c31dc6bf00a780f4168b9bc5698e7c1b84a797f75452e7f80eabe62fa",
+      "length": 59894,
+      "start": 711219,
+      "end": 771060
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Coordinator account refusal procedure",
+      "destination": "docs/hub/coordinator-account-refusal-procedure.md",
+      "sha256": "a059d6c629b05938ca6b5d3f4963c6a38c2f9c3204fa853b7af600b002a0c30b",
+      "length": 661,
+      "start": 771060,
+      "end": 771721
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Coordinator session procedure",
+      "destination": "docs/hub/coordinator-session-procedure.md",
+      "sha256": "4cba4125580abc77996355c23208991441d205f3439aa3daf246a57f29ca71d1",
+      "length": 4760,
+      "start": 771721,
+      "end": 776481
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Coordinator heartbeat procedure",
+      "destination": "docs/hub/coordinator-heartbeat-procedure.md",
+      "sha256": "ebf5b746852630f696861b1805bfd1b1993ba7ba28085eed2996301bbdc1a574",
+      "length": 592,
+      "start": 776481,
+      "end": 777073
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Coordinator subscription procedure",
+      "destination": "docs/hub/coordinator-subscription-procedure.md",
+      "sha256": "c92f2d30e8ac04c864212f99b007ce8f267ce546d6ddc64b6addc5c87e77a2a0",
+      "length": 54706,
+      "start": 777073,
+      "end": 831664
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Additive interaction selection (T-1454)",
+      "destination": "docs/hub/additive-interaction-selection-t-1454.md",
+      "sha256": "255d69a18e49e1fa7287871cc615770b906194a56cade93f1b31b54ba4a2e805",
+      "length": 6821,
+      "start": 831664,
+      "end": 838477
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Installed verification compiler capability",
+      "destination": "docs/hub/installed-verification-compiler-capability.md",
+      "sha256": "edaa397be47228e0d0fe569ed375483103c02dab6f07d29a613ee8d9b20248ad",
+      "length": 2823,
+      "start": 838477,
+      "end": 841296
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Operator retry of queued input (T-1473)",
+      "destination": "docs/hub/operator-retry-of-queued-input-t-1473.md",
+      "sha256": "ef225b4ff79abf8c54bbce30511b70571ba76093b379deac4c0d5cd824a57167",
+      "length": 4271,
+      "start": 841296,
+      "end": 845567
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Pinned verifier request heads",
+      "destination": "docs/hub/pinned-verifier-request-heads.md",
+      "sha256": "3e49085f265702c7988680e0720122296797fe6a384b6a72e621877d9676cfd5",
+      "length": 2483,
+      "start": 845567,
+      "end": 848050
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Merge queue landing reports (T-1503)",
+      "destination": "docs/hub/merge-queue-landing-reports-t-1503.md",
+      "sha256": "e1a73ab85562b15221687da2015018655474f6621b28e556b637cbd01d6f282b",
+      "length": 2550,
+      "start": 848050,
+      "end": 850600
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Standing duration allowance owners",
+      "destination": "docs/hub/standing-duration-allowance-owners.md",
+      "sha256": "52f86767615cddd3fb5c4832388695fb420996354cd8901805950042b19b5018",
+      "length": 1292,
+      "start": 850600,
+      "end": 851892
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Setup and doctor remote readiness",
+      "destination": "docs/hub/setup-and-doctor-remote-readiness.md",
+      "sha256": "4e31dd8f72cad456b7a1b37d760bad3bc0ac2eded6bd3d62f488535bafa3e7b6",
+      "length": 699,
+      "start": 851892,
+      "end": 852591
+    },
+    {
+      "source": "hub/README.md",
+      "title": "Declining an accepted verifier request (T-1494)",
+      "destination": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+      "sha256": "04143d45594e802a2fc75aa169f97fddcee96395d7caf91cf359198473cb8bed",
+      "length": 25594,
+      "start": 852591,
+      "end": 878183
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/project-secrets.md",
+      "sha256": "f59ad1dee9bc6457fbbd76a8e0baff0569821087de3cdf3243328d3de92da6a1",
+      "length": 444,
+      "start": 2121,
+      "end": 2565
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "1e05ada844cc83edc78038f2faa72cf01d60c6b6128a2ae7ab999644117dc4bc",
+      "length": 988,
+      "start": 2566,
+      "end": 3550
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "9c07e6797f84c91751ef35e9ca84ced84cb76bda62bef248aef6bd6732cb6831",
+      "length": 658,
+      "start": 3551,
+      "end": 4209
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/per-user-state.md",
+      "sha256": "543bd390e24b2c02955ca1135f04ce635efaf2b84cbd9c4aa7d4e2e053984013",
+      "length": 412,
+      "start": 4210,
+      "end": 4622
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/telegram-voice-transcripts.md",
+      "sha256": "92f3c2a32ff9994b0abb85b038d5de7e43fd04ea595ebb67d43d7b26dc85b8fe",
+      "length": 1185,
+      "start": 4623,
+      "end": 5808
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/telegram-voice-transcripts.md",
+      "sha256": "3dc39a46a88cda513efac083a66c8a75f18ebea466cd9df2f74136657e75cb51",
+      "length": 438,
+      "start": 5809,
+      "end": 6247
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/telegram-voice-transcripts.md",
+      "sha256": "2362b15fadcf1c33831a0a8d5c7eccfa23535fd9f574e636368b4ee4eb29d8a9",
+      "length": 440,
+      "start": 6248,
+      "end": 6688
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/telegram-voice-transcripts.md",
+      "sha256": "55afc131f8ba0ff8bf908b52b8c8cd45abdcc5f8c7a910126b2ae1e4be4fdb66",
+      "length": 365,
+      "start": 6689,
+      "end": 7054
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/project-secrets.md",
+      "sha256": "322674586c7ebc04a8738c3e16d1a81dfed2b392a5f797f0ba9da819be4e645c",
+      "length": 772,
+      "start": 7055,
+      "end": 7827
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "fb82693c35b64a81fc71b731f28e7956139e324b40973ea685eea609a8da0a79",
+      "length": 617,
+      "start": 7828,
+      "end": 8445
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "e4d5e38cc3aabd718c851e5720904dba4cc6a6294ff3af5a972e2358877cf035",
+      "length": 808,
+      "start": 8446,
+      "end": 9252
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "0f6501e10d1cf21ce7c642d4ba6ca9a17c855b5d0b61bbe6da440593c18eadec",
+      "length": 218,
+      "start": 9253,
+      "end": 9471
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/the-projects-hub.md",
+      "sha256": "cd5f13935b4113d19ba5e7ed5146ea6cbf4a2f49983ac4ec22faf3301dd7445b",
+      "length": 1102,
+      "start": 9472,
+      "end": 10574
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "fc296b5938d6413790f2442978c8dba89a2503c902fbfd563a244eef6764dedd",
+      "length": 5102,
+      "start": 10575,
+      "end": 15674
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "d6348a61e46f817d89e931abb7ce8df13b24fbebc82c682a359da0d73f66b089",
+      "length": 1221,
+      "start": 15675,
+      "end": 16896
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "b3f2e71064bb3180afb7784f6ceb8f8f61487ec7ee0686613c1ccfa715cb026b",
+      "length": 3188,
+      "start": 16897,
+      "end": 20085
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "b241aa67fad037f40a251b146330077583e6b2fc8d0d76c7d5baec39c49be06c",
+      "length": 1149,
+      "start": 20086,
+      "end": 21235
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "c152e9c3f5395eeb1a5e609edacf1f828ca65b050974a04c811c148e7137b6fd",
+      "length": 946,
+      "start": 21236,
+      "end": 22182
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "a0ec38b3651741023b001a8af99633580f9c0d01f2d254bb7a0a9d7d063cef61",
+      "length": 1807,
+      "start": 22183,
+      "end": 23990
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "d96f79b3c3aac98abb2ebd0a442f295173cb1d02e81a81a51c3df85b85ab5b13",
+      "length": 394,
+      "start": 23991,
+      "end": 24385
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "44bb7f3e9cbc91fe362a65ba38a23972202ae17cdc0d5c6b640878e5056bf000",
+      "length": 936,
+      "start": 24386,
+      "end": 25322
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "8b2dda832377e88fdc30d6689800b0b7008b1956adbf64cf21624632e42c16ef",
+      "length": 641,
+      "start": 25323,
+      "end": 25964
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "c21650426b716219e6b18a35a13f6d0c41f15576a8e7789a96dc1310ccf6c0a0",
+      "length": 632,
+      "start": 25965,
+      "end": 26597
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "f47fc7bfa9574fff1d77296d2d603e0e795d78fde5929695a3061ab3fae225bb",
+      "length": 308,
+      "start": 26598,
+      "end": 26906
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0d3dbce31e820ceb2c53386c265a80e39ba2a87159fef58dca3863809dba4c3f",
+      "length": 418,
+      "start": 26907,
+      "end": 27325
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "128b6038a831e192c76a9eb94e8783e057bdb2ee291d2e35211b2d6874532efc",
+      "length": 387,
+      "start": 27326,
+      "end": 27713
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "ed193f1503b68332c8522186aa588fb090199d5d4af1dd09a5b3288eb6a37c0d",
+      "length": 1197,
+      "start": 27714,
+      "end": 28911
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "e2a2849a4054b2b43ad9a439bc830536ed25132e7ba973c9719b9370985b9c4b",
+      "length": 737,
+      "start": 28912,
+      "end": 29649
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "b3acead7d72bc1c2c97b38125b4083c2b38a76a55946ed8bf0dbce59df7343e5",
+      "length": 194,
+      "start": 29650,
+      "end": 29844
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "400948cf56945c493d8850e2232a48809a49a6424f38d1253eccbcd9100b5115",
+      "length": 578,
+      "start": 29845,
+      "end": 30423
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "193952af1cc804975edaa9674480d7581f7a6e83a71d51bda810034a9bc306f7",
+      "length": 344,
+      "start": 30424,
+      "end": 30768
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "920996318fc8915f9b25ed6033fc1f5dbe56c8f9a7ceb05efbb69f60ca0c49d3",
+      "length": 358,
+      "start": 30769,
+      "end": 31127
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "60864e6af11323e1567c1673e7f3b7138dda3ba16d09d8726f17d5fadaeb9bf8",
+      "length": 687,
+      "start": 31128,
+      "end": 31815
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "27135b39a80be2b1c06538847cee56e5a517560287a154b87b6c0f5aef585ee7",
+      "length": 543,
+      "start": 31816,
+      "end": 32359
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0e1d9ba740783f164ac788c6dbc1d426c3868149079cfd64bdf719c88da50bb5",
+      "length": 456,
+      "start": 32360,
+      "end": 32816
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "72509dfb231da32d176c1ef70ebc782b705cc475154eeab5de39650377f04290",
+      "length": 248,
+      "start": 32817,
+      "end": 33065
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "7ac7dd97cf53d0a9a0d7e6f718ee960d9f3f6d1a49850c9ade0edd6f2a837605",
+      "length": 1136,
+      "start": 33066,
+      "end": 34202
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "2c2395b43f44ff34b5a576969784b930a12cc6d183bd5ca6553fabed119bedc0",
+      "length": 318,
+      "start": 34203,
+      "end": 34521
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "999cdbaedfa81ea6ec745e3fd9e6d080a4486abfda25af0a03ab521caa66e92e",
+      "length": 1480,
+      "start": 34522,
+      "end": 36002
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "838d2bbb924bd895188a1f2d4f0a89c3908049c1463288a302b4ed6b48847a34",
+      "length": 304,
+      "start": 37215,
+      "end": 37519
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b4d5cfe9f72a66efb8b9625cb3bc8c304a2e1806dd4f6a707939da857a940ee5",
+      "length": 288,
+      "start": 37520,
+      "end": 37808
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "599db00ba6bf074c1154ba174e75c2052004fd279da33234cc2e5a8b7d5d405e",
+      "length": 229,
+      "start": 37809,
+      "end": 38038
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "24d84714b1051b42e6025c89778bb12730b11127da349442f4ef3fa58c581901",
+      "length": 236,
+      "start": 38039,
+      "end": 38275
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-doctor.md",
+      "sha256": "262196ef734e6f8f46f8c577aef94614f8d44c268e59f00a0fefccfce29c0292",
+      "length": 940,
+      "start": 38276,
+      "end": 39212
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "f9c4fa67fde1bc2a5a96aecb13f0bddaf22dc9710aacc77bc266fa2cf9ba9509",
+      "length": 203,
+      "start": 39213,
+      "end": 39416
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "ce65c09deaeb0f866e27d6cf859d09e0478e6fad28e1cf7e46233598a53e3dbc",
+      "length": 359,
+      "start": 39417,
+      "end": 39776
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "75caa3f509b58513a2aaf26154d4dfc675a13adb8dfa6eac6f4e7e94778bd069",
+      "length": 789,
+      "start": 39777,
+      "end": 40566
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0861e5281f22da203a89b3f84a31ac647bf3cfd820168f960a6189a2eddf703b",
+      "length": 284,
+      "start": 40567,
+      "end": 40851
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "23fb96ee0f4720c4d2ad12711f0b1969e13af7c547b81c321fa7fb47a93f8358",
+      "length": 273,
+      "start": 40852,
+      "end": 41125
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "51698c954de33f7d820ad8d475dab98f0bc5710feafb16a496cc4de22e03c033",
+      "length": 267,
+      "start": 41126,
+      "end": 41393
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "c4afe998cf3f3772923bc4628d0fdfbcb544fea4a3a2bc7537e4928adfd61a49",
+      "length": 960,
+      "start": 41394,
+      "end": 42354
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "10676dd549d3560cbadede2ca25d29d2978b2def68489f8a0af488908c5e7b7c",
+      "length": 459,
+      "start": 42355,
+      "end": 42814
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "2bd6168303c20074b46f686fd69658440832bf3310e0541352e6f5084e3c7a11",
+      "length": 771,
+      "start": 42815,
+      "end": 43586
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "352847ddb2b95d1a74f872ec98b2ae04e0dcf7ee2e935af66dffb813ca39a478",
+      "length": 448,
+      "start": 43587,
+      "end": 44035
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/roles.md",
+      "sha256": "93a54fb4b27478fff75756968b0d2635322f226625c5ac5c60cb4488dd924bf9",
+      "length": 559,
+      "start": 44036,
+      "end": 44595
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "73bbb79c14b720a5123deeaccd637c85fe9f9aa6a967ff29be3b45fa3dccc1cf",
+      "length": 2138,
+      "start": 44596,
+      "end": 46734
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "728bc710fb8c05a4aac4bdca1e33dda4753ca0a55682e435b58cd380d981211e",
+      "length": 361,
+      "start": 46735,
+      "end": 47096
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "84e0489c013c4a74c6c43735a4950f4b4c1bb346b631cd6257e85e117d326751",
+      "length": 212,
+      "start": 47097,
+      "end": 47309
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "1375abee9a2ce3d0211ced45f533a4050013e7ba248f778b911957fb480a798a",
+      "length": 412,
+      "start": 47310,
+      "end": 47722
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "368b2f1904f92e17461b08f4f2e68cf0b9c5c3e44075aa2798a54f2bddfc947e",
+      "length": 635,
+      "start": 47723,
+      "end": 48358
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "ebbcf465fa5953f5216b70587e28a624c177a689728e4d96f1dd44ebb682bae4",
+      "length": 1157,
+      "start": 48359,
+      "end": 49514
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b25806ad4b2cd1265d7757c201e8718977decbdcf05b72476d7a6985e3b78c25",
+      "length": 627,
+      "start": 49515,
+      "end": 50142
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "aa5fcc5c8109234899266619bde8e36ae10980d46177ec4d7415f4fb5975ce87",
+      "length": 299,
+      "start": 50143,
+      "end": 50442
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "93da04d4a98024d07149741a4d1b2005d5153f41ee2f53fe78fc24f71c737fbb",
+      "length": 280,
+      "start": 50443,
+      "end": 50723
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "49439c57ef4c32c008f2213d15bcc0b68a69c50fb2e1e30a93b8fa9ef330ed6f",
+      "length": 312,
+      "start": 50724,
+      "end": 51036
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "cb2b6e4e1cbc36e48f7a0a305679c9370822c9f9ecd6a6d94a2764ec84c232c6",
+      "length": 359,
+      "start": 51037,
+      "end": 51396
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "de0c10832f39ef43621790d022c379183002ea82e940851982568fae4fefd40d",
+      "length": 303,
+      "start": 51397,
+      "end": 51700
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "2656e39c89e138d744c024b27a1edb0f79be71eb86e7569e61d70b062471f2c2",
+      "length": 447,
+      "start": 51701,
+      "end": 52148
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "ddeb33b4836508171dc3245c73123753049fe089e56c849164c48c79aa3bf8ef",
+      "length": 373,
+      "start": 52149,
+      "end": 52522
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "77d03a4d7a763076f51adf3e599e69a935448df2b371840be0243ef9b3a487d6",
+      "length": 416,
+      "start": 52523,
+      "end": 52939
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "ded7308522bcc006d3fdbda9167013feab783b5b0cbbbfb6fdcf5eb7ef81d09a",
+      "length": 516,
+      "start": 52940,
+      "end": 53456
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "47a6d07c5487c096e48f0cf5b675d212301adc62190792c0af4c1c30f5732b95",
+      "length": 970,
+      "start": 53457,
+      "end": 54427
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "42544efbf7d8aa029c160879dc7d98fcddaf6e58f65abd092bc1ec39bc9061bb",
+      "length": 716,
+      "start": 54428,
+      "end": 55144
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "6025b46905dec857d6f499733ed5acf20f8008d181071da33739ba6a6490668a",
+      "length": 819,
+      "start": 55145,
+      "end": 55964
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "7a565422132092fe0d64dfc8ff6bd5392b81742542d37df3fbfbe62303a9cd09",
+      "length": 516,
+      "start": 55965,
+      "end": 56481
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "91b8d0100e59a207ead4949ebce8b23a39a519a9fa6637604268af8b9187fd09",
+      "length": 283,
+      "start": 56482,
+      "end": 56765
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "e8f85f9f0bccdb45c54712c26bdaf35a4d7786c21d39a447309fbd4e58c908e7",
+      "length": 307,
+      "start": 56766,
+      "end": 57073
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "dd2d5abea585848becc5bb5d1ec275326815a062aeb7b65d68cbc256319d1e6c",
+      "length": 458,
+      "start": 57074,
+      "end": 57532
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "8a42a07453f25aea3b6b0fbbf5f177a8c956571415eae95bef0d0143139b65d8",
+      "length": 227,
+      "start": 57533,
+      "end": 57760
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "10fb5dca31e0fc99d36773b47f0755b09e6a78729a9300be02c4c6189aedcce3",
+      "length": 287,
+      "start": 57761,
+      "end": 58048
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "f2224465ab16e40c96e5696cf67ab4e5cda26a54b60b566b22a8a552b1c07a55",
+      "length": 349,
+      "start": 58049,
+      "end": 58398
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "91d1a1b733247371d002d8efc85907eba9490d313228214e8774472ee013dd6f",
+      "length": 1432,
+      "start": 58399,
+      "end": 59831
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "33e01ace29b3f7fd8126ce129fa6e0879327bf3d90f63687915b648e6aedbce3",
+      "length": 400,
+      "start": 59832,
+      "end": 60232
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "1f8a8171c450bb0ecfd42e4ef4e6ab0b5cc6fcdcf8aae52250086c12e062aaa2",
+      "length": 525,
+      "start": 60233,
+      "end": 60758
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "971aadd2026ee57631d2afec7d18ebcc5f345f00444ee1c7061b3f64be3a87d2",
+      "length": 238,
+      "start": 60759,
+      "end": 60997
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "98c09bf0203e2079aedc86ca50a34d868489e560eb501825478bbfd09c69fa58",
+      "length": 553,
+      "start": 60998,
+      "end": 61551
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b35065245b0a4bbef758873897f4705258a62e2fff606e2d99a0948ce3ce9b52",
+      "length": 312,
+      "start": 61552,
+      "end": 61864
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "f7e29155e1a0e8bf4f5b7268e7e48f141467cc65120e6d2a17d3c57de15ac5cc",
+      "length": 2398,
+      "start": 61865,
+      "end": 64263
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "3a627f8bb06dbe1af3afb30a72a5e6d3d4065823d5fbce98793d7634efbf0a24",
+      "length": 235,
+      "start": 64264,
+      "end": 64499
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0d98829e0be6f6591c508074a0ccb4859d468788ea6af2db4ebe17caa678198b",
+      "length": 373,
+      "start": 64500,
+      "end": 64873
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "4f2fb6fda6fd657c345b92e879a37c196c478168e0e5701bc4fec1f87802b3df",
+      "length": 555,
+      "start": 64874,
+      "end": 65429
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "020d6cf016f86897fa70dbeec09dfe8fb064af4571239530f373f9cfc1cbe6a8",
+      "length": 607,
+      "start": 65430,
+      "end": 66037
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "c67d0863db0dfb760b67a06e25d98622d82676ad30f6e83422a8890a02e4d94a",
+      "length": 296,
+      "start": 66038,
+      "end": 66334
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "b39595c3f67128fba1149d08357ff70649aa1055fb310739b5edc9efb73f4b3c",
+      "length": 326,
+      "start": 67195,
+      "end": 67521
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "9bd518858922f4e0eebfd6e4c6df407550b6a3b95bf62507a5071acaf9cfbab8",
+      "length": 170,
+      "start": 68178,
+      "end": 68348
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "75cddf1b99fc21e31eabda50cd08e96cc3773ec4b5bab6a09c1536279add4fd5",
+      "length": 879,
+      "start": 74395,
+      "end": 75270
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "bf2b6e47f80e7689dc23058dd9697c986ab3b62aa2f758b4bd0086c272f25353",
+      "length": 510,
+      "start": 75271,
+      "end": 75781
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "37a9a4821658ea208472cb279b0ee31f2432263a1ea939b0edcbd06e2ab32538",
+      "length": 467,
+      "start": 75782,
+      "end": 76249
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "e4dec7b0e7f11c43ebebea7a4358a8dfbc6d325e49c4bf4300dc54818712963c",
+      "length": 546,
+      "start": 76250,
+      "end": 76796
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "a54b8dcf7f32a582cb8c2d9262a9b599365e9191cc6702d7416b314fa23f24c8",
+      "length": 307,
+      "start": 76797,
+      "end": 77104
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "2cd63e42c2257db6cf8a7ab480abe8570563e21623603f1f57ba5306a7986bb8",
+      "length": 1247,
+      "start": 77105,
+      "end": 78352
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "90f7ed85ff12a266ccaba181796f6c6f596f915a1051652cc29d57e0051303f9",
+      "length": 378,
+      "start": 78353,
+      "end": 78731
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/telegram-voice-transcripts.md",
+      "sha256": "e93c5068bb11331b27a9a9702ec55100ca5b4707601fc6c25703d963dca3dce1",
+      "length": 366,
+      "start": 78732,
+      "end": 79098
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "c057312385ac8d3e310bceabe4c6f09693555f30534c7b5d36de2c85a8d32c5f",
+      "length": 536,
+      "start": 79099,
+      "end": 79635
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "d48efac595916016fe56870c0a7e0382034cdffcb7c603ac41b70cce1d8b7ed5",
+      "length": 246,
+      "start": 79636,
+      "end": 79882
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "42941f6a052d9bc0793c51ed7fd0bdb5a4904fda54c3e7208bf9fda7c5f25480",
+      "length": 466,
+      "start": 79883,
+      "end": 80349
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "1a553a32fb8bbaf8dbaadb14a1798e00b65ddb0e55d2f655366ed53a24aa4f07",
+      "length": 686,
+      "start": 80350,
+      "end": 81036
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "857d2c5eb1196449e556de31c84703d6850bac54a264b3af86ed82331d651f0a",
+      "length": 826,
+      "start": 81037,
+      "end": 81863
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "4ecbc98eb55e5c3299b60d3c39838994f18027f07fdf09f80b466fc27c428e37",
+      "length": 637,
+      "start": 81864,
+      "end": 82501
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "c781fd50f8859f1df3da0e5387390d38a9c7c411161a179dbba08f5c5500e1ec",
+      "length": 513,
+      "start": 82805,
+      "end": 83318
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "653f67c28e4071d6dfcb1df3ca591ca8ead5693d9cc6185822f9bff489713c92",
+      "length": 782,
+      "start": 83319,
+      "end": 84101
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "c21b3056eed91734eef7cf2b4281a80e4c1ce08134417d5357b318d68ee3536e",
+      "length": 444,
+      "start": 84102,
+      "end": 84546
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "b5a361930e594676b4d9edb54fb96ee6da65d7e2a26406848258b47e9d76417b",
+      "length": 402,
+      "start": 84547,
+      "end": 84949
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "51d6e375c4e012392516078ae6e088b787b1d665d56d67207802c615226c1cd6",
+      "length": 1465,
+      "start": 84950,
+      "end": 86415
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "89e52144eee0b39fc923adbf95084f7fed5e6c4880d1e7692041a4f66ddb49e0",
+      "length": 859,
+      "start": 86416,
+      "end": 87275
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "182debe3ed7fa36f2e4925538f89bd2a097a961749aa85f27424a9b0895d1ac8",
+      "length": 546,
+      "start": 87276,
+      "end": 87822
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "ab75d8af64d4b36c246cbab227598a72898293b9665f3de06ace70584945cb61",
+      "length": 831,
+      "start": 87823,
+      "end": 88654
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "9a9cf11a004245cfe915875e135f177b7e4c3780d69cf5abee5750adb362588e",
+      "length": 20,
+      "start": 88656,
+      "end": 88676
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "c2f1be6aac9da201251825be933943f662e02c3f274f3ac9f6703ebc42f6a863",
+      "length": 1806,
+      "start": 88677,
+      "end": 90483
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "36ac83bff46e1a1907b7f2479b45e94953035873befd1791d0c2882bcef065f8",
+      "length": 782,
+      "start": 90485,
+      "end": 91267
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "658d2ad86e05aaa97198cd70384b9fb45d69d0d97be3adc457e94376cf96bcbc",
+      "length": 35,
+      "start": 91268,
+      "end": 91303
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "3847ff6fe38362ec4f0c551816163990fc8a9c3f16ce1eddcecbf7283fb64bd3",
+      "length": 428,
+      "start": 91304,
+      "end": 91732
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "bb5d46bbb9843a3563d17c9a71a8293ff8e47cc0936e4d1223566f9f1438fbe7",
+      "length": 842,
+      "start": 91733,
+      "end": 92575
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "37ace30ee916dd2032919c4ca68ab2d14f5e7f9bf089d357872325cc22f08825",
+      "length": 26,
+      "start": 92576,
+      "end": 92602
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "a4c04ee3a4320f3f2a1b24436486aae96cabde81722f6512a26588a49d82ef61",
+      "length": 523,
+      "start": 92603,
+      "end": 93126
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "a8dc6d3176361b5b41d70213e61998c0650d3a1a2816074daac34f091ba18c2e",
+      "length": 37,
+      "start": 93127,
+      "end": 93164
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "d6e413d65f8a82923bd8007b1fafeb3d097c570c35026177c49c26c8a55e1603",
+      "length": 503,
+      "start": 93165,
+      "end": 93668
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "731672014b182d58efbde402eb0fca4f4a12f27aa2c5c601c7ee99fc4eb42a84",
+      "length": 42,
+      "start": 93669,
+      "end": 93711
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "6ea18699fbe5e8d21b25b59fe875cdf3eadb78514c94c6d1ec26501157a00ab6",
+      "length": 559,
+      "start": 93712,
+      "end": 94271
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "a07dad587edc4b9d93bb23567764bb45ed07c31059dbeb9cf67200c80296e246",
+      "length": 45,
+      "start": 94272,
+      "end": 94317
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "765810dd663f5d83ba319f64c32dc2bceab379b28b04a7c07fba5423ec69b845",
+      "length": 506,
+      "start": 94318,
+      "end": 94824
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "f175f0a6aa01668a66089e6850a6d23049feb741940bc849d63e470314e332ba",
+      "length": 37,
+      "start": 94825,
+      "end": 94862
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "26ddf98d68d6e6c265e8ca79a5f5849f6a5b091ba55c7d645d26ae44c7bc516d",
+      "length": 469,
+      "start": 94863,
+      "end": 95332
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "d7705ca03e7b92a4ef21f5910d40274b67d4c9b3bd476f180f10d678f4c12343",
+      "length": 375,
+      "start": 95333,
+      "end": 95708
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "5a783d4c1fdf13d0809bbaac6a516bc00295a74a4cc7fd9778a3ac29335aa4b0",
+      "length": 47,
+      "start": 95710,
+      "end": 95757
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "98f919d057bb1f38bf90b119ec67f6f5a1be866f0c5494ba0fc5fa95b65befaf",
+      "length": 1249,
+      "start": 95758,
+      "end": 97007
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "ee8dcb9c9cfe28267a5cba902210c61a60d2714684ea2af82ea11c588bc42ae2",
+      "length": 779,
+      "start": 97008,
+      "end": 97787
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b82aafa585fa94c19f9176eb6f7e2840163b8c16988cc38815425749d82cbc7c",
+      "length": 43,
+      "start": 97788,
+      "end": 97831
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "8f3867ce3778b1955dd887b2fc88940ed4a6eb3e4343a63446844cf04ef02d20",
+      "length": 471,
+      "start": 97832,
+      "end": 98303
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "ecc642330c0e2613ef9e02754a677c76b1a84f06a59b6d300fed0717428a8b27",
+      "length": 609,
+      "start": 98304,
+      "end": 98911
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "4af9af63838047c0a865cd66a51f0eb88d0ebd37a3217b621c027b8ad969b9a2",
+      "length": 542,
+      "start": 98912,
+      "end": 99454
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "2e4f8f7129c93935fa14ccfb1cf8a4afe00ff9e86ffe21735047ba0955f3cc82",
+      "length": 475,
+      "start": 99455,
+      "end": 99930
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "865f246c595e02e262ee7f150d4ee0e020b21ddd1843eff0641ca4f8b280ad67",
+      "length": 719,
+      "start": 99931,
+      "end": 100650
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0e54dd8fe9d7adfce9f52b218c16be8b7a6650afd25d146c73d1bb74995f1f77",
+      "length": 43,
+      "start": 100651,
+      "end": 100694
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "839eb1faa1b6245b5adee0c629159af7f3055fbd193d4bf760235e2fba1ca6f1",
+      "length": 497,
+      "start": 100695,
+      "end": 101192
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "a4331ffd90b7abc1118432b386564c934378de056d63d4a7d97a0f425c2d6241",
+      "length": 228,
+      "start": 101193,
+      "end": 101421
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "c36022ca5a7fb4a764042638fcd803d09743ab84fa6364bbe5ed047a48410f12",
+      "length": 31,
+      "start": 101422,
+      "end": 101453
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "a5cc0f1dfd5ae3f7c81d3cbca90ee009d1e05ddba4b8936d2dbe4b893460f7ce",
+      "length": 518,
+      "start": 101454,
+      "end": 101972
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "f8432e674861d00de52f64832431d1df82eaab1fb206589bf6d0cf2d1915114d",
+      "length": 29,
+      "start": 101973,
+      "end": 102002
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "92e01bda14a55148294c02677b43e9156ed66631ac095ce7cfd2c36aa43d20e5",
+      "length": 577,
+      "start": 102003,
+      "end": 102580
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "e70e338ba50d2fadc6797afc80ae9595d8c1ba71153f93c5615b8f46cfa6e99f",
+      "length": 319,
+      "start": 102581,
+      "end": 102900
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "d6e0e948052b2b0f3e3b48924b2f7b6f8a88cb5bb6ca6449c81e6c79fbf82f7b",
+      "length": 32,
+      "start": 102901,
+      "end": 102933
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "5e6f166846617896a287848730e3f6a67d7b7845febba968d5fa8a238a4670a4",
+      "length": 581,
+      "start": 102934,
+      "end": 103515
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "2160269a6dff75b1979506202796c83f00f079219dcf8ecc9b96ed66a91b8f71",
+      "length": 25,
+      "start": 103516,
+      "end": 103541
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "030cebfce4a7562c1a3ffc8accf24919e26ee7acc0068c6fd6e25b302a079627",
+      "length": 621,
+      "start": 103542,
+      "end": 104163
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "9354002047c27f47e3697632e1eadb12b9e00e40c4bd5b0512b70b0fbd748bb4",
+      "length": 39,
+      "start": 104164,
+      "end": 104203
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "6fec027833861db5eaf7553eadc65c604a45cb147388530af424f50888f795e4",
+      "length": 462,
+      "start": 104204,
+      "end": 104666
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "3385efafcdaaf962bbcc4e6bb8552ddd34080ed9d5c64df7e9ab934037861d80",
+      "length": 59,
+      "start": 104667,
+      "end": 104726
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "6db17188fceb8bccedb7fc38bf1b1b7b28cee6b4724dd5a380a4a394f196bf2e",
+      "length": 679,
+      "start": 104727,
+      "end": 105406
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "c23c48ff54383e7298de61c9c5efc89ae8963161c26ba54598faa4db74cb1d85",
+      "length": 41,
+      "start": 105407,
+      "end": 105448
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "1995159f723c19e3d8792dd188b16b09996371ff11f9910c50c235a4363f11b1",
+      "length": 1034,
+      "start": 105449,
+      "end": 106483
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "e984f8f1e45c2b5f3183144486ab4853b62a84ce9773b87a3912d60dc6a14a2c",
+      "length": 29,
+      "start": 106484,
+      "end": 106513
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "2a6be3ea4ee520a26c54fb762028b78951865bbced702a2a9a5011f5b9295da1",
+      "length": 466,
+      "start": 106514,
+      "end": 106980
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "632ae327b47827ba9599bc96aabb05ff697f939bad94cc53f2a71bfbe1091620",
+      "length": 29,
+      "start": 106981,
+      "end": 107010
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b7e1bd4852fc5132cfe0f0fe5c792cac2a2cb67bf739188e9f132a9c6c4a5505",
+      "length": 553,
+      "start": 107011,
+      "end": 107564
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "bae42f43000bdaf2ea61de40b17c559c0124985a271aa23ebb69e7b3f7cf9c31",
+      "length": 37,
+      "start": 107565,
+      "end": 107602
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "751fd32ce26467f2f04eb4e9494ffd38b4307ab4cfe1c2af962a614cd61a0140",
+      "length": 300,
+      "start": 107603,
+      "end": 107903
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "3890115d8ea19fa9c266e7ae231b5c5ccb8424b4f227348220004221583d37c7",
+      "length": 460,
+      "start": 107904,
+      "end": 108364
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b497bf9104960727daec43eaf3c412e28c50987935805f5ed99899085200d026",
+      "length": 246,
+      "start": 108365,
+      "end": 108611
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "bbcf2401955415502c0fe9e7046c3facf0a5dacab8f3c82d40c1b589dd2ceda7",
+      "length": 237,
+      "start": 108612,
+      "end": 108849
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0e416780980046761fa338473f5e3427688e1639bd43c5b328a9c07d1def841a",
+      "length": 43,
+      "start": 108850,
+      "end": 108893
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "420f7cb6d8e67b1ad536ff991af98530b07c4ce1a2902c08779b460d036f53a2",
+      "length": 569,
+      "start": 108894,
+      "end": 109463
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "e5852e1220128bf9bb0b9f16791b7aa60228a409e6f859e17fee23eea93bd332",
+      "length": 23,
+      "start": 109464,
+      "end": 109487
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "522a84fc195d0b4017ca940c81cca2395735d0c75a7a01e21853d8a11508d798",
+      "length": 363,
+      "start": 109488,
+      "end": 109851
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/identity-and-delivery.md",
+      "sha256": "2aff9dccaf2abeb2fe60bc3919331703800c6014c384f97c6daa681433d624e3",
+      "length": 38,
+      "start": 109852,
+      "end": 109890
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "61c89a115d9ec1f130f54dd5e44ac8cb983952a1551c535cec6a5cbe75626f4b",
+      "length": 1328,
+      "start": 109891,
+      "end": 111217
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "824a8c56ec65cc9092f36f353f1b0e29d2e308142fd7510dc9cc6cf3c6c298bf",
+      "length": 41,
+      "start": 111218,
+      "end": 111259
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "90bfe792d8b7df85f3f39e341c209498f06d64dd717fe14233c142cc39aec0b3",
+      "length": 755,
+      "start": 111260,
+      "end": 112015
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "996b6e04ee7e43cdd0703512684dce38f0ebe6596c32aee190904e28d136af81",
+      "length": 29,
+      "start": 112016,
+      "end": 112045
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "8021abc9e1f35818b5986e2fe773a34ad8396813da1f8da2b1115987b86b0e81",
+      "length": 364,
+      "start": 112046,
+      "end": 112410
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "efad6957db8ebaf200442c1421bf11d58204e422434823b06fa5f1695f87ee9c",
+      "length": 39,
+      "start": 112411,
+      "end": 112450
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "af4a47f4977c13cd847860864e991584f5d29003a26a6d1e02b3c68d3f1c27d6",
+      "length": 967,
+      "start": 112451,
+      "end": 113418
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "fb815006e548881e42f12bafaaabada6c34aeef9542b3578a580b033522c6155",
+      "length": 26,
+      "start": 113419,
+      "end": 113445
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/roles.md",
+      "sha256": "92c3e998c69fb70348419338a639214d8b490c43482138f65dc87ae82c630b33",
+      "length": 368,
+      "start": 113446,
+      "end": 113814
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "56e8db0aec03120eaac33ee95f7d03559514f71f9d33b0432c109c7ac17e08c1",
+      "length": 235,
+      "start": 113815,
+      "end": 114050
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "3fb8ced60906a19654ac90811e6f665c406194d1b15fc5feb9a6c3f02d7b8e1f",
+      "length": 236,
+      "start": 114051,
+      "end": 114287
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "40327e8bdb73b4a6780c8bd5e3c95ca8391f317a98f70ed30d5de018f6acf50d",
+      "length": 31,
+      "start": 114288,
+      "end": 114319
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "0fa0cc6df59f21ea9f597dfb6a055f4b604376ea095341b45ef2a526602f389d",
+      "length": 312,
+      "start": 114320,
+      "end": 114632
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "7a084704e168ee81bf8784f7e199110e19d3805145db170ce911cfb41d4897fc",
+      "length": 47,
+      "start": 114633,
+      "end": 114680
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "28b3975c14f1c18d72cba1a3f5ffccd38f2f52514c8a267f074594c0073b1f2d",
+      "length": 371,
+      "start": 114681,
+      "end": 115052
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "b6c10413745bcdc989686eeed3bae18da73923211f168006de0ad912d3386c68",
+      "length": 39,
+      "start": 115053,
+      "end": 115092
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "d882c0545894dea4cd4bbed5c949897c073ca7082bf2827140b4f4a90804b818",
+      "length": 447,
+      "start": 115093,
+      "end": 115540
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "fe9425b6042b20310de0a2e06a9a5587e615154019b62304ad20e27438fca2b1",
+      "length": 36,
+      "start": 115542,
+      "end": 115578
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "f8986745ba4097d007fa83faf1e046e67df0af5bfb97c188278c761bdea0c3cc",
+      "length": 485,
+      "start": 115579,
+      "end": 116064
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "6b94d328ffa7a7f7e80ca0c942452540b1d9e89406b2a2fcce90d404e1f4ee36",
+      "length": 38,
+      "start": 116065,
+      "end": 116103
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "525ebb2c0477f71cb016d4eb11471ecd1d2fe475376577bb5a48964b84542a51",
+      "length": 480,
+      "start": 116104,
+      "end": 116584
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/cland-setup.md",
+      "sha256": "d5a545225db4614047c5714cbf8a4fbe8d041665c0df6e1d056edba4900ad7b6",
+      "length": 45,
+      "start": 116585,
+      "end": 116630
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/remote-commands.md",
+      "sha256": "972109f043df706b3a12af3a09f6d6dc6a3e73613eb3efb654c8c7593a974751",
+      "length": 501,
+      "start": 116631,
+      "end": 117132
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "a73027c9c7d3068ec6efc75245aed93908fb9c48e34f4f98c41bb5f12aafbbfd",
+      "length": 51,
+      "start": 117133,
+      "end": 117184
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "5c9bc7e563580b409e8a81a3d55773f78f3c53b57a7ceee3de8fe792bcc0da38",
+      "length": 937,
+      "start": 117185,
+      "end": 118122
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "56efeaec2e8d13d282e555e9c516040ad83938568deb16c3aa6af733ed2a4763",
+      "length": 313,
+      "start": 118123,
+      "end": 118436
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "f60c67cc6a2d5ddb0c5afcd7f41a388d7fa20d97d8fde578dfb86307cce08d43",
+      "length": 46,
+      "start": 118437,
+      "end": 118483
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "1b4213f24f2eedede8d06df2993f07d3fac8d4a195853081b925c210dbb8fdbb",
+      "length": 623,
+      "start": 118484,
+      "end": 119107
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "8d94b96b77ea711b768ca2946bdcd8cd215b9101fc0f2b873035dde2e2c1f9ed",
+      "length": 846,
+      "start": 119108,
+      "end": 119954
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "be7c8855e52b966a1b38223c4f5669342e08bf81d506701fa78a256ee69dab3d",
+      "length": 588,
+      "start": 119955,
+      "end": 120543
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/artifacts.md",
+      "sha256": "cb0e97b567b5fb164e951c37d019d10a63ba38d90d4572340cdf6586354d652c",
+      "length": 1039,
+      "start": 120544,
+      "end": 121583
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/running.md",
+      "sha256": "bd9af1011c74579fc10ffdb4792aa7fbd90bbc989656deca323a222071b33041",
+      "length": 512,
+      "start": 121584,
+      "end": 122096
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "8394d7bcbd5d6b859bbf70135989652cde9378a7872921e477e498f392ce82aa",
+      "length": 760,
+      "start": 122097,
+      "end": 122857
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "094bc689031dd443ad66287c1eab799733663e223782e899098fb6e1df77c3e1",
+      "length": 28,
+      "start": 122858,
+      "end": 122886
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "acb1ccfab2f772f790609797ab4332f8b5b4f47386382a6f189db7b1ce74b2aa",
+      "length": 423,
+      "start": 122887,
+      "end": 123310
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/the-projects-hub.md",
+      "sha256": "3c4f5447ee8dd443a9008a5e95b2a4ef56531623ad99d5d4744e293edd7bbb24",
+      "length": 42,
+      "start": 123311,
+      "end": 123353
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "c3702053b50e35c89bcbf3caba11007c0d9287670f080ac65225ca18d37764df",
+      "length": 1676,
+      "start": 123354,
+      "end": 125030
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "d78ce6e7132969d802179f1c8f931c9efc626436dec9fb335ad910fa066ab186",
+      "length": 32,
+      "start": 125031,
+      "end": 125063
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "915da5c1351bd9420771982a2ce655f0c1cfba84ab5668eb0e89436ce191faaa",
+      "length": 964,
+      "start": 125064,
+      "end": 126026
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "3333ae3259b0017c42ed3d46db77f1da4193b45217d04ad715c76f692f86911a",
+      "length": 32,
+      "start": 126027,
+      "end": 126059
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "17df7e800ee78fa007f3b8f9f1b684ba52b68b4432d4f7a72da340d541d30032",
+      "length": 626,
+      "start": 126060,
+      "end": 126686
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "6a278f3c317af39bdd9595b68b00dd032116ba2f705b33a2b32af907e695826f",
+      "length": 40,
+      "start": 126687,
+      "end": 126727
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "e06d490cb2504be7198c6896102940b95901e43ae77ee3fd837f9e29b268add4",
+      "length": 502,
+      "start": 126728,
+      "end": 127230
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "940fe9a98f3f352246766944f87b4573337377f399e85c2b1ba938d61c92a95b",
+      "length": 429,
+      "start": 127231,
+      "end": 127660
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "5435985ba0f09f0c689c100bda59b996b89ad89a681b70acf4fca26d22de2629",
+      "length": 39,
+      "start": 127661,
+      "end": 127700
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/web-edge.md",
+      "sha256": "fbec992cc21f9ad48fe535ba4eef6cb515d632bb09abd18982eb98cd4d1df5d9",
+      "length": 442,
+      "start": 127701,
+      "end": 128143
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "c1066fd0432ac44bc2d75b477c0faee73cafe9597585631826ca4a2663c01e66",
+      "length": 56,
+      "start": 128144,
+      "end": 128200
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "8faac04a8f5bcbf55dec794bb18de9dd9944c92ccd35c8141d72eaf60d6c2fc7",
+      "length": 550,
+      "start": 128201,
+      "end": 128751
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "493500508f14394c00eed8e51b6c75626b6287a8741df4aa73119fd6f1fd27e5",
+      "length": 41,
+      "start": 128752,
+      "end": 128793
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "cf745c9ba333bdb086e8e651960a4f058c3ae815668f39cfaf9bd3957a5978bc",
+      "length": 614,
+      "start": 128794,
+      "end": 129408
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "551e13377efd47a76005bcb72dd695d8f0fef9f8c2695de88db6f383eb7a6fc3",
+      "length": 810,
+      "start": 129409,
+      "end": 130219
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "b1a5f173176168b62dd39ced612f39940a352b568653339b236bd9f061d33527",
+      "length": 1179,
+      "start": 130220,
+      "end": 131399
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "cf05b190d243fd846f62df568e1ef5074d1a1268d836753c063ca5ceafe7c7ce",
+      "length": 402,
+      "start": 131400,
+      "end": 131802
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "8a0ce6d8ee2f09d57931559d7c2c83eba19316550e9f1c0468cb071d939da711",
+      "length": 860,
+      "start": 131803,
+      "end": 132663
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "7dc04b95dd52f6da2f33f104707ec99d01f13129728130933806789c73956caa",
+      "length": 656,
+      "start": 132664,
+      "end": 133320
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "ebd3ad55c4cf1e635b8d4ec0369d4a75be211c46293d2e9fb2b20846fc69c6f5",
+      "length": 832,
+      "start": 133321,
+      "end": 134153
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "70d1c916e78d293eca8ddf3e207d78d63a737c8244e91f89d6071a77fab10177",
+      "length": 452,
+      "start": 134154,
+      "end": 134606
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "a4bd638bf007597f19bea8acb423740144e60988cb8bcee6f2f6c256dbbdaed8",
+      "length": 894,
+      "start": 134607,
+      "end": 135501
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "6fa61b0ad6332f4f61106ef41c1f5f881fbf90f0bc3a12f48aca55a4756411ef",
+      "length": 1275,
+      "start": 135502,
+      "end": 136777
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "4c1384cdc358d931e90b705ee4e21b7003bf00b4a306eb6054232568f02b8110",
+      "length": 766,
+      "start": 136778,
+      "end": 137544
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "3721d188fd36c69a762ac8ffc30330b949bd8c0143567ecc83625384cc87dbdc",
+      "length": 377,
+      "start": 137545,
+      "end": 137922
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "1b868961875349b2c270934013c5f2b74e2e50aa7d87db368d91e6a13f6fa84f",
+      "length": 596,
+      "start": 137923,
+      "end": 138519
+    },
+    {
+      "source": ".agents/skills/implement/SKILL.md",
+      "title": "implementation guidance",
+      "destination": "docs/hub/adapters-and-sessions.md",
+      "sha256": "258d774aa8c3953d26305de273c755151e8fa8ecacf08ce118ef246d52a188b1",
+      "length": 484,
+      "start": 138520,
+      "end": 139004
+    }
+  ],
+  "anchors": {
+    "hub": "docs/hub/prerequisite-and-packaging-reports.md",
+    "prerequisite-and-packaging-reports": "docs/hub/prerequisite-and-packaging-reports.md",
+    "start-a-project-with-cland": "docs/hub/start-a-project-with-cland.md",
+    "web-workspace": "docs/hub/web-workspace.md",
+    "merge-delta-assessments-report-mode": "docs/hub/web-workspace.md",
+    "modules": "docs/hub/modules.md",
+    "web-edge": "docs/hub/web-edge.md",
+    "web-configuration": "docs/hub/web-edge.md",
+    "cland-web-options": "docs/hub/web-edge.md",
+    "browser-sign-in-and-protocol": "docs/hub/web-edge.md",
+    "users-and-sign-in-mode": "docs/hub/web-edge.md",
+    "spoke-stdio-input-limit": "docs/hub/web-edge.md",
+    "spoke-readiness-and-deadlines": "docs/hub/web-edge.md",
+    "gateway-authority": "docs/hub/gateway-authority.md",
+    "remote-storage-and-poller-ownership": "docs/hub/gateway-authority.md",
+    "pairing-codes": "docs/hub/gateway-authority.md",
+    "durable-remote-outbox": "docs/hub/durable-remote-outbox.md",
+    "connection-events-filter": "docs/hub/connection-events-filter.md",
+    "negotiated-connection-snapshot": "docs/hub/negotiated-connection-snapshot.md",
+    "liveness-version-skew-and-terminal-reservations": "docs/hub/negotiated-connection-snapshot.md",
+    "numbered-model-deltas": "docs/hub/negotiated-connection-snapshot.md",
+    "human-last-looks-and-read-marks": "docs/hub/human-last-looks-and-read-marks.md",
+    "identity-and-delivery": "docs/hub/identity-and-delivery.md",
+    "topics": "docs/hub/topics.md",
+    "verifier-reservation-retirement-and-queue-diagnostics": "docs/hub/topics.md",
+    "thread-runs-and-fold-lines": "docs/hub/thread-runs-and-fold-lines.md",
+    "asks-and-the-inbox": "docs/hub/asks-and-the-inbox.md",
+    "answered-ask-outcomes": "docs/hub/asks-and-the-inbox.md",
+    "roles": "docs/hub/roles.md",
+    "reloading-project-configuration": "docs/hub/roles.md",
+    "clandrolestoml": "docs/hub/roles.md",
+    "custom-roles": "docs/hub/roles.md",
+    "assignment": "docs/hub/roles.md",
+    "the-clause": "docs/hub/roles.md",
+    "the-frames-the-events-the-cli": "docs/hub/roles.md",
+    "handover": "docs/hub/roles.md",
+    "permissions": "docs/hub/roles.md",
+    "asks-up-the-lead-chain-t-179": "docs/hub/roles.md",
+    "the-cli-in-a-sessions-shell": "docs/hub/roles.md",
+    "the-audit-log": "docs/hub/roles.md",
+    "slow-and-repeated-requests": "docs/hub/roles.md",
+    "rulebook": "docs/hub/rulebook.md",
+    "3-one-suite-at-a-time": "docs/hub/rulebook.md",
+    "the-agents-record-the-journal-and-hygiene": "docs/hub/the-agents-record-the-journal-and-hygiene.md",
+    "per-user-state": "docs/hub/per-user-state.md",
+    "accounts-and-limits": "docs/hub/accounts-and-limits.md",
+    "registry-and-naming-an-account": "docs/hub/accounts-and-limits.md",
+    "or-use-db--absolutepathopencodedb-for-opencode_db-never-both": "docs/hub/accounts-and-limits.md",
+    "processes-and-the-saved-environment": "docs/hub/accounts-and-limits.md",
+    "listing-models": "docs/hub/accounts-and-limits.md",
+    "listing-accounts-and-reading-limits": "docs/hub/accounts-and-limits.md",
+    "limited-marks-and-launch-refusals": "docs/hub/accounts-and-limits.md",
+    "polling-rules": "docs/hub/accounts-and-limits.md",
+    "terms-and-account-choice": "docs/hub/accounts-and-limits.md",
+    "lifecycle-notes": "docs/hub/lifecycle-notes.md",
+    "the-cland-cli": "docs/hub/the-cland-cli.md",
+    "telegram-voice-transcripts": "docs/hub/telegram-voice-transcripts.md",
+    "project-secrets": "docs/hub/project-secrets.md",
+    "remote-commands": "docs/hub/remote-commands.md",
+    "remote-state-in-the-workbenches": "docs/hub/remote-commands.md",
+    "telegram-phone-commands": "docs/hub/remote-commands.md",
+    "telegram-bot-api-client": "docs/hub/remote-commands.md",
+    "telegram-general-rendering": "docs/hub/remote-commands.md",
+    "telegram-mute": "docs/hub/remote-commands.md",
+    "telegram-send-pacing": "docs/hub/remote-commands.md",
+    "telegram-ask-and-approval-cards": "docs/hub/remote-commands.md",
+    "telegram-needs-you-notices": "docs/hub/remote-commands.md",
+    "telegram-polling-and-durable-confirmation": "docs/hub/remote-commands.md",
+    "telegram-catch-up-and-outage-notices": "docs/hub/remote-commands.md",
+    "telegram-text-from-the-human": "docs/hub/remote-commands.md",
+    "cland-setup": "docs/hub/cland-setup.md",
+    "speech-in-setup": "docs/hub/cland-setup.md",
+    "discord-in-setup": "docs/hub/cland-setup.md",
+    "paired-setup-reruns-during-reconnect": "docs/hub/cland-setup.md",
+    "telegram-in-setup": "docs/hub/cland-setup.md",
+    "discord-and-speech-in-setup": "docs/hub/cland-setup.md",
+    "cland-init-and-cland-update": "docs/hub/cland-init-and-cland-update.md",
+    "local-git-territory": "docs/hub/cland-init-and-cland-update.md",
+    "git-object-maintenance": "docs/hub/cland-init-and-cland-update.md",
+    "repository-auto-maintenance-configuration": "docs/hub/cland-init-and-cland-update.md",
+    "task-branches-and-worktrees": "docs/hub/cland-init-and-cland-update.md",
+    "the-merge-gate": "docs/hub/cland-init-and-cland-update.md",
+    "root-dev-push": "docs/hub/cland-init-and-cland-update.md",
+    "release-and-sync": "docs/hub/cland-init-and-cland-update.md",
+    "homebrew-formula-publication": "docs/hub/cland-init-and-cland-update.md",
+    "prebuilt-web-release-assets": "docs/hub/prebuilt-web-release-assets.md",
+    "cland-doctor": "docs/hub/cland-doctor.md",
+    "the-projects-hub": "docs/hub/the-projects-hub.md",
+    "background-work": "docs/hub/the-projects-hub.md",
+    "the-uis-frames": "docs/hub/the-projects-hub.md",
+    "events-view": "docs/hub/the-projects-hub.md",
+    "adapters-and-sessions": "docs/hub/adapters-and-sessions.md",
+    "the-contract": "docs/hub/adapters-and-sessions.md",
+    "session-state": "docs/hub/adapters-and-sessions.md",
+    "held-delivery-rechecks": "docs/hub/adapters-and-sessions.md",
+    "the-process-table": "docs/hub/adapters-and-sessions.md",
+    "the-claude-code-adapter": "docs/hub/adapters-and-sessions.md",
+    "deaf-delivery-supervision-t-1472": "docs/hub/adapters-and-sessions.md",
+    "the-opencode-adapter": "docs/hub/adapters-and-sessions.md",
+    "the-codex-adapter": "docs/hub/adapters-and-sessions.md",
+    "the-frames-and-the-cli": "docs/hub/adapters-and-sessions.md",
+    "the-tracker": "docs/hub/the-tracker.md",
+    "migrating-prefixes-and-categories": "docs/hub/the-tracker.md",
+    "live-tracker-procedure-and-rollback": "docs/hub/the-tracker.md",
+    "comments": "docs/hub/the-tracker.md",
+    "alice--2026-10-08t123826640z": "docs/hub/the-tracker.md",
+    "rev-1--2026-10-08t123826729z": "docs/hub/the-tracker.md",
+    "acceptance-criteria": "docs/hub/the-tracker.md",
+    "importing-github-issues": "docs/hub/the-tracker.md",
+    "running": "docs/hub/running.md",
+    "scratch-admission-children-t-1525": "docs/hub/running.md",
+    "verification-commands": "docs/hub/running.md",
+    "remote-executors-droplets": "docs/hub/running.md",
+    "close-runs": "docs/hub/running.md",
+    "configuration-and-costs": "docs/hub/running.md",
+    "controls-and-the-prepared-snapshot": "docs/hub/running.md",
+    "run-and-result": "docs/hub/running.md",
+    "leases-cleanup-and-spend": "docs/hub/running.md",
+    "retiring-legacy-spend-write-through": "docs/hub/running.md",
+    "epic-demo-leases": "docs/hub/running.md",
+    "tests": "docs/hub/running.md",
+    "queued-member-conflict-preflight": "docs/hub/running.md",
+    "fresh-integrated-cover-before-periodic-dev-t3": "docs/hub/running.md",
+    "multiple-logs-take-the-median-per-test-pass-the-newest-log-last": "docs/hub/running.md",
+    "trying-setup-on-a-scratch-machine": "docs/hub/running.md",
+    "running-the-suite-on-linux": "docs/hub/running.md",
+    "cland-on-the-path": "docs/hub/running.md",
+    "artifacts": "docs/hub/artifacts.md",
+    "promote-archive-and-retention": "docs/hub/artifacts.md",
+    "harness-termination-and-orphan-sweep": "docs/hub/artifacts.md",
+    "qa-brief-lint": "docs/hub/artifacts.md",
+    "the-items-review-and-qa-loop": "docs/hub/artifacts.md",
+    "event-subscriptions": "docs/hub/artifacts.md",
+    "crew-staffing": "docs/hub/artifacts.md",
+    "drafting-and-approving-an-epic-plan": "docs/hub/artifacts.md",
+    "stage-qa-verdicts": "docs/hub/artifacts.md",
+    "tracker-id-prefixes": "docs/hub/artifacts.md",
+    "task-sizes-and-regression-links": "docs/hub/artifacts.md",
+    "role-heartbeats": "docs/hub/artifacts.md",
+    "marketing-publication": "docs/hub/artifacts.md",
+    "coordinator-account-refusal-procedure": "docs/hub/coordinator-account-refusal-procedure.md",
+    "coordinator-session-procedure": "docs/hub/coordinator-session-procedure.md",
+    "coordinator-heartbeat-procedure": "docs/hub/coordinator-heartbeat-procedure.md",
+    "coordinator-subscription-procedure": "docs/hub/coordinator-subscription-procedure.md",
+    "web-verification-phase": "docs/hub/coordinator-subscription-procedure.md",
+    "startup-replies": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-rest-boundary": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-cards-and-notices": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-gateway-connection": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-command-registration-and-pairing": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-phone-commands": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-general-delivery": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-outbound-artifacts": "docs/hub/coordinator-subscription-procedure.md",
+    "telegram-outbound-artifacts": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-history-after-a-fresh-identify": "docs/hub/coordinator-subscription-procedure.md",
+    "discord-inbound-attachments-and-voice": "docs/hub/coordinator-subscription-procedure.md",
+    "sealed-fixture-remote-endpoints": "docs/hub/coordinator-subscription-procedure.md",
+    "inherited-stdio-writer-ownership": "docs/hub/coordinator-subscription-procedure.md",
+    "claude-code-launch-generations": "docs/hub/coordinator-subscription-procedure.md",
+    "suite-archive-startup-memory": "docs/hub/coordinator-subscription-procedure.md",
+    "offline-memory-measurement": "docs/hub/coordinator-subscription-procedure.md",
+    "sealed-rest-memory-probe": "docs/hub/coordinator-subscription-procedure.md",
+    "copied-probe-suite-recovery-isolation": "docs/hub/coordinator-subscription-procedure.md",
+    "executor-lifecycle-interface": "docs/hub/coordinator-subscription-procedure.md",
+    "additive-interaction-selection-t-1454": "docs/hub/additive-interaction-selection-t-1454.md",
+    "project-package-base-scanning-t-1510": "docs/hub/additive-interaction-selection-t-1454.md",
+    "local-verify-admission-preflight": "docs/hub/additive-interaction-selection-t-1454.md",
+    "suite-provenance-footer-t-1460": "docs/hub/additive-interaction-selection-t-1454.md",
+    "telegram-album-transcripts": "docs/hub/additive-interaction-selection-t-1454.md",
+    "installed-verification-compiler-capability": "docs/hub/installed-verification-compiler-capability.md",
+    "compiler-capability-refusal-formatting": "docs/hub/installed-verification-compiler-capability.md",
+    "memory-measurement-slots": "docs/hub/installed-verification-compiler-capability.md",
+    "macos-cover-repetition-reruns-report-mode": "docs/hub/installed-verification-compiler-capability.md",
+    "operator-retry-of-queued-input-t-1473": "docs/hub/operator-retry-of-queued-input-t-1473.md",
+    "parallel-edit-source-lists": "docs/hub/operator-retry-of-queued-input-t-1473.md",
+    "bridge-and-flush-process-log-diagnostics-t-1475": "docs/hub/operator-retry-of-queued-input-t-1473.md",
+    "portable-fixture-socket-recovery": "docs/hub/operator-retry-of-queued-input-t-1473.md",
+    "pinned-verifier-request-heads": "docs/hub/pinned-verifier-request-heads.md",
+    "merge-queue-landing-reports-t-1503": "docs/hub/merge-queue-landing-reports-t-1503.md",
+    "opencode-225-schema-review-t-1501": "docs/hub/merge-queue-landing-reports-t-1503.md",
+    "standing-duration-allowance-owners": "docs/hub/standing-duration-allowance-owners.md",
+    "build-guard-tier-inventory-report-mode": "docs/hub/standing-duration-allowance-owners.md",
+    "setup-and-doctor-remote-readiness": "docs/hub/setup-and-doctor-remote-readiness.md",
+    "declining-an-accepted-verifier-request-t-1494": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "unix-spoke-edge": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "host-agent-protocol": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "per-host-git-socket": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "host-records-and-bootstrap-secrets": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "host-process-operations": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "webauthn-verification-module": "docs/hub/declining-an-accepted-verifier-request-t-1494.md",
+    "local-host-files-worktrees-and-polling": "docs/hub/declining-an-accepted-verifier-request-t-1494.md"
+  },
+  "relocations": {
+    "docs/hub/prerequisite-and-packaging-reports.md": [],
+    "docs/hub/start-a-project-with-cland.md": [
+      {
+        "start": 1909,
+        "end": 1909,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 5181,
+        "end": 5181,
+        "before": "",
+        "after": "cland-setup.md"
+      },
+      {
+        "start": 5822,
+        "end": 5822,
+        "before": "",
+        "after": "cannot commit at the project root and "
+      },
+      {
+        "start": 5946,
+        "end": 5946,
+        "before": "",
+        "after": " current"
+      }
+    ],
+    "docs/hub/web-workspace.md": [
+      {
+        "start": 120,
+        "end": 120,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 372,
+        "end": 372,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 423,
+        "end": 423,
+        "before": "",
+        "after": "web-edge.md"
+      },
+      {
+        "start": 1224,
+        "end": 1224,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 2257,
+        "end": 2257,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 2634,
+        "end": 2634,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 3603,
+        "end": 3603,
+        "before": "",
+        "after": "../"
+      }
+    ],
+    "docs/hub/modules.md": [],
+    "docs/hub/web-edge.md": [
+      {
+        "start": 36436,
+        "end": 36441,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/gateway-authority.md": [
+      {
+        "start": 1669,
+        "end": 1669,
+        "before": "",
+        "after": "roles.md"
+      },
+      {
+        "start": 15214,
+        "end": 15214,
+        "before": "",
+        "after": "remote-commands.md"
+      },
+      {
+        "start": 15569,
+        "end": 15574,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/durable-remote-outbox.md": [],
+    "docs/hub/connection-events-filter.md": [],
+    "docs/hub/negotiated-connection-snapshot.md": [
+      {
+        "start": 3863,
+        "end": 3863,
+        "before": "",
+        "after": "connection-events-filter.md"
+      }
+    ],
+    "docs/hub/human-last-looks-and-read-marks.md": [],
+    "docs/hub/identity-and-delivery.md": [],
+    "docs/hub/topics.md": [],
+    "docs/hub/thread-runs-and-fold-lines.md": [],
+    "docs/hub/asks-and-the-inbox.md": [
+      {
+        "start": 9828,
+        "end": 9828,
+        "before": "",
+        "after": "gateway-authority.md"
+      },
+      {
+        "start": 19905,
+        "end": 19910,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 26798,
+        "end": 26798,
+        "before": "",
+        "after": "the-projects-hub.md"
+      }
+    ],
+    "docs/hub/roles.md": [
+      {
+        "start": 2373,
+        "end": 2378,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 4734,
+        "end": 4734,
+        "before": "",
+        "after": " and cannot commit at the project root"
+      },
+      {
+        "start": 25695,
+        "end": 25695,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 36475,
+        "end": 36480,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 47596,
+        "end": 47601,
+        "before": "/docs",
+        "after": ""
+      }
+    ],
+    "docs/hub/rulebook.md": [],
+    "docs/hub/the-agents-record-the-journal-and-hygiene.md": [],
+    "docs/hub/per-user-state.md": [
+      {
+        "start": 1141,
+        "end": 1146,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 1500,
+        "end": 1500,
+        "before": "",
+        "after": "accounts-and-limits.md"
+      },
+      {
+        "start": 1900,
+        "end": 1900,
+        "before": "",
+        "after": "running.md"
+      },
+      {
+        "start": 2274,
+        "end": 2274,
+        "before": "",
+        "after": "running.md"
+      },
+      {
+        "start": 2627,
+        "end": 2627,
+        "before": "",
+        "after": "../"
+      }
+    ],
+    "docs/hub/accounts-and-limits.md": [
+      {
+        "start": 2315,
+        "end": 2320,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 12211,
+        "end": 12211,
+        "before": "",
+        "after": "adapters-and-sessions.md"
+      },
+      {
+        "start": 15118,
+        "end": 15123,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/lifecycle-notes.md": [],
+    "docs/hub/the-cland-cli.md": [],
+    "docs/hub/telegram-voice-transcripts.md": [
+      {
+        "start": 1103,
+        "end": 1103,
+        "before": "",
+        "after": "additive-interaction-selection-t-1454.md"
+      }
+    ],
+    "docs/hub/project-secrets.md": [],
+    "docs/hub/remote-commands.md": [
+      {
+        "start": 54,
+        "end": 54,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 9477,
+        "end": 9482,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 12253,
+        "end": 12258,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 15837,
+        "end": 15842,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 15920,
+        "end": 15925,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 17444,
+        "end": 17449,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 20256,
+        "end": 20261,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 27021,
+        "end": 27026,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 29192,
+        "end": 29197,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 31693,
+        "end": 31698,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 33835,
+        "end": 33840,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 39546,
+        "end": 39551,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 39630,
+        "end": 39635,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 42330,
+        "end": 42335,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 44438,
+        "end": 44443,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 45140,
+        "end": 45145,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 48343,
+        "end": 48348,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 52006,
+        "end": 52009,
+        "before": "hub",
+        "after": "docs"
+      },
+      {
+        "start": 52010,
+        "end": 52016,
+        "before": "README",
+        "after": "hub/remote-commands"
+      }
+    ],
+    "docs/hub/cland-setup.md": [],
+    "docs/hub/cland-init-and-cland-update.md": [
+      {
+        "start": 2567,
+        "end": 2567,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 22810,
+        "end": 22815,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 34979,
+        "end": 34984,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 39076,
+        "end": 39078,
+        "before": "is",
+        "after": "cannot commit at the project root under"
+      },
+      {
+        "start": 39377,
+        "end": 39412,
+        "before": "hose current harness policy permits",
+        "after": "ith current"
+      },
+      {
+        "start": 39427,
+        "end": 39427,
+        "before": "",
+        "after": " acces"
+      }
+    ],
+    "docs/hub/prebuilt-web-release-assets.md": [],
+    "docs/hub/cland-doctor.md": [],
+    "docs/hub/the-projects-hub.md": [
+      {
+        "start": 13316,
+        "end": 13316,
+        "before": "",
+        "after": "../"
+      }
+    ],
+    "docs/hub/adapters-and-sessions.md": [
+      {
+        "start": 19514,
+        "end": 19514,
+        "before": "",
+        "after": "accounts-and-limits.md"
+      },
+      {
+        "start": 29380,
+        "end": 29380,
+        "before": "",
+        "after": "accounts-and-limits.md"
+      },
+      {
+        "start": 30108,
+        "end": 30108,
+        "before": "",
+        "after": "roles.md"
+      },
+      {
+        "start": 44782,
+        "end": 44782,
+        "before": "",
+        "after": "accounts-and-limits.md"
+      },
+      {
+        "start": 78439,
+        "end": 78450,
+        "before": "../../docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/the-tracker.md": [],
+    "docs/hub/running.md": [
+      {
+        "start": 1194,
+        "end": 1199,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 2169,
+        "end": 2174,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 3022,
+        "end": 3027,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 3470,
+        "end": 3475,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 4634,
+        "end": 4639,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 8818,
+        "end": 8823,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 11710,
+        "end": 11715,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 14597,
+        "end": 14602,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 40577,
+        "end": 40577,
+        "before": "",
+        "after": "per-user-state.md"
+      },
+      {
+        "start": 47562,
+        "end": 47567,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 48040,
+        "end": 48045,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 49142,
+        "end": 49147,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 51488,
+        "end": 51488,
+        "before": "",
+        "after": "coordinator-subscription-procedure.md"
+      },
+      {
+        "start": 52666,
+        "end": 52671,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 55407,
+        "end": 55412,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 55791,
+        "end": 55796,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 83598,
+        "end": 83603,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 84363,
+        "end": 84368,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 89504,
+        "end": 89509,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 89722,
+        "end": 89722,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 93791,
+        "end": 93796,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 96392,
+        "end": 96397,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 97176,
+        "end": 97181,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 98768,
+        "end": 98773,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 101824,
+        "end": 101829,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 103099,
+        "end": 103104,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 105476,
+        "end": 105481,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 114252,
+        "end": 114257,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 118395,
+        "end": 118400,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 129009,
+        "end": 129014,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 138227,
+        "end": 138227,
+        "before": "",
+        "after": "docs/hub/durable-remote-outbox.md#durable-remote-outbox` and use\n`docs/agents/tests/hub-test-outbox.test.ts.md` for client proof/attempt receipts,\n`docs/agents/tests/hub-test-outbox-gateway.test.ts.md` for outage and source\nclosure through frames. Keep immutable attempted payloads, stable job identities\nand the unknown-delivery fence. Re-read queue arrivals within the active drain;\nuse injected Clock/random for capped retryAfterMs and reconnect equal jitter,\nwith no independent hub timer loop. Keep legacy clients optional-field compatible;\nstop cancels delays and aborts/joins reconnect before releasing storage.\n\nFor hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `"
+      },
+      {
+        "start": 138240,
+        "end": 139132,
+        "before": "#durable-remote-outbox` and use\n`docs/agents/tests/hub-test-outbox.test.ts.md` for client proof/attempt receipts,\n`docs/agents/tests/hub-test-outbox-gateway.test.ts.md` for outage and source\nclosure through frames. Keep immutable attempted payloads, stable job identities\nand the unknown-delivery fence. Re-read queue arrivals within the active drain;\nuse injected Clock/random for capped retryAfterMs and reconnect equal jitter,\nwith no independent hub timer loop. Keep legacy clients optional-field compatible;\nstop cancels delays and aborts/joins reconnect before releasing storage.\n\nFor hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`, including held fake-provider mutations and late-resource reconciliation; interpret `hub stop`'s released-lock/live-PID diagnostic and signal cleanup deadline through `hub/README.md",
+        "after": ""
+      },
+      {
+        "start": 141135,
+        "end": 141135,
+        "before": "",
+        "after": "docs/"
+      },
+      {
+        "start": 141139,
+        "end": 141145,
+        "before": "README",
+        "after": "coordinator-subscription-procedure"
+      }
+    ],
+    "docs/hub/artifacts.md": [
+      {
+        "start": 1427,
+        "end": 1432,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 4313,
+        "end": 4313,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 25996,
+        "end": 26001,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 26964,
+        "end": 26969,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 27742,
+        "end": 27747,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 29593,
+        "end": 29598,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 59787,
+        "end": 59792,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/coordinator-account-refusal-procedure.md": [],
+    "docs/hub/coordinator-session-procedure.md": [],
+    "docs/hub/coordinator-heartbeat-procedure.md": [],
+    "docs/hub/coordinator-subscription-procedure.md": [
+      {
+        "start": 1318,
+        "end": 1323,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 4099,
+        "end": 4104,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 4159,
+        "end": 4159,
+        "before": "",
+        "after": "../"
+      },
+      {
+        "start": 4781,
+        "end": 4781,
+        "before": "",
+        "after": "running.md"
+      },
+      {
+        "start": 7701,
+        "end": 7706,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 11177,
+        "end": 11182,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 15461,
+        "end": 15466,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 21820,
+        "end": 21825,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 23371,
+        "end": 23376,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 25486,
+        "end": 25491,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 30778,
+        "end": 30783,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 32390,
+        "end": 32395,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 39055,
+        "end": 39060,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 40039,
+        "end": 40044,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 48662,
+        "end": 48667,
+        "before": "docs/",
+        "after": ""
+      },
+      {
+        "start": 50125,
+        "end": 50130,
+        "before": "/docs",
+        "after": ""
+      },
+      {
+        "start": 52787,
+        "end": 52792,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/additive-interaction-selection-t-1454.md": [
+      {
+        "start": 3445,
+        "end": 3450,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/installed-verification-compiler-capability.md": [],
+    "docs/hub/operator-retry-of-queued-input-t-1473.md": [],
+    "docs/hub/pinned-verifier-request-heads.md": [],
+    "docs/hub/merge-queue-landing-reports-t-1503.md": [],
+    "docs/hub/standing-duration-allowance-owners.md": [
+      {
+        "start": 1152,
+        "end": 1157,
+        "before": "docs/",
+        "after": ""
+      }
+    ],
+    "docs/hub/setup-and-doctor-remote-readiness.md": [],
+    "docs/hub/declining-an-accepted-verifier-request-t-1494.md": [
+      {
+        "start": 2810,
+        "end": 2815,
+        "before": "/docs",
+        "after": ""
+      }
+    ]
+  },
+  "exceptions": [
+    {
+      "file": "docs/hub/cland-init-and-cland-update.md",
+      "old": "An Aide whose current harness policy permits root Git writes commits and runs `cland push` itself.",
+      "new": "An Aide with current root Git write access commits and runs `cland push` itself.",
+      "reason": "Coordinator decision cda655a1-81c8-460c-9ad6-d7a7523ac7a0: onboarding-claims now scans moved hub documentation under docs/**."
+    },
+    {
+      "file": "docs/hub/cland-init-and-cland-update.md",
+      "old": "During onboarding, the generated Codex Aide is workspace-write with no extra writable roots, so the Coordinator commits and publishes on root `dev`.",
+      "new": "During onboarding, the generated Codex Aide cannot commit at the project root under workspace-write with no extra writable roots, so the Coordinator commits and publishes on root `dev`.",
+      "reason": "Coordinator decision 1a950260-0148-4500-9e1e-07364a60d2e2: same meaning; onboarding guard false positive on Coordinator commits."
+    },
+    {
+      "file": "docs/hub/roles.md",
+      "old": "The generated Codex workspace-write Aide has the Coordinator commit and publish instead, including with only a map; the human's ok covers the required Coordinator launch.",
+      "new": "The generated Codex workspace-write Aide has the Coordinator commit and publish instead and cannot commit at the project root, including with only a map; the human's ok covers the required Coordinator launch.",
+      "reason": "Coordinator standing decision 1a950260-0148-4500-9e1e-07364a60d2e2; make existing generated Aide limitation explicit for onboarding guard."
+    },
+    {
+      "file": "docs/hub/start-a-project-with-cland.md",
+      "old": "On your ok, the generated Codex Aide has the Coordinator commit and publish the results: its workspace-write sandbox cannot write root Git metadata.",
+      "new": "On your ok, the generated Codex Aide cannot commit at the project root and has the Coordinator commit and publish the results: its workspace-write sandbox cannot write root Git metadata.",
+      "reason": "Coordinator standing decision 1a950260-0148-4500-9e1e-07364a60d2e2: same meaning, explicit generated root limitation/current permission for onboarding guard."
+    },
+    {
+      "file": "docs/hub/start-a-project-with-cland.md",
+      "old": "An Aide with root Git write access commits and publishes itself.",
+      "new": "An Aide with current root Git write access commits and publishes itself.",
+      "reason": "Coordinator standing decision 1a950260-0148-4500-9e1e-07364a60d2e2: same meaning, explicit generated root limitation/current permission for onboarding guard."
+    }
+  ]
+}

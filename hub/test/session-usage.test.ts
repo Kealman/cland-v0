@@ -1,6 +1,7 @@
 // T2: usage journal policy and the process row's durable totals with fake adapters, fake publication time
 // and real socket edges. Native token/price parsing is in the adapter contracts; native reconnect recovery
 // remains in session-native-lifecycle.
+import { hubReference } from '../../shared/hub-reference.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -192,7 +193,7 @@ test('final totals and cost aggregate by launch item despite a changed verifier 
   const { discovery, fakes } = await ruleHub(t, root, clock, { CLAND_TEST_USAGE_EVENT_MS: '100' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+  const readme = hubReference();
   const documented = /jq -s '([^']+)'/.exec(readme)?.[1];
   const compact = (program: string) => program.trim().replace(/\s+/g, ' ');
   assert.equal(documented && compact(documented), compact(usageAggregationProgram), 'README keeps the checked final-usage aggregation program');

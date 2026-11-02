@@ -251,7 +251,7 @@ merge gate and task claim never invoke an installer.
 ## Homebrew release follow-up
 
 For cland's opt-in `[release.homebrew] tap`, follow
-[hub/README.md, Homebrew formula publication](../../hub/README.md#homebrew-formula-publication).
+[hub/README.md, Homebrew formula publication](../hub/cland-init-and-cland-update.md#homebrew-formula-publication).
 The Coordinator includes the preview's tap/main/file/version and exact tag URL in
 the release approval ask. SHA-256 is computed after the product tag is published,
 then recorded before the tap push. On a `homebrew` follow-up failure, keep
@@ -265,7 +265,7 @@ source-build and pure render tests supply pre-merge evidence.
 ## Prebuilt Web release follow-up
 
 For cland’s opt-in committed `[release] web_bundle = true`, see
-[prebuilt Web release assets](../../hub/README.md#prebuilt-web-release-assets).
+[prebuilt Web release assets](../hub/prebuilt-web-release-assets.md#prebuilt-web-release-assets).
 The release machine needs an installed, already-authenticated gh. Dry-run checks
 it before approval and builds/caches the pinned archive; include repo, tag, both
 filenames, byte sizes and SHA-256 in the single release ask. On `web-bundle`
@@ -292,7 +292,7 @@ Late delivery cannot reserve already-served work. Legacy `{item,kind}` rows reta
 their shape and begin their separate admission provenance at hub load time.
 The queue retries at eligibility changes and within 1000 ms of running hub clock;
 a blocked request gets one report-only Agents notice with idle verifier exclusions.
-See hub/README.md, “Verifier reservation retirement and queue diagnostics”.
+See docs/hub/topics.md, “Verifier reservation retirement and queue diagnostics”.
 
 Trusted human review/QA requests from topic.send, CLI, web and remote ingress
 record admission without a sender session. Legacy human producer rows retain

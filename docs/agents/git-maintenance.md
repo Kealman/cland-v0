@@ -1,7 +1,7 @@
 # Git object maintenance
 
 The hub schedules one background pass 30 seconds after serving. See
-[the policy](../../hub/README.md#git-object-maintenance) for grace and ownership.
+[the policy](../hub/cland-init-and-cland-update.md#git-object-maintenance) for grace and ownership.
 Requests stay available; startup never waits for collection.
 
 `cland doctor` has one read-only `git maintenance` row for the current collector

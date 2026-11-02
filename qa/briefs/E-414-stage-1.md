@@ -684,19 +684,19 @@ k23() {   # p2: ten minutes later the untouched request is still pending, unansw
 }
 k24() {   # docs, in QA's own shell
   dc() { printf '%s | %s: ' "$1" "$2"; grep -c -F -- "$2" "$W/$1"; }
-  dc hub/README.md 'Native record ids are `<sessionId>:<nativeRequestId>`'
-  dc hub/README.md 'Claude Code always uses `answerIn: tui` with no choices.'
-  dc hub/README.md 'limiting the UTF-8 JSON subject to 64 KiB; no other tool input is carried.'
-  dc hub/README.md 'approval {approval: ApprovalRecord}'
-  dc hub/README.md 'A closed record carries `outcome: {choice, note?, by, via, at}`'
-  dc hub/README.md '| approvalRelay | none: approvals stay in the TUI; their records carry `answerIn: tui`, shown as `answer in Neovim` |'
-  dc hub/README.md '`approval.answer {id, approval, choice, note?}` is a human-only client frame'
-  dc hub/README.md 'Every agent session, Aides included, is refused'
-  dc hub/README.md 'The gate reserves the first valid answer synchronously'
-  dc hub/README.md 'A competing or later answer is refused with `approval already answered by <by> via <via> at <at>`'
-  dc hub/README.md 'Nothing answers an approval on a timer or by default'
-  dc hub/README.md 'journals `approval-answer-failed` at warn level'
-  dc hub/README.md "the hub posts it as a human message addressed to the session in its item's topic, otherwise General"
+  dc <(cat docs/hub/*.md) 'Native record ids are `<sessionId>:<nativeRequestId>`'
+  dc <(cat docs/hub/*.md) 'Claude Code always uses `answerIn: tui` with no choices.'
+  dc <(cat docs/hub/*.md) 'limiting the UTF-8 JSON subject to 64 KiB; no other tool input is carried.'
+  dc <(cat docs/hub/*.md) 'approval {approval: ApprovalRecord}'
+  dc <(cat docs/hub/*.md) 'A closed record carries `outcome: {choice, note?, by, via, at}`'
+  dc <(cat docs/hub/*.md) '| approvalRelay | none: approvals stay in the TUI; their records carry `answerIn: tui`, shown as `answer in Neovim` |'
+  dc <(cat docs/hub/*.md) '`approval.answer {id, approval, choice, note?}` is a human-only client frame'
+  dc <(cat docs/hub/*.md) 'Every agent session, Aides included, is refused'
+  dc <(cat docs/hub/*.md) 'The gate reserves the first valid answer synchronously'
+  dc <(cat docs/hub/*.md) 'A competing or later answer is refused with `approval already answered by <by> via <via> at <at>`'
+  dc <(cat docs/hub/*.md) 'Nothing answers an approval on a timer or by default'
+  dc <(cat docs/hub/*.md) 'journals `approval-answer-failed` at warn level'
+  dc <(cat docs/hub/*.md) "the hub posts it as a human message addressed to the session in its item's topic, otherwise General"
   dc nvim/README.md 'Claude Code records have `answerIn: tui` and no choices: Enter on their inbox row still attaches that session.'
   dc hub/src/cli/usage.ts 'closed approvals include outcome, who answered and when'
   dc hub/src/cli/usage.ts 'approvals are answered by the human in Neovim or the web'

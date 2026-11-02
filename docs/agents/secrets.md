@@ -1,6 +1,6 @@
 # Project secrets
 
-Use the [local secret commands](../../hub/README.md#project-secrets) to manage
+Use the [local secret commands](../hub/project-secrets.md#project-secrets) to manage
 the project's messenger tokens and speech keys. Values enter through stdin or
 a hidden terminal prompt. Only names and SHA-256 fingerprint prefixes belong in
 reports; never share the file, parser input or a credential-bearing command.

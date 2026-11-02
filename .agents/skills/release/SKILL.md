@@ -27,14 +27,14 @@ to false. Publication creates a draft as needed, uploads and reads back both
 assets, then publishes it. On `web-bundle` follow-up failure, preserve
 `release.tmp` and `.cland/release-web/`, repair the obstruction, and retry the
 same item/version. Never clobber conflicting remote assets or start a new login.
-See [Web release assets](../../../hub/README.md#prebuilt-web-release-assets).
+See [Web release assets](../../../docs/hub/prebuilt-web-release-assets.md#prebuilt-web-release-assets).
 
 For a configured `[release.homebrew] tap`, include the preview's tap repository,
 `main`, `Formula/cland.rb`, version and exact tag archive URL in step 3's approval.
 The preview states SHA-256 follows download after the product push. That one
 approval covers the formula for the approved tag URL; no second approval follows
 hashing. An empty tap reports skipped. The human creates the tap first. See
-[Homebrew publication](../../../hub/README.md#homebrew-formula-publication) for
+[Homebrew publication](../../../docs/hub/cland-init-and-cland-update.md#homebrew-formula-publication) for
 receipt/retry semantics; final output and item comment include SHA and tap commit.
 
 For approval before readiness work finishes, use [Conditional release approval](#conditional-release-approval) before step 2's final dry run. Complete all preflight steps before publication.

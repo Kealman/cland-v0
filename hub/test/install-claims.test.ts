@@ -50,7 +50,7 @@ function textFiles(dir: string, extensions: Set<string>): string[] {
 const siteFiles = [...textFiles('site/src', new Set(['.md', '.mdx', '.astro', '.ts'])),
   ...textFiles('site/public', new Set(['.sh']))];
 const docsFiles = textFiles('docs', new Set(['.md', '.mdx']));
-const readmes = ['README.md', 'hub/README.md'];
+const readmes = ['README.md', 'docs/hub/start-a-project-with-cland.md'];
 
 // The audit quotes the v0.2.0-era install command it recorded on 2026-10-24.
 // It is a dated historical record, not a current install claim.
@@ -68,7 +68,7 @@ test('install page, quickstart and landing give the same Homebrew, install-scrip
     assert.ok(text.includes(BREW), `${path}: ${BREW}`);
     assert.ok(text.includes(SCRIPT), `${path}: ${SCRIPT}`);
   }
-  for (const path of ['site/src/content/docs/docs/install.md', 'README.md', 'hub/README.md']) {
+  for (const path of ['site/src/content/docs/docs/install.md', 'README.md', 'docs/hub/start-a-project-with-cland.md']) {
     assert.ok(read(path).includes(TAP), `${path}: name the published tap ${TAP}`);
   }
 });

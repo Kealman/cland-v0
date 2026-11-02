@@ -1,6 +1,6 @@
 # Review and QA through the roles
 
-How an item’s lead runs review and QA until the hub marks it ready (v0.1 §3.7–3.9). The roles, their clauses and their permissions are in `.cland/roles.toml` (`hub/src/roles/default-roles.ts` writes the defaults); the tracker's verdict comments are in `hub/README.md`, "The tracker".
+How an item’s lead runs review and QA until the hub marks it ready (v0.1 §3.7–3.9). The roles, their clauses and their permissions are in `.cland/roles.toml` (`hub/src/roles/default-roles.ts` writes the defaults); the tracker's verdict comments are in `docs/hub/the-tracker.md`, "The tracker".
 
 ## The flow
 
@@ -144,7 +144,7 @@ scope: full
 New projects and built-in fallbacks use the same Codex sandbox for every role (T-1222, human decision 2026-10-24). Implementer and Aide use `workspace-write`; Coordinator, Lead and QA use `danger-full-access`; Reviewer stays `read-only` with no network. This project's explicit `.cland/roles.toml` keeps the T-65 full-access policy for its own crew.
 
 <!-- cland-allow-closed-wording: existing sessions retain sandbox policy until relaunch; landed T-1222 is not pending -->
-These values come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `hub/README.md`, ".cland/roles.toml") and are read at each launch and relaunch. An omitted role or sandbox key uses the built-in fallback; an explicit value is preserved, including `sandbox = ""` for Codex's own configuration. T-1222 tightens Implementer/Aide fallbacks from full access to workspace-write and changes Coordinator/Lead fallbacks from Codex's own setting to explicit full access. Existing sessions keep their policy until relaunched. Generated Codex roles use `approval = "never"`: a command the sandbox refuses fails without waiting for approval. Claude Code uses its own permission policy; generated roles use `permissions = "auto"`, while this project's explicit `skip` policy bypasses prompts and the classifier.
+These values come from `[<role>.launch]` in `.cland/roles.toml` (`approval`, `sandbox`, `writable_roots`, `network`; `docs/hub/roles.md`, ".cland/roles.toml") and are read at each launch and relaunch. An omitted role or sandbox key uses the built-in fallback; an explicit value is preserved, including `sandbox = ""` for Codex's own configuration. T-1222 tightens Implementer/Aide fallbacks from full access to workspace-write and changes Coordinator/Lead fallbacks from Codex's own setting to explicit full access. Existing sessions keep their policy until relaunched. Generated Codex roles use `approval = "never"`: a command the sandbox refuses fails without waiting for approval. Claude Code uses its own permission policy; generated roles use `permissions = "auto"`, while this project's explicit `skip` policy bypasses prompts and the classifier.
 
 | Role | Sandbox default | Network | Why |
 | --- | --- | --- | --- |
@@ -172,7 +172,7 @@ The following historical limitations were measured under that restricted profile
 - **The app-servers' sockets** (`.cland/run/`, `$TMPDIR/cland-run/`). An app-server runs any command under any profile for whoever connects (`command/exec`), so a session that reached one would be out of its sandbox.
 - **For the Reviewer**, `/usr/bin/git` prints `couldn't create cache file '/tmp/xcrun_db-…'` on stderr with each command (Xcode's shim wants a cache); the command itself works.
 
-What `network = "local"` gives the role: the hub's socket, and so the `cland` CLI. A launched session's shell carries `$CLAND_SESSION_ID`, and the hub takes every CLI call from it as that session's: `cland task` within its role's permissions, reading (`cland inbox`, `cland role list`) allowed, and the human's commands (`cland topic answer`, `cland role set`) refused; stopping a session or the hub is the Coordinator's alone (T-49; `hub/README.md`, "The CLI in a session's shell"). The identity is the shell's environment: a session that unset the variables would be taken for the human, as any process holding the socket is. The Reviewer gets no network, so not the socket either.
+What `network = "local"` gives the role: the hub's socket, and so the `cland` CLI. A launched session's shell carries `$CLAND_SESSION_ID`, and the hub takes every CLI call from it as that session's: `cland task` within its role's permissions, reading (`cland inbox`, `cland role list`) allowed, and the human's commands (`cland topic answer`, `cland role set`) refused; stopping a session or the hub is the Coordinator's alone (T-49; `docs/hub/roles.md`, "The CLI in a session's shell"). The identity is the shell's environment: a session that unset the variables would be taken for the human, as any process holding the socket is. The Reviewer gets no network, so not the socket either.
 
 ADR 0003 records that QA runs where Unix sockets are blocked, which is why the UI can reach the hub over stdio. That still holds for a rescue run (The fallback, below) and for any role whose `network` is `none`; a QA session launched with these defaults is no longer such a place.
 

@@ -1,7 +1,7 @@
 # Pairing requests
 
 The hub owns waiting codes, their expiry and per-stranger reply limits in
-`hub.db`; [the pairing contract](../../hub/README.md#pairing-codes) describes
+`hub.db`; [the pairing contract](../hub/gateway-authority.md#pairing-codes) describes
 the trusted messenger callback and optional inbox rows. Use numeric ids as
 strings. A platform adapter validates the pairing gesture and sends its callback
 result privately; `null` is silence. A frame actor never supplies the messenger
@@ -86,7 +86,7 @@ interruption cannot reapply them. An interrupted reply is uncertain and stays
 fenced. The [mute guide](tests/hub-test-telegram-mute.test.ts.md) covers the
 frame/fake receipt boundary; status retains its existing mute field.
 
-After pairing, [Telegram phone commands](../../hub/README.md#telegram-phone-commands)
+After pairing, [Telegram phone commands](../hub/remote-commands.md#telegram-phone-commands)
 use the gateway's allowed reads. The native private-chat menu is compared with
 Telegram on every start and written only when its command/description list
 differs. Pairing grants remain local even when `/inbox` or `/status` is read remotely.
@@ -108,7 +108,7 @@ unmapped replies get a note rather than an answer or General message. Confirmed
 answers recover owed feedback through their native answer receipt after restart.
 Outcomes remove the buttons and name the choice, actor, source and hub-local time. Long questions keep one card
 with a marked preview; full labels and the question remain in the workbench.
-See [Telegram ask cards](../../hub/README.md#telegram-ask-cards) and the
+See [Telegram ask cards](../hub/running.md#telegram-ask-cards) and the
 [frame/fake regressions](tests/hub-test-telegram-cards.test.ts.md).
 
 ## Workbench remote state

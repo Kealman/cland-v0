@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { fileURLToPath } from 'node:url';
-// A stub hub for the shell's tests: it speaks the UI's frames (hub/README.md, "The UI's frames" and the
+// A stub hub for the shell's tests: it speaks the UI's frames (docs/hub/the-projects-hub.md, "The UI's frames" and the
 // `session.*` frames) as JSON lines on stdin and stdout, the way `cland hub serve --stdio` does, from a
 // scripted scenario. The client spawns it through CLAND_COMMAND as `<stub> hub serve --stdio`.
 //

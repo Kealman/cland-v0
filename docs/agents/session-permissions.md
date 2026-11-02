@@ -17,11 +17,11 @@ role can omit `"session.list"`; a session without a role has no tools.
 Reviewers and QA may list sessions but are refused these mutations by default.
 Leads retain scoped launch/stop authority; listing needs no item claim.
 
-See the [permission table](../../hub/README.md#permissions) and the
+See the [permission table](../hub/roles.md#permissions) and the
 [regression seam](tests/hub-test-permissions.test.ts.md).
 
 The in-process gateway acts as `human`, subject to its own narrower
-[authority table](../../hub/README.md#gateway-authority). It has no session or
+[authority table](../hub/gateway-authority.md#gateway-authority). It has no session or
 role grant. A remote can send in General or reply in the original message's
 topic, answer asks and approvals, and read status, tasks and inbox. All other
 requests, actor overrides and artifact sends are refused before dispatch.
@@ -42,7 +42,7 @@ the file and invalid key/value with its accepted settings; fix that key before
 retrying. Relaunch validates before stopping the old process. `approval` and
 `sandbox` errors follow the same rule as `permissions` (`""`, `auto`, `skip`).
 OpenCode ignores policy keys for its own launches; overrides to Codex or Claude
-Code validate them. See [role configuration](../../hub/README.md#roles).
+Code validate them. See [role configuration](../hub/roles.md#roles).
 
 Codex command sandboxes are separate from these hub grants. Generated and
 built-in fallback sandboxes agree: Implementer/Aide workspace-write, Reviewer
@@ -83,7 +83,7 @@ before sending the wire frame, which still requires a concrete string array.
 Definitions live under `[custom.<name>]` in `.cland/roles.toml`; launch with
 `cland session launch <session> --role <name>`. Their tools default to deny;
 `permissions.tools` lists exact grants from the custom allowlist in
-[hub permissions](../../hub/README.md#custom-roles). Unknown fields, unknown
+[hub permissions](../hub/roles.md#custom-roles). Unknown fields, unknown
 or forbidden grants and reserved names refuse the edit with the field path.
 The previous valid snapshot remains in force.
 

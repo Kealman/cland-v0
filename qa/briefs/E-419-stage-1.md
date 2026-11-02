@@ -543,7 +543,7 @@ k04() {   # docs, in QA's own shell
     chk web/README.md 'Nothing needs you'
     chk web/README.md 'need you'
     grep -n -i -E "inbox.{0,40}(home|phone)|(home|phone).{0,40}inbox" web/README.md | cut -c1-200
-    c=$(landed T-1167); [ -n "$c" ] && git show --format= "$c" -- web/README.md docs/agents/tests.md hub/README.md | grep -E '^[+-][^+-]' | cut -c1-200
+    c=$(landed T-1167); [ -n "$c" ] && git show --format= "$c" -- web/README.md docs/agents/tests.md <(cat docs/hub/*.md) | grep -E '^[+-][^+-]' | cut -c1-200
     echo "-- statements to read against the implementation (candidates for low findings)"
     grep -n -F -e "belongs to More's notification controls" -e 'opens its card in the drawer' -e '**Requests**' -e 'The selected row' web/README.md | cut -c1-200
     grep -n -i -E 'stand-in|not yet|until (E-41[0-9]|T-11[0-9][0-9]) lands|next ticket|later ticket' web/README.md | cut -c1-200 )

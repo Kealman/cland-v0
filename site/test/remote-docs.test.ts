@@ -1,4 +1,5 @@
 // T1: published source is checked against the shipped help and config/secret vocabulary.
+import { hubReference } from '../../shared/hub-reference.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { test } from 'node:test';
@@ -166,7 +167,7 @@ test('both public remote pages describe Discord media, voice and local diagnosti
 });
 
 test('README remote commands describe the built-in Discord client and both setup offers', () => {
-  const readme = source('hub/README.md');
+  const readme = hubReference();
   const remote = readme.split('## Remote commands')[1]!.split('### Remote state in the workbenches')[0]!;
   assert.doesNotMatch(remote, /Discord's\s+callbacks require an injected platform client/);
   assert.match(remote, /built-in Discord/);
@@ -183,7 +184,7 @@ test('documentation vocabulary guard rejects an invented command flag', () => {
 });
 
 test('README public remote commands, settings, secrets and flags use shipped vocabulary', () => {
-  const readme = source('hub/README.md');
+  const readme = hubReference();
   const sections = [
     readme.split('## Project secrets')[1]!.split('### Remote state in the workbenches')[0]!,
     readme.split('### Telegram in setup')[1]!.split('## cland init and cland update')[0]!,

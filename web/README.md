@@ -16,7 +16,7 @@ cland web
 ```
 
 The shell function runs this checkout's CLI; keep this shell at the repository
-root. For use from other project folders, see [cland on the PATH](../hub/README.md#cland-on-the-path)
+root. For use from other project folders, see [cland on the PATH](../docs/hub/running.md#cland-on-the-path)
 and the hub README's project initialization instructions.
 
 `npm install` prepares the browser bundle and the pinned test browser;

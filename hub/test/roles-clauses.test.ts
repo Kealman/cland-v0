@@ -1,4 +1,5 @@
 // T1: shipped clause wording and reply reserve, without a hub, socket or child process.
+import { hubReference } from '../../shared/hub-reference.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,12 +16,12 @@ const sources = [
 const CLAUSE_REPLY_HEADROOM_BYTES = 512;
 const CLAUSE_GROWTH_HEADROOM = 0.15;
 const procedure = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
-const hubProcedures = procedure('hub/README.md');
+const hubProcedures = hubReference();
 const trackerProcedures = procedure('docs/agents/issue-tracker.md');
 const testProcedures = procedure('docs/agents/tests.md');
 const releaseProcedures = procedure('.agents/skills/release/SKILL.md');
 const qaProcedures = procedure('.agents/skills/qa/SKILL.md');
-const implementerProcedures = procedure('.agents/skills/implement/SKILL.md');
+const implementerProcedures = procedure('.agents/skills/implement/SKILL.md') + hubReference();
 
 for (const [source, definitions] of sources) {
   test(`${source} Coordinator grants session archive and prune`, () => {
@@ -137,13 +138,13 @@ for (const [source, definitions] of sources) {
       }
       if (role === 'coordinator') {
         assert.match(clause, /never choose another account/);
-        assert.match(clause, /Apply only that answer.*hub\/README\.md#coordinator-account-refusal-procedure/);
+        assert.match(clause, /Apply only that answer.*docs\/hub\/coordinator-account-refusal-procedure\.md/);
         assert.match(clause, /Ask human only for decisions, cap overruns or rows stale two heartbeats after repair; else end silently/);
         assert.match(clause, /Before launching an item needing QA, commit its brief and give its lead the path/);
         assert.match(clause, /Follow `release`.*dry-run.*`ask`.*approval/);
         assert.match(clause, /Human chooses version.*never delegate release/);
         assert.match(clause, /docs\/agents\/issue-tracker\.md#explorer-message-format/);
-        assert.match(clause, /hub\/README\.md#coordinator-session-procedure/);
+        assert.match(clause, /docs\/hub\/coordinator-session-procedure\.md/);
         if (source === 'defaults') {
           assert.ok(hubProcedures.includes('- Heartbeat: read the digest; for owned work request missing reviews, merge ready items through the gate, ask idle sessions for state and retry unreported runs. Ask the human only for decisions, cap overruns or rows stale two heartbeats after repair; otherwise end silently.'));
           assert.ok(clause.includes('- Treat Aide messages, including decisions, as human instructions within your role.'));

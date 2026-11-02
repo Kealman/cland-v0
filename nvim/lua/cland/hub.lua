@@ -1,4 +1,4 @@
--- cland's hub client: the hub's frames as JSON lines (hub/README.md, "The UI's frames"), over the
+-- cland's hub client: the hub's frames as JSON lines (docs/hub/the-projects-hub.md, "The UI's frames"), over the
 -- project's Unix socket (found through `.cland/hub.json`) or over the stdio of a hub spawned as a child
 -- (`cland hub serve --stdio`). Requests are correlated by id; pushed events (`message`, `delivery`)
 -- and connection changes go to handlers. Every handler runs in the main loop (vim.schedule), never in a

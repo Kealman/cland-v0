@@ -89,5 +89,5 @@ as a Reviewer verdict. The hosting hub preserves patch-id freshness and existing
 gates; the item lead still obtains merge-delta review before verification under
 rule 11. `patchIdCurrent` records carry-over eligibility, not an observed gate
 acceptance. The conservative rule and unknown graph/budget outcomes are defined
-in `hub/README.md`, "Merge-delta assessments (report mode)". Enforcement awaits
+in `docs/hub/web-workspace.md`, "Merge-delta assessments (report mode)". Enforcement awaits
 T-1486's separate replay decision. Existing role clauses cover this flow.

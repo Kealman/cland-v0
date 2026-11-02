@@ -38,7 +38,7 @@ Criteria map (the stage verdict carries no item marks; this tells the run which 
 
 ## Build
 
-Use a clean detached worktree at dev at the SHA in the request (the full 40-hex SHA), created below. HEAD must equal that SHA and refs/heads/dev before and after running. All listed items must have merged onto dev: for every member that `task plan show E-414` lists in stage `races and restarts`, `git log --first-parent --oneline --grep "Item: <id>" dev` prints exactly one commit. At writing T-1159 landed as `fe3937b0`; T-1113 was reviewed clear at branch head `f9e3a8f5` (`t/T-1113-the-first-answer-wins-against-the`) and was landing through the merge queue. **The run starts only once T-1113 is on dev**: if E414S3-00's merge check prints nothing under `== T-1113`, the run is BLOCKED; report it to the requester and stop. The run is also BLOCKED if the build lacks `approvalsReconciled` in `hub/src/adapters/contract.ts`, `'approval-rebuilt'` in `hub/src/hub/journal.ts`, `pendingApprovals()` in `hub/src/hub/store.ts`, `"hub/test/approval-restart.test.ts": "T3"` in `hub/test/tiers.json`, or `A harness TUI can win while a hub answer is in flight.` in `hub/README.md`. Dev also carries work landed after these items that is outside this stage, including the Coordinator's duration-allowance update for the restart test (12.2 s raised to 22 s at stage close, Coordinator 544c1930); it is not judged here. A dirty build, missing merge or moved dev blocks this run; retain any collected evidence and report to the requester. The brief names no commit of its own or run id on purpose: committing a brief changes the tested tree. Every expectation below was read from T-1113's head `f9e3a8f5` (which contains T-1159) and dev `ed49f6fd`; the four test files of E414S3-01 to E414S3-04 were run there once (28, 30, 19 and 1 tests, all passing, the restart test in 7.5 s on Darwin arm64). The p1 rows were written from stage 2's rig and T-1113's T3 test, not dry-run: re-check test names, messages and docs strings with grep at the tested build.
+Use a clean detached worktree at dev at the SHA in the request (the full 40-hex SHA), created below. HEAD must equal that SHA and refs/heads/dev before and after running. All listed items must have merged onto dev: for every member that `task plan show E-414` lists in stage `races and restarts`, `git log --first-parent --oneline --grep "Item: <id>" dev` prints exactly one commit. At writing T-1159 landed as `fe3937b0`; T-1113 was reviewed clear at branch head `f9e3a8f5` (`t/T-1113-the-first-answer-wins-against-the`) and was landing through the merge queue. **The run starts only once T-1113 is on dev**: if E414S3-00's merge check prints nothing under `== T-1113`, the run is BLOCKED; report it to the requester and stop. The run is also BLOCKED if the build lacks `approvalsReconciled` in `hub/src/adapters/contract.ts`, `'approval-rebuilt'` in `hub/src/hub/journal.ts`, `pendingApprovals()` in `hub/src/hub/store.ts`, `"hub/test/approval-restart.test.ts": "T3"` in `hub/test/tiers.json`, or `A harness TUI can win while a hub answer is in flight.` in `<(cat docs/hub/*.md)`. Dev also carries work landed after these items that is outside this stage, including the Coordinator's duration-allowance update for the restart test (12.2 s raised to 22 s at stage close, Coordinator 544c1930); it is not judged here. A dirty build, missing merge or moved dev blocks this run; retain any collected evidence and report to the requester. The brief names no commit of its own or run id on purpose: committing a brief changes the tested tree. Every expectation below was read from T-1113's head `f9e3a8f5` (which contains T-1159) and dev `ed49f6fd`; the four test files of E414S3-01 to E414S3-04 were run there once (28, 30, 19 and 1 tests, all passing, the restart test in 7.5 s on Darwin arm64). The p1 rows were written from stage 2's rig and T-1113's T3 test, not dry-run: re-check test names, messages and docs strings with grep at the tested build.
 
 In this repository, give the detached worktree a `node_modules` symlink to the project's installed dependencies before any other step (the setup below does; the clean-tree check ignores that one entry). The pinned Neovim comes from the main worktree's `.cache/nvim/`; never download it into the root. This stage has no Web bundle or browser step and `web/dist` is not needed.
 
@@ -284,7 +284,7 @@ k00() {   # QA shell: build, merges, plan, sealing
   grep -c -F "'approval-rebuilt'" "$W/hub/src/hub/journal.ts"
   grep -c -F 'pendingApprovals()' "$W/hub/src/hub/store.ts"
   grep -c -F '"hub/test/approval-restart.test.ts": "T3"' "$W/hub/test/tiers.json"
-  grep -c -F 'A harness TUI can win while a hub answer is in flight.' "$W/hub/README.md"
+  grep -c -F 'A harness TUI can win while a hub answer is in flight.' <(cat "$W/docs/hub/"*.md)
   ls "$W/hub/test/approval-restart.test.ts" "$W/hub/test/codex-native.test.ts" "$W/hub/test/opencode-native.test.ts" "$W/hub/test/approval-records.test.ts"
   echo "TMPDIR=$TMPDIR Q=$Q"
   cat "$EV/E414S3-00-p1-start.txt"; wc -l < "$Q/pids"
@@ -295,24 +295,24 @@ k07() {   # test $W: the Neovim protocol recordings still match a real hub after
 }
 k09() {   # docs, in QA's own shell
   dc() { printf '%s | %s: ' "$1" "$2"; grep -c -F -- "$2" "$W/$1"; }
-  dc hub/README.md 'Codex and OpenCode native records keep their id across a reconnect.'
-  dc hub/README.md 'reconnects may re-key'
-  dc hub/README.md 'until those implementations land'
-  dc hub/README.md 'Claude Code always uses `answerIn: tui` with no choices.'
-  dc hub/README.md "Codex and OpenCode requests are also TUI-only with no choices when they fail the adapter's checks or their complete authorization subject exceeds the serialized 64 KiB UTF-8 cap; any truncated text is informational only."
-  dc hub/README.md 'A harness TUI can win while a hub answer is in flight.'
-  dc hub/README.md "A native resolution observed before Codex's response-write receipt, or an OpenCode reply refused as not found after an attached client answered, closes the record with the harness's outcome."
-  dc hub/README.md 'The losing hub answer is refused with who answered and when; its attempted choice and note do not replace the winner.'
-  dc hub/README.md "Codex's protocol has a limitation: \`serverRequest/resolved\` carries the request id, without the winning decision or client."
-  dc hub/README.md "that event cannot be distinguished from the hub answer's echo. The record then reads the hub's choice."
-  dc hub/README.md 'Pending allowlisted record metadata is retained in `hub.db`'
-  dc hub/README.md "After a hub restart, Codex's pending-request replay and OpenCode's parent and pending child-owner permission snapshots reconcile those records"
-  dc hub/README.md "Claude Code's state-only record keeps its id and command while its waiting state is recovered"
-  dc hub/README.md 'A request missing from a completed native replay/snapshot closes as `answered in the harness`'
-  dc hub/README.md 'An unfinished hub answer returns as pending, never as an approval.'
-  dc hub/README.md "The journal's \`approval-rebuilt\` receipt identifies a restored request admitted after native replay and subject validation"
-  dc hub/README.md 'Already closed outcomes and their attribution remain in the inbox archive across restarts.'
-  dc hub/README.md 'A rejection restores `pending` and clears the attempted outcome unless a native winner has already closed the record'
+  dc <(cat docs/hub/*.md) 'Codex and OpenCode native records keep their id across a reconnect.'
+  dc <(cat docs/hub/*.md) 'reconnects may re-key'
+  dc <(cat docs/hub/*.md) 'until those implementations land'
+  dc <(cat docs/hub/*.md) 'Claude Code always uses `answerIn: tui` with no choices.'
+  dc <(cat docs/hub/*.md) "Codex and OpenCode requests are also TUI-only with no choices when they fail the adapter's checks or their complete authorization subject exceeds the serialized 64 KiB UTF-8 cap; any truncated text is informational only."
+  dc <(cat docs/hub/*.md) 'A harness TUI can win while a hub answer is in flight.'
+  dc <(cat docs/hub/*.md) "A native resolution observed before Codex's response-write receipt, or an OpenCode reply refused as not found after an attached client answered, closes the record with the harness's outcome."
+  dc <(cat docs/hub/*.md) 'The losing hub answer is refused with who answered and when; its attempted choice and note do not replace the winner.'
+  dc <(cat docs/hub/*.md) "Codex's protocol has a limitation: \`serverRequest/resolved\` carries the request id, without the winning decision or client."
+  dc <(cat docs/hub/*.md) "that event cannot be distinguished from the hub answer's echo. The record then reads the hub's choice."
+  dc <(cat docs/hub/*.md) 'Pending allowlisted record metadata is retained in `hub.db`'
+  dc <(cat docs/hub/*.md) "After a hub restart, Codex's pending-request replay and OpenCode's parent and pending child-owner permission snapshots reconcile those records"
+  dc <(cat docs/hub/*.md) "Claude Code's state-only record keeps its id and command while its waiting state is recovered"
+  dc <(cat docs/hub/*.md) 'A request missing from a completed native replay/snapshot closes as `answered in the harness`'
+  dc <(cat docs/hub/*.md) 'An unfinished hub answer returns as pending, never as an approval.'
+  dc <(cat docs/hub/*.md) "The journal's \`approval-rebuilt\` receipt identifies a restored request admitted after native replay and subject validation"
+  dc <(cat docs/hub/*.md) 'Already closed outcomes and their attribution remain in the inbox archive across restarts.'
+  dc <(cat docs/hub/*.md) 'A rejection restores `pending` and clears the attempted outcome unless a native winner has already closed the record'
   dc docs/agents/tests.md 'Approval races use those same T2 scripted native/frame seams'
   dc docs/agents/tests.md '`hub/test/approval-restart.test.ts` is T3 because it restarts actual scratch hub processes'
   dc .agents/skills/implement/SKILL.md 'For approval race/restart changes'

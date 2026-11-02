@@ -6,7 +6,7 @@ expire earlier; a caller using the full creation budget must allow more than
 120 s, plus up to 20 s of readiness and transport overhead. Neither timeout
 cancels the hub's copy. After a timeout, inspect the destination topic with
 `artifact.list` before retrying to avoid a duplicate publication. See
-[Spoke readiness and deadlines](../../../hub/README.md#spoke-readiness-and-deadlines).
+[Spoke readiness and deadlines](../../hub/web-edge.md#spoke-readiness-and-deadlines).
 `spoke-artifact-budget.test.ts` tests these reply boundaries with `FakeClock`
 and a slow fake hub. Its setup, result receipts and teardown have separate
 failure bounds. After a late result, it waits for an acknowledgement of the

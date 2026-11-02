@@ -50,7 +50,7 @@ post-typecheck build also runs on local verification, where remote prepare is ab
 `web/dist` is ignored. See [the web workspace](../../web/README.md). Prepare installs
 dependencies and seeds the pinned Neovim on the builder and before every droplet
 delivery; it never runs during local verification. See
-[Verification commands](../../hub/README.md#verification-commands) for the shell,
+[Verification commands](../hub/running.md#verification-commands) for the shell,
 clean-tree and snapshot-key contract.
 
 The T0 skill provenance gate (`hub/test/lint-skill-provenance.ts`) checks the
@@ -1160,7 +1160,7 @@ When an inherited-pipe writer cannot be verified, the result explicitly says
 cleanup is incomplete, Agents and the inbox receive one warning, and the queue
 is released. Unknown processes are preserved. Native endpoint inspection also
 recovers writers whose ancestry disappeared before observation; see
-[the method and failure modes](../../hub/README.md#inherited-stdio-writer-ownership).
+[the method and failure modes](../hub/coordinator-subscription-procedure.md#inherited-stdio-writer-ownership).
 
 `[verification] coordinator_suites` (positive integer, default 1 for generated
 and inherited config) permits that many distinct active droplet submission keys
@@ -1331,7 +1331,7 @@ A green same-head Linux result supplies gate suite evidence. It lists macOS-only
 cases as `suite skip` records; they run in the release's final local suite
 ("Release v0.1.2 from the item"). A full suite costs about $0.10 on c-8 at $0.25/hour;
 c-16 is $0.50/hour, twice the hourly price, with cost depending on elapsed lifetime.
-These are estimates; see [executor costs and configuration](../../hub/README.md#remote-executors-droplets).
+These are estimates; see [executor costs and configuration](../hub/running.md#remote-executors-droplets).
 
 When droplets are unavailable (missing token, refused create, no prepared snapshot,
 unavailable size, daily cap or dirty candidate), the hub posts a warning:
@@ -1352,7 +1352,7 @@ belongs to the human and Coordinator.
 
 The worker survives the caller's shell exiting. The hub keeps its run record across restart; a killed worker produces a result naming the signal while the hub is live, or a missing-exit-receipt crash report after restart. A permission change can hold reporting: `cland hub status --history --json` exposes pending runs and their reporting error; restoring permission lets the hub retry without duplicating a committed result. A recipient hygiene refusal holds the whole result until every intended recipient is admissible, so a partially muted recipient cannot lose its report.
 
-Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1 and selected T2, plus changed T3/T4 files and mapped T4 guards once; remaining process smoke is deferred. `--report` names the result topic (default Agents, addressed to the Coordinator); repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Log and coverage artifact chips follow that topic. Automatic run reports, search/blocked/skip notices, merge-batch notices and quarantine proposals use Agents. General retains the Coordinator harness-exit and ten-minute vacancy/recovery notices because they need the human's action. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
+Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../hub/running.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1 and selected T2, plus changed T3/T4 files and mapped T4 guards once; remaining process smoke is deferred. `--report` names the result topic (default Agents, addressed to the Coordinator); repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Log and coverage artifact chips follow that topic. Automatic run reports, search/blocked/skip notices, merge-batch notices and quarantine proposals use Agents. General retains the Coordinator harness-exit and ten-minute vacancy/recovery notices because they need the human's action. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
 
 The hub persists the request, exact head, item, diff selection, enqueue time and priority in its database before acknowledging it. Admission gives the Coordinator's integrated dev requests first priority, then human `npm test` waiters in enqueue order, then the item rank captured at submission, then other requests in enqueue order. The local slot admits one run; `[verification].remote_budget` admits parallel
 droplet runs beside it (a positive integer, 4 by default; this project's D27 build value is 2). The scheduler walks the
@@ -1793,7 +1793,7 @@ At the default two lanes this takes about seven minutes overall: the acceptance
 bound is under five minutes of extra wall after the ordinary phase, with all
 forty fresh repetitions retained.
 
-See [the runner and process-fixture notes](../../hub/README.md#tests) when adding tests that spawn processes.
+See [the runner and process-fixture notes](../hub/running.md#tests) when adding tests that spawn processes.
 
 Hook bridges retry missing or unreachable hubs for 60 seconds, including a silent
 handshake. Their expiry stops the mod's restart loop too. The real-hub lifecycle

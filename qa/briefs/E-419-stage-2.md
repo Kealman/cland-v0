@@ -778,7 +778,7 @@ k04() {   # docs, in QA's own shell
     echo "-- T-1169 (verified at a84547b8)"
     chk web/README.md "A relayed approval's phone sheet reuses \`ApprovalCard\`: the full command or file"
     chk web/README.md 'marks its command **answer in Neovim**, offers no answer controls and opens no'
-    chk hub/README.md 'Below 640 CSS px, tapping a relayed approval row opens that same card in the'
+    chk <(cat docs/hub/*.md) 'Below 640 CSS px, tapping a relayed approval row opens that same card in the'
     chk docs/agents/tests.md '`web/test/phone-approvals.test.ts` owns phone approval presentation through the'
     echo "-- T-1171 C6 (read on the branch)"
     chk web/README.md '### Phone composer'
@@ -794,7 +794,7 @@ k04() {   # docs, in QA's own shell
     chk web/README.md 'Where `navigator.setAppBadge` exists, the authoritative needs-you count sets the'
     chk web/README.md '`cland web --qr` prints the phone sign-in link and QR code. Redeeming the link'
     chk docs/agents/tests.md '`web/test/phone-install.test.ts` owns the install-entry, Badging API and QR sign-in'
-    for i in T-1169 T-1171 T-1174; do c=$(landed "$i"); echo "== $i docs diff"; [ -n "$c" ] && git show --format= "$c" -- web/README.md docs/agents/tests.md hub/README.md | grep -E '^[+-][^+-]' | cut -c1-200; done
+    for i in T-1169 T-1171 T-1174; do c=$(landed "$i"); echo "== $i docs diff"; [ -n "$c" ] && git show --format= "$c" -- web/README.md docs/agents/tests.md <(cat docs/hub/*.md) | grep -E '^[+-][^+-]' | cut -c1-200; done
     echo "-- statements to read against the implementation (candidates for low findings)"
     grep -n -F -e 'Inline artifact navigation opens its page in the phone' -e 'keep their in-place cards' -e 'their phone home' -e 'On a coarse-pointer touch device' web/README.md | cut -c1-200
     grep -n -i -E 'stand-in|not yet|until (E-41[0-9]|T-11[0-9][0-9]) lands|next ticket|later ticket|later E-419' web/README.md | cut -c1-200 )

@@ -95,8 +95,8 @@ chk web/README.md "Graph draws the current scope's direct children as SVG using 
 chk docs/agents/tests.md '`web/test/items-actions.test.ts` owns the three Items interaction seams: selecting'
 chk docs/agents/tests.md '`web/test/board.test.ts` proves T-1075'
 chk docs/agents/tests.md '`web/test/graph.test.ts` proves T-1076'
-chk hub/README.md 'By-id pages include the complete compact tree row (identity, kind, title, state,'
-chk hub/README.md 'links can load a missing row and walk its ancestors without reading its body.'
+chk <(cat docs/hub/*.md) 'By-id pages include the complete compact tree row (identity, kind, title, state,'
+chk <(cat docs/hub/*.md) 'links can load a missing row and walk its ancestors without reading its body.'
 chk docs/agents/issue-tracker.md 'compact tree row (including canonical id and parent), allowing links to load'
 printf '%s key rows\n' "$(sed -n '/^## Items tree/,/^## Items views/p' web/README.md | grep -c '^| `')"
 SH

@@ -1,11 +1,12 @@
 // T1: documentation contracts; source inventory only, no CLI, sockets or processes.
+import { hubReference } from '../../shared/hub-reference.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import ts from 'typescript';
 import { defaultConfig, parseConfig } from '../src/init/config.ts';
 
-const hubReadme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+const hubReadme = hubReference();
 const webReadme = readFileSync(new URL('../../web/README.md', import.meta.url), 'utf8');
 
 // Grep feature deferrals, not live request/approval states or the human's named

@@ -188,7 +188,7 @@ Selecting a session shows its named account after the model, for example `Codex 
 
 The human maintains the user-level registry; role pins and `--account` name an
 account. For setup, sources, polling floors, the CLI and the Coordinator's ask
-on a refused launch, see the hub's [Accounts and limits](../hub/README.md#accounts-and-limits).
+on a refused launch, see the hub's [Accounts and limits](../docs/hub/accounts-and-limits.md#accounts-and-limits).
 
 ### Verification queue
 

@@ -333,7 +333,7 @@ k11() {   # docs, in QA's own shell
     chk web/README.md '| `1`–`9` | Human-directed ask card or its thread row, outside fields | Answer with the corresponding option immediately |'
     chk web/README.md '| `i`, `r` | Human-directed ask card or its thread row, outside fields | Focus the free-answer field when available |'
     chk web/README.md '| `d` | Human-directed ask card or its thread row, outside fields | Switch to decline mode with a required reason;'
-    chk hub/README.md '`TopicMessage.withdrawable` and `delivery.withdrawable` are optional additive'
+    chk <(cat docs/hub/*.md) '`TopicMessage.withdrawable` and `delivery.withdrawable` are optional additive'
     chk docs/agents/tests.md '`web/test/withdraw.test.ts` owns the authenticated thread → `topic.withdraw`'
     chk docs/agents/tests.md '`web/test/composer.test.ts` owns the authenticated composer → `topic.send` seam:'
     chk docs/agents/tests.md '`web/test/inbox.test.ts` owns the four Now sections through the sealed'
