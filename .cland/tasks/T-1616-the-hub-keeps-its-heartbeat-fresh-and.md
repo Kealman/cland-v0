@@ -2,8 +2,8 @@
 id: T-1616
 kind: task
 title: The hub keeps its heartbeat fresh and stops when it loses the lock
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1342
 branch: t/T-1616-the-hub-keeps-its-heartbeat-fresh-and
 created: 2026-11-02T03:34:16.474Z
-updated: 2026-11-02T15:44:56.523Z
+updated: 2026-11-02T16:21:23.965Z
+closed: 2026-11-02T16:21:23.965Z
 ---
 
 ## Summary
@@ -107,3 +108,7 @@ Queued provenance: recorded runner tree 0ae1356a86edd16b7521e7d2e8ec6d3b0c663bd8
 Local heartbeat/identity/typecheck/lint were reported at identical pre-commit source tree; primary heartbeat/identity evidence is the queued exact-head execution above. QA affected/after-stage. Reviewer ran no tests/browser and made no edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-02T16:21:23.965Z
+
+Merged ae3444303cdb6b1cde142451d1ae58d8a0e37d5b onto dev.

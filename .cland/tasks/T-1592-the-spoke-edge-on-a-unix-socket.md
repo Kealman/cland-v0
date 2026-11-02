@@ -2,8 +2,8 @@
 id: T-1592
 kind: task
 title: The spoke edge on a Unix socket
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1329
 branch: t/T-1592-the-spoke-edge-on-a-unix-socket
 created: 2026-11-02T03:33:53.512Z
-updated: 2026-11-02T15:42:47.255Z
+updated: 2026-11-02T16:21:08.568Z
+closed: 2026-11-02T16:21:08.568Z
 ---
 
 ## Summary
@@ -249,3 +250,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear,no findings. Source-clear rev-38-1592-source-5/A-15883 carries forward at unchanged5bd5840c. Independently checked A-15886/run e777300d exact-head provenance/tree52ee2274,all12 named Unix-edge base passes and12x5/5 load receipts plus corrected gateway pass. C1 mode/welcome/path fallback,C2 bearer/log parity,C3 stale/owned cleanup,C4 client refusal established. A-15882 raw merged staged-tree then committed-unchanged macOS arm64 Node24.21 daemon18/resilience3 native passes close C4 literal preservation; pre-commit boundary retained,required files unedited,no exception. Current uncached Linux x64 droplet Node24.21/Neovim0.12.5: T0/T1/T2/Web exit0,six selected T3 duration files44 identities exit0/base-only,4848 reported pass,zero fail/cancel/skip. Isolated Headless Shell1248/Chrome for Testing156.0.8078.4. Budgets/lint report-only; remaining T3 deferred to merge batch,no full T3/T4 claim. Reviewer ran no tests/browser. C1–C4 verified. A-15887 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15887-t-1592-final-evidence-at-5bd5840c.md).
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-02T16:21:08.568Z
+
+Merged e92c6aab80e672ed8d7a3da0e3371da77727a1c7 onto dev.
