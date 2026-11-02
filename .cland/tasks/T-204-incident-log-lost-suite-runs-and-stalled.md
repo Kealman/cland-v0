@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-02T10:24:24.804Z
+updated: 2026-11-02T18:58:40.412Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -520,3 +520,7 @@ Hub restart #68 (stand-in, coord go, T-1580 coordinator_suites must be live befo
 ### human · 2026-11-02T10:24:24.804Z
 
 Hub restart #69 (stand-in, coord go, urgent: hub 97875 at ~90% CPU in Inbox.list, CLI replies missing the 15 s deadline; fix T-1628 774af78a + T-1627 on dev d1eb35e34). Old hub 97875 (18 h, nice 0, peak footprint 2.76 GB) stopped 10:22:29Z. New hub 3297 port 65462 via launchd (cland-hub-r69) at nice 0, 8 GB heap + DO token, listening 10:22:36Z, serving 10:23:08Z, stop→serve 39 s. Coord: bridge-connected 10:23:09Z → coordinator-filled → injected 10:23:32Z, one bridge. +50 s RSS 586 MB / footprint 1,195 MB. Doctor 32 ok / 9 warn / 0 fail. Batch 5d4ff9c3 (T-1632, T-1566, T-1621) still queued; droplet f06c0048 appeared at the gate and was releasing after the restart.
+
+### coord · 2026-11-02T18:58:40.412Z
+
+2026-11-02 18:58Z, lost batch run (infrastructure). Batch b01fbb34 (T-1617 alone), run 65987c12, log A-15953. The droplet cland-v0-57b05291 (sfo2) never accepted SSH: `delivery upload run.sh: machine copy failed or exceeded its time bound (exit 255): Connection timed out during banner exchange`. Lifetime 139 s, cost $0.0096, no tests ran. The hub held the batch as `inconclusive: no failing-test receipt`. Recovery: coord cancelled T-1617 (the only member, so no re-form race) and re-enqueued it at 18:58:29Z at the same head 8d611f77. Cost: about 6 min plus the batch re-run.

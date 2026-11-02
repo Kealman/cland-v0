@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1294
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-11-02T16:21:57.798Z
+updated: 2026-11-02T16:50:16.606Z
 ---
 
 ## Goal
@@ -285,3 +285,64 @@ Exact-token scan positive controls detected the four stored invite tokens; final
 Stage verdict only; no epic criterion marks. Findings by severity: none. No product edits.
 
 Artifact A-15579: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15579-e-1536-stage-2-qa-27-checks-pass-authorised-brief-corrections/report.md
+
+### qa-678 · 2026-11-02T16:50:16.606Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-users3-2026-11-02-qa678-2
+commit: ad295a54c672ed08937a7c62c5655e89f9da5e38
+stage: sign-in and pairing
+stage_hash: c206fe3a2a0afa8325172f8c0f0abfa7439db00815bd059efe3160d6603cac8f
+findings: [{"severity":"low","text":"Aside, S Follow-up (Coordinator filing): row E1536S3-15 malformed pairing code 000000 is rejected as unknown request type pairing.approve. The authorized well-formed absent-code check passes; this diagnostic wording is outside the stage's pairing behavior.","file":"hub/src/hub/dispatch.ts","line":1743}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Result | Command / observation | Evidence |
+|---|---|---|---|
+| S0 | PASS | Replacement run: clean pinned detached build, shared sealed environment and probe; zero credential-prefix names, five fixture CLAND names | [S0.txt](S0.txt) |
+| E1536S3-00 | PASS | m00: replacement HEAD/dev/request equal ad295a54; all five stage members merged once; clean tree | [E1536S3-00.txt](E1536S3-00.txt); [E1536S3-00-plan.json](E1536S3-00-plan.json) |
+| E1536S3-01 | PASS | m01 at replacement build: all source checks match; seven T-1572 migration deletions reviewed; preserved/additive files and packages unchanged | [E1536S3-01.txt](E1536S3-01.txt); [E1536S3-01-migrations.diff](E1536S3-01-migrations.diff); [T-1568-landing.txt](T-1568-landing.txt) |
+| E1536S3-02 | PASS | m02 at replacement build: sealed web build and full typecheck exit 0, clean HEAD; Node24.21.0, Neovim0.11.2 | [E1536S3-02.txt](E1536S3-02.txt); [E1536S3-02-build.log](E1536S3-02-build.log); [E1536S3-02-typecheck.log](E1536S3-02-typecheck.log) |
+| E1536S3-03 | PASS | nt: 91 tests across five auth/password/WebAuthn files pass at ad295a54; required names, zero skips and failures checked | [E1536S3-03.log](E1536S3-03.log); [test-summary.json](test-summary.json); [required-tests.json](required-tests.json) |
+| E1536S3-04 | PASS | nt: 11 tests across four Web sign-in/passkey/connection files; required names, zero skips and all fixture census after0/hubstopped checked | [E1536S3-04.log](E1536S3-04.log); [test-summary.json](test-summary.json); [platform.json](platform.json) |
+| E1536S3-05 | PASS | nt: four withdrawal/authority/message-user files pass; all required names, no skips, and Web fixture census clean | [E1536S3-05.log](E1536S3-05.log); [test-summary.json](test-summary.json) |
+| E1536S3-06 | PASS | nt: 199 tests in eleven pairing/native/CLI/Neovim files pass; all51 generated names match source loops; no skips or failures | [E1536S3-06.log](E1536S3-06.log); [test-summary.json](test-summary.json); [generated-required.json](generated-required.json); [generated-match.json](generated-match.json); [generated-test-source.txt](generated-test-source.txt) |
+| E1536S3-07 | PASS | m07: single-mode endpoints/link/cookies/ownership and two visible Withdraw buttons pass; history-derived IDs, isolated profile and zero browser group after | [E1536S3-07.txt](E1536S3-07.txt); [E1536S3-07-single.png](E1536S3-07-single.png) |
+| E1536S3-08 | PASS | m08: brief correction (precondition), coord-authorised; single-mode user list intended refusal; all switch/invite/Origin/Host/method/expiry facts pass, no rerun | [E1536S3-08.txt](E1536S3-08.txt); [E1536S3-08-correction.txt](E1536S3-08-correction.txt); [E1536S3-08-precondition-source.txt](E1536S3-08-precondition-source.txt) |
+| E1536S3-09 | PASS | m09: password invite activates Jane, shows Profile, user-bound strict HttpOnly cookie, scrypt storage and used-invite refusals; isolated browser/no frame secret hits | [E1536S3-09.txt](E1536S3-09.txt); [E1536S3-09-admission.txt](E1536S3-09-admission.txt); [E1536S3-09-invite.png](E1536S3-09-invite.png) |
+| E1536S3-10 | PASS | m10: CDP passkey registration/fresh-context login; replay/reuse/wrong-user and125001ms expiry refused; fresh positive control200, counter5, no frame secrets/browser leftovers | [E1536S3-10.txt](E1536S3-10.txt); [E1536S3-10-admission.txt](E1536S3-10-admission.txt); [E1536S3-10-passkey.png](E1536S3-10-passkey.png) |
+| E1536S3-11 | PASS | m11: WebAuthn unavailable hides passkey button and shows exact tooltip; dana password registration and distinct scrypt salts pass; no frame secrets/browser leftovers | [E1536S3-11.txt](E1536S3-11.txt); [E1536S3-11-admission.txt](E1536S3-11-admission.txt); [E1536S3-11-nowebauthn.png](E1536S3-11-nowebauthn.png) |
+| E1536S3-12 | PASS | m12: desktop/phone sign-in fits viewport; three identical401 credential refusals; correct login, shared-cookie sibling signout, other browser survives; no frame secrets | [E1536S3-12.txt](E1536S3-12.txt); [E1536S3-12-admission.txt](E1536S3-12-admission.txt); [E1536S3-12-signin-desktop.png](E1536S3-12-signin-desktop.png); [E1536S3-12-signin-phone.png](E1536S3-12-signin-phone.png); [E1536S3-12-signed-out.png](E1536S3-12-signed-out.png) |
+| E1536S3-13 | PASS | m13: cookie flags equal across issuers; signout closes only its socket with1006 and rejects reuse401; other session stays open; foreign-origin403 | [E1536S3-13.txt](E1536S3-13.txt) |
+| E1536S3-14 | PASS | m14: trusted identities, ownership and non-admin refusals, desktop/phone Withdraw controls, own and legacy withdrawal; screenshots inspected | [E1536S3-14.txt](E1536S3-14.txt); [E1536S3-14-admission.txt](E1536S3-14-admission.txt); [E1536S3-14-dana-desktop.png](E1536S3-14-dana-desktop.png); [E1536S3-14-dana-phone.png](E1536S3-14-dana-phone.png); [E1536S3-14-jane-desktop.png](E1536S3-14-jane-desktop.png) |
+| E1536S3-15 | PASS | m15 plus brief correction (pairing code format), coord-authorised: original malformed code retained; ABCDEFGH absent-code refusal captured after reset, lookup precedes mode branch; users-mode selectors and unpair passed | [E1536S3-15.txt](E1536S3-15.txt); [E1536S3-15-correction.txt](E1536S3-15-correction.txt); [E1536S3-15-source.txt](E1536S3-15-source.txt) |
+| E1536S3-16 | PASS | m16: reset retains users and first pairing, revokes sessions/invites, restores single-mode routes/link and withdrawal; screenshot inspected | [E1536S3-16.txt](E1536S3-16.txt); [E1536S3-16-admission.txt](E1536S3-16-admission.txt); [E1536S3-16-single.png](E1536S3-16-single.png) |
+| E1536S3-17 | PASS | m17: scan 107 files while hub up; positive control detected and removed; passwords/cookies/passkey responses/challenges/invite tokens each nonempty sentinel sets, zero hits | [E1536S3-17.txt](E1536S3-17.txt) |
+| E1536S3-18 | PASS | m18: hub stopped exit 0; census 57 owned PIDs with no survivors, scratch process count zero; checkpointed secret scan 106 files positive control detected/removed and five secret classes zero hits; HEAD/dev unchanged and worktree clean | [E1536S3-18.txt](E1536S3-18.txt); [E1536S3-18-hubstop.txt](E1536S3-18-hubstop.txt); [final-build.txt](final-build.txt) |
+
+Severity-ranked findings: no in-scope product findings. One diagnostic follow-up (low, proposed size S): E1536S3-15, `remote approve telegram 000000 --user alex` exits 1 with `cland: unknown request type "pairing.approve"`. This is malformed-code validation, not an absent pairing handler: `hub/src/protocol.ts:1118–1119` accepts eight pairing-alphabet characters; `hub/src/hub/dispatch.ts:1743` gives the generic error before the handler at 1957. Coordinator classified the diagnostic as a separate follow-up and is filing it. It does not fail this stage's pairing behavior.
+
+Verdict: clear, E-1536 stage **sign-in and pairing**, affected / after-stage. Full tested and final dev SHA: `ad295a54c672ed08937a7c62c5655e89f9da5e38`. Run: `qa-users3-2026-11-02-qa678-2`. Committed brief `qa/briefs/E-1536-stage-3.md` (last changed at 7a41d85c), replacement request `f7d03552-688a-447f-8bde-886ac8e01bf5`. All five stage members had landing receipts. Detached worktree clean and HEAD/dev equal at completion. No epic criterion marks: this closes only the stage; epic Definition of done is separate.
+
+20 recorder checks passed: S0 plus 00–18. Build and typecheck passed. Targeted files ran serially: row 03 91 tests / 5 files, row 04 11 / 4, row 05 24 / 4, row 06 199 / 11: **325 tests across 24 files**, no failed or skipped tests. [test-summary.json](test-summary.json) retains every executed TAP name; [required-tests.json](required-tests.json) and [generated-required.json](generated-required.json) retain required names, including all 51 generated cases matched in [generated-match.json](generated-match.json). Exit status alone was not the judgment: manual response facts, case preconditions, negative results, browser counts and screenshot visibility were checked.
+
+Runtime: local macOS darwin arm64, OS release 27.0.0, Node v24.21.0, Neovim 0.11.2. Headless Shell reports Google Chrome for Testing 156.0.8078.4, binary `/Users/evgeniyivanov/Projects/cland/v0/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell`. Every browser profile was in the sealed scratch fixture; no GUI or human browser ran. All 11 screenshots were visually inspected. Served `/signin` index SHA256 and built index SHA256 both `c0582b0ab8d50327a47bfd9587233abc50a646328cf14e55405b25bc1b4de6ab` ([served-stamp.json](served-stamp.json)).
+
+Two runtime brief corrections are separate from product results, with original captures retained:
+
+- **Row 08 — brief correction (precondition), coord-authorised**, decision `71497fa5-8167-480f-9bbd-f4f754eef490`. Correct single-mode precondition is hub up and `cland user list` refused with `cland: use cland auth mode users before cland user commands` (daemon.ts:374/381/389). The switch was not rerun. Remaining captured facts passed. See [correction](E1536S3-08-correction.txt) and [source](E1536S3-08-precondition-source.txt).
+- **Row 15 — brief correction (pairing code format), coord-authorised**, decision `909035a3-9517-40b4-804b-a1b60f8a7dc5`. Original `000000` is invalid. One supplemental `remote approve telegram ABCDEFGH --user alex` returned exit 1, `cland: no live pairing code for this messenger`. Row 16's reset had completed before that authorization arrived, so the supplemental capture explicitly records mode single. The absent-code lookup is before the mode branch at dispatch.ts:1964–1968; original users-mode selector/unpair captures are unchanged. See [correction](E1536S3-15-correction.txt) and [source](E1536S3-15-source.txt).
+
+Inferred fixture assumptions were checked against observed behavior: expiry writes took effect; passkey credential transfer to a fresh browser context worked and final stored counter was 5; non-admin role change affected the next frame; planted user pairings were listed, selectively removed and reset to Jane's first pairing. No activation was planted. The 125001 ms passkey expiry wait was real elapsed waiting, not a full-run performance measurement. Passwords used distinct scrypt salts. Sign-out closed only the matching cookie's sockets; other sessions stayed usable. Reset revoked user sessions and restored single-mode admission and withdrawal fences.
+
+Admission: rows 03–06 waited for cover-quiet and enforced one-minute load ≤10 before each file; later browser rows 09,10,11,12,14,16 also captured and enforced load ≤10. Row 07 began just before the Coordinator's later per-browser-row load instruction; its post-row load 3.06 is diagnostic, not a retrospective admission sample. See [admission-notes.txt](admission-notes.txt). Web prerequisite messages are report-only; load and quiet admission are enforced. No suite wall time or load benchmark is claimed.
+
+Both scans had a planted positive control detected exactly once and removed, nonempty secret sentinel sets, and zero secret hits: while running 107 files; after hub shutdown/checkpoint 106 files. Each checked passwords (4), cookies (15), passkey responses (14), challenges (6), invite tokens (6). No secrets, cookie files, environment, raw databases or one-use links are exported. Hub stopped exit 0; 57 owned PIDs had no surviving fixture process; zero processes named the scratch root. Evidence was separately scanned with a positive control before recording and publication.
+
+Scope limits: this run completed the brief's targeted tests and scratch HTTP/WebSocket/browser/CLI checks. It did not run a full suite, T4 soak, real Telegram/Discord, hardware passkeys, configured HTTPS/Secure-cookie behavior, or GUI computer use. Pairing round trips and the Neovim pairing card use the named tests' fake messengers; planted row 15–16 pairings prove selector/reset behavior only. Coordinator-owned stage covers are outside this brief; no green cover result is claimed here (Coordinator reported the earlier macOS cover failed on T-1636). This local run has no droplet lifetime/cost.
+
+Superseded ae344430 run is preserved separately as A-15902 and contributes no passes to this run. Preparatory brief defects were corrected in the committed build before this run; this report uses the final extracted probe.
+
+
+Durable evidence: A-15908, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15908-e-1536-stage-sign-in-and-pairing-qa-clear-at-ad295a54/report.md

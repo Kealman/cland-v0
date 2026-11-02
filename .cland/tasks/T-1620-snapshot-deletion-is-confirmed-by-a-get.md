@@ -2,8 +2,8 @@
 id: T-1620
 kind: task
 title: Snapshot deletion is confirmed by a GET
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1343
 branch: t/T-1620-snapshot-deletion-is-confirmed-by-a-get
 created: 2026-11-02T03:34:17.445Z
-updated: 2026-11-02T16:16:19.512Z
+updated: 2026-11-02T17:39:31.924Z
+closed: 2026-11-02T17:39:31.924Z
 ---
 
 ## Summary
@@ -108,3 +109,7 @@ Recorded queued provenance: runner tree c42ac3dc3187c9963ae9a1f057759e5d91df4983
 QA affected/after-stage. Reviewer ran no tests/browser and made no edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-02T17:39:31.924Z
+
+Merged 5c12b1b1f26a6989785eeb99c198906934801af3 onto dev.
