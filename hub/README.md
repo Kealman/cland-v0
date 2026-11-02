@@ -5811,7 +5811,9 @@ admission. Metrics use the loaded config snapshot: `cland hub reload` publishes
 a changed target; an invalid reload retains the last good value. The hub records
 the same target and window values in a
 `verification-wait` journal entry on the first scheduler tick of each UTC
-hour. The last recorded hour survives restart, preventing duplicate records;
+hour while running. Shutdown clears its timer before logging `stopping` or
+awaiting cleanup, so drainage cannot emit a sample. The last recorded hour
+survives restart, preventing duplicate records;
 after downtime only the current window is recorded, without inventing past
 hourly samples.
 

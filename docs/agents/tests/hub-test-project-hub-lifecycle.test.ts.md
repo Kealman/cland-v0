@@ -6,6 +6,9 @@ requires the child to exit 1 with both `projectHub leaked resources` and `Timeou
 Its deliberate first-clear retention remains unchanged: the production daemon
 stops the config/role owner once, before closing edges and storage. Repeated
 disposal of that same timer can erase the planted leak and invalidate the control.
+The verification-wait stop releases its captured timer once: the early daemon
+fence and later scheduler close must not clear that same timer twice. Keep the
+original leak control unchanged when checking this stop ownership.
 
 The direct-dispatcher request case separately plants a live interval during a
 response and requires the same child failure. Keep both controls and the native

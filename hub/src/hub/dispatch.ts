@@ -429,6 +429,9 @@ export class Dispatcher {
     } while (this.#dropletWork);
   }
 
+  /** Fence periodic metrics before daemon shutdown begins awaiting its owners. */
+  stopWaitMetrics(): void { this.#suites?.stopWaitMetrics(); }
+
   async close(): Promise<void> {
     this.#closed = true;
     // A startup failure can close the dispatcher before serving admits recovery.

@@ -518,6 +518,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
         try { await cleanup(); } catch (error) { failures.push(error); }
       };
       try {
+        hub.dispatcher.stopWaitMetrics();
         await attempt(() => log({ event: 'stopping' }));
         clock.clearTimeout(maintenanceTimer);
         maintenanceAbort.abort();

@@ -207,7 +207,7 @@ export class Suites {
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
   readonly #waitMetrics: VerificationWait;
-  readonly #waitTimer: ClockTimer;
+  #waitTimer: ClockTimer | null;
   readonly #latestItems = new Map<number, SuiteJob>();
   readonly #latestBranches = new Map<string, SuiteJob>();
   readonly #order = new Map<string, number>();
@@ -1767,5 +1767,10 @@ export class Suites {
     await this.#leaseRefreshing;
   }
 
-  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
+  stopWaitMetrics(): void {
+    const timer = this.#waitTimer;
+    this.#waitTimer = null;
+    if (timer) (this.#options.waitClock ?? this.#clock).clearInterval(timer);
+  }
+  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
 }

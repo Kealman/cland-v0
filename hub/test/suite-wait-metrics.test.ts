@@ -10,6 +10,8 @@ import type { LogEntry } from '../src/log.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
+import { until } from './until.ts';
+import { FakeClock } from './fake-clock.ts';
 import { Journal } from '../src/hub/journal.ts';
 
 const NOW = Date.parse('2026-10-16T06:00:00Z');
@@ -61,11 +63,11 @@ test('hourly verification-wait journal values match queue snapshots and do not r
   const database = join(root, 'hub.db');
   let store = new Store(database);
   store.setMeta('suite-jobs', JSON.stringify([completedJob(root)]));
-  t.mock.timers.enable({ apis: ['Date', 'setInterval'], now: NOW });
-  const journal = new Journal(join(root, 'journal.jsonl'));
+  const clock = new FakeClock(NOW);
+  const journal = new Journal(join(root, 'journal.jsonl'), () => clock.now());
   const entries: LogEntry[] = [];
   const restore = () => new Suites(store, root, async () => assert.fail('completed request must not rerun'), {
-    locks: [join(root, 'suite.lock')], waitP90TargetMs: 900_000,
+    locks: [join(root, 'suite.lock')], waitP90TargetMs: 900_000, clock,
     log: journal.tap(entry => { if (entry.event === 'verification-wait') entries.push(entry); }),
   });
   let suites = restore();
@@ -73,32 +75,70 @@ test('hourly verification-wait journal values match queue snapshots and do not r
   const check = (index: number) => {
     const { event, at, ...metrics } = entries[index]!;
     assert.equal(event, 'verification-wait');
-    assert.equal(at, iso(Date.now()));
+    assert.equal(at, iso(clock.now().getTime()));
     assert.deepEqual(metrics, suites.snapshot().metrics.queueWait);
     assert.equal(metrics.targetP90Ms, 900_000);
   };
-  t.mock.timers.tick(1000);
+  assert.equal(entries.length, 0, 'startup does not scan retained jobs for a snapshot');
+  await clock.advance(1000);
   assert.equal(entries.length, 1, 'first tick records the current hour');
   check(0);
   assert.deepEqual(suites.snapshot().metrics.queueWait?.last24Hours.local, { count: 1, cacheHits: 0, p50Ms: 60_000, p90Ms: 60_000 });
-  t.mock.timers.tick(HOUR - 2000);
+  assert.equal(entries.length, 1, 'only one snapshot in this hour');
+  clock.block(HOUR - 2000);
+  await clock.advance(0);
   assert.equal(entries.length, 1, 'no duplicates within the hour');
-  t.mock.timers.tick(1000);
+  await clock.advance(1000);
   assert.equal(entries.length, 2);
   check(1);
   assert.deepEqual(suites.snapshot().metrics.queueWait?.last24Hours.local, { count: 0, cacheHits: 0, p50Ms: null, p90Ms: null });
   await suites.close(); store.close();
   store = new Store(database);
   suites = restore();
-  t.mock.timers.tick(1000);
+  await clock.advance(1000);
   assert.equal(entries.length, 2, 'durable hour checkpoint suppresses restart duplicates');
-  t.mock.timers.tick(HOUR - 1000);
+  clock.block(HOUR - 1000);
+  await clock.advance(0);
   assert.equal(entries.length, 3);
   check(2);
   await journal.flush();
   const persisted = (await readFile(journal.path, 'utf8')).trim().split('\n').filter(Boolean)
     .map(line => JSON.parse(line) as LogEntry).filter(entry => entry.event === 'verification-wait');
   assert.deepEqual(persisted.map(({ ts, ...entry }) => entry), entries, 'hourly samples reach the durable journal');
+});
+
+for (const initialSample of [false, true]) test(`shutdown suppresses verification-wait through held drainage (prior sample: ${initialSample})`, { timeout: 5000 }, async t => {
+  const root = await tempProject(t, 'cland-wait-shutdown-');
+  const clock = new FakeClock(NOW);
+  const events: string[] = [];
+  const recovery = Promise.withResolvers<void>();
+  t.after(() => recovery.resolve());
+  const hub = await projectHub(t, root, {}, {
+    clock, log: entry => { events.push(String(entry.event)); },
+    gitMaintenanceRecovery: () => recovery.promise,
+  });
+  assert.equal(events.includes('verification-wait'), false, 'startup does not record metrics');
+  if (initialSample) await clock.advance(1000);
+  const beforeStop = events.filter(event => event === 'verification-wait').length;
+  assert.equal(beforeStop, initialSample ? 1 : 0);
+  const stopping = hub.stop();
+  await until(() => events.includes('stopping'), { what: 'shutdown begins', timeoutMs: 1000 });
+  try {
+    // Drainage is held while both the first tick and a new UTC hour pass.
+    await clock.advance(1000);
+    clock.block(HOUR);
+    await clock.advance(1000);
+    assert.equal(events.filter(event => event === 'verification-wait').length, beforeStop);
+  } finally {
+    recovery.resolve();
+    await stopping;
+  }
+  const lines = (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).trim().split('\n')
+    .map(line => JSON.parse(line) as LogEntry);
+  const start = lines.findIndex(entry => entry.event === 'stopping');
+  const end = lines.findIndex(entry => entry.event === 'stopped');
+  assert.ok(start >= 0 && end > start, 'durable shutdown boundaries exist');
+  assert.equal(lines.slice(start, end + 1).filter(entry => entry.event === 'verification-wait').length, 0);
 });
 
 test('queue wait target defaults, validates positive durations and survives config rendering', () => {
