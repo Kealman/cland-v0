@@ -80,7 +80,7 @@ In this repository, give the detached worktree a `node_modules` symlink to the p
 
 **Where things live.** All QA scratch and prep are outside the project root: the scratch root `$Q` is `/private/tmp/qa-e1538s1-…` (its realpath), and it holds the three scratch projects, the scratch HOMEs, the fakes' state and every helper file. The only two paths under the repository are the ones the QA tooling itself prescribes, both ignored by `.cland/.gitignore` (`worktrees/`, `qa/`): the detached build `$W` in `.cland/worktrees/` and the evidence tree `$EV` in `.cland/qa/E-1538/`. Nothing else is created in the root, and no file is written to `.cland/tasks/`; E1538S1-00 and E1538S1-16 print the root's non-tracker status (it must stay empty: an untracked file in the root blocks stage covers).
 
-**Isolation (rule 15).** Every scratch check runs in a disposable project with its own HOME, XDG directories and Git config, with provider and account variables removed. Never the live project at `/Users/evgeniyivanov/Projects/cland/v0`, its hub, its lock, its `hub.db` or the human's HOME (`~/.cland`, `~/.claude`, `~/.codex`, `~/.local/state`, `~/.config/cland`). The live hub is read only by QA's own shell for E1538S1-00's plan read and `quiet` (cover-quiet admission: the live verify queue is read, nothing is submitted). Every scratch `cland` call runs sealed, with every inherited `CLAND_*` variable stripped, from a directory under `$Q`; E1538S1-15 proves it. **Harnesses:** only the fakes in `$W/hub/test/fakes/` (`CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN`, `CLAND_OPENCODE_BIN`, first on the scratch hub's `PATH`); no session is launched. **DigitalOcean:** only the fake API and the fake provider. The real API is never called, the real token is never read or printed, and no real droplet, snapshot or key is listed, created or deleted. The scratch hub that talks to the fake gets a sentinel token `cland-test-qa1538-<hex>` that the fake itself generated, and `CLAND_DIGITALOCEAN_API` set to the fake's loopback URL; `hubstart_do` refuses to start unless the URL is `http://127.0.0.1:<port>/v2` and the token carries the sentinel prefix, and the sealed environment holds no `DIGITALOCEAN_*` or `DO_*` name (E1538S1-02 prints the count). **Lock identity:** every hub started here uses the native lock identity (since T-1615/T-1617 `projectHub` and the CLI default to the machine's real hostname, boot id and PID namespace). A synthetic foreign identity appears only in the identity-negative checks E1538S1-03 and E1538S1-05 to E1538S1-09, and each of those says so: the planted records name `qa-foreign.invalid`, `qa-successor.invalid` or `qa-contender.invalid`. **Browser (rule 18):** none. **Preconditions (rule 22):** every check function prints a `PRE:` line before acting; when that line differs from the row's stated precondition, record the row `BLOCKED` with the line and stop the dependent rows. Created ids (the fake's droplet and key ids) are read from the fake's state listing and saved one per file with a trailing newline (`drop.id`, `key.id`), never taken from a create reply. Messages and test titles are marked verified or inferred under "Source provenance" below. **Secrets (rule 15):** the sentinel token and the scratch hubs' secrets are never printed, posted or written under `$EV`; every error text and CLI output goes through `redact()` (`$Q/redact.mjs`, used by the probe and by the `rd` filter), which replaces known secrets by their kind and any `token=`, `password=`, `cookie=`, `secret=`, bearer or 64-hex value; E1538S1-16 scans for the secrets with a positive control.
+**Isolation (rule 15).** Every scratch check runs in a disposable project with its own HOME, XDG directories and Git config, with provider and account variables removed. Never the live project at `/Users/evgeniyivanov/Projects/cland/v0`, its hub, its lock, its `hub.db` or the human's HOME (`~/.cland`, `~/.claude`, `~/.codex`, `~/.local/state`, `~/.config/cland`). The live hub is read only by QA's own shell for E1538S1-00's plan read and `quiet` (cover-quiet admission: the live verify queue is read, nothing is submitted). Every scratch `cland` call runs sealed, with every inherited `CLAND_*` variable stripped, from a directory under `$Q`; E1538S1-15 proves it. **Harnesses:** only the fakes in `$W/hub/test/fakes/` (`CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN`, `CLAND_OPENCODE_BIN`, first on the scratch hub's `PATH`); no session is launched. **DigitalOcean:** only the fake API and the fake provider. The real API is never called, the real token is never read or printed, and no real droplet, snapshot or key is listed, created or deleted. The scratch hub that talks to the fake gets a sentinel token `cland-test-qa1538-<hex>` that the fake itself generated, and `CLAND_DIGITALOCEAN_API` set to the fake's loopback URL; `hubstart_do` refuses to start unless the URL is `http://127.0.0.1:<port>/v2` and the token carries the sentinel prefix. Its environment is built through the shared fixture, account-path, Git and synthetic-provider adapters, without later overlays. The ordinary sealed environment holds no `DIGITALOCEAN_*` or `DO_*` name (E1538S1-02 prints the count). **Lock identity:** every hub started here uses the native lock identity (since T-1615/T-1617 `projectHub` and the CLI default to the machine's real hostname, boot id and PID namespace). A synthetic foreign identity appears only in the identity-negative checks E1538S1-03 and E1538S1-05 to E1538S1-09, and each of those says so: the planted records name `qa-foreign.invalid`, `qa-successor.invalid` or `qa-contender.invalid`. **Browser (rule 18):** none. **Preconditions (rule 22):** every check function prints a `PRE:` line before acting; when that line differs from the row's stated precondition, record the row `BLOCKED` with the line and stop the dependent rows. Created ids (the fake's droplet and key ids) are read from the fake's state listing and saved one per file with a trailing newline (`drop.id`, `key.id`), never taken from a create reply. Messages and test titles are marked verified or inferred under "Source provenance" below. **Secrets (rule 15):** the sentinel token and the scratch hubs' secrets are never printed, posted or written under `$EV`; every error text and CLI output goes through `redact()` (`$Q/redact.mjs`, used by the probe and by the `rd` filter), which replaces known secrets by their kind and any `token=`, `password=`, `cookie=`, `secret=`, bearer or 64-hex value; E1538S1-16 scans for the secrets with a positive control.
 
 Two shells, never mixed. **QA's own shell** keeps QA's session identity: it creates the worktree, runs `quiet` and the plan read, runs the named test files through `nt` (which seals each run) and records every check with `qa-record.sh`. **Every other command runs sealed** inside a subshell that sources `$Q/env.sh`. That file holds the full `fixtureEnvironment` result (`test-support/fixture-environment.ts`) after the scratch overlays, then `scratchGitEnvironment` with a scratch `core.excludesFile`. It drops every inherited `CLAND_*`, `GIT_*`, `XDG_*`, `CLAUDE_*`, `CODEX_*`, `OPENCODE_*`, `FAKE_*`, provider and account variable, and keeps `PATH`, `SHELL`, `TERM` and `TMPDIR`. It synthesizes its own scratch values under `$Q`: HOME, XDG, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, the `FAKE_*_HOME` directories, `CLAND_EXECUTOR_STATE`, the messenger sentinels and `CLAND_TEST_OWNED_ROOT`. Leave `TMPDIR` at the system default (on macOS `/var/folders/...`; never `/tmp`, T-1030). Never use `env -i`. The scratch root lives under `/private/tmp/qa-e1538s1-` (its realpath, short enough for the scratch hubs' sockets).
 
@@ -152,11 +152,9 @@ hp() { node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSyn
 hubstart() { env PATH="$FCC:$FCX:$FOC:$PATH" CLAND_CLAUDE_BIN="$FCC/claude" CLAND_CODEX_BIN="$FCX/codex" CLAND_OPENCODE_BIN="$FOC/opencode" CLAND_TEST_SKIP_ORPHAN_SWEEP=1 CLAND_ADAPTER_POLL_MS=200 CLAND_CLAUDE_AGENTS_MS=500 node "$QA_W/hub/bin/cland.ts" hub start && hp >> "$QA_Q/pids"; }
 # hubstart_do: hubstart for p2 only: the fake's loopback endpoint, its sentinel token, HOME and XDG_STATE_HOME on $Q/home2, no CLAND_EXECUTOR_STATE
 hubstart_do() {
-  u=$(cat "$QA_Q/do.url"); case "$u" in http://127.0.0.1:[0-9]*/v2) ;; *) echo "REFUSED: the provider endpoint is not the loopback fake"; return 1;; esac
-  ( export DIGITALOCEAN_TOKEN="$(cat "$QA_Q/do.token")" CLAND_DIGITALOCEAN_API="$u" HOME="$QA_Q/home2" XDG_STATE_HOME="$QA_Q/home2"; unset CLAND_EXECUTOR_STATE
-    case "$DIGITALOCEAN_TOKEN" in cland-test-qa1538-*) ;; *) echo "REFUSED: not the fake's sentinel token"; exit 1;; esac
-    env PATH="$FCC:$FCX:$FOC:$PATH" CLAND_CLAUDE_BIN="$FCC/claude" CLAND_CODEX_BIN="$FCX/codex" CLAND_OPENCODE_BIN="$FOC/opencode" CLAND_TEST_SKIP_ORPHAN_SWEEP=1 CLAND_ADAPTER_POLL_MS=200 CLAND_CLAUDE_AGENTS_MS=500 node "$QA_W/hub/bin/cland.ts" hub start ) && hp >> "$QA_Q/pids"
+  node "$QA_Q/launch-p2.mjs" && hp >> "$QA_Q/pids"
 }
+
 amode() { sed -n '/^\[auth\]/,/^\[/p' .cland/config.toml | grep -E '^mode = '; }
 up() { cland hub status > /dev/null 2>&1 && echo up || echo down; }
 # run <label> <command…>: exit status, then the first lines of stdout and stderr, both redacted
@@ -179,14 +177,57 @@ ENV
 ( . "$Q/env.sh"; env | cut -d= -f1 | grep -E '^CLAND_' | sort | tr '\n' ' '; echo )
 ```
 
+The p2 launcher uses the shared environment boundaries in this order: `fixtureEnvironment` with all ordinary overlays (including `XDG_STATE_HOME` and an absent executor override), `scratchAccountEnvironment` for the deliberate scratch HOME, `scratchGitEnvironment`, then `syntheticProviderEnvironment` for the validated sentinel and loopback endpoint. No shell or object overlay follows these boundaries. `fixtureEnvironment` cannot run after the deliberate account/provider adapters: it would reset HOME and remove the sentinel token. The launcher prints only path-equality facts and redacted child output.
+
+```sh
+cat > "$Q/launch-p2.mjs" <<'JS'
+// brief correction (shared-builder launcher), coord-authorised 3af43250
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { redact } from './redact.mjs';
+const Q = process.env.QA_Q, W = process.env.QA_W;
+if (!Q?.startsWith('/private/tmp/qa-e1538s1-') || !W || process.cwd() !== `${Q}/p2`) throw new Error('p2 launcher requires its scratch project');
+try {
+  const { fixtureEnvironment, scratchAccountEnvironment, scratchGitEnvironment } = await import(`${W}/test-support/fixture-environment.ts`);
+  const { syntheticProviderEnvironment } = await import(`${W}/hub/test/synthetic-provider.ts`);
+  const token = readFileSync(`${Q}/do.token`, 'utf8').trim();
+  const endpoint = readFileSync(`${Q}/do.url`, 'utf8').trim();
+  if (!/^cland-test-qa1538-[a-z0-9]+$/.test(token) || !/^http:\/\/127\.0\.0\.1:[0-9]+\/v2$/.test(endpoint)) throw new Error('p2 launcher requires the explicit loopback fake');
+  const fakes = `${W}/hub/test/fakes`;
+  let env = fixtureEnvironment(Q, process.env, {
+    QA_Q: Q, QA_W: W, QA_EV: process.env.QA_EV, QA_R: process.env.QA_R,
+    XDG_STATE_HOME: `${Q}/home2`, CLAND_EXECUTOR_STATE: undefined,
+    PATH: `${fakes}/claude-code:${fakes}/codex:${fakes}/opencode:${process.env.PATH}`,
+    CLAND_CLAUDE_BIN: `${fakes}/claude-code/claude`,
+    CLAND_CODEX_BIN: `${fakes}/codex/codex`, CLAND_OPENCODE_BIN: `${fakes}/opencode/opencode`,
+    CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_ADAPTER_POLL_MS: '200', CLAND_CLAUDE_AGENTS_MS: '500',
+  });
+  env = scratchAccountEnvironment(Q, env, { home: `${Q}/home2` });
+  env = scratchGitEnvironment(Q, env, { excludesFile: `${Q}/home/.gitignore-global` });
+  env = syntheticProviderEnvironment(env, { token, endpoint });
+  console.log(JSON.stringify({ p2Environment: { homeMatches: env.HOME === `${Q}/home2`, stateMatches: env.XDG_STATE_HOME === `${Q}/home2`, executorOverrideAbsent: env.CLAND_EXECUTOR_STATE === undefined, provider: 'validated loopback synthetic' } }));
+  const child = spawnSync(process.execPath, [`${W}/hub/bin/cland.ts`, 'hub', 'start'], { cwd: `${Q}/p2`, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  process.stdout.write(redact(child.stdout ?? ''));
+  process.stderr.write(redact(child.stderr ?? ''));
+  if (child.error) process.stderr.write(redact(String(child.error)) + '\n');
+  process.exit(child.status ?? 1);
+} catch (error) {
+  process.stderr.write(redact(String(error)) + '\n');
+  process.exit(2);
+}
+JS
+node --check "$Q/launch-p2.mjs" && echo "p2 launcher checked"
+```
+
 The redaction filter. `redact()` is shared by the probe, the fake's driver and the `rd` shell filter, so no error text reaches a capture unredacted (rule 15). `$Q/secrets1538.json` is a list of `{kind, value}`; the fake's driver adds the sentinel token to it when it starts.
 
 ```sh
 cat > "$Q/redact.mjs" <<'JS'
 // redact(text): replace every known secret by its kind, then token/secret/password/cookie parameters, bearer values, JSON secret fields, any 64-hex run and any sentinel token
 import { existsSync, readFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 export const redact = (text, q = process.env.QA_Q) => {
-  let t = String(text);
+  let t = String(text).split(hostname()).join('<native>');
   const file = `${q}/secrets1538.json`, known = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
   for (const k of known) if (typeof k.value === 'string' && k.value.length >= 8) t = t.split(k.value).join(`<${k.kind}>`);
   return t
@@ -245,6 +286,8 @@ node --check "$Q/fakedo.mjs" && echo "fakedo checked"
 
 The probe. It prints one JSON line per fact (or one plain value where a shell comparison needs it) and never prints a token, a secret or a lock's token. Modes:
 
+- `foreignpre`: fixture-owned PID census and an authenticated p1 socket probe must show no local hub; capture the separately planted foreign holder's hostname, heartbeat age and fresh/lapsed state. This does not use `up()` as a local-liveness assertion.
+- `nativehostfacts <status.json>`: assert `hostname` equals `os.hostname()` and print only `nativeHostnameMatches`; captured output masks the native hostname as `<native>` and preserves synthetic `.invalid` hostnames.
 - `hostid`, `lockfacts <lock>`, `heartbeat <lock> <secs> <ms>`, `contend <lock> <attempts> <gapSec>`: the native identity, a lock record's facts, a sampler of the lock file, and a foreign contender calling `acquireLock` on the real lock with a process table that throws on any pid but its own;
 - `plant <root> <variant> <ageSec> <pid> <hubjson 0|1|keep>`, `plantclear <root>`, `sha <files…>`: planted lock records (`all`, `hostname`, `bootId`, `pidNamespace`, `successor`, `same`, `same-live`, `legacy-pid`, `legacy-started`, `legacy-startedUtc`, `legacy-token`), their digests;
 - `rows <doctor.json> <names…>`, `psused <log> <pid>`, `cfgsha <status.json>`, `statusfacts <status.json>`, `tag <root>`, `sockform`, `roots`: readers of CLI output;
@@ -276,6 +319,44 @@ const ctl = async (cmd, body) => {
   return (await fetch(`${base}/${cmd}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}) })).json();
 };
 switch (mode) {
+  // brief correction (foreign-holder preconditions), coord-authorised 8634e86a
+  case 'foreignpre': {
+    const root = `${Q}/p1`;
+    if (process.cwd() !== root) throw new Error('foreignpre requires p1');
+    const pids = [...new Set(readFileSync(`${Q}/pids`, 'utf8').split(/\s+/).filter(Boolean).map(Number))];
+    let localFixtureHubs = 0;
+    for (const pid of pids) {
+      try {
+        const cmd = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'command='], {encoding:'utf8', stdio:['ignore','pipe','ignore']});
+        if (cmd.includes(`${W}/hub/bin/cland.ts`) && /\bhub serve\b/.test(cmd)) localFixtureHubs++;
+      } catch (error) { if (error.status !== 1) throw error; }
+    }
+    const discoveryFile = `${root}/.cland/hub.json`;
+    let socketAnswers = false;
+    if (existsSync(discoveryFile)) {
+      const d = JSON.parse(readFileSync(discoveryFile, 'utf8'));
+      if (d.root !== root) throw new Error('foreignpre discovery root is not p1');
+      const tmp = process.env.TMPDIR;
+      if (!d.socket.startsWith(`${root}/.cland/`) && !(tmp && d.socket.startsWith(tmp) && /\/cland-[0-9a-f]{16}\.sock$/.test(d.socket))) throw new Error('foreignpre socket outside fixture paths');
+      const { probe } = await import(`${W}/hub/src/cli/socket-client.ts`);
+      socketAnswers = await probe(d, 1500);
+    }
+    const { readForeignHolder } = await import(`${W}/hub/src/hub/lock.ts`);
+    const holder = readForeignHolder(`${root}/.cland/hub.lock`);
+    out('PRE local fixture', {ownedPidsChecked:pids.length, localFixtureHubs, socketAnswers});
+    out('PRE foreign holder', holder ? {hostname:holder.holder.hostIdentity.hostname, heartbeatAgeMs:holder.ageMs, state:holder.active?'fresh':'lapsed'} : {present:false});
+    if (localFixtureHubs !== 0 || socketAnswers || !holder) process.exit(2);
+    break;
+  }
+  // brief correction (native hostname capture), coord-authorised 8634e86a
+  case 'nativehostfacts': {
+    const v=JSON.parse(readFileSync(a1,'utf8'));
+    const nativeHostnameMatches=v.hostname===hostname();
+    out('nativeHostnameMatches',nativeHostnameMatches);
+    if (!nativeHostnameMatches) process.exit(2);
+    break;
+  }
+
   case 'hostid': {
     const id = await identity();
     const sysctl = process.platform === 'darwin' ? execFileSync('/usr/sbin/sysctl', ['-n', 'kern.bootsessionuuid'], { encoding: 'utf8' }).trim() : null;
@@ -571,7 +652,8 @@ drows() {   # doctor --json for this project, the named rows only; no --fix, eve
 }
 m06() {   # p1: a fresh foreign holder (synthetic identity: identity-negative), then the same readers; a ps shim logs every ps call
   D=$(cat "$QA_Q/decoy.pid")
-  echo "PRE: hub $(up) (down expected); decoy alive $(alive "$D"); holder planted next"
+  probe foreignpre || return 1
+  echo "PRE: decoy alive $(alive "$D"); holder planted next"
   echo "-- control: a same-host record naming the decoy must make the readers ask ps about it"
   : > "$QA_Q/ps-calls.log"; probe plant "$PWD" same-live 5 "$D" 1; psrun run "status, same-host record" cland hub status; probe psused "$QA_Q/ps-calls.log" "$D"
   echo "-- the fresh foreign holder"
@@ -587,8 +669,9 @@ m06() {   # p1: a fresh foreign holder (synthetic identity: identity-negative), 
 }
 m07() {   # p1: each identity part alone, the same-host control, the older record shapes; hub.json absent throughout
   D=$(cat "$QA_Q/decoy.pid"); DEAD=$(sh -c 'echo $$')
-  echo "PRE: hub $(up) (down expected); dead pid alive $(alive "$DEAD")"
-  for v in hostname bootId pidNamespace; do probe plant "$PWD" "$v" 5 "$D" 0; run "status --json, only $v differs" cland hub status --json; done
+  probe foreignpre || return 1
+  echo "PRE: dead pid alive $(alive "$DEAD")"
+  for v in hostname bootId pidNamespace; do probe plant "$PWD" "$v" 5 "$D" 0; run "status --json, only $v differs" cland hub status --json; if [ "$v" != hostname ]; then probe nativehostfacts "$QA_Q/r.out" || return 1; fi; done
   probe plant "$PWD" same 5 "$DEAD" 0; run "status, same-host identity, dead pid" cland hub status
   for v in legacy-pid legacy-started legacy-startedUtc legacy-token; do probe plant "$PWD" "$v" 0 "$DEAD" 0; run "status, $v" cland hub status; done
   echo "decoy alive $(alive "$D")"
@@ -750,8 +833,8 @@ The role column assigns each row: Human for rows that act in a sealed scratch pr
 | E1538S1-03 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m03 ); } > "$EV/E1538S1-03.txt" 2>&1` (command timeout of at least 600000 ms) | PRE: hub `up`, lock present `1`. Eight `attempt` lines at about 20 s spacing (the last at about 140 s of real time, more than two lapse periods of 60 s), each `result` `HubLocked` and each `heartbeatAgeMsBefore` under 25000: the synthetic foreign contender is refused every time while the holder lives, and its process table (which throws on any pid but its own) is never asked about the holder's pid (T-1615 C2 and C4, T-1616 C2). An `ACQUIRED` or an `error:` result is a FAIL (the contender then took the lock; judge the hub by the next line). The closing `lock` line is the hub's own again (`hostIdentityIsNative` true) and `hub after the contender: up` |
 | E1538S1-04 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m04 ); } > "$EV/E1538S1-04.txt" 2>&1` | PRE: hub `up`. `hub stop exit 0`. After 15 s: `lock after stop: absent`, `guard directory: absent`, `hub pid alive: no`, `heartbeat failures logged: 0` (a timer that outlived the stop would try to refresh an absent lock and log a failure), `lost-lock events: 0`, and at least one `stopping` event (T-1616 C5). The log is read after the stop, which has flushed it |
 | E1538S1-05 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m05 ); } > "$EV/E1538S1-05.txt" 2>&1` (command timeout of at least 600000 ms) | `hub start exit 0`; PRE: hub `up`, decoy alive `yes`. A synthetic successor record (token `qa-successor-token`, host `qa-successor.invalid`, fresh heartbeat) replaces the lock whole. Within 45 s: `hub pid alive after the wait: no`; `lock still the successor's: yes` (the stopping hub removed no lock it does not own); `hub-lock-lost lines` 1; `a stopping line follows the last hub-lock-lost line: yes` (it stopped through its normal shutdown); `decoy alive yes` (T-1616 C3). A hub still alive after 45 s is a FAIL (the beat is 10 s) |
-| E1538S1-06 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m06 ); } > "$EV/E1538S1-06.txt" 2>&1` | **Inferred until T-1617 lands.** PRE: `hub down`, decoy alive `yes`. The control first (rule 17): with a same-host record naming the decoy and a `hub.json` naming it, the readers' `ps` shim log has `namingPid` at least 1; with `namingPid` 0 the shim proves nothing and the row is INCONCLUSIVE. Then the fresh foreign holder (host `qa-foreign.invalid`, heartbeat 5 s old, pid and `hub.json` naming the decoy): `hub start` exits 1 and its error line is `cland: hub on another host qa-foreign.invalid (pid <decoy pid>, heartbeat age <n>s)`, with no `heartbeat lapsed` suffix (T-1617 C1); `second hub started` `0 processes` (no hub is left running); `hub status` exits 0 and prints the same `hub on another host …` line; `hub status --json` exits 0 with `running` true, `foreign` true, `hostname` `qa-foreign.invalid`, `heartbeatAgeMs` a number and `startable` false (T-1617 C3); `hub stop` exits 1 with `cland: hub on another host qa-foreign.invalid (pid …, heartbeat age …s); stop it on that host; no local process signalled` (T-1617 C2). The doctor `hub` row is `warn` and names `qa-foreign.invalid` and `heartbeat age`, its fix is `manage the hub on its owning host`; the `hub.json` row is `ok` and says it is retained for the foreign holder. `psCalls` for the foreign pid: `namingPid` 0 (T-1615 C4, T-1617 C4 for the readers). `lock and hub.json unchanged: yes`; `decoy alive yes` (nothing signalled it) |
-| E1538S1-07 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m07 ); } > "$EV/E1538S1-07.txt" 2>&1` | **The three foreign rows are inferred until T-1617 lands.** PRE: `hub down`, dead pid alive `no`. Each of `hostname`, `bootId` and `pidNamespace` alone makes `hub status --json` exit 0 with `foreign` true and `startable` false (T-1615 C2: a difference in any part is foreign; the two that keep the machine's own hostname print that hostname). The control (rule 17): the same-host identity with a dead pid prints `no hub running for <p1>` and exits 1, never `another host`. Each older shape (`legacy-pid`, `legacy-started`, `legacy-startedUtc`, `legacy-token`) also prints `no hub running for <p1>` and exits 1 (T-1615 C5 and C6: the same-host rules and the older shapes are unchanged). `decoy alive yes` |
+| E1538S1-06 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m06 ); } > "$EV/E1538S1-06.txt" 2>&1` | **Inferred until T-1617 lands.** PRE: `localFixtureHubs` 0 over fixture-owned pids, `socketAnswers` false for p1, decoy alive `yes`; a separately captured foreign holder is present with synthetic hostname `qa-successor.invalid`, numeric heartbeat age and `state` fresh or lapsed according to elapsed time. A fresh foreign holder may make `up()` return `up`; that is expected. The control first (rule 17): with a same-host record naming the decoy and a `hub.json` naming it, the readers' `ps` shim log has `namingPid` at least 1; with `namingPid` 0 the shim proves nothing and the row is INCONCLUSIVE. Then the fresh foreign holder (host `qa-foreign.invalid`, heartbeat 5 s old, pid and `hub.json` naming the decoy): `hub start` exits 1 and its error line is `cland: hub on another host qa-foreign.invalid (pid <decoy pid>, heartbeat age <n>s)`, with no `heartbeat lapsed` suffix (T-1617 C1); `second hub started` `0 processes` (no hub is left running); `hub status` exits 0 and prints the same `hub on another host …` line; `hub status --json` exits 0 with `running` true, `foreign` true, `hostname` `qa-foreign.invalid`, `heartbeatAgeMs` a number and `startable` false (T-1617 C3); `hub stop` exits 1 with `cland: hub on another host qa-foreign.invalid (pid …, heartbeat age …s); stop it on that host; no local process signalled` (T-1617 C2). The doctor `hub` row is `warn` and names `qa-foreign.invalid` and `heartbeat age`, its fix is `manage the hub on its owning host`; the `hub.json` row is `ok` and says it is retained for the foreign holder. `psCalls` for the foreign pid: `namingPid` 0 (T-1615 C4, T-1617 C4 for the readers). `lock and hub.json unchanged: yes`; `decoy alive yes` (nothing signalled it) |
+| E1538S1-07 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m07 ); } > "$EV/E1538S1-07.txt" 2>&1` | **The three foreign rows are inferred until T-1617 lands.** PRE: `localFixtureHubs` 0 over fixture-owned pids, `socketAnswers` false for p1, dead pid alive `no`; the previously planted foreign holder is captured separately as `qa-foreign.invalid`, with numeric heartbeat age and fresh/lapsed state. Each of `hostname`, `bootId` and `pidNamespace` alone makes `hub status --json` exit 0 with `foreign` true and `startable` false (T-1615 C2: a difference in any part is foreign). The bootId-only and pidNamespace-only variants mask their native hostname as `<native>` and each prints `nativeHostnameMatches: true`, asserted against `os.hostname()` before masking; the hostname-only variant retains `qa-foreign.invalid`. The control (rule 17): the same-host identity with a dead pid prints `no hub running for <p1>` and exits 1, never `another host`. Each older shape (`legacy-pid`, `legacy-started`, `legacy-startedUtc`, `legacy-token`) also prints `no hub running for <p1>` and exits 1 (T-1615 C5 and C6: the same-host rules and the older shapes are unchanged). `decoy alive yes` |
 | E1538S1-08 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m08 ); } > "$EV/E1538S1-08.txt" 2>&1` | **Inferred until T-1617 lands.** PRE: `hub down`, decoy alive `yes`. The lapsed holder (heartbeat 120 s old; synthetic foreign identity): `hub status` exits 1 and its line ends `; heartbeat lapsed, startable`; `hub status --json` exits 1 with `foreign` true, `startable` true, `running` false; `hub stop` exits 1 with the line ending `; stop it on that host; no local process signalled`, naming `heartbeat lapsed` too. The doctor `hub` row is `warn` with `lapsed, startable` and the fix `cland hub start`. `lock and hub.json unchanged by the readers: yes`. `task migrate --dry-run` exits 0 (a lapsed foreign holder does not block it; it takes the lock and releases it) and `lock after the dry run: absent`. After the lock is planted again, `hub start` exits 0 and `lock`: `hostIdentityIsNative` true, `pidIsHub` true, `planted token gone: 0`, `guard directory: absent` (T-1615 C3: broken through the guard, taken whole). `namingPid` 0 and `decoy alive yes` |
 | E1538S1-09 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m09 ); } > "$EV/E1538S1-09.txt" 2>&1` | **Inferred until T-1617 lands.** PRE: `hub down`, decoy alive `yes`. With a fresh foreign holder (synthetic identity), both `task migrate --dry-run` and `task migrate` exit 1 with an error line `cland: hub on another host qa-foreign.invalid (pid …, heartbeat age …s)` and change nothing: `lock and hub.json unchanged: yes`, `namingPid` 0, `decoy alive yes` (T-1617 C6). The prior wording `the hub or another migration is running` would be the old behaviour, a FAIL |
 | E1538S1-10 | hub-api | Human | `{ quiet && ( . "$Q/env.sh"; cd "$Q/p1" && m10 ); } > "$EV/E1538S1-10.txt" 2>&1` | PRE: endpoint `http://127.0.0.1:<port>/v2`, a sentinel prefix `cland-test-qa1538`, credential-prefix names `0`. The first `state` is empty (no droplets, keys, images). `get by id`: `droplet`, `key` and `snapshot` true (the client reads one key and one snapshot by id, the fake answers: T-1618 C2, T-1620 C1) and `absentKey` `rejected` with `status` 404. For each of droplet, key and snapshot under the fake's DELETE-404-while-GET-200 fault: `first` is `rejected` with `unconfirmed` true and `accepted` false, `stillPresentAfterFirst` true (a DELETE 404 never counts as deletion while the GET still answers 200: T-1618 C1 and C3, T-1620 C1); `second` is `resolved` and `goneAfterSecond` true (the next attempt is confirmed by a GET 404: T-1620 C3 at the client). The controls: a plain delete of the second droplet is `resolved` and `gone`; a delete of an absent key id is `resolved` (confirmed absent by the GET 404). The closing `state` lists no seeded droplet, key or image of the faulted ids |
@@ -798,7 +881,7 @@ Before requesting QA, run `cland qa lint qa/briefs/E-1538-stage-1.md` with this 
 - **Credentials are secrets.** Never print the sentinel token or a hub secret; the probe and `rd` redact; `do.token` and `secrets1538.json` stay in `$Q` (mode 600). The planted `hub.json` secret `qa-planted-not-a-secret` is a fixture value, not a credential. The scan proves the secrets are absent from the evidence too; a hit under `<EV>` is a QA fault to fix before publication, not a product failure.
 - A foreign pid that is alive on this machine is the point of the decoy: if a reader signalled it, the decoy would be gone, and if a reader asked `ps` about it the shim log would name it. Neither proves `kill(pid, 0)` was never called (that is invisible from outside); the named test files mock `process.kill` for that (E1538S1-17, E1538S1-19).
 - A same-host record and a foreign record are told apart by the three identity parts together; on macOS the PID namespace is null, so the `pidNamespace` variant differs by a string against null. Do not read a hostname into the evidence: only equality and lengths are printed, except the synthetic `*.invalid` names.
-- **`up` is true for a fresh foreign holder** once T-1617 has landed (`hub status` exits 0), so `hub up` lines are meaningful only in the rows that expect no planted holder; E1538S1-06 and E1538S1-07 read the readers' own output instead.
+- **`up` is true for a fresh foreign holder** once T-1617 has landed (`hub status` exits 0), so `hub up` lines are meaningful only in rows that expect no planted holder. E1538S1-06 and E1538S1-07 prove no local hub with the fixture-owned PID census and authenticated p1 socket probe, then capture foreign-holder state separately. A foreign heartbeat may lapse between rows; do not mistake that elapsed-time state for local hub liveness.
 - The heartbeat is a 10 s timer of real time; the sampler, the 160 s contender and the 45 s lost-lock wait are fixtures of real time, not evidence about other clocks. Load changes them: rerun a timing failure once on a quiet machine and record both.
 - `hub.log` is written by an asynchronous queue: read it after the hub has stopped (the rows do), never from a running hub.
 - The fake's split fault consumes its reads on **GET** by id; an extra GET (a probe, a retained-identity check) can finish the deletion before the confirming one. `deleteFailures` is one list shared by every droplet DELETE; the client probe seeds its own droplets and clears the faults before its controls.
