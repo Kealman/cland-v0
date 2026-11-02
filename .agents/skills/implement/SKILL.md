@@ -1563,6 +1563,18 @@ environment wiring, `projectHub`/`serveProject` also accept `hosts`; see
 and refuse unregistered hosts. Keep rollback file metadata hub-local and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
 
+Claude Code rows on a Host other than `local` run one `claude agents --json`
+for each launch and at most one for an explicit restart resume. Discovery is
+isolated by host and session and never writes the local directory schedule.
+A relaunch drains any predecessor query before its fresh launch discovery.
+Timers run only Host liveness with the recorded Linux birth identity; hooks and
+the mod bridge supply state. A missing launch PID remains supervised as `running`
+with an unknown PID, logs `harness-pid-unknown`, and receives no timer discovery
+or PID probe. Explicit resume can discover it once. A claimed warm spare keeps
+its PID. Explicit stop and native-identity hook reconciliation still use Host
+commands. Local directory polling and its persisted schedule stay unchanged.
+No CLI, setting or role permission changes apply.
+
 For Claude Code Host routing, use the recording seam in
 `docs/agents/tests/hub-test-claude-code-host.test.ts.md`. Preserve the unchanged
 adapter, sessions, schedule, accounts and environment files as controls. New

@@ -10,6 +10,7 @@ import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { tempProject, projectHub, connectUi, eventually, flushProjectLogs } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { sweepOrphans } from '../src/orphans.ts';
 
@@ -132,24 +133,43 @@ for (const harness of ['codex', 'claude-code'] as const) test(`${harness} stop r
   assert.equal(calls.includes('t1:stop'), false);
 });
 
-for (const mode of ['poll', 'resume'] as const) for (const pending of [false, true]) test(`remote Claude ${mode} persists ${pending ? 'pending' : 'replacement'} PID Linux proof without a legacy timestamp`, async t => {
+for (const mode of ['poll', 'resume'] as const) for (const pending of [false, true]) test(mode === 'resume' ? `remote Claude ${mode} persists ${pending ? 'pending' : 'replacement'} PID Linux proof without a legacy timestamp` : `remote Claude poll keeps ${pending ? 'pending' : 'replacement'} PID Linux ownership without discovery`, async t => {
   const { ClaudeCodeAdapter } = await import('../src/adapters/claude-code.ts');
   const root = await tempProject(t);
   const core = new HubCore();
   const table = new ProcessTable();
   const calls: string[] = [];
   const replacement = 987654;
+  const clock = new FakeClock(Date.now());
+  let discoveries = 0;
   const remote = { ...testHost('t1', e => calls.push(String(e.operation))),
-    run: async () => ({ code: 0, stdout: JSON.stringify([{ id: 'job', sessionId: 'native', pid: replacement, status: 'idle' }]), stderr: '' }),
+    run: async () => { discoveries++; return { code: 0, stdout: JSON.stringify([{ id: 'job', sessionId: 'native', pid: replacement, status: 'idle' }]), stderr: '' }; },
     identity: async (pid: number) => { calls.push(`identity:${pid}`); return { pid, pidStarted: null, pidIdentity: `linux:boot:${pid}` }; },
     alive: async (p: import('../src/host/host.ts').HostProcess) => { calls.push(`alive:${p.pid}`); return p.pid === replacement; },
   };
   const row = { ...await seed(root), harness: 'claude-code', harnessId: 'job', harnessSessionId: pending ? null : 'native', pid: pending ? null : process.pid, pidIdentity: pending ? null : `linux:boot:${process.pid}` };
   table.put(row);
   const sessions = new Sessions({ root, core, table, hosts: [remote] });
-  const adapter = new ClaudeCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { env: fixtureEnvironment(root, process.env), agentsMs: 0, pollMs: mode === 'poll' ? 10 : 600_000 });
+  const adapter = new ClaudeCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { ...(mode === 'poll' ? { clock } : {}), env: fixtureEnvironment(root, process.env), agentsMs: 0, pollMs: mode === 'poll' ? 10 : 600_000 });
   sessions.register(adapter);
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  if (mode === 'poll') {
+    adapter.watch(row);
+    await clock.advance(100);
+    assert.equal(discoveries, 0);
+    const saved = table.get(row.name)!;
+    assert.equal(saved.pid, row.pid);
+    assert.equal(saved.pidStarted, null);
+    assert.equal(saved.harnessId, 'job');
+    assert.equal(saved.harnessSessionId, pending ? null : 'native');
+    assert.equal(saved.pidIdentity, pending ? null : `linux:boot:${process.pid}`);
+    assert.equal(row.pidIdentity, pending ? null : `linux:boot:${process.pid}`);
+    assert.equal(calls.includes(`identity:${replacement}`), false);
+    assert.equal(calls.includes(`alive:${replacement}`), false);
+    if (!pending) assert.ok(calls.includes(`alive:${process.pid}`));
+    else assert.equal(calls.some(c => c.startsWith('alive:')), false);
+    return;
+  }
   const receipt = eventually('replacement PID and Linux birth persisted', () => table.get(row.name)?.pid === replacement ? table.get(row.name)! : undefined);
   const action = mode === 'resume' ? sessions.resume(row.name) : (adapter.watch(row), Promise.resolve(null));
   // Both observations settle before fixture teardown, including a failing action.

@@ -197,7 +197,7 @@ type Prompt = { messages?: string[]; resolve?: (messages: string[]) => void };
 const PROMPT_HISTORY_LIMIT = 64;
 
 type DirectorySchedule = {
-  configDir: string; lastAgentsAt: number; signedOut: boolean; signedOutAt: number; signedOutId: string;
+  local: boolean; configDir: string; lastAgentsAt: number; signedOut: boolean; signedOutAt: number; signedOutId: string;
   observedLaunches: Map<string, { process: HarnessProcess; job: string | null }>; observationRevision: number; entries: AgentEntry[] | null; agentsVersion: number; agentsFlight: Promise<AgentEntry[] | null> | null;
 };
 const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'] as const;
@@ -285,13 +285,15 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return dir ? `CLAUDE_CONFIG_DIR=${sq(resolve(dir))} ` : '';
   }
 
-  /** A row freezes its effective directory: an account's, or the hub's inherited one; the default is the bookkeeping fallback. */
-  #directory(p: Pick<HarnessProcess, 'accountEnv'>): DirectorySchedule {
+  /** Local rows share a directory schedule; nonlocal discovery belongs to one session.
+   * A row freezes its effective directory: an account's, or the hub's inherited one; the default is the bookkeeping fallback. */
+  #directory(p: Pick<HarnessProcess, 'accountEnv' | 'host' | 'sessionId'>): DirectorySchedule {
     const configDir = resolve(p.accountEnv?.CLAUDE_CONFIG_DIR || this.#configDir);
-    let schedule = this.#directories.get(configDir);
+    const key = (p.host ?? 'local') === 'local' ? configDir : JSON.stringify([p.host, p.sessionId, configDir]);
+    let schedule = this.#directories.get(key);
     if (schedule) return schedule;
-    schedule = { configDir, lastAgentsAt: 0, signedOut: false, signedOutAt: 0, signedOutId: '', observedLaunches: new Map(), observationRevision: 0, entries: null, agentsVersion: 0, agentsFlight: null };
-    const saved = this.#host.adapterState?.read(`claude-poll:${configDir}`);
+    schedule = { local: (p.host ?? 'local') === 'local', configDir, lastAgentsAt: 0, signedOut: false, signedOutAt: 0, signedOutId: '', observedLaunches: new Map(), observationRevision: 0, entries: null, agentsVersion: 0, agentsFlight: null };
+    const saved = (p.host ?? 'local') === 'local' ? this.#host.adapterState?.read(`claude-poll:${configDir}`) : null;
     if (saved) {
       try {
         const state = JSON.parse(saved);
@@ -302,7 +304,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         schedule.entries = Array.isArray(state.entries) ? state.entries : null;
       } catch { /* Old or invalid state gives the default schedule. */ }
     }
-    this.#directories.set(configDir, schedule);
+    this.#directories.set(key, schedule);
     return schedule;
   }
 
@@ -335,6 +337,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   #saveSchedule(d: DirectorySchedule): void {
+    if (!d.local) return;
     this.#host.adapterState?.write(`claude-poll:${d.configDir}`, JSON.stringify({ lastAt: d.lastAgentsAt, signedOut: d.signedOut, signedOutAt: d.signedOutAt, signedOutId: d.signedOutId, entries: d.entries }));
   }
 
@@ -389,10 +392,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   /** Current evidence needs a new invocation after this boundary, not completion of an older query. */
-  async #agentsAfterCurrent(p: HarnessProcess, resumed: Resumed, authorize: () => void, boundary: 'stop' | 'hook', cleanup = false): Promise<AgentEntry[] | null> {
+  async #agentsAfterCurrent(p: HarnessProcess, resumed: Resumed, authorize: () => void, boundary: 'stop' | 'hook' | 'launch', cleanup = false): Promise<AgentEntry[] | null> {
     const earlier = this.#directory(p).agentsFlight;
     if (earlier) {
-      this.#host.log({ event: boundary === 'stop' ? 'harness-stop-await-query' : 'harness-hook-await-query', session: p.name, harnessId: p.harnessId });
+      this.#host.log({ event: `harness-${boundary}-await-query`, session: p.name, harnessId: p.harnessId });
       await earlier;
     }
     resumed(authorize);
@@ -542,7 +545,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, harnessId, resume, out: r.stdout.trim().slice(0, 300) });
         // the session's process: agent view lists it once its supervisor started it
         const previous = d.agentsVersion;
-        const entries = yield* wait(this.#agents(launched, resumed));
+        const entries = yield* wait((launched.host ?? 'local') === 'local'
+          ? this.#agents(launched, resumed)
+          : this.#agentsAfterCurrent(launched, resumed, authorize, 'launch'));
         const found = entries && d.agentsVersion > previous ? this.#find(entries, launched) : undefined;
         if (entries && this.#job(entries, launched)) this.#listed.add(launched.sessionId);
         if (found?.pid !== undefined) {
@@ -793,7 +798,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       if (this.#watched.size === 0) return;
       const directories = new Map<DirectorySchedule, HarnessProcess>();
       const changedIdentity = new Set<string>();
-      for (const p of this.#watched.values()) if (!this.#stopping.has(p.sessionId)) directories.set(this.#directory(p), p);
+      // Subscription logins on other hosts must never run a CLI from a timer.
+      for (const p of this.#watched.values()) if ((p.host ?? 'local') === 'local' && !this.#stopping.has(p.sessionId)) directories.set(this.#directory(p), p);
       await Promise.all([...directories].map(async ([d, representative]) => {
         const conversations = new Map([...this.#watched.values()].filter(p => this.#directory(p) === d).map(p => [p.sessionId, p.harnessSessionId]));
         // Launch/resume can own a bounded query independently of this poll.
@@ -990,12 +996,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         return { found: true, process, state: 'unknown' };
       }
       const previous = d.agentsVersion;
-      let entries = (yield* wait(this.#agents(p, resumed))) ?? [];
+      let entries = (yield* wait(this.#agents(p, resumed, remote))) ?? [];
       // A recent snapshot may predate this launch. Startup discovery waits for the shared
       // slot rather than treating a suppressed query as evidence that the session exited.
       const cached = d.agentsVersion === previous;
       const candidate = this.#find(entries, p);
-      if (!d.signedOut && (!candidate || (cached && (!p.pidStarted || p.pid !== candidate.pid))) && this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) {
+      if (!remote && !d.signedOut && (!candidate || (cached && (!p.pidStarted || p.pid !== candidate.pid))) && this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) {
         yield* wait(new Promise<void>(resolve => {
           const done = () => { this.#resumeWaits.delete(timer); resolve(); };
           const timer = this.#clock.setTimeout(done, Math.max(1, this.#agentsMs - (this.#clock.now().getTime() - d.lastAgentsAt)));

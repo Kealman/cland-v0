@@ -176,3 +176,160 @@ for (const stopConfirmed of [true, false]) test(stopConfirmed ? 'Claude close st
   else assert.ok(await readFile(settingsFile, 'utf8'), 'failed cleanup retains its private files and owner record');
   assert.equal(clock.pending, 0);
 });
+
+// Nonlocal commands are scripted at the Host boundary; Linux proof is checked by processHost.
+async function remoteFixture(t: import('node:test').TestContext) {
+  const { testHost } = await import('../src/host/test-host.ts');
+  const { processHost } = await import('../src/host/process-host.ts');
+  const { FakeClock } = await import('./fake-clock.ts');
+  const root = await tempProject(t);
+  const clock = new FakeClock(Date.now());
+  const commands: HostCommand[] = [];
+  const probes: number[] = [];
+  const localCommands: HostCommand[] = [];
+  const state = new Map<string, string>();
+  const exits: string[] = [];
+  const logs: Record<string, unknown>[] = [];
+  const entries: { id: string; sessionId: string; pid: number; status: string }[] = [];
+  let held: { entered: () => void; release: Promise<void> } | undefined;
+  const secondLaunch = Promise.withResolvers<void>();
+  let listed = true;
+  let living = true;
+  const machine = processHost({ ...testHost('t1', () => {}),
+    readFile: async () => Buffer.from('{}'),
+    run: async (command: HostCommand) => {
+      commands.push(command);
+      if (command.args[0] === '--bg') {
+        const id = `background-${entries.length}`;
+        entries.push({ id, sessionId: command.args[command.args.indexOf('--session-id') + 1]!, pid: 987650 + entries.length, status: 'idle' });
+        if (entries.length === 2) secondLaunch.resolve();
+        return { code: 0, stdout: `claude attach ${id}`, stderr: '' };
+      }
+      const stdout = JSON.stringify(listed ? entries : []);
+      if (command.args[0] === 'agents' && held) { const gate = held; held = undefined; gate.entered(); await gate.release; }
+      return { code: 0, stdout, stderr: '' };
+    },
+    stop: async () => true,
+    identity: async (pid: number) => ({ pid, pidStarted: null, pidIdentity: `linux:boot:${pid}` }),
+    alive: async p => { probes.push(p.pid!); return living; },
+  });
+  const local = { ...machine, name: 'local', alive: async () => true, run: async (command: HostCommand) => { localCommands.push(command); return { code: 0, stdout: JSON.stringify(entries), stderr: '' }; } };
+  const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '', cli: '', spoke: '', adapterState: { read: key => state.get(key) ?? null, write: (key, value) => { state.set(key, value); } }, log: e => logs.push(e), signal: () => {}, recordPid: () => {}, exited: (_id, reason) => exits.push(reason ?? ''), hostForLaunch: () => machine, hostForProcess: p => p.host === 'local' ? local : machine };
+  const make = () => new ClaudeCodeAdapter(host, { clock, env: fixtureEnvironment(root, process.env), pollMs: 10, agentsMs: 30, reexecGraceMs: 20 });
+  const releases = new Set<() => void>();
+  const adapters: ClaudeCodeAdapter[] = [];
+  const adapter = make(); adapters.push(adapter);
+  const close = async () => {
+    for (const release of releases) release();
+    await within(Promise.all(adapters.map(a => Promise.resolve(a.close()))), 5000);
+  };
+  t.after(close);
+  return { root, clock, commands, localCommands, state, probes, exits, logs, adapter, close, secondLaunch: secondLaunch.promise, holdNextAgents: () => { const entered = Promise.withResolvers<void>(); const release = Promise.withResolvers<void>(); releases.add(release.resolve); held = { entered: entered.resolve, release: release.promise }; return { entered: entered.promise, release: release.resolve }; }, restart: () => { const a = make(); adapters.push(a); return a; },
+    set listed(v: boolean) { listed = v; }, set living(v: boolean) { living = v; },
+    spawn: (name: string) => adapter.spawn({ host: 't1', name, cwd: root, role: null, model: null, sessionId: name }),
+  };
+}
+
+test('nonlocal Claude discovers each launch exactly once even in the same directory interval', async t => {
+  const f = await remoteFixture(t);
+  const first = await f.spawn('first');
+  const second = await f.spawn('second');
+  assert.deepEqual([first.pid, second.pid], [987650, 987651]);
+  assert.deepEqual(f.commands.map(c => c.args[0]), ['--bg', 'agents', '--bg', 'agents']);
+});
+
+test('nonlocal Claude timers use only Host liveness and observe death without another command', async t => {
+  const f = await remoteFixture(t);
+  const row = await f.spawn('running');
+  await f.clock.advance(100);
+  assert.ok(f.probes.length >= 3, 'several completed Host liveness receipts');
+  assert.ok(f.probes.every(pid => pid === row.pid));
+  assert.deepEqual(f.commands.map(c => c.args[0]), ['--bg', 'agents']);
+  f.living = false;
+  await f.clock.advance(50);
+  assert.equal(f.exits.length, 1);
+  assert.match(f.exits[0]!, /gone after/);
+  assert.deepEqual(f.commands.map(c => c.args[0]), ['--bg', 'agents']);
+});
+
+test('nonlocal Claude missing launch PID stays supervised and reports unknown without timer discovery', async t => {
+  const f = await remoteFixture(t);
+  f.listed = false;
+  const row = await f.spawn('missing');
+  await f.clock.advance(100);
+  assert.equal(row.pid, null);
+  assert.equal(row.status, 'running');
+  assert.ok(f.logs.some(e => e.event === 'harness-pid-unknown'));
+  assert.deepEqual(f.exits, []);
+  assert.deepEqual(f.probes, []);
+  assert.deepEqual(f.commands.map(c => c.args[0]), ['--bg', 'agents']);
+});
+
+for (const listed of [true, false]) test(`nonlocal Claude restart resume discovers at most once when ${listed ? 'listed' : 'missing'}`, async t => {
+  const f = await remoteFixture(t);
+  const row = await f.spawn('restart');
+  await f.adapter.close();
+  f.listed = listed;
+  const restarted = f.restart();
+  const start = f.commands.length;
+  const flight = restarted.resume(row);
+  await f.clock.advance(100);
+  const result = await within(flight, 5000);
+  assert.equal(result.found, listed);
+  if (result.found) assert.equal(result.process?.pid, row.pid);
+  assert.deepEqual(f.commands.slice(start).map(c => c.args[0]), ['agents']);
+  await f.clock.advance(100);
+  assert.deepEqual(f.commands.slice(start).map(c => c.args[0]), ['agents']);
+});
+
+
+test('local discovery keeps its schedule beside a nonlocal row with the same config directory', async t => {
+  const f = await remoteFixture(t);
+  const row = await f.spawn('mixed');
+  assert.equal([...f.state.keys()].some(key => key.startsWith('claude-poll:')), false, 'remote discovery never writes the local schedule');
+  f.adapter.watch({ ...row, host: 'local', sessionId: 'local-mixed', name: 'local-mixed' });
+  await f.clock.advance(100);
+  assert.ok(f.localCommands.length >= 3, 'local directory completed repeated native discoveries');
+  assert.ok(f.localCommands.every(command => command.args[0] === 'agents'));
+  assert.ok([...f.state.keys()].some(key => key.startsWith('claude-poll:')));
+  assert.deepEqual(f.commands.map(command => command.args[0]), ['--bg', 'agents']);
+});
+
+
+test('nonlocal Claude relaunch drains predecessor discovery and discovers its new PID once', async t => {
+  const f = await remoteFixture(t);
+  const row = await f.spawn('same-session');
+  const held = f.holdNextAgents();
+  const inspection = f.adapter.duplicateHarness(row, row.harnessSessionId!);
+  await within(held.entered, 5000);
+  const relaunch = f.adapter.resume(row, { relaunch: true });
+  await within(f.secondLaunch, 5000);
+  held.release();
+  const [result] = await within(Promise.all([relaunch, inspection]), 5000);
+  assert.equal(result.found, true);
+  assert.equal(result.process?.pid, 987651);
+  assert.equal(result.process?.pidIdentity, 'linux:boot:987651');
+  assert.equal(result.process?.harnessId, 'background-1');
+  assert.deepEqual(f.commands.map(command => command.args[0]), ['--bg', 'agents', 'agents', 'stop', '--bg', 'agents']);
+  await f.clock.advance(100);
+  assert.deepEqual(f.commands.map(command => command.args[0]), ['--bg', 'agents', 'agents', 'stop', '--bg', 'agents']);
+});
+
+
+for (const observeEntry of [false, true]) test(`nonlocal Claude abandoned discovery setup drains ${observeEntry ? 'after' : 'before'} its entry receipt`, async t => {
+  const f = await remoteFixture(t);
+  const row = await f.spawn('abandoned');
+  const held = f.holdNextAgents();
+  const inspection = f.adapter.duplicateHarness(row, row.harnessSessionId!);
+  try {
+    if (observeEntry) await within(held.entered, 5000);
+    // Simulate setup ending before the test's normal explicit release.
+  } finally {
+    await f.close();
+  }
+  await within(inspection, 5000);
+  const commands = f.commands.length;
+  await f.clock.advance(100);
+  assert.equal(f.commands.length, commands);
+  assert.equal(f.clock.pending, 0);
+});

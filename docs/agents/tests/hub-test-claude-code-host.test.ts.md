@@ -25,3 +25,19 @@ claude-code-adapter.test.ts, claude-code-sessions.test.ts,
 claude-code-schedule.test.ts, claude-code-accounts.test.ts and
 claude-code-environment.test.ts unedited as behavior controls. The shared Host
 contract covers native capture/callback/signal order and absent/reused identities.
+
+Nonlocal cases build from testHost and processHost, never localHost. They count
+one discovery for each of two launches in one interval, observe several Host
+liveness receipts and death, retain a missing PID as supervised/running with an
+unknown-PID diagnostic, and reopen the adapter for listed and missing restart
+resume. The mixed local/nonlocal case checks local persisted polling continues
+without a remote query. FakeClock starts at the real current date.
+
+The same-session relaunch case holds a predecessor hook discovery through the
+second background launch, then releases the old snapshot. Require a fresh
+launch-owned query, the new PID/Linux birth, and no later timer command.
+
+The remote fixture registers query releases at acquisition and releases all
+gates before its bounded adapter-close drain. Abandoned-setup controls dispose
+before and after the entry receipt without the normal explicit release, join
+inspection completion, and retain zero later commands/timers.

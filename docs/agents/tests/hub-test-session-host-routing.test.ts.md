@@ -20,8 +20,14 @@ local behaviour preservation evidence. Unknown-host and prior-wire compatibility
 remain in `host-registry.test.ts`; native orphan authority is in
 `host-orphans.test.ts`.
 
-Remote Claude poll/resume tests persist both pending and replacement PIDs with
-Linux proof and null legacy timestamps. Controls reject foreign job/conversation
+Remote Claude resume tests persist both pending and replacement PIDs with
+Linux proof and null legacy timestamps. Remote poll tests retain the original
+PID ownership without discovery. Controls reject foreign job/conversation
 ownership, birth reuse during proof validation, owner changes during identity
 I/O and close while identity is held. Hold observers before native I/O, release
 every held reply and join adapter close before storage teardown.
+
+T-1556 migrates the two remote Claude poll acquisition cases: timer ticks now
+assert no discovery and no candidate PID proof/acquisition, preserve the saved
+Linux birth identity and native owner, and observe Host liveness only for a
+recorded PID. The resume acquisition cases retain their assertions.

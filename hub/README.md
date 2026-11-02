@@ -8294,6 +8294,18 @@ signature. This module adds no sign-in route or changes to single mode. See the
 
 ### Local Host files, worktrees and polling
 
+Claude Code rows on a Host other than `local` run one `claude agents --json`
+for each launch and at most one for an explicit restart resume. Discovery is
+isolated by host and session and never writes the local directory schedule.
+A relaunch drains any predecessor query before its fresh launch discovery.
+Timers run only Host liveness with the recorded Linux birth identity; hooks and
+the mod bridge supply state. A missing launch PID remains supervised as `running`
+with an unknown PID, logs `harness-pid-unknown`, and receives no timer discovery
+or PID probe. Explicit resume can discover it once. A claimed warm spare keeps
+its PID. Explicit stop and native-identity hook reconciliation still use Host
+commands. Local directory polling and its persisted schedule stay unchanged.
+No CLI, setting or role permission changes apply.
+
 Task launch creates a missing task branch in the territory under the territory
 lock before calling the launch Host. Local publication requires an absent-ref
 lease and a native new-ref receipt; an up-to-date result grants no ownership.
@@ -8335,7 +8347,7 @@ without a legacy timestamp. Unknown hosts remain `unknown` and refuse lifecycle
 operations, with no local fallback. Remote Claude rows without a PID cannot use
 native job-id stop as a substitute for process proof. Claude PID discovery binds
 fresh Linux proof to the captured native job and conversation before checking
-liveness; poll and resume can publish it without `pid_started`. Changed owners,
+liveness; launch and resume can publish it without `pid_started`. Changed owners,
 changed births and adapter shutdown fence acquisition.
 `session.launch` frames accept an optional registered `host`, defaulting to `local`;
 unknown names are refused before launch or item-worktree admission. Coordinator
