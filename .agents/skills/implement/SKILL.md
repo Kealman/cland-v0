@@ -471,6 +471,12 @@ Preserve leases/spend and the existing empty result shape for older clients.
 Checkpoint pending identity before mutation, retry independently of list presence
 and revalidate identity/live leases after recovery under the reap lock.
 
+For snapshot retirement and cleanup, use
+`docs/agents/tests/hub-test-executor-snapshot-confirmation.test.ts.md`. Reuse
+the shared confirmed deletion helper and fake split-answer fault; retain recovery
+IDs through GET200 and catalogue omissions. Keep both existing prepare test files
+unedited as preservation controls.
+
 For detached droplet watchdog PID ownership, use the T1 OS/checkpoint seam in
 `docs/agents/tests/hub-test-executor-watchdog.test.ts.md` and its native T3
 launch/rearm controls. Arm retries unreadable proof for at most 10 seconds;

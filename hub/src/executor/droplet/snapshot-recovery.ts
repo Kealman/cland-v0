@@ -44,7 +44,7 @@ const belongs = (image: SnapshotImage, record: SnapshotRecovery): boolean => ima
 export async function recoverSnapshot(root: string, record: SnapshotRecovery, store?: Store, env: NodeJS.ProcessEnv = process.env, provider?: Provider): Promise<boolean> {
   const api = provider ?? new DigitalOceanApi(env);
   if (record.phase === 'retire' && record.candidate) {
-    let images = await api.snapshots(); // A failed read leaves publication intact.
+    const images = await api.snapshots(); // A failed read leaves publication intact.
     const canRollback = record.retirement === 'unstarted' || record.retirement === 'rejected';
     if (canRollback && record.previous && images.some(image => image.id === record.previous!.image)) {
       await publish(root, store, record.previous);
@@ -53,11 +53,8 @@ export async function recoverSnapshot(root: string, record: SnapshotRecovery, st
     } else {
       // Presence can be stale or a DELETE may still be running. Once submitted,
       // keep the usable replacement and idempotently finish retirement.
-      if (record.previous && images.some(image => image.id === record.previous!.image)) {
-        await api.deleteSnapshot(record.previous.image);
-        images = await api.snapshots();
-        if (images.some(image => image.id === record.previous!.image)) return false;
-      }
+      // The saved previous id remains owned even if a catalogue omits it.
+      if (record.previous) await api.deleteSnapshot(record.previous.image);
       if (!images.some(image => image.id === record.candidate!.image)) return false;
       await publish(root, store, record.candidate);
       await forgetRecovery(root, record);
@@ -78,7 +75,12 @@ export async function recoverSnapshot(root: string, record: SnapshotRecovery, st
   const owned = images.filter(image => belongs(image, record) && image.id !== current?.image && image.id !== record.previous?.image);
   for (const image of owned) {
     if (!record.seen.includes(image.id)) { record.seen.push(image.id); await saveRecovery(root, record); }
-    await api.deleteSnapshot(image.id);
+  }
+  // Checkpoint every discovered id before effects; retry retained ids without
+  // depending on catalogue membership. Only deleteSnapshot's GET404 settles it.
+  for (const id of record.seen) {
+    if (id === current?.image || id === record.previous?.image) return false;
+    await api.deleteSnapshot(id);
   }
   const remaining = await api.snapshots();
   const settled = !record.requested || record.actionState === 'completed' || record.actionState === 'errored';

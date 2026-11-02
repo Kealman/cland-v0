@@ -102,7 +102,7 @@ export class DigitalOceanApi {
   async snapshot(id: number, deadline?: number): Promise<SnapshotImage> { return (await this.#call<{ snapshot: SnapshotImage }>('GET', `/snapshots/${id}`, undefined, deadline)).snapshot; }
   async transferImage(id: number, region: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/images/${id}/actions`, { type: 'transfer', region }, deadline)).action; }
   async tagImage(id: number, tag: string, deadline?: number): Promise<void> { await this.#call('POST', '/tags', { name: tag }, deadline); await this.#call('POST', `/tags/${encodeURIComponent(tag)}/resources`, { resources: [{ resource_id: String(id), resource_type: 'image' }] }, deadline); }
-  deleteSnapshot(id: number, deadline?: number): Promise<void> { return this.#delete(`/snapshots/${id}`, deadline); }
+  deleteSnapshot(id: number, deadline?: number): Promise<void> { return this.#confirmedDelete(`/snapshots/${id}`, deadline); }
   async #confirmedDelete(path: string, deadline?: number, checkpoint?: () => Promise<void>): Promise<void> {
     let accepted = true;
     try { await this.#call('DELETE', path, undefined, deadline); }
@@ -112,5 +112,4 @@ export class DigitalOceanApi {
     catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return; throw new DeletionUnconfirmed(path, accepted, error); }
     throw new DeletionUnconfirmed(path, accepted);
   }
-  async #delete(path: string, deadline?: number): Promise<void> { try { await this.#call('DELETE', path, undefined, deadline); } catch (err) { if (!(err instanceof DigitalOceanError) || err.status !== 404) throw err; } }
 }

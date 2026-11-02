@@ -203,7 +203,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       recovery.retirement = 'accepted'; await saveRecovery(root, recovery);
     }
     committed = true;
-    // Retain ownership if accepted retirement has not reached catalogue absence.
+    // Retain ownership until retirement has a by-id GET404 receipt.
     await recoverSnapshot(root, recovery, options.store, env, dependencies.api);
     const result = prepared('prepared', snapshot, started, released, clock);
     result.summary += `\n${installOutput.trimEnd()}`;

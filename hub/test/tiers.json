@@ -177,6 +177,7 @@
     "hub/test/executor-safety-config.test.ts": "T1",
     "hub/test/executor-safety-load.test.ts": "T4",
     "hub/test/executor-safety.test.ts": "T3",
+    "hub/test/executor-snapshot-confirmation.test.ts": "T2",
     "hub/test/executor-spend.test.ts": "T1",
     "hub/test/executor-watchdog.test.ts": "T1",
     "hub/test/executor.test.ts": "T3",

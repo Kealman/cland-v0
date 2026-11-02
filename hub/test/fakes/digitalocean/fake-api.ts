@@ -87,7 +87,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
@@ -147,6 +147,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
         transfers.splice(transfers.indexOf(transfer), 1);
       }
       const visible = images.filter(image => {
+        if (faults.omitSnapshotIds.includes(image.id)) return false;
         const left = hidden.get(image.id) ?? 0;
         if (left > 0) { hidden.set(image.id, left - 1); return false; }
         return true;
@@ -164,7 +165,9 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       if (splitDelete(path, faults.snapshotDelete404Reads)) return answer(404, { id: 'not_found', message: 'split answer' });
       await beforeSnapshotDelete?.(Number(snapshotId[1]));
       if (Number(snapshotId[1]) === faults.deleteSnapshot) return answer(422, { id: 'delete_failed', message: 'snapshot deletion refused' });
-      const index = images.findIndex(i => i.id === Number(snapshotId[1])); if (index >= 0) images.splice(index, 1);
+      const index = images.findIndex(i => i.id === Number(snapshotId[1]));
+      if (index < 0) return answer(404, { id: 'not_found', message: 'absent' });
+      images.splice(index, 1);
       if (Number(snapshotId[1]) === faults.loseDeleteSnapshot) {
         if (faults.failCatalogueAfterDelete) faults.catalogueError = 503;
         throw new DigitalOceanError(0, 'transport', 'request failed or exceeded its time bound');

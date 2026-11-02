@@ -5278,7 +5278,11 @@ absence. Recovery matches images to their builder, so a later prepare of the
 same key cannot lose its image to an older failed attempt.
 Once retirement is submitted, old-image presence may be stale or deletion may
 still be running: cland keeps the replacement and retries retirement until the
-old image is absent. Only an unstarted or definitely rejected delete permits
+old image has a GET-by-id 404 receipt. Snapshot DELETE uses the same confirmed
+deletion helper as droplets and keys, including DELETE404/GET200 split answers.
+Unconfirmed retirement and partial-image cleanup retain their recovery record;
+the next recovery retries DELETE for saved IDs even when a catalogue omits them.
+Only an unstarted or definitely rejected delete permits
 rollback to the old image.
 
 `cland executor status [--json]` also reports token presence, live leases, their names,
