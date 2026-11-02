@@ -79,3 +79,17 @@ test('user authority reads stored roles per call and supports an omitted test-ro
   users.setMode('single', 3);
   assert.equal(policy.userAuthorityRefusal(users, 'missing', { type: 'topic.send' }), null);
 });
+
+test('message ownership uses ids, preserves single mode and limits unattributed input to admins', async () => {
+  const { ownsHumanMessage } = await import('../../shared/wire/message-ownership.ts');
+  const message = { fromKind: 'human', from: 'same-name', userId: 'author' };
+  assert.equal(ownsHumanMessage(message, { id: 'author', role: 'admin' }), true);
+  assert.equal(ownsHumanMessage(message, { id: 'other', role: 'admin' }), false);
+  for (const legacy of [{ ...message, legacyUser: true }, { fromKind: 'human', from: 'human' }]) {
+    assert.equal(ownsHumanMessage(legacy, { id: 'other', role: 'admin' }), true);
+    assert.equal(ownsHumanMessage(legacy, { id: 'author', role: 'viewer' }), false);
+  }
+  assert.equal(ownsHumanMessage({ fromKind: 'human', from: 'human' }, null), true);
+  assert.equal(ownsHumanMessage(message, null), false);
+  assert.equal(ownsHumanMessage({ ...message, fromKind: 'agent' }, { id: 'author', role: 'admin' }), false);
+});

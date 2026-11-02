@@ -18,3 +18,9 @@ current eligibility. Visibility replacements retain newer delivery/ask patches.
 A single batched fixture covers older A withdrawn while newer B is pending and C
 is typed: refusal and uncertain reload recover A/B/C, success keeps A/C, and edits
 before/after the pending boundary retain order. No live hub or native harness is used.
+
+Users-mode coverage seeds two active admins with the same display name and queues
+ordinary input through production dispatch. Wait for each anchored message row
+and the own Withdraw button on desktop and phone, then assert the other user's
+button is absent and legacy input remains available to admin. The existing
+single-mode receipt, injection and older eligibility-wire cases stay in this file.

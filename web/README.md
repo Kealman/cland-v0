@@ -929,8 +929,14 @@ refusal restores the original text and artifacts ahead of it. An uncertain send
 recovered by reload becomes draft text, with no automatic replay. The hub marks
 the topic read through a successful human send; the browser sends no broader read.
 
-The human's ordinary message offers **Withdraw** when the hub's optional
-`withdrawable` fact is true. The hub checks every recipient and adapter submission;
+An ordinary human message offers **Withdraw** when the hub's optional
+`withdrawable` fact is true and the viewer owns it. In users mode ownership
+compares the persisted author user id with the signed-in viewer's id, never a
+display name. Messages without persisted attribution carry `legacyUser: true`
+alongside their first-user display attribution and are withdrawable only by an
+admin. Single mode retains the `from: human` check. The hub enforces ownership
+and the existing user-role admission independently of the displayed action.
+The hub checks every recipient and adapter submission;
 one injected recipient removes the action even while others remain queued.
 An older hub without that fact falls back to queued messages and the hub's refusal.
 While the request is pending, **Withdrawing** is disabled across mounted copies

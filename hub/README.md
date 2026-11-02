@@ -418,6 +418,17 @@ plain HTTP carries the cookie in clear and gives phones no notifications or inst
 
 ### Browser sign-in and protocol
 
+In users mode ordinary queued messages can be withdrawn only by their persisted
+user id's author. The authenticated connection supplies the caller id; names and
+`userDisplayName` never grant ownership. Legacy null-user messages retain the
+first-user display projection and carry optional `legacyUser: true`; any admin
+may withdraw them. `withdrawable` describes delivery eligibility, while the web
+applies the shared ownership predicate with `web.session.user.id` and `role`.
+The existing `userAuthorityRefusal` role check runs before dispatch on web and
+local withdrawal requests; local withdrawal uses the first user without `--as`.
+Single mode and older hubs without user attribution retain the `from: human`
+fence. No new role permission or keyboard binding applies.
+
 In users mode local human writes default to the first user. `--as <user>` on
 `cland topic create`, `topic answer` and `artifact create` selects an existing
 active user's exact name; display names are never selectors. The `topic.send`

@@ -292,3 +292,58 @@ test('one injected recipient removes Withdraw while the broadcast remains queued
     });
   });
 });
+
+test('users see Withdraw only for their own messages and legacy admin input with equal display names', async t => {
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const { defaultConfig, renderConfig } = await import('../../hub/src/init/config.ts');
+  const { dispatcherUi } = await import('../../hub/test/harness.ts');
+  const { DatabaseSync } = await import('node:sqlite');
+  const fixture = await webFixture(t, { prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    const config = defaultConfig('Withdrawal');
+    config.verification.lockPath = join(root, 'suite.lock');
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  } });
+  const local = await dispatcherUi(t, fixture.hub.dispatcher, fixture.root);
+  const send = async (ui: typeof local, text: string) => {
+    const result = await ui.request({ type: 'topic.send', topic: 'general', to: ['coordinator'], text });
+    assert.equal(result.ok, true, result.error);
+    return (result.value as { message: TopicMessage }).message;
+  };
+  const legacy = await send(local, 'Legacy queued input');
+  const mode = await local.request({ type: 'auth.mode', mode: 'users' });
+  assert.equal(mode.ok, true, mode.error);
+  const list = await local.request({ type: 'user.list' });
+  const first = (list.value as { users: Array<{ displayName: string }> }).users[0]!;
+  const db = new DatabaseSync(join(fixture.root, '.cland/hub.db'));
+  try { db.prepare('insert into users values (?,?,?,?,?,?)').run('other-id', 'other', first.displayName, 'admin', 'active', Date.now()); } finally { db.close(); }
+  const other = await dispatcherUi(t, { open: (peer, transport) => fixture.hub.dispatcher.open(peer, { ...transport, edge: 'web', user: () => ({ id: 'other-id', name: 'other', displayName: first.displayName, role: 'admin', state: 'active', created: 2 }) }) }, fixture.root);
+  const mine = await send(local, 'Own queued input');
+  const theirs = await send(other, 'Other queued input');
+  for (const phone of [false, true]) await fixture.pageCase(t, async page => {
+    await thread(page);
+    for (const message of [mine, theirs, legacy]) await page.locator(`[data-message-id="${message.id}"]`).waitFor();
+    await page.locator(`[data-message-id="${mine.id}"]`).getByRole('button', { name: 'Withdraw', exact: true }).waitFor();
+    assert.equal(await page.locator(`[data-message-id="${theirs.id}"]`).getByRole('button', { name: 'Withdraw', exact: true }).count(), 0);
+    assert.equal(await page.locator(`[data-message-id="${legacy.id}"]`).getByRole('button', { name: 'Withdraw', exact: true }).count(), 1);
+  }, undefined, { phone });
+  await fixture.pageCase(t, async page => {
+    await thread(page);
+    const row = page.locator(`[data-message-id="${mine.id}"]`);
+    await row.getByRole('button', { name: 'Withdraw', exact: true }).waitFor();
+    assert.equal(await row.getByRole('button', { name: 'Withdraw', exact: true }).count(), 1);
+  }, async page => {
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      server.onMessage(payload => route.send(JSON.stringify(JSON.parse(String(payload)), (key, value: unknown) => {
+        if (key === 'user') return undefined;
+        if (value && typeof value === 'object' && (value as { fromKind?: string }).fromKind === 'human') {
+          const { userId: _id, userDisplayName: _display, legacyUser: _legacy, ...message } = value as TopicMessage;
+          return { ...message, from: 'human' };
+        }
+        return value;
+      })));
+    });
+  });
+});

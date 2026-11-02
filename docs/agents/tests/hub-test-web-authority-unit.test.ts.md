@@ -14,3 +14,5 @@ retain their exact result-shape assertions.
 role change, forged frame identity/role fields, no refused message persisted,
 and restored admin admission on the same socket. `web-authority.test.ts` remains
 an unedited single-mode browser/Unix behavior control. No GUI browser is needed.
+
+The shared ownsHumanMessage predicate covers persisted ids, legacy null-user/admin ownership, non-admin legacy denial and the previous single-mode author shape. It supplies no transport role admission.

@@ -1782,7 +1782,7 @@ export class Dispatcher {
             return answer(core.topicHistoryPage(frame.topic, frame.limit, frame));
           case 'topic.withdraw': {
             if (this.#asSession(frame)) throw new Error('only the human may withdraw a message');
-            return answer(core.withdrawHumanMessage(frame.topic, frame.message));
+            return answer(core.withdrawHumanMessage(frame.topic, frame.message, humanUser(frame)?.id));
           }
           case 'artifact.upload': {
             const pairing = via ? core.store.remotes.forMessenger(via).pairing() : null;
@@ -2239,7 +2239,7 @@ export class Dispatcher {
         const credentialRefusal = this.#sessionCredentialRefusal(frame);
         if (credentialRefusal) return peer.send(Dispatcher.#failure(String(frame.id), new Error(credentialRefusal)));
         if (core.store.users.mode() === 'users' && (transport.edge === 'socket' || transport.edge === 'stdio')
-          && HUMAN_USER_WRITES.has(String(frame.type)) && !this.#asSession(frame)) {
+          && (HUMAN_USER_WRITES.has(String(frame.type)) || frame.type === 'topic.withdraw') && !this.#asSession(frame)) {
           try {
             const first = core.store.users.first();
             const user = humanUser(frame);

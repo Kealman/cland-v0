@@ -35,6 +35,7 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   resolveItem?: (id: string) => Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined>;
   loadItems?: (ids: string[]) => Promise<void>;
   viewerUserId?: string | undefined;
+  viewerUserRole?: string | undefined;
   coordinator?: string | null;
   topics?: Topic[];
   threads?: TopicThreads;
@@ -480,7 +481,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
           } catch { /* Storage may be unavailable; keep the current page usable. */ }
           if (reload) { stopped = true; clearTimeout(deadline); socket.close(); location.reload(); return; }
         }
-        state = { ...state, viewerUserId: undefined };
+        state = { ...state, viewerUserId: undefined, viewerUserRole: undefined };
         request({ type: 'web.session', id: 'connection-user' });
         request({ type: 'hub.status', id: 'connection-status' });
         request({ type: 'session.list', id: 'shell-sessions' });
@@ -518,7 +519,8 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       } else if (frame.type === 'resync' || frame.type === 'snapshot.refused') {
         socket.close();
       } else if (frame.type === 'result' && frame.id === 'connection-user') {
-        state = { ...state, viewerUserId: frame.ok ? (frame.value as import('../../shared/wire/index.ts').WebSessionResult).user?.id : undefined };
+        const user = frame.ok ? (frame.value as import('../../shared/wire/index.ts').WebSessionResult).user : undefined;
+        state = { ...state, viewerUserId: user?.id, viewerUserRole: user?.role };
         changed(state);
       } else if (frame.type === 'result' && frame.id === 'connection-status' && frame.ok) {
         const status = frame.value as HubStatus;

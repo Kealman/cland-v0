@@ -172,3 +172,48 @@ test('a broadcast withdrawal is atomic when one addressee was injected', async t
   assert.equal(fake.injections.filter(i => i.message.id === id && i.process.name === 'idle').length, 1);
   assert.equal(fake.injections.filter(i => i.message.id === id && i.process.name === 'busy').length, 1);
 });
+
+test('users withdraw only their persisted messages despite identical display names; admins can withdraw legacy input', async t => {
+  const root = await tempProject(t);
+  const { dispatcher } = await projectHub(t, root);
+  const local = await (await import('./harness.ts')).dispatcherUi(t, dispatcher, root);
+  const send = async (ui: typeof local, text: string) => {
+    const result = await ui.request({ type: 'topic.send', topic: 'general', to: ['coordinator'], text });
+    assert.equal(result.ok, true, result.error);
+    return (result.value as { message: TopicMessage }).message;
+  };
+  const legacy = await send(local, 'legacy input');
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(`${root}/.cland/hub.db`);
+  t.after(() => db.close());
+  db.prepare('insert into users values (?,?,?,?,?,?)').run('one', 'one', 'Same name', 'admin', 'active', 1);
+  db.prepare('insert into users values (?,?,?,?,?,?)').run('two', 'two', 'Same name', 'admin', 'active', 2);
+  db.prepare("insert into auth_state values (1,'users',?)").run(Date.now());
+  const { dispatcherUi } = await import('./harness.ts');
+  const other = await dispatcherUi(t, { open: (peer, transport) => dispatcher.open(peer, { ...transport, edge: 'web', user: () => ({ id: 'two', name: 'two', displayName: 'Same name', role: 'admin', state: 'active', created: 2 }) }) }, root);
+  const own = await send(local, 'owned by one');
+  const theirs = await send(other, 'owned by two');
+  const refused = await other.request({ type: 'topic.withdraw', topic: 'general', message: own.id, userId: 'one' });
+  assert.equal(refused.ok, false);
+  assert.match(String(refused.error), /ownership/i);
+  const history = await local.request({ type: 'topic.history', topic: 'general' });
+  const rows = (history.value as { messages: TopicMessage[] }).messages;
+  assert.equal(rows.find(m => m.id === own.id)?.stage, 'queued');
+  assert.equal(rows.find(m => m.id === own.id)?.withdrawable, true);
+  db.prepare("insert into roles values ('viewer')").run();
+  db.prepare("update users set role='viewer' where id='two'").run();
+  const legacyRefusal = await other.request({ type: 'topic.withdraw', topic: 'general', message: legacy.id });
+  assert.equal(legacyRefusal.ok, false);
+  assert.match(String(legacyRefusal.error), /role viewer/i);
+  db.prepare("update users set role='admin' where id='two'").run();
+  db.prepare("update users set role='viewer' where id='one'").run();
+  const localRefusal = await local.request({ type: 'topic.withdraw', topic: 'general', message: legacy.id });
+  assert.equal(localRefusal.ok, false);
+  assert.match(String(localRefusal.error), /role viewer/i);
+  db.prepare("update users set role='admin' where id='one'").run();
+  for (const [ui, message] of [[local, own], [other, theirs], [other, legacy]] as const) {
+    const receipt = await ui.request({ type: 'topic.withdraw', topic: 'general', message: message.id });
+    assert.equal(receipt.ok, true, receipt.error);
+    assert.equal((receipt.value as { message: TopicMessage }).message.stage, 'withdrawn');
+  }
+});

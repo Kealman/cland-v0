@@ -136,6 +136,8 @@ export type Message = {
   fromKind: FromKind;
   /** Durable human author; optional for single mode and older hubs. */
   userId?: string;
+  /** Human message predates persisted attribution; userId is a display fallback. */
+  legacyUser?: boolean;
   /** Current display name of a human author in users mode. */
   userDisplayName?: string;
   /** The sender's role when a session wrote it; absent on the hub's own message. */

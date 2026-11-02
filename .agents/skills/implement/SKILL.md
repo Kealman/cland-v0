@@ -530,6 +530,17 @@ defines the progress window, projection ceiling and cleanup receipts.
 
 For missing droplet browser libraries, report to the item's lead: the human or Coordinator rebuilds the prepared snapshot after restarting the hub onto the provisioning change. See `docs/agents/tests.md#web-phase` for the root provisioning and lockfile-key boundary.
 
+In users mode ordinary queued messages can be withdrawn only by their persisted
+user id's author. The authenticated connection supplies the caller id; names and
+`userDisplayName` never grant ownership. Legacy null-user messages retain the
+first-user display projection and carry optional `legacyUser: true`; any admin
+may withdraw them. `withdrawable` describes delivery eligibility, while the web
+applies the shared ownership predicate with `web.session.user.id` and `role`.
+The existing `userAuthorityRefusal` role check runs before dispatch on web and
+local withdrawal requests; local withdrawal uses the first user without `--as`.
+Single mode and older hubs without user attribution retain the `from: human`
+fence. No new role permission or keyboard binding applies.
+
 Human message attribution uses the trusted connection user in users mode:
 `messages.user_id`, optional wire `userId`, and the existing delivery `from`
 attribute. Legacy null-user human rows read as the first user only while users

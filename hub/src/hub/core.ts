@@ -1,3 +1,4 @@
+import { ownsHumanMessage } from '../../../shared/wire/message-ownership.ts';
 import { checkRoleHost } from '../host/role-placement.ts';
 import { launchGenerationKey, launchOwnerKey, earlierLaunch } from '../adapters/launch-generation.ts';
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
@@ -1715,10 +1716,14 @@ export class HubCore {
     this.#withdrawalRefusal = check;
   }
 
-  withdrawHumanMessage(topicId: string, messageId: string): { text: string; message: TopicMessage } {
+  withdrawHumanMessage(topicId: string, messageId: string, userId?: string): { text: string; message: TopicMessage } {
     this.#topicOrThrow(topicId);
     const message = this.#store.message(messageId);
     if (!message || message.topic !== topicId) throw new Error(`no message "${messageId}" in this topic`);
+    if (this.#store.users.mode() === 'users') {
+      const user = userId ? this.#store.users.get(userId) : null;
+      if (!user || user.state !== 'active' || !ownsHumanMessage(message, user)) throw new Error('cannot withdraw: message ownership requires its author (legacy messages require admin)');
+    }
     const refusal = this.#withdrawalReason(message);
     if (refusal) throw new Error(refusal);
     this.#store.withdraw(messageId);
@@ -1730,7 +1735,7 @@ export class HubCore {
   }
 
   #withdrawalReason(message: Message): string | null {
-    if (message.fromKind !== 'human' || message.from !== HUMAN || message.answerTo) return 'only the human’s own ordinary messages can be withdrawn';
+    if (message.fromKind !== 'human' || (this.#store.users.mode() !== 'users' && message.from !== HUMAN) || message.answerTo) return 'only the human’s own ordinary messages can be withdrawn';
     const deliveries = this.#store.deliveriesOf(message.id);
     const settled = deliveries.find(d => d.state !== 'queued' && d.state !== 'delivered');
     if (settled) return `cannot withdraw: delivery to ${settled.session} is ${settled.state}`;

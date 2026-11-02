@@ -1,3 +1,4 @@
+import { ownsHumanMessage } from '../../shared/wire/message-ownership.ts';
 import type { TopicMessage } from '../../shared/wire/index.ts';
 import { ItemText } from './ItemText.tsx';
 import { MarkdownBody } from './MarkdownBody.tsx';
@@ -23,7 +24,7 @@ export function MessageBlock({ message, connection, showTopic = false }: { messa
   const phone = usePhone();
   const voice = voicePresentation(message);
   const withdrawal = useMessageWithdrawal(message.id);
-  const canWithdraw = message.fromKind === 'human' && message.from === 'human' && !message.answerTo && (message.withdrawable ?? message.stage === 'queued') && !withdrawal.complete;
+  const canWithdraw = ownsHumanMessage(message, connection.viewerUserId ? { id: connection.viewerUserId, role: connection.viewerUserRole ?? '' } : null) && !message.answerTo && (message.withdrawable ?? message.stage === 'queued') && !withdrawal.complete;
   const card = message.ask && message.ask.state !== 'open' ? message.ask : connection.askCards?.get(message.id) ?? message.ask;
   const folded = card && card.state !== 'open';
   const role = message.fromKind === 'human' ? 'human' : message.fromKind === 'hub' ? 'hub' : message.fromRole && Object.hasOwn(roles, message.fromRole) ? message.fromRole : 'other';
