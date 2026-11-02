@@ -2,7 +2,8 @@
 id: E-1531
 kind: epic
 title: The Host interface and the local host
-state: open
+state: closed
+criterion_seq: 6
 labels:
   - epic
   - v0.4
@@ -13,7 +14,8 @@ blocked_by: []
 topic: topic-1315
 branch: null
 created: 2026-10-31T18:22:03.207Z
-updated: 2026-11-02T05:41:32.579Z
+updated: 2026-11-02T06:19:22.694Z
+closed: 2026-11-02T06:19:22.694Z
 ---
 
 ## Goal
@@ -47,11 +49,17 @@ QA runs the demo below on `dev` through the hub's frame protocol and the `cland`
 In a scratch project QA launches a Claude Code, a Codex and an OpenCode session, an item session included, and checks that each runs as before: its worktree, its sandbox roots and its liveness. It reads the task branch in the territory before the worktree appears. It creates an artifact from a path inside a session's worktree. It inserts a row on a test host whose pid matches a live local process and checks that the hub never probes or signals it locally. It tries to launch the Coordinator with a test host and reads the refusal. It reads the contract suite's report for the `local` host and the green full suite.
 
 - [ ] C1. Every operation of the Host interface has a contract test, and the `local` host passes them all.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-02-qa678-1 · 2026-11-02T06:18:28.606Z · commit 5bfd7c24a5a02fedc1c2244d851194c3518ee083
 - [ ] C2. The adapters, the worktree code and the artifact path reads act on sessions only through their Host, and sessions of all three harnesses behave as before.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-02-qa678-1 · 2026-11-02T06:18:28.607Z · commit 5bfd7c24a5a02fedc1c2244d851194c3518ee083
 - [ ] C3. `harness_processes` has a `host` column, existing rows read `local`, and a remote row is never probed or signalled on the hub's machine.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-02-qa678-1 · 2026-11-02T06:18:28.607Z · commit 5bfd7c24a5a02fedc1c2244d851194c3518ee083
 - [ ] C4. Codex sandbox roots and other paths handed to a harness come from the Host's realpath operation.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-02-qa678-1 · 2026-11-02T06:18:28.607Z · commit 5bfd7c24a5a02fedc1c2244d851194c3518ee083
 - [ ] C5. An item launch creates its task branch in the territory before its Host adds the worktree.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-02-qa678-1 · 2026-11-02T06:18:28.607Z · commit 5bfd7c24a5a02fedc1c2244d851194c3518ee083
 - [ ] C6. The hub refuses a placement other than `local` for the Coordinator and the Aide.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-02-qa678-1 · 2026-11-02T06:18:28.607Z · commit 5bfd7c24a5a02fedc1c2244d851194c3518ee083
 
 ## Constraints
 
@@ -241,3 +249,81 @@ Real-hub territory checks prove final state, including unpublished local dev anc
 Cleanup: scratch hub stopped, census of43 fixture PIDs empty and zero processes naming scratch root. Export contains only declared captures/receipts/report, no scratch HOME, environment export, cookies, hub secret or raw database. Shared publication scan passed with a positive control. Evidence and recorder lines precede this verdict.
 
 Evidence A-15587: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15587-e-1531-stage-3-qa-clear-c14994a2/report.md
+
+### qa-678 · 2026-11-02T06:18:28.607Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-dod-2026-11-02-qa678-1
+commit: 5bfd7c24a5a02fedc1c2244d851194c3518ee083
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Result | Command / observation | Evidence |
+| --- | --- | --- | --- |
+| S0 | PASS | committed brief setup; disposable HOME/XDG/Git through shared fixtureEnvironment, zero credential names, expected synthetic CLAND names, probe/C4 scripts checked | [S0.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/S0.txt) |
+| E1531D-00 | PASS | d00; clean pinned HEAD on dev, committed brief, Node24.21.0 supported, C1-C6, all stages closed and16 closed children with one landing each | [E1531D-00.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-00.txt), [E1531D-00-epic.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-00-epic.json), [E1531D-00-plan.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-00-plan.json), [E1531D-00-children.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-00-children.json) |
+| E1531D-01 | PASS | d01; verifier hold confirmed, no root dev move or hold commit | [E1531D-01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-01.txt) |
+| E1531D-02 | PASS | nt three named files serial after quiet/load admission; all16 tests pass, eleven contract names equal source register count; initial queue read timeout recovered before execution | [E1531D-02.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-02.log), [E1531D-02-contract.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-02-contract.txt), [admission-note.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/admission-note.txt) |
+| E1531D-03 | PASS | d03; enforcing boundary eleven tests pass;9 grep hits all named exceptions, zero unexpected,3 exception files | [E1531D-03.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-03.txt), [E1531D-03.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-03.log), [E1531D-03-grep.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-03-grep.txt), [E1531D-03-unexpected.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-03-unexpected.txt) |
+| E1531D-04 | PASS | d04; disposable copy, four planted bypasses detected; expected exit1 only recursive scan fails, all four file/line/use diagnostics present | [E1531D-04.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-04.txt), [E1531D-04.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-04.log) |
+| E1531D-05 | PASS | nt nine files serial with quiet/load admission;74 tests pass, all required Host/adapters/worktrees/artifacts titles present, preserved launch/resume/cwd tests clean | [E1531D-05.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-05.log) |
+| E1531D-06 | PASS | nt: five routing/identity files; 33 tests, all required names and spy assertions checked | [E1531D-06.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-06.log), [test-summary.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/test-summary.json), [criterion-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/criterion-source.txt) |
+| E1531D-07 | PASS | nt: two Codex sandbox files; four tests, no skips; required names checked | [E1531D-07.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-07.log), [test-summary.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/test-summary.json) |
+| E1531D-08 | PASS | nt: territory task branch, 16 tests; generated cases and recording Host ordering checked | [E1531D-08.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-08.log), [E1531D-08-generated.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-08-generated.txt), [generated-test-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/generated-test-source.txt) |
+| E1531D-09 | PASS | nt: three placement/role files, 36 tests; generated coordinator/aide launch and set/move cases match source loops | [E1531D-09.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-09.log), [E1531D-09-generated.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-09-generated.txt), [generated-test-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/generated-test-source.txt) |
+| E1531D-10 | PASS | d10: cover head ancestor; freshness.current true; both durable cover logs meet all receipts and contract conditions | [E1531D-10.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-10.txt), [E1531D-10-cover-freshness.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-10-cover-freshness.json), [cover-provenance.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/cover-provenance.json) |
+| E1531D-11 | PASS | d11: sealed init; dev, territory, symlinked writable root, test host and empty host-column table | [E1531D-11.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-11.txt) |
+| E1531D-12 | PASS | d12: three fake harnesses local/darwin; same PIDs through re-find and restart; Claude agents 7 to 16; no t1 operations | [E1531D-12.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-12.txt) |
+| E1531D-13 | PASS | d13: territory/task/worktree/base agree and contain unpublished root commit; nine live Codex roots include real symlink target; missingRoots recorded only | [E1531D-13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-13.txt), [E1531D-13-codex-args.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-13-codex-args.txt) |
+| E1531D-14 | PASS | d14 plus separate read-only artifact-record path and cmp observation: probe correction (quoting), coord-authorised; original preserved | [E1531D-14.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-14.txt), [E1531D-14-correction.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-14-correction.txt), [E1531D-14-file.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-14-file.json) |
+| E1531D-15 | PASS | d15: all four local fake harnesses stop through Host, process gone, no t1 operations | [E1531D-15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-15.txt) |
+| E1531D-16 | PASS | d16: remote Coordinator/Aide and unknown hosts refused before effects; t1 implementer only statDirectory with invalid-cwd; local Coordinator starts/stops | [E1531D-16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-16.txt) |
+| E1531D-17 | PASS | d17: live local PID collision; t1-only identity/stop operations, ghost unknown, remote stop/role refusals, trap alive and zero signals | [E1531D-17.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-17.txt) |
+| E1531D-18 | PASS | d18: unregistered hosts unknown; trap remains alive with zero signals; positive TERM control exactly one then process gone | [E1531D-18.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-18.txt) |
+| E1531D-19 | PASS | d19: hub stopped; 40 fixture-owned PIDs checked, no alive entries; zero processes naming scratch root | [E1531D-19.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-19.txt) |
+| E1531D-20 | PASS | d20: exact clean tested HEAD remains on dev; demo freshness.current true, state none | [E1531D-20.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-20.txt), [E1531D-20-freshness.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/E1531D-20-freshness.json) |
+
+Findings: high — none; medium — none; low — none in the product.
+
+QA clear for E-1531 at **5bfd7c24a5a02fedc1c2244d851194c3518ee083**, run `qa-dod-2026-11-02-qa678-1`. All 22 checks (S0 and E1531D-00–20) passed. This is the epic Definition-of-done run, with no stage field. Criteria verified: **C1, C2, C3, C4, C5, C6**. The committed brief is `qa/briefs/E-1531.md` at that SHA. The detached worktree was clean at admission and completion; final dev was the same SHA, freshness.current true. The hold created no commit.
+
+Execution: local macOS, Darwin 27.0.0 arm64, Node v24.21.0. No demo lease, new droplet, provider or browser ran in this QA execution; lease lifetime and cost are not applicable. Fake Claude Code, Codex and OpenCode ran only in the sealed disposable fixture. Source and generated names were checked at the tested SHA. Commands used the brief helpers d00–d20 and nt, preserved in the committed brief; captures and recorder receipts are attached.
+
+190 tests passed across 24 sequential named files, with no skipped, cancelled or failing tests. Exact executed names are in [test-summary.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/test-summary.json), with required literal names and source matching in [required-tests.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/required-tests.json). The additional planted boundary file intentionally returned exit 1: only `Host boundary scans the current adapters recursively` failed, and all four planted bypass diagnostics appeared. That negative control is separate from the 190 passing tests. No broad suite was rerun. Quiet-queue and one-minute vm.loadavg <10 admission was enforced before the named files; temporary queue timeouts and load waits are preserved in [admission-note.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/admission-note.txt). No wall-time or performance conclusion is drawn from these waits.
+
+Brief correction, separate from product results: E1531D-14’s expression at brief line 470 produced `syntax error near unexpected token newline` in command substitution and did not evaluate the destination assertion. The original capture is retained. Coordinator decision `d6622f4c-bb18-4913-b5e4-fda4136c01c9` authorized a separate read-only observation, labelled **probe correction (quoting), coord-authorised**. It read the existing A-1 artifact record: the stored copy was under p1/.cland/artifacts/, outside p1/.cland/worktrees/T-5, and cmp found equal bytes. Artifact creation was not repeated. The remaining D14 conditions passed in the original capture.
+
+Criterion evidence and limits:
+
+| Criterion | Passing checks | What the evidence proves |
+| --- | --- | --- |
+| C1 | D02, D10 | All 11 local Host contract cases and interface/option omission controls pass; both covers recorded all 11 contract cases. |
+| C2 | D03–D05, D10, D12–D15 | Enforcing recursive boundary and positive planted violations; adapters/worktree/artifact Host tests; all three fake harnesses retain local Darwin identities and PIDs through re-find and restart, and stop cleanly. The 4096-byte artifact copy matches. |
+| C3 | D06, D11, D12, D17, D18 | Never probed locally rests on the recording/throwing local Host spies in D06. Never signalled rests on the live collision trap: zero caught signals and alive after remote operations/restarts; its positive control then records exactly one TERM before cleanup. Existing local rows remain local; unregistered hosts are unknown. |
+| C4 | D07, D11, D13 | Fake Codex argv and thread/start carry cland permissions and nine roots: eight shipped paths plus the symlink target realpath. Host origin rests on D07 and D03–D04 boundary evidence, not on argv alone. This does not test real Codex enforcement. |
+| C5 | D08, D13 | Ordering before worktreeAdd under lock is proven inside the recording Host. The live hub shows the end state: territory/task branch/worktree/base agree, include the unpublished root commit, and territory dev remains unchanged. |
+| C6 | D09, D16, D17 | Coordinator/Aide remote launch, relaunch, fresh resume and set/move cases pass; live refusals give the local-only reason before Host effects. Local Coordinator starts and stops. |
+
+All required gates S0, D00, D01, D19 and D20 passed. D19 checked 40 fixture-owned PIDs, with no live fixture entry and zero processes naming the scratch root. D16’s test-host Implementer refusal was `invalid-cwd`, `launch cwd "<scratch>/p1" is not an accessible directory`, with only `t1:statDirectory` and no process row; this is the brief’s expected condition. The diagnostic gap is already tracked as T-1586.
+
+D13 live roots: `.git/objects`, `.git/refs`, `.git/logs`, `.git/worktrees`, `.cland/territory.git/objects`, `.cland/territory.git/refs`, `.cland/territory.git/logs`, `.cland/artifacts`, and the real target of `qa-roots-link`. shippedRootsMissing and existingRootsNotRealpath were empty; linkPathPresent false. Two paths did not yet exist: territory logs and artifacts. The brief records missingRoots without judging it; all nine were supplied.
+
+Reused full-cover evidence: Linux suite `801d32a7-a036-4105-af61-b81848391361` (A-15573) and macOS suite `11f9a8be-1aec-4a45-bf9f-1a83c271ddf4` (A-15577), both occasion stage at full head `c14994a248fee18f1affcc4e49e2c67288f91dfe`, verification tree `f605d08ac83205d3bbda879f82faf516e174dc46`. Candidate tree at the QA build is `57ec2adb248e46e4b0489450b158e0dbad6f41e3`; applicability uses the ancestor plus freshness.current=true route, not equal trees. Both cached fields are null, not a claimed cache hit. Linux has two shard finish receipts, macOS one; no nonzero command/tier end or failed/cancelled counts. These are reused executed covers, not freshly executed QA suites.
+
+The covers executed T0, T1, T2, T3, T4 base and Web. T4 repetitions were skipped and soak was outside scope. Duration budgets and reported overages/projections were report-only; projections are not measured wall times. Linux recorded 9 skips and macOS 1, with exact names/reasons in [cover-provenance.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/cover-provenance.json). Linux’s macOS-only checks are covered by the macOS run; optional real OpenCode checks remain skipped as recorded. The original droplet lifetime and cost are absent from these supplied logs and remain unknown, not zero. No new droplet was created for this QA run.
+
+A-15573: executor `droplet`, platform `{'os': 'linux', 'arch': 'x64', 'release': '6.8.0-142-generic', 'node': 'v24.21.0', 'nvim': 'v0.12.5'}`, browser `{'binary': '/home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell', 'version': 'Google Chrome for Testing 156.0.8078.4'}`. [Original durable log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15573-suite-801d32a7-a036-4105-af61-b81848391361-all-at-c14994a.log).
+
+A-15577: executor `local`, platform `{'os': 'darwin', 'arch': 'arm64', 'release': '27.0.0', 'node': 'v24.21.0', 'nvim': 'v0.12.5'}`, browser `{'binary': '/Users/evgeniyivanov/Projects/cland/v0/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell', 'version': 'Google Chrome for Testing 156.0.8078.4'}`. [Original durable log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15577-suite-11f9a8be-1aec-4a45-bf9f-1a83c271ddf4-all-at-c14994a.log).
+
+Evidence export contains only declared captures, source observations, summaries and receipts. No fixture HOME, environment file, hub discovery secret, raw database or cookie is included. A positive-control secret scan must pass before publication.
+
+Durable artifact: A-15641, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15641-e-1531-epic-qa-clear-at-5bfd7c24-22-checks-and-c1-c6/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-02T06:19:22.694Z
+
+Closed on QA's clear epic DoD verdict qa-dod-2026-11-02-qa678-1 at 5bfd7c24 (C1–C6 verified; brief qa/briefs/E-1531.md, one coord-authorised probe correction at D-14). Stages: 1 closed (covers bdab5e3a/f7d23abd), 2 closed (QA A-15518), 3 closed (QA A-15587; covers 801d32a7/11f9a8be). Follow-ups: T-1585 landed, T-1586 (refused nonlocal launch-cwd diagnostic) open in Follow-ups.

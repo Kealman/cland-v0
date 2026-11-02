@@ -2,8 +2,8 @@
 id: T-1590
 kind: task
 title: Host records and per-host secrets
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1328
 branch: t/T-1590-host-records-and-per-host-secrets
 created: 2026-11-02T03:33:53.028Z
-updated: 2026-11-02T05:55:37.779Z
+updated: 2026-11-02T07:11:44.486Z
+closed: 2026-11-02T07:11:44.486Z
 ---
 
 ## Summary
@@ -27,14 +28,19 @@ Hot files: `hub/src/host/records.ts` (new), `hub/test/host-records.test.ts` (new
 
 - [x] C1. A hub opened on a `hub.db` without the table creates it, and existing tables and rows are untouched (test).
   - done: impl-1590 · 2026-11-02T05:51:59.142Z
+  - verified: rev-36 [reviewer] · run rev-36-1590-final-1 · 2026-11-02T06:20:25.722Z · commit 6748aa6df84fd638ea11e1fe00bc4a3d8bc28a67
 - [x] C2. Registering a host mints a random per-host secret, stores only its digest in `hub.db`, writes the secret at 0600 in the host's 0700 directory, and never writes it to `hub.log`, the journal or a frame (test).
   - done: impl-1590 · 2026-11-02T05:52:02.542Z
+  - verified: rev-36 [reviewer] · run rev-36-1590-final-1 · 2026-11-02T06:20:25.722Z · commit 6748aa6df84fd638ea11e1fe00bc4a3d8bc28a67
 - [x] C3. `CLAND_FAKE_HOSTS=f1,f2` with `CLAND_FAKE_HOST_ROOT` registers two `ssh` host records whose `known_hosts` pins each fake host's key, and with either variable absent no fake host exists (test).
   - done: impl-1590 · 2026-11-02T05:52:05.467Z
+  - verified: rev-36 [reviewer] · run rev-36-1590-final-1 · 2026-11-02T06:20:25.722Z · commit 6748aa6df84fd638ea11e1fe00bc4a3d8bc28a67
 - [x] C4. For a project root deep enough that a per-host socket or control path would exceed the platform's socket path limit, the paths fall back to a short directory, as `layout().socket` does (test).
   - done: impl-1590 · 2026-11-02T05:52:08.035Z
+  - verified: rev-36 [reviewer] · run rev-36-1590-final-1 · 2026-11-02T06:20:25.722Z · commit 6748aa6df84fd638ea11e1fe00bc4a3d8bc28a67
 - [x] C5. A secret matches only its own host's digest, and a revoked host's secret matches nothing (test).
   - done: impl-1590 · 2026-11-02T05:52:11.459Z
+  - verified: rev-36 [reviewer] · run rev-36-1590-final-1 · 2026-11-02T06:20:25.722Z · commit 6748aa6df84fd638ea11e1fe00bc4a3d8bc28a67
 
 ## Notes
 
@@ -58,3 +64,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards/Spec no findings. Additive hosts Store table, host-bound digest/revocation, exclusive private files/redactor registration/restoration, both-variable fake hook/pins and shared-limit short socket paths reviewed. Public metadata omits digest; no raw secret output producer; bootstrap/admission/connection revocation correctly left to downstream owners. Seven disposable T2 controls and unedited registry preservation,consumer inventory,tier/docs/skill/change record inspected. A-15592 local macOSarm64 Node24.21.0 targeted7+4/static summaries preliminary; final typecheck repeat pending at request. C1–C5 await exact-head post-source mode-free verify/named evidence;no remote/all-tier claim. No Reviewer tests/browser/edits;after-stageQA separate.
+
+### rev-36 · 2026-11-02T06:20:25.722Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1590-final-1
+commit: 6748aa6df84fd638ea11e1fe00bc4a3d8bc28a67
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged source-reviewed head. Independently streamed A-15639 run 38d262e5-cdda-45e3-8c8a-9963c43a15a3: uncached exit 0, 4706/4706; all seven host-records and four unchanged registry named outcomes pass, with assertion facts checked. C1–C5 verified. Linux x64 droplet c-8 lon1 Node24.21.0/Neovim0.12.5; isolated Chrome Headless Shell1248 Chrome for Testing156.0.8078.4. T0/T1/fallback all T2/Web completed; T3 deferred to merge batch, T4 unexecuted. Budget/lint/ratchet and skip checks report-only, missing skip reasons0. No findings; no Reviewer execution. Task coverage only, separate merge-batch/after-stage checks remain.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-02T07:11:44.486Z
+
+Merged 5bd17987b839cdd0d634046aa90c299e84cd83bd onto dev.

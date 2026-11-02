@@ -2,8 +2,8 @@
 id: T-1584
 kind: task
 title: Users-mode withdrawal checks message ownership by user id
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1323
 branch: t/T-1584-users-mode-withdrawal-checks-message
 created: 2026-11-01T19:56:29.775Z
-updated: 2026-11-02T05:59:09.559Z
+updated: 2026-11-02T07:11:22.410Z
+closed: 2026-11-02T07:11:22.410Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; no findings. Source verdict rev-35-1584-source-2 / A-15585 carries forward at unchanged 95d3c0facc4c3a16b8d961fc098f070d0384eaef. Independently checked A-15600 named outcome:pass receipts for persisted-id ownership and forged caller refusal, unchanged queued row, admin-only legacy policy, same-display-name users, desktop/phone affordances and previous-wire fallback; hub/web message-users preservation also passes. Run 4d5d2385-8c5f-4940-96e8-64a73a1eb8b1 matches task.verify/head and candidate tree outside documented tracker/rulebook exclusions. 4703 reported cases pass: T0, all T1/T2 fallback, Web and one selected T4 guard base execution; remaining T3 deferred to merge batch, T4 repetitions unexecuted. Uncached Linux x64 droplet / Node v24.21.0 / Neovim v0.12.5; isolated Headless Shell 1248, Google Chrome for Testing 156.0.8078.4. Budgets/lint report-only. Reviewer ran no tests/browser. C1–C5 verified using prior source review plus this exact-head evidence; after-stage QA stays separate. Full criterion-to-case mapping and boundaries: A-15604 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15604-t-1584-final-evidence-review-at-95d3c0fa.md).
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-02T07:11:22.410Z
+
+Merged 2f034f402cd510160dcb9e33dcb61334aa0c988c onto dev.
