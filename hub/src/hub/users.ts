@@ -27,6 +27,10 @@ export class Users {
     const row = this.#db.prepare('select id, name, display_name as displayName, role, state, created from users where id=?').get(id);
     return row ? { ...row } as User : null;
   }
+  byName(name: string): User | null {
+    const row = this.#db.prepare('select id, name, display_name as displayName, role, state, created from users where name=?').get(name);
+    return row ? { ...row } as User : null;
+  }
   first(): User | null {
     const row = this.#db.prepare('select id, name, display_name as displayName, role, state, created from users order by created, rowid limit 1').get();
     return row ? { ...row } as User : null;

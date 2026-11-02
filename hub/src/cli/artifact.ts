@@ -1,4 +1,5 @@
 // The same artifact frames as spokes and the UI; relative files resolve in the calling shell.
+import { actorOf } from './actor.ts';
 import { parseArgs } from 'node:util';
 import { readFileSync } from 'node:fs';
 import { access } from 'node:fs/promises';
@@ -19,12 +20,12 @@ export async function runArtifact(args: string[], cwd = process.cwd()): Promise<
     kind: { type: 'string' }, title: { type: 'string' }, topic: { type: 'string' }, path: { type: 'string' },
     content: { type: 'string' }, 'content-file': { type: 'string' }, json: { type: 'boolean' },
     before: { type: 'string' }, folder: { type: 'boolean' }, entry: { type: 'string' },
-    release: { type: 'boolean' }, name: { type: 'string' },
+    release: { type: 'boolean' }, name: { type: 'string' }, as: { type: 'string' },
   } });
   const count = command === 'promote' || command === 'move' ? 2 : ['keep', 'archive', 'open'].includes(command) ? 1 : 0;
   if (positionals.length !== count) throw new Error(ARTIFACT_USAGE.trim());
   const allowed: Record<string, string[]> = {
-    create: ['kind', 'title', 'topic', 'path', 'content', 'content-file', 'folder', 'entry'],
+    create: ['as', 'kind', 'title', 'topic', 'path', 'content', 'content-file', 'folder', 'entry'],
     list: ['topic', 'before'], promote: [], keep: ['release'], move: ['name'], archive: [], open: [],
   };
   for (const option of Object.keys(values)) {
@@ -45,7 +46,8 @@ export async function runArtifact(args: string[], cwd = process.cwd()): Promise<
     ...(values.path !== undefined ? { path: resolve(cwd, values.path) } : {}), ...(content !== undefined ? { content } : {}),
     ...(values.folder !== undefined ? { folder: values.folder } : {}), ...(values.entry !== undefined ? { entry: values.entry } : {}),
   };
-  const value = await askHubFrame(d, frame) as { artifact?: Artifact; artifacts?: Artifact[]; before?: string; more?: boolean; files?: string[]; editable?: boolean; path?: string; followUp?: { error: string } };
+  const as = command === 'create' ? actorOf(values, process.env, { err: s => process.stderr.write(s) }) : undefined;
+  const value = await askHubFrame(d, { ...frame, ...(as ? { as } : {}) }) as { artifact?: Artifact; artifacts?: Artifact[]; before?: string; more?: boolean; files?: string[]; editable?: boolean; path?: string; followUp?: { error: string } };
   if (command === 'open') {
     const a = value.artifact!;
     const path = a.folder ? join(a.path, a.entry!) : a.path;

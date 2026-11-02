@@ -24,6 +24,21 @@ reload until the authorized switch has created the first admin and checkpoint.
 For a stopped hub, restore single mode in config, start it and use
 `cland auth mode users`.
 
+## Acting as a user
+
+In users mode local human writes default to the first user. `--as <user>` on
+`cland topic create`, `topic answer` and `artifact create` selects an existing
+active user's exact name; display names are never selectors. The `topic.send`
+and `approval.answer` frames use the same local `as.name` resolution (there are
+no CLI verbs for these frames). Both the first user's and the selected user's
+stored roles pass through `userAuthorityRefusal` before replay. Unknown or
+invited-only users are refused with their name. Outcomes, posted messages,
+artifacts and journal/audit records retain the selected user's id. The topic-created
+journal receipt includes the user's name in `by` and the optional `userId`. Single mode
+keeps the previous stand-in answer attribution and artifact shape. A shell with
+`CLAND_SESSION_ID` or `CLAND_SESSION_NAME` set keeps its session identity despite
+`--as`; authenticated web and gateway identities retain their transport rules.
+
 ## Invites
 
 In users mode, `cland user add <name> [--display <name>]` creates an invited

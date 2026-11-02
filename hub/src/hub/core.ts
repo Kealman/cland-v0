@@ -3204,7 +3204,7 @@ export class HubCore {
    * and Agents. A title is required. `item` binds it to a unit of work, which has one topic at most: a second is
    * refused, and the item's `topic` field is written through the tracker.
    */
-  async createTopic(title: string, item?: string, by = HUMAN, resumed: Resumed = work => work(), authorize: () => void = () => {}): Promise<Topic> {
+  async createTopic(title: string, item?: string, by = HUMAN, resumed: Resumed = work => work(), authorize: () => void = () => {}, userId?: string): Promise<Topic> {
     const clean = typeof title === 'string' ? title.trim() : '';
     if (!clean) throw new TopicRefusal('a topic needs a title');
     if (clean.length > 200) throw new TopicRefusal('a topic title is at most 200 characters');
@@ -3227,7 +3227,7 @@ export class HubCore {
         catch (err) { return resumed(() => { this.#logReleased(this.#store.deleteTopic(id)); throw err; }); }
       }
       return resumed(() => {
-        this.#log({ event: 'topic-created', topic: id, title: clean, item: bound, by });
+        this.#log({ event: 'topic-created', topic: id, title: clean, item: bound, by, ...(userId ? { userId } : {}) });
         this.#publishTopics();
         return this.#topicOrThrow(id);
       });

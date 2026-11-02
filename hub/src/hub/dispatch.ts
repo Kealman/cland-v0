@@ -1,3 +1,4 @@
+import { HUMAN_USER_WRITES, localUserName } from './cli-user.ts';
 import { localHost } from '../host/local.ts';
 import { MergeLandingReports } from './merge-landing-reports.ts';
 import { uploadArtifacts } from './artifact-upload.ts';
@@ -635,6 +636,7 @@ export class Dispatcher {
     const sessionId = typeof as.sessionId === 'string' && as.sessionId !== '' ? as.sessionId : null;
     // the calling shell's own identity (`$CLAND_SESSION_*`), as against a name the human gave with `--as`
     const own = as.shell === true;
+    if (core.store.users.mode() === 'users' && !own && sessionId === null && HUMAN_USER_WRITES.has(String(frame.type))) return null;
     if (sessionId === null && as.name === HUMAN_SESSION && !own) return null;
     if (sessionId !== null) {
       const live = core.connectionOf(sessionId);
@@ -1080,15 +1082,20 @@ export class Dispatcher {
     const uploads = new Set<Promise<unknown>>();
     const core = this.#options.core;
     const log = this.#log;
+    const admittedUsers = new WeakMap<object, string>();
     // Web identity is supplied only by the authenticated upgrade/upload, never a frame.
-    const humanUser = () => {
+    const humanUser = (frame?: Record<string, unknown>) => {
       if (core.store.users.mode() !== 'users') return null;
-      const user = transport.edge === 'web' ? transport.user?.() : core.store.users.first();
+      const name = frame && (transport.edge === 'socket' || transport.edge === 'stdio') ? localUserName(frame) : undefined;
+      const admitted = frame && admittedUsers.get(frame);
+      const user = transport.edge === 'web' ? transport.user?.() : admitted ? core.store.users.get(admitted) : name !== undefined ? core.store.users.byName(name) : core.store.users.first();
+      if (name !== undefined && (!user || user.state !== 'active')) throw new Error(`cannot act as user ${JSON.stringify(name)}: user is unknown or not active`);
       if (!user || user.state !== 'active') throw new Error('human connection requires an active user');
+      if (frame) admittedUsers.set(frame, user.id);
       return user;
     };
-    const humanAudit = () => {
-      const user = humanUser();
+    const humanAudit = (frame?: Record<string, unknown>) => {
+      const user = humanUser(frame);
       return { session: user?.name ?? HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, ...(user ? { userId: user.id } : {}) };
     };
     /** The calls in flight, by request id, waiting for their result to be audited. */
@@ -1270,7 +1277,7 @@ export class Dispatcher {
         if (current && !this.#permitted(current, frame as unknown as Record<string, unknown>, peer, false)) throw new ToolForbidden(current.role, tool, 'permission changed during artifact preparation');
         return current;
       };
-      const run = () => this.#artifact(frame, authorizeCaller, resumed, undefined, original ? null : humanUser());
+      const run = () => this.#artifact(frame, authorizeCaller, resumed, undefined, original ? null : humanUser(frame));
       const operation = frame.type === 'artifact.create' ? this.#artifactQueue.then(() => resumed(run)) : run();
       if (frame.type === 'artifact.create') this.#artifactQueue = operation.catch(() => resumed(() => {}));
       later(tool, operation.then(value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
@@ -1315,7 +1322,7 @@ export class Dispatcher {
             const reply = typeof frame.replyTo === 'string' ? frame.replyTo : undefined;
             const to = Array.isArray(frame.to) ? frame.to as string[] : undefined;
             const value = caller ? core.sendFromSession(caller.name, to ?? [], text, reply, topicId, undefined, caller, artifacts, frame.kind, undefined, false, undefined, frame.request, frame.subject)
-              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts, undefined, undefined, frame.kind as import('../protocol.ts').HumanMessageKind | undefined, undefined, false, humanUser()?.id);
+              : core.sendFromHuman(topicId!, text, to, reply, undefined, undefined, artifacts, undefined, undefined, frame.kind as import('../protocol.ts').HumanMessageKind | undefined, undefined, false, humanUser(frame)?.id);
             return { type: 'result', id: String(frame.id), ok: true, value };
           });
         } catch (err) { return resumed(() => Dispatcher.#failure(String(frame.id), err)); }
@@ -1541,7 +1548,7 @@ export class Dispatcher {
         log({ event: 'client', edge: transport.edge, client: frame.client });
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
-        peer.send({ type: 'welcome', name: humanUser()?.name ?? client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
+        peer.send({ type: 'welcome', name: humanUser(frame)?.name ?? client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
         if (!features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
         if (frame.resume) resumeModel(frame.resume);
         else if (features.includes('snapshot')) startSnapshot();
@@ -1741,7 +1748,7 @@ export class Dispatcher {
       };
       const requireUserManagement = () => {
         if (transport.edge !== 'web') return requireLocalHuman();
-        if (!humanUser() || core.store.users.mode() !== 'users') throw new Error('web user commands require users mode');
+        if (!humanUser(frame) || core.store.users.mode() !== 'users') throw new Error('web user commands require users mode');
       };
       try {
         switch (frame.type) {
@@ -1805,9 +1812,9 @@ export class Dispatcher {
             };
             const operation = this.#artifactQueue.then(() => uploadArtifacts(core.store, root, frame, bytes,
               this.#options.projectConfig?.().artifacts.maxUploadMb ?? 50, artifacts => {
-                const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true, humanUser()?.id);
+                const { message } = core.sendFromHuman(frame.topic, frame.caption ?? '', frame.to, frame.replyTo, undefined, undefined, artifacts, messageId, undefined, frame.kind, via, true, humanUser(frame)?.id);
                 return { message, artifacts };
-              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor, this.#options.uploadOpen, transport.ownsUploadBytes === true, undefined, humanUser() ?? undefined));
+              }, authorize, replay, resumed, () => core.clock.now(), this.#options.uploadRedactor, this.#options.uploadOpen, transport.ownsUploadBytes === true, undefined, humanUser(frame) ?? undefined));
             uploads.add(operation);
             void operation.then(() => uploads.delete(operation), () => uploads.delete(operation));
             this.#artifactQueue = operation.catch(() => {});
@@ -1822,7 +1829,7 @@ export class Dispatcher {
               if (original.fromKind !== 'human' || original.via !== via) throw new Error('remote input identity conflict');
               return answer({ message: { ...original, topic: original.topic!, seq: core.store.messageSeq(original.id), stage: core.store.stage(original.id) }, outcomes: [] });
             }
-            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, messageId, undefined, frame.kind, via, false, humanUser()?.id);
+            const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo, undefined, undefined, undefined, messageId, undefined, frame.kind, via, false, humanUser(frame)?.id);
             // Native crash fixture: the durable human effect exists, but the
             // adapter has not received a result or stored its feedback receipt.
             if (messageId && ((via === 'telegram' && this.#options.env?.CLAND_TEST_CRASH_AT === 'telegram-input-committed')
@@ -1843,7 +1850,8 @@ export class Dispatcher {
               const current = this.#asSession(frame);
               if (!current || !this.#permitted(current, frame, peer, false)) throw new ToolForbidden(current?.role ?? null, frame.type, 'permission changed during topic binding');
             };
-            later(frame.type, core.createTopic(frame.title, frame.item, HUMAN_SESSION, resumed, authorize).then(
+            const user = original ? null : humanUser(frame);
+            later(frame.type, core.createTopic(frame.title, frame.item, user?.name ?? HUMAN_SESSION, resumed, authorize, user?.id).then(
               topic => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { topic } } as HubFrame)),
               err => resumed(() => Dispatcher.#failure(frame.id, err))));
             return;
@@ -1902,7 +1910,7 @@ export class Dispatcher {
             return later(frame.type, core.inbox.answerApproval(frame.approval, frame.choice, frame.note, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), (sessionId, requestId, value) => {
               if (!this.#sessions) throw new Error('the hub has no adapters');
               return this.#sessions.answerApproval(sessionId, requestId, value);
-            }, resumed, humanUser() ?? undefined).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+            }, resumed, humanUser(frame) ?? undefined).then(approval => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { approval } } as HubFrame)), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'remote.test':
           case 'remote.unpair':
@@ -1946,7 +1954,7 @@ export class Dispatcher {
             return answer({ pairing });
           }
           case 'topic.answer': {
-            const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), humanUser() ?? undefined);
+            const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, core.store.users.mode() === 'users' || frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), humanUser(frame) ?? undefined);
             if (!messageId || !via) return answer(apply()); // Previous clients keep the ordinary first-answer gate.
             const state = core.store.remotes.forMessenger(via);
             const key = `gateway.answer:${messageId}`;
@@ -2072,7 +2080,7 @@ export class Dispatcher {
           case 'web.link':
             if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');
             if (!control.webLink) throw new Error('the web edge is unavailable');
-            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink(frame.qr, humanUser()?.id) });
+            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink(frame.qr, humanUser(frame)?.id) });
             break;
           case 'hub.status': {
             const status = (): HubFrame => {
@@ -2217,19 +2225,35 @@ export class Dispatcher {
         if (transport.edge === 'gateway') {
           const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
           if (refusal) {
-            audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
+            audit(frame.id, { ...humanAudit(frame), tool: String(frame.type), args: summarize(frame), client });
             return peer.send(refusal);
           }
         }
         if (transport.edge === 'web') {
           const refusal = userAuthorityRefusal(core.store.users, transport.user?.()?.id, frame) ?? webAuthorityRefusal(frame);
           if (refusal) {
-            audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
+            audit(frame.id, { ...humanAudit(frame), tool: String(frame.type), args: summarize(frame), client });
             return peer.send(refusal);
           }
         }
         const credentialRefusal = this.#sessionCredentialRefusal(frame);
         if (credentialRefusal) return peer.send(Dispatcher.#failure(String(frame.id), new Error(credentialRefusal)));
+        if (core.store.users.mode() === 'users' && (transport.edge === 'socket' || transport.edge === 'stdio')
+          && HUMAN_USER_WRITES.has(String(frame.type)) && !this.#asSession(frame)) {
+          try {
+            const first = core.store.users.first();
+            const user = humanUser(frame);
+            const refusal = userAuthorityRefusal(core.store.users, first?.id, frame)
+              ?? userAuthorityRefusal(core.store.users, user?.id, frame);
+            if (refusal) {
+              audit(frame.id, { ...humanAudit(frame), tool: String(frame.type), args: summarize(frame), client });
+              return peer.send(refusal);
+            }
+          } catch (error) {
+            audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
+            return peer.send(Dispatcher.#failure(String(frame.id), error));
+          }
+        }
         if (replayed(frame)) return;
         // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
         // exactly as the session's own tool call would be
@@ -2256,7 +2280,7 @@ export class Dispatcher {
           }
         } else if (!plumbing) {
           // the human, through the UI or the CLI: not restricted by the table, audited all the same (hook plumbing aside)
-          audit(frame.id, { ...humanAudit(), tool: String(frame.type), args: summarize(frame), client });
+          audit(frame.id, { ...humanAudit(frame), tool: String(frame.type), args: summarize(frame), client });
         }
         // a client's frame may name who it acts as (a name no session holds: written as it, unrestricted)
         if (isTaskRequest(frame)) {

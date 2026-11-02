@@ -102,7 +102,7 @@ async function runTopicAnswer(args: string[], cwd: string): Promise<number> {
   let label: string | undefined;
   if (asAt >= 0) {
     label = rest[asAt + 1];
-    if (!label?.trim() || label.startsWith('--') || rest.indexOf('--as', asAt + 1) >= 0) throw new Error('usage: cland topic answer <ask id> <option number> | --text "<free answer>" [--as <stand-in name>]');
+    if (!label?.trim() || label.startsWith('--') || rest.indexOf('--as', asAt + 1) >= 0) throw new Error('usage: cland topic answer <ask id> <option number> | --text "<free answer>" [--as <user or stand-in name>]');
     rest.splice(asAt, 2);
   }
   const as = actorOf({ as: label }, process.env, { err: s => process.stderr.write(s) });
