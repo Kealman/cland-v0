@@ -455,7 +455,9 @@ export type ProjectHubOptions = {
 
 let capturedLockIdentity: ReturnType<typeof lockHostIdentity> | undefined;
 /** Embedded hubs share the local CLI's PID table; only identity-only fixtures opt into synthetic hosts. */
-export const fixtureLockIdentity = (env: NodeJS.ProcessEnv) => capturedLockIdentity ??= lockHostIdentity(process.platform, undefined, env);
+export const fixtureLockIdentity = (env: NodeJS.ProcessEnv) => capturedLockIdentity ??= process.env.CLAND_TEST_LOCK_IDENTITY
+  ? JSON.parse(process.env.CLAND_TEST_LOCK_IDENTITY) as ReturnType<typeof lockHostIdentity>
+  : lockHostIdentity(process.platform, undefined, env);
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */

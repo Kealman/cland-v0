@@ -1,4 +1,5 @@
 import { eligibleLoadRerun } from '../src/suite-load-rerun.ts';
+import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { waitForHumanSlot } from '../src/suite-human-queue.ts';
 import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { prepareRunnerFixture } from './fixture-directories.ts';
@@ -101,6 +102,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const output = process.env.CLAND_COVERAGE_OUTPUT;
   const coverageFiles = new Set<string>();
   const coverageRaw = recording && output ? `${output}.raw` : undefined;
+  let fixtureLockIdentity: string | undefined;
   try {
     const budgetStarted = performance.now();
     durationManifest = await readDurationManifest(options.cwd ?? process.cwd());
@@ -190,6 +192,9 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       // Timing accounting exists only when this phase has a duration manifest.
       env.CLAND_TEST_TIMING_RECEIPTS = durationManifest ? '1' : '0';
       if (!root) throw new Error('suite phase root is missing');
+      // Capture on this host before workers install their child-process census.
+      // Always replace inherited values: a nested runner may be on another host.
+      env.CLAND_TEST_LOCK_IDENTITY = fixtureLockIdentity ??= JSON.stringify(lockHostIdentity(process.platform, undefined, runnerFixtureEnvironment(root, env)));
       const tierTrips = join(root, 'tier-mismatches.jsonl');
       if (tiers && args.includes('--test')) {
         env.CLAND_TEST_TIER_ASSIGNMENTS = join(root, 'tier-assignments.json');

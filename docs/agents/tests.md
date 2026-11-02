@@ -873,8 +873,10 @@ an injected process table; startup and teardown keep their infrastructure probes
 `readBase`; a lock test may override `processes` (`alive` and `started`).
 `projectHub` captures this machine’s native lock identity by default, shared with
 doctor fixture readers; explicit synthetic identity is reserved for foreign-holder
-controls. Linux reads native identity files; macOS uses one bounded sysctl per test
-worker under the sealed fixture environment. `projectHub` defaults to fake
+controls. Linux reads native identity files; macOS uses one bounded sysctl per
+suite-runner invocation under the sealed fixture environment, handed to workers
+through `CLAND_TEST_LOCK_IDENTITY`. Direct harness callers without that value
+capture once on first use per process. `projectHub` defaults to fake
 harnesses and process probes; explicitly supplied adapters,
 Git, base-reader, territory and process facts take precedence. T3 contracts and lifecycle
 files opt into production defaults by importing `nativeProjectHub` (which passes
