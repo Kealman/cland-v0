@@ -11,10 +11,10 @@ assignee: null
 parent: R-1530
 blocked_by:
   - E-1531
-topic: null
+topic: topic-1346
 branch: null
 created: 2026-10-31T18:22:04.760Z
-updated: 2026-11-02T03:34:42.534Z
+updated: 2026-11-02T19:40:26.739Z
 ---
 
 ## Goal

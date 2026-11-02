@@ -2,8 +2,8 @@
 id: T-1631
 kind: task
 title: Split hub/README.md into per-subsystem docs to end the merge hotspot
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1335
 branch: t/T-1631-split-hub-readme-md-into-per-subsystem
 created: 2026-11-02T07:58:56.878Z
-updated: 2026-11-02T18:46:39.976Z
+updated: 2026-11-02T21:35:10.035Z
+closed: 2026-11-02T21:35:10.035Z
 ---
 
 ## Summary
@@ -38,11 +39,11 @@ updated: 2026-11-02T18:46:39.976Z
   - verified: rev-35 [reviewer] · run rev-35-1631-final-2 · 2026-11-02T17:33:09.509Z · commit 9fd9aa594f0a2079e47dbddd1dca1c2748ae94be
   - verified: rev-35 [reviewer] · run rev-35-1631-delta-source-2 · 2026-11-02T18:24:49.683Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
   - verified: rev-35 [reviewer] · run rev-35-1631-final-3 · 2026-11-02T18:46:39.834Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
+  - verified: rev-35 [reviewer] · run rev-35-1631-delta-source-3 · 2026-11-02T19:38:30.153Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
+  - verified: rev-35 [reviewer] · run rev-35-1631-final-4 · 2026-11-02T20:37:40.483Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
 - [x] C2. Every consumer that read `hub/README.md` sections or anchors (docs links, doc-lint, qa lint references, help text, tests) reads the new files, and all of them pass with no assertion weakened.
-  - done: impl-1631 · 2026-11-02T09:56:45.020Z
-  - verified: rev-35 [reviewer] · run rev-35-1631-final-1 · 2026-11-02T10:15:42.397Z · commit 77b858c97343c6185fc6e21cd7702a136cb8f256
-  - verified: rev-35 [reviewer] · run rev-35-1631-final-2 · 2026-11-02T17:33:09.509Z · commit 9fd9aa594f0a2079e47dbddd1dca1c2748ae94be
-  - verified: rev-35 [reviewer] · run rev-35-1631-final-3 · 2026-11-02T18:46:39.834Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
+  - done: impl-1631 · 2026-11-02T20:36:08.891Z
+  - verified: rev-35 [reviewer] · run rev-35-1631-final-4 · 2026-11-02T20:37:40.483Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
 - [x] C3. `.agents/skills/implement/SKILL.md` keeps its procedure and points to `docs/hub/` for subsystem detail; its moved paragraphs exist unchanged in the target files.
   - done: impl-1631 · 2026-11-02T09:53:09.647Z
   - verified: rev-35 [reviewer] · run rev-35-1631-source-2 · 2026-11-02T09:57:22.246Z · commit 77b858c97343c6185fc6e21cd7702a136cb8f256
@@ -51,6 +52,8 @@ updated: 2026-11-02T18:46:39.976Z
   - verified: rev-35 [reviewer] · run rev-35-1631-final-2 · 2026-11-02T17:33:09.509Z · commit 9fd9aa594f0a2079e47dbddd1dca1c2748ae94be
   - verified: rev-35 [reviewer] · run rev-35-1631-delta-source-2 · 2026-11-02T18:24:49.683Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
   - verified: rev-35 [reviewer] · run rev-35-1631-final-3 · 2026-11-02T18:46:39.834Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
+  - verified: rev-35 [reviewer] · run rev-35-1631-delta-source-3 · 2026-11-02T19:38:30.153Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
+  - verified: rev-35 [reviewer] · run rev-35-1631-final-4 · 2026-11-02T20:37:40.483Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
 - [x] C4. `docs/agents/` states where item doc text goes, and the skill's doc step names that rule.
   - done: impl-1631 · 2026-11-02T09:53:09.726Z
   - verified: rev-35 [reviewer] · run rev-35-1631-source-2 · 2026-11-02T09:57:22.246Z · commit 77b858c97343c6185fc6e21cd7702a136cb8f256
@@ -59,6 +62,8 @@ updated: 2026-11-02T18:46:39.976Z
   - verified: rev-35 [reviewer] · run rev-35-1631-final-2 · 2026-11-02T17:33:09.509Z · commit 9fd9aa594f0a2079e47dbddd1dca1c2748ae94be
   - verified: rev-35 [reviewer] · run rev-35-1631-delta-source-2 · 2026-11-02T18:24:49.683Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
   - verified: rev-35 [reviewer] · run rev-35-1631-final-3 · 2026-11-02T18:46:39.834Z · commit 3cd8ea0b5bbe3e55fe41d19448bc2a82fb135369
+  - verified: rev-35 [reviewer] · run rev-35-1631-delta-source-3 · 2026-11-02T19:38:30.153Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
+  - verified: rev-35 [reviewer] · run rev-35-1631-final-4 · 2026-11-02T20:37:40.483Z · commit 94ac433608318a44eb10c0a7690b90b3eeafd0b0
 
 ## Comments
 
@@ -229,3 +234,86 @@ Run30160926-49d9-40bc-b355-16628b7aa702/A-15947: exit0,4862 pass,zero fail/cance
 Provenance: runner tree8ffdfeef38ca4b06b916e55a4831dd380239892e, uncached Linux x64 6.8.0-142-generic droplet, Node v24.21.0/Neovim v0.12.5. Isolated browser /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Google Chrome for Testing156.0.8078.4. Host typecheck at runner tree not repeated remotely; budget/lint/ratchet/skip-reason checks report-only, skips[]/missing0/occasion null. Projections not execution evidence. QA scope none, no demo/browser QA required. Reviewer ran no tests/browser and made no edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1631 · 2026-11-02T19:36:52.343Z
+
+After T-1617's durable landing event and Coordinator instruction 07c2c9f0, merged origin/dev 260a8f2c7751e5423b6804478013cd0eedef0ea8. Carried hub CLI/doctor lock-reader paragraph and hub.lock table update plus updated skill guidance verbatim; manifest baseline refreshed. Proof still covers 45 whole README segments, 238 moved skill blocks and retained procedure. New upstream changed files searched for section readers: no added README reader in hub-lock-readers, hub-lock-identity or task-migrate tests/help. Existing five approved onboarding clarifications unchanged. Incoming production/test assertions untouched; no local tests run. Pushed clean merge head 597b3447d5a2a97c5df174fe199fa239e6f17a43; source delta review then droplet verify required.
+
+### rev-35 · 2026-11-02T19:38:30.153Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1631-delta-source-3
+commit: 94ac433608318a44eb10c0a7690b90b3eeafd0b0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1631 replacement merge delta source review at 94ac433608318a44eb10c0a7690b90b3eeafd0b0. Supersedes withdrawn 597b3447d request without a verdict on that head. Scope delta, C1–C4.
+
+Standards: no findings. Read Coordinator07c2c9f0 authorizing the post-T-1617 docs merge. Replacement request names newer frozen dev d82f45fb; verified that its additional changes versus260a8f2c are tracker records/QA briefs only, with no production/test/README/skill changes. New E-1538 and amended E-1536 briefs contain no README/implement-skill reader requiring relocation.
+
+Spec: no findings. Independently compared pinned Git blobs against frozen d82f45fb6bdb3b8337eca00f56bfd4e4f5be2ef7; README/skill blobs match manifest base260a8f2c7751e5423b6804478013cd0eedef0ea8 exactly. All45 complete README segments and238 moved skill blocks match source offsets/UTF8 lengths/SHA256 after reversing recorded relocations; README coverage complete, each segment exactly once in its owning destination. All37 retained procedure paragraphs present; index50/skill134 lines. Same five approved onboarding exceptions, no new prose exception.
+
+Reviewed T-1617 transfer: cland-doctor.md carries foreign lifecycle classification/migration renewal/publication-fence paragraph; the-projects-hub.md carries current lock shape; adapters-and-sessions.md carries shared native fixture default and lifecycle-reader guidance. All match incoming source text. Source/test behavior and prior consumer migrations remain unchanged. Placement document and skill doc step continue to establish C4.
+
+C1/C3/C4 verified at this exact replacement head. C2 remains unverified pending fresh same-head queued reader/help/role/host-agent results plus incoming reader/migration controls. Prior30160926 applies only to3cd8ea0b5; no reuse as runtime evidence. A-15959's proof agrees with independent inspection. No local tests/typecheck/browser or mutation ran. QA scope none unchanged.
+
+Criteria: C1 verified, C3 verified, C4 verified.
+
+### rev-35 · 2026-11-02T20:13:10.174Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1631-evidence-1
+commit: 94ac433608318a44eb10c0a7690b90b3eeafd0b0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1631 failed partial evidence at 94ac433608318a44eb10c0a7690b90b3eeafd0b0. Scope evidence. Run8a85617c-e9e1-4e07-bcb6-918c13fe4d4e/A-15966: not clear. No new source finding established; source-clear rev-35-1631-delta-source-3/A-15960 remains the source assessment.
+
+Actual failure output (A-15966 lines25898–25903):
+"Discord fresh history forwards newest 500 of 620 once with one silent overflow line"
+"Error: 500 inputs and overflow settlement: not within 10000 ms"
+at telegram-polling-restart.test.ts:346 / until.ts:26.
+This is a missing bounded completion receipt, not a report-only budget failure. Root cause remains unclassified; the failed run is not a pass.
+
+T0/T1/T2 exit0. Selected T3 exit1 with the one completed failure; Web unexecuted, no browser receipt. Tier output reports4562 pass/1fail/zero cancel,skip,todo; interruption census separately reports4687pass/1fail and is not substituted for tier totals. Remaining T3 deferred, T4 unexecuted.
+
+C2 failed verification evidence: exact-head run stopped before required Web reader coverage and contains the failed selected native identity. This does not establish a documentation/source defect. C1/C3/C4 static source proof unchanged. No additional source findings recorded (findings[]). Diagnosis/retry decision stays with item lead/Coordinator; no test bound increase or repeat requested by Reviewer.
+
+Recorded provenance: head above, runner tree6f27dde0b22d96d57b45cc3f3cc3e63edfad826b, uncached c-8 sfo2 droplet Linux x64 6.8.0-142-generic Node v24.21.0/Neovim v0.12.5; browser binary/version null, skips[]/skipReasonCheck report/missing0. Host typecheck at runner tree not repeated. Tmpfs setup unavailable/disk fallback and7.21% iowait are context, not proven cause. Budget/lint/ratchet notices report-only. Executor1891s/$0.1313 are billing, not suite wall time. Reviewer ran no tests/browser and made no edits.
+
+Criteria: C2 failed (Exact-head queued evidence failed the bounded selected Discord-history completion and stopped before required Web consumer coverage; no new source defect established.).
+
+### rev-35 · 2026-11-02T20:37:40.483Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1631-final-4
+commit: 94ac433608318a44eb10c0a7690b90b3eeafd0b0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1631 final evidence review at 94ac433608318a44eb10c0a7690b90b3eeafd0b0. Scope evidence; source-clear rev-35-1631-delta-source-3 / A-15960 unchanged. Standards: no findings. Spec: no findings. C1–C4 verified.
+
+C1/C3/C4 carry this head's independently checked static proof: 45 complete README segments, 238 moved skill blocks, 37 retained procedure paragraphs, index50/skill134 lines; source hashes, complete coverage and single destination ownership match after reversing recorded relocations. Same five explicitly approved onboarding exceptions; placement rule and skill doc step retained.
+
+C2: independently streamed actual named pass outcomes from A-15973: web-readme3, roles-clauses39, install-claims3, test-docs4, session-usage7, web-markdown7, native CLI-help7, independent frozen usage1; site remote-docs22/onboarding3 and hub remote-docs1/pairing1. Selected native roles4, host-agent18, hub-lock-readers14, task-migrate8 and telegram-polling-restart9 pass. Previously failing Discord fresh-history 500-of-620 case has an explicit pass receipt at line25717 (6.188466413s case duration). Source review established unchanged assertions and migrated reader/QA/help/role paths.
+
+Coordinator decision41f72c5d authorized exactly one unchanged-head retry. Fresh run cb2520bc-fc01-448d-afa7-7407db6b7b73 / A-15973 exit0,4884 pass,zero fail/cancel/skip/todo. T0/T1/fallback allT2/Web and selected T3 seven files47 identities once completed; remaining T3 merge-batch deferred,T4 unexecuted. Task receipt, not full merge-batch coverage. A-15966 stays failed partial history; this fresh successful receipt resolves C2's failed execution evidence.
+
+Recorded provenance: runner tree6f27dde0b22d96d57b45cc3f3cc3e63edfad826b; uncached Linux x64 6.8.0-142-generic droplet, Node v24.21.0/Neovim v0.12.5. Browser /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Google Chrome for Testing156.0.8078.4. Host typecheck at runner tree not repeated remotely. Budget/lint/ratchet/skip-reason checks report-only; skips[]/missing0,occasion null. Projections not counted as execution. QA policy scope none/per-item; no QA run required. Reviewer ran no tests/browser and made no edits.
+
+Durable review: A-15975 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15975-t-1631-final-same-head-retry-evidence-at-94ac43360.md).
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-02T21:35:10.035Z
+
+Merged 701bdfa22e1169ab17785da9ecbac6c82dd301ff onto dev.
