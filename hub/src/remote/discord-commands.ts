@@ -114,7 +114,7 @@ export class DiscordCommands {
     try {
       this.#signal.throwIfAborted();
       if (!this.#send) throw new Error('Discord command unavailable');
-      this.#send({ ...fields, type, id }, ingress);
+      this.#send({ ...fields, type, id }, ingress, undefined, this.#store?.pairing());
       return await pending.promise as T;
     } finally { this.#requests.delete(id); this.#signal.removeEventListener('abort', abort); }
   }
@@ -161,7 +161,7 @@ export class DiscordCommands {
   dispatch(frame: DiscordDispatch): void {
     if (frame.replayed) return;
     if (frame.t !== 'INTERACTION_CREATE' || this.#signal.aborted) return;
-    const work = this.#handle(frame.d).catch(() => {}); // Native errors and token-bearing dispatch never cross the boundary.
+    const work = (this.#store ? this.#store.withPairing(this.#store.pairingFor(String(frame.d.channel_id), (frame.d.member as { user?: { id?: string } } | undefined)?.user?.id), () => this.#handle(frame.d)) : this.#handle(frame.d)).catch(() => {}); // Native errors and token-bearing dispatch never cross the boundary.
     this.#work.add(work); void work.finally(() => this.#work.delete(work));
   }
   async #handle(raw: unknown): Promise<void> {

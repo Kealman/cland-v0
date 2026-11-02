@@ -1349,3 +1349,20 @@ test('Discord retirement completion keeps pacing until late feedback and every o
   assert.equal(f.state.messagesForAsk(first.ask).length, 2);
   assert.equal(f.state.messagesForAsk(peer.ask).length, 2);
 });
+
+for (const action of ['other', 'decline'] as const) test(`users-mode Discord ${action} opens its native modal and attributes the saved answer`, async t => {
+  const f = await fixture(t, undefined, 'Users cards', undefined, false, undefined, undefined, undefined, undefined, true);
+  const card = await openCard(f);
+  const pressed = await f.fake.control('interact', { message_id: card.message, custom_id: `ask:${card.ask}:${action}` });
+  await until(async () => (await f.fake.control('state')).interactions.find(row => row.id === pressed.id)?.callbacks.some(callback => (callback as { type?: number }).type === 9) === true,
+    { what: 'users-mode native answer modal', timeoutMs: 1500 });
+  const submitted = await f.fake.control('interact', { message_id: card.message, custom_id: `modal:${card.ask}:${action}`, modal_text: 'Users modal answer' });
+  await until(() => f.state.get(`discord.press:${submitted.id}`) === 'answered', { what: 'users-mode durable modal answer', timeoutMs: 1500 });
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: import('../src/protocol.ts').TopicMessage[] };
+  const answer = history.messages.find(row => row.answerTo === card.ask)!;
+  assert.ok(answer); assert.equal(answer.userId, f.store.users.first()!.id); assert.equal(answer.from, 'alice');
+  const outcome = history.messages.find(row => row.id === card.ask)!.ask!.outcome!;
+  assert.equal(outcome.status, action === 'other' ? 'answered' : 'declined'); assert.equal(outcome.userId, answer.userId);
+  await f.hub.stop();
+});

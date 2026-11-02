@@ -287,3 +287,9 @@ the final exact native cursor and completed history, then assert all three
 messages stay in the anchor topic with exact hub reply ids and none in General.
 Replies run individually between ordinary-text groups so their predecessor's
 mapping has committed before routing. This preserves the T-1406 reply contract.
+
+Users-mode Other/Decline cases use the production gateway and REST modal path.
+Observe native callback type 9 before submitting the modal, then require the
+saved `discord.press` answer receipt and the exact answerTo/userId in history.
+The recording fixture forwards RemoteSend's fourth trusted identity argument,
+including held frames; an ingress-free inbox.list must retain that identity.

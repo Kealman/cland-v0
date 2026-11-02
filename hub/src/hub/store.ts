@@ -468,7 +468,7 @@ export class Store implements HygieneMemory {
     end;`);
     this.users = new Users(this.#db);
     this.hosts = new HostRecords(this.#db);
-    this.remotes = new RemoteState(this.#db);
+    this.remotes = new RemoteState(this.#db, this.users);
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
     this.#db.exec(SEQ_SETUP);

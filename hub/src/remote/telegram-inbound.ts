@@ -96,7 +96,7 @@ export class TelegramInbound {
     signal.addEventListener('abort', abort, { once: true });
     try {
       signal.throwIfAborted();
-      this.#send({ ...frame, id }, ingress, bytes);
+      this.#send({ ...frame, id }, { ...ingress, ...(this.#store.pairing() ? { messengerUserId: this.#store.pairing()!.userId } : {}) }, bytes, this.#store.pairing());
       const saved = await result.promise;
       if (members) this.#saveUpload(saved, ingress, members);
       stored?.();
@@ -134,7 +134,7 @@ export class TelegramInbound {
   }
 
   #paired(receipt: Receipt): boolean {
-    const current = this.#store.pairing();
+    const current = this.#store.pairingFor(receipt.chat, receipt.pairing?.userId);
     if (!current || current.chatId !== receipt.chat) return false;
     // Older receipts have only a chat id; retain their original recovery scope.
     if (receipt.pairing === undefined) return true;

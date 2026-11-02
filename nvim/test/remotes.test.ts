@@ -83,10 +83,46 @@ test('native Discord outage, recovery, pairing, voice and approval render in Neo
     assert.match(text, /via Discord.*🎤 not transcribed/);
     assert.match(text, /recording.ogg/);
     await c.input('<Esc> N');
+    await c.waitScreen(s => s.includes('Pair Discord'), 'native pairing row');
+    // The rail can clip the code beside the wide Sessions pane. Open its card.
+    await c.input('/Pair Discord<CR><Esc><CR>');
     await c.waitScreen(s => s.includes(pairing.code), 'native pair code');
     assert.match((await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)")).join('\n'), /Discord/);
-    await c.input('A');
+    await c.input('qA');
     await c.waitScreen(s => s.includes('approved once') && s.includes('via Discord'), 'native approval outcome');
     assert.match((await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)")).join('\n'), /approved once.*via Discord/);
+  });
+});
+
+test('pairing card chooses a users-mode owner with native key presses', { skip }, async t => {
+  const { tempProject, projectHub, connectUi } = await import('../../hub/test/harness.ts');
+  const { defaultConfig, renderConfig } = await import('../../hub/src/init/config.ts');
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const { testMessenger } = await import('../../hub/test/fakes/messenger.ts');
+  const { DatabaseSync } = await import('node:sqlite');
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Pairing chooser'); config.auth.mode = 'users'; config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const seed = new Store(join(root, '.cland/hub.db'));
+  seed.users.firstAdmin('Alice', [], Date.now()); seed.users.setMode('users', Date.now()); seed.close();
+  const db = new DatabaseSync(join(root, '.cland/hub.db')); t.after(() => db.close());
+  db.prepare('insert into users values (?,?,?,?,?,?)').run('bob-id', 'bob', 'Bob', 'admin', 'active', Date.now());
+  const remote = testMessenger('telegram');
+  const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote] });
+  remote.pair({ userId: '202', chatId: '202', guildId: null, name: 'Native Bob' });
+  const local = await connectUi(t, hub.discovery, 'nvim');
+  const inbox = (await local.request({ type: 'inbox.list' })).value as import('../../hub/src/protocol.ts').Inbox;
+  await t.test('rendered chooser and persisted chosen owner', async child => {
+    const c = await startClient(child, bin, root);
+    await waitInitialSnapshots(c);
+    await c.input('<Esc>');
+    await c.lua("require('cland.pairing_card').open(...)", inbox.pairings![0]);
+    await c.waitScreen(s => s.includes('Native Bob') && s.includes('1 approve pairing'), 'pairing card');
+    await c.input('1');
+    await c.waitScreen(s => s.includes('Pair with user') && s.includes('Bob (bob)'), 'user chooser');
+    await c.input('2<CR>');
+    await until(() => db.prepare('select user_id from user_remote_pairings where messenger=?').get('telegram')?.user_id === 'bob-id', { what: 'durable Neovim pairing approval', timeoutMs: 3000 });
+    assert.equal(db.prepare('select messenger_user_id from user_remote_pairings where user_id=?').get('bob-id')!.messenger_user_id, '202');
   });
 });

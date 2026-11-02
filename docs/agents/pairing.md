@@ -5,7 +5,10 @@ The hub owns waiting codes, their expiry and per-stranger reply limits in
 the trusted messenger callback and optional inbox rows. Use numeric ids as
 strings. A platform adapter validates the pairing gesture and sends its callback
 result privately; `null` is silence. A frame actor never supplies the messenger
-source. Issuing a code grants no authority.
+source. Issuing a code grants no authority. In users mode a gateway input without native
+pairing identity is refused as missing a pairing with a project user, before
+role classification. Mapped bot-authored Telegram card presses by strangers
+receive only a private refusal alert, with no hub frame or card mutation.
 
 With Telegram enabled and its token resolved, open the `t.me/<bot>` link from
 `cland remote status` and press Start in a private chat. The native client calls
@@ -35,17 +38,22 @@ by messenger; Discord pauses for `/cland pair` in the server channel and confirm
 [setup pairing regression](tests/hub-test-setup-pairing-component.test.ts.md).
 
 Approval callers resolve `InboxBoard.pairingCodes.get(id)` at the grant boundary,
-then bind the stored identity and clear that messenger's waiting codes in one
-transaction. Call `pairing.approve {messenger, code}` from a human `nvim` or `cli`
+then bind the stored identity in one transaction. Single mode clears that
+messenger's waiting codes; users mode consumes only the approved code and
+replaces only the selected user's binding. Call `pairing.approve {messenger, code}`
+in single mode or `pairing.approve {messenger, code, user}` in users mode from a human `nvim` or `cli`
 connection on the local Unix socket, or Neovim on parent-owned stdio. It returns `{pairing}` with numeric ids as
 strings and the display name. An attributed shell, other client, web connection
 or remote cannot grant access. `cland remote approve <messenger> <code>` prints the paired name and id.
-`cland remote unpair <messenger>` forgets that messenger’s binding. Remotes receive neither pairing
+`cland remote unpair <messenger>` forgets that messenger’s binding in single mode.
+In users mode both approve and unpair require `--user <name>`; unpair removes
+only that user’s binding and omission refuses with the paired user names. Remotes receive neither pairing
 rows nor their needs-you count; the web cannot grant access. Existing one-argument
 `Remote.start(send)` adapters and inbox replies without `pairings` remain valid.
 
 Both Inbox views place waiting rows in **Asks and approvals**, counted there.
-Enter on Neovim's row opens its pairing card; `1` approves, `q` or Escape closes.
+Enter on Neovim's row opens its pairing card; `1` approves directly in single mode or opens the user chooser in users mode;
+`q` or Escape closes.
 The card shows messenger, numeric user id, name, code and expiry, then the paired
 name or the hub's refusal. The web says "approve in the terminal or Neovim" and
 offers the command as selectable read-only text at desktop and phone widths,
@@ -121,7 +129,7 @@ The built-in Discord connection reads its application id when Discord is enabled
 and a token resolves. `cland remote status` exposes the bot invite with
 `scope=bot&permissions=117824`; connected requires READY and a recent heartbeat
 acknowledgement. Opening the invite does not pair a channel. Run `/cland pair` in a server text channel for a private code, then approve it
-with `cland remote approve discord <code>` on the trusted terminal or in Neovim.
+with `cland remote approve discord <code>` (add `--user <name>` in users mode) on the trusted terminal or in Neovim.
 The code and in-memory interaction token expire after 15 minutes. Approval calls
 the optional `Remote.pairingApproved(pairing)` after the transaction commits;
 Discord edits the original private reply to Approved. Telegram queues its

@@ -70,14 +70,15 @@ export class DiscordCards {
     this.#signal.addEventListener('abort', abort, { once: true });
     try {
       this.#signal.throwIfAborted();
-      this.#send!({ type, id, ...fields }, interaction ? { chatId: this.#store.pairing()!.chatId, messageId: `interaction:${interaction}` } : undefined);
+      const pairing = this.#store.pairing();
+      this.#send!({ type, id, ...fields }, interaction ? { chatId: pairing!.chatId, messageId: `interaction:${interaction}` } : undefined, undefined, pairing);
       return await pending.promise as T;
     } finally { this.#requests.delete(id); this.#signal.removeEventListener('abort', abort); }
   }
   dispatch(frame: DiscordDispatch): void {
     if (frame.t !== 'INTERACTION_CREATE' || this.#signal.aborted) return;
     if (frame.replayed) this.#replayReady = false;
-    const work = (frame.replayed ? this.#replay(frame.d) : this.#press(frame.d)).catch(() => {});
+    const work = this.#store.withPairing(this.#store.pairingFor(String(frame.d.channel_id), (frame.d.member as { user?: { id?: string } } | undefined)?.user?.id), () => (frame.replayed ? this.#replay(frame.d) : this.#press(frame.d))).catch(() => {});
     this.#work.add(work); void work.finally(() => this.#work.delete(work));
   }
   async #replay(raw: Record<string, unknown>): Promise<void> {

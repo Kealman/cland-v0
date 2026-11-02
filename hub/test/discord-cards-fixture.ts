@@ -14,17 +14,18 @@ import { FakeClock } from './fake-clock.ts';
 import { DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 
-export async function discordCardsFixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string, historyLimit?: number) {
+export async function discordCardsFixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string, historyLimit?: number, usersMode = false) {
   const clock = new FakeClock();
   const exchange = await discordExchangeOwner(t, { clock, ...(origin ? { publicOrigin: origin } : {}), ...(onCallback ? { onCallback } : {}) }).start();
   const { root } = await exchange.project();
   const tgOwner = both ? fakeTelegramFixture(t, { clock }) : undefined;
   const tg = await tgOwner?.start();
-  const config = defaultConfig('Commands fixture'); config.verification.lockPath = join(root, 'suite.lock'); config.remote.discord.enabled = true; config.remote.telegram.enabled = both; config.plan.approval = 'human'; if (origin) config.web.origin = origin;
+  const config = defaultConfig('Commands fixture'); if (usersMode) config.auth.mode = 'users'; config.verification.lockPath = join(root, 'suite.lock'); config.remote.discord.enabled = true; config.remote.telegram.enabled = both; config.plan.approval = 'human'; if (origin) config.web.origin = origin;
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const script = scripted ? remoteApprovalHarness(t, root, clock, scripted) : undefined;
   const store = new Store(join(root, '.cland/hub.db')); exchange.afterDrain(() => store.close());
+  if (usersMode) { store.users.firstAdmin('Alice', [], clock.now().getTime()); store.users.setMode('users', clock.now().getTime()); }
   const state = store.remotes.forMessenger('discord');
   state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
   const telegram = store.remotes.forMessenger('telegram');
@@ -42,9 +43,9 @@ export async function discordCardsFixture(t: TestContext, holdType?: string, pro
         ? new DiscordRemote(exchange.api, args[1], clock, { store: state, fake: true, projectName: () => projectName, ...(log ? { log } : {}), historyLimit })
         : factory(...args); if (made.id !== 'discord') return made;
       remote = made; const start = remote.start.bind(remote);
-      remote.start = (send, ...rest) => start((frame, ingress, bytes) => {
+      remote.start = (send, ...rest) => start((frame, ingress, bytes, identity) => {
         frames.push({ frame, ...(ingress ? { ingress } : {}) });
-        if (frame.type === holdType) held.push(() => send(frame, ingress, bytes)); else send(frame, ingress, bytes);
+        if (frame.type === holdType) held.push(() => send(frame, ingress, bytes, identity)); else send(frame, ingress, bytes, identity);
       }, ...rest);
       return remote;
     } });

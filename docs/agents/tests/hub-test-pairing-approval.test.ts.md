@@ -37,3 +37,12 @@ The approval notification redaction control registers a fabricated secret after
 constructing the identity: the display name reaches the adapter as redacted
 content without disabling it; a numeric-id collision refuses notification and
 disables that adapter, preserving routing authority.
+
+Users-mode coverage exercises the actual `cland remote approve --user` and
+`unpair --user` commands with sealed CLI environments. Require explicit owner
+selection, per-user replacement/removal, the optional Neovim owner list, paired
+and approving journal ids, and no code in log bytes. Native ingress plus forged
+frame user fields must still select only the stored owner; previous ingress-free
+frames are refused in users mode. Reset reads the first pairing back from the
+single table and confirms the per-user table is empty. Single-mode acceptance
+cases above keep their previous wire shape.

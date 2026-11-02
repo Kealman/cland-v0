@@ -10,7 +10,7 @@ import { frameClient, cland, connectUi, inProcessSpoke, projectHub, tempProject 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
-import type { Artifact } from '../src/protocol.ts';
+import type { Artifact, Inbox } from '../src/protocol.ts';
 
 test('users-mode human creation and upload retain creator identity in index, audit and journal; agents stay sessions', async t => {
   const root = await tempProject(t);
@@ -43,7 +43,19 @@ test('users-mode human creation and upload retain creator identity in index, aud
   const cli = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'CLI', '--content', 'cli', '--topic', 'general', '--json');
   assert.equal(cli.code, 0, cli.stderr);
   assert.equal(JSON.parse(cli.stdout).artifact.creatorUserId, userId);
-  const remoteResult = await remote.client.request({ type: 'artifact.upload', topic: 'general', files: [{ name: 'remote.txt', mime: 'text/plain', data: 'YQ==' }] });
+  const missingPairing = await remote.client.request({ type: 'artifact.upload', topic: 'general', files: [{ name: 'remote.txt', mime: 'text/plain', data: 'YQ==' }] });
+  assert.equal(missingPairing.ok, false);
+  assert.match(String(missingPairing.error), /pairing/i);
+  assert.doesNotMatch(String(missingPairing.error), /role.*unknown/i);
+  const native = { userId: '101', chatId: '101', guildId: null, name: 'Native Jane' };
+  remote.pair(native);
+  const pending = ((await ui.request({ type: 'inbox.list' })).value as Inbox).pairings![0]!;
+  const paired = await cland(root, 'remote', 'approve', 'telegram', pending.code, '--user', 'jane-doe');
+  assert.equal(paired.code, 0, paired.stderr);
+  const stored = remote.client.waitFor(frame => frame.type === 'result' && frame.id === 'paired-upload');
+  remote.upload({ type: 'artifact.upload', id: 'paired-upload', topic: 'general', creatorUserId: 'forged', files: [{ name: 'remote.txt', mime: 'text/plain' }] },
+    { chatId: native.chatId, messageId: 'upload-1', messengerUserId: native.userId }, [Buffer.from('a')]);
+  const remoteResult = await stored;
   assert.equal(remoteResult.ok, true, String(remoteResult.error));
   const remoteArtifact = (remoteResult.value as { artifacts: (Artifact & { creatorUserId?: string })[] }).artifacts[0]!;
   assert.equal(remoteArtifact.creator, 'jane-doe');

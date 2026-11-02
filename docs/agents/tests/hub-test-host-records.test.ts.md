@@ -16,3 +16,11 @@ Run this file alone with `node --test hub/test/host-records.test.ts`, after chec
 disk space, load and cover-quiet admission. It starts no browser or GUI. Socket
 fallback directories are machine runtime paths; bootstrap secrets stay in the
 scratch project. Fixtures own their writers and close them before root removal.
+
+T-1572's conflict-resolution cases open an existing SQLite file with legacy
+remote tables both with and without a hosts table. Keep users, hosts and remote
+schema owners in deterministic Store construction order before shared migrations.
+Assert legacy pairings and sentinel data survive, remote target/stop-cause columns
+are added, both project-user pairings survive reopen, and auth reset keeps the
+first user's pairing without altering host records. All data and host proof
+values are synthetic; no HostSecretStore file or SSH process is needed here.

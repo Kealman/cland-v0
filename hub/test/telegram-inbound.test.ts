@@ -942,3 +942,41 @@ test('Telegram committed album repairs every member after lost upload result wit
   assert.deepEqual(platform.requests.filter(r => r.method === 'setMessageReaction' && r.params.reaction?.[0]?.emoji === '👌').map(r => r.params.message_id), [1, 2]);
   await clean(recovered, second);
 });
+
+test('two native Telegram chats retain their paired user on messages and answers', async t => {
+  const f = await fixture(t);
+  const alice = f.store.users.firstAdmin('Alice', [], f.clock.now().getTime());
+  const bob = f.store.users.add('bob', 'Bob', [], f.clock.now().getTime());
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(join(f.root, '.cland/hub.db'));
+  try { db.prepare("update users set state='active' where id=?").run(bob.id); } finally { db.close(); }
+  f.store.users.setMode('users', f.clock.now().getTime());
+  f.state.setUserPairing(alice.id, pairing);
+  f.state.setUserPairing(bob.id, { ...pairing, userId: '202', chatId: '202' });
+  const config = defaultConfig('Native users'); config.auth.mode = 'users'; config.remote.telegram.enabled = true;
+  config.verification.lockPath = join(f.root, 'suite.lock');
+  await writeFile(join(f.root, '.cland/config.toml'), renderConfig(config));
+  const hub = await f.start({ CLAND_TELEGRAM_API_ROOT: f.fake.url });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const coord = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'coord', sessionId: 'native-users-coord', role: 'coordinator' });
+  t.after(() => coord.close()); await coord.waitForPresence(['coord']);
+  for (const [native, user] of [[101, alice], [202, bob]] as const) {
+    const ask = await coord.call<{ ask: string }>('ask', { topic: 'general', question: `For ${user.name}`, options: ['Yes'] });
+    // Native mapped card reply exercises production prompt resolution, independent of fan-out.
+    const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: f.fake.url, clock: f.clock });
+    const card = await api.sendMessage({ chat_id: String(native), text: `For ${user.name}` });
+    f.state.putMessage({ chatId: String(native), messageId: String(card.message_id), topic: 'general', message: null, ask: ask.ask, approval: null });
+    for (const [message_id, text, reply] of [[11, `Hello ${user.name}`, false], [12, '1', true]] as const) {
+      const received = f.frame(ui, frame => frame.type === 'message' && (frame.message as TopicMessage).userId === user.id
+        && (reply ? (frame.message as TopicMessage).answerTo === ask.ask : (frame.message as TopicMessage).text === text));
+      await control(f.fake.url, 'update', { message: { message_id, date: Math.floor(f.clock.now().getTime() / 1000),
+        chat: { id: native, type: 'private' }, from: { id: native, is_bot: false, first_name: user.name }, text,
+        ...(reply ? { reply_to_message: { message_id: card.message_id, date: 1, chat: { id: native, type: 'private' } } } : {}) } });
+      const frame = await f.drive(received).catch(error => { t.diagnostic(JSON.stringify({ native, reply, logs: f.logs.slice(-12), frames: ui.frames.slice(-8) })); throw error; });
+      assert.equal((frame.message as TopicMessage).from, user.name);
+      if (reply) { assert.equal((frame.message as TopicMessage).answerTo, ask.ask); assert.equal((frame.message as TopicMessage).text, '1'); }
+    }
+  }
+  await hub.stop();
+});

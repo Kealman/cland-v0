@@ -93,11 +93,11 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
       if (!update || !Number.isSafeInteger(update.update_id) || update.update_id < 0) throw new Error('Telegram returned an invalid update id');
       if (store.get(`telegram.update:${update.update_id}`) !== null) continue;
       const who = identity(update, botId);
-      const paired = store.pairing();
+      const paired = who ? store.pairingFor(who.chatId, who.userId) : store.pairing();
       const pairedInput = who && paired && who.userId === paired.userId && who.chatId === paired.chatId;
       const pairingStart = who && update.message && /^\/start(?:@[A-Za-z0-9_]+)?(?:\s|$)/.test(update.message.text ?? '');
       const press = update.callback_query;
-      const foreign = !!(who && paired && !pairedInput && press?.message?.from?.id === botId
+      const foreign = !!(who && !pairedInput && press?.message?.from?.id === botId
         && press.message.from.is_bot === true && options.foreignCard?.accepts(update));
       const accepted = pairedInput || pairingStart || foreign;
       const dedupe = who?.dedupe;
@@ -107,7 +107,7 @@ export async function pollTelegram(api: TelegramApi, clock: Clock, botId: number
         // The registry is assembled before polling starts. An unmatched kind
         // cannot become handleable by replaying it; confirm it without spinning.
         if (!handler) logUnhandledTelegramUpdate(update, options.log);
-        try { await handler?.handle(update, signal); }
+        try { await store.withPairing(paired, () => handler?.handle(update, signal)); }
         catch (error) {
           if (error instanceof TelegramError && [401, 403].includes(error.code)) throw error;
           if (signal.aborted) { if (store.status().disabled) throw error; return; }

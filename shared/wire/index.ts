@@ -279,7 +279,7 @@ export type InboxDeparture = { outcome?: AskOutcome | ApprovalOutcome; kind: Inb
 export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-stalled' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
 // hub/src/protocol.ts
-export type InboxPairing = { id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
+export type InboxPairing = { users?: Array<{ name: string; displayName: string }>; id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; pairings?: InboxPairing[]; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
 
 // hub/src/protocol.ts
@@ -919,8 +919,8 @@ export type RemoteStatusResult = { remotes: RemoteStatusRow[] };
 
 export type ClientRequest =
   | { type: 'remote.status'; id: string }
-  | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia }
-  | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
+  | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
+  | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | { type: 'auth.mode'; id: string; mode: 'users' }
   | { type: 'auth.reset'; id: string }

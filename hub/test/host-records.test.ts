@@ -93,3 +93,39 @@ for (const both of [true, false, 'root-only'] as const) test(`C3 fake registrati
   await flushProjectLogs(t, root);
   for (const path of [join(root, '.cland/log/hub.log'), join(root, '.cland/journal.jsonl')]) if (existsSync(path)) assert.equal(readFileSync(path, 'utf8').includes(secret), false);
 });
+
+for (const existingHost of [false, true]) test(`Store upgrades existing remote tables alongside host records (existing host: ${existingHost})`, async t => {
+  const root = await tempProject(t), path = join(root, 'hub.db');
+  const legacy = new DatabaseSync(path);
+  legacy.exec(`create table sentinel (value text); insert into sentinel values ('kept');
+    create table remote_pairings (messenger text primary key, user_id text not null, chat_id text not null, guild_id text, name text not null);
+    insert into remote_pairings values ('telegram','101','101',null,'Legacy Alice');
+    create table remote_status (messenger text primary key, disabled integer not null, reason text);
+    insert into remote_status values ('telegram',0,null);
+    create table remote_outbox (messenger text not null, id text not null, kind text not null, source text, state text not null,
+      payload text not null, created text not null, updated text not null, primary key(messenger,id));`);
+  if (existingHost) {
+    legacy.exec(`create table hosts (id text primary key, transport text not null, address text not null, user text not null, state text not null, secret_digest text not null)`);
+    legacy.prepare('insert into hosts values (?,?,?,?,?,?)').run('f1', 'ssh', 'f1', 'agent', 'registered', createHash('sha256').update('synthetic-host-proof').digest('hex'));
+  }
+  legacy.close();
+  let store = new Store(path); t.after(() => store.close());
+  if (!existingHost) store.hosts.insert(input('f1'), 'synthetic-host-proof');
+  const alice = store.users.firstAdmin('Alice', [], 1), bob = store.users.add('bob', 'Bob', [], 2);
+  store.users.setMode('users', 3);
+  const remote = store.remotes.forMessenger('telegram');
+  assert.equal(remote.userPairing(alice.id)?.chatId, '101');
+  remote.setUserPairing(bob.id, { userId: '202', chatId: '202', guildId: null, name: 'Bob' });
+  store.close(); store = new Store(path);
+  assert.equal(store.hosts.matches('f1', 'synthetic-host-proof'), true);
+  assert.equal(store.remotes.forMessenger('telegram').userPairing(bob.id)?.chatId, '202');
+  store.users.reset(4);
+  assert.equal(store.remotes.forMessenger('telegram').pairing()?.chatId, '101');
+  assert.equal(store.remotes.forMessenger('telegram').userPairing(bob.id), null);
+  assert.equal(store.hosts.matches('f1', 'synthetic-host-proof'), true, 'user reset preserves host records');
+  const db = new DatabaseSync(path); t.after(() => db.close());
+  assert.equal(db.prepare('select value from sentinel').get()!.value, 'kept');
+  assert.ok(db.prepare('pragma table_info(remote_outbox)').all().some(row => row.name === 'target'));
+  assert.ok(db.prepare('pragma table_info(remote_status)').all().some(row => row.name === 'stop_cause'));
+  assert.deepEqual(db.prepare('select user_id,chat_id,name from remote_pairings').all().map(row => ({ ...row })), [{ user_id: '101', chat_id: '101', name: 'Legacy Alice' }]);
+});

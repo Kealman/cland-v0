@@ -271,3 +271,40 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Discord media ${mode} 
   const receipts = owner.receipts(); assert.equal(receipts.closed, true); assert.equal(receipts.handlers, 0); assert.equal(receipts.observers, 0);
   await project.remove(); await assert.rejects(access(project.root), { code: 'ENOENT' });
 });
+
+for (const reassigned of [false, true]) test(`Discord held CDN input retains its admitted project owner (reassigned: ${reassigned})`, async t => {
+  const { discordExchangeOwner } = await import('./fakes/discord/exchange.ts');
+  const { DatabaseSync } = await import('node:sqlite');
+  const owner = discordExchangeOwner(t), { root } = await owner.project();
+  const exchange = await owner.start(), fake = exchange.fake;
+  // Native startup is bounded independently of the held-input/fresh-cursor assertion.
+  const startup = pacingOwner(t, { setupTimeoutMs: 3000 }); exchange.stop(startup.dispose);
+  const config = defaultConfig('Users held media'); config.auth.mode = 'users'; config.remote.discord.enabled = true;
+  config.verification.lockPath = join(root, 'suite.lock');
+  await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const store = new Store(join(root, '.cland/hub.db')); exchange.afterDrain(() => store.close());
+  const alice = store.users.firstAdmin('Alice', [], Date.now()), bob = store.users.add('bob', 'Bob', [], Date.now());
+  const db = new DatabaseSync(join(root, '.cland/hub.db')); exchange.afterDrain(() => db.close());
+  db.prepare("update users set state='active' where id=?").run(bob.id); store.users.setMode('users', Date.now());
+  const state = store.remotes.forMessenger('discord'), identity = { userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Native human' };
+  state.setUserPairing(alice.id, identity);
+  const hub = await startup.start(root, { CLAND_DISCORD_API_ROOT: fake.url }, realClock, { hubOptions: { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } } });
+  const ui = await connectUi(t, hub.discovery);
+  await fake.control('cdn', { id: 'held-owner', content: Buffer.from('old owner bytes').toString('base64'), hold: true });
+  const held = exchange.run(signal => fake.waitForHold(signal)); void held.catch(() => {});
+  const message = { id: '90071992547429000', channel_id: ids.channel, author: { id: ids.human }, type: 0, content: 'Old admitted media',
+    attachments: [{ id: 'held-owner', filename: 'old.txt', size: 15, url: `${fake.url}/cdn/held-owner` }] };
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: message }); await held;
+  if (reassigned) { state.removeUserPairing(alice.id); state.setUserPairing(bob.id, identity); }
+  await fake.control('release', {});
+  // The native inbound FIFO's later durable cursor proves the held writer completed.
+  const fresh = { ...message, id: '90071992547429001', content: 'Fresh owner media', attachments: [{ ...message.attachments[0], url: `${fake.url}/cdn/fresh-owner` }] };
+  await fake.control('cdn', { id: 'fresh-owner', content: Buffer.from('new owner bytes').toString('base64') });
+  await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: fresh });
+  await until(() => state.get('discord.lastMessageId') === fresh.id, { what: 'fresh owner media durable completion after held input', timeoutMs: 3000 });
+  const history = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
+  assert.deepEqual(history.map(message => [message.text, message.userId]), reassigned
+    ? [['Fresh owner media', bob.id]] : [['Old admitted media', alice.id], ['Fresh owner media', alice.id]]);
+  assert.deepEqual(await readFile(history.at(-1)!.artifacts![0]!.path), Buffer.from('new owner bytes'));
+  await hub.stop(); await exchange.close();
+});

@@ -30,13 +30,13 @@ function M.open(row)
   vim.wo[win].wrap = true
   local function close() if api.nvim_win_is_valid(win) then api.nvim_win_close(win, true) end end
   local pending = false
-  local function approve()
+  local function approve(user)
     if pending then return end
     local client = require('cland.views').client
     if not (client and client:connected()) then draw('the hub is not connected'); return end
     pending = true
     draw('approving…')
-    client:request({ type = 'pairing.approve', messenger = row.messenger, code = row.code }, function(err, value)
+    client:request({ type = 'pairing.approve', messenger = row.messenger, code = row.code, user = user }, function(err, value)
       pending = false
       if err then
         local text = 'not paired: ' .. tostring(err)
@@ -49,7 +49,13 @@ function M.open(row)
     end)
   end
   local actions = require('cland.actions')
-  actions.map('n', '1', approve, { buffer = buf, nowait = true, silent = true })
+  actions.map('n', '1', function()
+    if row.users then
+      vim.ui.select(row.users, { prompt = 'Pair with user', format_item = function(user) return user.displayName .. ' (' .. user.name .. ')' end }, function(user)
+        if user then approve(user.name) end
+      end)
+    else approve() end
+  end, { buffer = buf, nowait = true, silent = true })
   for _, key in ipairs({ 'q', '<Esc>' }) do actions.map('n', key, close, { buffer = buf, nowait = true, silent = true }) end
 end
 

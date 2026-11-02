@@ -12,3 +12,9 @@ placement, using immutable creatorKind with the legacy creator fallback. Remotes
 routing supplies its user. No new path or byte ownership behavior is introduced.
 Run artifact-host.test.ts, artifacts.test.ts and artifact-upload.test.ts unedited
 as preservation checks, one file at a time.
+
+T-1572 migrates T-1563's users-mode messenger case to pair its native identity
+through the scratch CLI approval flow and upload with native ingress/bytes.
+Keep every existing creator/index/audit/journal and agent assertion. An upload
+without native pairing identity must first receive the explicit missing-pairing
+refusal; frame creator/user fields supply no authority.

@@ -59,12 +59,12 @@ export class DiscordInbound {
   dispatch(frame: DiscordDispatch): void {
     if (frame.t !== 'MESSAGE_CREATE') return;
     const m = frame.d; const author = m.author as { id?: string; bot?: boolean } | undefined;
-    const paired = this.#store.pairing();
+    const paired = typeof m.channel_id === 'string' ? this.#store.pairingFor(m.channel_id, author?.id) : null;
     if (!paired || m.channel_id !== paired.chatId || author?.id !== paired.userId || author.bot
       || m.webhook_id !== undefined || (m.type !== 0 && m.type !== 19)
       || typeof m.id !== 'string' || !/^\d+$/.test(m.id) || typeof m.content !== 'string' || (!m.content.trim() && !(Array.isArray(m.attachments) && m.attachments.length))) return;
     const messageId = m.id, content = m.content, channel = paired.chatId;
-    const run = async () => {
+    const run = () => this.#store.withPairing(paired, async () => {
       this.#signal.throwIfAborted();
       if (this.#store.pairing()?.chatId !== channel || this.#store.pairing()?.userId !== paired.userId) return;
       if (this.#store.get(`discord.inbound:${messageId}`)) { this.#confirmCursor(messageId); return; }
@@ -86,18 +86,19 @@ export class DiscordInbound {
         const reference = m.type === 19 ? (m.message_reference as { message_id?: string } | undefined)?.message_id : undefined;
         const reply = reference && m.referenced_message !== null ? this.#store.message(channel, reference) : null;
         const noticeReference = reply?.message ? this.#store.get(`discord.notice-reference:${reply.message}`) : null;
-        this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general', ...(reply?.message && !noticeReference ? { replyTo: reply.message } : {}), kind: 'message', text: noticeReference ? `${noticeReference} ${content}` : content }, { chatId: channel, messageId });
+        this.#send({ type: 'topic.send', id, topic: reply?.topic ?? 'general', ...(reply?.message && !noticeReference ? { replyTo: reply.message } : {}), kind: 'message', text: noticeReference ? `${noticeReference} ${content}` : content }, { chatId: channel, messageId, messengerUserId: paired.userId });
         await completion.promise;
         await this.#flush(messageId);
       } finally { this.#pending.delete(id); this.#signal.removeEventListener('abort', abort); }
-    };
+    });
     if (this.#collecting) this.#collecting.push(run);
     else this.#tail = this.#tail.catch(() => {}).then(run);
     void this.#tail.catch(() => {}); // Native/result failures carry no arbitrary platform data into logs.
   }
   #paired(channel: string, user: string): boolean { const pair = this.#store.pairing(); return pair?.chatId === channel && pair.userId === user; }
   async #handleMedia(m: Record<string, unknown>, channel: string, user: string, late?: string): Promise<void> {
-    const media = this.#media!, message = m.id as string, ingress = { chatId: channel, messageId: message };
+    const admittedPairing = this.#store.pairing();
+    const media = this.#media!, message = m.id as string, ingress = { chatId: channel, messageId: message, messengerUserId: user };
     const files = m.attachments as Attachment[], limit = (media.maxUploadMb?.() ?? 50) * 1024 * 1024;
     const voice = Number(m.flags) & 8192 && files.length === 1 && (!files[0]!.content_type || files[0]!.content_type.startsWith('audio/'));
     const say = (line: string) => this.#say(channel, user, message, line);
@@ -151,7 +152,7 @@ export class DiscordInbound {
       this.#signal.addEventListener('abort', abort, { once: true });
       try {
         this.#send(answering ? { type: 'topic.answer', id, ask: reply!.ask, ...answerFields }
-          : { type: 'artifact.upload', id, topic: 'general', caption, files: descriptions }, ingress, answering ? undefined : bytes);
+          : { type: 'artifact.upload', id, topic: 'general', caption, files: descriptions }, ingress, answering ? undefined : bytes, admittedPairing);
         return await completion.promise;
       } finally { this.#pending.delete(id); this.#signal.removeEventListener('abort', abort); }
     };
@@ -240,12 +241,12 @@ export class DiscordInbound {
     if (this.#feedback) { this.#feedback.add(message); return; }
     const value = this.#store.get(`discord.inbound:${message}`);
     if (!value || value === '1') return;
-    const receipt = JSON.parse(value) as Receipt, pair = this.#store.pairing();
+    const receipt = JSON.parse(value) as Receipt, pair = this.#store.pairingFor(receipt.channel, receipt.user);
     if (pair?.chatId !== receipt.channel || pair.userId !== receipt.user) return;
     await this.#outbox?.react(receipt.channel, message, '👌', receipt.user);
     // Delivery may arrive during the first HTTP exchange.
     const current = JSON.parse(this.#store.get(`discord.inbound:${message}`)!) as Receipt;
-    const pairing = this.#store.pairing();
+    const pairing = this.#store.pairingFor(receipt.channel, receipt.user);
     if (pairing?.chatId !== receipt.channel || pairing.userId !== receipt.user) return;
     if (current.delivered) await this.#outbox?.react(receipt.channel, message, '👀', receipt.user);
   }

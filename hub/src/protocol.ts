@@ -262,7 +262,7 @@ export type InboxDeparture = { outcome?: AskOutcome | ApprovalOutcome; kind: Inb
 
 export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-stalled' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
-export type InboxPairing = { id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
+export type InboxPairing = { users?: Array<{ name: string; displayName: string }>; id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
 /** Pairings is additive: older hubs omit it. Waiting remains topic metadata for older clients. */
 export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; pairings?: InboxPairing[]; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
 
@@ -703,8 +703,8 @@ export type RemoteStatusResult = { remotes: RemoteStatusRow[] };
 
 export type ClientRequest =
   | { type: 'remote.status'; id: string }
-  | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia }
-  | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string }
+  | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
+  | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | { type: 'auth.mode'; id: string; mode: 'users' }
   | { type: 'auth.reset'; id: string }
@@ -1114,9 +1114,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return f.qr === undefined || typeof f.qr === 'boolean';
     case 'remote.test':
     case 'remote.unpair':
-      return f.messenger === 'telegram' || f.messenger === 'discord';
+      return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
     case 'pairing.approve':
-      return (f.messenger === 'telegram' || f.messenger === 'discord') && typeof f.code === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(f.code);
+      return (f.messenger === 'telegram' || f.messenger === 'discord') && typeof f.code === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(f.code) && (f.user === undefined || typeof f.user === 'string');
     case 'remote.status':
     case 'web.session':
     case 'web.sessions':

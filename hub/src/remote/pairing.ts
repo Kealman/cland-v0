@@ -50,8 +50,9 @@ export class PairingCodes {
         if (Date.parse(request.expires) <= now) {
           remote.removeRequest(request.code); removed = true; continue;
         }
+        const users = this.#state.pairingUsers();
         const label = messenger === 'telegram' ? 'Telegram' : 'Discord';
-        rows.push({ ...request, id: `pairing:${messenger}:${request.code}`, messenger,
+        rows.push({ ...request, ...(users ? { users } : {}), id: `pairing:${messenger}:${request.code}`, messenger,
           text: `Pair ${label} user ${request.userId} (${request.name})? code ${request.code}`,
           command: `cland remote approve ${messenger} ${request.code}`, since: request.created, layer: 'now' });
       }

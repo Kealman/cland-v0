@@ -198,3 +198,10 @@ reply, no artifact and subsequent text in General. Advance the injected retry
 clock only after the persisted failure count, then wait for durable completion.
 The transient cases assert the log's static TelegramError class and numeric 500
 code; echoed synthetic token faults pass the existing positive-control sink scan.
+
+Users-mode native coverage seeds two users and per-user pairings in the scratch
+hub, then injects real Telegram update shapes through the fake Bot API. Create
+the reply card natively before recording its map so fake outcome edits can find
+it. Observe subscribed message identities for both chats and both ask answers;
+use the shared fake clock and durable pacing driver, with no outbound fan-out
+assumption. This is an input attribution case, not a broadcast delivery test.

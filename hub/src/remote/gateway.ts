@@ -10,8 +10,8 @@ import { gatewayInbox } from './authority.ts';
 import { createHash } from 'node:crypto';
 
 /** Trusted native identity, carried separately from the frame and scoped by messenger. */
-export type RemoteIngress = { chatId: string; messageId: string };
-export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress, bytes?: readonly Buffer[]) => void;
+export type RemoteIngress = { chatId: string; messageId: string; messengerUserId?: string };
+export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress, bytes?: readonly Buffer[], identity?: Pairing | null) => void;
 export type RemoteBatch = (write: () => void) => void;
 export type RemoteReceipt = (ingress: RemoteIngress) => TopicMessage | null;
 
@@ -47,6 +47,7 @@ export type { RemoteStatus } from './state.ts';
 import type { RemoteStatus } from './state.ts';
 export type RemoteStates = {
   forMessenger: (id: string) => {
+    pairingFor?: (chatId: string, messengerUserId?: string) => Pairing | null;
     status: () => RemoteStatus;
     setStatus: (status: RemoteStatus) => void;
   };
@@ -123,15 +124,18 @@ export class Gateway {
       if (remote.subscribe) this.#unsubscribers.push(remote.subscribe(this.#changed));
       this.#state.forMessenger(remote.id).setStatus({ disabled: false, reason: null });
       try {
-        await remote.start((frame, ingress, bytes) => {
+        await remote.start((frame, ingress, bytes, identity) => {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
           const id = `gateway-${++this.#nextId}`;
           this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
           const messageId = ingress ? inputId(remote.via, ingress) : undefined;
+          const paired = identity === null ? null : identity || ingress
+            ? this.#state.forMessenger(remote.via).pairingFor?.(identity?.chatId ?? ingress!.chatId, identity?.userId ?? ingress?.messengerUserId) : null;
+          const userId = identity?.clandUserId && paired?.clandUserId !== identity.clandUserId ? undefined : paired?.clandUserId;
           try {
             const metadata = bytes && frame.type === 'artifact.upload' && Array.isArray(frame.files)
               ? { ...frame, files: frame.files.map(file => { const { data, ...rest } = file as Record<string, unknown>; return rest; }) } : frame;
-            this.#conversation!.receive(JSON.stringify(this.#output({ ...metadata, id })), remote.via, messageId, bytes);
+            this.#conversation!.receive(JSON.stringify(this.#output({ ...metadata, id })), remote.via, messageId, bytes, userId);
           }
           catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
         }, this.#pairing ? identity => {

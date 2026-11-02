@@ -1,3 +1,5 @@
+import type { Users } from '../hub/users.ts';
+import { userAuthorityRefusal } from '../hub/web-authority.ts';
 import type { ClientRequest, HubFrame, Inbox } from '../protocol.ts';
 import type { TaskRequest } from '../tracker/requests.ts';
 import type { SessionRequest } from '../adapters/requests.ts';
@@ -50,4 +52,15 @@ export function gatewayAuthorityRefusal(frame: Record<string, unknown>, topicOf:
     code: 'forbidden', permission: String(frame.type), role: 'human', reason,
     error: `${String(frame.type)} refused by the gateway: ${reason}`,
   };
+}
+
+/** Native pairing identity is required before classifying the user's role. */
+export function gatewayUserRefusal(users: Users, userId: string | undefined, frame: Record<string, unknown>): Extract<HubFrame, { ok: false }> | null {
+  if (users.mode() === 'users' && !userId) return {
+    type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
+    code: 'forbidden', permission: String(frame.type),
+    reason: 'no pairing identity supplied by the messenger',
+    error: 'Remote input requires a pairing with a project user',
+  };
+  return userAuthorityRefusal(users, userId, frame);
 }

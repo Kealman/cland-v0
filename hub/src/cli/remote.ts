@@ -11,7 +11,7 @@ import type { RemoteStatusResult } from '../protocol.ts';
 import { remoteStopDetails } from '../remote/notices.ts';
 
 export async function runRemote(args: string[], cwd = process.cwd()): Promise<number> {
-  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' } } });
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' }, user: { type: 'string' } } });
   const [sub, messenger, code] = positionals;
   const knownMessenger = messenger === 'telegram' || messenger === 'discord';
   const valid = sub === 'status' && positionals.length === 1
@@ -22,8 +22,8 @@ export async function runRemote(args: string[], cwd = process.cwd()): Promise<nu
   const discovery = readDiscovery(hubDiscovery(cwd));
   if (!discovery) throw new Error('no hub runs for this project — run cland hub start');
   const frame = sub === 'status' ? { type: 'remote.status' }
-    : sub === 'approve' ? { type: 'pairing.approve', messenger, code }
-    : { type: `remote.${sub}`, messenger };
+    : sub === 'approve' ? { type: 'pairing.approve', messenger, code, ...(values.user ? { user: values.user } : {}) }
+    : { type: `remote.${sub}`, messenger, ...(values.user ? { user: values.user } : {}) };
   const value = await askHubFrame(discovery, frame);
   let text: string;
   if (sub === 'status') text = (value as RemoteStatusResult).remotes.map(row => {

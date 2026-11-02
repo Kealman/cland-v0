@@ -547,6 +547,27 @@ defines the progress window, projection ceiling and cleanup receipts.
 
 For missing droplet browser libraries, report to the item's lead: the human or Coordinator rebuilds the prepared snapshot after restarting the hub onto the provisioning change. See `docs/agents/tests.md#web-phase` for the root provisioning and lockfile-key boundary.
 
+In users mode, local admins approve a remote code with
+`cland remote approve <messenger> <code> --user <name>`; Neovim's pairing card
+asks for the user. Omitting the selector is refused. `user_remote_pairings`
+stores the project `user_id` separately from `messenger_user_id`. A replacement
+changes only that user's messenger binding. Existing single-mode rows remain in
+`remote_pairings`; on entering users mode their ownership expands to the first
+user without changing those rows. Input identity comes from the native pairing,
+never from frame fields, and passes the shared user-role check as well as the
+gateway's existing transport restrictions. Missing native pairing identity is
+refused as a missing pairing before the role check in users mode. Stranger
+presses on mapped bot-authored Telegram cards receive only a private alert,
+without a paired sender or a hub request. The pairing journal event records
+`userId` and `approvingUserId`, never the code.
+
+`cland remote unpair <messenger> --user <name>` removes only that user's binding
+in users mode. Without the selector it lists paired users and refuses; a session
+shell cannot manage pairings. Single mode keeps its existing command behavior.
+Auth reset keeps the first user's current binding for each messenger and revokes
+the others in the same reset transaction. Outbound publication currently uses
+the first user's destination; fan-out is a separate stage.
+
 In users mode ordinary queued messages can be withdrawn only by their persisted
 user id's author. The authenticated connection supplies the caller id; names and
 `userDisplayName` never grant ownership. Legacy null-user messages retain the

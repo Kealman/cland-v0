@@ -83,3 +83,9 @@ redacted error. A synthetic registered credential must be absent from both the
 state sink and hub log; retain a readable reason and matching log/state values.
 T-1326's sink is intentionally independent of the hub.db table wiring owned by
 T-1323; its evidence proves the injected storage boundary.
+
+Users-mode native admission checks for missing pairing identity before using
+`userAuthorityRefusal` for the resolved user. The refusal names the missing
+pairing rather than an unknown role. Existing gateway transport refusals keep
+priority and their shape; valid paired inputs continue through the single shared
+role seam. `artifact-user.test.ts` keeps the end-to-end missing-pairing control.

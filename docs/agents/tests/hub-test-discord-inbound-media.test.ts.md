@@ -48,3 +48,13 @@ and aborted serving-receipt controls exercise that same startup owner, hold its
 drain boundary, assert the Store/root remain available, then release drainage and
 observe stopped hub, closed fake server, zero pending observations and root removal.
 The emergency hold releaser is registered before acquisition as well.
+
+Users-mode ownership regression holds the native CDN response after Alice's
+admission, reassigns the same messenger identity to Bob, then releases it. The
+later fresh input's durable cursor is the bounded completion receipt for the
+serial inbound writer. Assert the complete history and original uploaded bytes:
+old input never acquires Bob's user id, while fresh Bob input succeeds. Keep the
+unchanged-owner control. Register the exchange/startup owner before native work,
+and drain the hub and fake before closing either Store or scratch root. Native
+startup has its own 3 s acquisition bound; the later durable-input receipt has
+a separate 3 s bound.

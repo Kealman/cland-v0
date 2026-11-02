@@ -7,7 +7,7 @@ import { dependencyInstallText } from '../dependency-install.ts';
 import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { userAuthorityRefusal, webAuthorityRefusal } from './web-authority.ts';
-import { gatewayAuthorityRefusal, gatewayInbox } from '../remote/authority.ts';
+import { gatewayAuthorityRefusal, gatewayUserRefusal, gatewayInbox } from '../remote/authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
 import { InvalidArgument, validateToolFrame } from '../tool-arguments.ts';
@@ -142,7 +142,7 @@ export type Conversation = {
   /** Trusted gateway only: synchronous frame work; never accepts an async callback. */
   commitBatch?: (write: () => void) => void;
   /** One frame; only the in-process gateway supplies trusted messenger provenance. */
-  receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]) => void;
+  receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string) => void;
   /** Native gateway recovery only; not an action in the frame protocol. */
   messageReceipt?: (messageId: string, via?: import('../protocol.ts').RemoteVia) => import('../protocol.ts').TopicMessage | null;
   /** Join native upload writers and rollback after closing admission. */
@@ -1095,8 +1095,9 @@ export class Dispatcher {
       if (core.store.users.mode() !== 'users') return null;
       const name = frame && (transport.edge === 'socket' || transport.edge === 'stdio') ? localUserName(frame) : undefined;
       const admitted = frame && admittedUsers.get(frame);
-      const user = transport.edge === 'web' ? transport.user?.() : admitted ? core.store.users.get(admitted) : name !== undefined ? core.store.users.byName(name) : core.store.users.first();
+      const user = transport.edge === 'web' ? transport.user?.() : admitted ? core.store.users.get(admitted) : transport.edge === 'gateway' && frame && frame.type !== 'hello' ? null : name !== undefined ? core.store.users.byName(name) : core.store.users.first();
       if (name !== undefined && (!user || user.state !== 'active')) throw new Error(`cannot act as user ${JSON.stringify(name)}: user is unknown or not active`);
+      if (!user && transport.edge === 'gateway') return null;
       if (!user || user.state !== 'active') throw new Error('human connection requires an active user');
       if (frame) admittedUsers.set(frame, user.id);
       return user;
@@ -1792,7 +1793,8 @@ export class Dispatcher {
             return answer(core.withdrawHumanMessage(frame.topic, frame.message, humanUser(frame)?.id));
           }
           case 'artifact.upload': {
-            const pairing = via ? core.store.remotes.forMessenger(via).pairing() : null;
+            const pairedUser = humanUser(frame);
+            const pairing = via ? pairedUser ? core.store.remotes.forMessenger(via).userPairing(pairedUser.id) : core.store.remotes.forMessenger(via).pairing() : null;
             const resumed = this.#guard.resumer(frame.type, client);
             const root = this.#options.control?.status().root;
             if (!root) throw new Error('this hub serves no project for artifacts');
@@ -1801,11 +1803,12 @@ export class Dispatcher {
               transport.authorizeUpload?.();
               if (this.#asSession(frame)) throw new ToolForbidden(null, frame.type, 'only the human may upload artifacts');
               if (transport.edge === 'gateway') {
-                const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
+                const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null)
+                  ?? gatewayUserRefusal(core.store.users, humanUser(frame)?.id, frame);
                 if (refusal) throw new ToolForbidden('human', frame.type, refusal.reason ?? 'gateway refusal');
               }
               if (via && pairing) {
-                const current = core.store.remotes.forMessenger(via).pairing();
+                const current = pairedUser ? core.store.remotes.forMessenger(via).userPairing(pairedUser.id) : core.store.remotes.forMessenger(via).pairing();
                 if (!current || current.chatId !== pairing.chatId || current.userId !== pairing.userId || current.guildId !== pairing.guildId)
                   throw new ToolForbidden('human', frame.type, 'remote pairing changed during upload');
               }
@@ -1925,6 +1928,8 @@ export class Dispatcher {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
             if (!local || Object.hasOwn(frame, 'as')) throw new Error('remote management requires the human CLI or Neovim on a local connection');
+            const roleRefusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
+            if (roleRefusal) return peer.send(roleRefusal);
             if (frame.type === 'remote.test') {
               if (!this.#options.control?.remoteTest) throw new Error('messenger test is unavailable');
               const pairing = core.store.remotes.forMessenger(frame.messenger).pairing();
@@ -1934,7 +1939,16 @@ export class Dispatcher {
                 error => resumed(() => Dispatcher.#failure(frame.id, error))));
             }
             if (frame.type === 'remote.unpair') {
-              core.store.remotes.forMessenger(frame.messenger).setPairing(null);
+              const remote = core.store.remotes.forMessenger(frame.messenger);
+              if (core.store.users.mode() === 'users') {
+                if (!frame.user) {
+                  const names = remote.userPairings().map(pair => core.store.users.get(pair.clandUserId!)?.name ?? '?');
+                  throw new Error(`users mode unpair requires --user <name>; paired users: ${names.join(', ') || 'none'}`);
+                }
+                const user = core.store.users.byName(frame.user);
+                if (!user) throw new Error('unknown pairing user');
+                remote.removeUserPairing(user.id);
+              } else remote.setPairing(null);
               return answer({ messenger: frame.messenger, unpaired: true });
             }
             if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
@@ -1945,17 +1959,26 @@ export class Dispatcher {
               || transport.edge === 'stdio' && client === 'nvim';
             if (!local || Object.hasOwn(frame, 'as'))
               throw new Error('pairing approval requires the human CLI or Neovim on a local connection');
+            const roleRefusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
+            if (roleRefusal) return peer.send(roleRefusal);
             const row = core.inbox.pairingCodes.get(`pairing:${frame.messenger}:${frame.code}`);
             if (!row) throw new Error('no live pairing code for this messenger');
             const pairing = { userId: row.userId, chatId: row.chatId, guildId: row.guildId, name: row.name };
             const remote = core.store.remotes.forMessenger(frame.messenger);
-            const previous = remote.pairing();
+            const usersMode = core.store.users.mode() === 'users';
+            if (usersMode && !frame.user) throw new Error('users mode pairing approval requires --user <name>');
+            const pairedUser = usersMode ? core.store.users.byName(frame.user!) : null;
+            if (usersMode && !pairedUser) throw new Error('unknown pairing user');
+            const previous = pairedUser ? remote.userPairing(pairedUser.id) : remote.pairing();
             core.store.transaction(() => {
-              remote.setPairing(pairing);
+              if (pairedUser) remote.setUserPairing(pairedUser.id, pairing);
+              else remote.setPairing(pairing);
               remote.set('mute', String(this.#options.control?.remoteMuteDefault?.() ?? false));
               remote.set('mute.missed', '0');
-              core.inbox.pairingCodes.clear(frame.messenger);
+              if (pairedUser) remote.removeRequest(frame.code);
+              else core.inbox.pairingCodes.clear(frame.messenger);
             });
+            log({ event: 'pairing-approved', messenger: frame.messenger, userId: pairedUser?.id ?? null, approvingUserId: humanUser(frame)?.id ?? null });
             this.#options.control?.pairingApproved?.(frame.messenger, pairing);
             if (previous) this.#options.control?.pairingReplaced?.(frame.messenger, previous);
             return answer({ pairing });
@@ -2201,7 +2224,8 @@ export class Dispatcher {
       return again !== null;
     };
 
-    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]): void => {
+    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string): void => {
+        if (userId) admittedUsers.set(frame, userId);
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
           if (!peer.isOpen() || connection === null || !core.isCurrent(connection)) {
@@ -2230,7 +2254,8 @@ export class Dispatcher {
           return spokeRequest(frame, connection.name);
         }
         if (transport.edge === 'gateway') {
-          const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null);
+          const refusal = gatewayAuthorityRefusal(frame, id => core.store.message(id)?.topic ?? null)
+            ?? gatewayUserRefusal(core.store.users, userId, frame);
           if (refusal) {
             audit(frame.id, { ...humanAudit(frame), tool: String(frame.type), args: summarize(frame), client });
             return peer.send(refusal);
@@ -2564,7 +2589,7 @@ export class Dispatcher {
         const stage = core.store.stage(messageId);
         return message?.topic ? { ...message, topic: message.topic, seq: core.store.messageSeq(messageId), ...(stage ? { stage } : {}) } : null;
       } } : {}),
-      receive: (raw, via, messageId, bytes) => {
+      receive: (raw, via, messageId, bytes, userId) => {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
@@ -2578,7 +2603,7 @@ export class Dispatcher {
         }
         // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
         this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame,
-          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined, bytes));
+          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined, bytes, transport.edge === 'gateway' ? userId : undefined));
       },
       drainUploads: async () => { await Promise.allSettled([...uploads]); },
       closed: () => {

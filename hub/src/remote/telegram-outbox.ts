@@ -208,7 +208,7 @@ export class TelegramOutbox {
         admit: job => {
           const intent = payload(job)!;
           if (this.#memory || intent.admission === 'pairing' || intent.admission === 'old-chat') return true;
-          const paired = this.#store.pairing();
+          const paired = this.#store.pairingFor(String(intent.params.chat_id), intent.userId ?? undefined);
           return !!paired && paired.chatId === String(intent.params.chat_id)
             && (intent.userId === undefined || intent.userId === paired.userId);
         },

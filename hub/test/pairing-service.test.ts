@@ -56,3 +56,43 @@ for (const ordinary of [false, true]) test(`remote needs-you excludes pairing wh
     assert.deepEqual(core.inbox.list().pairings, []);
   } finally { core.close(); core.store.close(); }
 });
+
+
+test('users pairings replace only their owner and reset retains the first user without touching single rows', t => {
+  const store = new Store(); t.after(() => store.close());
+  const first = store.users.firstAdmin('Alice', [], 1);
+  const second = store.users.add('bob', 'Bob', [], 2);
+  const remote = store.remotes.forMessenger('telegram');
+  const legacy = { userId: '1', chatId: '1', guildId: null, name: 'Legacy' };
+  remote.setPairing(legacy);
+  store.users.setMode('users', 3);
+  assert.equal(remote.pairingFor('1', '1')?.clandUserId, first.id, 'legacy single pairing expands to first user');
+  remote.setUserPairing(first.id, { ...legacy, userId: '2', chatId: '2' });
+  remote.setUserPairing(second.id, { ...legacy, userId: '3', chatId: '3' });
+  remote.setUserPairing(second.id, { ...legacy, userId: '4', chatId: '4' });
+  assert.equal(remote.userPairing(first.id)?.chatId, '2');
+  assert.equal(remote.pairingFor('3', '3'), null);
+  assert.equal(remote.pairingFor('4', '4')?.clandUserId, second.id);
+  store.users.reset(4);
+  assert.equal(remote.pairing()?.chatId, '2');
+  assert.equal(remote.userPairing(second.id), null);
+});
+
+
+test('captured pairing cannot acquire a new owner and unpair cannot resurrect inherited bindings', t => {
+  const store = new Store(); t.after(() => store.close());
+  const first = store.users.firstAdmin('Alice', [], 1), second = store.users.add('bob', 'Bob', [], 2);
+  const remote = store.remotes.forMessenger('telegram');
+  remote.setPairing({ userId: '101', chatId: '101', guildId: null, name: 'Alice native' });
+  store.users.setMode('users', 3);
+  const admitted = remote.userPairing(first.id)!;
+  remote.withPairing(admitted, () => {
+    assert.equal(remote.pairing()?.clandUserId, first.id);
+    remote.removeUserPairing(first.id);
+    remote.setUserPairing(second.id, admitted);
+    assert.equal(remote.pairing(), null, 'same native chat now has a different durable owner');
+  });
+  assert.equal(remote.userPairing(first.id), null);
+  store.users.reset(4);
+  assert.equal(remote.pairing(), null, 'reset must not resurrect the first user old single-mode row');
+});

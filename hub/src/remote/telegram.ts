@@ -222,7 +222,7 @@ export class TelegramRemote implements Remote {
     this.#abort.signal.addEventListener('abort', abort, { once: true });
     try {
       this.#abort.signal.throwIfAborted();
-      this.#sendFrame!({ ...fields, type, id }, ingress);
+      this.#sendFrame!({ ...fields, type, id }, ingress, undefined, this.#polling?.store.pairing());
       return await reply.promise as T;
     } finally {
       this.#pending.delete(id);

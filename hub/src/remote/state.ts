@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import type { Users } from '../hub/users.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import type { RemoteStopCause } from '../protocol.ts';
 
@@ -14,6 +16,11 @@ create table if not exists remote_status (
 create table if not exists remote_pairings (
   messenger text primary key, user_id text not null, chat_id text not null,
   guild_id text, name text not null
+);
+create table if not exists user_remote_pairings (
+  messenger text not null, user_id text not null, messenger_user_id text not null,
+  chat_id text not null, guild_id text, name text not null,
+  primary key (messenger, user_id), unique (messenger, messenger_user_id, chat_id)
 );
 create table if not exists remote_requests (
   messenger text not null, code text not null, user_id text not null, chat_id text not null,
@@ -50,7 +57,7 @@ create table if not exists remote_poller_lease (
 `;
 
 export type RemoteStatus = { disabled: boolean; reason: string | null; stopCause?: RemoteStopCause };
-export type Pairing = { userId: string; chatId: string; guildId: string | null; name: string };
+export type Pairing = { userId: string; chatId: string; guildId: string | null; name: string; clandUserId?: string };
 export type PairingRequest = Pairing & { code: string; created: string; expires: string };
 export type RemoteMessage = { chatId: string; messageId: string; topic: string; message: string | null; ask: string | null; approval: string | null };
 /** Queue behaviour belongs to the outbox, not its persistence layer. */
@@ -62,19 +69,39 @@ const nullable = (value: unknown): string | null => value === null ? null : Stri
 /** Owned by Store: no connection, file, timer or independent shutdown to drain. */
 export class RemoteState {
   readonly #db: DatabaseSync;
-  constructor(db: DatabaseSync) {
+  constructor(db: DatabaseSync, users?: Users) {
+    this.#users = users;
     this.#db = db; db.exec(SCHEMA);
+    users?.onReset(() => {
+      if (users.mode() !== 'users') return;
+      for (const messenger of ['telegram', 'discord']) {
+        const remote = this.forMessenger(messenger);
+        const first = users.first();
+        const kept = first ? remote.userPairing(first.id) : null;
+        if (kept) remote.setPairing(kept);
+        else remote.setPairing(null);
+        remote.set('users.pairingInherited', null);
+      }
+      db.exec('delete from user_remote_pairings');
+    });
     // Existing hub.db files predate edit targets; keep their rows and wire fields intact.
     const columns = db.prepare('pragma table_info(remote_outbox)').all();
     if (!columns.some(column => column.name === 'target')) db.exec('alter table remote_outbox add column target text');
     if (!db.prepare('pragma table_info(remote_status)').all().some(column => column.name === 'stop_cause'))
       db.exec('alter table remote_status add column stop_cause text');
   }
+  readonly #users: Users | undefined;
+  readonly #contexts = new Map<string, AsyncLocalStorage<Pairing | null>>();
   readonly #listeners = new Set<() => void>();
   subscribe(listener: () => void): () => void {
     this.#listeners.add(listener); return () => { this.#listeners.delete(listener); };
   }
-  forMessenger(id: string): RemoteStore { return new RemoteStore(this.#db, id, () => { for (const listener of this.#listeners) listener(); }); }
+  pairingUsers(): Array<{ name: string; displayName: string }> | undefined { return this.#users?.mode() === 'users' ? this.#users.list().map(({ name, displayName }) => ({ name, displayName })) : undefined; }
+  forMessenger(id: string): RemoteStore {
+    let context = this.#contexts.get(id);
+    if (!context) { context = new AsyncLocalStorage<Pairing | null>(); this.#contexts.set(id, context); }
+    return new RemoteStore(this.#db, id, () => { for (const listener of this.#listeners) listener(); }, this.#users, context);
+  }
   pollerLease(): PollerOwner | null {
     const row = this.#db.prepare('select * from remote_poller_lease where singleton = 1').get();
     return row ? { owner: String(row.owner), pid: Number(row.pid), started: String(row.started), identity: String(row.identity) } : null;
@@ -96,7 +123,55 @@ export class RemoteStore {
   readonly #db: DatabaseSync;
   readonly #id: string;
   readonly #changed: () => void;
-  constructor(db: DatabaseSync, id: string, changed: () => void = () => {}) { this.#db = db; this.#id = id; this.#changed = changed; }
+  readonly #users: Users | undefined;
+  readonly #context: AsyncLocalStorage<Pairing | null>;
+  constructor(db: DatabaseSync, id: string, changed: () => void = () => {}, users?: Users, context = new AsyncLocalStorage<Pairing | null>()) { this.#db = db; this.#id = id; this.#changed = changed; this.#users = users; this.#context = context; }
+  /** Keep native admission scoped through awaits; revalidate the captured owner on reads. */
+  withPairing<T>(pairing: Pairing | null, work: () => T): T { return this.#context.run(pairing, work); }
+  userPairing(userId: string): Pairing | null {
+    this.#inheritPairing();
+    const row = this.#db.prepare('select * from user_remote_pairings where messenger=? and user_id=?').get(this.#id, userId);
+    if (row) return { userId: String(row.messenger_user_id), chatId: String(row.chat_id), guildId: nullable(row.guild_id), name: String(row.name), clandUserId: String(row.user_id) };
+    return null;
+  }
+  /** Expand legacy identity once per users-mode epoch; never rewrite the single row. */
+  #inheritPairing(): void {
+    if (this.#users?.mode() !== 'users' || this.get('users.pairingInherited')) return;
+    const first = this.#users.first(), legacy = this.#legacyPairing();
+    this.transaction(() => {
+      if (first && legacy) this.#db.prepare('insert or ignore into user_remote_pairings values (?,?,?,?,?,?)')
+        .run(this.#id, first.id, legacy.userId, legacy.chatId, legacy.guildId, legacy.name);
+      this.set('users.pairingInherited', '1');
+    });
+  }
+  userPairings(): Pairing[] {
+    this.#inheritPairing();
+    return this.#db.prepare('select user_id from user_remote_pairings where messenger=? order by user_id').all(this.#id)
+      .map(row => this.userPairing(String(row.user_id))!);
+  }
+  removeUserPairing(userId: string): void {
+    this.#inheritPairing();
+    this.#db.prepare('delete from user_remote_pairings where messenger=? and user_id=?').run(this.#id, userId);
+    this.#changed();
+  }
+  setUserPairing(userId: string, pair: Pairing): void {
+    this.#inheritPairing();
+    this.#db.prepare(`insert into user_remote_pairings values (?,?,?,?,?,?) on conflict(messenger,user_id)
+      do update set messenger_user_id=excluded.messenger_user_id,chat_id=excluded.chat_id,guild_id=excluded.guild_id,name=excluded.name`)
+      .run(this.#id, userId, pair.userId, pair.chatId, pair.guildId, pair.name);
+    this.#changed();
+  }
+  pairingFor(chatId: string, messengerUserId?: string): Pairing | null {
+    if (this.#users?.mode() !== 'users') {
+      const pair = this.pairing();
+      return pair?.chatId === chatId && (messengerUserId === undefined || pair.userId === messengerUserId) ? pair : null;
+    }
+    this.#inheritPairing();
+    if (this.#id !== 'telegram' && messengerUserId === undefined) return null;
+    const row = this.#db.prepare(`select user_id from user_remote_pairings where messenger=? and chat_id=?${messengerUserId === undefined ? '' : ' and messenger_user_id=?'}`)
+      .get(...(messengerUserId === undefined ? [this.#id, chatId] : [this.#id, chatId, messengerUserId]));
+    return row ? this.userPairing(String(row.user_id)) : null;
+  }
 
   get(key: string): string | null {
     const row = this.#db.prepare('select value from remote_state where messenger = ? and key = ?').get(this.#id, key);
@@ -188,6 +263,15 @@ export class RemoteStore {
     this.#changed();
   }
   pairing(): Pairing | null {
+    const context = this.#context.getStore();
+    if (this.#users?.mode() === 'users' && context !== undefined) {
+      const current = context ? this.pairingFor(context.chatId, context.userId) : null;
+      return current?.clandUserId === context?.clandUserId ? current : null;
+    }
+    if (this.#users?.mode() === 'users') { const first = this.#users.first(); return first ? this.userPairing(first.id) : null; }
+    return this.#legacyPairing();
+  }
+  #legacyPairing(): Pairing | null {
     const row = this.#db.prepare('select user_id, chat_id, guild_id, name from remote_pairings where messenger = ?').get(this.#id);
     return row ? { userId: String(row.user_id), chatId: String(row.chat_id), guildId: row.guild_id === null ? null : String(row.guild_id), name: String(row.name) } : null;
   }
