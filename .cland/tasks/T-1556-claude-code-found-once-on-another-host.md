@@ -3,7 +3,7 @@ id: T-1556
 kind: task
 title: Claude Code found once on another host
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -13,9 +13,9 @@ blocked_by:
   - T-1547
   - T-1554
 topic: null
-branch: null
+branch: t/T-1556-claude-code-found-once-on-another-host
 created: 2026-10-31T23:47:43.786Z
-updated: 2026-10-31T23:47:48.566Z
+updated: 2026-11-02T03:19:40.096Z
 ---
 
 ## Summary

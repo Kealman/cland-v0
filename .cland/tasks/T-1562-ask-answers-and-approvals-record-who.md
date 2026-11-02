@@ -2,8 +2,8 @@
 id: T-1562
 kind: task
 title: Ask answers and approvals record who answered
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1307
 branch: t/T-1562-ask-answers-and-approvals-record-who
 created: 2026-10-31T23:47:50.788Z
-updated: 2026-11-01T22:50:13.975Z
+updated: 2026-11-02T02:39:54.870Z
+closed: 2026-11-02T02:39:54.870Z
 ---
 
 ## Summary
@@ -30,26 +31,34 @@ Hot files: `hub/src/hub/asks.ts`, `hub/src/hub/inbox.ts` [Host] (approval outcom
 - [x] C1. An ask answered by a user in users mode has an outcome whose `by` is that user's name and whose `userId` is that user's id.
   - done: impl-1562 · 2026-11-01T20:01:38.824Z
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.066Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 - [x] C2. An approval answered by a user has an outcome whose `by` and `userId` name that user.
   - done: impl-1562 · 2026-11-01T20:01:44.637Z
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.067Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 - [x] C3. When two users answer one ask, the first answer wins and the second is refused with a message naming the first answerer.
   - done: impl-1562 · 2026-11-01T20:01:49.316Z
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.067Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 - [x] C4. The journal's `ask-answered` and `inbox-departure` records carry the answering user's id.
   - done: impl-1562 · 2026-11-01T20:01:50.898Z
   - verified: rev-37 [reviewer] · run rev-37-1562-source-3 · 2026-11-01T22:31:54.520Z · commit 6532d5917ebd167aa460b95ebdbdd5438fa8fea2
   - verified: rev-37 [reviewer] · run rev-37-1562-source-4 · 2026-11-01T22:32:17.628Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-delta-1 · 2026-11-02T01:07:39.809Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.067Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 - [x] C5. The web approval card and Neovim's inbox show the answering user's name in users mode, and "the human" in single mode as today.
   - done: impl-1562 · 2026-11-01T20:01:51.986Z
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.067Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 - [x] C6. Single-mode outcomes, including stand-in attribution, are unchanged.
   - done: impl-1562 · 2026-11-01T20:04:27.796Z
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.067Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 - [x] C7. In users mode, the answer message an ask answer posts carries the answering user, the same user as the outcome's `by` and `userId`; a two-user test proves the outcome and the message agree.
   - done: impl-1562 · 2026-11-01T22:30:14.973Z
   - verified: rev-37 [reviewer] · run rev-37-1562-evidence-1 · 2026-11-01T22:50:13.366Z · commit da3d7ef497a26c44efcc0fe2e54435fa0d421c31
+  - verified: rev-37 [reviewer] · run rev-37-1562-evidence-2 · 2026-11-02T01:27:09.067Z · commit 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
 
 ## Comments
 
@@ -143,3 +152,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final current-head evidence clear, C1–C7 verified. A-15457 run1efd068e Finished exit0 at exact source head/tree7c223fef61539877717c432b17be73417eb462df, noncached Linux x64 droplet Node24.21.0 Neovim0.12.5, isolated Headless Shell1248 Chrome156.0.8078.4. T0/T1/all-T2/Web and selected T3 passed; mapped T4 base-only, repetitions skipped; remaining T3 deferred, no full T3/T4 claim. Aggregate4682pass,0fail/cancel/skip/todo. Independently checked named outcomes: answer-users2, ask-outcomes6, approval-records19, Neovim24 incl panel/full human/alex, phone-approvals8 incl both authors, compatibility1 all pass. A-15459 adds unchanged exact-head approval-restart1/1 native_exit0 (macOS arm64 Node24.21.0, fake harness, no browser); named restart/archive replay assertion intact. Budget/lint/ratchets report-only. No Reviewer execution; no findings. Coordinator's pending T-1563-dependent dev merge still requires fresh source delta/reverification; current evidence does not waive it.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-37 · 2026-11-02T01:07:39.809Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1562-delta-1
+commit: 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, no Standards/Spec findings. Authorized landed-dev merge compared both ways; README resolution preserves outcome plus incoming artifact/invite guidance. Existing C7 trusted userId port/core propagation survives; new saved-history userDisplayName assertion uses admitted id and keeps single-mode omission/equality checks. Incoming Store/live projection compatible. Prior full source review carried forward. C4 source reverified; remaining runtime criteria await fresh exact-head mode-free verify (runtime imports, no waiver). A-15508 and final lint0 receipt are targeted supplemental macOS arm64 Node24.21.0 evidence only. A-15507 exact-head unedited approval-restart named1/1 native_exit0 inspected, usable supplemental T3 evidence; not full tier. No Reviewer tests/browser.
+
+Criteria: C4 verified.
+
+### rev-37 · 2026-11-02T01:27:09.067Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1562-evidence-2
+commit: 12bbf22a71554e8d87d5fee5f2c8766e3c0077f2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integrated-head evidence clear; C1–C7 verified. A-15510 run51f79932 Finished exit0 at exact reviewed head/treec33978ef2ff1b0a8f13fdc3d58b371c277d1aade, noncached Linux x64 droplet Node24.21.0 Neovim0.12.5; isolated Headless Shell1248 Chrome156.0.8078.4. T0/T1/all-T2/Web plus selected T3 completed; remaining T3 deferred to batch. Mapped T4 base-only, repetitions skipped; no full T3/T4 claim. Aggregate4743pass,0fail/cancel/skip/todo. Independently checked named outcomes: answer-users2 (C7 returned/saved identity and display), unedited ask-outcomes6/approval-records19, Neovim24 human/alex panel/full, Web8 both author cases, frozen compatibility1 all pass. Deferred approval-restart covered by inspected exact-head A-15507 retained1/1 native_exit0 macOS arm64 Node24.21.0 fake-harness receipt (bound by A-15508). Budget/lint/ratchets report-only. No Reviewer execution/browser; no findings on either axis. QA after-stage.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-02T02:39:54.870Z
+
+Merged ca366370d596c27c6859a15f86edf44cfcb7a0df onto dev.

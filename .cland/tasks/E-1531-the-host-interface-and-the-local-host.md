@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: R-1530
 blocked_by: []
-topic: null
+topic: topic-1315
 branch: null
 created: 2026-10-31T18:22:03.207Z
-updated: 2026-10-31T23:48:11.861Z
+updated: 2026-11-02T01:54:35.547Z
 ---
 
 ## Goal
@@ -108,3 +108,57 @@ stages:
       - - T-1555
       - - T-1557
 ```
+
+## Comments
+
+### qa-678 · 2026-11-02T01:54:35.547Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-s2-2026-11-02-qa678-1
+commit: 6fe6289c98a43c2c1153414528b6821907ff84f6
+stage: adapters, worktrees, artifacts and the host column
+stage_hash: 61374d1cc472715d817e642e92b6343776594899064fb167df7047631a79e6cf
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| S0 | PASS | S0.txt |
+| E1531S2-00 | PASS | E1531S2-00.txt |
+| E1531S2-01 | PASS | E1531S2-01.txt |
+| E1531S2-02 | PASS | E1531S2-02.log |
+| E1531S2-03 | PASS | E1531S2-03.log |
+| E1531S2-04 | PASS | E1531S2-04.log |
+| E1531S2-05 | PASS | E1531S2-05.log |
+| E1531S2-06 | PASS | E1531S2-06.log |
+| E1531S2-07 | PASS | E1531S2-07.log |
+| E1531S2-08 | PASS | E1531S2-08.log |
+| E1531S2-09 | PASS | E1531S2-09.log |
+| E1531S2-10 | PASS | E1531S2-10.log |
+| E1531S2-11 | PASS | E1531S2-11.log |
+| E1531S2-12 | PASS | E1531S2-12.txt |
+| E1531S2-13 | PASS | E1531S2-13.txt |
+| E1531S2-14 | PASS | E1531S2-14.txt |
+| E1531S2-15 | PASS | E1531S2-15.txt |
+| E1531S2-16 | PASS | E1531S2-16.txt |
+| E1531S2-17 | PASS | E1531S2-17.txt |
+| E1531S2-18 | PASS | E1531S2-18.txt |
+| E1531S2-19 | PASS | E1531S2-19.txt |
+| E1531S2-20 | PASS | E1531S2-20.txt |
+
+Clear — E-1531 stage "adapters, worktrees, artifacts and the host column".
+Run qa-s2-2026-11-02-qa678-1 at 6fe6289c98a43c2c1153414528b6821907ff84f6. All nine stage members landed. Clean detached worktree; HEAD/dev matched before and after. No epic criterion marks. No blocking findings.
+
+All 543 tests across 46 named files passed, with no failures, cancellations or skips. Each file ran separately and sequentially, with quiet admission and an enforced one-minute vm.loadavg <10 gate; load and free disk readings retained in each TAP log. Required literal titles were checked in source and on passing TAP lines; generated Host contract and coordinator/aide launch/relaunch/fresh-resume/set/move cases also passed. test-summary.json contains counts and full generated names. The macOS synthetic Seatbelt Git test executed rather than skipped; it proves scratch Git path access, not native Codex enforcement or Linux parity.
+
+The scratch hub launched and stopped all three fake harnesses on local with darwin identities and live/dead process observations. Task T-5 received the expected branch/worktree and root node_modules link; pruning kept it while qa-wt stood inside and removed both directory and branch after stop. Binary, folder and relative artifact paths copied byte-for-byte, missing source was refused, and these operations did not touch t1. Local host rows omit the host field from session list as specified. Unknown hosts and nonlocal Coordinator/Aide placement were refused. Restart without CLAND_TEST_HOSTS made t1 unknown. Cleanup stopped the hub, found no surviving registered fixture PID, and counted zero processes naming the scratch root.
+
+Diagnostic note — E1531S2-18: the Implementer launch on t1 returned ok:false, code invalid-cwd, error `launch cwd "<scratch>/p1" is not an accessible directory`. The actual unaltered error is in E1531S2-18.txt. The operation window is exactly ["t1:statDirectory"], with no local operation, no spawned process and no row for qa-impl-t1. Per brief lines 407 and 416, the inferred error wording is not the pass condition: judge t1 reached, nothing local, no row. Coordinator message 08f8e3c7-f5be-46af-b266-62d89553df63 explicitly confirms that interpretation and is filing the diagnostic gap separately. Source sessions.ts:1135–1137 catches the statDirectory refusal and translates it to InvalidLaunchCwd; requests.ts:148 returns invalid-cwd. This does not fail the scoped routing check. No code was fixed.
+
+Platform: local macOS Darwin arm64, Node 24.21.0. No browser, GUI, real harness, provider or account used. Full T3/T4 suites, soak and cover pair were out of scope and not rerun in this QA pass. Stage cover receipts were supplied separately: Linux 327a36bd (A-15512), macOS e2010a1c (A-15516), tree f2462b2831f03da4554b20ce4c70749e957a3396. No timing or benchmark claim; no droplet lifetime/cost for these local checks.
+
+Evidence excludes scratch HOME, environment exports, secrets and raw process census. Shared assertPublishable scan passed with a positive control. All scratch commands used the brief's shared fixtureEnvironment; inherited credentials and Git controls were stripped, with only the documented synthetic CLAND names retained. Evidence and recorded case lines were saved before the verdict.
+
+Evidence A-15518: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15518-e-1531-stage-2-qa-clear-6fe6289c/report.md
