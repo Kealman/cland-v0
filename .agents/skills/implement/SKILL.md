@@ -1491,6 +1491,18 @@ commands check WebAuth admission before mutation; mode switching mints the first
 invite only after successful reload releases its fence. Keep session-shell and
 held/failed-transition refusal regressions. No role clause changes are needed.
 
+## Per-host Git socket (T-1591)
+
+For the Git listener and proxy, use the scratch bare-repository seam in
+`docs/agents/tests/hub-test-host-git-daemon.test.ts.md`. Keep half-open sockets
+on both ends, explicit receive policy, eight-daemon admission and native exit
+receipts before removing scratch roots, including permission failure after bind.
+Use the optional chmod operation seam to hold/fail setup while a native client
+is admitted, then observe native close and socket removal before rejection.
+Transport owns listener lifetime and
+socket paths; territory hook and branch leases belong to their own module.
+No CLI, dependency or role permission is added.
+
 ## Local Host process contract (T-1542)
 
 Fake SSH tests use the real carrier with `sshBinaries(env)` from

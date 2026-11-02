@@ -8257,6 +8257,25 @@ launch. Inherited roles with explicit tool lists must grant `verification.declin
 to Reviewer/QA; generated defaults include it. Older hubs refuse the new tool
 without changing pending state; do not substitute a verdict to clear it.
 
+### Per-host Git socket
+
+`startGitDaemon` (`host/git-daemon.ts`) serves one territory over a caller-owned
+Unix socket in a private directory; it returns after chmod 0600 and never binds
+TCP. The transport owner supplies the per-host socket path and closes the listener
+before releasing its directory. Each connection runs `git daemon --inetd` with
+half-open relays, no inherited write authority or Git configuration environment,
+and `CLAND_PUSH_HOST` set from the owning host. Receive policy enables object fsck,
+disables automatic GC, denies deletes and caps input at 128 MiB. Eight concurrent
+daemons are admitted per listener/host; excess connections close and emit a fixed
+capacity refusal. Exit logs contain host, connection, duration, code and signal,
+never child stderr or environment values. Close stops owned children and joins
+native close receipts. Failed permission setup after bind uses that same shutdown
+before reporting the original acquisition error; incomplete cleanup retains both
+errors in an aggregate. The built-ins-only `host/git-proxy.ts` takes a socket path
+before Git's host/port arguments, preserving request EOF while draining responses;
+transport/bootstrap owns installation as `core.gitProxy`. This module does not
+install the territory hook or grant branch leases.
+
 ### Host records and bootstrap secrets
 
 Opening `hub.db` adds `hosts` in place. `Store.hosts` stores the id, `ssh`

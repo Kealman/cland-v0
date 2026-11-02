@@ -212,6 +212,7 @@
     "hub/test/hook-bridge-doctor.test.ts": "T3",
     "hub/test/host-boundary.test.ts": "T1",
     "hub/test/host-contract-coverage.test.ts": "T1",
+    "hub/test/host-git-daemon.test.ts": "T3",
     "hub/test/host-limit-poller.test.ts": "T1",
     "hub/test/host-local-contract.test.ts": { "tier": "T3", "scenario": "local-host" },
     "hub/test/host-local-liveness.test.ts": { "tier": "T3", "scenario": "local-host-liveness" },
