@@ -2,7 +2,7 @@ import { realClock, type Clock } from '../../hub/clock.ts';
 // The first per-user cland state: all project hubs reserve against the same ledger.
 import { mkdir, readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { homedir } from 'node:os';
+import { userHome, userStateDirectory, legacySpendPath as legacyPath } from '../../state-paths.ts';
 import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type LockRetryTiming } from '../../hub/lock.ts';
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
 import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
@@ -10,8 +10,7 @@ import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
 type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
 type MissingProject = { project: string; since: string; pruned?: true };
 type Ledger = { version: 1; entries: Entry[]; projects?: string[]; missingProjects?: MissingProject[]; legacyRetired?: true };
-export const spendPath = (env: NodeJS.ProcessEnv = process.env): string => join(env.CLAND_EXECUTOR_STATE ?? join(env.XDG_STATE_HOME || join(env.HOME ?? homedir(), '.local/state'), 'cland'), 'spend.json');
-const legacyPath = (env: NodeJS.ProcessEnv): string | null => env.CLAND_EXECUTOR_STATE !== undefined ? null : join(env.HOME ?? homedir(), '.cland/executor/spend.json');
+export const spendPath = (env: NodeJS.ProcessEnv = process.env): string => join(userStateDirectory(env), 'spend.json');
 async function readExisting(path: string): Promise<Ledger | null> {
   try {
     const ledger = JSON.parse(await readFile(path, 'utf8')) as Ledger;
@@ -183,7 +182,7 @@ class InvalidProject extends Error {
 async function projectDirectory(project: string, env: NodeJS.ProcessEnv): Promise<string> {
   if (!isAbsolute(project)) throw new InvalidProject();
   const root = await realpath(project);
-  const home = await realpath(env.HOME ?? homedir()).catch(error => { if (error.code === 'ENOENT') return resolve(env.HOME ?? homedir()); throw error; });
+  const home = await realpath(userHome(env)).catch(error => { if (error.code === 'ENOENT') return resolve(userHome(env)); throw error; });
   if (root === dirname(root) || root === home || !(await stat(root)).isDirectory()) throw new InvalidProject();
   try {
     if (!(await stat(join(root, '.cland'))).isDirectory()) throw new InvalidProject();

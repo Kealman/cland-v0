@@ -69,6 +69,13 @@ step. Preserve optional-source compatibility for old ask outcomes; the headless
 workbench regressions are `web/test/remote-via.test.ts` and
 `nvim/test/remote-via.test.ts`.
 
+For per-user hub state, import `userStateDirectory(env)` from
+`hub/src/state-paths.ts`; keep the executor override, XDG and HOME precedence.
+Register new machine runtime paths with exact expressions and reasons in
+`hub/test/state-paths-inventory.ts`. Use the sealed `projectHub` `userState`
+fixture option for default HOME/XDG state tests. File guidance:
+`docs/agents/tests/hub-test-state-inventory.test.ts.md`.
+
 For project secret storage or CLI input, read `docs/agents/secrets.md` and use
 the T1 stream, T2 startup/CLI and native Git seams in
 `docs/agents/tests/hub-test-secrets.test.ts.md`. Share `resolveSecrets(root, env)`

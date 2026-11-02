@@ -412,6 +412,8 @@ export type ProjectHubOptions = {
   artifactOpen?: typeof import('node:fs/promises').open;
   syntheticProvider?: SyntheticProvider;
   scratchAccountPaths?: ScratchAccountPaths;
+  /** Exercise default per-user state under the sealed worker HOME. */
+  userState?: boolean;
   scratchGitConfig?: ScratchGitConfig;
   priorityProbe?: () => number;
   publishRelease?: import('../src/hub/dispatch.ts').DispatcherOptions['publishRelease'];
@@ -453,7 +455,10 @@ export type ProjectHubOptions = {
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
-  const sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra });
+  let sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra });
+  if (options.userState) {
+    sealed = await accountFixtureEnvironment({ ...sealed, XDG_STATE_HOME: sealed.HOME, CLAND_EXECUTOR_STATE: undefined });
+  }
   const accountEnv = options.scratchAccountPaths ? scratchAccountEnvironment(root, sealed, options.scratchAccountPaths) : sealed;
   const gitEnv = options.scratchGitConfig ? scratchGitEnvironment(root, accountEnv, options.scratchGitConfig) : accountEnv;
   const providerEnv = options.syntheticProvider ? syntheticProviderEnvironment(gitEnv, options.syntheticProvider, options.droplet?.api) : gitEnv;
