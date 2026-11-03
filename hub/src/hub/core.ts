@@ -148,7 +148,8 @@ function wire(connection: Connection): void {
 
 /** What the adapters' side says of a hello's launch (`HubCore.launchedRole`). */
 export type LaunchedRole = { role: string | null; first: boolean; carried: boolean };
-type LaunchIdentityBinding = { name: string; sessionId: string; prove: () => void } | { refusal: string };
+export type LaunchIdentityProof = { name: string; sessionId: string; prove: () => void };
+type LaunchIdentityBinding = LaunchIdentityProof | { refusal: string };
 
 export type HelloResult = { ok: true; name: string; connection: Connection; spoke: SpokeSocket } | { ok: false; code: RefusalCode; message: string };
 
@@ -1401,6 +1402,7 @@ export class HubCore {
     deliver: (message: Message) => boolean,
     close: (reason: string, code?: number) => void = () => {},
     deliverRole: (message: Message, clause: RoleClause) => boolean = (message) => deliver(message),
+    admittedLaunch?: LaunchIdentityProof,
   ): HelloResult {
     if (hello.protocol !== PROTOCOL_VERSION) {
       return { ok: false, code: 'version', message: `protocol ${hello.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}` };
@@ -1409,7 +1411,7 @@ export class HubCore {
     // Uncredentialed UNKNOWN_SESSION remains anonymous and cannot own a launch by name.
     const original = hello.sessionId !== UNKNOWN_SESSION ? this.connectionOf(hello.sessionId) : undefined;
     const joining = original && (hello.name === undefined || hello.name === original.name);
-    const launchIdentity = hello.launchToken && !joining ? this.#launchIdentity?.(hello.launchToken, hello.sessionId) : null;
+    const launchIdentity = admittedLaunch ?? (hello.launchToken && !joining ? this.#launchIdentity?.(hello.launchToken, hello.sessionId) : null);
     if (launchIdentity && 'refusal' in launchIdentity) return { ok: false, code: 'name-in-use', message: launchIdentity.refusal };
     if (launchIdentity) {
       const known = this.connectionOf(launchIdentity.sessionId)?.name ?? this.#store.nameOfSession(launchIdentity.sessionId);
@@ -2379,6 +2381,9 @@ export class HubCore {
   launchIdentity(lookup: ((credential: string, sessionId: string) => LaunchIdentityBinding | null) | null): void {
     this.#launchIdentity = lookup;
   }
+
+  /** Read-only launch proof for transport admission; settlement remains in hello. */
+  resolveLaunchIdentity(credential: string, sessionId: string) { return this.#launchIdentity?.(credential, sessionId) ?? null; }
 
   /** Private shell migration runs on every accepted own spoke connection, including joins. */
   shellCredential(writer: ((sessionId: string, credential?: string) => Promise<void>) | null): void { this.#shellCredential = writer; }

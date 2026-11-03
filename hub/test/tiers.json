@@ -230,6 +230,7 @@
     "hub/test/host-orphans.test.ts": "T3",
     "hub/test/host-records.test.ts": "T2",
     "hub/test/host-registry.test.ts": "T2",
+    "hub/test/host-secret-admission.test.ts": "T2",
     "hub/test/host-supervisor.test.ts": "T3",
     "hub/test/hub-lock-heartbeat.test.ts": "T2",
     "hub/test/hub-lock-identity.test.ts": "T2",

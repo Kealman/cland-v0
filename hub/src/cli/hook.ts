@@ -1,3 +1,4 @@
+import { credentialActor } from '../../../shared/credential-actor.ts';
 // `cland hook <event>`: what a launched session's harness runs from inside the session — its hooks and the cland
 // mod — to tell the hub what is happening (spec 4.3, 4.9). It posts one `session.signal` over the hub's Unix
 // socket and exits 0. The local literal-rm guard and worktree-create refusal exit 2.
@@ -173,7 +174,10 @@ function bridgeOnce(d: { socket: string; secret: string }, session: string, laun
         const frame = parseFrame(buffer.slice(0, nl));
         buffer = buffer.slice(nl + 1);
         if (!frame) continue;
-        if (frame.type === 'welcome') socket.write(`${JSON.stringify({ type: 'session.bridge', id: 'bridge', session, ...(launch ? { launch } : {}) })}\n`);
+        if (frame.type === 'welcome') {
+          const as = credentialActor(d, process.env);
+          socket.write(`${JSON.stringify({ type: 'session.bridge', id: 'bridge', session, ...(as ? { as } : {}), ...(launch ? { launch } : {}) })}\n`);
+        }
         else if (frame.type === 'result' && frame.id === 'bridge') {
           if (frame.ok === true) {
             connected();

@@ -34,6 +34,15 @@ export class HostRecords {
     this.#db.prepare("insert into hosts (id,transport,address,user,state,secret_digest) values (?,'ssh',?,?,'registered',?)").run(input.id, input.address, input.user, digest(secret));
     return this.get(input.id)!;
   }
+  /** Match revoked digests too, so admission can distinguish revocation without exposing material. */
+  identify(secret: string): HostRecord | null {
+    const hash = Buffer.from(digest(secret), 'hex');
+    for (const row of this.#db.prepare('select id,secret_digest from hosts').all()) {
+      if (typeof row.secret_digest === 'string' && /^[a-f0-9]{64}$/.test(row.secret_digest)
+        && timingSafeEqual(Buffer.from(row.secret_digest, 'hex'), hash)) return this.get(String(row.id));
+    }
+    return null;
+  }
   matches(id: string, secret: string): boolean {
     const row = this.#db.prepare("select secret_digest from hosts where id=? and state != 'revoked'").get(id);
     if (!row || typeof row.secret_digest !== 'string' || !/^[a-f0-9]{64}$/.test(row.secret_digest)) return false;

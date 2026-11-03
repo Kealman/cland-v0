@@ -1,3 +1,4 @@
+import { hostAuthorityRefusal } from '../host/host-authority.ts';
 import { HUMAN_USER_WRITES, localUserName } from './cli-user.ts';
 import { localHost } from '../host/local.ts';
 import { MergeLandingReports } from './merge-landing-reports.ts';
@@ -54,7 +55,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
 import { registerCoverageMap, parseCoverageMap } from '../suite-coverage.ts';
 import { timingSafeEqual } from 'node:crypto';
-import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket } from './core.ts';
+import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket, type LaunchIdentityProof } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, toolAvailability, LEAD_ROOT_TOOLS, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { crewSummary, parseIdleFrom, resolveCrewIdle } from '../crew.ts';
@@ -208,6 +209,16 @@ export class Dispatcher {
   readonly #log: LogFn;
   /** The adapters' side of the hub (`session.*`); set by the daemon once the hub runs. */
   #sessions: Sessions | undefined;
+  readonly #hostPeers = new Map<string, Set<() => void>>();
+
+  hostAdmission(secret: string) { return this.core.store.hosts.identify(secret); }
+
+  revokeHost(id: string): void {
+    if (!this.core.store.hosts.get(id)) throw new Error('unknown host');
+    this.core.store.hosts.revoke(id);
+    for (const close of this.#hostPeers.get(id) ?? []) close();
+  }
+
   #accountPoller: AccountPoller | undefined;
   readonly #models: HarnessModels | null;
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
@@ -1085,14 +1096,22 @@ export class Dispatcher {
     });
   }
 
-  open(wire: Peer, transport: { authenticated: boolean; edge: string; authorizeUpload?: () => void; ownsUploadBytes?: boolean; user?: () => import('./users.ts').User | null; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
+  open(wire: Peer, transport: { authenticated: boolean; edge: string; hostId?: string; authorizeUpload?: () => void; ownsUploadBytes?: boolean; user?: () => import('./users.ts').User | null; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
     const uploads = new Set<Promise<unknown>>();
     const core = this.#options.core;
     const log = this.#log;
+    let hostId = transport.hostId;
+    const closeHost = () => { done = true; wire.close(4001, 'host revoked'); };
+    const trackHost = () => {
+      if (!hostId) return;
+      const peers = this.#hostPeers.get(hostId) ?? new Set<() => void>();
+      peers.add(closeHost); this.#hostPeers.set(hostId, peers);
+    };
+    trackHost();
     const admittedUsers = new WeakMap<object, string>();
     // Web identity is supplied only by the authenticated upgrade/upload, never a frame.
     const humanUser = (frame?: Record<string, unknown>) => {
-      if (core.store.users.mode() !== 'users') return null;
+      if (hostId || core.store.users.mode() !== 'users') return null;
       const name = frame && (transport.edge === 'socket' || transport.edge === 'stdio') ? localUserName(frame) : undefined;
       const admitted = frame && admittedUsers.get(frame);
       const user = transport.edge === 'web' ? transport.user?.() : admitted ? core.store.users.get(admitted) : transport.edge === 'gateway' && frame && frame.type !== 'hello' ? null : name !== undefined ? core.store.users.byName(name) : core.store.users.first();
@@ -1488,7 +1507,13 @@ export class Dispatcher {
     }, this.#options.helloTimeoutMs ?? 5000);
 
     const hello = (frame: Record<string, unknown>) => {
-      if (!transport.authenticated && !(typeof frame.secret === 'string' && secretMatches(frame.secret, this.#options.secret))) {
+      if (!transport.authenticated && typeof frame.secret === 'string' && !secretMatches(frame.secret, this.#options.secret)) {
+        const host = this.hostAdmission(frame.secret);
+        if (host?.state === 'revoked') return refuse('unauthorized', 'host secret revoked');
+        if (host && transport.edge === 'socket') { hostId = host.id; trackHost(); }
+      }
+      if (hostId && core.store.hosts.get(hostId)?.state !== 'registered') return refuse('unauthorized', 'host secret revoked');
+      if (!transport.authenticated && !hostId && !(typeof frame.secret === 'string' && secretMatches(frame.secret, this.#options.secret))) {
         log({ event: 'refused', edge: transport.edge, code: 'unauthorized' });
         return refuse('unauthorized', "the secret does not match this project's hub");
       }
@@ -1496,6 +1521,25 @@ export class Dispatcher {
         return refuse('bad-hello', `the ${transport.edge} edge accepts only a client hello`);
       }
       if (isHello(frame)) {
+        let admittedHello = frame;
+        let admittedLaunch: LaunchIdentityProof | undefined;
+        if (hostId) {
+          const token = frame.launchToken;
+          if (!token) return refuse('unauthorized', 'host spoke requires a session launch credential');
+          const binding = core.resolveLaunchIdentity(token, frame.sessionId);
+          if (binding && ('refusal' in binding || frame.sessionId !== UNKNOWN_SESSION && frame.sessionId !== binding.sessionId
+            || frame.name !== undefined && frame.name !== binding.name))
+            return refuse('unauthorized', 'host launch credential does not prove the requested session');
+          const id = binding ? binding.sessionId : frame.sessionId;
+          const row = this.#sessions?.hostSession(id);
+          const pending = binding ? this.#sessions?.hostLaunch(token) : null;
+          const authority = row ?? pending;
+          const retained = core.store.sessionCredential(id);
+          if (!authority || authority.host !== hostId || authority.role === null || (!binding && !(retained && secretMatches(token, retained))))
+            return refuse('unauthorized', 'host spoke requires its own role-holding session launch credential');
+          // core.hello must receive the very identity proved above, including anonymous early hellos.
+          if (binding) { admittedHello = { ...frame, sessionId: binding.sessionId, name: binding.name }; admittedLaunch = binding; }
+        }
         credentialPending = true;
         const deliver = (message: Message): boolean => {
           if (credentialPending || !peer.isOpen()) return false;
@@ -1508,7 +1552,7 @@ export class Dispatcher {
           peer.send({ type: 'role', id: message.id, message, ...clause });
           return true;
         };
-        const result = core.hello(frame, deliver, (reason, code) => peer.close(code ?? 4001, reason), deliverRole);
+        const result = core.hello(admittedHello, deliver, (reason, code) => peer.close(code ?? 4001, reason), deliverRole, admittedLaunch);
         if (!result.ok) {
           log({ event: 'refused', edge: transport.edge, code: result.code, requested: frame.name ?? null });
           return refuse(result.code, result.message);
@@ -1517,6 +1561,10 @@ export class Dispatcher {
         // presence moved: `who` and `hub.status` answer anew
         this.#guard.changed();
         name = result.name;
+        if (hostId && result.connection.role === null) {
+          core.disconnect(result.connection);
+          return refuse('no-role', 'host spoke requires a role-holding session');
+        }
         connection = result.connection;
         spoke = result.spoke;
         const finish = () => {
@@ -1542,6 +1590,7 @@ export class Dispatcher {
         return;
       }
       if (isClientHello(frame)) {
+        if (hostId && (frame.resume || frame.features?.length)) return refuse('unauthorized', 'host clients require session-scoped requests');
         clearTimeout(helloTimer);
         if (frame.protocol !== PROTOCOL_VERSION) return refuse('version', `protocol ${frame.protocol} is not the hub's ${PROTOCOL_VERSION} — ${transport.edge === 'web' ? 'restart the hub to use this page' : UPDATE_HINT}`);
         // the human's side comes over the Unix socket or stdio: the spokes' WebSocket never makes a client (with
@@ -1557,7 +1606,7 @@ export class Dispatcher {
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
         peer.send({ type: 'welcome', name: humanUser(frame)?.name ?? client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
-        if (!features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
+        if (!hostId && !features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
         if (frame.resume) resumeModel(frame.resume);
         else if (features.includes('snapshot')) startSnapshot();
         else if (features.includes('numbered-deltas') || transport.edge === 'gateway') subscribeModel();
@@ -1954,6 +2003,15 @@ export class Dispatcher {
             if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
             return answer(this.#options.control.remoteStatus());
           }
+          case 'host.revoke': {
+            const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
+              || transport.edge === 'stdio' && client === 'nvim';
+            if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, 'host.revoke', 'host revocation requires the human CLI or Neovim on a local connection');
+            const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
+            if (refusal) return peer.send(refusal);
+            this.revokeHost(frame.host);
+            return answer({ revoked: frame.host });
+          }
           case 'pairing.approve': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
@@ -2225,6 +2283,23 @@ export class Dispatcher {
     };
 
     const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string): void => {
+        if (hostId) {
+          if (core.store.hosts.get(hostId)?.state !== 'registered') return closeHost();
+          if (kind !== 'spoke') {
+            const as = frame.as as { sessionId?: unknown; credential?: unknown } | undefined;
+            const id = typeof as?.sessionId === 'string' ? as.sessionId : '';
+            const row = this.#sessions?.hostSession(id);
+            const expected = core.store.sessionCredential(id);
+            const reason = !row || row.host !== hostId || row.role === null || !expected || typeof as?.credential !== 'string' || !secretMatches(as.credential, expected)
+              ? 'host frame requires its own role-holding session credential' : hostAuthorityRefusal(frame);
+            if (reason) return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(null, String(frame.type), reason)));
+            // Resolve all subsequent CLI handlers from the proved durable identity.
+            frame.as = { name: row!.name, sessionId: id, shell: true, credential: as!.credential };
+            if ((frame.type === 'session.signal' || frame.type === 'session.bridge') &&
+              (frame.sessionId !== undefined && frame.sessionId !== id || frame.session !== undefined && frame.session !== row!.name || frame.launch !== undefined && frame.launch !== row!.launch))
+              return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(row!.role, String(frame.type), 'host plumbing must target its own session')));
+          }
+        }
         if (userId) admittedUsers.set(frame, userId);
         if (kind === 'spoke') {
           // A replaced or closing socket's buffered frames would act under a name it no longer holds.
@@ -2302,12 +2377,12 @@ export class Dispatcher {
         // audited as it. What the permission table knows is decided by the table, as for the session's own tool call
         // (session.list is a separate read; session lifecycle mutations and hub.stop keep their own grants);
         // other hub-state reads are anyone's; everything else is the human's alone.
-        const caller = plumbing ? null : this.#asSession(frame);
+        const caller = plumbing && !hostId ? null : this.#asSession(frame);
         if (caller !== null) {
           audit(frame.id, { session: caller.name, sessionId: caller.sessionId, role: caller.role, tool: String(frame.type), args: summarize(frame), client });
           if (this.#toolCall(caller, frame) !== null && frame.type !== 'rule.list') {
             if (!this.#permitted(caller, frame, peer)) return;
-          } else if (!SESSION_CLI_FRAMES.has(String(frame.type))) {
+          } else if (!(hostId && plumbing) && !SESSION_CLI_FRAMES.has(String(frame.type))) {
             return this.#refuse(caller, frame, peer, String(frame.type), `only the human may do this; this call is ${withRole(caller.name, caller.role)}'s, by $CLAND_SESSION_ID`);
           }
         } else if (!plumbing) {
@@ -2608,6 +2683,7 @@ export class Dispatcher {
       drainUploads: async () => { await Promise.allSettled([...uploads]); },
       closed: () => {
         done = true;
+        if (hostId) { const peers = this.#hostPeers.get(hostId); peers?.delete(closeHost); if (!peers?.size) this.#hostPeers.delete(hostId); }
         if (kind === 'spoke') this.#guard.changed();
         for (const queue of audits.values()) for (const base of queue) log({ event: 'audit', ...base, outcome: 'error', error: 'the connection closed before the answer' });
         audits.clear();

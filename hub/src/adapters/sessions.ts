@@ -55,7 +55,7 @@ export class InvalidLaunchCwd extends Error {}
 /** Item claims stay with the cland identity; verifier holds must be retaken after a stop. */
 export type SessionResumeAnswer = { found: boolean; reason?: string; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; fresh?: { brief: string | null } };
 
-type LaunchOwnership = { name: string; prior: string | null; existingIds: Set<string>; sessionIds: Set<string>; anonymousSessionId: string | null; returnedId: string | null; retainedId?: string };
+type LaunchOwnership = { name: string; host: string; role: string | null; prior: string | null; existingIds: Set<string>; sessionIds: Set<string>; anonymousSessionId: string | null; returnedId: string | null; retainedId?: string };
 
 function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: Set<string>): string | null {
   if (id === UNKNOWN_SESSION) return `launch "${launch.name}" must prove a stable session identity, not unknown`;
@@ -117,6 +117,18 @@ export class Sessions {
     return host;
   }
   /** File operations use the same placement lookup as the captured session row. */
+  /** Durable admission lookup, without projecting or scanning retained process history. */
+  hostSession(sessionId: string) {
+    const row = this.#table.bySessionId(sessionId);
+    return row && !row.archivedAt && row.status === 'running' ? { name: row.name, sessionId: row.sessionId, host: row.host ?? 'local', role: row.role, launch: this.#core.store.meta(launchGenerationKey(row.sessionId)) || row.sessionId } : null;
+  }
+
+  /** The validated launch owns host/role authority before its process row can be published. */
+  hostLaunch(credential: string) {
+    const launch = this.#launchIdentities.get(credential);
+    return launch ? { host: launch.host, role: launch.role } : null;
+  }
+
   hostForSession(sessionId: string): Host {
     const row = this.#table.bySessionId(sessionId);
     return row ? this.#hostForProcess(row) : this.#hosts.get('local')!;
@@ -1092,7 +1104,7 @@ export class Sessions {
     this.#launching.set(request.name, launching);
     const priorIdentity = existing?.sessionId ?? this.#core.store.sessionIdOf(request.name);
     const launchToken = randomUUID();
-    const identity: LaunchOwnership = { name: request.name, prior: priorIdentity === UNKNOWN_SESSION ? null : priorIdentity, existingIds, sessionIds: new Set(), anonymousSessionId: null, returnedId: null, ...(retainedId ? { retainedId } : {}) };
+    const identity: LaunchOwnership = { name: request.name, host: request.host ?? 'local', role, prior: priorIdentity === UNKNOWN_SESSION ? null : priorIdentity, existingIds, sessionIds: new Set(), anonymousSessionId: null, returnedId: null, ...(retainedId ? { retainedId } : {}) };
     this.#launchIdentities.set(launchToken, identity);
     const abort = () => {
       if (this.#launching.get(request.name) !== launching) return;

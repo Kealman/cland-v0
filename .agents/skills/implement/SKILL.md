@@ -129,6 +129,13 @@ Empty/missing speech commands keep audio and name command setup.
 
 
 
+## Host admission
+
+When changing forwarded host clients, preserve their session credentials on CLI,
+hook and mod-bridge frames. A host secret never grants human authority. Consult
+[host admission](../../../docs/hub/adapters-and-sessions.md#host-secret-admission-and-revocation)
+for the deny-by-default boundary and local human revocation procedure.
+
 ## Users-mode remote publications
 
 Use `remotePublications` and `RemoteStore.publicationPairings()` for outbound

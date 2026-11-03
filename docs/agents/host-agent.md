@@ -32,3 +32,10 @@ The local and remote Host share this capture boundary: descendants are captured 
 A descendant that escaped before any capture is outside cland’s authority on both Hosts and is never signalled; host recycling clears it.
 
 This is the Coordinator's final 2026-11-02 06:59Z refinement (24e17b6f), replacing the intermediate group-only note. Local `endProcess` walks ancestry while intact; remote capture follows that boundary. An already reparented escape cannot be discovered from its old parent PID. The missed-exit unknown fence remains; routine observed exits do not all become unknown.
+
+## Hub admission
+
+A host agent does not call hub.sock. Session CLI, hooks and mod-bridge clients
+using its forwarded socket carry their own session credentials. A host secret
+never acts as the human; see [Host-secret admission and revocation](../hub/adapters-and-sessions.md#host-secret-admission-and-revocation).
+Only the human CLI or Neovim on a local connection may run `cland host revoke <id>`.

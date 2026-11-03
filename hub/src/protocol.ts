@@ -704,6 +704,7 @@ export type RemoteStatusResult = { remotes: RemoteStatusRow[] };
 export type ClientRequest =
   | { type: 'remote.status'; id: string }
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
+  | { type: 'host.revoke'; id: string; host: string }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | { type: 'auth.mode'; id: string; mode: 'users' }
@@ -1115,6 +1116,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'remote.test':
     case 'remote.unpair':
       return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
+    case 'host.revoke':
+      return typeof f.host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.host) && f.host !== 'local';
     case 'pairing.approve':
       return (f.messenger === 'telegram' || f.messenger === 'discord') && typeof f.code === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(f.code) && (f.user === undefined || typeof f.user === 'string');
     case 'remote.status':

@@ -42,7 +42,8 @@ export const SUBSCRIPTIONS_USAGE = SUBSCRIBE_USAGE + UNSUBSCRIBE_USAGE + SUBSCRI
 
 export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
 
-export const HOST_USAGE = `  host serve      run the host agent on agent.sock (no systemd required)
+export const HOST_USAGE = `  host revoke <id> human-only local CLI: revoke its secret and close its connections
+  host serve      run the host agent on agent.sock (no systemd required)
                   CLAND_HOST_SECRET required; CLAND_HOST_RUN_DIR defaults to ~/.cland-host/run
                   ignores SIGHUP; supervisor.sh provides detached restart supervision
 

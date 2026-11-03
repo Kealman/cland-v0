@@ -1,11 +1,9 @@
+import { clientSessionCredential, credentialActor } from './credential-actor.ts';
 // One authenticated JSON-line request; shared by CLI and fixture admission.
 import { randomUUID } from 'node:crypto';
 import { createConnection } from 'node:net';
 import { PROTOCOL_VERSION, parseFrame } from './protocol-frame.ts';
 import type { Discovery } from './project-discovery.ts';
-import { dirname, join } from 'node:path';
-import { readSessionCredential } from './session-credential.ts';
-import { hubDiscovery } from './project-discovery.ts';
 import { sessionOf } from './frame-actor.ts';
 import { realClock, type Clock } from './clock.ts';
 
@@ -37,14 +35,11 @@ export async function probeHub(d: Pick<Discovery, 'socket' | 'secret' | 'root'>,
 }
 
 function exchange(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: ({ type: string } & Record<string, unknown>) | null, timeoutMs: number, env: NodeJS.ProcessEnv, clock: Clock): Promise<unknown> {
-  const session = frame && frame.as === undefined && !PLUMBING.has(frame.type) ? sessionOf(env) : undefined;
+  const session = frame && frame.as === undefined ? (PLUMBING.has(frame.type) ? credentialActor(d, env) : sessionOf(env)) : undefined;
   let request: ({ type: string } & Record<string, unknown>) | null = session && frame ? { ...frame, as: session } : frame;
   const actor = request?.as;
   if (actor && typeof actor === 'object' && !Object.hasOwn(actor, 'credential')) {
-    const own = sessionOf(env);
-    const clandDir = d.root ? join(d.root, '.cland') : dirname(hubDiscovery(process.cwd(), env));
-    const credential = env.CLAND_LAUNCH_TOKEN !== undefined ? env.CLAND_LAUNCH_TOKEN
-      : own?.sessionId ? readSessionCredential(clandDir, own.sessionId) : undefined;
+    const credential = clientSessionCredential(d, env);
     if (credential !== undefined && request) request = { ...request, as: { ...actor, credential } };
   }
   return new Promise((resolve, reject) => {

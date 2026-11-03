@@ -592,6 +592,26 @@ The fake hook requires the comma-separated `CLAND_FAKE_HOSTS` list and absolute
 See `docs/agents/tests/hub-test-host-records.test.ts.md` for isolated coverage.
 Admission and connection revocation stay with the host authority owner.
 
+### Host-secret admission and revocation
+
+A host secret is accepted on the Unix spoke edge and hub socket only. It never
+represents a human user. A spoke must prove a credential bound to that host and a role-holding session.
+Before process-row publication, the validated launch reservation supplies the
+host and role; afterwards admission uses the running durable row. The proved
+identity is passed intact into core admission, including anonymous first hellos;
+a token for one session cannot join another live session. A host
+client must carry that session's credential on every request, including hooks
+and the mod bridge. `host/host-authority.ts` denies unknown and human-only frames
+before user resolution, replay or dispatch; allowed requests still use session
+permissions. Host clients cannot subscribe to human snapshots. The project
+secret's existing edge admission is unchanged; host secrets do not admit TCP,
+web or stdio clients.
+
+`cland host revoke <id>` requires the human CLI or Neovim on a local connection
+(and an active admin in users mode). It persists revocation, fences further
+frames and closes that host's connections. Later host hellos name revocation
+without exposing credentials. Restart never re-mints a revoked secret.
+
 ## Local Host files and polling (T-1543)
 
 For remote row liveness and signals, use the recording registry Host and

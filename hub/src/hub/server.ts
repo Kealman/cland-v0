@@ -188,16 +188,21 @@ export async function createWebSocketEdge(
   });
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const sockets = new Set<WebSocket>();
+  const admittedHosts = new WeakMap<IncomingMessage, string>();
   const lastSeen = new Map<WebSocket, number>();
   const keepaliveMs = options.keepaliveMs ?? KEEPALIVE_MS;
 
   http.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    if (!bearerMatches(req.headers.authorization, options.secret)) {
+    const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : undefined;
+    const project = bearerMatches(req.headers.authorization, options.secret);
+    const host = !project && options.path && token ? dispatcher.hostAdmission(token) : null;
+    if (!project && host?.state !== 'registered') {
       log({ event: 'refused', code: 'unauthorized', from: req.socket.remoteAddress });
-      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+      socket.write(`HTTP/1.1 401 ${host?.state === 'revoked' ? 'Host revoked' : 'Unauthorized'}\r\nConnection: close\r\n\r\n`);
       socket.destroy();
       return;
     }
+    if (host) admittedHosts.set(req, host.id);
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
   });
 
@@ -218,7 +223,7 @@ export async function createWebSocketEdge(
         isOpen: () => ws.readyState === WebSocket.OPEN,
       },
       // the upgrade checked the bearer secret already
-      { authenticated: true, edge: 'websocket' },
+      { authenticated: true, edge: 'websocket', ...(admittedHosts.has(req) ? { hostId: admittedHosts.get(req)! } : {}) },
     );
     ws.on('message', (data) => {
       lastSeen.set(ws, clock.now().getTime());
