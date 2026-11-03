@@ -7,6 +7,7 @@ import type { ProcessHooks } from './processes.ts';
 import { AgentProcesses } from './processes.ts';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
+import { checkpoint } from './storage.ts';
 import { agentOperations } from './operations.ts';
 import { AGENT_PROTOCOL, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
 export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void> };
@@ -103,6 +104,9 @@ export async function serveAgent(options: AgentOptions) {
       if (process.platform === "linux") { const info = await readFile("/proc/meminfo", "utf8"); const kb = /^MemAvailable:\s+(\d+) kB/m.exec(info)?.[1]; if (!kb) return; availableBytes = Number(kb) * 1024; }
       broadcast({ event: "memory", totalBytes: totalmem(), availableBytes });
     }).catch(() => {}); }, options.memoryIntervalMs ?? 5000);
+    const identity = await processes.identity(process.pid);
+    if (!identity) throw new Error('agent birth identity unavailable');
+    await checkpoint(join(options.runDir, 'agent.pid'), { pid: process.pid, identity });
     admitting = true;
     recoveryTimer = setTimeout(() => { memoryWork = memoryWork.then(() => processes.reconcile()).catch(() => {}); }, 0);
     return { socket, close };

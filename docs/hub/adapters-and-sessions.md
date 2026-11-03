@@ -738,3 +738,25 @@ diagnostics in host/worktree-install.ts. The local limitPolls flag preserves idl
 polls; AccountPoller checks it again when queued work starts. Keep both existing
 account-poller test files unedited. The T1 member inventory detects omitted Host
 members, while source review checks assertion quality. No role clause is added.
+
+### Host agent supervisor
+
+Start the POSIX shell loop in its own session on Linux:
+`setsid nohup sh hub/src/host/agent/supervisor.sh "$CLAND_HOST_RUN_DIR" node hub/bin/cland.ts host serve </dev/null >>supervisor.log 2>&1 &`.
+Use absolute code paths and a private run directory; supply `CLAND_HOST_SECRET`
+through the environment. The loop ignores SIGHUP and waits one second after
+agent exit before restarting it. Startup time adds to this delay. The agent also
+ignores SIGHUP; harnesses stay in their independent sessions and retain the
+existing process-table identities across agent restart. A missed harness exit
+still leaves authority unknown under the protocol's recovery rules.
+
+Atomic `supervisor.lock` directory creation serializes starts. Its `pid` and
+native `birth` files distinguish a live owner from a stale or incomplete receipt;
+both cases refuse a second start. A stale lock needs explicit removal after the
+owner's absence is established; the script never signals a PID from disk or
+reclaims an ambiguous lock. `agent.pid` is an atomic 0600 JSON receipt containing
+`pid` and `identity`, checkpointed before authenticated admission. It is an
+observation receipt, not harness ownership. The fake-host-only `kill-agent`
+control requires `CLAND_HOST_SECRET`, authenticates the named host's live
+`agent.sock`, matches its hello PID to the receipt, then compares a fresh native
+birth before SIGKILL. It refuses foreign, stale or malformed receipts. No kill RPC is added to the agent protocol.
