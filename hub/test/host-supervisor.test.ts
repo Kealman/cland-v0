@@ -1,7 +1,7 @@
 // T3: supervisor session detachment, native death/restart and persisted process identity require real processes.
-// Lifecycle: fake hosts only; captured supervisor group and harness drained before scratch removal.
+// Lifecycle: fake hosts only; captured supervisors, agents and harnesses drained before scratch removal.
 import { removeFixtureSockets } from '../../test-support/socket-path.ts';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises';
@@ -9,14 +9,43 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { createFakeHost, hostControl } from './fakes/fake-host.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { ownProcess, fixtureProcessCensus, cleanupOwnedProcesses } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import { AgentClient } from '../src/host/agent-client.ts';
+const roots: string[] = [];
+const restartOwners = new Map<string, Array<{stop: () => Promise<void>; agents: Array<() => Promise<void>>}>>();
+async function closeSupervisors(root: string, beforeStop?: () => Promise<void>) {
+  await beforeStop?.();
+  const owners = restartOwners.get(root) ?? [];
+  // Shared roots can have several supervisors. Join every restart owner before
+  // capturing the final writers, including agents born during owner shutdown.
+  for (const owner of owners) await owner.stop();
+  const remaining = fixtureProcessCensus(root);
+  for (const owner of owners) for (const cleanup of owner.agents) await cleanup();
+  await cleanupOwnedProcesses(remaining);
+}
+
+async function fixtureRoot(prefix: string) {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  roots.push(root);
+  return root;
+}
+// Keep roots until the file census so cwd evidence survives teardown.
+after(async () => {
+  const survivors = roots.flatMap(root => fixtureProcessCensus(root));
+  try { assert.deepEqual(survivors, [], 'post-file fixture process census: supervised writers survived teardown'); }
+  finally {
+    // Red-control safety net; this runs only after the assertion has observed the leak.
+    for (const root of roots) await closeSupervisors(root);
+    await cleanupOwnedProcesses(survivors);
+    for (const root of roots) { await removeFixtureSockets(root); await rm(root, { recursive: true, force: true }); await assert.rejects(access(root)); }
+  }
+});
 const script = new URL('../src/host/agent/supervisor.sh', import.meta.url).pathname;
 const cli = new URL('../bin/cland.ts', import.meta.url).pathname;
 
 test('supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart and retained harness identity', {timeout:20000}, async t => {
-  const root = await mkdtemp(join(tmpdir(), 'hs-'));
+  const root = await fixtureRoot('hs-');
   const host = await createFakeHost(root, 'one');
   const env = fixtureEnvironment(root, process.env, { CLAND_FAKE_HOST_ROOT:root, CLAND_FAKE_HOSTS:'one', CLAND_HOST_BOOT_ID_FILE:host.bootId, CLAND_HOST_RUN_DIR:host.run, CLAND_HOST_SECRET:'synthetic' });
   let client: AgentClient | undefined;
@@ -30,6 +59,7 @@ test('supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart an
     const supervisor = await launch.ready();
     await launch.depart();
     client = await eventually('authenticated agent hello', ()=>AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(()=>undefined));
+    launch.recordAgent(client.hello.pid);
     process.kill(supervisor, 0);
     const firstPid = client.hello.pid;
     const second = spawn('sh', args, {cwd:root, env:fixtureEnvironment(root,process.env,env), stdio:'ignore'});
@@ -54,6 +84,7 @@ test('supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart an
       const next=await AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(()=>undefined);
       if(next?.hello.pid===firstPid){await next.close();return undefined;}return next;
     },3000);
+    launch.recordAgent(client.hello.pid);
     assert.ok(performance.now()-start<3000); // lint-allow-wall-clock: C2 measures SIGKILL-to-authenticated replacement hello within 3s
     assert.notEqual(client.hello.pid,firstPid);
     assert.equal(await client.request('alive',harness),true);
@@ -63,7 +94,7 @@ test('supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart an
     assert.equal(await client.request('stop',harness),true);
     for(const path of [script,new URL('../src/cli/host.ts',import.meta.url)]) assert.doesNotMatch(await readFile(path,'utf8'),/systemctl|systemd-run/);
   } catch(error) { try{tail=(await readFile(join(host.run,'supervisor.log'),'utf8')).slice(-4096);}catch{} t.diagnostic(JSON.stringify({incomplete:'supervisor lifecycle',tail})); throw error;
-  } finally { await client?.close(); await cleanHarness(); await cleanSecond(); await cleanSupervisor(); await removeFixtureSockets(root); await rm(root,{recursive:true,force:true}); }
+  } finally { await client?.close(); await cleanHarness(); await cleanSecond(); await cleanSupervisor(); }
 });
 
 // Keep the initiating shell alive behind gates until the caller captures its
@@ -76,7 +107,15 @@ async function startSupervisor(root: string, run: string, env: NodeJS.ProcessEnv
   starter.once('close',(code,signal)=>{closed={code,signal};});
   const cleanStarter=ownProcess(undefined,starter.pid);
   let cleanNative=async()=>{};
+  const agents: Array<() => Promise<void>> = [];
+  const owners = restartOwners.get(root) ?? [];
+  restartOwners.set(root, owners);
+  owners.push({agents, stop: async () => {
+    await cleanNative(); await cleanStarter();
+    await eventually('starter native close after cleanup',()=>closed,3000);
+  }});
   return {
+    recordAgent:(pid: number)=>{ agents.push(ownProcess(undefined,pid)); },
     release:()=>writeFile(join(run,'launch'),'launch'),
     ready:async()=>{
       const pid=await eventually('supervisor pid receipt',async()=>{try{return Number(await readFile(join(run,'supervisor.lock/pid'),'utf8'))||undefined;}catch{return undefined;}},3000);
@@ -88,15 +127,12 @@ async function startSupervisor(root: string, run: string, env: NodeJS.ProcessEnv
       const receipt=await eventually('initiating shell native close',()=>closed,3000);
       assert.equal(receipt.code,0);
     },
-    close:async()=>{
-      await cleanNative(); await cleanStarter();
-      await eventually('starter native close after cleanup',()=>closed,3000);
-    },
+    close:(beforeStop?: () => Promise<void>)=>closeSupervisors(root, beforeStop),
   };
 }
 
 test('supervisor setup failure before its expected receipt drains the detached writer before root removal', {timeout:10000}, async()=>{
-  const root=await mkdtemp(join(tmpdir(),'hs-fail-'));
+  const root=await fixtureRoot('hs-fail-');
   const host=await createFakeHost(root,'one');
   const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOSTS:'one',CLAND_HOST_RUN_DIR:host.run});
   const launch=await startSupervisor(root,host.run,env,[script,host.run,process.execPath,'-e','setInterval(()=>{},1000)']);
@@ -113,14 +149,14 @@ test('supervisor setup failure before its expected receipt drains the detached w
       const {observeProcesses}=await import('../src/host/agent/native.ts');
       return (await observeProcesses([pid],fixtureEnvironment(root,process.env,{CLAND_FAKE_HOSTS:'one',CLAND_HOST_BOOT_ID_FILE:host.bootId}))).get(pid)?.ended||undefined;
     },3000);
-    await removeFixtureSockets(root); await rm(root,{recursive:true,force:true});
-    await assert.rejects(access(root));
-  } finally { await independent(); await launch.close(); await removeFixtureSockets(root); await rm(root,{recursive:true,force:true}); }
+
+    assert.deepEqual(fixtureProcessCensus(root), [], 'setup failure leaves no writer');
+  } finally { await independent(); await launch.close(); }
 });
 
 
 test('kill-agent refuses another live fake host receipt and preserves both agents and harnesses', {timeout:15000}, async()=>{
-  const root=await mkdtemp(join(tmpdir(),'hs-owner-'));
+  const root=await fixtureRoot('hs-owner-');
   const owners:Array<{close:()=>Promise<void>}>=[];
   const clients:AgentClient[]=[];
   const clean:Array<()=>Promise<void>>=[];
@@ -132,7 +168,7 @@ test('kill-agent refuses another live fake host receipt and preserves both agent
       const host=hosts[i]!,env=envs[i]!;
       const owner=await startSupervisor(root,host.run,env,[script,host.run,process.execPath,cli,'host','serve']);owners.push(owner);
       await owner.release();const pid=await owner.ready();await owner.depart();process.kill(pid,0);
-      const client=await eventually('named agent hello',()=>AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(()=>undefined),3000);clients.push(client);
+      const client=await eventually('named agent hello',()=>AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(()=>undefined),3000);clients.push(client);owner.recordAgent(client.hello.pid);
       const harness=await client.request('spawn',{command:process.execPath,args:['-e','setInterval(()=>{},1000)'],cwd:root,env}) as {pid:number;identity:string};
       harnesses.push(harness);clean.push(ownProcess(undefined,harness.pid));
     }
@@ -143,5 +179,40 @@ test('kill-agent refuses another live fake host receipt and preserves both agent
       assert.equal(await clients[i]!.request('identity',{pid:clients[i]!.hello.pid}),JSON.parse(i===0?original.toString():await readFile(join(hosts[i]!.run,'agent.pid'),'utf8')).identity);
       assert.equal(await clients[i]!.request('alive',harnesses[i]!),true);
     }
-  } finally {for(const client of clients)await client.close();for(const cleanup of clean)await cleanup();for(const owner of owners)await owner.close();await removeFixtureSockets(root); await rm(root,{recursive:true,force:true});}
+  } finally {for(const client of clients)await client.close();for(const cleanup of clean)await cleanup();for(const owner of owners)await owner.close();}
+});
+
+
+test('teardown joins a replacement started while restart-owner shutdown is held', {timeout:10000}, async () => {
+  const root = await fixtureRoot('hs-race-');
+  const host = await createFakeHost(root, 'one');
+  const env = fixtureEnvironment(root, process.env, {CLAND_FAKE_HOST_ROOT:root, CLAND_FAKE_HOSTS:'one', CLAND_HOST_BOOT_ID_FILE:host.bootId, CLAND_HOST_RUN_DIR:host.run, CLAND_HOST_SECRET:'synthetic'});
+  const owner = await startSupervisor(root, host.run, env, [script, host.run, process.execPath, cli, 'host', 'serve']);
+  let client: AgentClient | undefined;
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let entered!: () => void;
+  const held = new Promise<void>(resolve => { entered = resolve; });
+  let closing: Promise<void> | undefined;
+  try {
+    await owner.release(); await owner.ready(); await owner.depart();
+    client = await eventually('race initial hello', () => AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(() => undefined), 3000);
+    const first = client.hello.pid; owner.recordAgent(first);
+    // Arm the hold before teardown starts. The replacement deliberately never
+    // enters recordAgent: final teardown discovery must capture and join it.
+    closing = owner.close(async () => { entered(); await gate; });
+    await held;
+    await hostControl('kill-agent','one',env); await client.close(); client = undefined;
+    client = await eventually('replacement hello during held teardown', async () => {
+      const next = await AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(() => undefined);
+      if (next?.hello.pid === first) { await next.close(); return undefined; }
+      return next;
+    }, 3000);
+    const replacement = client.hello.pid;
+    const birth = fixtureProcessCensus(root).find(row => row.pid === replacement);
+    assert.ok(birth?.identity, 'replacement native birth observed before release');
+    await client.close(); client = undefined;
+    release(); await closing;
+    assert.deepEqual(fixtureProcessCensus(root), [], 'replacement started during teardown is joined');
+  } finally { release(); await client?.close(); await closing; await owner.close(); }
 });
