@@ -3,7 +3,7 @@ id: T-1601
 kind: task
 title: The adapters take their launch layout and files from the session's Host
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1352
 branch: t/T-1601-the-adapters-take-their-launch-layout
 created: 2026-11-02T03:33:55.630Z
-updated: 2026-11-03T02:30:29.820Z
+updated: 2026-11-03T02:56:58.795Z
 ---
 
 ## Summary
@@ -32,26 +32,31 @@ Hot files: `hub/src/adapters/claude-code.ts`, `hub/src/adapters/codex.ts`, `hub/
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.676Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
   - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.828Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-3 · 2026-11-03T02:56:58.582Z · commit e4211fc198223ced964b3d1646eafa69a5894656
 - [x] C2. On the `local` host the argv, environment, file paths, modes and contents of a launch of each harness are byte-identical to today's (test).
   - done: impl-1601 · 2026-11-03T00:17:58.093Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
   - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.828Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-3 · 2026-11-03T02:56:58.582Z · commit e4211fc198223ced964b3d1646eafa69a5894656
 - [x] C3. OpenCode's port comes from the launch Host's freePort and its password is read through that Host (test).
   - done: impl-1601 · 2026-11-02T23:51:15.745Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
   - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.829Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-3 · 2026-11-03T02:56:58.582Z · commit e4211fc198223ced964b3d1646eafa69a5894656
 - [x] C4. The boundary lint also fails when an adapter or `opencode/server.ts` imports `writeFile`, `mkdir`, `rm` or `chmod` from `node:fs` or `node:fs/promises` for a session-side path (test).
   - done: impl-1601 · 2026-11-02T23:51:16.483Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
   - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.829Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-3 · 2026-11-03T02:56:58.583Z · commit e4211fc198223ced964b3d1646eafa69a5894656
 - [x] C5. The claude-code-adapter, codex-adapter, opencode-adapter, opencode-native and launch-files test files pass with no test edited.
   - done: impl-1601 · 2026-11-02T23:51:17.164Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
   - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.829Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-3 · 2026-11-03T02:56:58.583Z · commit e4211fc198223ced964b3d1646eafa69a5894656
 
 ## Notes
 
@@ -327,3 +332,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Duration-only authorized delta source clear, no findings. Coordinator96d1028a read. Incoming e352d2995 is reviewed T-1647 manifest/tracker metadata; runtime/test sources and skill unchanged from prior cleara32. Repair changes exactly one tests-map key to the actual placement refusal test title at159, retaining0.109388 as explicitly authorized historical baseline, no new measurement claim. A-16133 records old-key exact identity refusal then test:tiers exit0/global182free+497machine. No other repair timing/cap/expiry edits. C1–C5 remain runtime-unverified pending fresh same-head mode-free verify; prior queued/native receipts retain historical heads. QA affected/after-stage separate. Reviewer executed no tests/browser or edits. Detail A-16135: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16135-t-1601-duration-identity-repair-source-review.md.
+
+### rev-35 · 2026-11-03T02:56:58.583Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1601-final-3
+commit: e4211fc198223ced964b3d1646eafa69a5894656
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear after duration repair; C1–C5 verified, no findings. Exact-head244a1293/A-16136 exit0,4953 pass/zero fail/cancel/skip/todo. Independently checked layout16/boundary12/sandbox4/routing16/placement11/native32/LaunchFiles3 and incoming consumers; repaired exact placement identity has actual pass receipt18296, distinct from retained historical baseline. C5 Claude6/Codex13/OpenCode21 native raw outcomes/exits0 remain actuala32 head A-16111–13/A-16116; comparison confirms identical .ts production/test sources with only durations.json changed, explicitly predecessor source-equivalent evidence. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/allT2/selectedT3 fourfiles75identities/Web complete,remainingT3 batch-deferred,T4 unexecuted. Budget/lint/ratchet/skip diagnostics report-only. QA affected/after-stage separate. Reviewer ran no tests/browser/probes or edits. Detail A-16138: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16138-t-1601-final-evidence-after-duration-identity-repair.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

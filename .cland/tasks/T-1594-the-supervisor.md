@@ -2,8 +2,8 @@
 id: T-1594
 kind: task
 title: The supervisor
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1357
 branch: t/T-1594-the-supervisor
 created: 2026-11-02T03:33:54.007Z
-updated: 2026-11-03T01:54:50.298Z
+updated: 2026-11-03T03:01:49.409Z
+closed: 2026-11-03T03:01:49.409Z
 ---
 
 ## Summary
@@ -129,3 +130,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C4 verified, no findings. Exact-head378e32be/A-16107 exit0,4863 pass/zero fail/cancel/skip/todo. All3 actual supervisor native identities pass: singleton/HUP/detachment/kill-agent replacement+retained harness; failed setup drains before root removal; copied valid foreign-agent receipt refused with both owners/harnesses usable. Read retained C2 replacement-hello+same-harness-identity and <3000ms final assertion; full test timing is not claimed as restart latency. Prior source clear rev-36-1594-source-2 remains unchanged. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4. T0/T1/allT2/changedT3 file3cases/Web complete, remainingT3 deferred,T4 unexecuted; budgets/lint/ratchet/skip checks report-only. Batch unknown explicit host-allow-list shard blocker remains separate/unresolved; no batch pass claimed. After-stage QA separate. Reviewer executed no tests/browser/probes or edits. Detail A-16108: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16108-t-1594-final-evidence-supervisor-recovery-and-named-host-signal-fences.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-03T03:01:49.409Z
+
+Merged 1650fd40ef0591f9ec1cce3aaaa633035af7af12 onto dev.
