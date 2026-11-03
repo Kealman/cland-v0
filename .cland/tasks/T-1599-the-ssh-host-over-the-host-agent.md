@@ -3,7 +3,7 @@ id: T-1599
 kind: task
 title: The ssh Host over the host agent
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1366
 branch: t/T-1599-the-ssh-host-over-the-host-agent
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-03T11:53:56.930Z
+updated: 2026-11-03T13:13:05.020Z
 ---
 
 ## Summary
@@ -30,15 +30,20 @@ Hot files: `hub/src/host/ssh-host.ts` (new), `hub/src/adapters/index.ts`, `hub/s
 ## Acceptance criteria
 
 - [x] C1. The Host contract suite passes on a fake host through the fake `ssh` stand-in (test).
-  - done: impl-1599 · 2026-11-03T11:53:56.930Z
+  - done: impl-1599 · 2026-11-03T12:47:09.263Z
+  - verified: rev-35 [reviewer] · run rev-35-1599-final-1 · 2026-11-03T13:13:04.794Z · commit 63e8f8296016e4dc06c64143854cb7f09065b97a
 - [x] C2. A spawn on a fake host carries none of the hub's own environment, and `DIGITALOCEAN_TOKEN`, the remotes' tokens and the project secret never reach it even when the caller passes them (test).
   - done: impl-1599 · 2026-11-03T11:24:55.931Z
+  - verified: rev-35 [reviewer] · run rev-35-1599-final-1 · 2026-11-03T13:13:04.794Z · commit 63e8f8296016e4dc06c64143854cb7f09065b97a
 - [x] C3. With fake hosts registered, the registry holds `local` and one `ssh` Host per record, a launch with `host: "f1"` reaches f1's agent, and `CLAND_TEST_HOSTS` still works (test).
-  - done: impl-1599 · 2026-11-03T11:24:56.046Z
+  - done: impl-1599 · 2026-11-03T12:22:50.411Z
+  - verified: rev-35 [reviewer] · run rev-35-1599-final-1 · 2026-11-03T13:13:04.794Z · commit 63e8f8296016e4dc06c64143854cb7f09065b97a
 - [x] C4. While a host's tunnel is down, its operations fail with a reason naming the host and the tunnel, and they never touch the hub's machine (test).
   - done: impl-1599 · 2026-11-03T11:24:56.415Z
+  - verified: rev-35 [reviewer] · run rev-35-1599-final-1 · 2026-11-03T13:13:04.794Z · commit 63e8f8296016e4dc06c64143854cb7f09065b97a
 - [x] C5. A row spawned on a fake host is alive only while its agent reports the recorded identity, and its stop signals only on that host (test).
   - done: impl-1599 · 2026-11-03T11:24:56.533Z
+  - verified: rev-35 [reviewer] · run rev-35-1599-final-1 · 2026-11-03T13:13:04.794Z · commit 63e8f8296016e4dc06c64143854cb7f09065b97a
 
 ## Notes
 
@@ -95,3 +100,121 @@ finding_counts: {"high":2,"medium":2,"low":0}
 Fresh source review not clear: 2 high/2 medium findings, ranked and recorded in A-16257. Earlier root-stop, default supervisor, native completion reconnect, registry cleanup, dependency boundary and remote fault-row changes are present; prepared ownership still has the cleanup/close gaps above, and Host.run lacks disconnect settlement. Coordinator a5d3ae17 exact dependency exception and baaf0066 stop-race scope were read directly and checked against source. A-16256's ten unchanged macOS host-agent runs (18 pass each/native exit0) have matching production blobs; explicitly source-equivalent precommit evidence, not exact-head queued/Linux/full-tier verification. C1 failed; C2–C5 not newly verified; previous C3/C5 source defects are repaired. No Reviewer runtime tests, probes, browser, edits or delegation. No queued verification at this head. Fresh corrected-head source review before verify; affected after-stage QA separate. Detail A-16257: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16257-t-1599-fresh-source-review-remaining-cleanup-and-command-settlement-gaps.md.
 
 Criteria: C1 failed (Failed-prepare close can omit fenced native Git ownership; disconnected run completion and failed-abort admission fences remain incomplete, and close leaks late connection acquisition.).
+
+### rev-35 · 2026-11-03T11:55:07.482Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1599-source-3
+commit: 947ae5c3ceb9784021d4c3c300a5fb0ff9ec6625
+scope: full
+findings: [{"severity":"high","text":"Unknown native Git ownership is durably marked git-running only in prepare's catch (line117). If validateCheckout or cleanupCheckout reports CLAND_NATIVE_INCOMPLETE during commit, abort, or recovery cleanup, those paths retain prepared/committing and subsequently retry cleanup/Git (commit even calls #cleanup immediately after the failed inspection). A failed worktree removal can therefore still be writing metadata while close, settle or restart launches another cleanup/removal against it. Centralize durable transition to the unjoined-writer fence at every Git inspection/mutation boundary and require positive writer closure before retry; add held-writer commit/abort cleanup and restart regressions.","file":"hub/src/host/agent/prepared.ts","line":156},{"severity":"medium","text":"runCommand saves an accepted command result without enforcing the wire byte cap. A command producing stdout/stderr above MAX_LINE_BYTES finishes natively and is persisted, but server.ts:137 rejects both its original reply and every later settle-prepared reply as 'agent result exceeds frame cap'. SSH Host catches those errors and retries settlement forever, permanently fencing mutations despite a known completed command. Persist a bounded terminal representation or another retrievable bounded result and test oversized output reaches an explicit finite outcome with its native exit facts preserved.","file":"hub/src/host/agent/prepared.ts","line":196}]
+finding_counts: {"high":1,"medium":1,"low":0}
+
+Source review 3 not clear: 1 high/1 medium, detailed in A-16262. The four A-16257 repairs are present, but native incomplete classification is not durably consumed by every cleanup path, and accepted command results can exceed the settlement wire cap. C1 failed; C2–C5 not newly verified. Entire production/test/docs repair delta inspected; prior authorized boundary/stop predicate remain intact. A-16256's production blobs still match, with its source-equivalent precommit macOS limits retained. Implementer filtered/local checks are not queued or complete-tier evidence; exact-head checks still running, no verify/Linux/Web/browser/QA receipt yet. No Reviewer runtime tests, probes, file edits, browser or delegation. Fresh corrected-head source review required before verify. Detail: A-16262 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16262-t-1599-source-review-durable-git-fences-and-bounded-command-settlement.md.
+
+Criteria: C1 failed (Commit/abort/recovery paths can retry an unjoined native Git writer; oversized accepted command output cannot cross the reply cap and settlement waits forever.).
+
+### impl-1599 · 2026-11-03T12:00:42.486Z
+
+A-16262 repairs are implemented in the working tree. Every prepared Git boundary now durably records git-running before native inspection/mutation, restores only after joined completion, and retains unknown fences across commit/abort/settle/close/restart. Native-boundary regressions hold observed writers for commit inspection, abort removal and restart removal. Red: commit launched 2 writers instead of 1; green selected 3/3 and full host-prepared 12/12 on local macOS Node v24.21.0. Oversized durable command results preserve code plus bounded diagnostic tails and an explicit cap error before persistence; direct and lost-reply SSH regressions pass 2/2 after red bounded-settlement timeout. These are precommit targeted receipts, not queued verification or Linux coverage. Full SSH file and typecheck follow before corrected-head review.
+
+### rev-35 · 2026-11-03T12:05:07.042Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1599-source-4
+commit: 83428a67a4185a56aaf54d45c2e20edef78a7121
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, no findings. A-16262 repairs checked: every prepared Git boundary checkpoints and retains unknown-writer ownership across commit/abort/cleanup/restart; terminal durable command results are bounded before persistence and retrieved by original/settlement replies with native code and explicit diagnostic tails. Held-writer and direct/dropped-result regressions retain final assertions and independent fixture drainage. Complete repair production/test/docs delta reviewed against prior full passes; earlier authorized boundary/stop predicate and nine original repairs carried forward. C1–C5 all require runtime proof and remain unverified in this source-only verdict. A-16263 local checks and A-16256 ten native repetitions retain source-equivalent precommit macOS provenance; no exact-head queued/Linux/Web/browser/QA receipt yet. Implementer may submit mode-free configured verification at this exact head, then request evidence review. Any head change needs fresh source review. No Reviewer runtime checks, edits, browser or delegation. Detail A-16264: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16264-t-1599-clear-source-review-at-83428a67a.md.
+
+### rev-35 · 2026-11-03T12:22:24.817Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1599-evidence-1
+commit: 83428a67a4185a56aaf54d45c2e20edef78a7121
+scope: evidence
+findings: [{"severity":"medium","text":"Queued run523013bf fails 'Error: host transport already owned' at claimTransport (transport.ts:20). This unchanged status consumer registers host one before projectHub starts, then manually claims its fake carrier after startup; the new automatic SSH registry already owns that carrier. Migrate the fixture through the injected-Host seam and list the consumer while preserving all C6 status/reason/previous-reply assertions; a fresh source review and verification are required.","file":"hub/test/transport-status.test.ts","line":19}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Queued evidence not clear. Exact-head run523013bf/A-16265 overall/T2 exit1; actual output 'Error: host transport already owned' at transport-status.test.ts:19/transport.ts:20. Ordinary timing row22997 confirms the single named failure. Source trace identifies unchanged fixture consumer conflict with new automatic carrier ownership; Implementer reports local reproduction and will migrate via injected Host while preserving status/old-reply assertions. T0/T1 exit0; changed T3 and Web unexecuted, T4 none; no browser binary/receipt. Uncached Linux x64 droplet Node24.21/Nvim0.12.5, runner tree c52594905ee860121ec19843d25f1546b3a73402; report-only advisories not causal. C3 failed; no criteria verified. Existing source clear is not final run evidence. Fresh source review at corrected head before verification. Detail A-16266: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16266-t-1599-failed-queued-evidence-transport-status-consumer.md. No Reviewer runtime execution or edits.
+
+Criteria: C3 failed (Automatic registry startup owns host one before transport-status fixture's manual fake claim; queued C6 compatibility regression fails with host transport already owned.).
+
+### rev-35 · 2026-11-03T12:23:32.296Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1599-source-5
+commit: 0b693d330818f35cd60546d8352511a3bfef3294
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, no findings. The A-16266 transport-status consumer now injects existing inert Host one before daemon startup, allowing its status-only carrier to remain the sole owner. All status/reason/CLI/previous-reply assertions independently compared byte-identical. Production source is unchanged from source-clear83428a67a; consumer inventory/worklog/test guide updated. Prior complete source review carries forward. C1–C5 remain unverified until exact-head configured verification/evidence review. Precommit local C6 red/green supplements are not queued receipts; earlier A-16265 remains failed at its actual head, with changed T3/Web unrun. Submit mode-free verify at this exact head; any head change needs fresh source review. No Reviewer runtime checks, edits, browser or delegation. Detail A-16268: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16268-t-1599-clear-source-review-status-fixture-migration.md.
+
+### rev-35 · 2026-11-03T12:43:59.247Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1599-evidence-2
+commit: 0b693d330818f35cd60546d8352511a3bfef3294
+scope: evidence
+findings: [{"severity":"medium","text":"A-16269 records AssertionError: expected /already checked out/, actual \"fatal: 'used' is already used by worktree at .../elsewhere\". The platform-specific Git diagnostic match stops this regression before its cleanup/replacement/restart assertions run. Accept the equivalent native refusal wording while retaining every ownership and cleanup assertion, then re-review the changed head.","file":"hub/test/host-prepared.test.ts","line":111},{"severity":"medium","text":"A-16269:26571 reports the enforcing legacy duration rejection: shared Host contract wrapper 7.334 s > 5 s. All 14 nested behavioral rows passed, but the aggregate identity fails the configured case gate. Resolve the wrapper's registration/runtime budget through the documented procedure while preserving every behavior row and native receipt; report-only tier/lint/ratchet advisories do not waive this gate.","file":"hub/test/host-ssh-contract.test.ts","line":14}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear at exact source-reviewed head. Run4fd7d495/A-16269: T0/T1/all fallbackT2 exit0, changedT3 exit1; Web/T4 unexecuted, remainingT3 batch deferred. Actual native output 'used is already used by worktree at .../elsewhere' does not match /already checked out/ at prepared111. Also enforcing legacy duration rejection at26571: shared contract wrapper7.334s >5s. All14 nested behavior rows and SSH19 top-level identities pass; prepared11/12 passes, earlier transport-status now passes. These facts do not make overall run green. Two medium findings recorded; C1 failed, no new criteria verification. Uncached Linux x64 droplet c-8nyc1 Node24.21/Nvim0.12.5; treeee77a1515d0bf192accb50481355bca8d008a243; browser null. Separate report-only lint/tier/ratchet notices not causal substitutes for the enforcing case gate. Fresh corrected-head source review before another verify. No Reviewer tests/probes/edits/browser. Detail A-16270: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16270-t-1599-failed-changed-t3-evidence-git-wording-and-contract-budget.md.
+
+Criteria: C1 failed (Changed T3 fails Linux Git refusal wording and enforcing shared-contract wrapper duration 7.334s > 5s; replacement/restart assertions after wording failure did not execute.).
+
+### rev-35 · 2026-11-03T12:44:57.478Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1599-source-6
+commit: 25f7578b64d903f0590dfc0e6edc3221c5a03efe
+scope: full
+findings: [{"severity":"medium","text":"The enforcing shared-contract wrapper duration failure remains: A-16269:26571 measured7.334s >5s at the parent. Wrapper source and durations configuration are byte-identical at this head. Resolve this known case-gate blocker via the documented registration/runtime budget procedure, preserving every behavioral row/native receipt, before another verification. This is carried parent evidence, not a new timing measurement.","file":"hub/test/host-ssh-contract.test.ts","line":14}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Git diagnostic compatibility fix is source-correct: rejects now accepts both native branch-in-use messages while every cleanup/replacement/restart assertion remains intact. Production unchanged. Review remains not clear due to the second A-16270 blocker: enforcing wrapper duration remains byte-identical and unresolved. C1 failed, no criteria newly verified. Source scope carried forward; parent run is failed evidence, not a pass; Web remains unexecuted there. No Reviewer tests/probes/edits/browser. Detail A-16272: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16272-t-1599-source-review-git-wording-fixed-case-budget-outstanding.md.
+
+Criteria: C1 failed (Known enforcing shared-contract wrapper duration7.334s >5s remains unresolved; wrapper and case-budget configuration unchanged from failed parent.).
+
+### rev-35 · 2026-11-03T12:48:25.610Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1599-source-7
+commit: 63e8f8296016e4dc06c64143854cb7f09065b97a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, no findings. Exact aggregate wrapper allowance11.001s follows documented dated allowance policy: E-880 independently confirmed open standing epic under categoryC-327; addedNov3/expiresNov10, non-TODO lifecycle reason; 1.5x worst recorded passing wrapper sample rounded upward independently recomputed. A-16273 retains two production-checker before-fail/after-no-failure replays with sample head/platform limits. No mode/baseline/production/behavior/assertion/timeout change. Git regex correction retained; prior complete source review carried forward. C1–C5 remain unverified until exact-head configured evidence. Prior failed runs remain failed history; replay is allowance evidence only, no Web/browser claim. Submit mode-free verify at this exact head; changed head needs fresh source review. No Reviewer runtime checks/edits/browser/delegation. Detail A-16274: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16274-t-1599-clear-source-review-dated-aggregate-contract-allowance.md.
+
+### rev-35 · 2026-11-03T13:13:04.794Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1599-final-1
+commit: 63e8f8296016e4dc06c64143854cb7f09065b97a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, no findings; C1–C5 verified. Exact source-cleared/current head run597abaf5/A-16275 passed T0/T1/fallback allT2/changedT3/Web, aggregate4964/4964 and zero fail/cancel/skip/todo. Independently inspected all14 nested shared behavior passes, SSH19 and prepared12 top-level passes including every prior repair, environment6, registry2, transport-status1, boundary2, layout16/records10/routing16 and stop-observation3. Exact generated names and log lines mapped to each criterion in A-16277. SelectedT3 twofiles/31 top-level identities once; remainingT3 merge-batch deferred, T4 unexecuted, after-stageQA separate. Uncached droplet Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, runner treeb0e4cde8d4eddd462af2f9c95d1d580ae975a82a; isolated HeadlessShell1248/ChromeForTesting156.0.8078.4, browser path in artifact; skips[]/missing0 report. Budgets/lint/ratchet report-only; dated aggregate allowance source-reviewed, current wrapper4.3949004s. Host typecheck recorded at same tree, not repeated remotely. Billing cost/lifetime absent/unknown. Deferred native controls have only qualified historical macOS supplements, no remote-execution claim. Prior failed A-16265/A-16269 stay failed. No Reviewer runtime execution/edits/browser. Detail A-16277: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16277-t-1599-final-clear-exact-head-host-and-prepared-operation-evidence.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
