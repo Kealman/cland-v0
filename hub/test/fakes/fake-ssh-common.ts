@@ -27,8 +27,20 @@ export async function authenticate(options: Record<string, string>, destination:
   const host = await fakeHost(process.env, name);
   if (options.stricthostkeychecking !== 'yes' || !options.userknownhostsfile) throw new Error('fake ssh requires pinned host key');
   const key = (await readFile(join(host.directory, 'host-key.pub'), 'utf8')).trim();
-  const known = await readFile(options.userknownhostsfile, 'utf8');
-  if (!known.split('\n').some(line => { const parts = line.trim().split(/\s+/); return parts[0]?.split(',').includes(name) && parts.slice(1, 3).join(' ') === key; })) throw new Error('fake ssh host key mismatch');
+  // OpenSSH loads both user and global trust sources. Default globals are
+  // scratch-only and opt-in in the fake; never inspect this machine's trust.
+  const files = (value: string): string[] => {
+    const tokens = value.match(/"(?:[^"\\]|\\.)*"|[^\s]+/g) ?? [];
+    return tokens.map(token => token.startsWith('"') ? token.slice(1,-1).replace(/\\(.)/g,'$1') : token);
+  };
+  const sources = [...files(options.userknownhostsfile), ...(options.globalknownhostsfile ? files(options.globalknownhostsfile) : process.env.FAKE_SSH_GLOBAL_KNOWN_HOSTS ? [process.env.FAKE_SSH_GLOBAL_KNOWN_HOSTS] : [])];
+  let accepted = false;
+  for (const path of sources) {
+    if (path === 'none') continue;
+    const known = await readFile(path, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
+    if (known.split('\n').some(line => { const parts = line.trim().split(/\s+/); return parts[0]?.split(',').includes(name) && parts.slice(1,3).join(' ') === key; })) accepted = true;
+  }
+  if (!accepted) throw new Error('fake ssh host key mismatch');
   return host;
 }
 export type HostOwner = { directory: string; boot: string };

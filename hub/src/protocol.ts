@@ -891,6 +891,8 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  /** Optional for compatibility with earlier hubs. No probe is performed by status. */
+  hosts?: import('./transport/transport.ts').HostTunnelStatus[];
   /** Actual spoke listener address; absent on older or stdio-only hubs. */
   spokeBind?: string;
   /** The independent browser listener; absent on older or stdio-only hubs. */

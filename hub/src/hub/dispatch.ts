@@ -1,3 +1,4 @@
+import { tunnelStatuses } from '../transport/transport.ts';
 import { hostAuthorityRefusal } from '../host/host-authority.ts';
 import { HUMAN_USER_WRITES, localUserName } from './cli-user.ts';
 import { localHost } from '../host/local.ts';
@@ -2177,7 +2178,7 @@ export class Dispatcher {
               const { harnesses: _harnesses, ...compact } = full;
               const base = frame.history === true ? full : compact;
               const tracker = this.#options.tracker;
-              return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(transport.edge !== 'gateway'), requests: { ...this.#guard.counters } } satisfies HubStatus };
+              return { type: 'result', id: frame.id, ok: true, value: { ...base, hosts: tunnelStatuses(full.root, core.store.hosts.list()), mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(transport.edge !== 'gateway'), requests: { ...this.#guard.counters } } satisfies HubStatus };
             };
             if (frame.flushLogs === true && control.flushLogs) {
               const resumed = this.#guard.resumer(frame.type, client);

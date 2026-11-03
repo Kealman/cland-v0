@@ -33,6 +33,10 @@ A descendant that escaped before any capture is outside cland’s authority on b
 
 This is the Coordinator's final 2026-11-02 06:59Z refinement (24e17b6f), replacing the intermediate group-only note. Local `endProcess` walks ancestry while intact; remote capture follows that boundary. An already reparented escape cannot be discovered from its old parent PID. The missed-exit unknown fence remains; routine observed exits do not all become unknown.
 
+The [SSH carrier](../hub/ssh-transport.md) streams bootstrap secrets only on stdin,
+reuses `supervisor.sh --check` liveness and exposes optional tunnel facts in
+`hub.status.hosts`. Stop joins the hub-owned carrier while host processes survive.
+
 ## Hub admission
 
 A host agent does not call hub.sock. Session CLI, hooks and mod-bridge clients

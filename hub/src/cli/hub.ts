@@ -38,8 +38,12 @@ const duration = (ms: number): string => {
   return h < 24 ? `${h}h ${m % 60}m` : `${Math.floor(h / 24)}d ${h % 24}h`;
 };
 
-async function describe(s: HubStatus): Promise<string> {
+export async function describe(s: HubStatus): Promise<string> {
   const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`];
+  if (s.hosts?.length) {
+    lines.push(`hosts: ${s.hosts.length}`);
+    for (const host of s.hosts) lines.push(`  ${host.name}  ${host.state} since ${host.since ?? 'unknown'} · probe ${host.lastProbe ? `${host.lastProbe.at} ${host.lastProbe.ok ? 'ok' : 'failed'}` : 'not run'} · reconnects ${host.reconnects}${host.reason ? ` · ${host.reason}` : ''}`);
+  }
   if (s.web) {
     const { addressHost } = await import('../web-address.ts');
     lines.push(s.web.available ? `  web      http://${addressHost(s.web.bind ?? '127.0.0.1')}:${s.web.port}/` : `  web      unavailable on ${addressHost(s.web.bind ?? '127.0.0.1')}:${s.web.port}: ${s.web.reason ?? 'unknown reason'}`);

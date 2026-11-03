@@ -58,3 +58,10 @@ cleanup before removal. Byte-stream assertions accumulate partial chunks.
 The scripts intentionally leave stale control and forward sockets on
 abrupt exit to exercise carrier cleanup/reconnect. No second transport carrier
 or transport contract is defined here (T-1625 owns the reusable contract).
+
+T-1595 extends the stand-in's known-hosts value parser for quoted paths and
+multiple filenames. Fake authentication combines user/global entries as OpenSSH
+does. FAKE_SSH_GLOBAL_KNOWN_HOSTS opts into one scratch default global file;
+without it the fake never reads system trust. Explicit GlobalKnownHostsFile
+replaces that default. Existing fake-ssh cases remain unchanged; transport-ssh
+owns the matching-global/wrong-private red control and exclusive-pin regression.

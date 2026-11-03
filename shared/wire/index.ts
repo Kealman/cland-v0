@@ -1098,6 +1098,7 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  hosts?: Array<{ name: string; state: 'up' | 'connecting' | 'down'; since: string | null; reason?: string; lastProbe: { at: string; ok: boolean } | null; reconnects: number }>;
   /** Actual spoke listener address; absent on older or stdio-only hubs. */
   spokeBind?: string;
   /** The independent browser listener; absent on older or stdio-only hubs. */
