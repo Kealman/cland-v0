@@ -98,9 +98,10 @@
       "A-15995",
       "A-16249",
       "A-16282",
-      "A-16304"
+      "A-16304",
+      "A-16314"
     ],
-    "commit": "aab5b2fc1d1b506d70a32b45875a71ec63f14c61"
+    "commit": "20ade9e177238349d813fd1240afcfbbfec5b704"
   },
   "budget": {
     "testSeconds": 5,
@@ -3393,6 +3394,18 @@
     "hub/test/host-stop-observation.test.ts": {
       "seconds": 0.001376,
       "tests": 3
+    },
+    "hub/test/remote-discovery-cli.test.ts": {
+      "seconds": 2.872528,
+      "tests": 1
+    },
+    "hub/test/remote-discovery-host.test.ts": {
+      "seconds": 13.703901,
+      "tests": 7
+    },
+    "hub/test/remote-discovery.test.ts": {
+      "seconds": 0.0043,
+      "tests": 2
     }
   },
   "tests": {
@@ -9954,7 +9967,17 @@
     "hub/test/host-ssh-contract.test.ts::unknown accepted spawn fences rollback mutations until its exact outcome reconciles": 1.744314,
     "hub/test/host-stop-observation.test.ts::live stop observation requires the exact captured birth": 0.000175,
     "hub/test/host-stop-observation.test.ts::missing birth without positive end remains a mismatch": 0.000207,
-    "hub/test/host-stop-observation.test.ts::stop observation accepts positive end before comparing a captured birth": 0.000994
+    "hub/test/host-stop-observation.test.ts::stop observation accepts positive end before comparing a captured birth": 0.000994,
+    "hub/test/remote-discovery-cli.test.ts::C3 status, doctor and hook reach remote CLAND_HUB_FILE socket without a local pid": 2.872528,
+    "hub/test/remote-discovery-host.test.ts::C2 remote spoke rereads discovery before reconnect": 3.136416,
+    "hub/test/remote-discovery-host.test.ts::C4 remote discovery stays private and byte-stable across hub restart": 2.05568,
+    "hub/test/remote-discovery-host.test.ts::C5 credentialed remote spoke next hello is refused after host revoke": 1.292695,
+    "hub/test/remote-discovery-host.test.ts::changed discovery keeps the prior private bytes and reports connecting refusal": 1.805643,
+    "hub/test/remote-discovery-host.test.ts::publication RPC timeout retains writer until a positive same-stream drain receipt": 0.061593,
+    "hub/test/remote-discovery-host.test.ts::readiness timeout aborts and drains before autonomous retry": 3.225868,
+    "hub/test/remote-discovery-host.test.ts::undrained readiness fences ownership and stop reports cleanup incomplete": 2.126006,
+    "hub/test/remote-discovery.test.ts::C1 remote discovery accepts socket credentials without a local pid or port; preserves old local shape": 0.003356,
+    "hub/test/remote-discovery.test.ts::different discovery refuses before a failing overwrite; identical bytes skip the writer": 0.000944
   },
   "allow": {
     "hub/test/host-ssh-contract.test.ts::ssh Host runs every shared Host behavioral contract through fake ssh": {
