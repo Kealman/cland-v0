@@ -3,7 +3,7 @@ id: T-1603
 kind: task
 title: OpenCode sessions on a host, end to end
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,11 @@ parent: E-1532
 blocked_by:
   - T-1600
   - T-1601
+  - T-1644
 topic: null
 branch: null
 created: 2026-11-02T03:33:56.105Z
-updated: 2026-11-02T03:33:56.105Z
+updated: 2026-11-03T22:00:57.575Z
 ---
 
 ## Summary

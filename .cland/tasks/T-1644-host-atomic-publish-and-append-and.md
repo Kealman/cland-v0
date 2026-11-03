@@ -3,7 +3,7 @@ id: T-1644
 kind: task
 title: Host atomic publish and append, and OpenCode's shared ignore through the Host
 state: open
-status: backlog
+status: planned
 size: S
 criterion_seq: 4
 labels: []
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-03T14:51:33.726Z
+updated: 2026-11-03T22:00:58.667Z
 ---
 
 ## Summary

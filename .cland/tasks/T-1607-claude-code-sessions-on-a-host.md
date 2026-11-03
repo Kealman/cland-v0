@@ -3,7 +3,7 @@ id: T-1607
 kind: task
 title: Claude Code sessions on a host
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-02T03:33:57.061Z
+updated: 2026-11-03T22:00:57.995Z
 ---
 
 ## Summary

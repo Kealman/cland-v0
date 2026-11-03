@@ -3,7 +3,7 @@ id: T-1606
 kind: task
 title: Codex sessions on a host
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:56.906Z
-updated: 2026-11-02T03:33:56.906Z
+updated: 2026-11-03T22:00:57.722Z
 ---
 
 ## Summary

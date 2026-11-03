@@ -3,7 +3,7 @@ id: T-1604
 kind: task
 title: The host's clone and its worktrees from the territory
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-03T14:32:39.627Z
+updated: 2026-11-03T22:00:58.136Z
 ---
 
 ## Summary
