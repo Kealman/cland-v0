@@ -2,8 +2,8 @@
 id: T-1657
 kind: task
 title: registerFakeHosts reads host keys at the fake-host root, but createFakeHost now writes them behind the short-socket alias
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1365
 branch: t/T-1657-registerfakehosts-reads-host-keys-at-the
 created: 2026-11-03T05:54:51.539Z
-updated: 2026-11-03T07:48:12.123Z
+updated: 2026-11-03T08:46:29.154Z
+closed: 2026-11-03T08:46:29.154Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified, no findings. Same-head1149aa9b/A-16220 exit0,4908 pass/zero fail/cancel/skip/todo. Independently checked host-records10/helper4 ordinary outcomes, fresh enabled/suite-tmpdir cases and exactly5 Linux suite-tmpdir load passes. A-16207 pins reviewed head and raw macOSarm64 Node24.21 native exit0 with all10 named cases including actual /private/tmp UUID branch; C2 is established from that macOS receipt, not inferred from Linux. Exact pins/client-key bytes/path existence/socket limits retained. T0/T1/allT2/Web completed; T3 merge-batch deferred,T4 unexecuted. Uncached Linuxx64 c-8lon1 Node24.21/Nvim0.12.5, runner tree9751558710cf7d5cf53e621331a3be16b3162bde, isolated HeadlessShell1248/Chrome156.0.8078.4. Budget/lint/incomplete ratchet/skip checks report-only, skips[]/missing0. Affected after-stage QA separate. Reviewer read only. Detail A-16221: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16221-t-1657-final-evidence-fresh-fake-host-startup-on-both-platforms.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-03T08:46:29.154Z
+
+Merged da225fb50a4e3e4aa9203a0f636a663a81cf2449 onto dev.

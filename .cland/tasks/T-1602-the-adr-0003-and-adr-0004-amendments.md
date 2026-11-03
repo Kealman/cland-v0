@@ -2,8 +2,8 @@
 id: T-1602
 kind: task
 title: The ADR 0003 and ADR 0004 amendments
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1364
 branch: t/T-1602-the-adr-0003-and-adr-0004-amendments
 created: 2026-11-02T03:33:55.945Z
-updated: 2026-11-03T07:47:07.040Z
+updated: 2026-11-03T09:21:00.276Z
+closed: 2026-11-03T09:21:00.276Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ No new runtime/browser/native-host behavior is claimed by the docs item or this 
 A-16219: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16219-t-1602-final-evidence-for-adr-amendments.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-03T09:21:00.276Z
+
+Merged 81d84169c8f246714f25a51462c2a421f6dd649e onto dev.

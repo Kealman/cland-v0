@@ -2,8 +2,8 @@
 id: T-1598
 kind: task
 title: Per-session forwards on the master
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1363
 branch: t/T-1598-per-session-forwards-on-the-master
 created: 2026-11-02T03:33:54.978Z
-updated: 2026-11-03T08:29:24.569Z
+updated: 2026-11-03T09:55:50.276Z
+closed: 2026-11-03T09:55:50.276Z
 ---
 
 ## Summary
@@ -29,12 +30,15 @@ Hot files: `hub/src/transport/ssh.ts`, `hub/test/transport-forwards.test.ts` (ne
 - [x] C1. A forward to a host Unix socket and one to a host loopback port each give a hub-side Unix socket under the host's directory that reaches its target, and no hub-side TCP listener is created (test).
   - verified: rev-35 [reviewer] · run rev-35-1598-final-1 · 2026-11-03T08:25:18.768Z · commit a60b02a3c1dbe6fc9b6cc1ca0b7f60aeb6df200e
   - done: impl-1598 · 2026-11-03T08:26:29.414Z
+  - verified: rev-35 [reviewer] · run rev-35-1598-final-2 · 2026-11-03T08:49:17.739Z · commit 1bccf9a6cd4a962bd8a587f5c91ee26cf55c8191
 - [x] C2. Cancelling a session's forwards removes them from the master and their hub-side socket files (test).
   - verified: rev-35 [reviewer] · run rev-35-1598-final-1 · 2026-11-03T08:25:18.768Z · commit a60b02a3c1dbe6fc9b6cc1ca0b7f60aeb6df200e
   - done: impl-1598 · 2026-11-03T08:26:29.650Z
+  - verified: rev-35 [reviewer] · run rev-35-1598-final-2 · 2026-11-03T08:49:17.739Z · commit 1bccf9a6cd4a962bd8a587f5c91ee26cf55c8191
 - [x] C3. After a SIGKILLed master reconnects, every forward still recorded is back within the retry window, and one that keeps failing is logged once with its session and given up after the last retry (test).
   - verified: rev-35 [reviewer] · run rev-35-1598-final-1 · 2026-11-03T08:25:18.768Z · commit a60b02a3c1dbe6fc9b6cc1ca0b7f60aeb6df200e
   - done: impl-1598 · 2026-11-03T08:26:29.854Z
+  - verified: rev-35 [reviewer] · run rev-35-1598-final-2 · 2026-11-03T08:49:17.739Z · commit 1bccf9a6cd4a962bd8a587f5c91ee26cf55c8191
 
 ## Notes
 
@@ -170,3 +174,26 @@ Authorized merge delta source clear, no findings. Independently read Coordinator
 ### impl-1598 · 2026-11-03T08:29:24.569Z
 
 Merged-head source clear A-16232 at1bccf9a6c. Exact-head local unedited fake/SSH contract identities2pass, native exits0, A-16233; macOSarm64Node24.21, fakes only. Fresh mode-free verify31623968 admitted queue1. Source unchanged/clean, awaiting hub receipt and final evidence review; landing hold retained.
+
+### rev-35 · 2026-11-03T08:49:17.739Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1598-final-2
+commit: 1bccf9a6cd4a962bd8a587f5c91ee26cf55c8191
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final evidence clear; C1–C3 verified, no findings. Exact-head31623968/A-16236 exit0,4915 pass/zero fail/cancel/skip/todo. Independently streamed all6 named forwarding outcomes(max3.324497262s, enforcing5s cap satisfied) plus both correct-file transport contract outcomes; policy/status also pass. No allowance or assertion weakening, production/defaults/cleanup unchanged since delta-source clear A-16232. T0/T1/allT2/Web + selectedT3 threefiles/eightcases once complete; remainingT3 deferred,T4 unexecuted. Uncached Linuxx64 c-8nyc1 Node24.21/Nvim0.12.5, treee730cd9c05619a342451834cd0f741ae5686138a, isolated HeadlessShell1248/Chrome156.0.8078.4, skips[]/missing0 report. A-16233 local exact-head contracts supplementary; A-16231 precommit/source-linked forwards separate. Tier/lint/incomplete ratchet advisories report-only; whole-case times not recovery latency. Old A-16222 failed history. Affected after-stage QA and Coordinator demo landing hold separate. Reviewer read only. Detail A-16237: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16237-t-1598-merged-head-final-evidence-with-transport-contracts.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1598 · 2026-11-03T08:50:00.011Z
+
+Merged-head final evidence clear A-16237; C1–C3 verified, hub statusready. Exact-head31623968/A-16236 exit0,4915pass/zero fail,cancel,skip,todo; A-16238 independently confirms all8 forwarding/contract pass,<5s. Linuxc-8nyc1 Node24.21/Nvim0.12.5 HeadlessShell1248 ChromeForTesting156.0.8078.4; T0/T1/fallbackallT2/selectedT3once/Web complete, remainingT3 deferred/T4 unexecuted/after-stageQA separate. Lifetime1101s//bin/zsh.0764; report-only diagnostics remain advisory. Fresh fetchdevda225fb5 merge-tree exit0/tree2a67120f, no head change. Coordinator ffc45679 lifted demo hold/enqueued1bccf9a6 second behind T-1602; claim retained until landing. T-1599 gets a fresh session.
+
+### coord · 2026-11-03T09:55:50.276Z
+
+Merged 54e32c63df7d7aa40e7cd88fc87f7045bffc64b8 onto dev.
