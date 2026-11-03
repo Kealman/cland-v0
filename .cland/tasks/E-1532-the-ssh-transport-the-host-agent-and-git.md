@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-02T23:42:37.339Z
+updated: 2026-11-03T05:55:04.163Z
 ---
 
 ## Goal
@@ -124,6 +124,7 @@ stages:
         - T-1599
         - T-1600
       - - T-1602
+      - - T-1657
   - name: harnesses and git on hosts
     qa:
       scope: affected
