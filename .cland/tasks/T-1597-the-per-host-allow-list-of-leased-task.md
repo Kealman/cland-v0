@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1351
 branch: t/T-1597-the-per-host-allow-list-of-leased-task
 created: 2026-11-02T03:33:54.676Z
-updated: 2026-11-03T00:49:36.518Z
+updated: 2026-11-03T01:56:02.210Z
 ---
 
 ## Summary
@@ -119,3 +119,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, no findings; C1–C5 verified. A-16064 exact source-clear head run900a6511 exits0,4848/4848 with fail/cancel/skip/todo0. Independently streamed generated finish receipts: allow-list8 incl host/ref policy, both native push/revoke orderings, all-host immediate/batch revoke-and-pin, startup upgrade, injected expiry/default assertion and failed-release fence; daemon4; batches75 incl build/land retry after reopen; unchanged task-worktrees19 all pass. Deferred C5 unchanged CLI26/lock20/merge7 exact-head local darwin arm64 Node24.21 raw A-16041 each exit0, signal explicitly unreported; usable supplements, not queued Linux results. A-16065 maps criteria/provenance. Linux x64 droplet sfo2 Node24.21 Neovim0.12.5 isolated Headless Shell156.0.8078.4r1248; T0/T1/all-T2/Web/changedT3 once complete (2files/12identities), remainingT3 deferred/T4 and repetitions unexecuted. Exact-case gate passes, no allowance; general lint122/59files/budget/ratchet report-only, skip-reason report missing0. Uncached, canonical tree78620fe52e5af0917824fa81c73a7f366c318b96. Prior A-16039 remains failed. No Reviewer tests/browser/edits; QA after-stage.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1597 · 2026-11-03T01:56:02.210Z
+
+Batch failure classified (b), confirmed before product changes: deterministic native regression `node --test --test-name-pattern='revoke joins a receive' hub/test/host-allow-list.test.ts` failed in821.983ms with `TerritoryBusy: another territory operation holds the lock` at public revoke after Git client had exited while fs.rm of that receive's exact territory.lock was held. Distinct mkdtemp fixture identities rule out shared roots; no cleanup error is injected. Coordinator decision7e3a3955: only public revoke gets bounded wait (HOST_PUSH_TIMEOUT_MS + small margin, injectable); receive/merge retain refusal/retry and lock order; same-owner context must not wait on itself. Existing lock module has no release notification; reuse its bounded25ms–1s backoff helper, no new polling loop. Deadline preserves current busy message. Will keep native release/ref assertions and prove five local repetitions alongside authorized test load, then fresh source/verify. One-line T-1591 seam note requires Coordinator because original task.comment own-item refusal remains binding.

@@ -3,7 +3,7 @@ id: T-1596
 kind: task
 title: Per-host secret admission and revocation
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1350
 branch: t/T-1596-per-host-secret-admission-and-revocation
 created: 2026-11-02T03:33:54.494Z
-updated: 2026-11-03T01:51:20.699Z
+updated: 2026-11-03T01:54:42.099Z
 ---
 
 ## Summary
@@ -30,21 +30,27 @@ Hot files: `hub/src/hub/dispatch.ts` (hello), `hub/src/hub/server.ts` (bearer ch
 - [x] C1. On the Unix spoke edge, a hello with a host's secret and the launch token of a session whose row is on that host is welcomed with the session's role (test).
   - done: impl-1596 · 2026-11-03T00:06:12.595Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.028Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
 - [x] C2. With the same secret, a hello carrying another host's session, a local session, no launch credential, or a session with no role is refused (test).
   - done: impl-1596 · 2026-11-03T00:06:13.038Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.028Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
 - [x] C3. On the hub socket a client hello with a host secret never acts as the human: a frame with no session credential, or a human-only frame such as `role.set` or `session.launch`, is refused as forbidden (test).
   - done: impl-1596 · 2026-11-02T23:52:31.734Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.028Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
 - [x] C4. On the hub socket, a hook, mod-bridge or CLI frame carrying the credential of a session on that host is dispatched as that session (test).
   - done: impl-1596 · 2026-11-02T23:52:32.509Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.029Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
 - [x] C5. `cland host revoke <id>` closes every live connection admitted by that host's secret, later hellos with it are refused with a reason naming revocation, and the request is refused from a session or a host client (test).
   - done: impl-1596 · 2026-11-02T23:52:33.161Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.029Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
 - [x] C6. The project secret's admission on every edge is unchanged, and the hub-socket, spoke-auth and web-authority test files pass with no test edited.
   - done: impl-1596 · 2026-11-03T00:06:13.236Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.029Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
 
 ## Notes
 
@@ -191,3 +197,52 @@ Authorized merge delta source clear, no findings. Coordinator466bda11 confirmed.
 ### impl-1596 · 2026-11-03T01:51:01.660Z
 
 Post-merge verification cbef7f65/A-16101 passed at unchanged source-reviewed7bcd261b4: exit0,4947 reported pass,zero fail/cancel/skip/todo. Named outcome scan confirms host16/spoke8/web-authority46/help7/usage1 plus merged landing selected tests; A-16078 retained exact-head macOS native daemon18/exit0. Uncached Linux x64 droplet c-8sfo2,Node24.21,Nvim0.12.5,HeadlessShell1248/ChromeForTesting156.0.8078.4; lifetime1430s,cost$0.0993. T0/T1/allT2/Web,selected T3 four files75 identities and mapped T4 guard once complete. Remaining T3 in merge batch,T4 repetitions/after-stage QA deferred; budgets/lint report-only. Final evidence review requested. Fresh fetch/merge-tree conflict-free; no new merge/source edit.
+
+### rev-36 · 2026-11-03T01:54:41.863Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1596-final-1
+commit: 7bcd261b4bdb8a10928acf896999c144a71ea54b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-1596
+Run: rev-36-1596-final-1
+Commit: 7bcd261b4bdb8a10928acf896999c144a71ea54b
+Verdict: clear; findings: none; verify C1–C6.
+Standing source verdict: rev-35-1596-delta-source-1 / A-16081. Branch tip independently read unchanged. No source changes or verification run performed by this Reviewer.
+
+Evidence independently read:
+A-16101, suite cbef7f65-0288-429b-9df7-1ec1d9414ab6, exit 0; 4947 passing, no failures/cancellations/skips/todo. Exact provenance head above, verification tree 7af5f23fc70775a80b1759bfa0ec3709bd3b8dbf, cache null.
+Linux x64 6.8.0-142-generic, droplet c-8 sfo2, Node v24.21.0, Neovim v0.12.5, workers 2.
+Browser: /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; Google Chrome for Testing 156.0.8078.4.
+T0, all T1, fallback all T2, four selected T3 files (75 identities), mapped inbox-verifier-load T4 base (one identity), and Web completed. Remaining T3 belongs to the merge batch; other T4 and T3/T4 repetitions unexecuted. This is item coverage, not an all-tier occasion. Duration/budget/lint advisories remain report-only; skip reason check report mode, missing 0. Droplet lifetime 1430s and $0.0993 are resource metrics, not suite wall time.
+
+C1–C5: all 16 generated host-secret-admission cases have actual pass timing outcomes and five passing load-gate test outcomes per identity:
+- C1 host bearer welcomes only its role-holding launch session
+- C2 host hello refuses other-host
+- C2 host hello refuses local
+- C2 host hello refuses no-role
+- C2 host hello refuses no-credential
+- C3/C4 host CLI requires session credential and denies human frames
+- C5 human revoke closes host peers and refuses subsequent hellos
+- C3 host clients cannot request human snapshots or borrow another host session
+- C4 CLI producer carries the host session credential
+- C2 settled first-hello token cannot join live foreign session (foreign)
+- C2 settled first-hello token cannot join live foreign session (nameless)
+- C1/C2 held-spawn host admission own
+- C1/C2 held-spawn host admission anonymous
+- C1/C2 held-spawn host admission foreign-host
+- C1/C2 held-spawn host admission local
+- C1/C2 held-spawn host admission roleless
+
+C6: unchanged resilience-component (spoke authentication) 8 and web-authority 46 named pass outcomes in A-16101. A-16078 contains the exact committed-head native daemon 18 named outcomes, totals 18/18, zero failed/cancelled/skipped, and independent native completion exit 0 (session93643/chunk318f38); macOS arm64 Node v24.21.0, no browser. Its Git tree b39679ea5c73b8ec325eddc05b7b9dd7221fda91 is the committed source tree, distinct from the verification capture tree. It includes wrong/right secret on WebSocket and Unix socket and both-edge protocol controls. Supplemental spoke8/web46 raw native outputs also read. No historical pre-merge receipt substitutes for this committed-head proof.
+
+Merged controls in A-16101 independently counted from actual pass timing records: host-agent-files6, remote-publications7, Telegram-users10, suite-coverage-selection13, suite-coverage4, suite-cancel8, suite-runner57; frozen CLI usage1 and help7 also pass.
+Prior-head evidence remains prior-head only. After-stage QA and the merge batch remain separate.
+Review artifact A-16109: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16109-t-1596-final-evidence-review-at-7bcd261.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

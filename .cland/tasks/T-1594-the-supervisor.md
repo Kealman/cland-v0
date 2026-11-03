@@ -3,7 +3,7 @@ id: T-1594
 kind: task
 title: The supervisor
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1357
 branch: t/T-1594-the-supervisor
 created: 2026-11-02T03:33:54.007Z
-updated: 2026-11-03T01:32:29.098Z
+updated: 2026-11-03T01:54:50.298Z
 ---
 
 ## Summary
@@ -28,12 +28,16 @@ Hot files: `hub/src/host/agent/supervisor.sh` (new), `hub/src/host/agent/server.
 
 - [x] C1. Started on a fake host, the supervisor runs the agent, and a second start while it lives exits without starting another (test).
   - done: impl-1594 · 2026-11-03T01:31:21.611Z
+  - verified: rev-35 [reviewer] · run rev-35-1594-final-1 · 2026-11-03T01:54:28.038Z · commit b621b134bd07615cfc5f7a1d88a625e016b0d6aa
 - [x] C2. After the agent is killed with SIGKILL, a new agent answers its hello within 3 s, and a process the old agent spawned is still alive with the same identity in the new agent's table (test).
   - done: impl-1594 · 2026-11-03T01:25:15.961Z
+  - verified: rev-35 [reviewer] · run rev-35-1594-final-1 · 2026-11-03T01:54:28.038Z · commit b621b134bd07615cfc5f7a1d88a625e016b0d6aa
 - [x] C3. The supervisor and the agent survive the end of the session that started them and a SIGHUP, and nothing in either calls `systemctl` or `systemd-run` (test).
   - done: impl-1594 · 2026-11-03T01:25:16.298Z
+  - verified: rev-35 [reviewer] · run rev-35-1594-final-1 · 2026-11-03T01:54:28.038Z · commit b621b134bd07615cfc5f7a1d88a625e016b0d6aa
 - [x] C4. `fake-host.ts kill-agent <host>` kills that host's agent and leaves the supervisor and harnesses running (test).
   - done: impl-1594 · 2026-11-03T01:31:22.930Z
+  - verified: rev-35 [reviewer] · run rev-35-1594-final-1 · 2026-11-03T01:54:28.038Z · commit b621b134bd07615cfc5f7a1d88a625e016b0d6aa
 
 ## Notes
 
@@ -110,3 +114,18 @@ A-16091 named-host signal finding resolved. fake-host kill-agent stays entirely 
 No findings. Original singleton/HUP/initiating-shell-departure/replacement hello/retained harness identity assertions remain. The three-second C2 measurement starts at the injected kill and retains its final bound; setup waits are separate. Shell singleton/stale-lock behavior, direct-child restart loop, pre-admission agent.pid checkpoint and CLI HUP handling are unchanged from the initial review. Docs explain the new secret/owner checks and gated fixture lifecycle. C1/C4 source defects resolved; C1–C4 remain runtime-unverified pending same-head post-source mode-free verification and named native facts for all three lifecycle cases.
 
 Local reported three-case macOS Node24.21 observations and typecheck are supplemental; earlier host-agent18/fake-ssh9/cli-help7 receipts belong to prior heads. Final lint was still running at request time, not counted as completed. Required source/consumer inventory and independent help expectations remain present. QA after-stage. Reviewer ran no tests/probes/browser and made no edits.
+
+### rev-35 · 2026-11-03T01:54:28.038Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1594-final-1
+commit: b621b134bd07615cfc5f7a1d88a625e016b0d6aa
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C4 verified, no findings. Exact-head378e32be/A-16107 exit0,4863 pass/zero fail/cancel/skip/todo. All3 actual supervisor native identities pass: singleton/HUP/detachment/kill-agent replacement+retained harness; failed setup drains before root removal; copied valid foreign-agent receipt refused with both owners/harnesses usable. Read retained C2 replacement-hello+same-harness-identity and <3000ms final assertion; full test timing is not claimed as restart latency. Prior source clear rev-36-1594-source-2 remains unchanged. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4. T0/T1/allT2/changedT3 file3cases/Web complete, remainingT3 deferred,T4 unexecuted; budgets/lint/ratchet/skip checks report-only. Batch unknown explicit host-allow-list shard blocker remains separate/unresolved; no batch pass claimed. After-stage QA separate. Reviewer executed no tests/browser/probes or edits. Detail A-16108: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16108-t-1594-final-evidence-supervisor-recovery-and-named-host-signal-fences.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

@@ -3,7 +3,7 @@ id: T-1601
 kind: task
 title: The adapters take their launch layout and files from the session's Host
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1352
 branch: t/T-1601-the-adapters-take-their-launch-layout
 created: 2026-11-02T03:33:55.630Z
-updated: 2026-11-03T01:51:11.150Z
+updated: 2026-11-03T01:54:00.348Z
 ---
 
 ## Summary
