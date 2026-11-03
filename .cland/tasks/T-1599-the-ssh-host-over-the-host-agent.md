@@ -3,7 +3,7 @@ id: T-1599
 kind: task
 title: The ssh Host over the host agent
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -14,10 +14,10 @@ blocked_by:
   - T-1593
   - T-1598
   - T-1657
-topic: null
-branch: null
+topic: topic-1366
+branch: t/T-1599-the-ssh-host-over-the-host-agent
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-03T07:20:12.144Z
+updated: 2026-11-03T10:02:28.774Z
 ---
 
 ## Summary
@@ -37,3 +37,13 @@ Hot files: `hub/src/host/ssh-host.ts` (new), `hub/src/adapters/index.ts`, `hub/s
 ## Notes
 
 Shared files: `hub/src/adapters/index.ts` (registry), `hub/src/hub/daemon.ts`
+
+## Comments
+
+### impl-1599 · 2026-11-03T09:58:22.185Z
+
+Coordinator decision 04ee649d: additive prepare/capture/install agent operations approved, preserving old monolithic operations/tests. Prepared work expires and cleans partial state on deadline/restart; older agents refuse with missing-capability reason. Host layout shape unchanged; remote values in shared defaults, node resolved remotely, E-1533 supplies versioned code directory. Missing code refuses launches. Consumer inventory follows before edits.
+
+### impl-1599 · 2026-11-03T10:02:28.774Z
+
+Consumer inventory A-16245 at .cland/artifacts/A-16245-t-1599-consumer-inventory-before-shared-seam-changes.md. Coordinator87a51dc5 approves parameterizing only the local-specific expected-value row of host-contract.ts (identity forwarding and hub layout are incompatible with SSH). Local defaults remain exact; all behavioral rows run unchanged. Decision12a3c390: adapter command boundaries pass explicit additions remotely, preserve existing local effective environment. Existing monolithic agent operations remain unchanged; additive capability gates new Host use.

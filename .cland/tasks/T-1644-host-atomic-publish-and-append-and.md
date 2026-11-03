@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-02T23:43:08.633Z
+updated: 2026-11-03T10:08:40.420Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ Add atomic publish (create-if-absent) and append to the Host contract, implement
 - [ ] C2. OpenCode's shared-ignore preparation goes through the launch Host. On `local` the result is byte-identical to today, and T-1601's lint exemption is removed (test).
 - [ ] C3. An OpenCode launch on a fake nonlocal host prepares the shared ignore on that host (test).
 - [ ] C4. The Host contract offers a stat with mode and size, so the launch-file rollback restores an overwritten file's mode on a nonlocal Host and T-1601's nonlocal overwrite refusal is removed (test)
+
+## Comments
+
+### coord · 2026-11-03T10:08:40.420Z
+
+Carried over from T-1599 (coord decision 2026-11-03 10:08Z): T-1599's C2 proves that hub-only env never reaches a fake-host spawn end to end for Codex and Claude. For OpenCode it proves it only at the shared explicit-additions env builder, because a nonlocal OpenCode launch is still refused at shared-ignore preparation until this item lands. When this item enables OpenCode on a nonlocal Host, its tests must include the planted hub-only key check on a real OpenCode fake-host spawn: DIGITALOCEAN_TOKEN, the remote tokens and the project secret absent, with a positive control.

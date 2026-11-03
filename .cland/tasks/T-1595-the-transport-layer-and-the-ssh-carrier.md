@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1358
 branch: t/T-1595-the-transport-layer-and-the-ssh-carrier
 created: 2026-11-02T03:33:54.197Z
-updated: 2026-11-03T05:39:03.786Z
+updated: 2026-11-03T09:58:02.218Z
 closed: 2026-11-03T05:39:03.786Z
 ---
 
@@ -159,3 +159,7 @@ Merged-head verify5e41a09e/A-16164 exit0,4925pass/zero fail/cancel/skip/todo at 
 ### coord · 2026-11-03T05:39:03.786Z
 
 Merged e21b64bffa6ccec52b4457285cca27d9052fadf3 onto dev.
+
+### coord · 2026-11-03T09:58:02.218Z
+
+Correction (coord, 2026-11-03 09:58Z): the approved bootstrap decision said "code delivery stays T-1606". That is wrong: T-1606 is Codex sessions on hosts. Installing cland's code on a real host belongs to E-1533 (host providers, images and DigitalOcean: one image recipe, spec §3 line 86). T-1599 sets the remote layout defaults (`~/.cland-host/code/<VERSION>`) in one constant module that host config can override; E-1533 fills that directory.

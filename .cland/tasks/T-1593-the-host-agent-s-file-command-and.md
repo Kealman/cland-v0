@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1349
 branch: t/T-1593-the-host-agent-s-file-command-and
 created: 2026-11-02T03:33:53.695Z
-updated: 2026-11-03T01:19:57.526Z
+updated: 2026-11-03T09:58:39.567Z
 closed: 2026-11-03T01:19:57.526Z
 ---
 
@@ -181,3 +181,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### coord · 2026-11-03T01:19:57.526Z
 
 Merged 53ecaf87343b3719a51f09f818871bcfb70272cf onto dev.
+
+### coord · 2026-11-03T09:58:39.567Z
+
+Seam note (T-1599, coord decision 2026-11-03 09:58Z): the agent protocol gains additive two-phase operations (prepare/capture/install), so the ssh Host can run the Host contract's hub-side callbacks at their contract points: spawn authorize after the remote log opens, stop authorize/beforeSignal after the agent captures the process tree, worktree beforeInstall after Git. The existing monolithic spawn/stop/worktreeAdd frames and their tests stay unchanged. A prepared operation expires on a deadline and on agent restart, and its partial state is cleaned. The agent advertises the capability in its hello, and a hub meeting an agent without it refuses that host, naming the missing capability; it never falls back silently.
