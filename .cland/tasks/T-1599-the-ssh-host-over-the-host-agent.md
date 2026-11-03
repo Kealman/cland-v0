@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1366
 branch: t/T-1599-the-ssh-host-over-the-host-agent
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-03T10:38:19.599Z
+updated: 2026-11-03T11:27:21.570Z
 ---
 
 ## Summary
@@ -30,13 +30,15 @@ Hot files: `hub/src/host/ssh-host.ts` (new), `hub/src/adapters/index.ts`, `hub/s
 ## Acceptance criteria
 
 - [ ] C1. The Host contract suite passes on a fake host through the fake `ssh` stand-in (test).
-  - failed: rev-35 [reviewer] · 2026-11-03T10:38:19.599Z · note Accepted-commit outcome, prepared worktree ownership/recovery and disconnected completion lifecycle are incomplete; descriptor-close behavioral row is skipped.
-- [ ] C2. A spawn on a fake host carries none of the hub's own environment, and `DIGITALOCEAN_TOKEN`, the remotes' tokens and the project secret never reach it even when the caller passes them (test).
-- [ ] C3. With fake hosts registered, the registry holds `local` and one `ssh` Host per record, a launch with `host: "f1"` reaches f1's agent, and `CLAND_TEST_HOSTS` still works (test).
-  - failed: rev-35 [reviewer] · 2026-11-03T10:38:19.599Z · note Default supervisor path duplicates hub/hub, preventing fresh registered Host bootstrap without an override.
-- [ ] C4. While a host's tunnel is down, its operations fail with a reason naming the host and the tunnel, and they never touch the hub's machine (test).
-- [ ] C5. A row spawned on a fake host is alive only while its agent reports the recorded identity, and its stop signals only on that host (test).
-  - failed: rev-35 [reviewer] · 2026-11-03T10:38:19.599Z · note stop reports true on root PID absence without observing retained descendants closed.
+  - failed: rev-35 [reviewer] · 2026-11-03T11:27:21.570Z · note Failed-prepare close can omit fenced native Git ownership; disconnected run completion and failed-abort admission fences remain incomplete, and close leaks late connection acquisition.
+- [x] C2. A spawn on a fake host carries none of the hub's own environment, and `DIGITALOCEAN_TOKEN`, the remotes' tokens and the project secret never reach it even when the caller passes them (test).
+  - done: impl-1599 · 2026-11-03T11:24:55.931Z
+- [x] C3. With fake hosts registered, the registry holds `local` and one `ssh` Host per record, a launch with `host: "f1"` reaches f1's agent, and `CLAND_TEST_HOSTS` still works (test).
+  - done: impl-1599 · 2026-11-03T11:24:56.046Z
+- [x] C4. While a host's tunnel is down, its operations fail with a reason naming the host and the tunnel, and they never touch the hub's machine (test).
+  - done: impl-1599 · 2026-11-03T11:24:56.415Z
+- [x] C5. A row spawned on a fake host is alive only while its agent reports the recorded identity, and its stop signals only on that host (test).
+  - done: impl-1599 · 2026-11-03T11:24:56.533Z
 
 ## Notes
 
@@ -70,3 +72,26 @@ finding_counts: {"high":3,"medium":6,"low":0}
 First source-only review not clear:3high/6medium findings, all recorded above and in A-16248. Highs: root absence falsely completes stop; accepted spawn commit with lost reply has no durable token/result reconciliation and may trigger rollback under a live child; worktree cleanup trusts pre-creation intent and is unsafe/non-idempotent for failed creation/restart. Mediums cover duplicated default supervisor path, pending exits without reconnect driver, short-circuited Git listener cleanup, unhandled disconnect cleanup failures, agent module boundary and skipped log-close behavioral row. C1/C3/C5 failed at source; C2/C4 unverified. Coordinator decisions and full source/docs/consumer inventory reviewed. All current-head tests/typecheck/lint/tiers/index generation remain UNRUN; historical supplements not passes. Cover-quiet respected, no Reviewer tests/probes/browser/edits or delegation. Fresh corrected-head source review before verification; affected after-stage QA separate. Detail A-16248: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16248-t-1599-first-source-review-prepared-ownership-and-host-lifecycle.md.
 
 Criteria: C1 failed (Accepted-commit outcome, prepared worktree ownership/recovery and disconnected completion lifecycle are incomplete; descriptor-close behavioral row is skipped.), C3 failed (Default supervisor path duplicates hub/hub, preventing fresh registered Host bootstrap without an override.), C5 failed (stop reports true on root PID absence without observing retained descendants closed.).
+
+### impl-1599 · 2026-11-03T11:15:39.637Z
+
+Coordinatorbaaf0066 authorizes the found-aside S/Bugs stop race fix inside T-1599 (pre-existing T-1588-area code). Original unchanged preservation failed false!==true at host-agent.test.ts:67. Deterministic red regression 'stop treats a captured process reaped between ps and birth observation as closed' produced remaining-mismatch {proof:{identity:null,ended:true},captured:true}, false!==true (1fail). Narrow shared predicate now accepts positive ended before birth comparison; missing proof/no positive end remains mismatch, covered by T1 negative controls. Deterministic regression green after fix. Temporary DEBUG-t1599-stop instrumentation removed. Ten unchanged macOS host-agent file repetitions pending; source-review scope includes this authorized fix.
+
+### impl-1599 · 2026-11-03T11:15:58.820Z
+
+Receipt correction: the first post-predicate regression invocation had a teardown failure (ENOENT writing release after tempProject removed root), so it was NOT a pass despite the behavioral assertion completing. Moved owned drains to shared beforeDirectories; rerun is the green regression receipt. Original red false!==true and its positive-ended trace remain retained. No assertion weakened.
+
+### rev-35 · 2026-11-03T11:27:21.570Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1599-source-2
+commit: ee09fe94738a648f5d49ba15d4861947ce428496
+scope: full
+findings: [{"severity":"high","text":"close can report success with an undrained fenced preparation. If native Git returns CLAND_NATIVE_INCOMPLETE, prepare marks #fenced at line111 and cleanup throws while phase is git-running, before #pending is registered. close examines only #pending and #failures, ignoring #fenced/durable plans, so agent shutdown can succeed while that Git writer/storage obligation remains unknown. Register ownership before effects and retain/drain or explicitly refuse every unresolved plan on close; cover this failed-prepare path with a held native writer.","file":"hub/src/host/agent/prepared.ts","line":168},{"severity":"high","text":"Host.run rejects immediately on agent-stream loss, before positive native command completion/cleanup. AgentClient rejects pending requests on socket close; the server only then aborts and asynchronously joins run-host. The run token has no durable settlement or Host mutation fence, so callers can treat the command as settled and remove its files while its native writer is still closing. Reconcile the exact admitted command or retain an explicit unknown-outcome fence until positive closure; test disconnect while native cleanup is held and prove rollback/shutdown cannot pass it.","file":"hub/src/host/ssh-host.ts","line":125},{"severity":"medium","text":"A direct/disconnect abort that fails cleanup clears its deadline timer but never adds #fenced or #failures. The pending plan survives, yet assertMutable sees neither set; another authenticated connection may run commands or mutate the same storage before cleanup succeeds. The existing disconnect test checks retained data and close retry but omits this admission boundary. Fence failed abort/commit cleanup centrally, release only on a positive cleanup receipt, and test second-connection mutation refusal plus successful recovery.","file":"hub/src/host/agent/prepared.ts","line":164},{"severity":"medium","text":"close captures client before awaiting an in-flight connected acquisition. If connect/initial native-receipts is held, current is undefined (or the old client); after close sets closed, the acquisition can still assign a new client at line42. close awaits connecting but never closes that newly acquired stream or rechecks closed after acquisition, so it reports stopped with a live owned connection. Fence late acquisition, close its result, and test a held connect released after close starts.","file":"hub/src/host/ssh-host.ts","line":155}]
+finding_counts: {"high":2,"medium":2,"low":0}
+
+Fresh source review not clear: 2 high/2 medium findings, ranked and recorded in A-16257. Earlier root-stop, default supervisor, native completion reconnect, registry cleanup, dependency boundary and remote fault-row changes are present; prepared ownership still has the cleanup/close gaps above, and Host.run lacks disconnect settlement. Coordinator a5d3ae17 exact dependency exception and baaf0066 stop-race scope were read directly and checked against source. A-16256's ten unchanged macOS host-agent runs (18 pass each/native exit0) have matching production blobs; explicitly source-equivalent precommit evidence, not exact-head queued/Linux/full-tier verification. C1 failed; C2–C5 not newly verified; previous C3/C5 source defects are repaired. No Reviewer runtime tests, probes, browser, edits or delegation. No queued verification at this head. Fresh corrected-head source review before verify; affected after-stage QA separate. Detail A-16257: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16257-t-1599-fresh-source-review-remaining-cleanup-and-command-settlement-gaps.md.
+
+Criteria: C1 failed (Failed-prepare close can omit fenced native Git ownership; disconnected run completion and failed-abort admission fences remain incomplete, and close leaks late connection acquisition.).
