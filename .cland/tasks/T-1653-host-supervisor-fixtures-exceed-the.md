@@ -2,8 +2,8 @@
 id: T-1653
 kind: task
 title: host-supervisor fixtures exceed the macOS 104-byte Unix socket path limit under the suite's temp root
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1594
 topic: topic-1359
 branch: t/T-1653-host-supervisor-fixtures-exceed-the
 created: 2026-11-03T04:59:56.359Z
-updated: 2026-11-03T05:30:46.509Z
+updated: 2026-11-03T06:12:00.613Z
+closed: 2026-11-03T06:12:00.613Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified, no findings. A-16175 launcher/raw logs independently show both required macOS identities0/5 red with actual UUID-root EINVAL, then5/5 green under same long-TMPDIR setup; ordinary supervisor3 and fakeSSH9 also pass. Local macOSarm64 Node24.21/native exits reported red1/green0; explicitly pre-commit final fixture diff, not exact-commit execution. Saved five tracked patches match committed source; tracker-only base movement; newly added guard not in saved tracked patch, but source-reviewed and exact-head queued tests pass. A-16179/26e76e95 exit0 at reviewed head,4917 pass/zero fail/cancel/skip/todo. Independently checked helper4 including guard/setup, supervisor3 and fakeSSH9 ordinary outcomes. T0/T1/allT2/Web + changedT3 twofiles12 once completed; remainingT3 batch-deferred,T4 unexecuted. Uncached Linuxx64 c-8sfo2 Node24.21/Nvim0.12.5, runner tree71afaed19c1a8c868a722485fb41d9a34db48764, isolated HeadlessShell1248/Chrome156.0.8078.4. Budgets/lint/incomplete ratchet/skip checks report-only, skips[]/missing0. QA none, stage cover separate. Reviewer read only, no tests/probes/browser/edits. Detail A-16182: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16182-t-1653-final-evidence-macos-long-root-repetition-proof.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-03T06:12:00.613Z
+
+Merged e375efe948b26d453d2835cdb214940bc2f5d755 onto dev.

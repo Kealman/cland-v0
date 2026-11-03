@@ -2,8 +2,8 @@
 id: T-1654
 kind: task
 title: "Territory lock contention refuses with two different messages: the allow-list test expects 'territory operation holds' but gets 'acquisition deadline reached'"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1597
 topic: topic-1360
 branch: t/T-1654-territory-lock-contention-refuses-with
 created: 2026-11-03T04:59:56.525Z
-updated: 2026-11-03T05:28:54.413Z
+updated: 2026-11-03T06:11:44.767Z
+closed: 2026-11-03T06:11:44.767Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified, no findings. Exact-head c605830b/A-16177 exit0,4913 pass/zero fail/cancel/skip/todo; independently streamed contention pass, host-allow-list10, executor-admission-lock11 and executor-lock-liveness9 ordinary passes. A-16172 exact contention identity has5 load-gate pass finishes plus ordinary pass; all10 identities likewise5/5. Local darwinarm64 Node24.21/two lanes/peak1m4.88; package overall exit1 remains explicit due unchanged immediate-merge5.117>5s duration rejection, nonblocking per independently read Coordinatorfe2f6e22. Coordinator45f16ad0 explicitly places Linux5/5 in pre-merge batch; not run/claimed here. T0/T1/allT2/Web plus changedT3 allow-list10 once completed; remainingT3 deferred,T4 unexecuted. Uncached Linuxx64 c-8sfo2 Node24.21/Nvim0.12.5, runner tree aec6c25fea893ff5ba1293d1cc4c8d9a00150855, isolated HeadlessShell1248/Chrome156.0.8078.4. Queued budgets/lint/incomplete ratchet/skip checks report-only, skips[]/missing0. QA none; stage cover separate. Reviewer read only, no tests/probes/browser/edits. Detail A-16178: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16178-t-1654-final-evidence-contention-refusal-and-local-repetitions.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-03T06:11:44.767Z
+
+Merged 33d24363e307fd4e42cc136bbb06b4cedf7dd3f6 onto dev.
