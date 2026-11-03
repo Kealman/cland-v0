@@ -2,8 +2,8 @@
 id: T-1601
 kind: task
 title: The adapters take their launch layout and files from the session's Host
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1352
 branch: t/T-1601-the-adapters-take-their-launch-layout
 created: 2026-11-02T03:33:55.630Z
-updated: 2026-11-03T02:56:58.795Z
+updated: 2026-11-03T03:41:45.600Z
+closed: 2026-11-03T03:41:45.600Z
 ---
 
 ## Summary
@@ -347,3 +348,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear after duration repair; C1–C5 verified, no findings. Exact-head244a1293/A-16136 exit0,4953 pass/zero fail/cancel/skip/todo. Independently checked layout16/boundary12/sandbox4/routing16/placement11/native32/LaunchFiles3 and incoming consumers; repaired exact placement identity has actual pass receipt18296, distinct from retained historical baseline. C5 Claude6/Codex13/OpenCode21 native raw outcomes/exits0 remain actuala32 head A-16111–13/A-16116; comparison confirms identical .ts production/test sources with only durations.json changed, explicitly predecessor source-equivalent evidence. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/allT2/selectedT3 fourfiles75identities/Web complete,remainingT3 batch-deferred,T4 unexecuted. Budget/lint/ratchet/skip diagnostics report-only. QA affected/after-stage separate. Reviewer ran no tests/browser/probes or edits. Detail A-16138: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16138-t-1601-final-evidence-after-duration-identity-repair.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-03T03:41:45.600Z
+
+Merged ff7e6ec8fbca6c0b84535a3653f947480b869a36 onto dev.

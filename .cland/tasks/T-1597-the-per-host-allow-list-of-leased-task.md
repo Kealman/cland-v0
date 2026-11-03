@@ -2,8 +2,8 @@
 id: T-1597
 kind: task
 title: The per-host allow list of leased task branches
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1351
 branch: t/T-1597-the-per-host-allow-list-of-leased-task
 created: 2026-11-02T03:33:54.676Z
-updated: 2026-11-03T02:28:57.584Z
+updated: 2026-11-03T03:41:15.208Z
+closed: 2026-11-03T03:41:15.208Z
 ---
 
 ## Summary
@@ -156,3 +157,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final revoke-wait evidence clear, no findings; all C1–C5 verified. A-16126 exact-head run31b99f6d exits0,4850/4850 fail/cancel/skip/todo0. Independent per-record finish scan: native allow-list10/daemon4 pass once incl original policy, held async release and reentrant ownership; batches75unique/85pass completions (both contention cases base+5T2 load), task-worktrees19 all pass. A-16130 refreshed exact-head raw C5 CLI26/lock20/merge7 local darwin arm64 Node24.21 each exit0/signal explicitly unreported, zero fail/cancel/skip. A-16121 authorized same-head local load proof10cases×(base+5) retained; not added to queued aggregate. A-16132 maps criteria/limits. Linux x64 droplet Node24.21 Neovim0.12.5 isolated Headless Shell156.0.8078.4r1248; T0/T1/all-T2/Web/selectedT3 once complete(2files/14identities), remainingT3 deferred/no queuedT3 repeats/T4 unexecuted. Uncached canonical tree515f55841218b4b724f7ebadabda8a8b9e9438aa; exact-case gate passes, lint122/59files/legacy budgets/ratchet report-only, skip reason report missing0. Prior green remains prior-head, failed batch red. No Reviewer tests/browser/edits; QA after-stage.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-03T03:41:15.208Z
+
+Merged 1fcc37db5702bacc22d63be1bcbc26362a48099d onto dev.

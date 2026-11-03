@@ -2,8 +2,8 @@
 id: T-1574
 kind: task
 title: "Discord: several users in one channel"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1354
 branch: t/T-1574-discord-several-users-in-one-channel
 created: 2026-10-31T23:47:54.017Z
-updated: 2026-11-03T02:30:41.520Z
+updated: 2026-11-03T03:41:30.846Z
+closed: 2026-11-03T03:41:30.846Z
 ---
 
 ## Summary
@@ -301,3 +302,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-1574 · 2026-11-03T02:30:41.520Z
 
 Final Reviewer clear rev-36-1574-final-1/A-16134 verifies C1–C5 atc35d60b5a7e7b3921b3daae8c72452515a32f8c8; hub status ready confirmed. Fresh origin/dev fetch and merge-tree conflict check exit0, resulte1152e1a8ba306e34304843c1a6cc852270a08a9; head/worktree unchanged and clean. Claim retained for merge. Green Linux A-16127 and supplemental native A-16131 retain distinct provenance; prior A-16118 remains failed. Merge-batch coverage and full after-stage QA remain separate.
+
+### coord · 2026-11-03T03:41:30.846Z
+
+Merged b3b9330ad2dd77c5f7d6bcf2691d06ca9ada7bda onto dev.

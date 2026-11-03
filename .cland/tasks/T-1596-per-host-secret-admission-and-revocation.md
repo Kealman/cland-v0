@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1350
 branch: t/T-1596-per-host-secret-admission-and-revocation
 created: 2026-11-02T03:33:54.494Z
-updated: 2026-11-03T01:54:42.099Z
+updated: 2026-11-03T03:30:51.463Z
 ---
 
 ## Summary
@@ -31,26 +31,32 @@ Hot files: `hub/src/hub/dispatch.ts` (hello), `hub/src/hub/server.ts` (bearer ch
   - done: impl-1596 · 2026-11-03T00:06:12.595Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.028Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
   - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-2 · 2026-11-03T03:30:50.957Z · commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
 - [x] C2. With the same secret, a hello carrying another host's session, a local session, no launch credential, or a session with no role is refused (test).
   - done: impl-1596 · 2026-11-03T00:06:13.038Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.028Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
   - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-2 · 2026-11-03T03:30:50.958Z · commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
 - [x] C3. On the hub socket a client hello with a host secret never acts as the human: a frame with no session credential, or a human-only frame such as `role.set` or `session.launch`, is refused as forbidden (test).
   - done: impl-1596 · 2026-11-02T23:52:31.734Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.028Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
   - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-2 · 2026-11-03T03:30:50.958Z · commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
 - [x] C4. On the hub socket, a hook, mod-bridge or CLI frame carrying the credential of a session on that host is dispatched as that session (test).
   - done: impl-1596 · 2026-11-02T23:52:32.509Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.029Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
   - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-2 · 2026-11-03T03:30:50.958Z · commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
 - [x] C5. `cland host revoke <id>` closes every live connection admitted by that host's secret, later hellos with it are refused with a reason naming revocation, and the request is refused from a session or a host client (test).
   - done: impl-1596 · 2026-11-02T23:52:33.161Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.029Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
   - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-2 · 2026-11-03T03:30:50.958Z · commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
 - [x] C6. The project secret's admission on every edge is unchanged, and the hub-socket, spoke-auth and web-authority test files pass with no test edited.
   - done: impl-1596 · 2026-11-03T00:06:13.236Z
   - verified: rev-35 [reviewer] · run rev-35-1596-final-1 · 2026-11-03T00:33:18.029Z · commit dae0b8193cdd293d5180ded578afa4a75712f60b
   - verified: rev-36 [reviewer] · run rev-36-1596-final-1 · 2026-11-03T01:54:41.863Z · commit 7bcd261b4bdb8a10928acf896999c144a71ea54b
+  - verified: rev-36 [reviewer] · run rev-36-1596-final-2 · 2026-11-03T03:30:50.958Z · commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
 
 ## Notes
 
@@ -244,5 +250,84 @@ C6: unchanged resilience-component (spoke authentication) 8 and web-authority 46
 Merged controls in A-16101 independently counted from actual pass timing records: host-agent-files6, remote-publications7, Telegram-users10, suite-coverage-selection13, suite-coverage4, suite-cancel8, suite-runner57; frozen CLI usage1 and help7 also pass.
 Prior-head evidence remains prior-head only. After-stage QA and the merge batch remain separate.
 Review artifact A-16109: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16109-t-1596-final-evidence-review-at-7bcd261.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1596 · 2026-11-03T03:05:34.155Z
+
+Authorized post-T-1594 merge taken once at9b461e4b1050a0967e9bbae525861f6dfca0db3b (parents7bcd261b4 +dev1650fd40e), pushed clean. Coordinator99e8401c clarified there is no generator: conflicting HOST_USAGE row was deterministically projected with JSON.stringify of auto-merged export, preserving all original bytes outside the conflict; CHANGES/T-1596-supervisor-merge.md records method. Both revoke and supervisor/HUP help retained; all other frozen rows untouched. tiers union retains host-admissionT2 and supervisorT3. Unchanged exact-byte usage1/native help7, tiers19, manifest check and host16 passed locally; merged production typecheck0, C6/static refresh in progress before delta review. Prior queued receipts remain pre-merge only.
+
+### rev-36 · 2026-11-03T03:09:24.434Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1596-delta-source-1
+commit: 9b461e4b1050a0967e9bbae525861f6dfca0db3b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1596 second authorized merge delta source review
+Head 9b461e4b1050a0967e9bbae525861f6dfca0db3b
+Parents 7bcd261b4bdb8a10928acf896999c144a71ea54b + 1650fd40ef0591f9ec1cce3aaaa633035af7af12
+Run rev-36-1596-delta-source-1; scope delta; source clear; findings [].
+C1–C6 remain runtime-unverified at this changed head.
+
+Authority: read Coordinator bb57536d-8196-4ef6-afd6-c2f1cf5a2e12 directing one merge after T-1594 landing, union tiers/help resolution, delta review then fresh verify. Read clarification99e8401c-d78b-4763-a9e3-0768688a4a4c explicitly authorizing deterministic HOST_USAGE projection because no generator exists, preserving all other frozen bytes.
+
+Standards: complete relevant merge diffs read against both parents. HOST_USAGE contains both human-only revoke guidance and serve/SIGHUP/supervisor guidance. Independently compared every byte outside the HOST_USAGE row against both parent fixture blobs: identical. Parsed fixture HOST_USAGE equals the merged source literal. CHANGES/T-1596-supervisor-merge.md records the projection method. No unrelated frozen expectation was regenerated or weakened. tiers.json retains host-secret-admission T2, host-supervisor T3 and incoming web-cookie-secure T2; second-parent diff adds only the admission entry. No unrelated tier/default changed in this resolution.
+
+Spec: cli/host.ts retains the original revoke path (local discovery, authenticated host.revoke frame, output after success) plus incoming serve HUP registration before asynchronous startup and removal in finally. The branches remain disjoint and both sides' help is present. Admission dispatch/core/launch/host-records/socket-client paths and host16/daemon/spoke-auth/web-authority preservation files are unchanged from the prior reviewed task head in the inspected comparison. Incoming supervisor shell/agent-server/test/fake-host source, cookie policy/tests and duration manifest match dev1650fd40e exactly; there is no merge-specific redesign or runtime manual resolution. The supervisor's gated cleanup and named-owner signal fences match the earlier source-reviewed implementation. The incoming cookie policy removes dependence on the request Origin header for Secure under the configured public Host; this remains the shared cookie seam with its incoming regressions. Both admission and supervisor subsystem/agent documentation sections survive the merge.
+
+A-16143's reported local macOSarm64 Node24.21 usage1/help7/tiers19/manifest/host16/daemon18/spoke8/web46/static receipts are supplemental. Its separate daemon native exit0 at the committed head is retained for later C6 evidence review. No queued Linux/Web pass is claimed on this new head; prior A-16101/A-16109 are pre-merge only. Fresh mode-free verification must cover the combined runtime and named imported regressions before final criteria verification. Remaining T3/broader T4 and affected after-stage QA follow existing separate gates.
+Reviewer performed read-only source/docs/blob comparisons; no tests/probes/browser, no edits or merge.
+A-16144: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16144-t-1596-post-supervisor-merge-delta-source-review.md
+
+### impl-1596 · 2026-11-03T03:30:42.896Z
+
+Final post-supervisor-merge evidence requested at unchanged source-clear9b461e4b1. b76548a3/A-16147 exits0,4955pass,zero fail/cancel/skip/todo; named host16/spoke8/web-authority46/usage1/help7/tiers19/supervisor3 facts independently scanned. Exact-head local daemon18/native exit0 retained in A-16143. Uncached Linuxx64 c-8sfo2 Node24.21/Nvim0.12.5,HeadlessShell1248/ChromeForTesting156.0.8078.4;lifetime1167s,cost$0.0810. T0/T1/allT2/Web,selected T3 five files78 identities and mapped T4 once completed. Remaining T3 batch,T4 repetitions/after-stage QA deferred;advisory checks report-only. Fresh fetch/merge-tree conflict-free; no new merge or head change.
+
+### rev-36 · 2026-11-03T03:30:50.958Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1596-final-2
+commit: 9b461e4b1050a0967e9bbae525861f6dfca0db3b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1596 final evidence after supervisor merge
+Commit 9b461e4b1050a0967e9bbae525861f6dfca0db3b
+Run rev-36-1596-final-2; scope evidence; result clear; findings []; verify C1–C6.
+Source clear rev-36-1596-delta-source-1 / A-16144. Branch tip independently read unchanged. No source edits or tests/probes/browser run by Reviewer.
+
+A-16147 / suiteb76548a3-7b24-47ac-bff8-5b8a7cf7e287: exit0, 4955pass/zero fail/cancel/skip/todo. Actual named timing outcomes, not exit alone, independently streamed.
+Exact provenance commit above/tree7527627b408a4cbefc0d9783135afc304f08e67b, cache null. Linuxx64 6.8.0-142-generic, droplet c-8 sfo2, workers2, Nodev24.21.0/Neovimv0.12.5. Isolated browser /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Google Chrome for Testing156.0.8078.4.
+T0, all T1, fallback all T2, selected T3 five files/78identities once, mapped inbox-verifier-load T4 base once, Web complete. Remaining T3 merge batch, broader T4 and T3/T4 repetitions unexecuted; not an all-tier occasion. Duration/budget/lint/ratchet/skip checks report-only, missing skip reasons0. Lifetime1167s/cost$0.0810 are native resource metrics, not test wall.
+
+C1–C5: all16 generated host-secret-admission cases pass, plus five passing load-gate test outcomes each:
+C1 host bearer welcomes only its role-holding launch session
+C2 host hello refuses other-host/local/no-role/no-credential (four identities)
+C3/C4 host CLI requires session credential and denies human frames
+C5 human revoke closes host peers and refuses subsequent hellos
+C3 host clients cannot request human snapshots or borrow another host session
+C4 CLI producer carries the host session credential
+C2 settled first-hello token cannot join live foreign session (foreign)/(nameless) (two identities)
+C1/C2 held-spawn host admission own/anonymous/foreign-host/local/roleless (five identities).
+These retain positive role/session welcome and admitted-owner preservation, explicit forbidden paths and revoke closure/refusal receipts under the standing source review.
+
+C6: unchanged queued resilience-component8 and web-authority46 named pass outcomes. A-16143 independently read full raw native daemon18/18 (zero fail/cancel/skip/todo), including wrong/right secret over both edges and protocol controls; local macOSarm64 Node24.21.0, no browser. Separate native completion session55538/chunk6b7c23 exit0 is retained and bound to committed9b461e4b/tree39a65ec90ee3ed233e13950b48ab72e4d05ab666. This committed source tree differs from the verification capture tree. Raw spoke8/web46 local outputs also read. Required preservation files unchanged in source review; pre-merge A-16101/A-16109 are not substitutes for current evidence.
+
+Combined help/tier and incoming regressions in A-16147: frozen usage1/native help7/suite-tiers19; host-supervisor3; host-agent-files6; remote-publications7; Telegram-users10; coverage-selection13; suite-coverage4/cancel8/runner57; web-auth-unit6/web-auth29/web-cookie-secure4; inbox-verifier-load1. Actual supervisor identities:
+- supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart and retained harness identity
+- supervisor setup failure before its expected receipt drains the detached writer before root removal
+- kill-agent refuses another live fake host receipt and preserves both agents and harnesses.
+All pass. The combined revoke/help path is covered by unchanged usage and auth cases, and imported HUP/restart/signal-fence behavior has its native Linux outcomes.
+
+No findings remain. Merge-batch requirements and affected after-stage QA remain separate.
+A-16148: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16148-t-1596-final-merged-head-evidence-at-9b461e4.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
