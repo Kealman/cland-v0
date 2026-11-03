@@ -96,9 +96,10 @@
       "A-15096",
       "A-15983",
       "A-15995",
-      "A-16249"
+      "A-16249",
+      "A-16282"
     ],
-    "commit": "3b391058e664d82f58be134c9ffa8012f3dcaad6"
+    "commit": "dd4765a81673f77bae3b9265b6c58bc333aa0b55"
   },
   "budget": {
     "testSeconds": 5,
@@ -3375,6 +3376,22 @@
     "hub/test/web-cookie-secure.test.ts": {
       "seconds": 0.75065,
       "tests": 4
+    },
+    "hub/test/host-command-environment.test.ts": {
+      "seconds": 0.005713,
+      "tests": 6
+    },
+    "hub/test/host-prepared.test.ts": {
+      "seconds": 6.611723,
+      "tests": 12
+    },
+    "hub/test/host-ssh-contract.test.ts": {
+      "seconds": 28.574915,
+      "tests": 19
+    },
+    "hub/test/host-stop-observation.test.ts": {
+      "seconds": 0.001376,
+      "tests": 3
     }
   },
   "tests": {
@@ -9896,7 +9913,47 @@
     "hub/test/web-cookie-secure.test.ts::/auth navigation with configured tunnel Host sets Secure without Origin": 0.234186,
     "hub/test/web-cookie-secure.test.ts::cookie headers ignore forwarded claims with configured origin false": 0.13677,
     "hub/test/web-cookie-secure.test.ts::cookie headers ignore forwarded claims with configured origin true": 0.112246,
-    "hub/test/web-cookie-secure.test.ts::invite and password sign-in cookies share tunnel and local Secure policy": 0.267448
+    "hub/test/web-cookie-secure.test.ts::invite and password sign-in cookies share tunnel and local Secure policy": 0.267448,
+    "hub/test/host-command-environment.test.ts::Host command env keeps local effective bytes and sends explicit remote additions only": 0.002309,
+    "hub/test/host-command-environment.test.ts::Host command env positive control detects every planted credential before filtering": 0.000406,
+    "hub/test/host-command-environment.test.ts::Host.close joins and closes a connection held at connect": 0.000765,
+    "hub/test/host-command-environment.test.ts::Host.close joins and closes a connection held at initial receipts": 0.000447,
+    "hub/test/host-command-environment.test.ts::OpenCode shared environment builder keeps local base and excludes planted hub-only input remotely": 0.000283,
+    "hub/test/host-command-environment.test.ts::ssh Host refuses an older hello without prepared capability and never calls a monolithic fallback": 0.001503,
+    "hub/test/host-prepared.test.ts::disconnect cleanup failure stays owned, agent stays observable, and close retries before success": 1.049019,
+    "hub/test/host-prepared.test.ts::failed prepare retains its held native writer obligation and close cannot report success": 0.264566,
+    "hub/test/host-prepared.test.ts::native agent restart cleans actual unfinished spawn and worktree preparations before publishing readiness": 2.088787,
+    "hub/test/host-prepared.test.ts::prepared abort removal fences an unjoined Git writer across retries and restart": 0.33166,
+    "hub/test/host-prepared.test.ts::prepared commit inspection fences an unjoined Git writer across retries and restart": 0.391706,
+    "hub/test/host-prepared.test.ts::prepared Git cleanup handles failed add and pre-create restart, and preserves a replacement checkout": 0.162533,
+    "hub/test/host-prepared.test.ts::prepared Git work expires without installing or leaving a checkout": 0.193135,
+    "hub/test/host-prepared.test.ts::prepared restart removal fences an unjoined Git writer across retries and restart": 0.370165,
+    "hub/test/host-prepared.test.ts::prepared spawn expires and cleans only its newly created empty log; existing log survives abort": 0.099555,
+    "hub/test/host-prepared.test.ts::prepared tokens belong to their admitting connection and abort leaves no log": 1.125709,
+    "hub/test/host-prepared.test.ts::restart consumes durable prepared log and Git cleanup plans before admission": 0.112909,
+    "hub/test/host-prepared.test.ts::stop treats a captured process reaped between ps and birth observation as closed": 0.421979,
+    "hub/test/host-ssh-contract.test.ts::accepted spawn reconciles its durable token after the commit reply is dropped": 1.421847,
+    "hub/test/host-ssh-contract.test.ts::C2 claude adapter sends no planted hub-only key through the SSH agent": 1.344457,
+    "hub/test/host-ssh-contract.test.ts::C2 codex adapter sends no planted hub-only key through the SSH agent": 1.125292,
+    "hub/test/host-ssh-contract.test.ts::C2 explicit additions merge with agent base while planted hub tokens never reach spawned process": 1.357152,
+    "hub/test/host-ssh-contract.test.ts::C3 registered SSH Hosts coexist with local and CLAND_TEST_HOSTS; host f1 launch reaches its agent": 2.141196,
+    "hub/test/host-ssh-contract.test.ts::C4 down tunnel refuses every operation with host/tunnel reason and starts no process or file writer": 1.1724,
+    "hub/test/host-ssh-contract.test.ts::Host.run settles oversized escaped output with native exit facts": 0.988554,
+    "hub/test/host-ssh-contract.test.ts::Host.run settles oversized escaped output with native exit facts after reply loss": 1.324207,
+    "hub/test/host-ssh-contract.test.ts::Host.run shutdown reports incomplete while its disconnected native writer is still held": 1.089755,
+    "hub/test/host-ssh-contract.test.ts::Host.run stream loss remains fenced until native cancellation has a durable completion": 1.697935,
+    "hub/test/host-ssh-contract.test.ts::invalid command admission leaves no native work or permanent Host fence": 1.172301,
+    "hub/test/host-ssh-contract.test.ts::missing installed version refuses spawn naming its directory and starts no process": 1.197172,
+    "hub/test/host-ssh-contract.test.ts::OpenCode nonlocal launch preserves its atomic preparation refusal and starts no process": 1.004238,
+    "hub/test/host-ssh-contract.test.ts::spawn completion reconnects after carrier loss without another Host call": 1.992541,
+    "hub/test/host-ssh-contract.test.ts::ssh Host command cancellation waits for native completion and cleanup": 1.051259,
+    "hub/test/host-ssh-contract.test.ts::ssh Host refuses a down tunnel without native side effects": 0.003626,
+    "hub/test/host-ssh-contract.test.ts::ssh Host runs every shared Host behavioral contract through fake ssh": 5.402498,
+    "hub/test/host-ssh-contract.test.ts::stop closes retained descendants after its recorded root has exited": 1.344171,
+    "hub/test/host-ssh-contract.test.ts::unknown accepted spawn fences rollback mutations until its exact outcome reconciles": 1.744314,
+    "hub/test/host-stop-observation.test.ts::live stop observation requires the exact captured birth": 0.000175,
+    "hub/test/host-stop-observation.test.ts::missing birth without positive end remains a mismatch": 0.000207,
+    "hub/test/host-stop-observation.test.ts::stop observation accepts positive end before comparing a captured birth": 0.000994
   },
   "allow": {
     "hub/test/host-ssh-contract.test.ts::ssh Host runs every shared Host behavioral contract through fake ssh": {
