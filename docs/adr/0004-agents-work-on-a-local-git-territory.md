@@ -25,4 +25,48 @@ The gate selects the latest hub-written review and, when the epic plan or `[plan
 
 `merge-tree --write-tree` refuses conflicts and names the files; the Implementer rebases in its worktree, and the gate never rewrites the task branch (D9). `commit-tree` lands one commit on the task base with the item title/id and the `Item:`, `Reviewed-by:` and required `QA-by:` trailers. Touched uncommitted root changes refuse before refs move. After the local checkout and territory agree, the item and topic close, the claim releases, and worktree/branch removal waits for sessions inside to stop (D10).
 
-The product task base is `dev`. During cland's own D15 interim, `cland.taskBase` in the territory config names `main`; T-59 honors that same base as T-58. Once this item lands and the hub restarts, the Coordinator removes that setting and moves the root to `dev`, as recorded on T-20.
+The product task base is `dev`. Historically, cland's own D15 interim used
+`cland.taskBase` set to `main`; T-59 honored that same base as T-58. The transition
+to `dev` was recorded on T-20. The interim is no longer a future migration.
+
+
+## Amendment — 2026-11-03: Territory access through the Tunnel (T-1591, T-1597)
+
+The bare territory stays local to the hub's machine. A remote
+[Host](../../GLOSSARY.md#hosts) and its [Host agent](../../GLOSSARY.md#hosts) reach
+it through the hub-owned [Tunnel](../../GLOSSARY.md#hosts), following
+[v0.4 §3.2](../spec/v0.4.md#32-the-ssh-transport-the-tunnel-layout-and-the-host-agent),
+[§3.3](../spec/v0.4.md#33-git-through-the-tunnel) and
+[§3.12](../spec/v0.4.md#312-security-and-secrets). Each admitted connection on a
+per-host Unix socket at mode 0600 gets its own `git daemon --inetd` over the
+territory. The Host's git proxy joins Git's stdin/stdout to the forwarded
+`git.sock`. Half-open sockets preserve request EOF while draining clone/fetch
+responses. No Git TCP listener is added on either end.
+
+The hub supplies `CLAND_PUSH_HOST` from the socket's Host identity and drops
+`CLAND_TERRITORY_WRITE`. Its explicit receive configuration enables object
+checking, disables automatic GC, denies deletions and caps input at 128 MiB.
+The territory's update hook accepts a Host push only to a `t/` task branch in
+that Host's allow list, leased to its sessions. It refuses ref deletion, tags,
+other refs and any move of `dev` or `main` (also the configured default branch).
+Hub startup refreshes the hook in existing territories. Guarded hub operations
+without `CLAND_PUSH_HOST` retain their existing policy.
+
+Grant and revoke atomically rewrite the allow list under the territory lock.
+A `git-receive-pack` connection holds that same lock through native Git process
+close, with a 30-second stalled-push cap; `git-upload-pack` remains concurrent.
+Public lease revoke waits for release using bounded lock backoff, by default
+up to the push cap plus two seconds, and reuses a matching lock already held by
+its caller. Receive and merge retain immediate contention refusal. Before an
+immediate merge or merge batch reads a task branch, it revokes every Host's lease
+on that branch under the lock. Batch preparation pins member heads in that short
+critical section and builds from those heads after releasing it. A push therefore
+finishes before revocation or is refused after it; later pushes cannot alter the
+branch selected for merge. Lock order remains worktree serialization, territory
+lock, then Git locks.
+
+Item branches are created in the territory before their worktrees are added on
+a Host. A new local task uses the root's task-base tip, including unpublished
+commits; a nonlocal task uses the territory's task-base tip. Existing territory
+task refs supply their own tip. Merge, verification and the merge queue remain
+owned by the hub.

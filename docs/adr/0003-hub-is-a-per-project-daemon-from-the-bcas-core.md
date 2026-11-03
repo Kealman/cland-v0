@@ -99,9 +99,9 @@ short-path fallback for roots over the Unix byte limit or incompatible with a
 `ws+unix:` URL. The temporary-directory candidate is screened the same way. It carries the same
 WebSocket protocol and bearer admission as the loopback spoke port and refuses
 client hellos on a project hub. It binds no new network address. Local discovery
-is unchanged. The SSH transport will forward this endpoint; host-specific
-credential and principal admission is a separate layer and the socket itself
-grants no human authority. The per-host git socket is recorded by its owning item.
+is unchanged. The Tunnel forwards this endpoint; host-specific credential and
+principal admission and the per-host git socket are recorded in the 2026-11-03
+Host amendment below. The socket itself grants no human authority.
 
 ## 2026-11-02 amendment: users-mode browser admission
 
@@ -149,3 +149,31 @@ checks for WebSocket upgrades, uploads and invite/sign-in APIs are unchanged;
 the cookie attribute grants no admission. Existing cookie name, Path, HttpOnly,
 SameSite and expiry remain unchanged. Users-mode localhost redirects and passkey
 RP ID selection remain unchanged.
+
+
+## Amendment — 2026-11-03: Host sockets and per-host authority (T-1591, T-1596)
+
+The [Host](../../GLOSSARY.md#hosts), [Host agent](../../GLOSSARY.md#hosts) and
+[Tunnel](../../GLOSSARY.md#hosts) extend the per-project hub as specified in
+[v0.4 §3.2](../spec/v0.4.md#32-the-ssh-transport-the-tunnel-layout-and-the-host-agent),
+[§3.3](../spec/v0.4.md#33-git-through-the-tunnel) and
+[§3.12](../spec/v0.4.md#312-security-and-secrets). The hub owns the SSH connection
+that carries the Tunnel. A remote Host reaches the hub through `hub.sock`,
+`.cland/run/spoke.sock` (with the short-path fallback above) and its per-host git
+socket at mode 0600, forwarded to Unix sockets on the Host. The hub reaches the
+Host agent over `agent.sock` on that same Tunnel. These edges bind no new network
+address on the hub's machine; the configurable web edge remains the network-facing
+edge. The existing loopback spoke listener remains available locally.
+
+A remote Host receives its own revocable per-host secret in its remote `hub.json`,
+never the project secret. That secret authenticates the Host, never the human.
+On the Unix spoke edge, admission also requires the launch credential of a
+role-holding session bound to that Host. A local session, another Host's session,
+a missing credential or a session without a role is refused. On `hub.sock`, each
+CLI, hook or mod-bridge frame must carry that Host's session credential; dispatch
+uses the proved session identity and its permissions. Identity-free requests,
+snapshot/resume subscriptions and human-only operations are refused. The local
+human can revoke the secret with `cland host revoke <id>`; this closes its live
+admitted connections and refuses later hellos. Project-secret admission is
+unchanged. Git authority is separately constrained by the branch leases in
+[ADR 0004](0004-agents-work-on-a-local-git-territory.md).
