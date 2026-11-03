@@ -1,6 +1,17 @@
 # Stage QA brief: E-1536 stage 2 — attribution and invites
 
-Everything the run needs is in this file or in the files it names: whoever runs it cannot ask. Commands are for bash (zsh reads `$S:q` or `$B:h` as a modifier). The run is local, on macOS (BSD `sed -i ''`, Node 24 with `node:sqlite`, Neovim on PATH, the suite's Chrome Headless Shell from the installed `playwright-core`). No real harness: the scratch hub runs the fake `claude`, `codex` and `opencode` of `hub/test/fakes/`.
+Everything the run needs is in this file or in the files it names: whoever runs it cannot ask. Commands are for bash (zsh reads `$S:q` or `$B:h` as a modifier). The run is local, on macOS (BSD `sed -i ''`, Node 24 with `node:sqlite`, the pinned Neovim of `node nvim/bin/nvim-path.ts` first on the sealed PATH, the suite's Chrome Headless Shell from the installed `playwright-core`).
+
+## Changes since the last run
+
+The stage ran clear at c14994a2 (A-15579). This version folds in the corrections the E-1536 Definition-of-done run (A-16246) applied to the blocks it reuses, and its launch pattern:
+
+- `topic.send` frames with `qaSave` read the sent message's id back from the topic's history (the newest exact-text match), print `saved`, and save the id with a trailing newline; no match is BLOCKED (rule 22; correction 2e2038e4). Other `qaSave` frames are unchanged.
+- `facts()` tests approvals OR asks OR archive, each defaulting to empty, before the messages branch, so `inbox.list` without `archive` no longer falls through (correction 9cc2bb99).
+- The regular expressions and the one source-provenance line that the publication scanner (`assertPublishable`, `.agents/skills/qa/qa-demo-policy.ts`) flagged are reworded with the same meaning (`token[=]` in the patterns).
+- The hub start, the browser modes and qa-oc's shell launch through `$Q/launch.mjs` (`fixtureEnvironment`, then `scratchGitEnvironment`), as stage 3 does; no `env …`, `TMPDIR=…` or `eval`-export overlay is left after the seal (correction a54f9472). The sealed `PATH` begins with the pinned Neovim (correction 76c6412f).
+
+No assertion of a row changed. No real harness: the scratch hub runs the fake `claude`, `codex` and `opencode` of `hub/test/fakes/`.
 
 ## Stage
 
@@ -76,7 +87,7 @@ In this repository, give the detached worktree a `node_modules` symlink to the p
 
 **Isolation (rule 15).** Every scratch check runs in a disposable project with its own HOME, XDG directories and Git config, with provider and account variables removed. Never the live project at `/Users/evgeniyivanov/Projects/cland/v0`, its hub, its `hub.db` or the human's HOME (`~/.cland`, `~/.claude`, `~/.codex`, `~/.local/state`, `~/.config/cland`). The live hub is read only by QA's own shell for E1536S2-00's plan read and `quiet` (cover-quiet admission). **Harnesses:** only the fakes in `$W/hub/test/fakes/` run, named by `CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN` and `CLAND_OPENCODE_BIN` and first on the scratch hub's `PATH`; no real Claude Code, Codex or OpenCode, no login, no provider. **Browser (rule 18):** the only browsers are Chrome Headless Shell instances started by the probe's `page` and `users` modes (each with its own scratch profile under `$Q/b`) and by the Web test files (their own fixtures); no real browser, no GUI, no computer use. **Preconditions (rule 22):** every check function prints a `PRE:` line before acting; when that line differs from the row's stated precondition, record the row `BLOCKED` with the line and stop the dependent rows. Messages, selectors and test titles are marked verified or inferred under "Source provenance" below. **Secrets:** the hub secret, sign-in links, cookies and invite tokens are never printed, posted or written under `$EV`; the probe and helpers print a token's length and the first 12 hex of its SHA-256 digest only.
 
-Two shells, never mixed. **QA's own shell** keeps QA's session identity: it creates the worktree, runs `quiet` and the plan read, runs the named test files through `nt` (which seals each run) and records every check with `qa-record.sh`. **Every other command runs sealed** inside a subshell that sources `$Q/env.sh`. That file holds the full `fixtureEnvironment` result (`test-support/fixture-environment.ts`) after the scratch overlays, then `scratchGitEnvironment` (same module) with a scratch `core.excludesFile`. It drops every inherited `CLAND_*`, `GIT_*`, `XDG_*`, `CLAUDE_*`, `CODEX_*`, `OPENCODE_*`, `FAKE_*`, provider and account variable, and keeps `PATH`, `SHELL`, `TERM` and `TMPDIR`. It synthesizes its own scratch values under `$Q`: HOME, XDG, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, the `FAKE_*_HOME` directories, `CLAND_EXECUTOR_STATE`, the messenger sentinels and `CLAND_TEST_OWNED_ROOT`. Leave `TMPDIR` at the system default (on macOS `/var/folders/...`; never `/tmp`, T-1030); only the probe's browser modes point `TMPDIR` at `$Q/b`. Never use `env -i`. The scratch root lives under `/private/tmp/qa-e1536s2-` (its realpath, short enough for the scratch hub's socket).
+Two shells, never mixed. **QA's own shell** keeps QA's session identity: it creates the worktree, runs `quiet` and the plan read, runs the named test files through `nt` (which seals each run) and records every check with `qa-record.sh`. **Every other command runs sealed** inside a subshell that sources `$Q/env.sh`. That file holds the full `fixtureEnvironment` result (`test-support/fixture-environment.ts`) after the scratch overlays, then `scratchGitEnvironment` (same module) with a scratch `core.excludesFile`. It drops every inherited `CLAND_*`, `GIT_*`, `XDG_*`, `CLAUDE_*`, `CODEX_*`, `OPENCODE_*`, `FAKE_*`, provider and account variable, and keeps `PATH`, `SHELL`, `TERM` and `TMPDIR`. It synthesizes its own scratch values under `$Q`: HOME, XDG, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, the `FAKE_*_HOME` directories, `CLAND_EXECUTOR_STATE`, the messenger sentinels and `CLAND_TEST_OWNED_ROOT`. Its `PATH` begins with the build's pinned Neovim (`node nvim/bin/nvim-path.ts`, the release of `nvim/NVIM_VERSION`), never an inherited or Homebrew `nvim`. Leave `TMPDIR` at the system default (on macOS `/var/folders/...`; never `/tmp`, T-1030); only the probe's browser modes point `TMPDIR` at `$Q/b`. A launch that needs variables of its own (the scratch hub's fake-harness `PATH` and `CLAND_*` inputs, the browser modes' `TMPDIR`, qa-oc's session identity for its shell) goes through `$Q/launch.mjs`, which passes them as overlays to `fixtureEnvironment(Q, base, overlays)` and then `scratchGitEnvironment(Q, …)`: never an `env …` prefix, a variable assignment before the command, an `export` or `eval` after sourcing `env.sh` or a spread of `process.env` (the E-1536 stage-3 pattern; E-1536 DoD run correction a54f9472). Never use `env -i`. The scratch root lives under `/private/tmp/qa-e1536s2-` (its realpath, short enough for the scratch hub's socket).
 
 One scratch project, **p1**: a fresh `cland init` project whose local Git config sets `user.name` to `Jane Q. Doe`, with a CLI-started hub run from the tested worktree (`$W/hub/bin/cland.ts hub start`, so its web edge serves `$W/web/dist`), the fakes first on its `PATH` and authoritative through `CLAND_*_BIN`, and the machine-wide orphan sweep off. Its actors:
 - the local human (the CLI, and socket frame clients saying `client: "nvim"` as Neovim does), which acts as the first user `jane-q-doe` in users mode;
@@ -112,13 +123,17 @@ nt() { id=$1; shift; quiet || return 1; : > "$EV/$id.log"; for f in "$@"; do ld 
 oks() { grep -E '^ *ok [0-9]+ - ' "$EV/$1.log" | sed -E 's/^ *ok [0-9]+ - //'; }
 ```
 
-The sealed environment. Apply the full `fixtureEnvironment` result after the scratch overlays, including its synthesized HOME, Git, account and fake-harness paths; do not merely unset keys absent from it. Then apply `scratchGitEnvironment`, and remove the broader credential prefixes last. The generated shell first unsets dropped inherited names and then exports every retained value; never print or post those exports. Under rule 15, check zero credential-prefix names before launching any scratch process (the last lines below print a count and variable names only, never values).
+The sealed environment. Apply the full `fixtureEnvironment` result after the scratch overlays, including its synthesized HOME, Git, account and fake-harness paths; do not merely unset keys absent from it. Then apply `scratchGitEnvironment`, and remove the broader credential prefixes last. The generated shell first unsets dropped inherited names and then exports every retained value; never print or post those exports. Under rule 15, check zero credential-prefix names before launching any scratch process (the last lines below print a count and variable names only, never values). The block also writes `$Q/launch.mjs`, the only launcher of the hub, the browser modes and qa-oc's shell.
 
 ```sh
 node --input-type=module - "$W/test-support/fixture-environment.ts" "$Q" "$W" "$EV" > "$Q/env.sh" <<'JS'
 const [m,root,worktree,ev]=process.argv.slice(2);
 const {fixtureEnvironment,scratchGitEnvironment}=await import(m);
+const {execFileSync}=await import('node:child_process'), {dirname}=await import('node:path');
+// the pinned Neovim of the build (nvim/NVIM_VERSION, nvim/bin/nvim-path.ts), first on the sealed PATH; never the inherited PATH or Homebrew
+const nvim=execFileSync(process.execPath,[`${worktree}/nvim/bin/nvim-path.ts`],{encoding:'utf8'}).trim();
 let env=fixtureEnvironment(root,process.env,{
+  PATH: `${dirname(nvim)}:${process.env.PATH}`,
   XDG_CONFIG_HOME: `${root}/xdg/config`, XDG_STATE_HOME: `${root}/xdg/state`,
   XDG_DATA_HOME: `${root}/xdg/data`, XDG_CACHE_HOME: `${root}/xdg/cache`,
   GIT_AUTHOR_NAME: 'qa', GIT_AUTHOR_EMAIL: 'qa@example.invalid',
@@ -134,14 +149,15 @@ JS
 cat >> "$Q/env.sh" <<'ENV'
 FCC=$QA_W/hub/test/fakes/claude-code; FCX=$QA_W/hub/test/fakes/codex; FOC=$QA_W/hub/test/fakes/opencode
 cland() { node "$QA_W/hub/bin/cland.ts" "$@"; }
-# probe <mode> [args…]: the frame/web/db/journal/invite/browser probe against p1 (see probe.mjs)
+# probe <mode> [args…]: the frame/web/db/journal/invite probe against p1 (see probe.mjs); bprobe: its browser modes page and users (cwd $QA_W, TMPDIR $QA_Q/b) through the launcher
 probe() { node "$QA_Q/probe.mjs" "$1" "$QA_Q/p1" "${@:2}"; }
+bprobe() { node "$QA_Q/launch.mjs" browser "$@"; }
 # pick <expr> [args…]: evaluate <expr> on the JSON read from stdin as v, with the extra args as A
 pick() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=JSON.parse(s);const A=process.argv.slice(2);const r=eval(process.argv[1]);console.log(typeof r==="string"?r:JSON.stringify(r))})' "$@"; }
 # hp: the pid in this project's .cland/hub.json (the secret is never read out)
 hp() { node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(".cland/hub.json","utf8")).pid)+"\n")'; }
 # hubstart: start this project's hub with the fakes authoritative and first on its PATH, no machine-wide orphan sweep; census its pid
-hubstart() { env PATH="$FCC:$FCX:$FOC:$PATH" CLAND_CLAUDE_BIN="$FCC/claude" CLAND_CODEX_BIN="$FCX/codex" CLAND_OPENCODE_BIN="$FOC/opencode" CLAND_TEST_SKIP_ORPHAN_SWEEP=1 CLAND_ADAPTER_POLL_MS=200 CLAND_CLAUDE_AGENTS_MS=500 node "$QA_W/hub/bin/cland.ts" hub start && hp >> "$QA_Q/pids"; }
+hubstart() { node "$QA_Q/launch.mjs" hub && hp >> "$QA_Q/pids"; }
 amode() { sed -n '/^\[auth\]/,/^\[/p' .cland/config.toml | grep -E '^mode = '; }
 # off / joff: the byte sizes of p1's hub log and journal, the start of an audit or journal window
 off() { wc -c < .cland/log/hub.log | tr -d ' '; }
@@ -150,8 +166,8 @@ up() { cland hub status > /dev/null 2>&1 && echo up || echo down; }
 srow() { cland session list --json | pick 'const p=v.processes.find(p=>p.name===A[0]);p?[p.status,p.state,p.pid??"none"].join(" "):"absent"' "$1"; }
 waitrun() { n=0; while [ "$n" -lt "$2" ]; do r=$(srow "$1"); case "$r" in "running "*" none") ;; "running "*) echo "${r##* }" >> "$QA_Q/pids"; echo "$1: $r"; return 0;; esac; sleep 1; n=$((n+1)); done; echo "$1: timeout after $2 s, last $r"; return 1; }
 waitstop() { n=0; while [ "$n" -lt "$2" ]; do r=$(srow "$1"); p=${r##* }; case "$r" in "stopped "*) if [ "$p" = none ] || ! kill -0 "$p" 2>/dev/null; then echo "$1: stopped, process gone"; return 0; fi;; esac; sleep 1; n=$((n+1)); done; echo "$1: not stopped after $2 s, last $r"; return 1; }
-# sesh <session> <cland args…>: the CLI run in that launched OpenCode session's shell identity (never prints the credential)
-sesh() { s=$1; shift; ( eval "$(node -e 'const c=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).mcp.servers.cland.environment;for(const k of ["CLAND_SESSION_ID","CLAND_SESSION_NAME","CLAND_LAUNCH_TOKEN","CLAND_ROLE","CLAND_HUB_FILE"])if(c[k])console.log("export "+k+"="+JSON.stringify(c[k]))' ".cland/opencode/$s/opencode.json")"; node "$QA_W/hub/bin/cland.ts" "$@" ); }
+# sesh <session> <cland args…>: the CLI run in that launched OpenCode session's shell identity, through the launcher (never prints the credential)
+sesh() { node "$QA_Q/launch.mjs" session "$@"; }
 # run <label> <cland args…> / srun <label> <session> <cland args…>: exit status, stdout and stderr of one CLI call
 # (used only where no token can print: never for user add, user invite or auth mode users)
 run() { l=$1; shift; cland "$@" > "$QA_Q/r.out" 2> "$QA_Q/r.err"; x=$?; echo "$l exit $x"; sed 's/^/  out: /' "$QA_Q/r.out"; sed 's/^/  err: /' "$QA_Q/r.err"; }
@@ -159,7 +175,7 @@ srun() { l=$1; s=$2; shift 2; sesh "$s" "$@" > "$QA_Q/r.out" 2> "$QA_Q/r.err"; x
 # artc <label> [--as <name>] --title <title>: a note artifact in General from the CLI; exit, stderr and the creator facts
 artc() { l=$1; shift; cland artifact create --kind note --content qa --topic general --json "$@" > "$QA_Q/a.out" 2> "$QA_Q/a.err"; x=$?; echo "$l exit $x err: $(head -n 2 "$QA_Q/a.err" | tr '\n' ' ')"; [ "$x" = 0 ] && pick '({id:v.artifact.id,title:v.artifact.title,creator:v.artifact.creator,creatorKind:v.artifact.creatorKind??null,creatorUserId:v.artifact.creatorUserId??null})' < "$QA_Q/a.out"; }
 # ishape <file>: an invite URL line's shape, its token length and the first 12 hex of the token's SHA-256 (never the token)
-ishape() { node -e 'const t=require("fs").readFileSync(process.argv[1],"utf8").trim();const m=t.match(/^http:\/\/127\.0\.0\.1:[0-9]+\/invite\?token=([0-9a-f]+)$/);console.log(m?"shape ok, token length "+m[1].length+", digest12 "+require("crypto").createHash("sha256").update(m[1]).digest("hex").slice(0,12):"shape mismatch")' "$1"; }
+ishape() { node -e 'const t=require("fs").readFileSync(process.argv[1],"utf8").trim();const m=t.match(/^http:\/\/127\.0\.0\.1:[0-9]+\/invite\?token[=]([0-9a-f]+)$/);console.log(m?"shape ok, token length "+m[1].length+", digest12 "+require("crypto").createHash("sha256").update(m[1]).digest("hex").slice(0,12):"shape mismatch")' "$1"; }
 # idsj <out> <label>=<saved name>…: write {"label":"<id saved in $QA_Q/<saved name>>"} to $QA_Q/<out>; a missing file is skipped and named
 idsj() { node -e 'const fs=require("fs"),Q=process.env.QA_Q,r={};for(const a of process.argv.slice(2)){const i=a.indexOf("="),f=Q+"/"+a.slice(i+1);if(fs.existsSync(f))r[a.slice(0,i)]=fs.readFileSync(f,"utf8").trim();else console.log("missing "+a)}fs.writeFileSync(Q+"/"+process.argv[1],JSON.stringify(r));console.log(Object.keys(r).join(", "))' "$@"; }
 # devents <id…>: the driver's received channel events whose msg_id or answer_to is one of the ids (envelope meta only)
@@ -167,8 +183,39 @@ devents() { node -e 'const ids=new Set(process.argv.slice(1));for(const l of req
 # dtool <tool>: the driver's results of that tool call (artifact facts or the error)
 dtool() { node -e 'for(const l of require("fs").readFileSync(process.env.QA_EV+"/E1536S2-drv.txt","utf8").split("\n")){let e;try{e=JSON.parse(l)}catch{continue}if(e.tool===process.argv[1]){const a=e.result&&e.result.artifact;console.log(JSON.stringify(a?{id:a.id,creator:a.creator,creatorKind:a.creatorKind??null,creatorUserId:a.creatorUserId??null}:e.result))}else if(e.step&&e.step.tool===process.argv[1])console.log(JSON.stringify({error:e.error}))}' "$1"; }
 ENV
+cat > "$Q/launch.mjs" <<'JS'
+// node "$QA_Q/launch.mjs" hub | browser <mode> [args…] | session <name> <cland args…>   (sealed) the launch's own variables are overlays of fixtureEnvironment, then scratchGitEnvironment; nothing is added afterwards
+import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+const { QA_Q: Q, QA_W: W } = process.env;
+if (!W || !/^\/private\/tmp\/qa-e1536s2-/.test(Q ?? '')) throw new Error('not a scratch run');
+const { fixtureEnvironment, scratchGitEnvironment } = await import(`${W}/test-support/fixture-environment.ts`);
+const [mode, ...args] = process.argv.slice(2);
+let extra, argv, cwd = process.cwd();
+if (mode === 'hub') {   // the fakes authoritative and first on PATH, no machine-wide orphan sweep
+  const F = `${W}/hub/test/fakes`;
+  extra = { PATH: `${F}/claude-code:${F}/codex:${F}/opencode:${process.env.PATH}`, CLAND_CLAUDE_BIN: `${F}/claude-code/claude`, CLAND_CODEX_BIN: `${F}/codex/codex`, CLAND_OPENCODE_BIN: `${F}/opencode/opencode`, CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_ADAPTER_POLL_MS: '200', CLAND_CLAUDE_AGENTS_MS: '500' };
+  argv = [`${W}/hub/bin/cland.ts`, 'hub', 'start'];
+} else if (mode === 'browser') {   // the probe's browser modes: cwd $QA_W, TMPDIR $QA_Q/b
+  extra = { TMPDIR: `${Q}/b` }; cwd = W; argv = [`${Q}/probe.mjs`, args[0], `${Q}/p1`, ...args.slice(1)];
+} else if (mode === 'session') {   // that launched session's shell identity from its OpenCode config in this project (names only ever printed elsewhere)
+  const c = JSON.parse(readFileSync(`.cland/opencode/${args[0]}/opencode.json`, 'utf8')).mcp.servers.cland.environment;
+  extra = Object.fromEntries(['CLAND_SESSION_ID', 'CLAND_SESSION_NAME', 'CLAND_LAUNCH_TOKEN', 'CLAND_ROLE', 'CLAND_HUB_FILE'].filter(k => c[k]).map(k => [k, String(c[k])]));
+  argv = [`${W}/hub/bin/cland.ts`, ...args.slice(1)];
+} else throw new Error(`unknown launch mode ${mode}`);
+const env = scratchGitEnvironment(Q, fixtureEnvironment(Q, process.env, {
+  XDG_CONFIG_HOME: `${Q}/xdg/config`, XDG_STATE_HOME: `${Q}/xdg/state`, XDG_DATA_HOME: `${Q}/xdg/data`, XDG_CACHE_HOME: `${Q}/xdg/cache`,
+  GIT_AUTHOR_NAME: 'qa', GIT_AUTHOR_EMAIL: 'qa@example.invalid', GIT_COMMITTER_NAME: 'qa', GIT_COMMITTER_EMAIL: 'qa@example.invalid',
+  ...extra,
+}), { excludesFile: `${Q}/home/.gitignore-global` });
+const child = spawn(process.execPath, argv, { cwd, env, stdio: 'inherit' });
+child.on('error', error => { console.error(error.message); process.exitCode = 1; });
+child.on('close', code => { process.exitCode = code ?? 1; });
+JS
+node --check "$Q/launch.mjs" && echo "launcher checked"
 ( . "$Q/env.sh"; env | cut -d= -f1 | grep -c -E '^(DIGITALOCEAN_|DO_|ANTHROPIC_|OPENAI_|GH_|GITHUB_|AWS_|GOOGLE_|GEMINI_|SSH_)' )
 ( . "$Q/env.sh"; env | cut -d= -f1 | grep -E '^CLAND_' | sort | tr '\n' ' '; echo )
+( . "$Q/env.sh"; echo "sealed nvim: $(command -v nvim); $(nvim --version 2>/dev/null | head -n 1)" )
 cat > "$Q/drv-steps.jsonl" <<'STEPS'
 {"tool":"ask","args":{"topic":"general","question":"QA ask 1?","options":["QA yes","QA no"]},"save":"ask1"}
 {"tool":"ask","args":{"topic":"general","question":"QA ask 2?","options":["QA yes","QA no"]},"save":"ask2"}
@@ -224,11 +271,11 @@ process.exit(0);
 JS
 ```
 
-The probe. It prints one JSON line per fact and never prints a link or invite token, a cookie or the hub secret; the ones it keeps for later rows stay in `$Q` (mode 600). Frame lists are JSON arrays. A string value `"@file:<name>"` becomes the trimmed text of `$QA_Q/<name>`, and a frame's `qaSave: [<name>, <dotted path>]` saves that path of the result value to `$QA_Q/<name>` and is not sent. Web conversations send `hello` with a forged `userId` field, so the welcome name proves the user comes from the cookie.
+The probe. It prints one JSON line per fact and never prints a link or invite token, a cookie or the hub secret; the ones it keeps for later rows stay in `$Q` (mode 600). Frame lists are JSON arrays. A string value `"@file:<name>"` becomes the trimmed text of `$QA_Q/<name>`. A frame's `qaSave: [<name>, <dotted path>]` is not sent. On a `topic.send` frame, after the send succeeds, the probe reads `topic.history` for that topic on the same conversation and saves the id of the newest message with exactly the sent text to `$QA_Q/<name>`, one id with a trailing newline (rule 22: a sent message's id comes from topic history, never from the send result); it prints `saved` with `name`, `fromHistory`, `matches` and `found`, and when nothing matches it saves nothing and prints a `BLOCKED` line (the row is then BLOCKED, with every row that reads that id). On every other frame (`topic.answer`, for one) `qaSave` saves that dotted path of the result value, as before. The `facts()` composite branch for `inbox.list` (approvals, asks or archive, each optional) comes before the `messages` branch (E-1536 DoD run correction 9cc2bb99; the earlier both-arrays test let an inbox without `archive` fall through). Web conversations send `hello` with a forged `userId` field, so the welcome name proves the user comes from the cookie.
 
 ```sh
 cat > "$Q/probe.mjs" <<'JS'
-// node "$QA_Q/probe.mjs" <mode> <p1 root> [args…]   (sealed; modes page and users run with cwd $QA_W and TMPDIR=$QA_Q/b)
+// node "$QA_Q/probe.mjs" <mode> <p1 root> [args…]   (sealed; modes page and users run through launch.mjs browser: cwd $QA_W, TMPDIR $QA_Q/b)
 // sock <frames> | web <tag> [frames] | wsend <tag> <frames> | plant <name> <cookie tag> | rolecheck <tag> | approval <session> <save>
 // db | snap | journal <offset> | audit <offset> | invcheck <labels> [consume] | scan <labels> | page <ids file> <png> <0|1> [live tag] | users <png>
 import { createRequire } from 'node:module';
@@ -247,10 +294,10 @@ const out = (key, value) => console.log(JSON.stringify({ [key]: value }));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const fill = v => typeof v === 'string' && v.startsWith('@file:') ? readFileSync(`${Q}/${v.slice(6)}`, 'utf8').trim()
   : Array.isArray(v) ? v.map(fill) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x)])) : v;
-const LINK = /^http:\/\/127\.0\.0\.1:[0-9]+\/auth\?token=[0-9a-f]{64}$/;
+const LINK = /^http:\/\/127\.0\.0\.1:[0-9]+\/auth\?token[=][0-9a-f]{64}$/;
 // cland web --no-open from p1, as the human's CLI does; only the link's shape is printed
 const mint = () => { const url = execFileSync(process.execPath, [`${W}/hub/bin/cland.ts`, 'web', '--no-open'], { cwd: root, encoding: 'utf8' }).trim(); out('linkShape', LINK.test(url)); return url; };
-const token = label => (readFileSync(`${Q}/invite-${label}`, 'utf8').trim().match(/\/invite\?token=([0-9a-f]{64})$/) ?? [])[1] ?? '';
+const token = label => (readFileSync(`${Q}/invite-${label}`, 'utf8').trim().match(/\/invite\?token[=]([0-9a-f]{64})$/) ?? [])[1] ?? '';
 const msg = m => ({ id: m.id, text: m.text, from: m.from, fromKind: m.fromKind, userId: m.userId ?? null, userDisplayName: m.userDisplayName ?? null, answerTo: m.answerTo ?? null });
 const art = a => ({ id: a.id, title: a.title, creator: a.creator, creatorKind: a.creatorKind ?? null, creatorUserId: a.creatorUserId ?? null });
 const facts = v => {
@@ -258,14 +305,13 @@ const facts = v => {
   if (v.artifact) return { artifact: art(v.artifact) };
   if (Array.isArray(v.artifacts)) return { artifacts: v.artifacts.map(art) };
   if (v.message) return { message: msg(v.message) };
-  if (Array.isArray(v.approvals) && Array.isArray(v.archive)) return { approvals: v.approvals.map(r => ({ id: r.id, session: r.session, state: r.state, choices: r.choices })), asks: (v.asks ?? []).map(r => r.id), archive: v.archive.filter(r => r.outcome).map(r => ({ id: r.id, kind: r.kind, outcome: r.outcome })), messages: (v.messages ?? []).filter(m => String(m.text ?? '').startsWith('QA')).map(msg) };  // inbox.list: before the messages branch, or approvals, asks and archive are lost
+  // inbox.list: approvals OR asks OR archive (each may be absent: empty), tested before the messages branch, or the inbox falls through and its asks are lost
+  if (Array.isArray(v.approvals) || Array.isArray(v.asks) || Array.isArray(v.archive)) return { approvals: (v.approvals ?? []).map(r => ({ id: r.id, session: r.session, state: r.state, choices: r.choices })), asks: (v.asks ?? []).map(r => r.id), archive: (v.archive ?? []).filter(r => r.outcome).map(r => ({ id: r.id, kind: r.kind, outcome: r.outcome })), messages: (v.messages ?? []).filter(m => String(m.text ?? '').startsWith('QA')).map(msg) };
   if (Array.isArray(v.messages)) return { messages: v.messages.filter(m => String(m.text ?? '').startsWith('QA')).map(msg) };
   if (v.approval) return { approval: { id: v.approval.id, state: v.approval.state, outcome: v.approval.outcome ?? null } };
   if (Array.isArray(v.users)) return { users: v.users.map(u => ({ id: u.id, name: u.name, displayName: u.displayName, role: u.role, state: u.state })) };
-  if (Array.isArray(v.archive)) return { archive: v.archive.filter(r => r.outcome).map(r => ({ id: r.id, kind: r.kind, outcome: r.outcome })) };
-  if (Array.isArray(v.approvals)) return { approvals: v.approvals.map(r => ({ id: r.id, session: r.session, state: r.state, choices: r.choices })), asks: (v.asks ?? []).map(r => r.id) };
   if (v.topic) return { topic: { id: v.topic.id, title: v.topic.title } };
-  if (v.user) return { user: { id: v.user.id, name: v.user.name, displayName: v.user.displayName, role: v.user.role, state: v.user.state }, urlShape: typeof v.url === 'string' ? /\/invite\?token=[0-9a-f]{64}$/.test(v.url) : null };
+  if (v.user) return { user: { id: v.user.id, name: v.user.name, displayName: v.user.displayName, role: v.user.role, state: v.user.state }, urlShape: typeof v.url === 'string' ? /\/invite\?token[=][0-9a-f]{64}$/.test(v.url) : null };
   return { keys: Object.keys(v).sort() };
 };
 const setRole = (name, role) => {
@@ -294,7 +340,15 @@ async function converse(send, onLine, close, hello, frames) {
     send(frame);
     const r = await got;
     out(`${frame.id} ${frame.type}${frame.as ? ` as ${frame.as.name}` : ''}`, r === null ? { timeout: true } : r.ok ? { ok: true, ...facts(r.value) } : { ok: false, code: r.code ?? null, error: r.error ?? null });
-    if (qaSave && r?.ok) writeFileSync(`${Q}/${qaSave[0]}`, String(qaSave[1].split('.').reduce((o, k) => o?.[k], r.value)));
+    if (qaSave && r?.ok && frame.type === 'topic.send') {  // rule 22: a sent message's id comes from its topic's history, never from the send result
+      const hid = `${frame.id}h`, hist = wait(f => f.type === 'result' && f.id === hid, 30000);
+      send({ type: 'topic.history', topic: frame.topic, id: hid });
+      const h = await hist, mine = (h?.ok ? h.value.messages ?? [] : []).filter(m => m.text === frame.text);
+      const id = mine.length ? mine[mine.length - 1].id : null;   // the newest exact-text match
+      out('saved', { name: qaSave[0], fromHistory: true, matches: mine.length, found: id !== null });
+      if (id !== null) writeFileSync(`${Q}/${qaSave[0]}`, `${id}\n`);
+      else out('BLOCKED', `no message with the sent text in the topic history for ${qaSave[0]} (rule 22)`);
+    } else if (qaSave && r?.ok) writeFileSync(`${Q}/${qaSave[0]}`, String(qaSave[1].split('.').reduce((o, k) => o?.[k], r.value)));
   }
   close();
 }
@@ -490,7 +544,7 @@ switch (mode) {
       await users.getByRole('button', { name: 'Create user', exact: true }).click();
       await users.getByRole('cell', { name: 'Carol Q', exact: true }).waitFor();
       const link = await users.getByLabel('Invite link', { exact: true }).inputValue();
-      out('inviteShape', { matches: /\/invite\?token=[0-9a-f]{64}$/.test(link), tokenLength: (link.split('token=')[1] ?? '').length });
+      out('inviteShape', { matches: /\/invite\?token[=][0-9a-f]{64}$/.test(link), tokenLength: (link.split('token=')[1] ?? '').length });
       out('rowsAfter', await rows()); out('headerAfter', await users.locator('header').first().textContent());
       await users.getByRole('button', { name: 'Dismiss invite' }).click();
       out('inviteFieldsAfterDismiss', await users.getByLabel('Invite link', { exact: true }).count());
@@ -569,7 +623,7 @@ m11() {   # p1: init, hub start, single-mode baseline (messages, web user frames
 m12() {   # p1, Headless Shell: single-mode labels
   echo "PRE: $(amode); hub $(up); dist $(ls "$QA_W/web/dist/index.html")"
   idsj ids-single.json "single sock=m-single-sock" "single web=m-single-web"
-  ( cd "$QA_W" && TMPDIR="$QA_Q/b" node "$QA_Q/probe.mjs" page "$QA_Q/p1" ids-single.json "$QA_EV/E1536S2-12-single.png" 0 )
+  bprobe page ids-single.json "$QA_EV/E1536S2-12-single.png" 0
 }
 m13() {   # p1: the launched session qa-oc and the driver session qa-coord with its asks
   echo "PRE: $(amode); hub $(up); qa-oc $(srow qa-oc)"
@@ -684,12 +738,12 @@ m20() {   # p1: qa-oc's shell with --as alex still acts as qa-oc (the artifact c
 m21() {   # p1, Headless Shell: authors on desktop and phone, signed in as jane-q-doe, with alex's live sends
   echo "PRE: $(amode); hub $(up); dist $(ls "$QA_W/web/dist/index.html")"
   idsj ids-authors.json "single sock=m-single-sock" "single web=m-single-web" "jane=m-jane" "alex=m-alex" "alex answer=m-a1" "as alex=m-as-alex"
-  ( cd "$QA_W" && TMPDIR="$QA_Q/b" node "$QA_Q/probe.mjs" page "$QA_Q/p1" ids-authors.json "$QA_EV/E1536S2-21-desktop.png" 0 alex )
-  ( cd "$QA_W" && TMPDIR="$QA_Q/b" node "$QA_Q/probe.mjs" page "$QA_Q/p1" ids-authors.json "$QA_EV/E1536S2-21-phone.png" 1 alex )
+  bprobe page ids-authors.json "$QA_EV/E1536S2-21-desktop.png" 0 alex
+  bprobe page ids-authors.json "$QA_EV/E1536S2-21-phone.png" 1 alex
 }
 m22() {   # p1, Headless Shell: the Accounts users list and a web-created invite
   echo "PRE: $(amode); hub $(up); $(cland user list | tail -n +2 | wc -l | tr -d ' ') user rows"
-  ( cd "$QA_W" && TMPDIR="$QA_Q/b" node "$QA_Q/probe.mjs" users "$QA_Q/p1" "$QA_EV/E1536S2-22-users.png" )
+  bprobe users "$QA_EV/E1536S2-22-users.png"
   cland user list
   probe db | grep '"invites"'
 }
@@ -714,7 +768,7 @@ m23() {   # p1: reset revokes invites; single mode again; stand-in --as unchange
 m24() {   # p1, Headless Shell: single mode after the reset shows "you" for every human message
   echo "PRE: $(amode); hub $(up)"
   idsj ids-reset.json "single sock=m-single-sock" "jane=m-jane" "alex=m-alex" "alex answer=m-a1" "after reset=m-after-reset"
-  ( cd "$QA_W" && TMPDIR="$QA_Q/b" node "$QA_Q/probe.mjs" page "$QA_Q/p1" ids-reset.json "$QA_EV/E1536S2-24-single.png" 0 )
+  bprobe page ids-reset.json "$QA_EV/E1536S2-24-single.png" 0
 }
 m25() {   # p1: cleanup; judge the fixture-owned census only
   touch "$QA_Q/stop-drv"; n=0; while [ "$n" -lt 30 ] && ! grep -q '"closed":"qa-coord"' "$QA_EV/E1536S2-drv.txt"; do sleep 1; n=$((n+1)); done
@@ -727,7 +781,7 @@ m25() {   # p1: cleanup; judge the fixture-owned census only
 }
 ```
 
-Cleanup after the evidence is recorded: print `$Q`, check it begins with `/private/tmp/qa-e1536s2-`, and remove it by that literal path with a non-force `rm -r`. Remove the worktree with `git -C "$R" worktree remove "$W"` once the verdict is recorded (remove its `node_modules` symlink first if Git refuses). p1's secret in `$Q/p1/.cland/hub.json`, the sign-in links, the cookies, the files `cookie-*`, `invite-*` and `invite-copy-*.db`, and the session credential are never printed or posted. Record the setup (worktree, `$Q`, the zero credential-name count, the `CLAND_` name list, `probe and driver checked`) as check `S0` with `qa-record.sh note`. The name list must hold no `CLAND_SESSION_*`, `CLAND_LAUNCH_TOKEN` or `CLAND_ROLE` from QA's own session.
+Cleanup after the evidence is recorded: print `$Q`, check it begins with `/private/tmp/qa-e1536s2-`, and remove it by that literal path with a non-force `rm -r`. Remove the worktree with `git -C "$R" worktree remove "$W"` once the verdict is recorded (remove its `node_modules` symlink first if Git refuses). p1's secret in `$Q/p1/.cland/hub.json`, the sign-in links, the cookies, the files `cookie-*`, `invite-*` and `invite-copy-*.db`, and the session credential are never printed or posted. Record the setup (worktree, `$Q`, `launcher checked`, the zero credential-name count, the `CLAND_` name list, the `sealed nvim:` line, `probe and driver checked`) as check `S0` with `qa-record.sh note`. The name list must hold no `CLAND_SESSION_*`, `CLAND_LAUNCH_TOKEN` or `CLAND_ROLE` from QA's own session. The `sealed nvim:` line names the binary under the build's pinned cache and prints `NVIM v0.12.5` (the tag of `nvim/NVIM_VERSION`); a Homebrew or other inherited `nvim`, or none, makes S0 BLOCKED. Never copy this brief, `env.sh`, `launch.mjs` or `probe.mjs` under `$EV` (rule 15: record digests and line counts only).
 
 ## Cases
 
@@ -787,7 +841,7 @@ Before requesting QA, run `cland qa lint qa/briefs/E-1536-stage-2.md` with this 
   - Asks and approvals: `the ask is ${a.state} by ${a.outcome.by}: "${a.question}" takes no answer any more` (`hub/src/hub/asks.ts`); `approval already answered by ${previous.by} via ${previous.via} at ${previous.at}` (`hub/src/hub/inbox.ts`); the `ask-answered` and `inbox-departure` user ids; the CLI line `answered <ask id> in <topic title>: <the answer>` (`hub/src/cli/inbox.ts`); stand-in attribution `answered_as: 'stand-in', answered_by` (`asks.ts`); client `topic.create` journalled `by` `human` (`hub/src/hub/dispatch.ts`, `core.ts` `createTopic`).
   - Artifacts: `creatorUserId` on create and upload; the `event-announced` artifact record's `userId` (`core.ts`).
   - Web authority: `User role ${user?.role ?? '(unknown)'} cannot request ${String(frame.type)}` with `code: 'forbidden'` (`hub/src/hub/web-authority.ts` `userAuthorityRefusal`).
-  - Users and invites: `web user commands require users mode` and `auth and user commands require a local human shell` (`dispatch.ts`). The name refusals `reserved user name: <name>`, `user name collision with a role or current session: <name>`, `user name must be a lowercase slug` and `user name must be unique: <name>` (`hub/src/hub/users.ts` `add`). `unknown invite`, `used invite`, `revoked invite`, `expired invite`, the 64-hex token, its SHA-256 digest and the 24-hour expiry (`users.ts`). The invite URL `${base}/invite?token=` (`hub/src/hub/web-edge.ts`). `<name>  <role>  <state>` then the URL from `user add` and `user invite`, and the switch's second line (`hub/src/cli/auth.ts`). A display name defaulting to the name (`hub/src/hub/daemon.ts`).
+  - Users and invites: `web user commands require users mode` and `auth and user commands require a local human shell` (`dispatch.ts`). The name refusals `reserved user name: <name>`, `user name collision with a role or current session: <name>`, `user name must be a lowercase slug` and `user name must be unique: <name>` (`hub/src/hub/users.ts` `add`). `unknown invite`, `used invite`, `revoked invite`, `expired invite`, the 64-hex token, its SHA-256 digest and the 24-hour expiry (`users.ts`). The invite URL: `${base}/invite?` followed by the `token` query key and the token (`hub/src/hub/web-edge.ts`). `<name>  <role>  <state>` then the URL from `user add` and `user invite`, and the switch's second line (`hub/src/cli/auth.ts`). A display name defaulting to the name (`hub/src/hub/daemon.ts`).
   - CLI and harness: the `cland: <message>` exit-1 error print (`hub/bin/cland.ts`); the `--as … ignored: this shell is session …'s ($CLAND_SESSION_*), and acts as it` note (`hub/src/cli/actor.ts`); `only the human may do this; this call is <session> [<Role>]'s, by $CLAND_SESSION_ID` (`dispatch.ts`); the OpenCode session config at `.cland/opencode/<name>/opencode.json` holding the session environment (`hub/src/adapters/opencode.ts`, `opencode/server.ts`); the fake OpenCode raising `permission.asked` for `needs approval` (`hub/test/fakes/opencode/fake-opencode.ts`).
   - The web: `web_sessions (id,cookie_hash,created_at,last_used_at,user_id)` and planting an active user with a SHA-256 cookie hash, as `hub/test/answer-users.test.ts` does. Selectors: `section[aria-label="Users"]` (`web/src/accounts/Users.tsx`) and the `Users` fold header, table, `Name`, `Display name`, `Create user`, `Invite link`, `Copy invite` and `Dismiss invite` labels; `data-message-id`, `data-object-id` and `data-phone` attributes (`MessageBlock.tsx`, `AreaObjects.tsx`, `Shell.tsx`).
   - T-1571 at its branch head: `HUMAN_USER_WRITES` (`topic.answer`, `topic.create`, `topic.send`, `approval.answer`, `artifact.create`) and the shell/session exclusion (`hub/src/hub/cli-user.ts`); `cannot act as user ${JSON.stringify(name)}: user is unknown or not active` and the role check of the first and the named user (`dispatch.ts`); `topic-created` `by` the user's name and `userId` (`core.ts` `createTopic`); `--as` on `artifact create` through `actorOf` (`hub/src/cli/artifact.ts`); the help texts `[--as <user or stand-in name>]` and `[--as <user>]` (`hub/src/cli/usage/topic.ts`, `artifact.ts`). The single-mode and session-shell results come from `hub/test/cli-as-user.test.ts`'s assertions: stand-in `topic answer` with `answered_as` `stand-in`; `topic create`, `artifact create` and `approval.answer` with `as` stay `human` with no user id; a session shell's artifact `creator` is the session, and its `topic-created` is `by` `human` with no `userId`.
@@ -801,6 +855,9 @@ Before requesting QA, run `cland qa lint qa/briefs/E-1536-stage-2.md` with this 
 ## Probes that mislead
 
 - The live hub and the live workbench run the code of their last restart, not the tested dev SHA. Live sign-in, the live `hub.db` and live Neovim behaviour are not evidence for this stage; p1, the build's files and its tests are.
+- **Created ids come from history** (rule 22). A sent message's id is read from `topic.history` (the probe's `saved` line), never from the `topic.send` result; `topic.history` lists the oldest first, so the last exact-text match is the newest. A `saved` line with `found` false is BLOCKED, not a product failure of the send.
+- **No overlay after the seal.** The hub, the browser modes and qa-oc's shell start only through `$Q/launch.mjs`. Do not "fix" a failing row with an `env NAME=…` prefix, `TMPDIR=… node …`, or an exported session variable in a sealed subshell.
+- **Scanner-safe text.** The brief's patterns spell the query key as `token[=]`; never copy this brief, `env.sh`, `launch.mjs` or `probe.mjs` under `$EV`, where their static text would trip the publication scanner.
 - Every `cland` here is `$W/hub/bin/cland.ts` (the `cland` function of `env.sh`). A `cland` on PATH, or the root's CLI, may be older.
 - **The invite token is a credential.** Never print it, never put it in a screenshot, a capture or a topic. Record its length and the first 12 hex of its SHA-256 digest only. `user add`, `user invite` and `auth mode users` write their URL lines to `$Q/invite-*`, never to `$EV`. E1536S2-22's screenshot is taken after `Dismiss invite`. `scan` proves the token is absent from the evidence too; a hit under `<EV>` is a QA fault to fix before publication, not a product failure.
 - **Display names are not identity.** Decide "you" and authorship by user id: the web compares `message.userId` with the viewer's `web.session` user id, and Neovim with `user.list`'s first id. Two users may share a display name (the test files prove that case on purpose). Read `userId` in history, outcomes and artifacts. A matching display name with a different `userId` is a FAIL, and a different display name with the same id is a rename, not a different user.
