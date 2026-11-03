@@ -3,7 +3,7 @@ id: T-1595
 kind: task
 title: The transport layer and the ssh carrier's master
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1358
 branch: t/T-1595-the-transport-layer-and-the-ssh-carrier
 created: 2026-11-02T03:33:54.197Z
-updated: 2026-11-03T04:20:48.959Z
+updated: 2026-11-03T04:53:16.323Z
 ---
 
 ## Summary
@@ -32,24 +32,31 @@ Hot files: `hub/src/transport/transport.ts` (new), `hub/src/transport/ssh.ts` (n
 - [x] C1. The master's argv contains `-N`, `-a`, `-x`, `-F /dev/null`, `BatchMode=yes`, `IdentitiesOnly=yes`, `ExitOnForwardFailure=yes`, `ServerAliveInterval=15`, `ServerAliveCountMax=4`, `StrictHostKeyChecking=yes` and the host's own `UserKnownHostsFile`, and the four forwards, all Unix-socket paths with no port on any listening side (test).
   - done: impl-1595 · 2026-11-03T03:14:12.376Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.878Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 - [x] C2. Bootstrap passes the per-host secret only on stdin, never in argv, and a second bootstrap on a host whose supervisor lives starts nothing new (test).
   - done: impl-1595 · 2026-11-03T03:14:12.577Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.878Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 - [x] C3. With an injected clock, consecutive failures back off 1, 2, 4 … 30 s with jitter. A master that stayed up 30 s resets the backoff, and a wall-clock jump retries at once (test).
   - done: impl-1595 · 2026-11-03T03:14:12.901Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.878Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 - [x] C4. Before each start the carrier runs `-O exit` on the control path and removes a leftover control socket, and a new master after a SIGKILL multiplexes (`-O check` succeeds) (test).
   - done: impl-1595 · 2026-11-03T03:31:00.639Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.878Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 - [x] C5. On a fake host, a master killed with SIGKILL is back with all four forwards and a successful probe within 10 s (test).
   - done: impl-1595 · 2026-11-03T03:14:13.448Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.878Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 - [x] C6. The probe runs every 30 s through `agent.sock`, and `hub.status` and `cland hub status` show each host's tunnel state (`up`, `connecting`, `down`), its time since, its last probe and its reconnect count (test).
   - done: impl-1595 · 2026-11-03T03:14:13.656Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.878Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 - [x] C7. A host whose pinned key differs from the host's own is never connected, and the refusal is logged without key material (test).
   - done: impl-1595 · 2026-11-03T03:31:00.853Z
   - verified: rev-35 [reviewer] · run rev-35-1595-final-1 · 2026-11-03T03:54:18.365Z · commit ec89a9084544ee11e114dd2116c455eb8bf06064
+  - verified: rev-35 [reviewer] · run rev-35-1595-final-2 · 2026-11-03T04:53:12.879Z · commit ee744a6167e49b4ff213ea56896878161001ddc3
 
 ## Notes
 
@@ -115,3 +122,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C7 verified, no findings. Exact-head3fea0b51/A-16157 exit0,4868 pass/zero fail/cancel/skip/todo. Independently streamed all carrier6/policy1/status1 facts, including refused live-master cleanup/concurrent ownership and wrong-private-pin/matching-global trust plus path-spaces negative controls. Retained final10s recovery/cadence/secret/forward assertions inspected, whole-test timing not claimed as recovery latency. A-16158 raw supervisor3/fakeSSH9 named outputs and native exits0 are explicitly pre-commit local darwinarm64 Node24.21 evidence with relevant-source equality, not exact-commit/Linux preservation. Source correction unchanged; no unresolved findings. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/allT2/changed carrierT3 sixcases/Web complete,remainingT3 batch-deferred,T4 unexecuted. Budget/lint/ratchet/skip diagnostics report-only. QA affected/after-stage separate. Reviewer ran no tests/probes/browser or edits. Detail A-16159: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16159-t-1595-final-evidence-ssh-recovery-exclusive-pinning-and-preservation.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-35 · 2026-11-03T04:26:22.183Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1595-delta-source-1
+commit: ee744a6167e49b4ff213ea56896878161001ddc3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear, no findings. Independently checked both parents and combined resolutions: admission/revocation dispatch is incoming dev verbatim apart from the additive tunnelStatuses import and hub.status.hosts expression; carrier and Hub admission docs both retained. Transport directory, SSH/policy/status tests and supervisor script unchanged from reviewed ec89a9084. Optional protocol/shared-wire hosts and three transport tier/index entries coexist with incoming changes. C1–C7 remain runtime-unverified at new head; prior A-16157 is predecessor evidence, not this merge receipt. Fresh mode-free verification may follow source clear; cover-quiet remains in force and local T0 queues behind its slot per Coordinator ef30a22e. Reviewer ran no tests/typecheck/probes/browser or edits. Both Standards and Spec axes have zero findings. Detail A-16163: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16163-t-1595-authorized-merge-delta-source-review.md.
+
+### rev-35 · 2026-11-03T04:53:12.879Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1595-final-2
+commit: ee744a6167e49b4ff213ea56896878161001ddc3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final evidence clear; C1–C7 verified, no findings. Exact-head queued5e41a09e/A-16164 exit0,4925 pass/zero fail/cancel/skip/todo. Independently streamed carrier6/policy1/status1 plus incoming host-secret-admission16, host-agent-boundary2, help7, layout16 and placement11 ordinary pass outcomes. Source unchanged since delta clear A-16163. A-16158 supervisor3/fakeSSH9 remains qualified predecessor/pre-commit local darwinarm64 Node24.21/native exit0 evidence with relevant-source linkage, not exact-commit/Linux native execution; incoming CLI revoke addition leaves serve path intact. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, runner tree ed233d00383106f8b1bb52cf3fbfcc7c46c7d51c, isolated Headless Shell1248/Chrome for Testing156.0.8078.4. T0/T1/allT2/Web and selectedT3 carrier6/allow-list10/git-daemon4 passed; remainingT3 batch-deferred,T4 unexecuted. Budgets/lint/incomplete ratchet/skip-reason diagnostics report-only, skips[]/missing0. Retained10s recovery assertion passed; whole-case timing is not recovery latency. QA affected/after-stage separate. Reviewer ran no local checks/browser/edits under cover-quiet. Detail A-16165: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16165-t-1595-merged-head-final-evidence-review.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-1595 · 2026-11-03T04:53:16.323Z
+
+Merged-head verify5e41a09e/A-16164 exit0,4925pass/zero fail/cancel/skip/todo at delta-reviewed ee744a6167e49b4ff213ea56896878161001ddc3, treeed233d00383106f8b1bb52cf3fbfcc7c46c7d51c. Independently parsed actual named timing outcomes: carrier6,policy1,status1,unchangedhost-secret-admission16 allpass; policy/status also5/5 load-gate. Linuxx64droplet Node24.21/Nvim0.12.5, isolated HeadlessShell1248 ChromeForTesting156.0.8078.4. T0/T1/fallbackallT2/selectedT3(3files20identities once)/Web complete; remainingT3 deferred,T4 unexecuted; budget/ratchet/lint/skip reports report-only, skips[]/missing0. Native preservation3+9 retains A-16158 predecessor/macOS limits; no current remote native preservation claimed. Freshfetch origin/devbf486cb6, merge-treeexit0/tree8b95caee; head clean/unchanged,no merge. Merged-head evidence artifact posted for final review; local quiet honored.
