@@ -1,8 +1,10 @@
 # hub/test/host-records.test.ts
 
 `hub/test/host-records.test.ts` is T2. Use `tempProject` and `projectHub`; no SSH,
-provider or real keys. The fake tree has `<root>/<id>/host-key.pub` and a synthetic
-`client-key` path. Set both `CLAND_FAKE_HOSTS=f1,f2` and `CLAND_FAKE_HOST_ROOT`.
+provider or real keys. Create fresh hosts with `createFakeHost`; both it and
+startup registration use `shared/fake-host-directory.ts`. The short directory
+alias resolves to `<realpath(root)>/.fixture-sockets/<id>/`, containing
+`host-key.pub` and the synthetic `client-key`. Set both `CLAND_FAKE_HOSTS=f1,f2` and `CLAND_FAKE_HOST_ROOT`.
 
 The tests cover additive migration, preservation/reopen, host-bound digest checks,
 revocation without automatic remint, 0700 directories/0600 files, output registry
@@ -24,3 +26,12 @@ Assert legacy pairings and sentinel data survive, remote target/stop-cause colum
 are added, both project-user pairings survive reopen, and auth reset keeps the
 first user's pairing without altering host records. All data and host proof
 values are synthetic; no HostSecretStore file or SSH process is needed here.
+
+T-1657 startup coverage checks both hosts against the keys written by
+`createFakeHost`, reads the registered client-key files, and checks every host
+socket path including its NUL against 104 bytes. The `suite-tmpdir` case sets
+TMPDIR to `/private/tmp/cland-suite-<36-character UUID>` on macOS (the system
+temporary directory on other platforms) before creating the project and hosts.
+It restores TMPDIR and drains the embedded hub before owned directory cleanup;
+no native child process is started. Both startup cases reproduce ENOENT with
+the old registration layout. Missing-variable controls still register no hosts.

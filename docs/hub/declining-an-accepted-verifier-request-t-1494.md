@@ -125,8 +125,10 @@ values into the project output redactor. Revocation storage fences matching and
 secret reads; admission and connection shutdown are separate consumers.
 
 Both `CLAND_FAKE_HOSTS=f1,f2` and `CLAND_FAKE_HOST_ROOT=/absolute/scratch/root`
-are required to register fake records at startup. Each named directory supplies
-`host-key.pub` and the synthetic `client-key` path; pins use `<id> <public key>`.
+are required to register fake records at startup. Each named directory is resolved
+by `shared/fake-host-directory.ts`, shared with `createFakeHost`, through a short
+alias to `<realpath(root)>/.fixture-sockets/<id>/`. It supplies `host-key.pub`
+and the synthetic `client-key` path; pins use `<id> <public key>`.
 Existing records, including revoked records, are never reminted at startup.
 The hook creates records only; remote Host operations require the transport.
 `hostPaths` owns agent, git, control and hashed session socket paths. It uses
@@ -147,13 +149,14 @@ downtime. Neither path can discover an escape after its ancestry was lost.
 A descendant that escaped before any capture is outside cland’s authority on both Hosts and is never signalled; host recycling clears it.
 
 The test-only SSH pairing uses `CLAND_FAKE_HOSTS=f1,f2` and an absolute
-`CLAND_FAKE_HOST_ROOT`, containing `<name>/home/.cland-host/run` (0700),
+`CLAND_FAKE_HOST_ROOT`. Its shared resolver returns each host directory,
+containing `home/.cland-host/run` (0700),
 `boot-id`, `host-key.pub`, `client-key` and `known_hosts`. `sshBinaries(env)`
 selects system `ssh`/`scp` for the host carrier unless both controls are nonempty; only then may
 `CLAND_SSH_BIN`/`CLAND_SCP_BIN` select the executable Node stand-ins under
 `hub/test/fakes/`. They pin keys, relay Unix sockets (0600), run commands with
 a sealed host HOME and copy files into that HOME. Loopback destination ports
-map through `<name>/ports.json` to host Unix sockets; no network socket is opened.
+map through `<resolved host directory>/ports.json` to host Unix sockets; no network socket is opened.
 `fake-host.ts create|kill-master|gone <name>` controls disposable hosts; killing
 asks the live master to signal itself after checking host/boot identity and its
 per-master token; the ownership record publishes only after bind. Commands

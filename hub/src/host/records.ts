@@ -6,6 +6,7 @@ import { isAbsolute, join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { parseTransportKind, type TransportKind } from './transport-kind.ts';
 import { SOCKET_PATH_MAX } from '../project.ts';
+import { hostDirectory } from '../../../shared/fake-host-directory.ts';
 
 export type HostRecord = { id: string; transport: TransportKind; address: string; user: string; state: 'registered' | 'revoked' };
 export type HostRegistration = { id: string; address: string; user: string; clientKeyPath: string; knownHosts: string };
@@ -116,7 +117,7 @@ export function registerFakeHosts(root: string, records: HostRecords, env: NodeJ
   for (const id of env.CLAND_FAKE_HOSTS.split(',').filter(Boolean)) {
     hostId(id);
     if (records.get(id)) continue; // Revoked hosts never mint automatically on restart.
-    const fake = join(env.CLAND_FAKE_HOST_ROOT, id);
+    const fake = hostDirectory(env.CLAND_FAKE_HOST_ROOT, id);
     const key = readFileSync(join(fake, 'host-key.pub'), 'utf8').trim();
     secrets.register({ id, address: id, user: 'agent', clientKeyPath: join(fake, 'client-key'), knownHosts: `${id} ${key}\n` });
   }

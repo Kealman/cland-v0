@@ -1,18 +1,15 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile, access, realpath } from 'node:fs/promises';
-import { join, resolve, relative, isAbsolute, dirname } from 'node:path';
+import { join, resolve, relative, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { fixtureSocketPath } from '../../../test-support/socket-path.ts';
+import { hostDirectory } from '../../../shared/fake-host-directory.ts';
+export { hostDirectory } from '../../../shared/fake-host-directory.ts';
 import { fakeHostSocketPath } from './fake-host-socket.ts';
 import { AgentClient } from '../../src/host/agent-client.ts';
 import { observeProcesses } from '../../src/host/agent/native.ts';
 import { controlRequest, hostOwner, sameOwner } from './fake-ssh-common.ts';
 import type { MasterReceipt } from './fake-ssh-common.ts';
-export function hostDirectory(root: string, name: string): string {
-  if (!isAbsolute(root) || !/^[a-zA-Z0-9_-]+$/.test(name)) throw new Error('invalid fake host root/name');
-  return join(dirname(fixtureSocketPath(root, 'fake-hosts')), name);
-}
 export async function createFakeHost(root: string, name: string) {
   const directory = hostDirectory(root, name);
   const home = join(directory, 'home');

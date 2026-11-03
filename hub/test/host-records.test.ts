@@ -1,11 +1,15 @@
 // T2: host records, private secret files and real project startup; no native SSH.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { remoteRedactor } from '../src/remote/redact.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, statSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, statSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createFakeHost } from './fakes/fake-host.ts';
+import { fakeHostSocketPath } from './fakes/fake-host-socket.ts';
+import { beforeDirectories, ownDirectory } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';
 import { HostSecretStore, hostPaths } from '../src/host/records.ts';
 import { tempProject, projectHub, connectUi, flushProjectLogs } from './harness.ts';
@@ -76,18 +80,42 @@ test('C4 deep project roots use deterministic short private socket paths', async
   assert.notEqual(paths.agentSocket, hostPaths(deep, 'f2').agentSocket);
   assert.notEqual(paths.agentSocket, hostPaths(deep + 'x', 'f1').agentSocket);
 });
-for (const both of [true, false, 'root-only'] as const) test(`C3 fake registration requires both variables: ${both}`, async t => {
+for (const both of [true, false, 'root-only', 'suite-tmpdir'] as const) test(`C3 fake registration requires both variables: ${both}`, async t => {
+  if (both === 'suite-tmpdir') {
+    const suite = join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), `cland-suite-${randomUUID()}`);
+    mkdirSync(suite, { mode: 0o700 });
+    ownDirectory(t, suite);
+    const previous = process.env.TMPDIR;
+    process.env.TMPDIR = suite;
+    beforeDirectories(t, () => {
+      if (previous === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = previous;
+    });
+  }
+  const enabled = both === true || both === 'suite-tmpdir';
   const root = await hostProject(t), fakeRoot = join(root, 'fake');
-  for (const id of ['f1', 'f2']) { mkdirSync(join(fakeRoot, id), { recursive: true }); writeFileSync(join(fakeRoot, id, 'host-key.pub'), `ssh-ed25519 synthetic-${id}\n`); }
+  mkdirSync(fakeRoot);
+  const hosts = await Promise.all(['f1', 'f2'].map(id => createFakeHost(fakeRoot, id)));
   const hub = await projectHub(t, root, { ...(both !== 'root-only' ? { CLAND_FAKE_HOSTS: 'f1,f2' } : {}), ...(both !== false ? { CLAND_FAKE_HOST_ROOT: fakeRoot } : {}) });
   const ui = await connectUi(t, hub.discovery);
   const db = new DatabaseSync(join(root, '.cland', 'hub.db')); t.after(() => db.close());
   const rows = db.prepare('select * from hosts order by id').all();
-  assert.equal(rows.length, both === true ? 2 : 0);
-  if (both !== true) return;
+  assert.equal(rows.length, enabled ? 2 : 0);
+  if (!enabled) return;
+  assert.deepEqual(rows.map(row => row.id), ['f1', 'f2']);
   const secret = readFileSync(hostPaths(root, 'f1').secret, 'utf8');
   assert.equal(rows[0]!.transport, 'ssh');
-  assert.equal(readFileSync(hostPaths(root, 'f1').knownHosts, 'utf8'), 'f1 ssh-ed25519 synthetic-f1\n');
+  for (const [index, id] of ['f1', 'f2'].entries()) {
+    const host = hosts[index]!;
+    const paths = hostPaths(root, id);
+    assert.equal(readFileSync(paths.knownHosts, 'utf8'), `${id} ${host.key}\n`);
+    const clientKey = readFileSync(paths.clientKeyPath, 'utf8');
+    assert.equal(clientKey, join(host.directory, 'client-key'));
+    assert.equal(readFileSync(clientKey, 'utf8'), 'FAKE CLIENT KEY\n');
+    for (const socket of [fakeHostSocketPath(host.home), paths.agentSocket, paths.gitSocket, paths.controlSocket, paths.sessionSocket('session')]) {
+      assert.ok(Buffer.byteLength(socket) + 1 <= 104, socket);
+    }
+  }
   const reply = await ui.request({ type: 'hub.status' });
   assert.equal(JSON.stringify(reply).includes(secret), false);
   await flushProjectLogs(t, root);

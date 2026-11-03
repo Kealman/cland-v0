@@ -7,7 +7,10 @@ It launches no hub, browser, real SSH, provider or account.
 
 Use `createFakeHost(root, name)` from `hub/test/fakes/fake-host.ts`. Set
 `CLAND_FAKE_HOSTS` to comma-separated names and `CLAND_FAKE_HOST_ROOT` to the
-absolute disposable root. Each host has `home/.cland-host/run` at 0700,
+absolute disposable root. Use the directory returned by `createFakeHost` (the shared resolver
+`shared/fake-host-directory.ts` also serves hub registration); its short alias
+resolves to `<realpath(root)>/.fixture-sockets/<name>`. Each host has
+`home/.cland-host/run` at 0700,
 `boot-id`, synthetic `host-key.pub`, synthetic `client-key` and `known_hosts`.
 `CLAND_FAKE_BOOT_ID_FILE` is supplied to host commands. Only both fake controls
 enable `sshBinaries(env)` overrides via `CLAND_SSH_BIN` / `CLAND_SCP_BIN`.
@@ -25,7 +28,7 @@ they are not filesystem-sandboxed. `-t` accepts the carrier's attach argv but
 does not emulate a terminal/PTY. Unsupported flags are refused.
 
 A local Unix listener may target a host loopback port. Declare that port in
-`<root>/<name>/ports.json`, mapping its string to a Unix socket in host HOME.
+`<returned host directory>/ports.json`, mapping its string to a Unix socket in host HOME.
 This models the OpenCode port without TCP. A preloaded network guard in the
 forwarding tests rejects every TCP listen/connect; the same guard accompanies
 the successful relay positive controls. TCP listening forwards are rejected.
