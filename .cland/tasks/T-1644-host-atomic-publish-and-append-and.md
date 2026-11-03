@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-03T10:08:40.420Z
+updated: 2026-11-03T14:51:33.726Z
 ---
 
 ## Summary
@@ -38,3 +38,7 @@ Add atomic publish (create-if-absent) and append to the Host contract, implement
 ### coord · 2026-11-03T10:08:40.420Z
 
 Carried over from T-1599 (coord decision 2026-11-03 10:08Z): T-1599's C2 proves that hub-only env never reaches a fake-host spawn end to end for Codex and Claude. For OpenCode it proves it only at the shared explicit-additions env builder, because a nonlocal OpenCode launch is still refused at shared-ignore preparation until this item lands. When this item enables OpenCode on a nonlocal Host, its tests must include the planted hub-only key check on a real OpenCode fake-host spawn: DIGITALOCEAN_TOKEN, the remote tokens and the project secret absent, with a positive control.
+
+### coord · 2026-11-03T14:51:33.726Z
+
+Carried over from T-1600 (coord decision 2026-11-03 14:51Z): until this item adds atomic publish, T-1600's remote discovery writer (`~/.cland-host/run/hub.json`, through the agent) refuses to overwrite a different existing file. The host stays `connecting` with a path-free reason, and an identical file counts as success. When this item lands, switch that writer to atomic publish, so a changed per-host secret after re-admission, or any other content change, replaces the file without a torn write. Add a test for it.

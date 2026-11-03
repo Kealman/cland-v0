@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-02T03:33:56.426Z
+updated: 2026-11-03T14:32:39.627Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ Hot files: `hub/src/host/ssh-host.ts` (worktreeAdd with territory), `hub/src/hos
 ## Notes
 
 Shared files: `hub/src/host/ssh-host.ts` (19 after); the lease API (calls grant)
+
+## Comments
+
+### coord · 2026-11-03T14:32:39.627Z
+
+Carried over from T-1600 (coord decision 2026-11-03 14:32Z): T-1600 writes the canonical remote discovery file at `~/.cland-host/run/hub.json` (`remoteHostLayout.discoveryFile`) when the carrier is first up. It is 0600 and holds the per-host secret only, and launched sessions reach it through `CLAND_HUB_FILE`. The host clone doesn't exist until this item. When this item clones the territory on the host, it must also place the clone's `.cland/hub.json`, with the same content and mode, so that CLI, hook and spoke walk-up discovery from a worktree inside the clone finds it. It must be unchanged across a hub restart. Add a test: a CLI run in a host worktree, with no `CLAND_HUB_FILE`, reaches the hub through it.

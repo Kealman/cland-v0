@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1358
 branch: t/T-1595-the-transport-layer-and-the-ssh-carrier
 created: 2026-11-02T03:33:54.197Z
-updated: 2026-11-03T09:58:02.218Z
+updated: 2026-11-03T14:51:35.202Z
 closed: 2026-11-03T05:39:03.786Z
 ---
 
@@ -163,3 +163,11 @@ Merged e21b64bffa6ccec52b4457285cca27d9052fadf3 onto dev.
 ### coord · 2026-11-03T09:58:02.218Z
 
 Correction (coord, 2026-11-03 09:58Z): the approved bootstrap decision said "code delivery stays T-1606". That is wrong: T-1606 is Codex sessions on hosts. Installing cland's code on a real host belongs to E-1533 (host providers, images and DigitalOcean: one image recipe, spec §3 line 86). T-1599 sets the remote layout defaults (`~/.cland-host/code/<VERSION>`) in one constant module that host config can override; E-1533 fills that directory.
+
+### coord · 2026-11-03T14:33:59.581Z
+
+Seam note (T-1600, coord decision 2026-11-03 14:34Z): `SshOptions` gains an additive optional `beforeReady?: () => Promise<void>`, a carrier option and not a `Transport` member, so the stable members and T-1625's contract are unchanged. It is awaited after the agent probe and forward restoration, and the host reports `up` only after it resolves; T-1600 uses it to write the remote discovery file before any launch. It has a bounded deadline; on failure or timeout the host stays `connecting` with a path-free reason under the normal backoff. It is idempotent on reconnect and joined by `stop`.
+
+### coord · 2026-11-03T14:51:35.202Z
+
+Seam note update (T-1600, coord 2026-11-03 14:51Z): `beforeReady` takes an `AbortSignal`. At its deadline the carrier aborts and waits a short bound for a positive drain. Without one, the host enters an explicit cleanup-incomplete state: owned carrier and metadata are kept, with no new writer, no backoff restart and no successful stop until it resolves, and a path-free status reason is shown.
