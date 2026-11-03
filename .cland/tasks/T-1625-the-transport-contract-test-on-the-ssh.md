@@ -3,7 +3,7 @@ id: T-1625
 kind: task
 title: The transport contract test on the ssh carrier and the fake transport
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 8
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1361
 branch: t/T-1625-the-transport-contract-test-on-the-ssh
 created: 2026-11-02T03:34:18.725Z
-updated: 2026-11-03T06:06:54.671Z
+updated: 2026-11-03T06:27:14.616Z
 ---
 
 ## Summary
@@ -30,22 +30,30 @@ Hot files: new `hub/test/transport-contract.ts`, new `hub/test/transport-ssh-con
 
 - [x] C1. The contract exports one list naming `hub.sock`, `spoke.sock`, `git.sock` and `agent.sock` as the transport's host-side endpoints, for a later carrier to import (test).
   - done: impl-1625 · 2026-11-03T05:44:15.032Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C2. Once connected, each of the four is a Unix socket in the host's agent-owned run directory at mode 0700 (test).
   - done: impl-1625 · 2026-11-03T05:44:15.182Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C3. Bytes cross each endpoint both ways: `hub.sock`, `spoke.sock` and `git.sock` from the host to stub listeners on the hub's side, and `agent.sock` from the hub's side to a stub host agent (test).
   - done: impl-1625 · 2026-11-03T05:44:15.296Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C4. After the carrier drops and reconnects, all four endpoints answer again (test).
   - done: impl-1625 · 2026-11-03T05:44:15.997Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C5. Neither side binds a TCP port for any of the four endpoints (test).
   - done: impl-1625 · 2026-11-03T05:44:16.107Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C6. Each carrier reports its kind through the transport kind type of ticket 9 (test).
   - done: impl-1625 · 2026-11-03T05:44:16.223Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C7. The suite passes on the `ssh` carrier with the fake sshd stand-in and on the fake transport, with no real network or remote machine (test).
   - done: impl-1625 · 2026-11-03T06:06:17.582Z
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 - [x] C8. The contract's guide states what a second carrier must pass to replace `ssh`, naming `outbound` (0.4.x) as the expected one.
   - done: impl-1625 · 2026-11-03T05:44:16.567Z
   - verified: rev-35 [reviewer] · run rev-35-1625-source-1 · 2026-11-03T05:46:52.996Z · commit 5a97036c8189a781d266f1396a309e31f6dfc696
   - verified: rev-35 [reviewer] · run rev-35-1625-source-2 · 2026-11-03T06:06:54.671Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
+  - verified: rev-35 [reviewer] · run rev-35-1625-final-1 · 2026-11-03T06:27:13.987Z · commit 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
 
 ## Notes
 
@@ -109,3 +117,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected full source clear; A-16188 medium finding resolved, no findings. Both .test.ts entries own test() registration/name/20s bound; shared async transportContract(t,fixture) owns assertions only. Exact delta retains all assertion bodies, fixture/carrier/fakes/runner/tier policy unchanged. Guide/CHANGES explain runnable entry identities; C8 source verified. A-16189 local production runLoadGate5/5 each on macOS Node24.21 workers1/no synthetic load is supplemental candidate-fix evidence, not queued/Linux. C1–C7 runtime-unverified until fresh same-head mode-free verify; A-16187 remains failed history. Full after-stage QA separate. Reviewer read only, no tests/probes/browser/edits. Detail A-16190: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16190-t-1625-corrected-source-review-entry-owned-registration.md.
 
 Criteria: C8 verified.
+
+### rev-35 · 2026-11-03T06:27:13.987Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1625-final-1
+commit: 4b50ce3ad6528bd4180c2bf55ad7114d816e8234
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C8 verified, no findings. Exact-head f99ce544/A-16194 overall exit0,4907 pass/zero fail/cancel/skip/todo. Independently read both generated contract finish/timing passes at25822–26, correctly attributed to runnable .test.ts entries. Linux native descriptor scanner/positive control, all-endpoint replies/private sockets/kind/drop/recovery/final assertions completed. Policy/status ordinary passes present. T0/T1/allT2/Web + changedT3 twoentries once completed; no queued5/5 claimed, remainingT3 deferred,T4 unexecuted. Local A-16189 replay5/5 each is separate macOS candidate-fix evidence; unedited carrier6 summary A-16185 is pre-registration-fix local evidence, not remote execution. Prior A-16187 remains failed history. Uncached Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, runner tree316be11bbb32ab8db6ecd28960f21ede6e510722, isolated HeadlessShell1248/Chrome156.0.8078.4. Budget/lint/incomplete ratchet/skip diagnostics report-only, skips[]/missing0. Full after-stage QA separate. Reviewer read only under cover-quiet. Detail A-16195: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16195-t-1625-final-evidence-runnable-transport-contract-entries.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.

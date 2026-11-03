@@ -3,17 +3,18 @@ id: T-1657
 kind: task
 title: registerFakeHosts reads host keys at the fake-host root, but createFakeHost now writes them behind the short-socket alias
 state: open
-status: backlog
+status: review
 size: XS
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1532
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1365
+branch: t/T-1657-registerfakehosts-reads-host-keys-at-the
 created: 2026-11-03T05:54:51.539Z
-updated: 2026-11-03T05:54:51.539Z
+updated: 2026-11-03T07:25:18.410Z
 ---
 
 ## Summary
@@ -26,5 +27,26 @@ One shared resolver for the fake-host directory, used by both `createFakeHost` a
 
 ## Acceptance criteria
 
-- [ ] C1. A hub started with `CLAND_FAKE_HOST_ROOT` pointing at a fresh `createFakeHost` root registers each fake host with the key `createFakeHost` wrote and a client-key path that exists (test).
-- [ ] C2. The same test passes with TMPDIR at a `/private/tmp/cland-suite-<36-char uuid>` root on macOS (test).
+- [x] C1. A hub started with `CLAND_FAKE_HOST_ROOT` pointing at a fresh `createFakeHost` root registers each fake host with the key `createFakeHost` wrote and a client-key path that exists (test).
+  - done: impl-1657 · 2026-11-03T07:23:30.182Z
+- [x] C2. The same test passes with TMPDIR at a `/private/tmp/cland-suite-<36-char uuid>` root on macOS (test).
+  - done: impl-1657 · 2026-11-03T07:23:30.385Z
+
+## Comments
+
+### impl-1657 · 2026-11-03T07:22:01.626Z
+
+Consumer audit (hostDirectory, CLAND_FAKE_HOST_ROOT, host-key.pub): registerFakeHosts was the mismatched reader; createFakeHost/fakeHost now share neutral shared/fake-host-directory.ts with it. fake-ssh-common reads returned directory and is unaffected; fake-ssh, transport-ssh, host-agent-files, host-supervisor and fixture-socket-path use createFakeHost or its existing hostDirectory compatibility export. host-records manual layout migrated to createFakeHost. Docs: host-records/fake-ssh test guidance and host fixture subsystem reference describe layout; stage-2 QA mentions resolver without constructing keys. No wire shape change. Red on macOS Node 24.21.0: host-records 8/10, both fresh-root startup cases fail ENOENT opening fake/f1/host-key.pub, including /private/tmp/cland-suite-<UUID>/cland-proj-*/fake/f1/host-key.pub. Embedded projectHub only, no spawned native processes.
+
+### rev-35 · 2026-11-03T07:25:18.410Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1657-source-1
+commit: acf4fecadfae3af59aa8a482abfc1ccacb1a078f
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; Standards/Spec zero findings. Existing hostDirectory logic moves unchanged to neutral shared module, imported by startup and fixture; compatibility re-export retained. Both-controls/absolute-root/id validation and skip-existing/revoked behavior unchanged. Tests use actual fresh two-host fixtures, exact pins/client-key path+contents and byte limits, including explicit macOS UUID-TMPDIR branch; missing-control and redaction assertions retained. Matching docs migrate obsolete layout; no wire/schema/tier/permission change. C1/C2 runtime-unverified pending fresh exact-head mode-free verify plus named macOS long-root receipt/native exit/source linkage; A-16203 local working-tree summary is supplemental. Reviewer read only, no tests/probes/browser/checks/edits. Affected after-stage QA separate. Detail A-16205: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16205-t-1657-source-review-shared-fake-host-directory-resolution.md.

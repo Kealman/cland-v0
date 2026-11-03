@@ -13,10 +13,10 @@ blocked_by:
   - E-1531
 follows:
   - E-1531
-topic: null
+topic: topic-1362
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-03T05:55:04.163Z
+updated: 2026-11-03T07:19:31.802Z
 ---
 
 ## Goal
@@ -154,3 +154,76 @@ stages:
     lanes:
       - - T-1614
 ```
+
+## Comments
+
+### qa-678 · 2026-11-03T07:19:31.802Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-tunnel2-2026-11-03-qa678-1
+commit: 722f1ce57917ac800aa365088f3050776b60490c
+stage: the tunnel
+stage_hash: 5d02a60496d93983864d0d18a7770b8b2252c66bd529f745f9a87abde28c8e15
+findings: [{"severity":"medium","text":"Found aside: T-1659 (S, Bugs), 18 test-owned agents survived six passing supervisor test invocations. Coordinator 771c7fda classified this fixture cleanup defect as separate from the scoped stage. PID/birth/argv/cwd evidence and identity-checked drain are in A-16202; all 18 now gone.","file":"hub/test/host-supervisor.test.ts","line":65}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| S0 | hub-api · local macOS | PASS | [S0-runtime.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/S0-runtime.txt), [S0-env.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/S0-env.txt), [S0-hook.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/S0-hook.txt), [S0-probe.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/S0-probe.txt), [corrections.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrections.md) |
+| E1532S2-00 | hub-api · local macOS | PASS | [E1532S2-00.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-00.txt), [E1532S2-00-plan.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-00-plan.json), [T-1595-landing.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/T-1595-landing.txt), [T-1653-landing.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/T-1653-landing.txt), [T-1654-landing.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/T-1654-landing.txt) |
+| E1532S2-01 | hub-api · local macOS | PASS | [E1532S2-01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-01.txt) |
+| E1532S2-02 | hub-api · local macOS | PASS | [E1532S2-02.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-02.txt), [E1532S2-02-typecheck.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-02-typecheck.log) |
+| E1532S2-03 | hub-api · local macOS | PASS | [E1532S2-03.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-03.log), [required-tests.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/required-tests.json) |
+| E1532S2-04 | hub-api · local macOS | PASS | [E1532S2-04.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-04.log), [assertion-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/assertion-source.txt), [timing-diagnostic.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/timing-diagnostic.txt), [timing-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/timing-queue.json) |
+| E1532S2-05 | hub-api · local macOS | PASS | [E1532S2-05.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-05.log), [E1532S2-05.root](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-05.root), [corrections.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrections.md) |
+| E1532S2-06 | hub-api · local macOS | PASS | [E1532S2-06.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-06.log), [assertion-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/assertion-source.txt), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/generated-required.json) |
+| E1532S2-07 | hub-api · local macOS | PASS | [E1532S2-07.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-07.log), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/generated-required.json), [corrections.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrections.md) |
+| E1532S2-08 | hub-api · local macOS | PASS | [E1532S2-08.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-08.log), [assertion-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/assertion-source.txt), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/generated-required.json) |
+| E1532S2-09 | hub-api · local macOS | PASS | [E1532S2-09.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-09.log), [E1532S2-09-label-note.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-09-label-note.txt) |
+| E1532S2-10 | hub-api · local macOS | PASS | [E1532S2-10.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-10.log), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/generated-required.json) |
+| E1532S2-11 | hub-api · local macOS | PASS | [E1532S2-11.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-11.txt), [E1532S2-11-init.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-11-init.txt), [corrections.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrections.md) |
+| E1532S2-12 | hub-api · local macOS | PASS | [E1532S2-12.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-12.txt), [corrections.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrections.md), [corrected-functions.sh](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrected-functions.sh) |
+| E1532S2-13 | hub-api · local macOS | PASS | [E1532S2-13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-13.txt) |
+| E1532S2-14 | hub-api · local macOS | PASS | [E1532S2-14.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-14.txt) |
+| E1532S2-15 | hub-api · local macOS | PASS | [E1532S2-15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-15.txt), [E1532S2-15-original.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-15-original.txt), [E1532S2-15-supervisor-original.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-15-supervisor-original.txt), [E1532S2-15-process-inspection.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-15-process-inspection.txt) |
+| E1532S2-16 | hub-api · local macOS | PASS | [E1532S2-16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-16.txt) |
+| E1532S2-17 | hub-api · local macOS | PASS | [E1532S2-17.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-17.txt), [supervisor-test-orphans.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/supervisor-test-orphans.txt), [supervisor-test-orphans-cleanup.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/supervisor-test-orphans-cleanup.txt) |
+| E1532S2-18 | hub-api · local macOS | PASS | [E1532S2-18.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-18.txt), [E1532S2-18-correction.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-18-correction.txt) |
+
+Clear: all 20 scoped cases pass (S0 and E1532S2-00–18). No in-scope product findings. Found aside: T-1659 test-fixture cleanup defect (medium severity, S, Bugs), detailed below.
+
+Stage **the tunnel**, build `722f1ce57917ac800aa365088f3050776b60490c`, run `qa-tunnel2-2026-11-03-qa678-1`. Brief `qa/briefs/E-1532-stage-2.md` at that build. Fresh detached worktree, HEAD and dev matched before and after. All six members and fixes T-1653/T-1654 have landings; source and preserved-file checks passed. No epic criterion marks.
+
+Local macOS arm64, Node v24.21.0; no browser or real SSH binary was used. All transport traffic used fake stand-ins; scratch records have no production carrier at this stage. Local cost and droplet lifetime are not applicable. The workspace typecheck passed. 713 passing test executions across 64 file executions (49 distinct files); counts include the brief repetitions. The contention pattern ran only its named identity five times; filtered cases are unexecuted, not passes. Required literal and 33 generated names were checked against source and TAP facts. See [test summary](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/test-summary.json), [required names](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/required-tests.json), [generated names](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/generated-required.json) and [assertion source](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/assertion-source.txt).
+
+Targeted execution only: 9 T1, 25 T2 and 30 T3 file invocations, not complete tiers. No full suites, T0, T4/soak, browser/Web or remote-host execution in this QA pass. Quiet admission and load <=10 enforced before named files; timing-sensitive cases retain queue and CPU-idle samples. T-1655 per-test budget enforcement is out of scope; Node test durations are not evidence of meeting that budget. Supervisor restart timing measures kill to first answering hello, excluding prep/admission. No overall wall-time claim.
+
+- E1532S2-03: 58 tests across 8 file invocations.
+- E1532S2-04: 24 tests across 5 file invocations.
+- E1532S2-05: 58 tests across 10 file invocations.
+- E1532S2-06: 32 tests across 8 file invocations.
+- E1532S2-07: 179 tests across 7 file invocations.
+- E1532S2-08: 177 tests across 8 file invocations.
+- E1532S2-09: 5 tests across 5 file invocations.
+- E1532S2-10: 180 tests across 13 file invocations.
+
+The long-root case used a 61-byte temp root, passed all three supervisor identities on five repetitions, reported no EINVAL and left zero entries. The scratch push checks exercise the shipped hook with synthetic host identity; the daemon settings/receive lock/cap are evidenced by the named files, not those local pushes.
+
+Coordinator-authorised run-copy corrections: shared environment sealing in svstart, hubstart, hpush and ntl (5db69e0d); m12 moves the existing second commit earlier and asserts a real ref move before each refusal (905aef97). Expected results are unchanged. Exported prose/test names have only the two explicitly authorised presentation redactions (cedb288f); exact execution copies and original captures remain private. See [corrections](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrections.md), [original brief](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/brief-original.md), [corrected functions](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/corrected-functions.sh), [sealed launcher](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/launch.mjs) and [shared environment composition](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/seal.mjs). No product source was changed.
+
+Fifth brief correction (macOS fake-host precondition), coord-authorised d8b3262c: m15 originally BLOCKED at first hello because native.ts:9 requires CLAND_FAKE_HOSTS and CLAND_HOST_BOOT_ID_FILE on macOS. Kept original BLOCKED receipt/capture/log; final PASS receipt uses the authorised sealed fake-host overlay, existing secret and run directory. Restart measured 1166 ms. The table shows effective results; receipts.jsonl preserves the earlier BLOCKED attempt. This does not establish support for real macOS hosts.
+
+Sixth brief correction (root census precondition), coord-authorised 846bd2c7: original root non-tracker count 0 became 1 under sealed Git. Excluding only pre-existing harness-local .claude/settings.local.json restores 0. Its Oct12 mtime predates this run; contents were not read or changed. The candidate remained clean and HEAD/dev matched. See E1532S2-18 and its correction capture.
+
+Row09 helper labels repeat run1 because ld overwrites ntc’s shell i. Five complete TAP segments each contain exactly one required passing identity and exit0. Original labels are retained; no test rerun or altered assertion. See [label note](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/E1532S2-09-label-note.txt).
+
+The plan records the external Coordinator-owned cover pair at tree `3430949b85b69fc0dbaf5d258d2dce431acde577`: Linux droplet `34e1ffe9-a3f5-416e-ab3a-29f914668623`, macOS local `4d7cdfe8-16c5-4a25-a578-0eef1dae71bc`, missing platforms `[]`. These were not launched or timed here; remote lifetime/cost not collected by this QA session.
+
+Found aside — **T-1659 (medium; S, Bugs)**: 18 test-owned cland host serve processes remained after six supervisor test invocations (rows04/05). Actual ps/lsof captures establish PIDs, births and cwd; TAP passes and directory leftovers=0 did not establish process cleanup. Source attribution to host-supervisor.test.ts cleanup and process-cleanup.ts seed selection is an inference, not an instrumented parent trace. Coordinator decision 771c7fda classifies this as a separate fixture follow-up, not a stage blocker. All 18 were rechecked against recorded PID/birth/argv/cwd, SIGTERM’d individually and observed gone. Row17’s Q census was taken **before** that separate drain and was zero. See [orphan evidence](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/supervisor-test-orphans.txt) and [drain](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/supervisor-test-orphans-cleanup.txt).
+
+Fixture secret scan, publication scan, process cleanup and final pinned-build checks are retained. Export contains declared captures and helper text only, no HOME, environment exports, secret store, raw database, key, cookie or one-use link. See [final checks](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/final-checks.txt).
+
+
+Evidence: A-16202, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16202-e-1532-the-tunnel-qa-at-722f1ce5/report.md.

@@ -3,7 +3,7 @@ id: T-1599
 kind: task
 title: The ssh Host over the host agent
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,11 @@ blocked_by:
   - T-1587
   - T-1593
   - T-1598
+  - T-1657
 topic: null
 branch: null
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-02T03:33:55.137Z
+updated: 2026-11-03T07:20:12.144Z
 ---
 
 ## Summary
