@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1373
 branch: t/T-1606-codex-sessions-on-a-host
 created: 2026-11-02T03:33:56.906Z
-updated: 2026-11-03T22:02:07.469Z
+updated: 2026-11-03T22:05:30.900Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ Hot files: `hub/src/adapters/codex.ts`, `hub/test/codex-remote.test.ts` (new)
 ## Notes
 
 Shared files: `hub/src/adapters/codex.ts`
+
+## Comments
+
+### coord · 2026-11-03T22:05:30.900Z
+
+Seam note (coord decision 2026-11-03 22:05Z): T-1606 owns host sandbox-policy translation under its C3. Sessions builds a remote session's writable roots, .git and socket directories from the Host layout and realpath, resolved by the agent on the host, and passes them to the adapter as an explicit host policy. Local sessions are unchanged. An unresolved remote policy fails closed with a named refusal, never falling back to hub paths or danger-full-access. A planted hub-path scan covers the launched thread policy. The Sessions hunk stays small; T-1607 and T-1604 share the area, and the second to land merges dev on request.

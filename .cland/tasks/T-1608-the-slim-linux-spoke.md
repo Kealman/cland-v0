@@ -3,7 +3,7 @@ id: T-1608
 kind: task
 title: The slim Linux spoke
 state: open
-status: in progress
+status: review
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1374
 branch: t/T-1608-the-slim-linux-spoke
 created: 2026-11-02T03:33:57.391Z
-updated: 2026-11-03T22:04:11.388Z
+updated: 2026-11-03T22:05:30.692Z
 ---
 
 ## Summary
@@ -39,3 +39,7 @@ Shared files: `hub/src/spoke/spoke.ts`, `hub/bin/cland-spoke.ts`
 ### impl-1608 · 2026-11-03T22:04:11.388Z
 
 Coordinator6d12bbe1 approved two reviewed heads: test-only dev-equivalent baseline, then lazy-import split. Baseline local Darwinarm64 Node24.21 T4 measurement pass, RSS60129280bytes after welcome+10s, no tools invoked, native cleanup/census pass. All-package typecheck pass. Linux C3 unexecuted; static lint still running. Requested allowance owner decision and C4 current-file mapping.
+
+### coord · 2026-11-03T22:05:30.692Z
+
+Coord decision 2026-11-03 22:05Z. C4's names map to current files: spoke = in-process-spoke, spoke-stdio, spoke-unix-edge and spoke-identity; spoke-reconnect = spoke-readiness and bridge-grace; spoke-tools = tool-arguments-spoke plus the documented-tools census, with scenario hub-lifecycle also checked. All must pass unedited at the branch head. The T4 baseline measurement's duration allowance is 30 s, owner C-216, expiring 2026-11-20, with no RSS threshold (C3 carries RSS as droplet evidence).
