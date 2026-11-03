@@ -11,6 +11,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { HOST_PUSH_TIMEOUT_MS, startGitDaemon } from '../src/host/git-daemon.ts';
 import { grantBranchLease, revokeBranchLease } from '../src/host/branch-leases.ts';
 import { TERRITORY_HOOK, refreshTerritoryHook, withTerritoryLockAsync } from '../src/territory.ts';
+import { TerritoryBusy } from '../src/territory-lock-context.ts';
 const exec = promisify(execFile);
 
 async function fixture(t: test.TestContext) {
@@ -67,8 +68,21 @@ test('grant and revoke cannot rewrite the allow list while another territory ope
   const holder = withTerritoryLockAsync(f.root, async () => { entered.resolve(); await release.promise; });
   await entered.promise;
   try {
-    await assert.rejects(grantBranchLease(f.root, 'host-b', 't/blocked'), /territory operation holds/);
-    await assert.rejects(revokeBranchLease(f.root, 'host-a', 't/held', { waitMs: 50 }), /territory operation holds/);
+    const busy = (error: unknown) => {
+      assert.ok(error instanceof TerritoryBusy);
+      assert.match(error.message, /^another territory operation holds the lock(?: \(pid \d+\))?$/);
+      return true;
+    };
+    const knownHolder = (error: unknown) => {
+      busy(error);
+      assert.equal((error as Error).message, `another territory operation holds the lock (pid ${process.pid})`);
+      return true;
+    };
+    await assert.rejects(grantBranchLease(f.root, 'host-b', 't/blocked'), knownHolder);
+    await assert.rejects(revokeBranchLease(f.root, 'host-a', 't/held', { waitMs: 0 }), knownHolder);
+    await assert.rejects(revokeBranchLease(f.root, 'host-a', 't/held', { waitMs: 50 }), busy);
+    // Smaller than the timestamp's precision: deadline exhaustion before any probe.
+    await assert.rejects(revokeBranchLease(f.root, 'host-a', 't/held', { waitMs: Number.EPSILON }), busy);
   } finally { release.resolve(); await holder; }
   await f.push('HEAD:refs/heads/t/held');
   await assert.rejects(f.push('HEAD:refs/heads/t/blocked'), /host-a/);

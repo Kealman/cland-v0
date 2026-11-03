@@ -83,8 +83,11 @@ acquire `territory.lock` and atomically replace the list. Public revoke waits fo
 an in-flight receive/release for at most `HOST_PUSH_TIMEOUT_MS + 2000` (32 seconds
 by default); tests can supply `waitMs`, including zero for immediate refusal.
 The lock module has no release notification, so revoke reuses its bounded
-25 ms–1 second backoff. Deadline exhaustion retains the existing territory-busy
-message. A public revoke inside its own active territory-lock context reuses
+25 ms–1 second backoff. Immediate contention and deadline exhaustion both
+refuse as `TerritoryBusy` with `another territory operation holds the lock`,
+appending `(pid N)` when a holder was observed. This includes exhaustion before
+any identity probe completes; the last observed holder survives a later probe
+timeout. Filesystem and cleanup failures retain their original errors. A public revoke inside its own active territory-lock context reuses
 that lock without waiting; grant, receive and merge retain immediate refusal. Immediate merges call
 `revokeBranchLeasesLocked` while already holding that lock. Native batch
 preparation takes the lock only to revoke every member's leases and pin its head,

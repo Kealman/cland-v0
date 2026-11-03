@@ -150,7 +150,9 @@ single-mode keys and labels remain compatible. See
 Host branch lease changes use `host/branch-leases.ts`: grant/revoke own the
 territory lock; public revoke waits up to the push cap plus 2 seconds for a
 receive/release, using the shared bounded lock backoff. Its `waitMs` is injectable;
-an active matching-root lock is reused without waiting. Merge's branch-wide revoke
+an active matching-root lock is reused without waiting. Immediate contention and
+bounded-wait exhaustion both refuse as `TerritoryBusy` with "another territory
+operation holds the lock", appending the last observed holder PID when known. Merge's branch-wide revoke
 requires the caller's existing lock; receive/merge keep immediate refusal.
 Keep receive-pack locked through native close with a 30 second stalled-push cap,
 test expiry with an injected short `receiveTimeoutMs` plus a default-constant

@@ -14,7 +14,7 @@ import { durationBudgetContext, DurationInspectionError } from './suite-duration
 import { checkMergeBudgets, type DurationBudgetContext } from './suite-duration-budget.ts';
 import { suiteLimits } from './suite-limits.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
-import { acquireLock, acquireLockAsync, acquireLockWithRetry, HubLocked } from './hub/lock.ts';
+import { acquireLock, acquireLockAsync, acquireLockWithRetry, HubLocked, LockRetryExhausted } from './hub/lock.ts';
 import { recoverMaintenanceOwner, recoverMaintenanceOwnerSync } from './git-maintenance-owner.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
@@ -99,8 +99,10 @@ export async function withTerritoryLockAsync<T>(root: string, operation: () => P
     lock = waitMs > 0 ? await acquireLockWithRetry(path, Date.now() + waitMs) : await acquireLockAsync(path, resumed);
   } catch (err) {
     resumed(() => {
-      const busy = err instanceof HubLocked ? err : err instanceof Error && err.cause instanceof HubLocked ? err.cause : null;
-      if (busy) throw new TerritoryBusy(`another territory operation holds the lock (pid ${busy.holder.pid})`);
+      if (err instanceof HubLocked || err instanceof LockRetryExhausted) {
+        const holder = err.holder;
+        throw new TerritoryBusy(`another territory operation holds the lock${holder ? ` (pid ${holder.pid})` : ''}`);
+      }
       throw err;
     });
     throw err;

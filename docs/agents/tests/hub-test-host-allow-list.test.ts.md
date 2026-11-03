@@ -7,3 +7,8 @@ Run this file and host-git-daemon.test.ts one at a time. Keep territory-cli.test
 The stalled-receive case injects a 500 ms receive ownership cap and asserts that the production default constant is 30 seconds. It waits for native advertisement, then native close and listener drainage before proving a fresh grant can acquire the released fence. The cap starts only after lock acquisition; it excludes lock contention and acquisition probes. Setup and native-exit observation have separate bounds; native timers continue running.
 
 The held-release regression pauses only the receive owner's asynchronous removal of its exact `territory.lock`, observes client completion, then observes the contender reading that held record before releasing the owner. It proves public revoke joins native ownership rather than treating client exit as release. Independent-holder tests inject a short revoke deadline and retain refusal/list assertions; the re-entrant case calls public revoke inside the existing lock and proves another grant stays excluded. The fixture uses its own mkdtemp root for every repetition.
+
+Contention asserts `TerritoryBusy` and the single documented refusal for immediate
+grant/revoke, a bounded revoke wait and a positive sub-millisecond wait that
+rounds to the current timestamp (no holder probe). Immediate refusals name the
+observed PID; deadline exhaustion names it when known.

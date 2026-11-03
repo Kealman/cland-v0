@@ -401,6 +401,15 @@ export function acquireLock(path: string, processes: LockProcessTable = nativePr
 
 class LockAcquisitionTimeout extends Error {}
 
+/** Bounded retry exhausted; retain the last positively observed live holder. */
+export class LockRetryExhausted extends Error {
+  readonly holder: LockHolder | undefined;
+  constructor(message: string, holder: LockHolder | undefined, cause: unknown) {
+    super(message, { cause });
+    this.holder = holder;
+  }
+}
+
 function lockTimeout(deadline?: number): number {
   const ms = deadline === undefined ? PS_TIMEOUT_MS : deadline - Date.now();
   if (ms <= 0) throw new LockAcquisitionTimeout('lock acquisition deadline reached');
@@ -499,6 +508,7 @@ export async function acquireLockWithRetry(path: string, deadline?: number, timi
   const limit = Math.min(deadline, started + 60000);
   let backoff = 25;
   let last: unknown;
+  let holder: HubLocked['holder'] | undefined;
   timing.signal?.throwIfAborted();
   while (clock.now().getTime() < limit) {
     // OS identity probes retain native deadlines; only contention/backoff uses hub time.
@@ -507,6 +517,7 @@ export async function acquireLockWithRetry(path: string, deadline?: number, timi
       // Cleanup failures keep their primary error type; they are not safe contention.
       if (!(error instanceof HubLocked || error instanceof LockAcquisitionTimeout) || error.message.includes('; cleanup failed:')) throw error;
       last = error;
+      if (error instanceof HubLocked) holder = error.holder;
     }
     timing.signal?.throwIfAborted();
     const remaining = limit - clock.now().getTime();
@@ -515,5 +526,5 @@ export async function acquireLockWithRetry(path: string, deadline?: number, timi
     await lockWait(ms, timing);
     backoff = Math.min(backoff * 2, 1000);
   }
-  throw new Error(`lock ${path}: acquisition deadline reached after waiting ${clock.now().getTime() - started} ms`, { cause: last });
+  throw new LockRetryExhausted(`lock ${path}: acquisition deadline reached after waiting ${clock.now().getTime() - started} ms`, holder, last);
 }
