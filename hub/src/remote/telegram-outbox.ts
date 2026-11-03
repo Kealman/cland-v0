@@ -8,7 +8,7 @@ import type { Clock } from '../hub/clock.ts';
 
 type FileIntent = { replyRequested?: boolean; reply_parameters?: TgReplyParameters; chat_id: string | number; artifact: string; caption: string; disable_notification?: boolean };
 type Payload = {
-  key?: string; admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null;
+  key?: string; admission?: 'paired' | 'pairing' | 'old-chat'; userId?: string | null; clandUserId?: string;
   telegram: true; batch?: number; order: number; part: number; method: 'sendMessage' | 'sendRichMessage' | 'setMessageReaction' | 'editMessageText' | 'sendPhoto' | 'sendDocument';
   params: SendMessage | SendRichMessage | SetMessageReaction | EditMessageText | FileIntent; fallback?: SendMessage[];
   mapping: Omit<RemoteMessage, 'messageId'>;
@@ -63,8 +63,9 @@ export class TelegramOutbox {
     return this.#enqueue('sendMessage', params, facts, fallback);
   }
   file(method: 'sendPhoto' | 'sendDocument', params: FileIntent, facts: SendFacts): Promise<void> {
-    const key = `telegram.artifact:${params.artifact}`;
-    const previous = this.#store.outbox().find(job => (payload(job)?.key?.startsWith(`${key}:source:`) || ['sendPhoto', 'sendDocument'].includes(payload(job)?.method ?? '') && (payload(job)?.params as FileIntent).artifact === params.artifact)
+    const owner = this.#store.pairingFor(String(params.chat_id));
+    const key = `telegram.artifact:${params.artifact}${owner?.clandUserId ? `:chat:${params.chat_id}` : ''}`;
+    const previous = this.#store.outbox().find(job => (!owner?.clandUserId || String(payload(job)?.params.chat_id) === String(params.chat_id)) && (payload(job)?.key?.startsWith(`${key}:source:`) || ['sendPhoto', 'sendDocument'].includes(payload(job)?.method ?? '') && (payload(job)?.params as FileIntent).artifact === params.artifact)
       && (job.state !== 'missed' && job.state !== 'reported' || this.#store.attempts(job.id).some(attempt => attempt.outcome !== 'never-left')));
     if (previous) {
       if (previous.source === facts.source) return Promise.resolve();
@@ -92,7 +93,11 @@ export class TelegramOutbox {
   react(params: SetMessageReaction): Promise<void> {
     return this.#enqueue('setMessageReaction', params, {});
   }
-  setAvailable(available: boolean): void { this.#store.set('outbox.unavailable', available ? null : '1'); }
+  setAvailable(available: boolean): void {
+    this.#store.set('outbox.unavailable', available ? null : '1');
+    for (const pair of this.#store.publicationPairings()) if (pair.clandUserId)
+      this.#store.set(`telegram.outbox.unavailable:${pair.chatId}`, available ? null : '1');
+  }
   /** Automatic publications wait for retained input and the gap, including edit fallbacks. */
   holdCards(held: boolean): void { this.#cardsHeld = held; }
   batch<T>(enqueue: () => T): T {
@@ -123,7 +128,8 @@ export class TelegramOutbox {
     }
     const order = Number(this.#store.get('telegram.outbox.order') ?? 0) + 1;
     this.#store.set('telegram.outbox.order', String(order));
-    const intent: Payload = { ...(facts.key ? { key: facts.key } : {}), admission: facts.admission ?? 'paired', userId: this.#store.pairing()?.userId ?? null, telegram: true, ...(this.#batch === undefined ? {} : { batch: this.#batch }), order, part: 0, method, params, ...(fallback ? { fallback } : {}),
+    const pairing = this.#store.deliveryPairing(chat);
+    const intent: Payload = { ...(facts.key ? { key: facts.key } : {}), admission: facts.admission ?? 'paired', userId: pairing?.userId ?? null, ...(pairing?.clandUserId ? { clandUserId: pairing.clandUserId } : {}), telegram: true, ...(this.#batch === undefined ? {} : { batch: this.#batch }), order, part: 0, method, params, ...(fallback ? { fallback } : {}),
       mapping: { chatId: chat, topic: facts.topic ?? 'general', message: facts.source ?? null,
         ask: facts.ask ?? null, approval: facts.approval ?? null } };
     const lane = this.#lane(chat);
@@ -192,6 +198,7 @@ export class TelegramOutbox {
           return result.status === 'format-refused' ? this.#replace(job) : result;
         },
       }, { clock: this.#clock,
+        ...(this.#store.usersMode() ? { availabilityKey: `telegram.outbox.unavailable:${chat}` } : {}),
         accepts: job => String(payload(job)?.params.chat_id) === chat && !this.#held(job),
         sourceOpen: async job => {
           const ask = payload(job)?.mapping.ask;
@@ -210,7 +217,8 @@ export class TelegramOutbox {
           if (this.#memory || intent.admission === 'pairing' || intent.admission === 'old-chat') return true;
           const paired = this.#store.pairingFor(String(intent.params.chat_id), intent.userId ?? undefined);
           return !!paired && paired.chatId === String(intent.params.chat_id)
-            && (intent.userId === undefined || intent.userId === paired.userId);
+            && (intent.userId === undefined || intent.userId === paired.userId)
+            && (intent.clandUserId === undefined || intent.clandUserId === paired.clandUserId);
         },
         beforeNext: () => this.#ready(chat),
       });
@@ -321,13 +329,15 @@ export class TelegramOutbox {
   }
 
   /** Resume only this adapter's payloads; unknown attempts remain fenced. */
-  resume(): Promise<void> {
-    for (const job of this.#store.outbox()) {
+  resume(chat?: string): Promise<void> {
+    const jobs = this.#store.outbox();
+    for (const job of jobs) {
       const intent = payload(job);
-      if (intent && ['queued', 'sending', 'uncertain'].includes(job.state)) this.#lane(String(intent.params.chat_id));
+      if (intent && (chat === undefined || String(intent.params.chat_id) === chat) && ['queued', 'sending', 'uncertain'].includes(job.state)) this.#lane(String(intent.params.chat_id));
     }
-    const orders = [...this.#waiting.keys()];
-    return Promise.all([...this.#lanes.values()].map(lane => lane.drain())).then(() => {
+    const destinationOrders = new Set(jobs.filter(job => String(payload(job)?.params.chat_id) === chat).map(job => payload(job)!.order));
+    const orders = [...this.#waiting.keys()].filter(order => chat === undefined || destinationOrders.has(order));
+    return Promise.all([...this.#lanes].filter(([destination]) => chat === undefined || destination === chat).map(([, lane]) => lane.drain())).then(() => {
       // Source/admission drops do not call settled; revisit publishers retained
       // across an earlier held drain. Later waiters may own a new lane outside
       // this drain snapshot and must settle through their own delivery receipts.

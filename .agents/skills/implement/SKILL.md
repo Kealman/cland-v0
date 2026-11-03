@@ -129,6 +129,15 @@ Empty/missing speech commands keep audio and name command setup.
 
 
 
+## Users-mode remote publications
+
+Use `remotePublications` and `RemoteStore.publicationPairings()` for outbound
+General and card copies, independently of the current native input context.
+Keep native admission pinned to the captured project owner through awaits.
+Telegram chat availability and gap state are per destination in users mode;
+single-mode keys and labels remain compatible. See
+[remote commands](../../../docs/hub/remote-commands.md#telegram-publications-in-users-mode).
+
 ## Subsystem documentation
 
 Read the matching [subsystem reference](../../../hub/README.md) for implementation guidance. Follow [documentation placement](../../../docs/agents/documentation.md) when adding item documentation.

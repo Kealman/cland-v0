@@ -4,7 +4,7 @@ import type { TelegramUpdateHandler } from './telegram-polling.ts';
 import type { TelegramApi } from './telegram-api.ts';
 import type { RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 
-type Receipt = { pairing?: Pick<Pairing, 'userId' | 'chatId' | 'guildId'> | null; chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean; targets?: number[]; storedTargets?: number[]; seenTargets?: number[] };
+type Receipt = { pairing?: Pick<Pairing, 'userId' | 'chatId' | 'guildId' | 'clandUserId'> | null; chat: string; message: number; stored: boolean; delivered: boolean; seen: boolean; targets?: number[]; storedTargets?: number[]; seenTargets?: number[] };
 
 /** Native text input uses the same human frame path as the workbenches. */
 export class TelegramInbound {
@@ -71,9 +71,9 @@ export class TelegramInbound {
         topic: saved.topic, message: saved.id, ask: null, approval: null });
       const key = `telegram.inbound:${saved.id}`;
       const value = this.#store.get(key);
-      const pairing = this.#store.pairing();
+      const pairing = this.#store.pairingFor(ingress.chatId);
       const receipt: Receipt = value ? JSON.parse(value) as Receipt : {
-        pairing: pairing ? { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId } : null,
+        pairing: pairing ? { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId, ...(pairing.clandUserId ? { clandUserId: pairing.clandUserId } : {}) } : null,
         chat: ingress.chatId, message: Number(ingress.messageId), stored: false, delivered: false, seen: false,
       };
       if (members) receipt.targets = members.map(Number);
@@ -89,8 +89,8 @@ export class TelegramInbound {
   async #post(frame: Record<string, unknown>, ingress: RemoteIngress, signal: AbortSignal, stored?: () => void, bytes?: readonly Buffer[], members?: string[]): Promise<void> {
     const id = `telegram-in-${++this.#next}`;
     const result = Promise.withResolvers<TopicMessage>();
-    const pairing = this.#store.pairing();
-    this.#pending.set(id, { ...result, receipt: { pairing: pairing ? { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId } : null, chat: ingress.chatId, message: Number(ingress.messageId),
+    const pairing = this.#store.pairingFor(ingress.chatId);
+    this.#pending.set(id, { ...result, receipt: { pairing: pairing ? { userId: pairing.userId, chatId: pairing.chatId, guildId: pairing.guildId, ...(pairing.clandUserId ? { clandUserId: pairing.clandUserId } : {}) } : null, chat: ingress.chatId, message: Number(ingress.messageId),
       stored: false, delivered: false, seen: false, ...(members ? { targets: members.map(Number) } : {}) } });
     const abort = () => result.reject(new Error('Telegram input cancelled'));
     signal.addEventListener('abort', abort, { once: true });
@@ -139,7 +139,8 @@ export class TelegramInbound {
     // Older receipts have only a chat id; retain their original recovery scope.
     if (receipt.pairing === undefined) return true;
     return receipt.pairing !== null && current.userId === receipt.pairing.userId
-      && current.chatId === receipt.pairing.chatId && current.guildId === receipt.pairing.guildId;
+      && current.chatId === receipt.pairing.chatId && current.guildId === receipt.pairing.guildId
+      && (receipt.pairing.clandUserId === undefined || current.clandUserId === receipt.pairing.clandUserId);
   }
 
   #flush(message: string): Promise<void> {

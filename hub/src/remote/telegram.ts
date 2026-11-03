@@ -1,3 +1,4 @@
+import { remotePublications } from './cards.ts';
 import { randomUUID } from 'node:crypto';
 import { transcribes } from './media.ts';
 import { remoteRedactor, type RemoteRedactor } from './redact.ts';
@@ -34,6 +35,7 @@ export class TelegramRemote implements Remote {
   readonly #clock: Clock;
   readonly #abort = new AbortController();
   readonly #work = new Set<Promise<unknown>>();
+  readonly #chatRecovery = new Map<string, Promise<void>>();
   readonly #polling: TelegramRemoteOptions | undefined;
   #sendFrame: RemoteSend | undefined;
   #nextRequest = 0;
@@ -71,8 +73,8 @@ export class TelegramRemote implements Remote {
       approvalOpen: async id => (await this.#request<Inbox>('inbox.list')).approvals.some(approval => approval.id === id),
       onSent: () => { this.#lastOutbound = this.#clock.now().toISOString(); },
       onError: error => {
-        if (fatal(error)) void this.#track(async () => { throw error; }).catch(() => {});
-        else if (!this.#abort.signal.aborted) this.#failed(error instanceof TelegramError ? error.description : 'send failed');
+        if (fatal(error) && !(error instanceof TelegramError && error.code === 403 && polling?.store.usersMode())) void this.#track(async () => { throw error; }).catch(() => {});
+        else if (!this.#abort.signal.aborted && !polling?.store.usersMode()) this.#failed(error instanceof TelegramError ? error.description : 'send failed');
       },
     });
     this.#outbox.holdCards(!!this.#offline);
@@ -113,9 +115,29 @@ export class TelegramRemote implements Remote {
     catch (error) { if (fatal(error)) throw error; throw new TelegramCatchUpError(step); }
   }
 
+  /** Successful polling schedules destination recovery without joining peers. */
+  #resumeChats(): void {
+    const store = this.#polling!.store;
+    for (const pairing of store.publicationPairings()) {
+      const chat = pairing.chatId;
+      if (this.#chatRecovery.has(chat)) continue;
+      const work = this.#track(() => store.withPairing(pairing, () => this.#transient(async () => {
+        await this.#outbox.resume(chat);
+        await flushTelegramGap(store, this.#clock, (destination, text, key) =>
+          this.#outbox.send({ chat_id: destination, text, disable_notification: true,
+            link_preview_options: { is_disabled: true } }, { key }), chat);
+      }, true)));
+      this.#chatRecovery.set(chat, work);
+      const settled = () => { if (this.#chatRecovery.get(chat) === work) this.#chatRecovery.delete(chat); };
+      // #track owns fatal handling and stop joins #work, including held native I/O.
+      void work.then(settled, settled);
+    }
+  }
+
   async #caughtUp(): Promise<boolean> {
     // Ordinary commands confirm their own settled job; later queue arrivals
     // must not turn each successful poll into a remote-wide drain barrier.
+    if (!this.#offline && this.#polling?.store.usersMode()) { this.#resumeChats(); return true; }
     if (this.#offline) {
       await this.#catchUpStep('outbox resume', () => this.#outbox.resume());
       await this.#catchUpStep('inbound recover', () => this.#inbound?.recover());
@@ -129,7 +151,7 @@ export class TelegramRemote implements Remote {
       await this.#catchUpStep('outbox resume', () => this.#outbox.resume());
       if (!this.#recoveredAt || this.#abort.signal.aborted) return false; // Recovery was interrupted.
       if (Date.parse(this.#recoveredAt) - Date.parse(outage.since) > 150_000)
-        await this.#catchUpStep('card catch-up', async () => this.#cards?.catchUp(await this.#request<Inbox>('inbox.list'), outage.since));
+        await this.#catchUpStep('card catch-up', async () => remotePublications(this.#polling!.store, () => this.#transient(async () => { await this.#cards?.catchUp(await this.#request<Inbox>('inbox.list'), outage.since); }, true)));
       if (!this.#recoveredAt || this.#abort.signal.aborted) return false;
       this.#clock.clearTimeout(this.#offlineTimer);
       this.#offline = undefined;
@@ -140,9 +162,11 @@ export class TelegramRemote implements Remote {
     return true;
   }
 
-  async #transient(operation: () => void | Promise<void>): Promise<void> {
+  async #transient(operation: () => void | Promise<void>, chat = false): Promise<void> {
     try { await operation(); }
     catch (error) {
+      if (chat && (error instanceof TelegramError || error instanceof Error && error.message === 'Telegram send has no delivery receipt') && this.#polling?.store.usersMode()
+        && !(error instanceof TelegramError && [401, 409].includes(error.code))) return;
       if (fatal(error)) throw error;
       if (this.#abort.signal.aborted) return;
       if (!(error instanceof TelegramError) && !this.#offline) throw error;
@@ -197,7 +221,7 @@ export class TelegramRemote implements Remote {
     if (this.#polling) this.#inbound = new TelegramInbound(this.#polling.store, send, { setMessageReaction: async params => { await this.#outbox.react(params); return true; } }, this.#abort.signal,
       () => {}, receipt, written => this.#late(written));
     if (this.#polling) {
-      this.#media = new MediaQueue(this.#polling.store, this.#clock, this.#abort.signal, input => this.#track(() => this.#mediaInput(input)));
+      this.#media = new MediaQueue(this.#polling.store, this.#clock, this.#abort.signal, input => this.#track(() => this.#polling!.store.withPairing(input.pairing ?? this.#polling!.store.pairingFor(input.chat), () => this.#mediaInput(input))));
       this.#prompts = new TelegramPrompts(this.#polling.store, this.#outbox, (type, fields, ingress) => this.#request(type, fields, ingress),
         (fields, ingress, stored) => this.#inbound!.answer(fields, ingress, stored), written => this.#late(written));
       this.#cards = new TelegramCards(this.#polling.store, this.#outbox, this.#api, (type, fields, ingress) => this.#request(type, fields, ingress), this.#abort.signal, this.#prompts, this.#polling.webOrigin);
@@ -222,7 +246,9 @@ export class TelegramRemote implements Remote {
     this.#abort.signal.addEventListener('abort', abort, { once: true });
     try {
       this.#abort.signal.throwIfAborted();
-      this.#sendFrame!({ ...fields, type, id }, ingress, undefined, this.#polling?.store.pairing());
+      const store = this.#polling?.store;
+      const identity = store?.pairing() ?? (!ingress && ['inbox.list', 'hub.status', 'task.list'].includes(type) ? store?.publicationPairings()[0] : undefined);
+      this.#sendFrame!({ ...fields, type, id }, ingress, undefined, identity);
       return await reply.promise as T;
     } finally {
       this.#pending.delete(id);
@@ -238,34 +264,36 @@ export class TelegramRemote implements Remote {
       if (frame.ok) pending.resolve(frame.value); else pending.reject(new Error(frame.error));
       return;
     }
-    if ((frame.type === 'inbox' || frame.type === 'ask' || frame.type === 'approval') && this.#cards) return this.#track(() => this.#transient(() => this.#cards!.receive(frame)));
+    if ((frame.type === 'inbox' || frame.type === 'ask' || frame.type === 'approval') && this.#cards) return this.#track(() => remotePublications(this.#polling!.store, () => this.#transient(() => this.#cards!.receive(frame), true)).then(() => {}));
     if (frame.type !== 'message' || frame.topic.id !== 'general') {
       if (this.#inbound) return this.#track(async () => { await this.#transient(() => this.#inbound!.receive(frame)); });
       return;
     }
-    const pairing = this.#polling?.store.pairing();
-    if (!pairing) return;
+    if (!this.#polling) return;
     const message = frame.message;
-    const mirrored = mirrorOut(message, 'telegram');
-    if (!mirrored) return;
+    if (!this.#polling.store.publicationPairings().some(pair => mirrorOut(message, 'telegram', pair.clandUserId))) return;
     if (message.fromKind !== 'hub' && this.#polling!.store.suppressMutedMessage(message.id)) return;
     return this.#track(async () => {
-      const { header } = mirrored;
-      const reply = message.replyTo ? this.#polling!.store.messageForSource(pairing.chatId, message.replyTo) : null;
-      const options = { ...(reply ? { reply_parameters: { message_id: Number(reply.messageId), allow_sending_without_reply: true } } : {}), link_preview_options: { is_disabled: true }, disable_notification: mirrored.silent };
-      const facts = { kind: 'general' as const, source: message.id, topic: 'general', missed: !!this.#offline };
-      const plan = this.#polling?.files ? artifactPlan(this.#polling.files.root, message, header, telegramArtifactLimits) : [{ type: 'text' as const, text: message.text }];
-      await this.#transient(async () => {
-        // Planning and every enqueue are synchronous: no other publication enters the batch.
-        const sends = this.#outbox.batch(() => plan.flatMap(part => {
-          if (part.type !== 'text') return [this.#outbox.file(part.type === 'photo' ? 'sendPhoto' : 'sendDocument',
-            { chat_id: pairing.chatId, artifact: part.artifact, caption: part.caption, ...(message.replyTo ? { replyRequested: true } : {}), ...options }, facts)];
-          const parts = plainParts(header, part.text).map(text => ({ chat_id: pairing.chatId, ...text, ...options }));
-          return this.#format === 'rich' ? [this.#outbox.rich({ chat_id: pairing.chatId,
-            rich_message: { markdown: `${header}\n${part.text}`, skip_entity_detection: true }, ...options }, parts, facts)]
-            : parts.map(text => this.#outbox.send(text, facts));
-        }));
-        await Promise.all(sends);
+      await remotePublications(this.#polling!.store, async pairing => {
+        const mirrored = mirrorOut(message, 'telegram', pairing.clandUserId);
+        if (!mirrored) return;
+        const { header } = mirrored;
+        const reply = message.replyTo ? this.#polling!.store.messageForSource(pairing.chatId, message.replyTo) : null;
+        const options = { ...(reply ? { reply_parameters: { message_id: Number(reply.messageId), allow_sending_without_reply: true } } : {}), link_preview_options: { is_disabled: true }, disable_notification: mirrored.silent };
+        const facts = { kind: 'general' as const, source: message.id, topic: 'general', missed: !!this.#offline };
+        const plan = this.#polling?.files ? artifactPlan(this.#polling.files.root, message, header, telegramArtifactLimits) : [{ type: 'text' as const, text: message.text }];
+        await this.#transient(async () => {
+          // Planning and every enqueue are synchronous: no other publication enters the batch.
+          const sends = this.#outbox.batch(() => plan.flatMap(part => {
+            if (part.type !== 'text') return [this.#outbox.file(part.type === 'photo' ? 'sendPhoto' : 'sendDocument',
+              { chat_id: pairing.chatId, artifact: part.artifact, caption: part.caption, ...(message.replyTo ? { replyRequested: true } : {}), ...options }, facts)];
+            const parts = plainParts(header, part.text).map(text => ({ chat_id: pairing.chatId, ...text, ...options }));
+            return this.#format === 'rich' ? [this.#outbox.rich({ chat_id: pairing.chatId,
+              rich_message: { markdown: `${header}\n${part.text}`, skip_entity_detection: true }, ...options }, parts, facts)]
+              : parts.map(text => this.#outbox.send(text, facts));
+          }));
+          await Promise.all(sends);
+        }, true);
       });
     });
   }
@@ -411,8 +439,8 @@ export class TelegramRemote implements Remote {
     const intent = JSON.parse(saved) as { input: MediaInput; line: string; ready: boolean };
     if (!intent.ready) return;
     const { input, line } = intent;
-    const current = store.pairing();
-    if (!current || !input.pairing || current.chatId !== input.chat || current.userId !== input.pairing.userId || current.guildId !== input.pairing.guildId) {
+    const current = store.pairingFor(input.chat, input.pairing?.userId);
+    if (!current || !input.pairing || current.chatId !== input.chat || current.userId !== input.pairing.userId || current.guildId !== input.pairing.guildId || current.clandUserId !== input.pairing.clandUserId) {
       store.set(key, null); return;
     }
     this.#voiceEchoes.add(key);
@@ -447,11 +475,11 @@ export class TelegramRemote implements Remote {
   async #mediaInput(input: MediaInput): Promise<void> {
     const store = this.#polling!.store;
     const ingress = { chatId: input.chat, messageId: input.message };
-    const captured = input.pairing ?? store.pairing();
+    const captured = input.pairing ?? store.pairingFor(input.chat);
     const admitted = () => {
-      const current = store.pairing();
+      const current = store.pairingFor(input.chat, input.pairing?.userId);
       return !!captured && !!current && current.chatId === input.chat && current.chatId === captured.chatId
-        && current.userId === captured.userId && current.guildId === captured.guildId;
+        && current.userId === captured.userId && current.guildId === captured.guildId && current.clandUserId === captured.clandUserId;
     };
     if (!admitted()) return;
     if (input.text !== undefined) {
@@ -594,7 +622,7 @@ export class TelegramRemote implements Remote {
     { key: `telegram.pairing-confirmation:${randomUUID()}` });
     return this.#track(async () => {
       await sent;
-      if (this.#cards) await this.#cards.publishInbox(await this.#request<Inbox>('inbox.list'));
+      if (this.#cards) await this.#polling!.store.withPairing(this.#polling!.store.pairingFor(pairing.chatId, pairing.userId), async () => this.#cards!.publishInbox(await this.#request<Inbox>('inbox.list')));
     });
   }
 

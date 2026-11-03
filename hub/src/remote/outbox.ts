@@ -28,10 +28,12 @@ export class Outbox {
   #wakeWait: (() => void) | undefined;
   readonly #beforeNext: (() => Promise<void>) | undefined;
   readonly #compare: ((a: OutboxJob, b: OutboxJob) => number) | undefined;
+  readonly #availabilityKey: string;
   readonly #admit: (job: OutboxJob) => boolean;
   readonly #accepts: (job: OutboxJob) => boolean;
   readonly #sourceOpen: (job: OutboxJob) => boolean | Promise<boolean>;
-  constructor(store: RemoteStore, client: OutboxClient, options: { clock?: Clock; random?: () => number; sourceOpen?: (job: OutboxJob) => boolean | Promise<boolean>; accepts?: (job: OutboxJob) => boolean; admit?: (job: OutboxJob) => boolean; beforeNext?: () => Promise<void>; compare?: (a: OutboxJob, b: OutboxJob) => number } = {}) {
+  constructor(store: RemoteStore, client: OutboxClient, options: { availabilityKey?: string; clock?: Clock; random?: () => number; sourceOpen?: (job: OutboxJob) => boolean | Promise<boolean>; accepts?: (job: OutboxJob) => boolean; admit?: (job: OutboxJob) => boolean; beforeNext?: () => Promise<void>; compare?: (a: OutboxJob, b: OutboxJob) => number } = {}) {
+    this.#availabilityKey = options.availabilityKey ?? 'outbox.unavailable';
     this.#store = store; this.#client = client; this.#clock = options.clock ?? realClock;
     this.#random = options.random ?? Math.random;
     this.#beforeNext = options.beforeNext;
@@ -56,8 +58,8 @@ export class Outbox {
     this.#queueRevision++;
     return job.id;
   }
-  #available(): boolean { return this.#store.get('outbox.unavailable') !== '1'; }
-  setAvailable(available: boolean): void { this.#store.set('outbox.unavailable', available ? null : '1'); }
+  #available(): boolean { return this.#store.get(this.#availabilityKey) !== '1'; }
+  setAvailable(available: boolean): void { this.#store.set(this.#availabilityKey, available ? null : '1'); }
   missed(): { count: number; since: string | null } {
     const jobs = this.#store.outbox().filter(job => job.state === 'missed');
     return { count: jobs.length, since: jobs[0]?.created ?? null };

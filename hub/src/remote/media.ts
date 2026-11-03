@@ -78,7 +78,7 @@ export class MediaQueue {
       while (!this.#signal.aborted) {
         const row = this.#rows().find(row => row.input.chat === chat);
         if (!row) break;
-        if (this.#store.pairing()?.chatId !== chat) { this.#store.set(row.key, null); continue; }
+        if (!this.#store.pairingFor(chat)) { this.#store.set(row.key, null); continue; }
         if (row.input.group && !row.input.closed) {
           const remaining = 2_000 - (this.#clock.now().getTime() - row.input.arrived!);
           if (remaining > 0) { await this.#wait(chat, remaining); continue; }

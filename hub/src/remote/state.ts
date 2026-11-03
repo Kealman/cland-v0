@@ -144,6 +144,21 @@ export class RemoteStore {
       this.set('users.pairingInherited', '1');
     });
   }
+  usersMode(): boolean { return this.#users?.mode() === 'users'; }
+  /** Publication owners are independent of the current native input context. */
+  publicationPairings(): Pairing[] {
+    if (this.#users?.mode() === 'users') return this.userPairings();
+    const pair = this.#legacyPairing();
+    return pair ? [pair] : [];
+  }
+  /** Detached effects resolve a destination; scoped effects never acquire a new owner. */
+  deliveryPairing(chat: string): Pairing | null {
+    if (this.#users?.mode() === 'users' && this.#context.getStore() !== undefined) {
+      const pairing = this.pairing();
+      return pairing?.chatId === chat ? pairing : null;
+    }
+    return this.pairingFor(chat);
+  }
   userPairings(): Pairing[] {
     this.#inheritPairing();
     return this.#db.prepare('select user_id from user_remote_pairings where messenger=? order by user_id').all(this.#id)

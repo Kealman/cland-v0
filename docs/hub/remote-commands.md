@@ -1119,3 +1119,43 @@ seconds. Keep terminal disabled/missing-token states and older-hub refusal
 controls immediate. Use the fake-clock matrices in the setup-remotes and
 doctor-remotes per-test guides. Pairing remains an explicit human gesture and
 approval; existing role clauses suffice.
+
+### Telegram publications in users mode
+
+When `[auth] mode = "users"`, General and inbox cards reach each paired user's
+private chat. Native input keeps its admitted pairing owner through asynchronous
+work. General names the human author; a Telegram message reaches the other
+users' chats without returning to its sender. Single mode retains its existing
+labels, keys and echo policy.
+
+`RemoteStore.publicationPairings()` enumerates publication owners independently
+of native input context. `remotePublications` in `remote/cards.ts` deduplicates
+chat/guild destinations and runs each callback under `withPairing`, then joins
+all callbacks before reporting a failure. Telegram uses this shared seam for
+General, inbox changes and closures. Card rendering still uses the shared
+`RemoteCard` data model; transport fan-out does not choose card kinds.
+
+Each Telegram chat has its own durable outbox availability and gap checkpoint
+in users mode. A failed send leaves the other chat drains usable; unknown sends
+retain their original fence. Successful polling reopens chat drains and reports
+each chat's captured missed General sources. Bot flood limits still apply across
+chats, and a polling outage or invalid bot token affects the whole transport.
+Outcome lines use the hub's committed answerer and every mapped copy folds,
+including a card whose native send completed after the answer.
+
+Users-mode gap checkpoints also capture the project owner. Missed jobs without
+that owner, or with a different owner after native-chat reassignment, cannot be
+settled by the new pairing. A checkpoint from the previous shape without owner
+is discarded in users mode; it does not authorize settlement. Single-mode
+checkpoints retain their existing shape and behavior. A blocked or uncertain
+users-mode gap notice keeps its checkpoint and missed jobs pending while the
+other destinations continue. The same destination-local failure handling applies
+to replacement cards after a global polling outage; bot token/conflict failures
+still stop the transport.
+
+Ordinary successful users-mode polls schedule one recovery worker per chat;
+they do not await another destination's in-flight native send or gap notice
+before fetching new input. Each worker resumes only its own chat and retains
+its captured pairing. The adapter owns these workers and joins them during
+shutdown after aborting native I/O. Bot-wide flood limits and global polling
+outage catch-up retain their shared sequencing.

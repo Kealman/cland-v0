@@ -1,3 +1,4 @@
+import type { Pairing, RemoteStore } from './state.ts';
 import type { ApprovalChoice, ApprovalOutcome, AskCard, AskOutcome, Inbox, InboxApproval, InboxAsk } from '../protocol.ts';
 
 export type CardAction = { option: number } | { kind: 'other' | 'decline' } | { choice: ApprovalChoice };
@@ -76,4 +77,17 @@ export function inboxPublication(inbox: Inbox, webOrigin?: string): InboxPublica
     ...noticeCards(inbox, webOrigin).map(notice => ({ kind: 'notice' as const, id: notice.id, since: notice.since, notice })),
   ];
   return rows.sort((a, b) => a.since.localeCompare(b.since) || a.id.localeCompare(b.id));
+}
+
+/** One copy per destination; native callbacks still authorize their exact owner. */
+export async function remotePublications<T>(store: RemoteStore, work: (pairing: Pairing) => Promise<T>): Promise<T[]> {
+  const destinations = new Set<string>();
+  const results = await Promise.allSettled(store.publicationPairings().filter(pairing => {
+    const key = JSON.stringify([pairing.guildId, pairing.chatId]);
+    if (destinations.has(key)) return false;
+    destinations.add(key); return true;
+  }).map(pairing => store.withPairing(pairing, async () => work(pairing))));
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+  return results.map(result => (result as PromiseFulfilledResult<T>).value);
 }

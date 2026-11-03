@@ -57,7 +57,7 @@ export type FakeRequestReceipt = { id: number; method: string; params: Record<st
 export type FakeConnectionReceipt = { id: number; method: string };
 type PendingPoll = FakePollReceipt & { res: ServerResponse; timer?: ClockTimer; ended: boolean };
 type FaultResponse = 'redirect' | 'invalid-json' | 'malformed-error' | 'disconnect' | 'accept-disconnect' | 'hold' | 'hold-after-send';
-type Fault = { method: string; code: number; echoToken: boolean; description?: string; retryAfter?: number; response?: FaultResponse };
+type Fault = { chat?: string; method: string; code: number; echoToken: boolean; description?: string; retryAfter?: number; response?: FaultResponse };
 
 function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => boolean, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -279,7 +279,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           return reply(res, 400, { error: 'description must be a string of at most 4000 characters' });
         if (retryAfter !== undefined && (typeof retryAfter !== 'number' || !Number.isInteger(retryAfter) || retryAfter < 0))
           return reply(res, 400, { error: 'retry_after must be nonnegative integer seconds' });
-        faults.push({ method: params.method, code: params.code, echoToken: params.echoToken === true,
+        faults.push({ ...(params.chat_id !== undefined ? { chat: String(params.chat_id) } : {}), method: params.method, code: params.code, echoToken: params.echoToken === true,
           ...(typeof params.description === 'string' ? { description: params.description } : {}),
           ...(typeof retryAfter === 'number' ? { retryAfter } : {}),
           ...(typeof response === 'string' ? { response: response as FaultResponse } : {}),
@@ -305,7 +305,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
       events.emit('request', { ...connection, params: redact.value(params) });
       let loseReceipt = false;
       let holdAfterSend = false;
-      const faultIndex = faults.findIndex(fault => fault.method === method);
+      const faultIndex = faults.findIndex(fault => fault.method === method && (fault.chat === undefined || fault.chat === String(params.chat_id)));
       if (faultIndex >= 0) {
         const fault = faults.splice(faultIndex, 1)[0]!;
         // A deliberate echo exercises the client's error boundary; never capture it.
