@@ -2,8 +2,8 @@
 id: T-1596
 kind: task
 title: Per-host secret admission and revocation
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1350
 branch: t/T-1596-per-host-secret-admission-and-revocation
 created: 2026-11-02T03:33:54.494Z
-updated: 2026-11-03T03:30:51.463Z
+updated: 2026-11-03T04:20:19.558Z
+closed: 2026-11-03T04:20:19.558Z
 ---
 
 ## Summary
@@ -331,3 +332,7 @@ No findings remain. Merge-batch requirements and affected after-stage QA remain 
 A-16148: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16148-t-1596-final-merged-head-evidence-at-9b461e4.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-03T04:20:19.558Z
+
+Merged f7b7a8367f3c7d1a917ca512fcba3e824debeff7 onto dev.
