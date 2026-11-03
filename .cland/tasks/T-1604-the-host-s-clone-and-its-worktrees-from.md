@@ -3,7 +3,7 @@ id: T-1604
 kind: task
 title: The host's clone and its worktrees from the territory
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1371
 branch: t/T-1604-the-host-s-clone-and-its-worktrees-from
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-03T22:22:41.017Z
+updated: 2026-11-03T22:53:36.706Z
 ---
 
 ## Summary
@@ -29,14 +29,19 @@ Hot files: `hub/src/host/ssh-host.ts` (worktreeAdd with territory), `hub/src/hos
 
 - [x] C1. On a fake host the first clone goes through the git socket with `core.gitProxy` set to `cland host git-proxy`, and no other remote URL or credential is configured (test).
   - done: impl-1604 · 2026-11-03T22:17:00.385Z
-- [ ] C2. When the daemon clone fails, the host is cloned from a bundle copied over `scp` on the master, and its `origin` still points at the git socket (test).
-  - failed: rev-36 [reviewer] · 2026-11-03T22:22:41.017Z · note SCP may establish an independent connection after mux loss; same-master delivery is not enforced.
-- [ ] C3. An item launch on a fake host creates the task branch in the territory (as T-1555 does), grants that host its lease, and adds the worktree on the host at the territory's tip (test).
-  - failed: rev-36 [reviewer] · 2026-11-03T22:22:41.017Z · note Post-add persistence failure removes durable ownership/lease/ref while the accepted remote checkout remains.
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.230Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
+- [x] C2. When the daemon clone fails, the host is cloned from a bundle copied over `scp` on the master, and its `origin` still points at the git socket (test).
+  - done: impl-1604 · 2026-11-03T22:25:14.599Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.230Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
+- [x] C3. An item launch on a fake host creates the task branch in the territory (as T-1555 does), grants that host its lease, and adds the worktree on the host at the territory's tip (test).
+  - done: impl-1604 · 2026-11-03T22:25:14.736Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.231Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
 - [x] C4. A worktree add that fails on the host leaves no lease and no territory branch created by the launch behind (test).
   - done: impl-1604 · 2026-11-03T22:17:00.906Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.231Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
 - [x] C5. Worktree prune of a host task worktree removes it through that host's agent, and the task-worktrees and worktree-cli test files pass with no test edited (test).
   - done: impl-1604 · 2026-11-03T22:17:01.027Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.231Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
 
 ## Notes
 
@@ -74,3 +79,35 @@ finding_counts: {"high":0,"medium":3,"low":0}
 Source review not clear; three medium findings detailed in A-16366. Reviewed exact head 97bd21718c7ddd4390f13fbb6276cdcabb6f3254. C2/C3 failed; C1/C4/C5 runtime evidence unverified. No tests/probes run by Reviewer. Frozen HOST_USAGE must migrate with the intentional help addition. Correct and request fresh source review before verification.
 
 Criteria: C2 failed (SCP may establish an independent connection after mux loss; same-master delivery is not enforced.), C3 failed (Post-add persistence failure removes durable ownership/lease/ref while the accepted remote checkout remains.).
+
+### impl-1604 · 2026-11-03T22:25:14.867Z
+
+Source correction at 6ba0c4889f862a483a2c303b298b43c50140ce4d: accepted checkout + failed ready checkpoint now keeps adding record/lease/ref fenced (CLAND_HOST_OUTCOME_UNKNOWN), rather than generic rollback. copyFile disables independent SSH fallback via ProxyCommand=false while retaining pinned mux options. Only the owning HOST_USAGE frozen block changed, with guards unedited. Fault cases first observed red: ready record undefined instead of adding, and Missing expected rejection on master-loss copy. After correction host-clone-integration 4/4 (2.27s,1.03s,1.57s,0.88s per test), cli-usage-compatibility 1/1, cli-help 7/7 and root typecheck pass on matching source, macOS local Node 24.21.0, no browser or network. Lint refreshing before fresh review; no verification run submitted.
+
+### rev-36 · 2026-11-03T22:26:15.162Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1604-source-2
+commit: 6ba0c4889f862a483a2c303b298b43c50140ce4d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at exact head 6ba0c4889f862a483a2c303b298b43c50140ce4d; all three A-16366 findings resolved. Accepted checkout metadata failure preserves adding ownership/lease/ref; SCP prohibits independent connection fallback; only owning frozen HOST_USAGE migrates. Both fault regressions and updated docs inspected. See A-16367. C1–C5 remain runtime-unverified; no Reviewer tests/probes/checks ran. Same-head mode-free verification may proceed; final evidence must include named criteria and unchanged preservation receipts with provenance and executed/deferred phases.
+
+### rev-36 · 2026-11-03T22:53:36.231Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1604-final-1
+commit: 6ba0c4889f862a483a2c303b298b43c50140ce4d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C5 verified, no findings. A-16389 independently matches A-16384 exact-head uncached run7c1005a0 exit0/4931pass; all four generated clone integration outcomes pass, both lease cases, clone2, usage1/help7 and task-worktrees19 finish receipts pass. A-16388 exact-head raw local Darwin arm64 Node24.21 native exit0 confirms unchanged task-worktrees19/worktree-cli4. Linux x64 droplet T1/all fallback T2/changed T3 once/Web complete; local macOS T0 host gate; remaining T3/T4 and affected after-stage QA separate/unexecuted. Head/source unchanged. Isolated HeadlessShell1248 ChromeForTesting156.0.8078.4. Budgets/lint/ratchet/skip checks report-only; missing0. Resource lifetime/cost unknown in receipt. No Reviewer runtime checks/probes/browser/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

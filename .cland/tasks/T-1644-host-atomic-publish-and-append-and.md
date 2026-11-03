@@ -3,7 +3,7 @@ id: T-1644
 kind: task
 title: Host atomic publish and append, and OpenCode's shared ignore through the Host
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels: []
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1372
 branch: t/T-1644-host-atomic-publish-and-append-and
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-03T22:20:43.843Z
+updated: 2026-11-03T23:07:15.979Z
 ---
 
 ## Summary
@@ -30,12 +30,16 @@ Add atomic publish (create-if-absent) and append to the Host contract, implement
 
 - [x] C1. The Host contract has atomic no-clobber publish and append. The local Host and the agent implement them with the same semantics, including concurrent writers, against the fake hosts (test).
   - done: impl-1644 · 2026-11-03T22:17:39.613Z
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
 - [x] C2. OpenCode's shared-ignore preparation goes through the launch Host. On `local` the result is byte-identical to today, and T-1601's lint exemption is removed (test).
   - done: impl-1644 · 2026-11-03T22:09:12.864Z
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
 - [x] C3. An OpenCode launch on a fake nonlocal host prepares the shared ignore on that host (test).
   - done: impl-1644 · 2026-11-03T22:09:12.986Z
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
 - [x] C4. The Host contract offers a stat with mode and size, so the launch-file rollback restores an overwritten file's mode on a nonlocal Host and T-1601's nonlocal overwrite refusal is removed (test)
-  - done: impl-1644 · 2026-11-03T22:09:13.222Z
+  - done: impl-1644 · 2026-11-03T22:38:50.840Z
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
 
 ## Comments
 
@@ -126,3 +130,121 @@ Supplemental implementer evidence A-16364 is accurately limited: macOS Node 24.2
 Standards: 0 findings. Spec: 0 findings.
 
 A-16365: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16365-t-1644-corrected-source-review-at-490fc805.md
+
+### rev-37 · 2026-11-03T22:37:01.625Z
+
+verdict: review
+result: not clear
+by: rev-37 [reviewer]
+run: rev-37-1644-evidence-1
+commit: 490fc805d1ab6d229269ee0f1e748399fd4c49de
+scope: evidence
+findings: [{"severity":"medium","text":"remoteFixture inherits the rejecting testHost.stat while LaunchFiles now requires stat for every Host; nine unchanged Claude preservation cases fail before their assertions with 'test host t1 refuses stat'. Supply the owned scratch metadata seam without relaxing testHost or existing assertions.","file":"hub/test/claude-code-host.test.ts","line":200}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+T-1644 verification evidence review
+Head: 490fc805d1ab6d229269ee0f1e748399fd4c49de
+Run: rev-37-1644-evidence-1; scope evidence; result not clear.
+Evidence: run 0e027541-a830-4ad2-9d9d-17cf60cb4606 / A-16373, uncached Linux x64 6.8.0-142-generic droplet c-8 sfo2, Node24.21.0, Neovim0.12.5. Provenance head matches source review; suite canonical tree1a51d03f8c09836ffa063262e32e0098eadd7c0a. Browser binary/version null: Web did not execute.
+
+Actual failure, before diagnosis:
+`Error: test host t1 refuses stat`
+`at Object.stat (.../hub/src/host/test-host.ts:17:27)`
+`at LaunchFiles.<anonymous> (.../hub/src/adapters/launch-files.ts:73:45)`
+All nine claude-code-host failures have this same trace, before reaching their discovery/liveness assertions.
+
+Medium — hub/test/claude-code-host.test.ts:200. remoteFixture spreads rejecting testHost and explicitly supplies scratch fileType/write/directory/remove but omits the new stat primitive. LaunchFiles now requires Host.stat for every Host; these nine unchanged nonlocal Claude preservation cases fail during file preparation. Migrate this owned scratch metadata seam, keep testHost globally rejecting and preserve all native/discovery/liveness assertions. This is an unmigrated test consumer of the C4 metadata boundary, not evidence of a failed production rollback-mode assertion.
+
+T0 and T1 exit0; T2 exit1. Queue reports completed-before-interruption4390 tests,4381 pass/9fail; its phase aggregate is4230/4221pass/9fail. These are distinct recorded aggregates, not additional coverage to sum. T3 and Web did not run, T4 unexecuted. In particular the queued Host agent files, prepared operations, SSH contract and remote-discovery-host files have no finish receipts in this interrupted run. Independent generated finish-row scan confirms Claude18 unique base cases,9pass/9fail; passing boundary12unique/17completion records, layout18/38, placement11/16 and LaunchFiles3/3 contain base/load repetitions and are partial preservation evidence only. Lint/budget/ratchet notices are report-only; this refusal is a functional test failure.
+
+Failed C4: verification of the shared metadata migration is incomplete because its unchanged Claude Host fixture lacks stat and fails nine preservation cases; production mode restoration is not classified as a demonstrated functional failure. C1–C3 remain unverified; no criterion is marked verified on this failed run.
+A corrected head needs fresh source review before another configured verification. After-stage QA remains separate. Reviewer performed read-only source/log inspection, no tests/typecheck/browser or edits.
+
+A-16374: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16374-t-1644-failed-verification-unmigrated-claude-stat-fixture.md
+
+Criteria: C4 failed (Same-head verification fails nine Claude Host preservation cases because the test consumer lacks Host.stat; shared metadata migration evidence is incomplete, rather than a demonstrated production mode-rollback failure.).
+
+### impl-1644 · 2026-11-03T22:37:47.050Z
+
+Coordinator-authorized evidence correction: claude-code-host.test.ts stays byte-identical. testHost.stat delegates only when a spread double explicitly installs the exact shared local fileType/writeFile/removePath functions; default testHost, arbitrary function overrides and real SSH Hosts retain explicit refusal/no fallback. Consumers: adapters/index.ts creates default testHost (unchanged refusals); processHost and recording doubles spread testHost (the Claude scratch file delegation gains stat); launch-files/new guard tests; session-host-routing/placement and host-registry default refusal controls. No Host wire/interface/production LaunchFiles change. New guard red first (`test host metadata-double refuses stat`), then green 4/4 launch-files and unchanged Claude 18/18 after the gate.
+
+### rev-37 · 2026-11-03T22:43:25.165Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-source-2
+commit: 9b898b31a6a4d550881426100cd3590e61f1f552
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1644 corrected source review
+Head9b898b31a6a4d550881426100cd3590e61f1f552; run rev-37-1644-source-2; scope full; clear.
+This retains the full source audit at490fc805 (A-16365), with all subsequent correction changes read. No edits, tests, typecheck, browser or merge by Reviewer.
+
+Standards: no findings.
+Spec: no findings.
+
+The failed queue A-16373 exposed an unmigrated recording double, not a production rollback-mode assertion failure. Coordinator656bbdec directed preserving claude-code-host.test.ts and required unchanged18/18, guard controls and a production missing-stat refusal. The Claude file is byte-identical to490fc805 and base; LaunchFiles/sshHost are also unchanged in this correction.
+
+testHost.stat now recognizes exact fileOperations.fileType/writeFile/removePath delegates on its receiver. localHost exports these same shared function references; processHost preserves that receiver. Default testHost, arbitrary fileType response and incomplete delegates still refuse. Existing publish/append and other default refusals remain. This is the Coordinator-authorized scratch-double compatibility seam, not a fallback for real SSH Host. Positive control checks actual metadata/ENOENT; negative controls preserve bytes after rejected publish/append.
+
+The added SSH missing-stat case uses sshHostFixture's actual authenticated agent connection and production sshHost/LaunchFiles, translating stat at the request boundary to an unknown operation. It asserts the precise host/agent refusal, exactly one non-handshake/native-receipt request, empty undo/children and unchanged original bytes/mode. It therefore catches both subsequent remote mutation and local metadata fallback. It has a bounded lifecycle and uses the existing sealed fixture; no new process owner or copied parser. Matching subsystem/per-file guides and skill CHANGES are updated.
+
+A-16377 reports macOS Node24.21 targeted Claude18/18, launch-files4/4, agent8/8, placement11/11 and routing16/16 plus static checks. A-16380 reports entire SSH38/38 including the new negative control and final static checks. These are supplemental local receipts; prior queued0e027541 remains failed/incomplete, with T3/Web unexecuted, not a passing receipt for this new head.
+
+All C1–C4 name runtime tests and remain unverified at this source-only pass. A fresh configured run must name9b898b31a6a4d550881426100cd3590e61f1f552 before final evidence review; after-stage QA stays separate.
+Standards0 findings; Spec0 findings.
+A-16381: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16381-t-1644-source-review-stat-compatibility-and-ssh-refusal-controls.md
+
+### rev-37 · 2026-11-03T23:07:15.788Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-evidence-2
+commit: 9b898b31a6a4d550881426100cd3590e61f1f552
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1644 final evidence review
+Head:9b898b31a6a4d550881426100cd3590e61f1f552
+Run:rev-37-1644-evidence-2; scope:evidence; result:clear; findings:none.
+Source review rev-37-1644-source-2 / A-16381 and full audit A-16365 remain applicable. Branch ref is unchanged. Read-only recomputation of the canonical verification tree (excluding only .cland/tasks and .cland/RULES.md) yields69777bb726531899e3d6b9a3ab7c104f0c0be0ed, matching suite provenance.
+
+Evidence run7c5a4f6d-da6d-4470-beb6-f9c870f17786 / A-16398 is finished exit0,4994pass/0fail/cancel/skip/todo. Linuxx64 6.8.0-142-generic, droplet executor, Node24.21.0, Neovim0.12.5, workers2, uncached execution. Isolated Chrome Headless Shellr1248 at /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; reported Google Chrome for Testing156.0.8078.4. No real SSH/harness/browser QA claim.
+T0 host check, all T1, all T2 fallback, four selected changed T3 files and Web completed. Selected T3 has54 top-level identities executed once, no T3 repetitions; remaining T3 stays in merge batch. T4 did not execute. Other changed T2 tests include five load repetitions; do not interpret the T3 statement as no repetitions anywhere. Advisory budgets/lint/ratchet remain report-only, skipReasonCheck report/missing0; successful functional result is distinct from those advisories.30.157s added-wall duration check is selected phases excluding machine wait, not whole run time.
+
+Independent streaming finish-record scan found no nonpass outcomes in the required files. Counts below are unique generated names / passing completion records, preserving nested names and repeated executions rather than treating them as additional coverage.
+
+Verified C1:
+- host-agent-files8/8, including exact cases `atomic publish, append and stat preserve concurrent writers (local)` and `(agent)`: one create-only winner, complete bytes, concurrent append ordering, native mode/size and no staging residue.
+- host-ssh-contract38/38 including shared `Host writes exact bytes and mode, truncates, makes and removes only owned paths`, which now also checks create/replace/append/stat/overwrite rollback.
+- Exact publishFile/appendFile `settles lost accepted reply without duplicate bytes` and `retains a held native writer across stream loss` all pass.
+- host-prepared15/15, including `restart retains interrupted publishFile commit without replay`, equivalent appendFile case, wrong recovery owner assertions and `completed append retains ownership when its durable result cannot be written`. No accepted-unknown effect is counted from a launch reply alone.
+
+Verified C2:
+- host-launch-layout18unique/38pass records includes unchanged local generated-byte/mode baselines plus mapped OpenCode and both concurrent-editor cases (`before read`, `at publish`).
+- host-boundary12/17 includes current-tree scan and rejection of former metadata exemptions. Source confirms local helper and exemptions removed.
+- opencode-host9/9 preservation passes.
+
+Verified C3:
+- session-host-placement11/16 contains `production OpenCode launch prepares nonlocal shared ignore and reaches only selected Host spawn`.
+- SSH38/38 includes `C2 explicit additions merge with agent base while planted hub tokens never reach spawned process`, whose source exercises production OpenCode adapter -> SSH Host -> actual agent -> native fake child and checks native shared-ignore bytes, planted provider/remote/project secret absence and explicit allowed value, with raw native positive control. Missing executable control retains no-process final assertion.
+
+Verified C4:
+- Shared SSH contract and `nonlocal rollback restores overwritten bytes and mode and truncates appended logs` pass; launch-files4/9 includes durable old journal compatibility and exact-delegate guard.
+- `SSH LaunchFiles refuses an older agent without stat before any file mutation` passes, proving unknown-stat wire refusal before undo registration/mutation and unchanged original bytes/mode.
+- The previously failing unchanged claude-code-host file now passes18/18. The exact shared native capability seam preserves its original discovery/liveness assertions without a real SSH local fallback.
+- session-host8/8 and session-launch2/2 pass. Standalone host-local-contract and session-stop-races have no receipts in this selected run; no pass claimed for them.
+
+Coordinator discovery carry-over is also covered: remote-discovery-host7/7 includes changed host secret atomic replacement/reaches-up and unknown publication same-stream drain, with readiness/cleanup ownership controls. remote-discovery2/7 and host-contract-coverage4/4 pass.
+
+Previous0e027541/A-16373 remains failed/incomplete; this new head/run supplies fresh deciding evidence. Supplemental local A-16377/A-16380 is not summed with Linux results.
+All C1–C4 verified by reviewed source plus same-head named receipts. After-stage QA and deferred merge-batch coverage remain separate. Reviewer ran no tests, typecheck or browser and made no edits.
+
+A-16399: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16399-t-1644-final-evidence-at-9b898b31.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
