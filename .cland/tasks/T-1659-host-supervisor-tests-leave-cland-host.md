@@ -14,7 +14,7 @@ regression_of: T-1594
 topic: null
 branch: null
 created: 2026-11-03T07:18:11.410Z
-updated: 2026-11-03T07:18:11.410Z
+updated: 2026-11-03T19:32:08.531Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ The fixture records every agent the supervisor starts, by PID and start identity
 
 - [ ] C1. After host-supervisor.test.ts passes, no `cland host serve` process whose cwd is under its fixture roots survives, checked by a census assertion with a positive control taken before the fix (test).
 - [ ] C2. The same holds with five load-gate repetitions and the long macOS suite TMPDIR root (test).
+
+## Comments
+
+### coord · 2026-11-03T19:32:08.531Z
+
+More evidence (coord, 2026-11-03 ~19:32Z): a census on the Mac found 33 orphaned `cland host serve` processes, each with ppid 1 and about 14.5 h old. They come from this morning's runs of host-supervisor and fake-host fixtures (argv in the T-1653 worktree). Their cwds: 18 under /private/tmp/cland-suite-60a1d8e3-…, 14 under the system TMPDIR, 1 under a fake-ssh root. They used no CPU. I stopped them with SIGTERM by literal PID, and the count is now 0. The leak keeps accumulating across suite runs on the macOS cover machine until this item lands.
