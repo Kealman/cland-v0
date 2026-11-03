@@ -55,7 +55,7 @@ import { TestLintWarmer } from '../test-lint-policy.ts';
 import { hubPriority } from './priority.ts';
 import { maintainProjectGit } from '../git-maintenance.ts';
 import { MaintenanceRecoveryRequired, maintenanceRecoveryReporter, readMaintenanceOwner } from '../git-maintenance-owner.ts';
-import { withTerritoryLockAsync } from '../territory.ts';
+import { refreshTerritoryHook, withTerritoryLockAsync } from '../territory.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -116,6 +116,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
       return secrets;
     };
     remoteSecrets = resolveRemoteSecrets();
+    await refreshTerritoryHook(root, options.territoryLock);
     secret = ensureSkeleton(l);
   } catch (err) {
     lock.release();

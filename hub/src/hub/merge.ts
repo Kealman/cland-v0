@@ -1,3 +1,4 @@
+import { revokeBranchLeasesLocked } from '../host/branch-leases.ts';
 import { dependencyInstallBetween, dependencyInstallText } from '../dependency-install.ts';
 import type { DependencyInstall } from '../protocol.ts';
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
@@ -131,6 +132,7 @@ export class TaskMerges {
             if (pendingSync) throw new MergeError('merge-recovery', `finish pending cland sync before merging ${id}`);
             return this.tracker.mergeReceipt(id);
           });
+          if (prior) await revokeBranchLeasesLocked(this.tracker.root, prior.branch);
           const existing = prior ? await landedTask(this.tracker.root, id, prior, resumed, undefined, this.#env, this.#git) : null;
           if (prior && existing) {
             resumed(() => {
@@ -174,7 +176,8 @@ export class TaskMerges {
               resumed(() => { throw new MergeError('merge-recovery', `checkout recovery pending for prepared ${prior.commit} on ${prior.base}: ${err instanceof Error ? err.message : String(err)}`, undefined, { commit: prior.commit, base: prior.base }); });
             }
           }
-          const view = await this.#view(id, resumed, override === undefined);
+          const view = await this.#view(id, resumed, false);
+          await revokeBranchLeasesLocked(this.tracker.root, view.branch!);
           await this.tracker.refreshFreshness(resumed);
           const checked = await this.#view(id, resumed, override === undefined);
           resumed(() => this.#message(checked, override));

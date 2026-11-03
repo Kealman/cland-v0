@@ -1,3 +1,5 @@
+import { revokeBranchLeasesLocked } from '../host/branch-leases.ts';
+import { withTerritoryLockAsync } from '../territory.ts';
 import { removeWorktreeWithFixtures } from '../fixture-processes.ts';
 // Build squash objects in FIFO order; a detached worktree is only the executor's input.
 import { join } from 'node:path';
@@ -32,6 +34,17 @@ export async function batchRebuildReason(root: string, tested: BatchCandidate, c
 }
 
 export async function prepareMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository, pinnedBase?: string): Promise<BatchCandidate> {
+  let pinned: Map<string, string> | undefined;
+  if (!provider) pinned = await withTerritoryLockAsync(root, async () => {
+    for (const entry of members) await revokeBranchLeasesLocked(root, entry.branch);
+    const tips = new Map<string, string>();
+    for (const entry of members) tips.set(entry.branch, await territoryGitAsync(root, ['rev-parse', `refs/heads/${entry.branch}`], false, undefined, env));
+    return tips;
+  });
+  return buildPinnedMergeBatch(root, id, members, env, provider, pinnedBase, pinned);
+}
+
+async function buildPinnedMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv, provider?: BatchRepository, pinnedBase?: string, pinned?: Map<string, string>): Promise<BatchCandidate> {
   const repository = provider ?? { git: (args: string[], input?: string) => territoryGitAsync(root, args, false, input, env),
     facts: (tree: string, head: string, base: string) => mergeTreeFacts(root, tree, head, base, undefined, env),
     identity: (head: string) => committedTreeOrThrow(root, head, env),
@@ -44,7 +57,7 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
   const budgetLines: string[] = [];
   for (const [index, entry] of members.entries()) {
     try {
-      const tip = await git(['rev-parse', `refs/heads/${entry.branch}`]);
+      const tip = pinned?.get(entry.branch) ?? await git(['rev-parse', `refs/heads/${entry.branch}`]);
       if (tip !== entry.head) throw new MergeError('merge-changed', `queued task branch changed during preparation; prepared head ${entry.head}, current head ${tip}`);
       if (entry.verdictBase !== 'dev') throw new MergeError('merge-changed', `queued integration base changed from dev to ${entry.verdictBase}`);
       let tree: string;

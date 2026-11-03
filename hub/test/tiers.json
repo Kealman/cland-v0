@@ -218,6 +218,7 @@
     "hub/test/host-agent-boundary.test.ts": "T1",
     "hub/test/host-agent-files.test.ts": "T3",
     "hub/test/host-agent.test.ts": "T3",
+    "hub/test/host-allow-list.test.ts": "T3",
     "hub/test/host-boundary.test.ts": "T1",
     "hub/test/host-contract-coverage.test.ts": "T1",
     "hub/test/host-git-daemon.test.ts": "T3",

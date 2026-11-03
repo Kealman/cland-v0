@@ -1,3 +1,4 @@
+import { TerritoryBusy } from '../territory-lock-context.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
 import { randomUUID } from 'node:crypto';
 import type { MergeQueueEntry } from '../protocol.ts';
@@ -105,7 +106,7 @@ export class MergeBatches {
       const batch = this.snapshot();
       if (batch) {
         batch.failed = error instanceof Error ? error.message : String(error);
-        batch.retryLanding = error instanceof RetryLanding;
+        batch.retryLanding = error instanceof RetryLanding || error instanceof TerritoryBusy;
         this.#save(batch);
         try { this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.'}`); }
         catch (error) {

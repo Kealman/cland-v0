@@ -140,4 +140,16 @@ single-mode keys and labels remain compatible. See
 
 ## Subsystem documentation
 
+Host branch lease changes use `host/branch-leases.ts`: grant/revoke own the
+territory lock; public revoke waits up to the push cap plus 2 seconds for a
+receive/release, using the shared bounded lock backoff. Its `waitMs` is injectable;
+an active matching-root lock is reused without waiting. Merge's branch-wide revoke
+requires the caller's existing lock; receive/merge keep immediate refusal.
+Keep receive-pack locked through native close with a 30 second stalled-push cap,
+test expiry with an injected short `receiveTimeoutMs` plus a default-constant
+assertion, leave upload-pack concurrent, and pin batch member heads in a short revoke/read
+critical section. Preserve `worktrees.serial` → `territory.lock` → Git lock order.
+Use scratch host socket tests and the unedited territory/merge preservation files;
+see `docs/agents/tests/hub-test-host-allow-list.test.ts.md`.
+
 Read the matching [subsystem reference](../../../hub/README.md) for implementation guidance. Follow [documentation placement](../../../docs/agents/documentation.md) when adding item documentation.

@@ -55,11 +55,11 @@ per-launch supervisor process.
 `startGitDaemon` (`host/git-daemon.ts`) serves one territory over a caller-owned
 Unix socket in a private directory; it returns after chmod 0600 and never binds
 TCP. The transport owner supplies the per-host socket path and closes the listener
-before releasing its directory. Each connection runs `git daemon --inetd` with
+before releasing its directory. Each admitted request runs `git daemon --inetd` with
 half-open relays, no inherited write authority or Git configuration environment,
 and `CLAND_PUSH_HOST` set from the owning host. Receive policy enables object fsck,
 disables automatic GC, denies deletes and caps input at 128 MiB. Eight concurrent
-daemons are admitted per listener/host; excess connections close and emit a fixed
+connections (including pending first packets) are admitted per listener/host; excess connections close and emit a fixed
 capacity refusal. Exit logs contain host, connection, duration, code and signal,
 never child stderr or environment values. Close stops owned children and joins
 native close receipts. Failed permission setup after bind uses that same shutdown
@@ -68,6 +68,38 @@ errors in an aggregate. The built-ins-only `host/git-proxy.ts` takes a socket pa
 before Git's host/port arguments, preserving request EOF while draining responses;
 transport/bootstrap owns installation as `core.gitProxy`. This module does not
 install the territory hook or grant branch leases.
+
+### Host task branch leases
+
+The managed territory's `update` hook checks `CLAND_PUSH_HOST` against
+`cland-branch-leases` (host id and `t/` branch, tab separated). Host pushes can
+update only their leased task branches; tags, other refs and deletions are
+refused with the host id. Without `CLAND_PUSH_HOST`, existing guarded integration
+and release push policy is unchanged. Hub startup refreshes existing territory
+hooks; init/update install the same hook.
+
+`host/branch-leases.ts` owns `grantBranchLease` and `revokeBranchLease`, which
+acquire `territory.lock` and atomically replace the list. Public revoke waits for
+an in-flight receive/release for at most `HOST_PUSH_TIMEOUT_MS + 2000` (32 seconds
+by default); tests can supply `waitMs`, including zero for immediate refusal.
+The lock module has no release notification, so revoke reuses its bounded
+25 ms–1 second backoff. Deadline exhaustion retains the existing territory-busy
+message. A public revoke inside its own active territory-lock context reuses
+that lock without waiting; grant, receive and merge retain immediate refusal. Immediate merges call
+`revokeBranchLeasesLocked` while already holding that lock. Native batch
+preparation takes the lock only to revoke every member's leases and pin its head,
+then releases it before building immutable candidates. The order remains
+`worktrees.serial` → `territory.lock` → Git locks. Injected `BatchRepository`
+providers model immutable Git facts and do not mutate native leases.
+
+Git socket admission reads a bounded first pkt-line. Only receive-pack holds
+`territory.lock`, through native close; fetch and clone stay concurrent. Request
+admission has a 30 second cap. An admitted stalled push defaults to a 30 second
+cap, starting after lock acquisition; the listener API can inject `receiveTimeoutMs`
+for bounded tests. Termination
+joins native close before releasing the lock. Contention refuses a push before
+receive-pack starts with a host-named retry reason; merge retains refuse/retry
+semantics and batch contention retries automatically on a later queue tick.
 
 ### Host records and bootstrap secrets
 

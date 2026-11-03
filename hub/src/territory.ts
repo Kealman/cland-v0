@@ -1,3 +1,4 @@
+import { TerritoryBusy, territoryLockContext } from './territory-lock-context.ts';
 import type { Host } from './host/host.ts';
 import { removeWorktreeWithFixtures } from './fixture-processes.ts';
 import { testLintPolicy, TestLintError } from './test-lint-policy.ts';
@@ -13,7 +14,7 @@ import { durationBudgetContext, DurationInspectionError } from './suite-duration
 import { checkMergeBudgets, type DurationBudgetContext } from './suite-duration-budget.ts';
 import { suiteLimits } from './suite-limits.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
-import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
+import { acquireLock, acquireLockAsync, acquireLockWithRetry, HubLocked } from './hub/lock.ts';
 import { recoverMaintenanceOwner, recoverMaintenanceOwnerSync } from './git-maintenance-owner.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
 
@@ -53,14 +54,16 @@ export function withTerritoryLock<T>(root: string, operation: () => T | Promise<
   let lock;
   try { lock = acquireLock(path); }
   catch (err) {
-    if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
+    if (err instanceof HubLocked) throw new TerritoryBusy(`another territory operation holds the lock (pid ${err.holder.pid})`);
     throw err;
   }
   let result;
-  try { recoverMaintenanceOwnerSync(root); result = operation(); }
-  catch (err) { return withCleanup(() => { throw err; }, lock.release); }
-  if (result instanceof Promise) return withCleanupAsync(() => result, async () => lock.release());
-  lock.release();
+  const owner = { root: resolve(root), active: true };
+  const release = () => { owner.active = false; lock.release(); };
+  try { recoverMaintenanceOwnerSync(root); result = territoryLockContext.run(owner, operation); }
+  catch (err) { return withCleanup(() => { throw err; }, release); }
+  if (result instanceof Promise) return withCleanupAsync(() => result, async () => release());
+  release();
   return result;
 }
 
@@ -82,28 +85,39 @@ async function symlinkOnPathAsync(root: string, path: string, resumed: <R>(work:
 
 /**
  * `withTerritoryLock` for the hub's request path: the lock is taken without blocking the event loop (its `ps` probes
- * awaited, `acquireLockAsync`), held until `operation` settles. A live holder refuses, as there.
+ * awaited, `acquireLockAsync`), held until `operation` settles. A live holder refuses by default.
+ * Public lease revoke alone opts into the lock module's bounded backoff; no release-notification API exists.
  */
-export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>, resumed: <R>(work: () => R) => R = work => work()): Promise<T> {
+export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>, resumed: <R>(work: () => R) => R = work => work(), waitMs = 0): Promise<T> {
+  if (!Number.isFinite(waitMs) || waitMs < 0 || waitMs > 60_000) throw new Error('territory lock wait must be between 0 and 60000 ms');
   const path = lockPath(root);
   const link = await symlinkOnPathAsync(root, path, resumed);
   resumed(() => { if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`); });
   await mkdir(join(root, '.cland'), { recursive: true });
   let lock;
   try {
-    lock = await acquireLockAsync(path, resumed);
+    lock = waitMs > 0 ? await acquireLockWithRetry(path, Date.now() + waitMs) : await acquireLockAsync(path, resumed);
   } catch (err) {
     resumed(() => {
-      if (err instanceof HubLocked) throw new Error(`another territory operation holds the lock (pid ${err.holder.pid})`);
+      const busy = err instanceof HubLocked ? err : err instanceof Error && err.cause instanceof HubLocked ? err.cause : null;
+      if (busy) throw new TerritoryBusy(`another territory operation holds the lock (pid ${busy.holder.pid})`);
       throw err;
     });
     throw err;
   }
-  return withCleanupAsync(async () => { await recoverMaintenanceOwner(root); return operation(); }, lock.release, resumed);
+  const owner = { root: resolve(root), active: true };
+  return withCleanupAsync(async () => { await recoverMaintenanceOwner(root); return territoryLockContext.run(owner, operation); }, async () => { owner.active = false; await lock.release(); }, resumed);
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
 # managed by cland: only guarded cland operations may update the integration and release branches.
+if [ -n "$CLAND_PUSH_HOST" ]; then
+  refuse() { echo "cland: host $CLAND_PUSH_HOST: $1" >&2; exit 1; }
+  case "$1" in refs/heads/t/*) ;; *) refuse "only leased task branches may be pushed" ;; esac
+  case "$3" in *[!0]*) ;; *) refuse "ref deletion is forbidden" ;; esac
+  branch=\${1#refs/heads/}
+  awk -F '\t' -v host="$CLAND_PUSH_HOST" -v branch="$branch" '$1 == host && $2 == branch { found=1 } END { exit !found }' cland-branch-leases 2>/dev/null || refuse "task branch $branch is not leased to this host"
+fi
 default_branch=$(git config --get cland.defaultBranch)
 default_branch=\${default_branch:-main}
 case "$1" in
@@ -116,6 +130,19 @@ case "$1" in
 esac
 exit 0
 `;
+
+/** Refresh existing territories before serving host sockets; never provision a new one. */
+export async function refreshTerritoryHook(root: string, lock: typeof withTerritoryLockAsync = withTerritoryLockAsync): Promise<void> {
+  const path = territoryPath(root);
+  if (!await stat(path).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; })) return;
+  await lock(root, async () => {
+    const hook = join(path, 'hooks/update');
+    const unsafe = await symlinkOnPathAsync(root, hook, work => work());
+    if (unsafe !== null) throw new Error(`territory: refusing symlink ${unsafe}`);
+    writeIfChanged(new Report(root), hook, TERRITORY_HOOK);
+    chmodSync(hook, 0o755);
+  });
+}
 
 /** Is this folder itself a Git project? An initialized child of a repository is not its parent. */
 function gitProject(root: string): boolean {

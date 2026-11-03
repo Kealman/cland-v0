@@ -22,6 +22,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { startGitDaemon } from '../src/host/git-daemon.ts';
+import { grantBranchLease } from '../src/host/branch-leases.ts';
 import { TERRITORY_HOOK } from '../src/territory.ts';
 const exec = promisify(execFile);
 
@@ -32,7 +33,8 @@ test('proxy clones, pushes and fetches a large pack; protected refs and deletes 
   const env = fixtureEnvironment(root, process.env, {});
   await mkdir(env.HOME!, { recursive: true });
   const git = async (cwd: string, ...args: string[]) => (await exec('git', ['-c', 'gc.auto=0', ...args], { cwd, env: fixtureEnvironment(root, env, {}), timeout: 20_000, maxBuffer: 1024 * 1024 })).stdout.trim();
-  const territory = join(root, 'territory.git');
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const territory = join(root, '.cland/territory.git');
   await git(root, 'init', '--bare', '--initial-branch=main', territory);
   await writeFile(join(territory, 'hooks/update'), TERRITORY_HOOK.replace('#!/bin/sh', `#!/bin/sh
 printf '%s\\n' "\${CLAND_TERRITORY_WRITE-unset}" "$CLAND_PUSH_HOST" > hook-environment
@@ -61,12 +63,13 @@ echo private-hook-sentinel >&2`), { mode: 0o700 });
   await git(client, 'checkout', '-b', 't/task');
   await writeFile(join(client, 'two'), 'task');
   await git(client, 'add', '.'); await git(client, 'commit', '-m', 'task');
+  await grantBranchLease(root, 'host-a', 't/task');
   await git(client, 'push', 'origin', 't/task');
   const receipt = await readFile(join(territory, 'hook-environment'), 'utf8');
   assert.match(receipt, /^unset\nhost-a\n/);
   for (const setting of ['receive.fsckobjects true', 'receive.autogc false', 'receive.denydeletes true', 'receive.maxinputsize 134217728']) assert.ok(receipt.includes(setting));
   assert.equal(await git(territory, 'rev-parse', 't/task'), await git(client, 'rev-parse', 'HEAD'));
-  for (const target of ['dev', 'main']) await assert.rejects(git(client, 'push', 'origin', `HEAD:refs/heads/${target}`), /protected|hook declined/);
+  for (const target of ['dev', 'main']) await assert.rejects(git(client, 'push', 'origin', `HEAD:refs/heads/${target}`), /host-a|protected|hook declined/);
   await assert.rejects(git(client, 'push', 'origin', ':refs/heads/t/task'), /deletion prohibited/);
   assert.equal(await git(territory, 'rev-parse', 't/task'), await git(client, 'rev-parse', 'HEAD'));
   const { randomBytes } = await import('node:crypto');
@@ -94,7 +97,8 @@ async function until(predicate: () => boolean, label: string) {
 test('eight admitted daemons per host; excess is refused, logged and close joins native exits', { timeout: 30_000 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-git-cap-'));
   const env = fixtureEnvironment(root, process.env, {});
-  const territory = join(root, 'territory.git');
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const territory = join(root, '.cland/territory.git');
   await exec('git', ['-c', 'gc.auto=0', 'init', '--bare', territory], { env: fixtureEnvironment(root, env, {}), timeout: 10_000 });
   const rows: Record<string, unknown>[] = [];
   const socket = join(root, 'git.sock');
@@ -105,7 +109,11 @@ test('eight admitted daemons per host; excess is refused, logged and close joins
     await listener.close();
     await rm(root, { recursive: true, force: true });
   });
-  for (let i = 0; i < 8; i++) clients.push(connect({ path: socket, allowHalfOpen: true }));
+  for (let i = 0; i < 8; i++) {
+    const client = connect({ path: socket, allowHalfOpen: true });
+    client.write(gitRequest('git-upload-pack'));
+    clients.push(client);
+  }
   await until(() => rows.filter(row => row.event === 'host-git-start').length === 8, 'eight native launches observed');
   const extra = connect({ path: socket, allowHalfOpen: true }); clients.push(extra);
   let refused = false;
@@ -129,7 +137,8 @@ test('eight admitted daemons per host; excess is refused, logged and close joins
 test('failed socket permissions drain admitted native children before reporting the original startup error', { timeout: 30_000 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-git-acquire-'));
   const env = fixtureEnvironment(root, process.env, {});
-  const territory = join(root, 'territory.git');
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const territory = join(root, '.cland/territory.git');
   await exec('git', ['-c', 'gc.auto=0', 'init', '--bare', territory], { env: fixtureEnvironment(root, env, {}), timeout: 10_000 });
   const socket = join(root, 'git.sock');
   const rows: Record<string, unknown>[] = [];
@@ -153,6 +162,7 @@ test('failed socket permissions drain admitted native children before reporting 
   });
   await until(() => modeEntered, 'socket publication reached held permissions');
   client = connect({ path: socket, allowHalfOpen: true });
+  client.write(gitRequest('git-upload-pack'));
   client.on('error', () => {}); client.resume();
   await until(() => rows.some(row => row.event === 'host-git-start' && typeof row.pid === 'number'), 'admitted native child before permission failure');
   failMode();
@@ -167,3 +177,8 @@ test('failed socket permissions drain admitted native children before reporting 
   assert.throws(() => process.kill(launched[0]!.pid as number, 0), /ESRCH/);
   await assert.rejects(stat(socket), /ENOENT/);
 });
+
+function gitRequest(service: string): Buffer {
+  const body = `${service} /territory.git\0host=territory\0`;
+  return Buffer.from((Buffer.byteLength(body) + 4).toString(16).padStart(4, '0') + body);
+}

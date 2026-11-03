@@ -1250,3 +1250,26 @@ test('batch interaction notice bounds paths and groups fallback causes without c
   assert.equal(batchInteractionSummary({ ...report, files: null }).selectedFileCount, null);
   assert.equal(batchInteractionSummary(undefined).selectedFileCount, null);
 });
+
+import { TerritoryBusy } from '../src/territory-lock-context.ts';
+for (const phase of ['build', 'land'] as const) test(`territory contention during ${phase} retries automatically using the same green receipt`, async t => {
+  const state = await fixture(t);
+  const { f, boundary, landed } = state;
+  let blocked = true;
+  if (phase === 'build') {
+    const build = boundary.build;
+    boundary.build = async (...args) => { if (blocked) throw new TerritoryBusy('host push in flight'); return build(...args); };
+  } else {
+    const land = boundary.land;
+    boundary.land = async (...args) => { if (blocked) throw new TerritoryBusy('host push in flight'); return land(...args); };
+  }
+  await state.runner.tick();
+  if (phase === 'land') { await f.finish(f.suites.status()[0]!.id); await state.runner.tick(); }
+  assert.equal(state.runner.snapshot()?.retryLanding, true);
+  assert.deepEqual(landed, []);
+  blocked = false;
+  await state.reopen(); await state.runner.tick();
+  if (phase === 'build') { await f.finish(f.suites.status()[0]!.id); await state.runner.tick(); }
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(f.suites.status().length, 1);
+});
