@@ -2,8 +2,8 @@
 id: T-1600
 kind: task
 title: "The remote hub.json and the spoke over ws+unix:"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1367
 branch: t/T-1600-the-remote-hub-json-and-the-spoke-over
 created: 2026-11-02T03:33:55.459Z
-updated: 2026-11-03T15:44:01.967Z
+updated: 2026-11-03T17:51:58.223Z
+closed: 2026-11-03T17:51:58.223Z
 ---
 
 ## Summary
@@ -30,18 +31,23 @@ Hot files: `shared/project-discovery.ts`, `hub/src/project.ts`, `hub/src/spoke/s
 - [x] C1. `readDiscovery` accepts a remote-kind file without `pid` and `port`, still refuses a malformed one, and reads every existing local `hub.json` as before (test).
   - done: impl-1600 · 2026-11-03T14:45:58.477Z
   - verified: rev-36 [reviewer] · run rev-36-1600-final-1 · 2026-11-03T15:44:01.759Z · commit 765db463f2e74a42c45462bea3b0c222a89be5f0
+  - verified: rev-36 [reviewer] · run rev-36-1600-final-2 · 2026-11-03T17:11:27.729Z · commit 296eab3e09369e63e0192786a1747d16a807f548
 - [x] C2. A spoke whose discovery file is remote connects through the `ws+unix:` endpoint with the per-host secret and re-reads the file before each reconnect (test).
   - done: impl-1600 · 2026-11-03T14:45:58.619Z
   - verified: rev-36 [reviewer] · run rev-36-1600-final-1 · 2026-11-03T15:44:01.759Z · commit 765db463f2e74a42c45462bea3b0c222a89be5f0
+  - verified: rev-36 [reviewer] · run rev-36-1600-final-2 · 2026-11-03T17:11:27.729Z · commit 296eab3e09369e63e0192786a1747d16a807f548
 - [x] C3. `cland hub status`, `cland doctor` and the hook CLI never pid-check a remote `hub.json`, and they reach the hub through its socket path (test).
   - done: impl-1600 · 2026-11-03T15:21:04.897Z
   - verified: rev-36 [reviewer] · run rev-36-1600-final-1 · 2026-11-03T15:44:01.759Z · commit 765db463f2e74a42c45462bea3b0c222a89be5f0
+  - verified: rev-36 [reviewer] · run rev-36-1600-final-2 · 2026-11-03T17:11:27.729Z · commit 296eab3e09369e63e0192786a1747d16a807f548
 - [x] C4. On a fake host the written file is 0600, holds the host's secret and never the project secret, and its content is unchanged across a hub restart (test).
   - done: impl-1600 · 2026-11-03T14:59:23.517Z
   - verified: rev-36 [reviewer] · run rev-36-1600-final-1 · 2026-11-03T15:44:01.759Z · commit 765db463f2e74a42c45462bea3b0c222a89be5f0
+  - verified: rev-36 [reviewer] · run rev-36-1600-final-2 · 2026-11-03T17:11:27.729Z · commit 296eab3e09369e63e0192786a1747d16a807f548
 - [x] C5. A spoke on a fake host, launched with a session's credential, connects through `spoke.sock`, and after `cland host revoke` the spoke's next hello is refused (test).
   - done: impl-1600 · 2026-11-03T14:45:59.080Z
   - verified: rev-36 [reviewer] · run rev-36-1600-final-1 · 2026-11-03T15:44:01.759Z · commit 765db463f2e74a42c45462bea3b0c222a89be5f0
+  - verified: rev-36 [reviewer] · run rev-36-1600-final-2 · 2026-11-03T17:11:27.729Z · commit 296eab3e09369e63e0192786a1747d16a807f548
 
 ## Notes
 
@@ -240,3 +246,85 @@ Reviewer performed source/log reads only; no tests/typecheck/probes/browser, edi
 A-16301: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16301-t-1600-final-evidence-remote-discovery-and-publication-ownership.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1600 · 2026-11-03T16:44:10.702Z
+
+Batchb49635d0/37150040 rejected old combined case5.307s>5s with no assertion failures(A-16307). Under a1406d49/131c42c9 split C2/C4/C5, preserve every assertion, skip unused first carrier in sharedfixture optionaloptout(default unchanged), inject carrier5ms/3s readiness and10ms reconnect only here(production100ms/10s unchanged). Head296eab3e pushed. A-16308 localmacOSNode24.21 package-runSuite single-file normal phase+2runLoadGate lanes/sharedlocks/admission: nativeexit0,7ordinarypass,15/15selectedrepspass,peakload3.21; C2max1.742s/C4max1.342/C5max1.047. Complete per-rep rawtimes retained. No allowance/baseline change; Linux batch decides. All-package typecheck, lint122advisory/0refusals pass. Current-head unchanged controls raw A-16309 transport6+contract1 and default sharedHost behavioral subset nativeexit0. No dev merge after source reviews.
+
+### rev-36 · 2026-11-03T16:46:03.718Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1600-source-4
+commit: 296eab3e09369e63e0192786a1747d16a807f548
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1600 source review after batch duration correction
+Head296eab3e09369e63e0192786a1747d16a807f548; parent765db463f2e74a42c45462bea3b0c222a89be5f0.
+Run rev-36-1600-source-4; scope full (test rework without dev merge); source clear; findings [].
+C1–C5 await fresh same-head mode-free evidence. Prior final clear at765db463f does not verify this changed head.
+
+Read actual Coordinator a1406d49-b62a-461c-83a6-e579853c9f34 and131c42c9-3f9c-4c58-bd9d-3bb5da163073: split C2/C4/C5 retaining all assertions, inject short readiness/reconnect timings with production defaults unchanged, local package single-file phase plus two load-gate lanes/five repetitions, no allowance. The failed batch measured old combined identity5.307s>5s; no assertion failure is relabeled.
+
+Standards: complete seven-file correction inspected. New SshOptions readinessPollMs/readinessTimeoutMs replace only the previous100ms/10000ms constants through nullish defaults; existing authenticated multiplexing/agent probe, native deadline and exit receipts remain. Production registry does not set these options. Existing Transport/HostTunnelStatus contract, tier manifest and duration/baseline file are unchanged. The only new shared fixture option defaults to the exact prior startup behavior; opting out omits the unused initial carrier start/wait but retains the transport object, cleanup owner, native agent, socket-byte checks and process census. Existing host-prepared/host-ssh-contract callers retain defaults. Docs, consumer inventory and provenance explain this seam and its test-only timing choices.
+
+Spec: all combined-case assertions traced into the independent tests/helpers:
+- Shared setup still checks planted project bearer, different host secret, no project bearer bytes,0600,no pid/port and104-byte socket bounds. Its ready helper now goes through Host.fileType, requiring carrier readiness after publication rather than simply observing a preexisting file.
+- C2 retains real role-holding spoke welcome plus allowed request, changed discovery secret401 after carrier restart, restoration/reconnect and unchanged canonical bytes.
+- C4 retains full hub stop/restart, new carrier publication/readiness, identical bytes and additionally checks0600 after restart.
+- C5 retains credentialed welcome/request before CLI revoke, native CLI exit0, next-hello refusal/disconnected final state and durable revoked host record.
+- Existing cooperative timeout, undrained ownership, unknown RPC drain and changed-file refusal cases retain their assertions.
+Per-case fixture cleanup still closes spokes/current carrier before stores/root removal. No assertion or final bound weakened; setup reductions and polling injection follow the approved scope.
+
+A-16308 supplemental local macOSarm64 Node24.21 package-runSuite receipt is explicitly working-tree candidate on parent765db463f, not a contemporaneous committed-head fingerprint. Independently parsed ordinary7pass and exact load-gate test finish outcomes: C2 five pass1.697/1.742/1.617/1.610/1.612s; C4 five pass1.198/1.342/1.269/1.295/1.183s; C5 five pass1.008/0.976/0.998/1.047/1.004s. Case times exclude Node bootstrap/shared-lock wait. Artifact reports peak1mload3.21, native exit0 and shared leases/quiet admission. This is local targeted proof, not Linux batch timing or a full suite.
+
+A-16309 current committed-head raw preservation read: unedited transport-ssh6/6 and transport-ssh-contract1/1 native exit0; selected default shared Host behavioral contract15/15 native exit0 (other file identities unexecuted), macOSarm64 Node24.21/no browser. These support source regression review; required fresh queued result and Linux batch repetitions remain deciding evidence.
+Reported static checks supplemental. Reviewer ran no tests/probes/typecheck/browser and made no edits/merge. Remaining batch/after-stage QA separate.
+A-16310: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16310-t-1600-source-review-of-split-criterion-regressions.md
+
+### rev-36 · 2026-11-03T17:11:27.729Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1600-final-2
+commit: 296eab3e09369e63e0192786a1747d16a807f548
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1600 final evidence after split duration correction
+Head296eab3e09369e63e0192786a1747d16a807f548
+Run rev-36-1600-final-2; scope evidence; clear; findings []; verify C1–C5.
+Standing source clear rev-36-1600-source-4 / A-16310. Branch tip independently read unchanged.
+
+A-16311 / fresh mode-free suite912dcfcf-0cab-44e1-9f06-e1f456460977 completed exit0,4929pass/zero fail/cancel/skip/todo. Exact provenance commit above/tree9c281836a30fbd75a0599f46886c51bdaaa4f050, cache null; Linuxx64 6.8.0-142-generic, droplet, Nodev24.21.0/Neovimv0.12.5. Typecheck host gate names that tree and was not repeated remotely.
+T0/allT1/fallback allT2/changed T3 two files eight identities/Web completed. Each T3 identity ran once, no repetitions. Remaining T3/broader T4 unexecuted/deferred to configured merge batch; Linux batch load repetitions are explicitly still pending/deciding. Not a full all-tier occasion or Linux under-load repetition pass.
+Isolated browser /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; Google Chrome for Testing156.0.8078.4. Skip list empty/skip-reason report mode/missing0; budget/lint/ratchet advisories report-only. No allowance/baseline change.
+
+Actual case timing outcomes independently streamed:
+C1 parser/local-shape/malformed-remote control pass0.003376s; differing-record zero-writer/identical skip control pass0.001034s.
+C3 status/doctor/hook remote Unix socket case pass2.350271s.
+C2 remote spoke rereads discovery before reconnect pass2.722722s.
+C4 remote discovery stays private and byte-stable across hub restart pass1.293928s.
+C5 credentialed remote spoke next hello is refused after host revoke pass1.226429s.
+These are single Linux test-runner case times, including each case's setup/cleanup and excluding process/queue/suite wall; not load-repetition maxima.
+All original combined assertions retained under source review: planted project-secret positive control; private0600 per-host record/no pid/port; actual credentialed welcome/request; changed-secret reconnect refusal/restoration; fresh carrier/hub restart byte stability; CLI revoke and next-hello refusal/durable revoked state. Publication ready now requires a Host operation after carrier readiness.
+
+Other four host cases pass: cooperative timeout drains before autonomous retry; undrained callback retains ownership/rejects stop; unknown write waits for positive same-stream receipt; different existing file retains bytes/private mode with connecting refusal. Thus host7 plus CLI1 actual T3 identities pass.
+Doctor20/20 including corrected environment-isolation case, help compatibility1/native help7, in-process-spoke4 and spoke-unix-edge12 actual pass receipts read. C1 file2/2 pass.
+
+Required unchanged transport preservation at exact committed head retained/read in A-16309: macOSarm64 Node24.21, no browser; transport-ssh6/6 and transport-ssh-contract1/1 raw named passes/native exit0, plus selected default shared Host behavior15/15 native exit0. Other Host-contract file identities unexecuted. These are supplemental native controls, not Linux queued wall/real sshd evidence. Existing default fixture startup and production polling100ms/bound10s remain unchanged.
+
+A-16308's seven ordinary local passes and C2/C4/C5 five alongside-phase load repetitions each are working-tree localmacOS evidence, as labelled in A-16310. They do not settle the pending Linux batch repetitions. Prior combined-case batch A-16307 remains failed on duration5.307s>5s/no assertion failure. Prior A-16294 remains failed/incomplete and765db463f final receipt is historical. Current fresh task evidence is clear; landing still requires the configured Linux batch gate and affected after-stage QA separately.
+Reviewer read source/logs only; no tests/probes/typecheck/browser, edits or verification execution.
+A-16312: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16312-t-1600-final-evidence-for-split-c2-c4-c5-regressions.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-03T17:51:58.223Z
+
+Merged a169b2c08924f256b824ce1eace54ff09bc2d1c6 onto dev.
