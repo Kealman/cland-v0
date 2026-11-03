@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../src/hub/store.ts';
-import { WebAuth } from '../src/hub/web-auth.ts';
+import { WebAuth, webSessionCookie } from '../src/hub/web-auth.ts';
 
 test('links retain only a SHA-256 digest, spend once, and expire at five minutes', t => {
   const store = new Store();
@@ -103,4 +103,29 @@ test('single-mode profile keeps the previous wire shape without a user', t => {
   assert.deepEqual(auth.profile(auth.session(cookie)!), {
     createdAt: '1970-01-01T00:00:01.000Z', lastUsedAt: '1970-01-01T00:00:01.000Z', expiresAt: '1970-01-31T00:00:01.000Z',
   });
+});
+
+
+test('the cookie policy uses only configured origin and Host, including port', t => {
+  const store = new Store();
+  t.after(() => store.close());
+  const auth = new WebAuth('/fixture/project', store, () => 0);
+  for (const [origin, host, secure] of [
+    ['', 'phone.example:8443', false],
+    ['https://phone.example:8443', 'phone.example:8443', true],
+    ['https://phone.example:8443', 'PHONE.EXAMPLE:8443', true],
+    ['https://phone.example:8443', '127.0.0.1:8443', false],
+    ['https://phone.example:8443', 'localhost:8443', false],
+    ['https://phone.example:8443', '[::1]:8443', false],
+    ['https://phone.example:8443', '192.0.2.10:8443', false],
+    ['https://phone.example:8443', 'other.example:8443', false],
+    ['https://phone.example:8443', 'phone.example', false],
+    ['https://phone.example:8443', 'phone.example:9443', false],
+    ['https://phone.example:8443', undefined, false],
+  ] as const) {
+    for (const requestOrigin of [undefined, 'https://foreign.example', origin]) {
+      const req = { headers: { host, origin: requestOrigin, 'x-forwarded-host': 'phone.example:8443', 'x-forwarded-proto': 'https', forwarded: 'host=phone.example:8443;proto=https' } } as unknown as import('node:http').IncomingMessage;
+      assert.equal(webSessionCookie(auth, 'fixture-token', req, origin), `${auth.cookieName}=fixture-token; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000${secure ? '; Secure' : ''}`);
+    }
+  }
 });

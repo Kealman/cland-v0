@@ -125,5 +125,5 @@ export class WebAuth {
 
 /** The single cookie policy seam for link, invite and credential sign-in. */
 export function webSessionCookie(auth: WebAuth, token: string, req: import('node:http').IncomingMessage, origin: string): string {
-  return `${auth.cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_SECONDS}${origin && req.headers.host?.toLowerCase() === new URL(origin).host && req.headers.origin === origin ? '; Secure' : ''}`;
+  return `${auth.cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_SECONDS}${origin && req.headers.host?.toLowerCase() === new URL(origin).host ? '; Secure' : ''}`;
 }

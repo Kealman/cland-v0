@@ -85,9 +85,9 @@ optional port and no path, credentials, query or fragment. Its Host joins the
 allow-list, and that exact HTTPS Origin is required when upgrading with that Host.
 The tunnel must preserve Host and Origin. The last hop may be plain HTTP: forwarded
 headers (`Forwarded`, `X-Forwarded-*`) are never trusted. A cookie issued when
-both Host and Origin match this configured origin carries `Secure`; other requests
-do not gain `Secure` from a forwarded header. A top-level GET may omit Origin, in
-which case this rule does not set Secure. The tunnel and its TLS are human-managed;
+Host matches this configured origin’s host (including port) carries `Secure`,
+including a top-level GET without Origin. Origin still controls admission where
+required; forwarded headers never confer `Secure`. The tunnel and its TLS are human-managed;
 cland starts no tunnel service.
 
 ### cland web options
@@ -195,7 +195,8 @@ public key and counter; multiple credentials per user are supported.
 Every edge cookie goes through `webSessionCookie(auth, token, request, origin)`
 in `web-auth.ts`, including `/auth`, invite registration and password sign-in: Path=/, HttpOnly,
 SameSite=Strict and a fixed 30-day lifetime. The current Secure condition requires
-configured web origin, matching Host and exact request Origin. Existing local
+configured HTTPS web origin and matching Host, including port; request Origin
+does not affect this cookie attribute. Existing local
 one-time links retain their behavior. No new CLI verb or session permission is
 introduced; password sign-in and passkey ceremonies use this same cookie seam.
 

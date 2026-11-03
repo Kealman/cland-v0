@@ -718,6 +718,7 @@
     "hub/test/web-authority-unit.test.ts": "T1",
     "hub/test/web-authority.test.ts": "T2",
     "hub/test/web-bundle.test.ts": "T1",
+    "hub/test/web-cookie-secure.test.ts": "T2",
     "hub/test/web-edge.test.ts": "T2",
     "hub/test/web-graph-layout.test.ts": "T1",
     "hub/test/web-keymap.test.ts": "T1",

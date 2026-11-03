@@ -129,3 +129,23 @@ password registration, with sign-in and passkey HTTP integration in T-1567/T-156
 The authenticated user remains a human under ADR 0001. The existing shared
 `userAuthorityRefusal` role check applies alongside the web edge's allowlist;
 credential admission grants no new session or gateway authority.
+
+
+## Amendment, 2026-11-03: Secure cookies follow the configured Host (T-1624)
+
+This supersedes the Secure condition in the 2026-10-21 amendment, including its
+sentence that a top-level GET without Origin does not meet that condition, and
+the configured-origin/Host/Origin cookie condition recorded in the users-mode
+amendment. When `[web] origin` is set (the configuration requires HTTPS), every
+cookie issued by `webSessionCookie` carries `Secure` if the request Host matches
+that origin's host, including its port. A top-level `/auth` GET without Origin
+therefore receives a Secure cookie. The last hop may remain HTTP. With no
+configured origin or a different Host, the helper omits Secure. `Forwarded` and
+`X-Forwarded-*` headers never influence this decision.
+
+The one helper applies this rule to link redemption, invite registration,
+password sign-in and passkey registration/sign-in. Host admission and exact-Origin
+checks for WebSocket upgrades, uploads and invite/sign-in APIs are unchanged;
+the cookie attribute grants no admission. Existing cookie name, Path, HttpOnly,
+SameSite and expiry remain unchanged. Users-mode localhost redirects and passkey
+RP ID selection remain unchanged.

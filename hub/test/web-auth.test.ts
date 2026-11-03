@@ -478,7 +478,7 @@ test('tunnel Host and exact Origin admit a web client and set Secure without tru
   ]) {
     const response = await get(await mint(), headers);
     assert.equal(response.status, 302);
-    assert.doesNotMatch(response.headers['set-cookie']![0]!, /; Secure/);
+    assert.equal(/; Secure$/.test(response.headers['set-cookie']![0]!), headers.Host === tunnel.Host);
   }
   for (const headers of [
     { ...tunnel, Origin: 'https://foreign.example' },
