@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1326
 branch: t/T-1591-the-per-host-git-socket-and-git-daemon
 created: 2026-11-02T03:33:53.201Z
-updated: 2026-11-02T10:21:29.150Z
+updated: 2026-11-02T23:44:10.683Z
 closed: 2026-11-02T10:21:29.150Z
 ---
 
@@ -139,3 +139,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### coord · 2026-11-02T10:21:29.150Z
 
 Merged d1eb35e34eca62ce4cd707c8fbceb9c7bce8a5cb onto dev.
+
+### coord · 2026-11-02T23:44:10.683Z
+
+Seam change recorded for T-1597 (branch leases), Coordinator decision 2026-11-02 23:43Z (topic-1351). `git-daemon.ts` now parses the first Git pkt-line of each connection. A `git-receive-pack` (push) connection holds the existing territory lock from admission through native daemon close, capped at 30 s. `git-upload-pack` (fetch or clone) takes no lock and stays concurrent. The socket test's branch-grant and raw lifecycle handshake are migrated to the lease API. Lock order is unchanged: grant and revoke, merges and host pushes share the one territory lock. Lock contention refuses with a retryable reason.

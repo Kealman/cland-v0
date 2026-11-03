@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1294
 branch: null
 created: 2026-10-31T18:22:04.289Z
-updated: 2026-11-02T16:50:16.606Z
+updated: 2026-11-02T23:49:01.711Z
 ---
 
 ## Goal
@@ -346,3 +346,57 @@ Superseded ae344430 run is preserved separately as A-15902 and contributes no pa
 
 
 Durable evidence: A-15908, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15908-e-1536-stage-sign-in-and-pairing-qa-clear-at-ad295a54/report.md
+
+### qa-678 · 2026-11-02T23:49:01.711Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-users3-2026-11-03-qa678-1
+commit: 986afe46b587899bcf9ebb3f51781d3491a904ca
+stage: sign-in and pairing
+stage_hash: c206fe3a2a0afa8325172f8c0f0abfa7439db00815bd059efe3160d6603cac8f
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Result | Command and observation | Evidence |
+|---|---|---|---|
+| S0 | PASS | Fresh sealed scratch: credential-prefix count zero, only synthesized CLAND names, Node v24.21.0 supported; probe extracted unchanged from pinned brief and syntax checked | [S0.txt](S0.txt), [S0-env.txt](S0-env.txt), [S0-probe.txt](S0-probe.txt) |
+| E1536S3-00 | PASS | m00: clean detached HEAD/dev match request, all five stage members merged with exactly one landing each | [E1536S3-00.txt](E1536S3-00.txt), [E1536S3-00-plan.json](E1536S3-00-plan.json) |
+| E1536S3-01 | PASS | m01: preserved/additive tests unchanged, seven reviewed migration deletions inspected; no dependency/color/key changes; shared cookie helper and expected strings present | [E1536S3-01.txt](E1536S3-01.txt), [E1536S3-01-migrations.diff](E1536S3-01-migrations.diff), [T-1568-landing.txt](T-1568-landing.txt) |
+| E1536S3-02 | PASS | m02: pinned build and typecheck exit 0, supported Node/Neovim, worktree stays clean | [E1536S3-02.txt](E1536S3-02.txt), [E1536S3-02-build.log](E1536S3-02-build.log), [E1536S3-02-typecheck.log](E1536S3-02-typecheck.log) |
+| E1536S3-03 | PASS | nt row 03: five full files; exact required TAP names, zero failure/skip, per-file load gate passed | [E1536S3-03.log](E1536S3-03.log), [required-tests.json](required-tests.json) |
+| E1536S3-04 | PASS | nt row 04: four Web files, required names and every nested case passed; no skips, all browser census after zero and hubs stopped | [E1536S3-04.log](E1536S3-04.log), [required-tests.json](required-tests.json) |
+| E1536S3-05 | PASS | nt row 05: four ownership/withdrawal files passed required names and clean census; no failures/skips | [E1536S3-05.log](E1536S3-05.log), [required-tests.json](required-tests.json) |
+| E1536S3-06 | PASS | nt row 06: 11 full files passed with native Neovim keys; required literal and generated names matched, no failures/skips | [E1536S3-06.log](E1536S3-06.log), [test-summary.json](test-summary.json), [generated-required.json](generated-required.json), [generated-match.json](generated-match.json) |
+| E1536S3-07 | PASS | m07: single-mode 404 gates, one-use cookie/link, human authorship and withdrawal; UI screenshot inspected; browser group zero | [E1536S3-07.txt](E1536S3-07.txt), [E1536S3-07-admission.txt](E1536S3-07-admission.txt), [E1536S3-07-single.png](E1536S3-07-single.png) |
+| E1536S3-08 | PASS | m08: committed single-mode precondition holds; switch, five users/six invites, Host/Origin/method gates, redirects and unknown/revoked/short/expired refusal facts pass | [E1536S3-08.txt](E1536S3-08.txt), [served-stamp.json](served-stamp.json) |
+| E1536S3-09 | PASS | m09: password invite registers once, localhost redirect, exact cookie flags, scrypt stored, replay refused; profile screenshot inspected and frame secret hits zero | [E1536S3-09.txt](E1536S3-09.txt), [E1536S3-09-admission.txt](E1536S3-09-admission.txt), [E1536S3-09-invite.png](E1536S3-09-invite.png) |
+| E1536S3-10 | PASS | m10: CDP passkey registration/fresh-context login passed, five negative assertions refused, real expiry wait 125002 ms and fresh positive control passed; stored public-key counter 5, frame hits zero; screenshot inspected | [E1536S3-10.txt](E1536S3-10.txt), [E1536S3-10-admission.txt](E1536S3-10-admission.txt), [E1536S3-10-passkey.png](E1536S3-10-passkey.png), [timing-diagnostic.txt](timing-diagnostic.txt), [timing-queue.json](timing-queue.json) |
+| E1536S3-11 | PASS | m11: unavailable WebAuthn removes passkey button, exact password tooltip and password activation passed; distinct scrypt salts and no frame secret hits; screenshot inspected | [E1536S3-11.txt](E1536S3-11.txt), [E1536S3-11-admission.txt](E1536S3-11-admission.txt), [E1536S3-11-nowebauthn.png](E1536S3-11-nowebauthn.png) |
+| E1536S3-12 | PASS | m12: desktop/phone form visibly reachable without overflow, uniform three 401s, login/sign-out revokes shared tabs while independent browser stays signed in; all three screenshots inspected | [E1536S3-12.txt](E1536S3-12.txt), [E1536S3-12-admission.txt](E1536S3-12-admission.txt), [E1536S3-12-signin-desktop.png](E1536S3-12-signin-desktop.png), [E1536S3-12-signin-phone.png](E1536S3-12-signin-phone.png), [E1536S3-12-signed-out.png](E1536S3-12-signed-out.png) |
+| E1536S3-13 | PASS | m13: equal cookie flags, users-mode link welcome, foreign/no-cookie signout refused, only matching socket revoked and cookie reuse refused; independent socket remains valid | [E1536S3-13.txt](E1536S3-13.txt) |
+| E1536S3-14 | PASS | m14: trusted cookie authors, equal-name ownership refusals, non-admin forbidden then admin restore; own/legacy controls on desktop/phone and final withdrawals passed; three screenshots inspected | [E1536S3-14.txt](E1536S3-14.txt), [E1536S3-14-admission.txt](E1536S3-14-admission.txt), [E1536S3-14-dana-desktop.png](E1536S3-14-dana-desktop.png), [E1536S3-14-dana-phone.png](E1536S3-14-dana-phone.png), [E1536S3-14-jane-desktop.png](E1536S3-14-jane-desktop.png) |
+| E1536S3-15 | PASS | m15: committed well-formed absent code refused as expected; selectors list three planted users, unknown user refused, unpair alex leaves Jane/Dana only | [E1536S3-15.txt](E1536S3-15.txt) |
+| E1536S3-16 | PASS | m16: reset retains users/first pairing, revokes invites and sessions; single-mode routes/link/ownership fence restored, screenshot inspected | [E1536S3-16.txt](E1536S3-16.txt), [E1536S3-16-admission.txt](E1536S3-16-admission.txt), [E1536S3-16-single.png](E1536S3-16-single.png) |
+| E1536S3-17 | PASS | m17: 105 files, positive control detected/removed; nonempty password/cookie/passkey-response/challenge/invite sentinel sets each zero secret hits | [E1536S3-17.txt](E1536S3-17.txt) |
+| E1536S3-18 | PASS | m18: hub stop 0, 57 owned PIDs with no survivors, scratch process count zero; checkpointed scan 104 files positive control and zero secrets; final HEAD/dev match and worktree clean | [E1536S3-18.txt](E1536S3-18.txt), [E1536S3-18-hubstop.txt](E1536S3-18-hubstop.txt), [final-build.txt](final-build.txt) |
+
+Severity-ranked findings: none.
+
+**Clear: E-1536 stage sign-in and pairing**, affected/after-stage. Run `qa-users3-2026-11-03-qa678-1`, full tested SHA `986afe46b587899bcf9ebb3f51781d3491a904ca`. Fresh execution of committed `qa/briefs/E-1536-stage-3.md`, including b3821a52's row 08 and row 15 corrections. No runtime corrections and no earlier case passes reused. HEAD/dev match at start and finish; detached worktree clean; all five members have one landing each. Stage verdict only: no epic criterion marks.
+
+All 20 recorder checks passed (S0 and 00–18). Build/typecheck passed. Targeted serial files: row 03 91 tests/5 files, row 04 11/4, row 05 24/4, row 06 199/11: **325 tests in 24 files**, with zero failures/skips. Required literal titles and all 51 generated titles matched executed TAP names. See [test-summary.json](test-summary.json), [required-tests.json](required-tests.json), [generated-required.json](generated-required.json), and [generated-match.json](generated-match.json). Each manual row was judged on its facts, including negative replies and preconditions, not probe exit alone.
+
+Platform/executor: local macOS darwin arm64, release 27.0.0; Node v24.21.0, Neovim 0.11.2. Browser: Google Chrome for Testing 156.0.8078.4 Headless Shell, binary `/Users/evgeniyivanov/Projects/cland/v0/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell`. Own scratch profiles; no GUI. All 11 screenshots visually inspected. Served `/signin` and built index SHA256 both `c0582b0ab8d50327a47bfd9587233abc50a646328cf14e55405b25bc1b4de6ab` ([served stamp](served-stamp.json)).
+
+The browser flows exercised single-mode links, password invites, CDP virtual passkeys in a fresh context, replay/cross-user/expired challenges, password fallback, uniform sign-in refusals, phone reachability, browser/socket-specific sign-out, equal-display-name ownership, non-admin refusal and reset. Inferred credential transfer, role writes, invite expiry and pairing writes all produced the required facts. Passkey expiry used a measured real wait of 125002 ms and a fresh successful control; final stored public-key counter was 5. Pairing row 15 used the committed well-formed absent code in users mode and returned the expected no-live-code refusal. Reset kept the first user's planted pairing only.
+
+Admission: enforced quiet/load gate for targeted rows and load ≤10 before every browser row; Web prerequisite messages were report-only. [Timing sample](timing-diagnostic.txt) and [queue](timing-queue.json) were captured during row 10's expiry wait, not as an initial admission reading. No full-run performance timing is claimed.
+
+Secret scans while running (105 files) and after stop/checkpoint (104 files) each detected and removed the planted control exactly once. Password 4, cookie 15, passkey-response 14, challenge 6 and invite-token 6 sentinels had zero hits and zero short sentinels. Evidence separately passed the publication scanner with a positive control. No secret files, HOME, cookies, raw database or one-use links are exported. Hub stop exit 0; 57 owned PIDs had no fixture survivor; zero processes named the scratch root.
+
+Scope limits: no QA full suite, T4 soak, real Telegram/Discord, physical passkey device, configured HTTPS/Secure-cookie check, or GUI computer use. Fake-messenger tests prove pairing round trips and native Neovim keys; planted pairings prove selector/reset only. Coordinator reports green covers Linux 7953ccfc and macOS f124d237 at cover tree 74864003; those are separate from this local targeted run. No droplet lifetime/cost for this run. Prior ad295a54 evidence remains historical only.
+
+
+Evidence: A-15999, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-15999-e-1536-sign-in-and-pairing-qa-clear-at-cover-build-986afe46/report.md

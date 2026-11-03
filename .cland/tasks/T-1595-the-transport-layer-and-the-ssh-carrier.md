@@ -3,7 +3,7 @@ id: T-1595
 kind: task
 title: The transport layer and the ssh carrier's master
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:54.197Z
-updated: 2026-11-02T03:33:54.197Z
+updated: 2026-11-02T23:40:45.373Z
 ---
 
 ## Summary

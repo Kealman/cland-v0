@@ -3,7 +3,7 @@ id: T-1625
 kind: task
 title: The transport contract test on the ssh carrier and the fake transport
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:34:18.725Z
-updated: 2026-11-02T03:34:18.725Z
+updated: 2026-11-03T00:08:47.352Z
 ---
 
 ## Summary

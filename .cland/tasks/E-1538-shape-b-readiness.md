@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1346
 branch: null
 created: 2026-10-31T18:22:04.760Z
-updated: 2026-11-02T19:40:26.739Z
+updated: 2026-11-03T00:08:45.737Z
 ---
 
 ## Goal
@@ -96,3 +96,71 @@ stages:
       - - T-1624
       - - T-1625
 ```
+
+## Comments
+
+### qa-678 · 2026-11-03T00:08:45.737Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-life1-2026-11-03-qa678-1
+commit: 986afe46b587899bcf9ebb3f51781d3491a904ca
+stage: lock, deletion and paths
+stage_hash: 4373b89084a495b6bc2259b6f72fc7374fc6b35010563b0bd80d1bc0d63283ec
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| S0 | hub-api · local macOS | PASS | [S0-env.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/S0-env.txt), [S0-helpers.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/S0-helpers.txt), [S0-build.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/S0-build.txt) |
+| E1538S1-00 | hub-api · local macOS | PASS | [E1538S1-00.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-00.txt), [E1538S1-00-plan.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-00-plan.json) |
+| E1538S1-01 | hub-api · local macOS | PASS — brief correction (declaration count), coord-authorised | [E1538S1-01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-01.txt), [E1538S1-01-transport-matches.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-01-transport-matches.txt), [E1538S1-01-correction.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-01-correction.txt), [readers-source.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/readers-source.txt) |
+| E1538S1-02 | hub-api · local macOS | PASS | [E1538S1-02.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-02.txt), [E1538S1-02-init.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-02-init.txt) |
+| E1538S1-03 | hub-api · local macOS | PASS | [E1538S1-03.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-03.txt), [timing-diagnostic.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/timing-diagnostic.txt), [timing-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/timing-queue.json) |
+| E1538S1-04 | hub-api · local macOS | PASS | [E1538S1-04.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-04.txt) |
+| E1538S1-05 | hub-api · local macOS | PASS — brief correction (decoy lifetime), coord-authorised | [E1538S1-05-original.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-05-original.txt), [E1538S1-05-fixture-note.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-05-fixture-note.txt), [E1538S1-05-original-hublog.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-05-original-hublog.txt), [E1538S1-05-rerun.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-05-rerun.txt), [E1538S1-05-correction.sh](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-05-correction.sh) |
+| E1538S1-06 | hub-api · local macOS | PASS — brief correction (assertion scope), coord-authorised | [E1538S1-06.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-06.txt), [E1538S1-06-ps-calls.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-06-ps-calls.txt), [E1538S1-06-trace.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-06-trace.json), [E1538S1-06-source-trace.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-06-source-trace.txt) |
+| E1538S1-07 | hub-api · local macOS | PASS | [E1538S1-07.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-07.txt) |
+| E1538S1-08 | hub-api · local macOS | PASS — brief correction (assertion scope), coord-authorised | [E1538S1-08.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-08.txt), [E1538S1-08-ps-calls.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-08-ps-calls.txt), [E1538S1-08-trace.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-08-trace.json) |
+| E1538S1-09 | hub-api · local macOS | PASS | [E1538S1-09.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-09.txt) |
+| E1538S1-10 | hub-api · local macOS | PASS | [E1538S1-10.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-10.txt) |
+| E1538S1-11 | hub-api · local macOS | PASS | [E1538S1-11.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-11.txt), [E1538S1-11-init.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-11-init.txt) |
+| E1538S1-12 | hub-api · local macOS | PASS | [E1538S1-12.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-12.txt) |
+| E1538S1-13 | hub-api · local macOS | PASS | [E1538S1-13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-13.txt), [E1538S1-13-init.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-13-init.txt) |
+| E1538S1-14 | hub-api · local macOS | PASS | [E1538S1-14.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-14.txt) |
+| E1538S1-15 | hub-api · local macOS | PASS | [E1538S1-15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-15.txt) |
+| E1538S1-16 | hub-api · local macOS | PASS | [E1538S1-16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-16.txt), [E1538S1-16b.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-16b.txt) |
+| E1538S1-17 | hub-api · local macOS | PASS | [E1538S1-17.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-17.log), [required-tests.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/required-tests.json), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/generated-required.json) |
+| E1538S1-18 | hub-api · local macOS | PASS | [E1538S1-18.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-18.log) |
+| E1538S1-19 | hub-api · local macOS | PASS — brief correction (build precondition), coord-authorised | [E1538S1-19.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-19.log), [E1538S1-19-doctor-rerun.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-19-doctor-rerun.log), [E1538S1-19-build.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-19-build.txt), [E1538S1-19-build-stamp.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-19-build-stamp.json), [E1538S1-19-receipt-correction.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-19-receipt-correction.txt) |
+| E1538S1-20 | hub-api · local macOS | PASS | [E1538S1-20.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-20.log), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/generated-required.json) |
+| E1538S1-21 | hub-api · local macOS | PASS | [E1538S1-21.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-21.log) |
+| E1538S1-22 | hub-api · local macOS | PASS | [E1538S1-22.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-22.log), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/generated-required.json) |
+| E1538S1-23 | hub-api · local macOS | PASS | [E1538S1-23.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-23.log), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/generated-required.json) |
+
+Clear: all 25 scoped case results pass (S0 and E1538S1-00–23). No product findings.
+
+Stage: **lock, deletion and paths**. Build: `986afe46b587899bcf9ebb3f51781d3491a904ca`. Run: `qa-life1-2026-11-03-qa678-1`. Committed brief: `qa/briefs/E-1538-stage-1.md` at that SHA. Fresh detached worktree; dev matched before and after; all nine stage items have landings. No epic criterion marks.
+
+Executed locally on macOS 27.0.1 (26A434), arm64, Node v24.21.0; no browser binary was launched. Local cost/lifetime is not applicable. 295 tests across 34 files passed in the final evaluated evidence, with no remaining failures, cancellations or skips. An additional original doctor-cli execution ran 9 tests (5 passed, 4 failed including the parent) before the authorised build-precondition correction; it is retained and excluded from the passing total. This was targeted execution: 6 T1 files, 18 T2 files and 10 T3 files, not complete tiers. T0, full suites, T4/soak, Web and real remote-host execution did not run in this QA pass. Queue admission and one-minute load <=10 were enforcing gates; captures retain the readings. The timing samples describe only the explicit local heartbeat/contender waits, excluding prep, admission and any remote time. No overall wall-time claim.
+
+Required tests were checked by generated case names and recorded TAP facts, separately from exit codes. See [test-summary.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/test-summary.json), [generated-required.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/generated-required.json) (55 generated required names), [required-tests.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/required-tests.json) (literal names), and [test-tiers.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/test-tiers.json).
+
+- E1538S1-17: 31 tests in 2 files.
+- E1538S1-18: 66 tests in 5 files.
+- E1538S1-19: 69 tests in 5 files.
+- E1538S1-20: 21 tests in 5 files.
+- E1538S1-21: 64 tests in 7 files.
+- E1538S1-22: 8 tests in 3 files.
+- E1538S1-23: 36 tests in 7 files.
+
+The plan records the Coordinator-owned stage cover pair at tree `74864003f8cd0c5c19fd70dc3fa805437beb5478`: Linux droplet `7953ccfc-d51a-43c0-a578-a60d30cd77c5`, macOS local `f124d237-f63a-4905-a30d-bdb11e0031c3`, missing platforms `[]`. These are external cover evidence, not runs launched or timed by this QA session; remote lifetime/cost were not collected here. See [plan evidence](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-00-plan.json).
+
+Five rows use Coordinator-authorised brief corrections, separately from product results: 01 declaration count; 05 detached decoy lifetime and one full rerun; 06 and 08 holder-specific PID assertion scope; 19 web build precondition and doctor-cli-only rerun. Original captures remain, and row05 original no-signal fact is not counted. Parent CLI attribution for the two process censuses is from source, not a recorded parent PID. See [correction details](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/brief-corrections.md), [original helpers](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/original-helpers.sh), [row05 corrected launcher](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-05-correction.sh), and [source trace](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-06-source-trace.txt). No product source was changed.
+
+Recorder correction: there are 27 raw receipt lines for 25 effective cases. The row19 PASS receipt at 2026-11-03T00:03:57Z is INVALID (QA shell continued after validator failure). It is superseded by the explicit INCONCLUSIVE receipt at 2026-11-03T00:04:19Z and the final corrected PASS after the authorised rerun. Both historical lines are retained verbatim in [receipts.jsonl](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/receipts.jsonl); only [effective-receipts.jsonl](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/effective-receipts.jsonl) is counted. See [receipt correction](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/E1538S1-19-receipt-correction.txt).
+
+Fixture isolation, process cleanup and secret/file scans passed with positive controls. Only declared evidence is exported; no HOME, environment file, cookies, raw credentials, database or one-use link is included. Final build and publication scan evidence is in [final-checks.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/final-checks.txt).
+
+Evidence artifact: A-16022, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16022-e-1538-lock-deletion-and-paths-qa-at-986afe46/report.md
