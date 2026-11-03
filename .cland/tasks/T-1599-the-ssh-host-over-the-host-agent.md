@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1366
 branch: t/T-1599-the-ssh-host-over-the-host-agent
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-03T14:31:07.839Z
+updated: 2026-11-03T22:04:33.508Z
 closed: 2026-11-03T14:31:07.839Z
 ---
 
@@ -223,3 +223,11 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### coord · 2026-11-03T14:31:07.839Z
 
 Merged aa42c6efdd56a5e2def4b88fea2804e02e726d62 onto dev.
+
+### coord · 2026-11-03T22:02:56.290Z
+
+Seam note (T-1607, coord decision 2026-11-03 22:03Z): the Host contract gains an optional `adopt(process)`, with an agent `adopt` operation advertised as a capability. Older agents are refused explicitly, never skipped silently, and the local and double contracts are unchanged. The agent adopts only a process whose PID and start identity it verifies, that matches the session's single `claude agents --json` worker, and that runs as the agent's user and is tied to this session's launch; anything else is refused. The session credential needed by `--bg` hooks is stored only in the session's private Claude directory at 0600 and removed on stop and rollback.
+
+### coord · 2026-11-03T22:04:33.508Z
+
+Seam note (T-1607, 2026-11-03, supersedes the credential part of the earlier adopt note): the Claude agent module owns an agent-side `launch` operation. It runs `claude --bg` plus a single `claude agents --json`, then pins job/session/PID/native birth/UID in a durable record, written atomically and scoped by generation. `adopt` accepts only that record's exact worker; it never takes a PID from the caller and refuses PID reuse. The capability gates both; an older agent is refused. Zero, several or unparseable matches fail closed, roll back and report cleanup-incomplete when the rollback can't prove its work. There is no /proc cmdline/env fallback. The credential is the existing CLAND_LAUNCH_TOKEN, kept in the private 0600 mcp.json/settings.json and removed by generation after a confirmed stop or rollback. A planted-value scan proves it appears nowhere else.

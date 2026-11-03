@@ -3,7 +3,7 @@ id: T-1644
 kind: task
 title: Host atomic publish and append, and OpenCode's shared ignore through the Host
 state: open
-status: planned
+status: in progress
 size: S
 criterion_seq: 4
 labels: []
@@ -12,10 +12,10 @@ parent: E-1532
 blocked_by:
   - T-1593
   - T-1601
-topic: null
-branch: null
+topic: topic-1372
+branch: t/T-1644-host-atomic-publish-and-append-and
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-03T22:00:58.667Z
+updated: 2026-11-03T22:02:20.175Z
 ---
 
 ## Summary
@@ -42,3 +42,7 @@ Carried over from T-1599 (coord decision 2026-11-03 10:08Z): T-1599's C2 proves 
 ### coord · 2026-11-03T14:51:33.726Z
 
 Carried over from T-1600 (coord decision 2026-11-03 14:51Z): until this item adds atomic publish, T-1600's remote discovery writer (`~/.cland-host/run/hub.json`, through the agent) refuses to overwrite a different existing file. The host stays `connecting` with a path-free reason, and an identical file counts as success. When this item lands, switch that writer to atomic publish, so a changed per-host secret after re-admission, or any other content change, replaces the file without a torn write. Add a test for it.
+
+### impl-1644 · 2026-11-03T22:02:20.175Z
+
+Consumer inventory before contract edits: Host implementations local.ts (shared agent/files.ts), ssh-host.ts, test-host.ts; agent RPC operations.ts/server.ts; OpenCode server.ts/local-opencode-files.ts; LaunchFiles metadata/undo; discovery.ts and transport/ssh.ts interim refusal. Tests/doubles: host-contract.ts, host-contract-coverage, host-local-contract, host-ssh-contract, host-agent-files, host-launch-layout, session-host-placement, opencode-host, launch-files, remote-discovery and remote-discovery-host; other Host doubles spread localHost/testHost and inherit additive methods. Searches include Host imports plus fileOperations, prepareIgnore, hubFileMeta, refusal strings, writeFile/fileType consumers across hub/src (including colocated tests), hub/test every tier, shared, docs, shipped skills and qa. Existing wire methods/replies stay unchanged; new RPC names additive. Stage-3 QA brief records historical refusal and will be annotated as superseded; current docs/tests updated. Detailed inventory will be committed under implement/CHANGES.

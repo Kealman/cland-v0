@@ -3,7 +3,7 @@ id: T-1606
 kind: task
 title: Codex sessions on a host
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1532
 blocked_by:
   - T-1600
   - T-1601
-topic: null
-branch: null
+topic: topic-1373
+branch: t/T-1606-codex-sessions-on-a-host
 created: 2026-11-02T03:33:56.906Z
-updated: 2026-11-03T22:00:57.722Z
+updated: 2026-11-03T22:02:07.469Z
 ---
 
 ## Summary

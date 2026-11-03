@@ -3,7 +3,7 @@ id: T-1608
 kind: task
 title: The slim Linux spoke
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1532
 blocked_by:
   - T-1600
-topic: null
-branch: null
+topic: topic-1374
+branch: t/T-1608-the-slim-linux-spoke
 created: 2026-11-02T03:33:57.391Z
-updated: 2026-11-03T22:00:58.526Z
+updated: 2026-11-03T22:04:11.388Z
 ---
 
 ## Summary
@@ -33,3 +33,9 @@ Hot files: `hub/src/spoke/spoke.ts`, `hub/bin/cland-spoke.ts`, `hub/src/spoke/*.
 ## Notes
 
 Shared files: `hub/src/spoke/spoke.ts`, `hub/bin/cland-spoke.ts`
+
+## Comments
+
+### impl-1608 · 2026-11-03T22:04:11.388Z
+
+Coordinator6d12bbe1 approved two reviewed heads: test-only dev-equivalent baseline, then lazy-import split. Baseline local Darwinarm64 Node24.21 T4 measurement pass, RSS60129280bytes after welcome+10s, no tools invoked, native cleanup/census pass. All-package typecheck pass. Linux C3 unexecuted; static lint still running. Requested allowance owner decision and C4 current-file mapping.

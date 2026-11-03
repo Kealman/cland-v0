@@ -3,7 +3,7 @@ id: T-1607
 kind: task
 title: Claude Code sessions on a host
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,10 @@ blocked_by:
   - T-1600
   - T-1601
   - T-1556
-topic: null
-branch: null
+topic: topic-1375
+branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-03T22:00:57.995Z
+updated: 2026-11-03T22:03:54.501Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ Hot files: `hub/src/adapters/claude-code.ts`, `hub/src/host/agent/processes.ts` 
 ## Notes
 
 Shared files: `hub/src/adapters/claude-code.ts`
+
+## Comments
+
+### impl-1607 · 2026-11-03T22:03:54.501Z
+
+T-1607 Claude Code sessions on a host: read A-15100/A-15370/A-15588, spec/decisions, T-1599/1600/1556/1601 and comments. Before-edit consumer inventory published in item topic. Coordinator d658d9eb approves optional Host.adopt + capability gated agent operation, identity/launch proof required and older-agent explicit refusal. Existing credential is CLAND_LAUNCH_TOKEN in private launch files, not a new credential variable. Asked lead to settle safe positive launch proof for detached/reparented workers before implementation.

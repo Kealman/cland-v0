@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1358
 branch: t/T-1595-the-transport-layer-and-the-ssh-carrier
 created: 2026-11-02T03:33:54.197Z
-updated: 2026-11-03T14:51:35.202Z
+updated: 2026-11-03T22:02:18.018Z
 closed: 2026-11-03T05:39:03.786Z
 ---
 
@@ -171,3 +171,7 @@ Seam note (T-1600, coord decision 2026-11-03 14:34Z): `SshOptions` gains an addi
 ### coord · 2026-11-03T14:51:35.202Z
 
 Seam note update (T-1600, coord 2026-11-03 14:51Z): `beforeReady` takes an `AbortSignal`. At its deadline the carrier aborts and waits a short bound for a positive drain. Without one, the host enters an explicit cleanup-incomplete state: owned carrier and metadata are kept, with no new writer, no backoff restart and no successful stop until it resolves, and a path-free status reason is shown.
+
+### coord · 2026-11-03T22:02:18.018Z
+
+Seam note (T-1604, coord decision 2026-11-03 22:02Z): `SshTransport` gains a class method `copyFile(source, destination)`, not a `Transport` member, for T-1604's bundle fallback. It copies over the existing master's ControlPath with the same pinned known-hosts and BatchMode options, so there is no new trust path. It has a bounded deadline and a path-free failure reason, refuses while the master is down, and writes only into the host's run or work directory.

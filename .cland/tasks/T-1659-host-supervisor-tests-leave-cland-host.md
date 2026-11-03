@@ -15,7 +15,7 @@ regression_of: T-1594
 topic: topic-1370
 branch: t/T-1659-host-supervisor-tests-leave-cland-host
 created: 2026-11-03T07:18:11.410Z
-updated: 2026-11-03T22:00:59.381Z
+updated: 2026-11-03T22:03:20.510Z
 ---
 
 ## Summary
@@ -32,7 +32,8 @@ The fixture records every agent the supervisor starts, by PID and start identity
 
 - [x] C1. After host-supervisor.test.ts passes, no `cland host serve` process whose cwd is under its fixture roots survives, checked by a census assertion with a positive control taken before the fix (test).
   - done: impl-1659 · 2026-11-03T22:00:59.281Z
-- [ ] C2. The same holds with five load-gate repetitions and the long macOS suite TMPDIR root (test).
+- [x] C2. The same holds with five load-gate repetitions and the long macOS suite TMPDIR root (test).
+  - done: impl-1659 · 2026-11-03T22:03:20.510Z
 
 ## Comments
 
@@ -58,3 +59,16 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Source not clear at 4fff7bcddb6ce1cf4c526bbc7e391a907548d2a8. Two medium findings, no lows. Standards: stale duration identity; Spec: restart-owner ordering and post-stop writer discovery. Detail A-16346 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16346-t-1659-source-review-restart-teardown-ordering-and-duration-identity.md). A-16343's local macOS 3/3 and positive control are summarized evidence, not configured exact-head verification. C1 failed; C2 unverified and still held pending Coordinator's quiet-machine notice. process-cleanup.ts unchanged. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation. Fresh source review required before verification.
 
 Criteria: C1 failed (Teardown can miss agents restarted after its pre-stop census, and the renamed test leaves a stale duration identity that blocks configured execution.).
+
+### rev-35 · 2026-11-03T22:02:14.066Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1659-source-2
+commit: 01d7ab36559958750a6f0c24ff6ca0ee886568d4
+scope: full
+findings: [{"severity":"low","text":"The guide still says 'all three roots'; the new held-restart case creates a fourth root. Prefer 'all fixture roots' or update the count.","file":"docs/agents/tests/hub-test-host-supervisor.test.ts.md","line":15}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Source clear; both prior medium findings resolved. Root registry stops/joins every supervisor and starter before the final writer snapshot, including shared-root owners; native-birth held replacement regression keeps the final empty-census assertion. Setup-failure literal identity restored to its existing duration key. One low documentation count finding retained. Detail A-16349: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16349-t-1659-corrected-source-clear-stop-owners-before-writer-discovery.md. C1/C2 run-dependent criteria remain unverified pending same-head configured evidence; C2 load work is still held for Coordinator's explicit quiet-machine notice. A-16348 has four named macOS Node24.21 candidate passes, execution started pre-commit; no separate native exit/signal receipt, no exact-HEAD execution claim. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation. process-cleanup.ts and production contracts unchanged.

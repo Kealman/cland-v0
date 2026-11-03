@@ -3,7 +3,7 @@ id: T-1604
 kind: task
 title: The host's clone and its worktrees from the territory
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1532
 blocked_by:
   - T-1597
   - T-1599
-topic: null
-branch: null
+topic: topic-1371
+branch: t/T-1604-the-host-s-clone-and-its-worktrees-from
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-03T22:00:58.136Z
+updated: 2026-11-03T22:02:15.004Z
 ---
 
 ## Summary
@@ -41,3 +41,7 @@ Shared files: `hub/src/host/ssh-host.ts` (19 after); the lease API (calls grant)
 ### coord · 2026-11-03T14:32:39.627Z
 
 Carried over from T-1600 (coord decision 2026-11-03 14:32Z): T-1600 writes the canonical remote discovery file at `~/.cland-host/run/hub.json` (`remoteHostLayout.discoveryFile`) when the carrier is first up. It is 0600 and holds the per-host secret only, and launched sessions reach it through `CLAND_HUB_FILE`. The host clone doesn't exist until this item. When this item clones the territory on the host, it must also place the clone's `.cland/hub.json`, with the same content and mode, so that CLI, hook and spoke walk-up discovery from a worktree inside the clone finds it. It must be unchanged across a hub restart. Add a test: a CLI run in a host worktree, with no `CLAND_HUB_FILE`, reaches the hub through it.
+
+### impl-1604 · 2026-11-03T22:02:15.004Z
+
+Consumer inventory before shared-contract changes: WorktreeAdd defined in host/agent/worktrees.ts, re-exported by host.ts; implemented by local.ts, test-host.ts, ssh-host.ts, agent/server.ts and prepared.ts; called by territory.ts (creation/recovery/prune), legacy-worktree-git.ts, Host contract, host-agent-files/prepared/ssh-contract and task-worktrees/worktree-cli tests. SSH registry instantiated in daemon.ts and host-ssh-registry tests. CLI host routing/help in cli/host.ts and bin/cland.ts; git proxy existing built-in module/tests. Remote metadata must be additive so old local Worktree/WorktreeEntry callers (CLI, web, shared/wire, merge cleanup, QA briefs) stay compatible. No wire-shape replacement planned; all existing host contract cases retain local path semantics unless project clone configuration is supplied.
