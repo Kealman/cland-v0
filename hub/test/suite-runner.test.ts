@@ -34,7 +34,9 @@ function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 
 process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args); if (String(chunk).includes('waiting for the suite lock')) { process.stderr.write = write; process.kill(process.pid, 'SIGSTOP'); } return result; };` : '';
   // Pin the fixture project as well as its lock: the caller's duration/tier
   // manifests must never apply to generated tests in this temporary project.
-  const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir) })})`};`;
+  const cleanupFault = extraEnv.CLAND_TEST_RAW_REMOVE_FAILURE === '1' ? `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
+const remove = fs.rm; fs.rm = async (path, options) => { if (String(path).endsWith('coverage-map.json.raw')) throw Object.assign(new Error('planted raw removal failure'), { code: 'EACCES' }); return remove(path, options); }; syncBuiltinESMExports();` : '';
+  const code = `${stop} ${cleanupFault} const { runSuite, runPackageSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir), ...(extraEnv.CLAND_SUITE_SELECTION ? { selection: JSON.parse(extraEnv.CLAND_SUITE_SELECTION) } : {}) })})`};`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { cwd: dir, env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }), stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
@@ -1255,4 +1257,50 @@ test('bridge', async () => {
   const bridge = JSON.parse(await readFile(marker, 'utf8')) as { pid: number };
   assert.match(suite.output(), /suite hook bridges: before cleanup 1; after cleanup 0/);
   assert.throws(() => process.kill(bridge.pid, 0), { code: 'ESRCH' });
+});
+
+for (const outcome of ['red', 'failed', 'interrupted', 'reduction-failed'] as const) {
+  test(`coverage ${outcome} exit removes raw bytes before runner close`, async t => {
+    const dir = await fixture(t);
+    const file = 'hub/test/raw.test.ts';
+    const output = join(dir, '.cland/run/suites/fixture/coverage-map.json');
+    const marker = join(dir, 'ready');
+    await mkdir(join(dir, 'hub/test'), { recursive: true });
+    if (outcome === 'reduction-failed') await mkdir(output, { recursive: true });
+    await writeFile(join(dir, file), `import test from 'node:test';
+import { writeFile } from 'node:fs/promises';
+test('coverage cleanup fixture', async () => {
+  await writeFile(process.env.NODE_V8_COVERAGE + '/planted-raw', 'raw bytes');
+  await writeFile(${JSON.stringify(marker)}, 'ready');
+  ${outcome === 'red' ? "throw new Error('intentional red coverage run');" : outcome === 'failed' ? 'process.exit(7);' : outcome === 'interrupted' ? 'await new Promise(r => setTimeout(r, 60000));' : ''}
+});`);
+    const suite = run(t, dir, file, undefined, false, {
+      CLAND_COVERAGE_OUTPUT: output,
+      CLAND_SUITE_SELECTION: JSON.stringify({ mode: 'full', files: [], reason: 'raw cleanup fixture', recordCoverage: { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: 'fixture' } }),
+    });
+    await until(async () => await readFile(marker, 'utf8').catch(() => '') === 'ready');
+    if (outcome === 'interrupted') {
+      assert.ok((await readdir(`${output}.raw`)).length > 0, 'positive control: raw directory exists before interruption');
+      suite.child.kill('SIGTERM');
+    }
+    const code = await suite.done;
+    assert.equal(code, outcome === 'interrupted' ? 143 : 1, suite.output());
+    await assert.rejects(import('node:fs/promises').then(fs => fs.stat(`${output}.raw`)), { code: 'ENOENT' }, suite.output());
+  });
+}
+
+test('raw coverage removal refusal still releases drained execution leases', async t => {
+  const dir = await fixture(t);
+  const file = 'hub/test/raw.test.ts';
+  const output = join(dir, '.cland/run/suites/fixture/coverage-map.json');
+  await mkdir(join(dir, 'hub/test'), { recursive: true });
+  await writeFile(join(dir, file), "import test from 'node:test'; test('fixture', () => {});");
+  const suite = run(t, dir, file, undefined, false, {
+    CLAND_COVERAGE_OUTPUT: output, CLAND_TEST_RAW_REMOVE_FAILURE: '1',
+    CLAND_SUITE_SELECTION: JSON.stringify({ mode: 'full', files: [], reason: 'removal fault fixture', recordCoverage: { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: 'fixture' } }),
+  });
+  assert.equal(await suite.done, 0, suite.output());
+  assert.match(suite.output(), /suite raw coverage cleanup retained: Error: planted raw removal failure/);
+  assert.ok((await readdir(`${output}.raw`)).length > 0, 'refused raw bytes remain for the next sweep');
+  await assert.rejects(import('node:fs/promises').then(fs => fs.stat(lockPath(dir))), { code: 'ENOENT' });
 });

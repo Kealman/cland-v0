@@ -106,3 +106,15 @@ must distinguish nested cases from enclosing lane and parent rows; phase totals
 continue to come from Node's summaries. For historical logs such as A-14547,
 review/QA audits disclose unpaired replay rows rather than counting them as
 additional coverage. No historical log is rewritten.
+
+Raw coverage cleanup cases use scratch `.cland/run/suites/fixture` directories.
+They drive an assertion failure, native test exit, SIGTERM after a persisted
+ready marker, and reduction/output failure. Each observes runner close before
+asserting raw-directory removal. Select these cases with
+`--test-name-pattern='coverage .* exit removes raw bytes'`; the rest of this
+file still needs its queued machine lease.
+
+The raw-removal refusal fixture injects an EACCES at native rm, after writers
+finish. It retains raw bytes for retry and requires the suite lease to be absent
+with ENOENT after runner close. Borrowed interruption with detached raw writers
+is covered by the existing cancellation lifecycle cases in suite-cancel.test.ts.

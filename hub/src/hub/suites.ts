@@ -1,3 +1,4 @@
+import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
@@ -206,6 +207,7 @@ export class Suites {
   readonly #root: string;
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
+  readonly #rawCoverage: RawCoverageSweep;
   readonly #waitMetrics: VerificationWait;
   #waitTimer: ClockTimer | null;
   readonly #latestItems = new Map<number, SuiteJob>();
@@ -260,6 +262,7 @@ export class Suites {
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
+    this.#rawCoverage = new RawCoverageSweep(root, [], ids => { for (const id of ids) store.setMeta(`raw-coverage-swept:${id}`, '1'); }, id => store.meta(`raw-coverage-swept:${id}`) === '1');
     const history = store.suiteJobSummaries().map(text => {
       const entry = JSON.parse(text) as { position: number; job: SuiteJob };
       if (!entry.job.reported || !entry.job.cleaned || entry.job.accountingPending) {
@@ -417,6 +420,7 @@ export class Suites {
     this.#options.log?.({ event: 'verification-checkpoint', jobs: changed.length });
   };
   #remember(job: SuiteJob, announce: boolean): void {
+    this.#rawCoverage.remember(job);
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     // A successful report checkpoints the log artifact across async I/O. Publish its
     // terminal card once with that artifact, or once the blocking error is persisted.
@@ -848,6 +852,8 @@ export class Suites {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
     let remotePreExecution = false;
     try {
+      // Share admission cleanup across concurrent shard launches; never scan on startup.
+      await this.#rawCoverage.sweep(async line => { await appendFile(job.log, line); });
       if (job.shards) { await this.#launchShards(job); return; }
       // Once remote collection starts, local bytes would count as remote output.
       // Pending delivery/start receipts can re-enter launch with that boundary set.
@@ -1481,6 +1487,11 @@ export class Suites {
             if (job.cancelled) await this.#local.cancel(job.lease, 'SIGTERM');
             await this.#local.release(job.lease);
           }
+        }
+        // Local release has observed the delegated detached-writer cleanup.
+        if (job.executor === 'local') {
+          try { await removeRawCoverage(this.#root, job.id); }
+          catch (error) { await appendFile(job.log, `suite raw coverage cleanup retained: ${String(error)}\n`); }
         }
         job.cleaned = true; this.#save(job);
       }

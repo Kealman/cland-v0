@@ -33,7 +33,7 @@ import { syncBuiltinESMExports } from 'node:module';
 const remove = fs.rm;
 fs.rm = async (path, options) => {
   const fake = await fs.readFile(${JSON.stringify(marker)}, 'utf8').then(JSON.parse, () => null);
-  if (fake && path === fake.root) {
+  if (fake && (path === fake.root || path === fake.raw)) {
     try { process.kill(fake.pid, 0); await fs.writeFile(${JSON.stringify(earlyRemoval)}, 'root removal while descendant is alive'); }
     catch (error) { if (error.code !== 'ESRCH') throw error; }
   }
@@ -41,23 +41,29 @@ fs.rm = async (path, options) => {
 };
 syncBuiltinESMExports();
 const { runSuite } = await import(${JSON.stringify(runner)});
-process.exitCode = await runSuite([['--test', 'detached.test.mjs']], ${JSON.stringify({ cwd: f.root, lockDirs: locks })});`);
-  await writeFile(join(f.root, 'detached.test.mjs'), `import test from 'node:test';
+const [id] = await fs.readdir(${JSON.stringify(join(f.root, '.cland/run/suites'))});
+process.env.CLAND_COVERAGE_OUTPUT = ${JSON.stringify(join(f.root, '.cland/run/suites'))} + '/' + id + '/coverage-map.json';
+process.exitCode = await runSuite([['--test', 'hub/test/detached.test.ts']], { ...${JSON.stringify({ cwd: f.root, lockDirs: locks })}, selection: { mode: 'full', files: [], reason: 'borrowed interruption coverage', recordCoverage: { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: id } } });`);
+  await writeFile(join(f.root, 'hub/test/detached.test.ts'), `import test from 'node:test';
 import { spawn } from 'node:child_process';
 import { fixtureEnvironment } from ${JSON.stringify(environment)};
+import { dirname } from 'node:path';
 test('detached fake harness', async () => {
-  const child = spawn(process.execPath, ['fake.mjs', String(process.ppid), process.env.TMPDIR], {
+  const child = spawn(process.execPath, ['fake.mjs', String(process.ppid), process.env.TMPDIR, dirname(process.env.NODE_V8_COVERAGE)], {
     cwd: ${JSON.stringify(f.root)}, env: fixtureEnvironment(process.env.TMPDIR, process.env), detached: true, stdio: 'ignore'
   });
   child.unref();
   await new Promise(resolve => setTimeout(resolve, 30000)); // Artificial hold, ended by cancellation.
 });`);
   await writeFile(join(f.root, 'fake.mjs'), `import { existsSync, readFileSync, renameSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
-const parent = Number(process.argv[2]), root = process.argv[3];
+const parent = Number(process.argv[2]), root = process.argv[3], raw = process.argv[4];
 const owner = JSON.parse(readFileSync(${JSON.stringify(`${locks[0]}.owner`)}, 'utf8'));
 process.on('SIGTERM', () => {});
-writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root, device: owner.device, inode: owner.inode }));
+mkdirSync(raw, { recursive: true });
+writeFileSync(raw + '/detached-writer', 'live');
+writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root, raw, device: owner.device, inode: owner.inode }));
 const poll = setInterval(() => {
+  mkdirSync(raw, { recursive: true }); writeFileSync(raw + '/detached-writer', 'live');
   try { process.kill(parent, 0); return; } catch (error) { if (error.code !== 'ESRCH') throw error; }
   clearInterval(poll);
   if (!${recreate}) { setInterval(() => {}, 1000); return; }
@@ -82,6 +88,7 @@ const poll = setInterval(() => {
   assert.equal(cancelled.code, 0, cancelled.stderr);
   await eventually('cancelled result after complete tree cleanup', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
   assert.equal(pidAlive(fake.pid), false, 'detached descendant is reaped before cancellation is reported');
+  await assert.rejects(stat(fake.raw), { code: 'ENOENT' }, 'raw deletion follows delegated detached-writer cleanup');
   await assert.rejects(stat(earlyRemoval), { code: 'ENOENT' }, 'suite root is never removed with a live detached descendant');
   if (recreate) {
     const after = JSON.parse(await readFile(recreated, 'utf8'));

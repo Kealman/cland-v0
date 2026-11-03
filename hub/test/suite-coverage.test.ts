@@ -24,7 +24,8 @@ for (const append of ['0', '1']) test(`Web-only coverage preserves the map and t
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await writeFile(join(root, 'web/test/prerequisite.ts'), 'export const webPrerequisite = async () => ({ available: true, executablePath: process.execPath });');
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [file]: 'Web' } }));
-  const output = join(root, 'coverage-map.json');
+  const output = join(root, '.cland/run/suites/fixture/coverage-map.json');
+  await mkdir(dirname(output), { recursive: true });
   const previous = JSON.stringify({ version: 1, head: 'a'.repeat(40), tree: 'b'.repeat(40), created: '2026-10-20T00:00:00.000Z', testFiles: ['hub/test/previous.test.ts'], files: {} }) + '\n';
   await writeFile(output, previous);
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
@@ -130,7 +131,8 @@ test('daemon lifecycle and descendant attribution', async t => {
   const smoke = ['hub/test/tracer.test.ts', 'hub/test/daemon.test.ts', 'nvim/test/client.test.ts', 'nvim/test/sessions.test.ts'];
   for (const path of smoke) await writeFile(join(root, path), "import test from 'node:test'; test('fixture smoke', () => {});\n");
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([file, ...smoke].map(file => [file, 'T3'])) }));
-  const output = join(root, '.cland/run/coverage-map.json');
+  const output = join(root, '.cland/run/suites/fixture/coverage-map.json');
+  await mkdir(dirname(output), { recursive: true });
   const selection = { mode: 'full', files: [], reason: 'integrated fixture capture', recordCoverage: { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: 'fixture' } };
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], { cwd: ${JSON.stringify(root)}, lockDirs: ${JSON.stringify({ hub: join(root, 'hub.lock'), nvim: join(root, 'nvim.lock') })} });`;

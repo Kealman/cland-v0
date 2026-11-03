@@ -817,6 +817,20 @@ Unchanged lines are translated from the merge base back to the map across the
 intervening diff. Integrated full runs remain the regression backstop; a selected
 run can miss a regression which the next batch detects.
 
+Raw V8 coverage is temporary: the runner drains its owned writers and removes
+its raw directory on success, failure or a handled standalone interruption. A
+borrowed interruption leaves raw bytes to the hub, which removes them after local
+executor release confirms detached-writer cleanup, before reporting completion.
+At suite admission, the hub processes at most 32 pending terminal identities from
+its existing suite index (finished, cleaned, reported runs and shards), preserving
+active and uncertain runs. Per-identity checkpoints survive restart; admissions
+do not rescan retained directories or completed history. The
+admitting suite log records each removed run and its file byte count. Removal
+is confined to `.cland/run/suites/<id>/coverage-map.json.raw`; droplet runners
+use their executor account's `runs/<id>/coverage-map.json.raw`. Symlinked roots
+are refused. SIGKILL recovery waits for the hub's cleanup receipt. Raw-removal errors are
+logged for retry without stranding already-drained execution leases.
+
 Coverage artifacts remain the source of truth; `.cland/run/coverage-maps/` holds
 rebuildable pointers shared by linked task worktrees.
 Pointers record the artifact's `created` and `head`; ordering uses `created`,

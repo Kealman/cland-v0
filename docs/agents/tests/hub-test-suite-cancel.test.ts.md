@@ -11,3 +11,9 @@ Stop the fake before removing its exact root, original and quarantine paths.
 
 The artificial 30-second body hold is ended by cancellation. Polls observe
 process death or filesystem receipts; elapsed time is never the asserted fact.
+
+The detached cancellation cases also record raw V8 coverage. A live detached
+writer publishes its ready marker after writing raw bytes and keeps writing
+until cancellation. A native removal observer records any runner deletion with
+that writer still alive. Final cancellation requires its PID gone, no early
+removal receipt and ENOENT for raw coverage, proving hub release owns deletion.

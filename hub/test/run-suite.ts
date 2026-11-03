@@ -1,3 +1,4 @@
+import { rawCoverageOwner, removeRawCoverage } from '../src/suite-raw-coverage.ts';
 import { eligibleLoadRerun } from '../src/suite-load-rerun.ts';
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { waitForHumanSlot } from '../src/suite-human-queue.ts';
@@ -13,7 +14,7 @@ import { hubDiscovery, readDiscovery } from '../src/project.ts';
 import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/protocol.ts';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, realpath, stat, writeFile, rm, glob } from 'node:fs/promises';
+import { mkdir, readFile, realpath, stat, writeFile, glob } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve, matchesGlob } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -70,6 +71,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let active: ReturnType<typeof spawn> | undefined;
   let runId = options.token ?? randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
+  let activeClosed: Promise<void> | undefined;
   let activeGuard: ReturnType<typeof watchWebPhase> | undefined;
   const loadRunners = new Set<ProcessIdentity>();
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
@@ -102,8 +104,10 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const output = process.env.CLAND_COVERAGE_OUTPUT;
   const coverageFiles = new Set<string>();
   const coverageRaw = recording && output ? `${output}.raw` : undefined;
+  let coverageOwner: ReturnType<typeof rawCoverageOwner> | undefined;
   let fixtureLockIdentity: string | undefined;
   try {
+    if (coverageRaw && output) coverageOwner = rawCoverageOwner(output, process.env.CLAND_SUITE_EXECUTOR === 'droplet' ? process.env.HOME : undefined);
     const budgetStarted = performance.now();
     durationManifest = await readDurationManifest(options.cwd ?? process.cwd());
     if (durationManifest) lintDurationManifest(durationManifest);
@@ -275,7 +279,7 @@ process.chdir(cwd);`);
         stderrTail = Buffer.concat([stderrTail, chunk]).subarray(-65_536);
       });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
-      const closed = new Promise<void>(resolve => active!.once('close', () => resolve()));
+      const closed = activeClosed = new Promise<void>(resolve => active!.once('close', () => resolve()));
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
@@ -407,7 +411,7 @@ process.chdir(cwd);`);
         process.stderr.write(`test process exit ${active.exitCode}; signal ${active.signalCode ?? 'none'}\nstderr tail:\n${stderrTail.toString() || '(empty)\n'}`);
       }
       root = undefined;
-      active = undefined; activeIdentity = null;
+      active = undefined; activeIdentity = null; activeClosed = undefined;
       for (const lease of machine.reverse()) await lease.release();
       machine = [];
       if (options.phaseNames?.[index]) process.stderr.write(`shard duration ${options.phaseNames[index]} ${((Date.now() - phaseStarted) / 1000).toFixed(2)}s; workers ${options.workers?.[index] ?? 4}; resource ${options.resources?.[index] ?? 'machine'}; machine wait ${(machineWait / 1000).toFixed(2)}s\n`);
@@ -424,7 +428,6 @@ process.chdir(cwd);`);
       }
       await writeFile(output, JSON.stringify(map), { mode: 0o600 });
       process.stdout.write(`suite coverage map ${output}; head ${map.head}; tree ${map.tree}; ${map.testFiles.length} test files; ${Object.keys(map.files).length} source files\n`);
-      await rm(coverageRaw, { recursive: true, force: true });
     }
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : 0;
   } catch (error) {
@@ -435,7 +438,15 @@ process.chdir(cwd);`);
     clearInterval(sample);
     try {
       if (loadRunners.size) await cleanupOwnedProcesses([...loadRunners]);
+      if (activeIdentity) await cleanupOwnedProcesses([activeIdentity]);
+      await activeClosed;
       if (root && (!interruption.signal || holder.pid === process.pid)) await sweep(holder);
+      // A borrowed interruption delegates detached writers to the hub's release.
+      // A raw-file refusal must not strand already-drained execution leases.
+      if (coverageOwner && (!interruption.signal || holder.pid === process.pid)) {
+        try { await removeRawCoverage(coverageOwner.project, coverageOwner.id, coverageOwner.layout); }
+        catch (error) { process.stderr.write(`suite raw coverage cleanup retained: ${String(error)}\n`); }
+      }
       for (const lease of machine.reverse()) await lease.release();
       for (const lease of leases.reverse()) await lease.release();
     } finally {

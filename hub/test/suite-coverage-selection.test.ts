@@ -1,8 +1,9 @@
+import { rawCoverageOwner, removeRawCoverage, RawCoverageSweep } from '../src/suite-raw-coverage.ts';
 // T1: coverage decisions use fixed maps and git diff replies, without processes or clocks.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { legacyCoverageSelection } from './selection-replay-coverage.ts';
-import { mkdtemp, mkdir, readFile, writeFile, rm, utimes, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, utimes, readdir, symlink, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { coverageSelection, coverageMaps, registerCoverageMap, mergeCoverageFiles, parseCoverageMap, mergeCoverageMaps, type CoverageMap } from '../src/suite-coverage.ts';
@@ -213,4 +214,83 @@ test('legacy coverage replay receives one loaded candidate and keeps ancestor an
   const nearest = await legacyCoverageSelection(selector, ...args, { maps: pointers, at: Date.parse('2026-10-13'), nearest: true });
   assert.ok('map' in nearest); assert.equal(nearest.map.artifact, 'A-2');
   assert.deepEqual(seen, ['A-2', 'A-1', 'A-0', 'A-2']);
+});
+
+test('raw coverage admission sweep removes only finished cleaned records and logs bytes', async t => {
+  const { root } = await fixture(t);
+  const raw = (id: string) => join(root, '.cland/run/suites', id, 'coverage-map.json.raw');
+  for (const id of ['finished', 'active', 'unclean', 'unknown']) {
+    await mkdir(join(raw(id), 'nested'), { recursive: true });
+    await writeFile(join(raw(id), 'nested/v8.json'), '1234567');
+  }
+  const lines: string[] = [];
+  const sweeper = new RawCoverageSweep(root);
+  for (const job of [
+    { id: 'finished', state: 'finished', cleaned: true, reported: true },
+    { id: 'active', state: 'running', cleaned: false, reported: false },
+    { id: 'unclean', state: 'finished', cleaned: false, reported: true },
+  ]) sweeper.remember(job);
+  await sweeper.sweep(async line => { lines.push(line); });
+  await assert.rejects(stat(raw('finished')), { code: 'ENOENT' });
+  for (const id of ['active', 'unclean', 'unknown']) assert.equal(await readFile(join(raw(id), 'nested/v8.json'), 'utf8'), '1234567');
+  assert.deepEqual(lines, ['suite raw coverage sweep finished; removed 7 bytes\n']);
+  await sweeper.sweep(async line => { lines.push(line); });
+  assert.equal(lines.length, 1);
+});
+
+test('raw coverage removal refuses traversal, foreign output and symlinked roots', async t => {
+  const { root } = await fixture(t);
+  assert.throws(() => rawCoverageOwner(join(root, 'coverage-map.json')));
+  await assert.rejects(removeRawCoverage(root, '../escape'), /invalid suite run id/);
+  const outside = join(root, 'kept');
+  await mkdir(outside);
+  await writeFile(join(outside, 'sentinel'), 'kept');
+  await mkdir(join(root, '.cland/run/suites/linked'), { recursive: true });
+  await symlink(outside, join(root, '.cland/run/suites/linked/coverage-map.json.raw'));
+  await assert.rejects(removeRawCoverage(root, 'linked'), /refusing raw coverage path/);
+  assert.equal(await readFile(join(outside, 'sentinel'), 'utf8'), 'kept');
+});
+
+test('raw coverage removal retains the droplet account run layout', async t => {
+  const { root } = await fixture(t);
+  const output = join(root, 'runs/fixture/coverage-map.json');
+  await mkdir(`${output}.raw`, { recursive: true });
+  await writeFile(join(`${output}.raw`, 'v8.json'), 'raw');
+  assert.throws(() => rawCoverageOwner(output));
+  const owner = rawCoverageOwner(output, root);
+  assert.equal(await removeRawCoverage(owner.project, owner.id, owner.layout), 3);
+  await assert.rejects(stat(`${output}.raw`), { code: 'ENOENT' });
+});
+
+test('raw sweep checkpoints a 4082-run history and bounds repeated admission work', async t => {
+  const { root } = await fixture(t);
+  const checkpointed = new Set<string>();
+  let writes = 0;
+  let historyReads = 0;
+  const create = () => new RawCoverageSweep(root, [], ids => {
+    assert.ok(ids.length <= 32);
+    writes += ids.length;
+    for (const id of ids) checkpointed.add(id);
+  }, id => { historyReads++; return checkpointed.has(id); });
+  const history = Array.from({ length: 4082 }, (_, i) => ({ id: `history-${i}`, state: i < 4079 ? 'finished' : 'running', cleaned: i < 4079, reported: i < 4079 }));
+  const seed = (sweep: RawCoverageSweep) => { for (const job of history) sweep.remember(job); };
+  // Coordinator's live shape: 4082 runs, five raw directories, a few active.
+  for (const index of [0, 31, 32, 63, 4081]) {
+    const raw = join(root, '.cland/run/suites', `history-${index}`, 'coverage-map.json.raw');
+    await mkdir(raw, { recursive: true });
+    await writeFile(join(raw, 'v8.json'), 'raw');
+  }
+  const sweep = create(); seed(sweep);
+  const seededReads = historyReads;
+  await Promise.all([sweep.sweep(async () => {}), sweep.sweep(async () => {})]);
+  assert.equal(writes, 32, 'concurrent admissions share one bounded batch');
+  await sweep.sweep(async () => {});
+  assert.equal(writes, 64, 'next admission visits only the next batch');
+  assert.equal(historyReads, seededReads, 'admissions never rescan the retained history');
+  const restarted = create(); seed(restarted);
+  await restarted.sweep(async () => {});
+  assert.equal(writes, 96, 'restart resumes after the persisted completed identities');
+  assert.equal(checkpointed.size, 96, 'no previously swept history is revisited');
+  for (const index of [0, 31, 32, 63]) await assert.rejects(stat(join(root, '.cland/run/suites', `history-${index}`, 'coverage-map.json.raw')), { code: 'ENOENT' });
+  assert.equal(await readFile(join(root, '.cland/run/suites/history-4081/coverage-map.json.raw/v8.json'), 'utf8'), 'raw', 'active raw bytes survive the sweep');
 });
