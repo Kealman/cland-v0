@@ -23,3 +23,22 @@ They release that exact request, observe its durable sent settlement, and check
 shutdown leaves no sending jobs or timers. A separate stop case aborts an
 independently owned held gap, observes its exact native connection close and
 asserts the durable unknown attempt after hub.stop returns.
+
+T-1650 extends the existing ask and paired-approval cases with Alice pressing a
+conflicting choice after Bob's named folds. Preserve Alice's chat-specific token
+before folding, then press with the current folded message. Require the native
+`answerCallbackQuery` text `Already answered`, one forwarded answer frame,
+unchanged durable outcome and card texts, and exactly one `editMessageText` per
+copy. The ask also asserts exactly one durable `answerTo` message. The unpaired
+approval control remains unchanged in scope. The fixture records forwarded
+frames without changing admission or transport behavior; its pacing owner joins
+all writers and observers before cleanup.
+
+The exact callback update's `telegram.update:<update_id>` marker is the completion
+receipt, after polling joins the handler. A per-instance API wrapper holds after
+a successful native acknowledgement; require marker absence and an unfinished
+observer while held, then release and await the marker before final assertions.
+`/control/callback` is an additive fake-only injection that registers the callback
+id's native age; `/control/update` retains raw/replay/expired-id semantics. Both
+first and second users use the fresh callback control. Existing fake API/card/
+approval tests remain unchanged as preservation controls.

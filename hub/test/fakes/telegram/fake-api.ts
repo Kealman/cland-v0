@@ -227,8 +227,14 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
         return reply(res, 200, { commands });
       }
       // Fault-injection boundary: deliberately permits unlisted/malformed update bodies.
-      if (req.method === 'POST' && req.url === '/control/update') {
+      if (req.method === 'POST' && (req.url === '/control/update' || req.url === '/control/callback')) {
         const update = redact.value({ ...params, update_id: nextUpdate++ }) as TgUpdate;
+        // Explicit callback injection models a fresh native callback, while raw
+        // update injection retains its existing replay/expired-id semantics.
+        if (req.url === '/control/callback') {
+          if (!update.callback_query?.id) return reply(res, 400, { error: 'callback id required' });
+          presses.set(update.callback_query.id, clock.now().getTime());
+        }
         updates.push(update);
         wake();
         return reply(res, 200, update);

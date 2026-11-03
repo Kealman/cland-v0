@@ -14,7 +14,7 @@ import { FakeClock } from './fake-clock.ts';
 import { DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 
-export async function discordCardsFixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string, historyLimit?: number, usersMode = false) {
+export async function discordCardsFixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string, historyLimit?: number, usersMode = false, nativeApi = false) {
   const clock = new FakeClock();
   const exchange = await discordExchangeOwner(t, { clock, ...(origin ? { publicOrigin: origin } : {}), ...(onCallback ? { onCallback } : {}) }).start();
   const { root } = await exchange.project();
@@ -39,8 +39,8 @@ export async function discordCardsFixture(t: TestContext, holdType?: string, pro
   exchange.stop(() => hub?.stop());
   const startHub = () => exchange.run(async () => {
     hub = await projectHub(t, root, env, { clock, ...(script ? { adapters: [script.factory] } : {}), syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, ...(both ? { 'telegram.token': TELEGRAM_TEST_TOKEN } : {}) }, gatewayMessenger: (...args) => {
-      const made = args[0] === 'discord' && historyLimit !== undefined
-        ? new DiscordRemote(exchange.api, args[1], clock, { store: state, fake: true, projectName: () => projectName, ...(log ? { log } : {}), historyLimit })
+      const made = args[0] === 'discord' && (historyLimit !== undefined || nativeApi)
+        ? new DiscordRemote(exchange.api, args[1], clock, { store: state, fake: true, projectName: () => projectName, ...(log ? { log } : {}), ...(historyLimit === undefined ? {} : { historyLimit }) })
         : factory(...args); if (made.id !== 'discord') return made;
       remote = made; const start = remote.start.bind(remote);
       remote.start = (send, ...rest) => start((frame, ingress, bytes, identity) => {

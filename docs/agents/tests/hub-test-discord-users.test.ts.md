@@ -31,3 +31,23 @@ Gap denial keeps its checkpoint and missed sources; a later permission-restored
 restart must observe the original source reported and checkpoint cleared.
 The fake fault selectors are optional; older method-only fixtures keep their
 existing matching semantics.
+
+T-1650 adds two fake-only T2 cases. The slash-command case pairs Alice and Bob
+in separate channels, checks users-mode help for each, and verifies both users'
+decision/question messages by kind, name and durable user id. Each inbox command
+adds exactly one mapping in its invoking channel. Bob answers the original ask;
+all four copies fold, then Alice's conflicting option returns `Already answered`.
+The approval case repeats that boundary with approve-once followed by deny.
+Both require one hub answer request, unchanged durable outcome, final text and
+empty components on every copy, and exactly one REST PATCH per copy including
+after the second press. The existing exchange owner joins the in-process hub
+and fake API before deleting the disposable project. No native child is added.
+
+Second presses wait for their exact durable `discord.interaction:<id>` marker,
+which the socket writes after the owned card handlers become idle. The fixture's
+optional `nativeApi` flag injects the exchange's API instance without imposing a
+history limit; existing callers retain the factory path. A per-instance callback
+wrapper holds after the successful refusal acknowledgement. While held, require
+both marker absence and an unfinished completion observer; release and await the
+marker before final state/count assertions. Shutdown happens after assertions.
+The bounded hold registers cleanup before use and adds no process or timer sleep.

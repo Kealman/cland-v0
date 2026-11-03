@@ -1,4 +1,5 @@
 // T2: users-mode Discord through the sealed fake gateway and production hub.
+import { nativeReplyHold } from './native-reply-hold.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -186,4 +187,131 @@ for (const boundary of ['history', 'gap', 'card'] as const) test(`Discord users 
     assert.equal(f.state.status().disabled, false);
     await restored.stop();
   } else await recoveredHub.stop();
+});
+
+async function secondPress(t: import('node:test').TestContext, f: Awaited<ReturnType<typeof discordCardsFixture>>, fields: { message_id: string; custom_id: string }) {
+  const hold = nativeReplyHold(t), callback = f.api.callback.bind(f.api);
+  f.api.callback = async (...args) => {
+    const result = await callback(...args);
+    if (args[2] === 'Already answered') await hold.pause();
+    return result;
+  };
+  let id = '', completed = false;
+  const completion = until(() => !!id && f.state.get(`discord.interaction:${id}`) === '1', { what: 'exact owned interaction durably completed', timeoutMs: 1500 }).then(() => { completed = true; });
+  try {
+    id = (await f.fake.control('interact', { user: 'human', channel_id: ids.channel, ...fields })).id;
+    await hold.entered();
+    assert.equal(f.state.get(`discord.interaction:${id}`), null, 'post-ack handler remains unfinished');
+    assert.equal(completed, false, 'completion observer must wait past native acknowledgement');
+    hold.release();
+    await completion;
+    assert.equal(f.state.get(`discord.interaction:${id}`), '1');
+    return { id };
+  } finally { hold.release(); await completion; f.api.callback = callback; }
+}
+
+// Separate channels make the invoking-channel boundary observable.
+test('Discord users slash commands preserve invocation attribution and first answer across inbox copies', async t => {
+  const f = await discordCardsFixture(t, undefined, undefined, undefined, false, undefined, undefined, undefined, undefined, true, true);
+  await f.fake.control('configure', { sendLimit: 10000, sendWindow: 0, reactionWindow: 0 });
+  const bob = f.store.users.add('bob', 'Bob', [], f.clock.now().getTime());
+  const invite = f.store.users.mintInvite(bob.id, f.clock.now().getTime());
+  f.store.users.registerPassword(invite, 'fixture-hash', f.clock.now().getTime(), () => {});
+  f.state.setUserPairing(bob.id, { userId: ids.member, chatId: ids.secondChannel, guildId: ids.guild, name: 'Bob' });
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  const command = async (user: 'human' | 'member', command: string, text?: string) => {
+    const { id } = await f.fake.control('interact', { user, channel_id: user === 'human' ? ids.channel : ids.secondChannel, command, ...(text ? { text } : {}) });
+    await until(async () => !!(await f.fake.control('state')).interactions.find(r => r.id === id)?.callbacks.length, { what: 'native slash completion', timeoutMs: 1500 });
+    return (await f.fake.control('state')).interactions.find(r => r.id === id)!;
+  };
+  for (const user of ['human', 'member'] as const) {
+    const help = await command(user, 'help');
+    assert.match(JSON.stringify(help.callbacks), /Only paired Discord users in this channel can act\./);
+    for (const kind of ['decision', 'question']) {
+      const row = await command(user, kind, `${user} ${kind}`);
+      assert.equal((row.callbacks[0] as { data: { content: string } }).data.content, 'Sent');
+    }
+  }
+  const history = async () => ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
+  for (const [user, userId, from] of [['human', f.store.users.first()!.id, 'alice'], ['member', bob.id, 'bob']]) {
+    for (const kind of ['decision', 'question']) {
+      const rows = (await history()).filter(m => m.text === `${user} ${kind}`);
+      assert.equal(rows.length, 1); assert.equal(rows[0]!.userId, userId); assert.equal(rows[0]!.from, from); assert.equal(rows[0]!.kind, kind);
+    }
+  }
+  const ask = await f.coord.call<{ ask: string }>('ask', { topic: 'general', question: 'Inbox first winner', options: ['Ship', 'Wait'] });
+  await f.clock.advance(250);
+  await until(() => f.state.messagesForAsk(ask.ask).length === 2, { what: 'initial durable copies', timeoutMs: 1500 });
+  for (const user of ['human', 'member'] as const) {
+    const before = f.state.messagesForAsk(ask.ask);
+    await command(user, 'inbox');
+    const copies = f.state.messagesForAsk(ask.ask);
+    const added = copies.filter(c => !before.some(b => b.messageId === c.messageId));
+    assert.equal(added.length, 1); assert.equal(added[0]!.chatId, user === 'human' ? ids.channel : ids.secondChannel);
+  }
+  const copies = f.state.messagesForAsk(ask.ask);
+  const first = copies.find(c => c.chatId === ids.secondChannel)!;
+  const folded = until(async () => { const native = await f.fake.control('state'); return copies.every(c => native.messages.find(m => m.id === c.messageId)?.content.includes('bob via Discord')); }, { what: 'all four copies folded', timeoutMs: 1500 });
+  await f.fake.control('interact', { user: 'member', channel_id: ids.secondChannel, message_id: first.messageId, custom_id: `ask:${ask.ask}:1` });
+  await folded;
+  const before = await f.fake.control('state');
+  const saved = (await history()).find(m => m.id === ask.ask)!.ask!.outcome;
+  const second = copies.find(c => c.chatId === ids.channel)!;
+  const press = await secondPress(t, f, { message_id: second.messageId, custom_id: `ask:${ask.ask}:2` });
+  const finalHistory = await history();
+  assert.deepEqual(finalHistory.find(m => m.id === ask.ask)!.ask!.outcome, saved);
+  assert.equal(finalHistory.filter(m => m.answerTo === ask.ask).length, 1);
+  const after = await f.fake.control('state');
+  assert.equal((after.interactions.find(r => r.id === press.id)!.callbacks[0] as { data: { content: string } }).data.content, 'Already answered');
+  assert.equal(f.frames.filter(r => r.frame.type === 'topic.answer').length, 1);
+  assert.equal(saved!.userId, bob.id);
+  // History contains one durable answer, not merely one attempted native send.
+  for (const copy of copies) {
+    const native = after.messages.find(m => m.id === copy.messageId)!;
+    assert.match(native.content, /Ship.*bob via Discord/); assert.deepEqual(native.components, []);
+    assert.equal(native.content, before.messages.find(m => m.id === copy.messageId)!.content);
+    const edits = (state: typeof after) => state.requests.filter(r => r.method === 'PATCH' && r.path.endsWith(`/messages/${copy.messageId}`));
+    assert.equal(edits(after).length, 1, 'one durable fold per copy');
+    assert.deepEqual(edits(after), edits(before), 'second press does not fold again');
+  }
+  await f.hub.stop();
+});
+
+test('Discord users refuse a second paired approval answer and preserve every folded copy', async t => {
+  const f = await discordCardsFixture(t, undefined, undefined, undefined, false, undefined, undefined, undefined, undefined, true, true);
+  await f.fake.control('configure', { sendLimit: 10000, sendWindow: 0, reactionWindow: 0 });
+  const bob = f.store.users.add('bob', 'Bob', [], f.clock.now().getTime());
+  const invite = f.store.users.mintInvite(bob.id, f.clock.now().getTime());
+  f.store.users.registerPassword(invite, 'fixture-hash', f.clock.now().getTime(), () => {});
+  f.state.setUserPairing(bob.id, { userId: ids.member, chatId: ids.secondChannel, guildId: ids.guild, name: 'Bob' });
+  const ui = await connectUi(t, f.hub.discovery, 'nvim');
+  await ui.request({ type: 'subscribe' });
+  assert.equal((await ui.request({ type: 'session.launch', name: 'approval-worker', harness: 'codex', role: 'implementer' })).ok, true);
+  const raised = ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { session: string }).session === 'approval-worker', 1500);
+  f.hub.fakes.codex!.raiseApproval('approval-worker', { id: 'remote', kind: 'command', subject: { command: 'echo users' }, choices: ['once', 'deny'] });
+  const id = ((await raised).approval as { id: string }).id;
+  await f.clock.advance(250);
+  await until(() => f.state.messagesForApproval(id).length === 2, { what: 'both approval mappings', timeoutMs: 1500 });
+  const copies = f.state.messagesForApproval(id);
+  const bobCopy = copies.find(c => c.chatId === ids.secondChannel)!;
+  const folded = until(async () => { const native = await f.fake.control('state'); return copies.every(c => native.messages.find(m => m.id === c.messageId)?.content.includes('Approved once · bob via Discord')); }, { what: 'both named approval folds', timeoutMs: 1500 });
+  await f.fake.control('interact', { user: 'member', channel_id: ids.secondChannel, message_id: bobCopy.messageId, custom_id: `approval:${id}:once` });
+  await folded;
+  const saved = f.store.inboxOutcome('approval', id)!;
+  const before = await f.fake.control('state');
+  const aliceCopy = copies.find(c => c.chatId === ids.channel)!;
+  const press = await secondPress(t, f, { message_id: aliceCopy.messageId, custom_id: `approval:${id}:deny` });
+  const after = await f.fake.control('state');
+  assert.equal((after.interactions.find(r => r.id === press.id)!.callbacks[0] as { data: { content: string } }).data.content, 'Already answered');
+  assert.equal(f.frames.filter(r => r.frame.type === 'approval.answer').length, 1);
+  assert.equal(saved.userId, bob.id); assert.deepEqual(f.store.inboxOutcome('approval', id), saved);
+  for (const copy of copies) {
+    const native = after.messages.find(m => m.id === copy.messageId)!;
+    assert.match(native.content, /Approved once · bob via Discord/); assert.deepEqual(native.components, []);
+    assert.equal(native.content, before.messages.find(m => m.id === copy.messageId)!.content);
+    const edits = (state: typeof after) => state.requests.filter(r => r.method === 'PATCH' && r.path.endsWith(`/messages/${copy.messageId}`));
+    assert.equal(edits(after).length, 1, 'one durable fold per copy');
+    assert.deepEqual(edits(after), edits(before), 'second press does not fold again');
+  }
+  await f.hub.stop();
 });

@@ -11,6 +11,8 @@ import { fakeTelegram, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts'
 import { control } from './telegram-polling-fixture.ts';
 import { FakeClock } from './fake-clock.ts';
 import { pacingOwner, driveTelegram } from './telegram-pacing-fixture.ts';
+import { nativeReplyHold } from './native-reply-hold.ts';
+import type { TopicMessage } from '../src/protocol.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 
 async function fixture(t: TestContext) {
@@ -27,7 +29,11 @@ async function fixture(t: TestContext) {
   const state = store.remotes.forMessenger('telegram');
   state.setUserPairing(alice.id, { userId: '101', chatId: '101', guildId: null, name: 'Alice' });
   state.setUserPairing(bob.id, { userId: '202', chatId: '202', guildId: null, name: 'Bob' });
-  const remote = new TelegramRemote(new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock }), clock, { store: state });
+  const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: fake.url, clock });
+  const remote = new TelegramRemote(api, clock, { store: state });
+  const frames: Array<Record<string, unknown>> = [];
+  const start = remote.start.bind(remote);
+  remote.start = (send, ...rest) => start((frame, ...args) => { frames.push(frame); send(frame, ...args); }, ...rest);
   owner.close(() => remote.stop());
   const initial = fake.waitForPoll();
   const hub = await owner.start(root, {}, clock, { hubOptions: { gatewayRemotes: [remote] } });
@@ -43,7 +49,28 @@ async function fixture(t: TestContext) {
     });
     void work.catch(() => {}); return work;
   };
-  return { owner, store, state, clock, fake, hub, ui, coord, messages, wait, bob };
+  return { owner, store, state, clock, fake, hub, ui, coord, messages, wait, bob, frames, api };
+}
+
+async function secondPress(t: TestContext, f: Awaited<ReturnType<typeof fixture>>, press: Record<string, unknown>) {
+  const hold = nativeReplyHold(t), answer = f.api.answerCallbackQuery.bind(f.api);
+  f.api.answerCallbackQuery = async (...args) => {
+    const result = await answer(...args);
+    if (args[0].callback_query_id === press.id) await hold.pause();
+    return result;
+  };
+  let updateId = -1, completed = false;
+  const completion = f.wait(async () => updateId >= 0 && f.state.get(`telegram.update:${updateId}`) === '1', 'exact callback update durably completed').then(() => { completed = true; });
+  try {
+    const update = await control<{ update_id: number }>(f.fake.url, 'callback', { callback_query: press });
+    updateId = update.update_id;
+    await hold.entered();
+    assert.equal(f.state.get(`telegram.update:${updateId}`), null, 'post-ack handler remains unfinished');
+    assert.equal(completed, false, 'completion observer must wait past native acknowledgement');
+    hold.release();
+    await completion;
+    assert.equal(f.state.get(`telegram.update:${updateId}`), '1');
+  } finally { hold.release(); await completion; f.api.answerCallbackQuery = answer; }
 }
 
 test('Telegram users receive General once each and mirror native text only to the other owner', async t => {
@@ -68,13 +95,26 @@ test('Telegram users answer once and fold every mapped card with the answerer', 
   const ask = await f.coord.call<{ ok: boolean; ask: string }>('ask', { topic: 'general', question: 'Choose users', options: ['Ship', 'Wait'] });
   assert.equal(ask.ok, true); id = ask.ask; await f.clock.advance(250); await published;
   const card = f.state.messagesForAsk(id).find(m => m.chatId === '202')!;
+  const aliceNative = (await f.messages()).find(m => m.chat.id === 101 && m.text?.includes('Choose users'))!;
+  const aliceMarkup = aliceNative.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> };
   const folded = f.wait(async () => (await f.messages()).filter(m => m.text?.includes('Choose users') && m.text.includes('bob via Telegram') && JSON.stringify(m.reply_markup) === '{"inline_keyboard":[]}').length === 2, 'both folded native cards naming Bob');
   const native = (await f.messages()).find(m => m.chat.id === 202 && m.message_id === Number(card.messageId))!;
   const markup = native.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> };
-  await control(f.fake.url, 'update', { callback_query: { id: 'bob-press', from: { id: 202, is_bot: false, first_name: 'Bob' }, message: native, data: markup.inline_keyboard[0]![0]!.callback_data } });
+  await control(f.fake.url, 'callback', { callback_query: { id: 'bob-press', from: { id: 202, is_bot: false, first_name: 'Bob' }, message: native, data: markup.inline_keyboard[0]![0]!.callback_data } });
   await folded;
   const closure = JSON.parse(f.state.get(`telegram.card-closure:${id}`)!);
   assert.equal(closure.outcome.userId, f.bob.id); assert.equal(closure.outcome.text, 'Ship');
+  const before = await f.messages();
+  await secondPress(t, f, { id: 'alice-second', from: { id: 101, is_bot: false, first_name: 'Alice' }, message: before.find(m => m.chat.id === 101 && m.text?.includes('Choose users'))!, data: aliceMarkup.inline_keyboard[1]![0]!.callback_data });
+  const requests = (await control<{ requests: Array<{ method: string; params: Record<string, unknown> }> }>(f.fake.url, 'state')).requests;
+  assert.equal(requests.find(r => r.method === 'answerCallbackQuery' && r.params.callback_query_id === 'alice-second')!.params.text, 'Already answered');
+  for (const card of before.filter(m => m.text?.includes('Choose users'))) assert.equal(requests.filter(r => r.method === 'editMessageText' && r.params.message_id === card.message_id && String(r.params.chat_id) === String(card.chat.id)).length, 1);
+
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
+  assert.equal(history.filter(m => m.answerTo === id).length, 1);
+  assert.equal(f.frames.filter(frame => frame.type === 'topic.answer').length, 1);
+  assert.deepEqual(history.find(m => m.id === id)!.ask!.outcome, closure.outcome);
+  assert.deepEqual((await f.messages()).filter(m => m.text?.includes('Choose users')), before.filter(m => m.text?.includes('Choose users')));
   await f.hub.stop();
 });
 
@@ -115,12 +155,27 @@ for (const unpairFirst of [false, true]) test(`Telegram users fold approval copi
   f.hub.fakes.codex!.raiseApproval('approval-worker', { id: 'remote', kind: 'command', subject: { command: 'echo users' }, choices: ['once', 'deny'] });
   id = ((await delta).approval as { id: string }).id;
   await f.clock.advance(250); await mapped;
+  const aliceNative = (await f.messages()).find(m => m.chat.id === 101 && m.text?.includes('echo users'));
+  const aliceMarkup = aliceNative?.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> } | undefined;
   const native = (await f.messages()).find(m => m.chat.id === 202 && m.text?.includes('echo users'))!;
   const markup = native.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> };
   const folded = f.wait(async () => (await f.messages()).filter(m => m.text?.includes('echo users') && m.text.includes('Approved once · bob via Telegram') && JSON.stringify(m.reply_markup) === '{"inline_keyboard":[]}').length === (unpairFirst ? 1 : 2), 'remaining owner folded approval receipt');
-  await control(f.fake.url, 'update', { callback_query: { id: 'bob-approval', from: { id: 202, is_bot: false, first_name: 'Bob' }, message: native, data: markup.inline_keyboard[0]![0]!.callback_data } });
+  await control(f.fake.url, 'callback', { callback_query: { id: 'bob-approval', from: { id: 202, is_bot: false, first_name: 'Bob' }, message: native, data: markup.inline_keyboard[0]![0]!.callback_data } });
   await folded;
   assert.equal(JSON.parse(f.state.get(`telegram.approval-closure:${id}`)!).userId, f.bob.id);
+  if (!unpairFirst) {
+    const saved = f.store.inboxOutcome('approval', id)!;
+    const before = (await f.messages()).filter(m => m.text?.includes('echo users'));
+    await secondPress(t, f, { id: 'alice-approval-second', from: { id: 101, is_bot: false, first_name: 'Alice' }, message: before.find(m => m.chat.id === 101)!, data: aliceMarkup!.inline_keyboard.flat().at(-1)!.callback_data });
+    const requests = (await control<{ requests: Array<{ method: string; params: Record<string, unknown> }> }>(f.fake.url, 'state')).requests;
+    assert.equal(requests.find(r => r.method === 'answerCallbackQuery' && r.params.callback_query_id === 'alice-approval-second')!.params.text, 'Already answered');
+    assert.equal(f.frames.filter(frame => frame.type === 'approval.answer').length, 1);
+    assert.equal(saved.userId, f.bob.id); assert.deepEqual(f.store.inboxOutcome('approval', id), saved);
+    assert.deepEqual((await f.messages()).filter(m => m.text?.includes('echo users')), before);
+    for (const card of before) assert.equal(requests.filter(r => r.method === 'editMessageText' && r.params.message_id === card.message_id && String(r.params.chat_id) === String(card.chat.id)).length, 1);
+    for (const card of before) { assert.match(card.text!, /Approved once · bob via Telegram/); assert.deepEqual(card.reply_markup, { inline_keyboard: [] }); }
+  }
+
   await f.hub.stop();
 });
 
