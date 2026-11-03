@@ -95,9 +95,10 @@
       "A-15091",
       "A-15096",
       "A-15983",
-      "A-15995"
+      "A-15995",
+      "A-16249"
     ],
-    "commit": "986afe46b587899bcf9ebb3f51781d3491a904ca"
+    "commit": "3b391058e664d82f58be134c9ffa8012f3dcaad6"
   },
   "budget": {
     "testSeconds": 5,
@@ -3314,6 +3315,66 @@
     "web/test/signin.test.ts": {
       "seconds": 5.180662,
       "tests": 2
+    },
+    "hub/test/discord-users.test.ts": {
+      "seconds": 3.227813,
+      "tests": 7
+    },
+    "hub/test/host-agent-files.test.ts": {
+      "seconds": 0.422168,
+      "tests": 6
+    },
+    "hub/test/host-allow-list.test.ts": {
+      "seconds": 7.269812,
+      "tests": 10
+    },
+    "hub/test/host-launch-layout.test.ts": {
+      "seconds": 0.111385,
+      "tests": 16
+    },
+    "hub/test/host-secret-admission.test.ts": {
+      "seconds": 2.47353,
+      "tests": 16
+    },
+    "hub/test/host-supervisor.test.ts": {
+      "seconds": 3.775553,
+      "tests": 3
+    },
+    "hub/test/remote-publications.test.ts": {
+      "seconds": 0.193564,
+      "tests": 7
+    },
+    "hub/test/telegram-users.test.ts": {
+      "seconds": 3.431112,
+      "tests": 10
+    },
+    "hub/test/transport-fake-contract.test.ts": {
+      "seconds": 3.090091,
+      "tests": 1
+    },
+    "hub/test/transport-forwards.test.ts": {
+      "seconds": 16.456803,
+      "tests": 6
+    },
+    "hub/test/transport-policy.test.ts": {
+      "seconds": 0.002268,
+      "tests": 1
+    },
+    "hub/test/transport-ssh-contract.test.ts": {
+      "seconds": 3.299463,
+      "tests": 1
+    },
+    "hub/test/transport-ssh.test.ts": {
+      "seconds": 9.375249,
+      "tests": 6
+    },
+    "hub/test/transport-status.test.ts": {
+      "seconds": 0.294606,
+      "tests": 1
+    },
+    "hub/test/web-cookie-secure.test.ts": {
+      "seconds": 0.75065,
+      "tests": 4
     }
   },
   "tests": {
@@ -9723,7 +9784,119 @@
     "web/test/phone-approvals.test.ts::approval card renders human from the saved outcome": 0.775436,
     "web/test/signin.test.ts::invite view shows the user and signs in with a password POST without sending a password frame": 2.035458,
     "web/test/signin.test.ts::users-mode password form and Profile sign-out isolate browser sessions and return revoked tabs to sign-in": 3.145204,
-    "web/test/withdraw.test.ts::users see Withdraw only for their own messages and legacy admin input with equal display names": 1.574964
+    "web/test/withdraw.test.ts::users see Withdraw only for their own messages and legacy admin input with equal display names": 1.574964,
+    "hub/test/codex-sandbox-host.test.ts::mapped network-local launch denies the canonical directory containing its app-server socket": 0.006703,
+    "hub/test/discord-users.test.ts::Discord users frozen history survives valid Resume in one channel": 0.351536,
+    "hub/test/discord-users.test.ts::Discord users frozen history survives valid Resume in two channels": 0.33931,
+    "hub/test/discord-users.test.ts::Discord users in one channel receive General and cards once and fold every copy": 0.674818,
+    "hub/test/discord-users.test.ts::Discord users in separate channels receive General and cards once and fold every copy": 0.527355,
+    "hub/test/discord-users.test.ts::Discord users isolate channel403 during card recovery": 0.420312,
+    "hub/test/discord-users.test.ts::Discord users isolate channel403 during gap recovery": 0.481996,
+    "hub/test/discord-users.test.ts::Discord users isolate channel403 during history recovery": 0.432486,
+    "hub/test/fixture-socket-path.test.ts::fake host setup guards long names and retains short paths across independent readers": 0.0109,
+    "hub/test/fixture-socket-path.test.ts::fake host socket guard names oversized paths before native connect": 0.001673,
+    "hub/test/host-agent-files.test.ts::agent C1 short command output and timeout match local": 0.201676,
+    "hub/test/host-agent-files.test.ts::agent C1/C2 file reads match local and transfer exact bounded bytes": 0.099055,
+    "hub/test/host-agent-files.test.ts::agent C3 mutations preserve modes, single-path and symlink boundaries; freePort releases loopback": 0.023302,
+    "hub/test/host-agent-files.test.ts::agent C4 worktrees share root install, preserve stale warning and refuse dirty removal": 0.080213,
+    "hub/test/host-agent-files.test.ts::agent C5 occupants matches local real paths through aliases and excludes siblings": 0.008225,
+    "hub/test/host-agent-files.test.ts::agent fixture drains server and removes root after failed connection setup": 0.009697,
+    "hub/test/host-allow-list.test.ts::a stalled receive releases its write fence after the injected cap and native close": 0.585564,
+    "hub/test/host-allow-list.test.ts::admitted push fences revoke until native exit; held revoke refuses push while fetch completes": 0.686805,
+    "hub/test/host-allow-list.test.ts::batch revokes every host and builds the pinned member head; later pushes are refused": 0.661211,
+    "hub/test/host-allow-list.test.ts::failed write-lock release fences admission and makes listener close report incomplete cleanup": 0.239576,
+    "hub/test/host-allow-list.test.ts::grant and revoke cannot rewrite the allow list while another territory operation holds its lock": 0.365831,
+    "hub/test/host-allow-list.test.ts::host socket accepts only its leased task refs; upgrade preserves hub push policy": 1.48685,
+    "hub/test/host-allow-list.test.ts::hub startup upgrades an existing territory update hook": 0.291523,
+    "hub/test/host-allow-list.test.ts::immediate merge revokes every host lease before landing the task": 2.550261,
+    "hub/test/host-allow-list.test.ts::public revoke reuses its active territory lock without waiting on itself": 0.060861,
+    "hub/test/host-allow-list.test.ts::revoke joins a receive whose Git client exited before asynchronous lock release": 0.34133,
+    "hub/test/host-boundary.test.ts::Host boundary rejects session file mutation imports and namespaces": 0.00738,
+    "hub/test/host-launch-layout.test.ts::Claude nonlocal layout without a mod directory refuses before native launch": 0.002279,
+    "hub/test/host-launch-layout.test.ts::local claude launch preserves baseline argv, environment and file bytes/modes (umask 2)": 0.005758,
+    "hub/test/host-launch-layout.test.ts::local claude launch preserves baseline argv, environment and file bytes/modes (umask 22)": 0.029352,
+    "hub/test/host-launch-layout.test.ts::local codex launch preserves baseline argv, environment and file bytes/modes (umask 2)": 0.003208,
+    "hub/test/host-launch-layout.test.ts::local codex launch preserves baseline argv, environment and file bytes/modes (umask 22)": 0.007336,
+    "hub/test/host-launch-layout.test.ts::local opencode launch preserves baseline argv, environment and file bytes/modes (umask 2)": 0.007039,
+    "hub/test/host-launch-layout.test.ts::local opencode launch preserves baseline argv, environment and file bytes/modes (umask 22)": 0.011374,
+    "hub/test/host-launch-layout.test.ts::mapped Host claude launch preserves baseline argv, environment and file bytes/modes (umask 2)": 0.005802,
+    "hub/test/host-launch-layout.test.ts::mapped Host claude launch preserves baseline argv, environment and file bytes/modes (umask 22)": 0.006398,
+    "hub/test/host-launch-layout.test.ts::mapped Host codex launch preserves baseline argv, environment and file bytes/modes (umask 2)": 0.004794,
+    "hub/test/host-launch-layout.test.ts::mapped Host codex launch preserves baseline argv, environment and file bytes/modes (umask 22)": 0.004237,
+    "hub/test/host-launch-layout.test.ts::mapped Host opencode launch preserves baseline argv, environment and file bytes/modes (umask 2)": 0.010149,
+    "hub/test/host-launch-layout.test.ts::mapped Host opencode launch preserves baseline argv, environment and file bytes/modes (umask 22)": 0.007898,
+    "hub/test/host-launch-layout.test.ts::nonlocal file replacement refuses missing rollback metadata and new files undo through their Host": 0.001164,
+    "hub/test/host-launch-layout.test.ts::nonlocal OpenCode shared-ignore preparation refuses the unsupported atomic boundary": 0.003452,
+    "hub/test/host-launch-layout.test.ts::OpenCode password reads use the supplied Host": 0.001145,
+    "hub/test/host-records.test.ts::C3 fake registration requires both variables: suite-tmpdir": 0.097913,
+    "hub/test/host-secret-admission.test.ts::C1 host bearer welcomes only its role-holding launch session": 0.288272,
+    "hub/test/host-secret-admission.test.ts::C1/C2 held-spawn host admission anonymous": 0.128644,
+    "hub/test/host-secret-admission.test.ts::C1/C2 held-spawn host admission foreign-host": 0.111692,
+    "hub/test/host-secret-admission.test.ts::C1/C2 held-spawn host admission local": 0.119009,
+    "hub/test/host-secret-admission.test.ts::C1/C2 held-spawn host admission own": 0.118919,
+    "hub/test/host-secret-admission.test.ts::C1/C2 held-spawn host admission roleless": 0.118886,
+    "hub/test/host-secret-admission.test.ts::C2 host hello refuses local": 0.107361,
+    "hub/test/host-secret-admission.test.ts::C2 host hello refuses no-credential": 0.117828,
+    "hub/test/host-secret-admission.test.ts::C2 host hello refuses no-role": 0.125557,
+    "hub/test/host-secret-admission.test.ts::C2 host hello refuses other-host": 0.108265,
+    "hub/test/host-secret-admission.test.ts::C2 settled first-hello token cannot join live foreign session (foreign)": 0.141995,
+    "hub/test/host-secret-admission.test.ts::C2 settled first-hello token cannot join live foreign session (nameless)": 0.156187,
+    "hub/test/host-secret-admission.test.ts::C3 host clients cannot request human snapshots or borrow another host session": 0.111011,
+    "hub/test/host-secret-admission.test.ts::C3/C4 host CLI requires session credential and denies human frames": 0.121498,
+    "hub/test/host-secret-admission.test.ts::C4 CLI producer carries the host session credential": 0.281093,
+    "hub/test/host-secret-admission.test.ts::C5 human revoke closes host peers and refuses subsequent hellos": 0.317313,
+    "hub/test/host-supervisor.test.ts::kill-agent refuses another live fake host receipt and preserves both agents and harnesses": 1.218815,
+    "hub/test/host-supervisor.test.ts::supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart and retained harness identity": 2.20255,
+    "hub/test/host-supervisor.test.ts::supervisor setup failure before its expected receipt drains the detached writer before root removal": 0.354188,
+    "hub/test/merge-batches.test.ts::territory contention during build retries automatically using the same green receipt": 0.064465,
+    "hub/test/merge-batches.test.ts::territory contention during land retries automatically using the same green receipt": 0.060257,
+    "hub/test/remote-publications.test.ts::a scoped delivery cannot inherit a reassigned chat owner": 0.023834,
+    "hub/test/remote-publications.test.ts::publication failure retains ownership until every admitted destination finishes": 0.024586,
+    "hub/test/remote-publications.test.ts::publications scope every user, deduplicate shared channels and preserve single mode": 0.029912,
+    "hub/test/remote-publications.test.ts::Telegram gap cannot settle a reassigned project owner's jobs (retained: fresh)": 0.040305,
+    "hub/test/remote-publications.test.ts::Telegram gap cannot settle a reassigned project owner's jobs (retained: legacy)": 0.024306,
+    "hub/test/remote-publications.test.ts::Telegram gap cannot settle a reassigned project owner's jobs (retained: retained)": 0.025164,
+    "hub/test/remote-publications.test.ts::Telegram gap cannot settle an admitted owner after reassignment during its send": 0.025457,
+    "hub/test/suite-coverage-selection.test.ts::raw coverage admission sweep removes only finished cleaned records and logs bytes": 0.008577,
+    "hub/test/suite-coverage-selection.test.ts::raw coverage removal refuses traversal, foreign output and symlinked roots": 0.002923,
+    "hub/test/suite-coverage-selection.test.ts::raw coverage removal retains the droplet account run layout": 0.002368,
+    "hub/test/suite-coverage-selection.test.ts::raw sweep checkpoints a 4082-run history and bounds repeated admission work": 0.027173,
+    "hub/test/suite-runner.test.ts::coverage failed exit removes raw bytes before runner close": 0.667713,
+    "hub/test/suite-runner.test.ts::coverage interrupted exit removes raw bytes before runner close": 0.923348,
+    "hub/test/suite-runner.test.ts::coverage red exit removes raw bytes before runner close": 0.669319,
+    "hub/test/suite-runner.test.ts::coverage reduction-failed exit removes raw bytes before runner close": 0.638103,
+    "hub/test/suite-runner.test.ts::raw coverage removal refusal still releases drained execution leases": 0.663313,
+    "hub/test/telegram-users.test.ts::Telegram blocked chat during gap leaves healthy General cards and native input usable": 0.26112,
+    "hub/test/telegram-users.test.ts::Telegram blocked chat during long outage leaves healthy General cards and native input usable": 0.91586,
+    "hub/test/telegram-users.test.ts::Telegram held gap in one chat cannot hold healthy native input behind recovery": 0.196873,
+    "hub/test/telegram-users.test.ts::Telegram held General in one chat cannot hold healthy native input behind recovery": 0.230523,
+    "hub/test/telegram-users.test.ts::Telegram stop joins an independently owned held gap recovery before returning": 0.168131,
+    "hub/test/telegram-users.test.ts::Telegram users answer once and fold every mapped card with the answerer": 0.269466,
+    "hub/test/telegram-users.test.ts::Telegram users fold approval copies (first user unpaired: false)": 0.333603,
+    "hub/test/telegram-users.test.ts::Telegram users fold approval copies (first user unpaired: true)": 0.219802,
+    "hub/test/telegram-users.test.ts::Telegram users keep a failed chat outbox and gap independent from the healthy chat": 0.234234,
+    "hub/test/telegram-users.test.ts::Telegram users receive General once each and mirror native text only to the other owner": 0.6015,
+    "hub/test/transport-fake-contract.test.ts::fake transport pairing: C1–C7 four Unix endpoints relay and recover without TCP": 3.090091,
+    "hub/test/transport-forwards.test.ts::C1 Unix and host-loopback forwards answer with no hub TCP listener; C2 cancellation removes both": 2.730922,
+    "hub/test/transport-forwards.test.ts::C2 acknowledged cancellation retains failed unlink for retry and stop without another cancel": 1.12243,
+    "hub/test/transport-forwards.test.ts::C3 exhausted forward logs once and is forgotten on later replacement": 4.494367,
+    "hub/test/transport-forwards.test.ts::C3 exhausted restore logs once and retains failed cleanup without reinstalling": 3.878268,
+    "hub/test/transport-forwards.test.ts::C3 SIGKILL restores every retained forward and excludes cancelled sessions": 3.447581,
+    "hub/test/transport-forwards.test.ts::failed initial installation retains socket cleanup until stop retry": 0.783235,
+    "hub/test/transport-policy.test.ts::C3 exponential jitter, cap, stable uptime reset and wake clock jump": 0.002268,
+    "hub/test/transport-ssh-contract.test.ts::ssh carrier with fake sshd: C1–C7 four Unix endpoints relay and recover without TCP": 3.299463,
+    "hub/test/transport-ssh.test.ts::C1/C2/C4/C5/C6 fake master restores four forwards and probe after SIGKILL": 2.851036,
+    "hub/test/transport-ssh.test.ts::C3 injected clock drives consecutive retries and immediately retries on wake jump": 2.59696,
+    "hub/test/transport-ssh.test.ts::C4 refused old-master exit fences unlink/start with backoff and concurrent carriers": 1.189434,
+    "hub/test/transport-ssh.test.ts::C6 injected clock probes agent.sock every 30 seconds": 0.83902,
+    "hub/test/transport-ssh.test.ts::C7 private pin is exclusive despite matching global trust and supports spaces": 1.535765,
+    "hub/test/transport-ssh.test.ts::C7 wrong pin refuses before bootstrap and logs no key material": 0.363034,
+    "hub/test/transport-status.test.ts::C6 hub status exposes tunnel facts and CLI tolerates the previous reply shape": 0.294606,
+    "hub/test/web-auth-unit.test.ts::the cookie policy uses only configured origin and Host, including port": 0.023113,
+    "hub/test/web-cookie-secure.test.ts::/auth navigation with configured tunnel Host sets Secure without Origin": 0.234186,
+    "hub/test/web-cookie-secure.test.ts::cookie headers ignore forwarded claims with configured origin false": 0.13677,
+    "hub/test/web-cookie-secure.test.ts::cookie headers ignore forwarded claims with configured origin true": 0.112246,
+    "hub/test/web-cookie-secure.test.ts::invite and password sign-in cookies share tunnel and local Secure policy": 0.267448
   },
   "allow": {
     "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
