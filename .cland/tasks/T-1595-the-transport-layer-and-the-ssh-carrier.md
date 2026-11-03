@@ -2,8 +2,8 @@
 id: T-1595
 kind: task
 title: The transport layer and the ssh carrier's master
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1358
 branch: t/T-1595-the-transport-layer-and-the-ssh-carrier
 created: 2026-11-02T03:33:54.197Z
-updated: 2026-11-03T04:53:16.323Z
+updated: 2026-11-03T05:39:03.786Z
+closed: 2026-11-03T05:39:03.786Z
 ---
 
 ## Summary
@@ -154,3 +155,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### impl-1595 · 2026-11-03T04:53:16.323Z
 
 Merged-head verify5e41a09e/A-16164 exit0,4925pass/zero fail/cancel/skip/todo at delta-reviewed ee744a6167e49b4ff213ea56896878161001ddc3, treeed233d00383106f8b1bb52cf3fbfcc7c46c7d51c. Independently parsed actual named timing outcomes: carrier6,policy1,status1,unchangedhost-secret-admission16 allpass; policy/status also5/5 load-gate. Linuxx64droplet Node24.21/Nvim0.12.5, isolated HeadlessShell1248 ChromeForTesting156.0.8078.4. T0/T1/fallbackallT2/selectedT3(3files20identities once)/Web complete; remainingT3 deferred,T4 unexecuted; budget/ratchet/lint/skip reports report-only, skips[]/missing0. Native preservation3+9 retains A-16158 predecessor/macOS limits; no current remote native preservation claimed. Freshfetch origin/devbf486cb6, merge-treeexit0/tree8b95caee; head clean/unchanged,no merge. Merged-head evidence artifact posted for final review; local quiet honored.
+
+### coord · 2026-11-03T05:39:03.786Z
+
+Merged e21b64bffa6ccec52b4457285cca27d9052fadf3 onto dev.
