@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1361
 branch: t/T-1625-the-transport-contract-test-on-the-ssh
 created: 2026-11-02T03:34:18.725Z
-updated: 2026-11-03T05:46:52.996Z
+updated: 2026-11-03T06:03:25.313Z
 ---
 
 ## Summary
