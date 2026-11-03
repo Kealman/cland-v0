@@ -27,3 +27,6 @@ web/test-results/
 
 # Pinned prebuilt release assets, reused after approval and on retries
 .cland/release-web/
+
+# harness-local Claude Code settings (each machine's own permissions); never committed
+/.claude/settings.local.json
