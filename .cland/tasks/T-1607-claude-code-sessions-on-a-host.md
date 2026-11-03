@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1375
 branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-03T22:03:54.501Z
+updated: 2026-11-03T22:20:59.641Z
 ---
 
 ## Summary
@@ -42,3 +42,7 @@ Shared files: `hub/src/adapters/claude-code.ts`
 ### impl-1607 · 2026-11-03T22:03:54.501Z
 
 T-1607 Claude Code sessions on a host: read A-15100/A-15370/A-15588, spec/decisions, T-1599/1600/1556/1601 and comments. Before-edit consumer inventory published in item topic. Coordinator d658d9eb approves optional Host.adopt + capability gated agent operation, identity/launch proof required and older-agent explicit refusal. Existing credential is CLAND_LAUNCH_TOKEN in private launch files, not a new credential variable. Asked lead to settle safe positive launch proof for detached/reparented workers before implementation.
+
+### coord · 2026-11-03T22:20:59.641Z
+
+Coord decision 2026-11-03 22:21Z on the launch-token scan versus the Claude job record. No source documents real `claude --bg` job-record content, so it is treated as possibly holding settings content. CLAUDE_CONFIG_DIR stays the account's existing config root (account_env); there is no relocation, symlink or credential copy. Precondition: the root is realpath'd, owned by the agent user and mode 0700, otherwise launch is refused by name. The session's jobs/<pinned job id>.json is generation-owned and removed by pinned id after a confirmed stop or rollback; sibling records are untouched. Scan: while running, the token appears only in the generation's private files and that one job record; after stop or rollback, nowhere (host home, fake home, generation folders). The fake's home is the fake account root, 0700.

@@ -3,7 +3,7 @@ id: T-1604
 kind: task
 title: The host's clone and its worktrees from the territory
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1371
 branch: t/T-1604-the-host-s-clone-and-its-worktrees-from
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-03T22:18:51.860Z
+updated: 2026-11-03T22:22:41.017Z
 ---
 
 ## Summary
@@ -29,10 +29,10 @@ Hot files: `hub/src/host/ssh-host.ts` (worktreeAdd with territory), `hub/src/hos
 
 - [x] C1. On a fake host the first clone goes through the git socket with `core.gitProxy` set to `cland host git-proxy`, and no other remote URL or credential is configured (test).
   - done: impl-1604 · 2026-11-03T22:17:00.385Z
-- [x] C2. When the daemon clone fails, the host is cloned from a bundle copied over `scp` on the master, and its `origin` still points at the git socket (test).
-  - done: impl-1604 · 2026-11-03T22:17:00.534Z
-- [x] C3. An item launch on a fake host creates the task branch in the territory (as T-1555 does), grants that host its lease, and adds the worktree on the host at the territory's tip (test).
-  - done: impl-1604 · 2026-11-03T22:17:00.655Z
+- [ ] C2. When the daemon clone fails, the host is cloned from a bundle copied over `scp` on the master, and its `origin` still points at the git socket (test).
+  - failed: rev-36 [reviewer] · 2026-11-03T22:22:41.017Z · note SCP may establish an independent connection after mux loss; same-master delivery is not enforced.
+- [ ] C3. An item launch on a fake host creates the task branch in the territory (as T-1555 does), grants that host its lease, and adds the worktree on the host at the territory's tip (test).
+  - failed: rev-36 [reviewer] · 2026-11-03T22:22:41.017Z · note Post-add persistence failure removes durable ownership/lease/ref while the accepted remote checkout remains.
 - [x] C4. A worktree add that fails on the host leaves no lease and no territory branch created by the launch behind (test).
   - done: impl-1604 · 2026-11-03T22:17:00.906Z
 - [x] C5. Worktree prune of a host task worktree removes it through that host's agent, and the task-worktrees and worktree-cli test files pass with no test edited (test).
@@ -59,3 +59,18 @@ Approved seam decisions: SshTransport.copyFile (class only) shares pinned Contro
 ### coord · 2026-11-03T22:13:01.901Z
 
 Coord decision 2026-11-03 22:13Z (supersedes the re-entrant grant approval of 22:06Z): the public grantBranchLease is unchanged and still rejects inside the territory lock. A new export, grantBranchLeaseLocked, mirrors revokeBranchLeasesLocked: it asserts territoryLockHeld for the same realpath'd root, otherwise throws a named error, and never acquires. Only atomic host launch calls it. The git-proxy wrapper is a 0700 atomic script in the host run folder that execs `cland host git-proxy` (core.gitProxy takes an executable path, not shell source); it is set in the clone config only and contains no secrets. host_worktrees is an additive Store table.
+
+### rev-36 · 2026-11-03T22:22:41.017Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1604-source-1
+commit: 97bd21718c7ddd4390f13fbb6276cdcabb6f3254
+scope: full
+findings: [{"severity":"medium","text":"A ready-record write failure after worktreeAdd succeeds enters the generic rollback, deletes the adding record and revokes/deletes its lease/ref while the accepted remote checkout remains. Preserve ownership/fencing until that checkout is positively removed or its accepted result is durably recorded; add a post-add persistence-failure regression.","file":"hub/src/host/task-worktrees.ts","line":31},{"severity":"medium","text":"ControlPath plus ControlMaster=no permits ordinary SSH fallback when the existing mux socket disappears. The in-memory masterReady check cannot prevent that race, so bundle delivery can create an independent connection instead of requiring the admitted master. Disable native connection fallback and cover master loss during copy.","file":"hub/src/transport/ssh.ts","line":199},{"severity":"medium","text":"HOST_USAGE adds git-proxy but the independent frozen HOST_USAGE in hub/test/fixtures/cli-usage/commands.json is unchanged. The unedited cli-usage-compatibility and native cli-help equality guards therefore disagree at this head; update only the owning frozen block and retain the guards.","file":"hub/src/cli/usage.ts","line":46}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Source review not clear; three medium findings detailed in A-16366. Reviewed exact head 97bd21718c7ddd4390f13fbb6276cdcabb6f3254. C2/C3 failed; C1/C4/C5 runtime evidence unverified. No tests/probes run by Reviewer. Frozen HOST_USAGE must migrate with the intentional help addition. Correct and request fresh source review before verification.
+
+Criteria: C2 failed (SCP may establish an independent connection after mux loss; same-master delivery is not enforced.), C3 failed (Post-add persistence failure removes durable ownership/lease/ref while the accepted remote checkout remains.).
