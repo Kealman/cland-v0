@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+import type { HostEndpoint } from '../host/host.ts';
 import { createConnection } from 'node:net';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
@@ -34,6 +36,11 @@ export type SshOptions = {
   supervisor: string; agentCommand: string[];
   env?: NodeJS.ProcessEnv; clock?: Clock; random?: () => number;
   log?: (message: string) => void;
+  /** Native removal seam for testing retained session cleanup failures. */
+  unlinkSessionSocket?: (path: string) => Promise<void>;
+  /** Test scheduling seams; omitted values retain the production backoff/retries. */
+  reconnectDelayMs?: (backoffMs: number) => number;
+  forwardRetryDelaysMs?: readonly [number, number];
 };
 /** Shell and secret travel solely in SSH stdin. No child inherits the secret in argv. */
 export function bootstrapScript(o: SshOptions): string {
@@ -46,11 +53,75 @@ export async function sshArguments(o: SshOptions): Promise<string[]> {
   return ['-a', '-x', '-F', '/dev/null', '-i', (await readFile(paths.clientKeyPath, 'utf8')).trim(),
     ...['BatchMode=yes','IdentitiesOnly=yes','ExitOnForwardFailure=yes','ServerAliveInterval=15','ServerAliveCountMax=4','StrictHostKeyChecking=yes','GlobalKnownHostsFile=/dev/null','KnownHostsCommand=none','VerifyHostKeyDNS=no','UpdateHostKeys=no',`UserKnownHostsFile=${configPath(paths.knownHosts)}`].flatMap(v => ['-o',v])];
 }
+type SessionForward = { socket: string; spec: string; cleanup: boolean };
 export class SshTransport implements Transport {
   readonly kind = 'ssh' as const; readonly host: string;
   readonly #o: SshOptions; readonly #clock: Clock; readonly #policy: ReconnectPolicy;
   #state: HostTunnelStatus; #running = false; #loop?: Promise<void>; #release: (() => void) | undefined;
   #children = new Map<ChildProcess, () => Promise<void>>(); #retry: (() => void) | undefined; #watch?: ClockTimer;
+  #forwards = new Map<string, SessionForward>();
+  #forwardWork: Promise<unknown> = Promise.resolve();
+  #masterReady = false;
+  #retireMaster: (() => Promise<void>) | undefined;
+  #forwardAbort = new AbortController();
+  #serial<T>(work: () => Promise<T>): Promise<T> {
+    const result = this.#forwardWork.then(work);
+    this.#forwardWork = result.catch(() => {});
+    return result;
+  }
+  async #forwardCommand(operation: 'forward' | 'cancel', spec: string): Promise<boolean> {
+    const o = this.#o;
+    return this.#command([...await sshArguments(o), '-S', hostPaths(o.root, this.host).controlSocket, '-O', operation, '-L', spec, `${o.record.user}@${o.record.address}`]);
+  }
+  async #removeForward(session: string, entry: SessionForward): Promise<void> {
+    await (this.#o.unlinkSessionSocket ?? unlink)(entry.socket).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    this.#forwards.delete(session);
+  }
+  /** Returns only after the master acknowledges installation. One endpoint per session. */
+  forward(session: string, endpoint: HostEndpoint): Promise<{ socket: string }> {
+    return this.#serial(async () => {
+      if (!this.#running || !this.#masterReady) throw new Error('host tunnel is not ready');
+      let target: string;
+      if ('socket' in endpoint) {
+        if (!isAbsolute(endpoint.socket) || /[:\\\n\r\0]/.test(endpoint.socket)) throw new Error('invalid host Unix endpoint');
+        target = endpoint.socket;
+      } else {
+        if (!Number.isInteger(endpoint.port) || endpoint.port < 1 || endpoint.port > 65535) throw new Error('invalid host loopback port');
+        target = `127.0.0.1:${endpoint.port}`;
+      }
+      const socket = hostPaths(this.#o.root, this.host).sessionSocket(session);
+      const spec = `${socket}:${target}`, old = this.#forwards.get(session);
+      if (old) {
+        if (old.cleanup) throw new Error('session forward cleanup is pending');
+        if (old.spec !== spec) throw new Error('session already has a different forward');
+        return { socket };
+      }
+      const entry: SessionForward = { socket, spec, cleanup: false };
+      this.#forwards.set(session, entry);
+      try {
+        if (!await this.#forwardCommand('forward', spec)) throw new Error('session forward refused');
+      } catch (error) {
+        // A lost mux acknowledgement can leave an installed listener. Reap its
+        // exact owned master before treating this failed installation as absent.
+        await this.#retireMaster?.();
+        entry.cleanup = true;
+        await this.#removeForward(session, entry);
+        throw error;
+      }
+      return { socket };
+    });
+  }
+  unforward(session: string): Promise<void> {
+    return this.#serial(async () => {
+      const entry = this.#forwards.get(session);
+      if (!entry) return;
+      if (!entry.cleanup) {
+        if (this.#masterReady && !await this.#forwardCommand('cancel', entry.spec)) throw new Error('session forward cancellation refused');
+        entry.cleanup = true;
+      }
+      await this.#removeForward(session, entry);
+    });
+  }
   constructor(options: SshOptions) {
     for (const path of [options.remoteRun, options.hubSocket, options.spokeSocket, options.supervisor]) {
       if (!isAbsolute(path) || /[:\n\r\0]/.test(path)) throw new Error('transport requires absolute Unix socket and installed code paths');
@@ -64,6 +135,7 @@ export class SshTransport implements Transport {
   #stateTo(state: HostTunnelStatus['state']): void { if (state !== this.#state.state || this.#state.since === null) { this.#state.state = state; this.#state.since = this.#now(); } }
   async start(): Promise<void> {
     if (this.#running) return;
+    this.#forwardAbort = new AbortController();
     this.#release = claimTransport(this.#o.root, this); this.#running = true;
     this.#policy.observe();
     this.#watch = this.#clock.setInterval(() => { if (this.#policy.observe()) this.wake(); },1000);
@@ -71,9 +143,14 @@ export class SshTransport implements Transport {
   }
   wake(): void { this.#retry?.(); }
   async stop(): Promise<void> {
-    this.#running = false; this.#clock.clearInterval(this.#watch); this.wake();
+    this.#running = false; this.#forwardAbort.abort(); this.#clock.clearInterval(this.#watch); this.wake();
     await Promise.all([...this.#children.values()].map(terminate => terminate()));
-    await this.#loop; this.#release?.(); this.#release = undefined; this.#stateTo('down');
+    await this.#loop; await this.#forwardWork;
+    await this.#serial(async () => {
+      for (const entry of this.#forwards.values()) entry.cleanup = true;
+      for (const [session, entry] of this.#forwards) await this.#removeForward(session, entry);
+      this.#release?.(); this.#release = undefined; this.#stateTo('down');
+    });
   }
   #launch(args: string[], input = '') {
     const child = spawn(sshBinaries(this.#o.env ?? process.env).ssh, args, { env: this.#o.env, detached: true, stdio: ['pipe','ignore','ignore'] });
@@ -130,7 +207,7 @@ export class SshTransport implements Transport {
           const master = this.#launch([...base,'-N','-M','-S',paths.controlSocket,'-o','ControlMaster=yes','-o','StreamLocalBindUnlink=yes',
             '-R',`${o.remoteRun}/hub.sock:${o.hubSocket}`,'-R',`${o.remoteRun}/spoke.sock:${o.spokeSocket}`,
             '-R',`${o.remoteRun}/git.sock:${paths.gitSocket}`,'-L',`${paths.agentSocket}:${o.remoteRun}/agent.sock`,destination]);
-          master.keep();
+          master.keep(); this.#retireMaster = master.terminate;
           let exited = false; void master.closed.then(() => { exited = true; this.wake(); });
           try {
             // Readiness is multiplexing plus an authenticated end-to-end receipt.
@@ -140,18 +217,41 @@ export class SshTransport implements Transport {
               await this.#pause(100);
             }
             if (!this.#running || exited || !this.#state.lastProbe?.ok || performance.now() >= deadline) throw new Error('master readiness failed');
+            await this.#serial(async () => {
+              for (const [session, entry] of this.#forwards) {
+                if (entry.cleanup) { await this.#removeForward(session, entry); continue; }
+                let installed = false;
+                for (let attempt = 0; attempt < 3 && this.#running; attempt++) {
+                  if (attempt) await delay((o.forwardRetryDelaysMs ?? [100, 200])[attempt - 1]!, undefined, { signal: this.#forwardAbort.signal }).catch(() => {});
+                  if (!this.#running) break;
+                  if (await this.#forwardCommand('forward', entry.spec)) { installed = true; break; }
+                }
+                if (!this.#running || exited) break;
+                if (!installed) {
+                  // Failed mux clients are not positive non-delivery receipts.
+                  // Retire this owned master before abandoning its endpoint.
+                  await master.terminate();
+                  entry.cleanup = true;
+                  o.log?.(`host ${this.host}: session ${session} forward abandoned after 3 attempts`);
+                  await this.#removeForward(session, entry);
+                  break;
+                }
+              }
+            });
+            if (!this.#running || exited) throw new Error('master closed during forward restore');
+            this.#masterReady = true;
             this.#stateTo('up'); this.#policy.connected();
             while (this.#running && !exited) {
               await this.#pause(30000);
               if (this.#running && !exited && !await this.#probe()) break;
             }
-          } finally { if (!exited) await master.terminate(); await master.closed; }
+          } finally { if (!exited) await master.terminate(); await master.closed; this.#masterReady = false; this.#retireMaster = undefined; await this.#forwardWork; }
         } catch (error) {
           this.#state.reason = error instanceof ControlEndpointFenced ? 'control endpoint has not closed' : 'SSH connection or pinned-key admission failed';
           o.log?.(`host ${this.host}: ${this.#state.reason}`);
         }
         this.#policy.disconnected(); this.#stateTo('down');
-        if (this.#running) { this.#state.reconnects++; await this.#pause(this.#policy.failed()); }
+        if (this.#running) { this.#state.reconnects++; const backoff = this.#policy.failed(); await this.#pause(o.reconnectDelayMs?.(backoff) ?? backoff); }
       }
     } catch { this.#state.reason = 'transport configuration unavailable'; o.log?.(`host ${this.host}: ${this.#state.reason}`); }
     finally { this.#stateTo('down'); }

@@ -57,3 +57,40 @@ hubs omitting hosts. Web and Neovim retain their existing selected-field readers
 Binary overrides require both fake-host environment controls, as defined by
 `sshBinaries`; normal operation uses system SSH. Connection failures log only
 host identity and a fixed diagnostic, never pinned key bytes or native stderr.
+
+## Session forwards
+
+The SSH carrier adds `forward(sessionId, HostEndpoint)` and `unforward(sessionId)`
+on `SshTransport`; the stable `Transport` member set is unchanged. These
+operations accept a Codex Unix socket or an OpenCode loopback port.
+Forwarding requires a ready master and returns `{socket}` after `-O forward -L`
+acknowledges installation. The listener is always `hostPaths().sessionSocket(id)`
+in the private socket directory (including the existing short-path fallback).
+Port targets use `127.0.0.1`; no TCP listener is created. One session has one
+endpoint; repeat installation of that endpoint is idempotent and a different
+endpoint requires cancellation first. Invalid ports and non-absolute or ambiguous
+Unix paths are refused before launching SSH.
+
+Forward installation, cancellation and reconnect restoration share one serial
+queue. Cancellation uses `-O cancel -L`, then removes the socket node before
+forgetting its recorded entry. After acknowledgement the entry keeps a pending-removal phase until
+unlink succeeds or reports ENOENT; a retry never repeats that cancellation. A
+refused cancellation retains the active entry. With an absent owned master it only removes the entry and stale node. Each replacement master restores
+the retained entries before reporting `up`, with three attempts separated by
+100 and 200 ms. A session whose three attempts fail causes the owned master to
+be joined before its entry becomes pending removal and is logged once with its
+session id, without endpoint paths or native stderr. Removal failures retain
+that obligation across reconnect, unforward and stop retries, without reinstalling
+the endpoint or repeating its terminal log. Other entries survive that replacement.
+A master that exits during restoration preserves entries for its replacement.
+A failed initial installation also joins its owned master before removing a possibly installed
+listener, since a failed mux client alone cannot prove non-delivery. Stop aborts
+retry waits, joins commands and master closure, drains the queue, and removes session sockets.
+A failed removal rejects stop and retains registry ownership until a retry succeeds;
+it leaves remote sessions running. Forward entries live in carrier memory;
+callers must re-register desired endpoints after constructing a new carrier.
+
+`SshOptions.reconnectDelayMs` maps the computed reconnect delay and
+`forwardRetryDelaysMs` supplies the two delays between forward attempts for
+injected tests. Omission keeps the production 1–30s jittered policy and 100/200ms
+forward schedule. These are constructor test seams, not configuration settings.

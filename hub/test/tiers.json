@@ -692,6 +692,7 @@
     "hub/test/tracker.test.ts": "T3",
     "hub/test/transport-config.test.ts": "T2",
     "hub/test/transport-fake-contract.test.ts": "T3",
+    "hub/test/transport-forwards.test.ts": "T3",
     "hub/test/transport-kind.test.ts": "T1",
     "hub/test/transport-policy.test.ts": "T1",
     "hub/test/transport-records.test.ts": "T2",
