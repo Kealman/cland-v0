@@ -1,5 +1,6 @@
 // T3: supervisor session detachment, native death/restart and persisted process identity require real processes.
 // Lifecycle: fake hosts only; captured supervisor group and harness drained before scratch removal.
+import { removeFixtureSockets } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -62,7 +63,7 @@ test('supervisor C1-C4: singleton, detached lifetime, HUP, kill-agent restart an
     assert.equal(await client.request('stop',harness),true);
     for(const path of [script,new URL('../src/cli/host.ts',import.meta.url)]) assert.doesNotMatch(await readFile(path,'utf8'),/systemctl|systemd-run/);
   } catch(error) { try{tail=(await readFile(join(host.run,'supervisor.log'),'utf8')).slice(-4096);}catch{} t.diagnostic(JSON.stringify({incomplete:'supervisor lifecycle',tail})); throw error;
-  } finally { await client?.close(); await cleanHarness(); await cleanSecond(); await cleanSupervisor(); await rm(root,{recursive:true,force:true}); }
+  } finally { await client?.close(); await cleanHarness(); await cleanSecond(); await cleanSupervisor(); await removeFixtureSockets(root); await rm(root,{recursive:true,force:true}); }
 });
 
 // Keep the initiating shell alive behind gates until the caller captures its
@@ -112,9 +113,9 @@ test('supervisor setup failure before its expected receipt drains the detached w
       const {observeProcesses}=await import('../src/host/agent/native.ts');
       return (await observeProcesses([pid],fixtureEnvironment(root,process.env,{CLAND_FAKE_HOSTS:'one',CLAND_HOST_BOOT_ID_FILE:host.bootId}))).get(pid)?.ended||undefined;
     },3000);
-    await rm(root,{recursive:true,force:true});
+    await removeFixtureSockets(root); await rm(root,{recursive:true,force:true});
     await assert.rejects(access(root));
-  } finally { await independent(); await launch.close(); await rm(root,{recursive:true,force:true}); }
+  } finally { await independent(); await launch.close(); await removeFixtureSockets(root); await rm(root,{recursive:true,force:true}); }
 });
 
 
@@ -142,5 +143,5 @@ test('kill-agent refuses another live fake host receipt and preserves both agent
       assert.equal(await clients[i]!.request('identity',{pid:clients[i]!.hello.pid}),JSON.parse(i===0?original.toString():await readFile(join(hosts[i]!.run,'agent.pid'),'utf8')).identity);
       assert.equal(await clients[i]!.request('alive',harnesses[i]!),true);
     }
-  } finally {for(const client of clients)await client.close();for(const cleanup of clean)await cleanup();for(const owner of owners)await owner.close();await rm(root,{recursive:true,force:true});}
+  } finally {for(const client of clients)await client.close();for(const cleanup of clean)await cleanup();for(const owner of owners)await owner.close();await removeFixtureSockets(root); await rm(root,{recursive:true,force:true});}
 });

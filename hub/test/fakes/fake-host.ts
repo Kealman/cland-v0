@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile, access, realpath } from 'node:fs/promises';
-import { join, resolve, relative, isAbsolute } from 'node:path';
+import { join, resolve, relative, isAbsolute, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { fixtureSocketPath } from '../../../test-support/socket-path.ts';
+import { fakeHostSocketPath } from './fake-host-socket.ts';
 import { AgentClient } from '../../src/host/agent-client.ts';
 import { observeProcesses } from '../../src/host/agent/native.ts';
 import { controlRequest, hostOwner, sameOwner } from './fake-ssh-common.ts';
 import type { MasterReceipt } from './fake-ssh-common.ts';
 export function hostDirectory(root: string, name: string): string {
   if (!isAbsolute(root) || !/^[a-zA-Z0-9_-]+$/.test(name)) throw new Error('invalid fake host root/name');
-  return join(root, name);
+  return join(dirname(fixtureSocketPath(root, 'fake-hosts')), name);
 }
 export async function createFakeHost(root: string, name: string) {
   const directory = hostDirectory(root, name);
   const home = join(directory, 'home');
+  fakeHostSocketPath(home);
   const run = join(home, '.cland-host/run');
   await mkdir(run, { recursive: true, mode: 0o700 });
   const key = `ssh-ed25519 ${Buffer.from(`fake-host:${name}`).toString('base64')}`;
@@ -27,6 +30,7 @@ export async function createFakeHost(root: string, name: string) {
 export async function fakeHost(env: NodeJS.ProcessEnv, name: string) {
   if (!env.CLAND_FAKE_HOSTS?.split(',').includes(name) || !env.CLAND_FAKE_HOST_ROOT) throw new Error('unreachable fake host');
   const directory = hostDirectory(env.CLAND_FAKE_HOST_ROOT, name);
+  fakeHostSocketPath(join(directory, 'home'));
   await access(join(directory, 'host-key.pub'));
   try { await access(join(directory, 'gone')); } catch { return { directory, home: join(directory, 'home') }; }
   throw new Error('unreachable fake host');
@@ -43,7 +47,8 @@ export async function hostPath(home: string, path: string): Promise<string> {
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; const next = resolve(parent, '..'); if (next === parent) throw error; parent = next; }
   }
   if (!contained(root, candidate)) throw new Error('fake host path escapes home');
-  return candidate;
+  // Keep the short lexical alias after canonical containment validation.
+  return resolve(home, relative(root, candidate));
 }
 function contained(root: string, path: string) { const rel = relative(root, path); return rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel); }
 export async function hostControl(action: string, name: string, env = process.env) {
@@ -54,7 +59,7 @@ export async function hostControl(action: string, name: string, env = process.en
     // On Linux all fake hosts share the kernel boot id, so birth alone is not
     // an owner fence. No signal operation is added to the agent protocol.
     if (!env.CLAND_HOST_SECRET) throw new Error('fake agent owner check requires CLAND_HOST_SECRET');
-    const client = await AgentClient.connect(join(host.home, '.cland-host/run/agent.sock'), env.CLAND_HOST_SECRET);
+    const client = await AgentClient.connect(fakeHostSocketPath(host.home), env.CLAND_HOST_SECRET);
     try {
       if (client.hello.pid !== record.pid) throw new Error('fake agent owner mismatch; nothing signalled');
       const native = await observeProcesses([record.pid], { ...env, CLAND_HOST_BOOT_ID_FILE: join(host.directory, 'boot-id') });

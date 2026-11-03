@@ -17,3 +17,10 @@ ancestry for cleanup. The setup-failure control observes an independent real PID
 while withholding the expected receipt and proves native absence before root
 removal. A two-host control copies the other live agent's valid receipt and proves
 owner refusal while both original agent identities and harnesses remain usable.
+
+Fake-host directories use the reciprocal alias owned by `fixtureSocketPath`.
+This keeps HOME-derived agent sockets within the macOS 104-byte budget including
+NUL even with `/private/tmp/cland-suite-<uuid>` as TMPDIR. Fixture setup and lookup
+validate the agent path before native connections; `fixture-socket-path.test.ts`
+checks the guard, multibyte paths and independent reader agreement. Cleanup
+removes the alias after clients, harnesses and supervisors have drained.

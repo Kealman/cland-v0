@@ -1,5 +1,6 @@
 // T3: fake SSH subprocesses only; disposable homes and Unix sockets, no real SSH/network.
 // Lifecycle: join every child and close every server before removing the fixture.
+import { removeFixtureSockets } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -69,7 +70,7 @@ const listen = net.Server.prototype.listen; net.Server.prototype.listen = functi
     for (const child of children) await child.stop();
     for (const socket of sockets) socket.destroy();
     for (const server of servers) await new Promise<void>(resolve => server.close(() => resolve()));
-    await rm(root, { recursive: true, force: true });
+    await removeFixtureSockets(root); await rm(root, { recursive: true, force: true });
   });
   function launch(args: string[], binary = ssh, input = '', signal = t.signal, closeClock: DeadlineClock = realClock) {
     const child = spawn(process.execPath, ['--import', guard, binary, ...args], { env, cwd: root, detached: true });

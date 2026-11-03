@@ -43,3 +43,36 @@ test('fixture sockets have private directory ownership after normal listener clo
   const { dirname } = await import('node:path');
   assert.equal((await stat(dirname(path))).mode & 0o777, 0o700);
 });
+
+test('fake host socket guard names oversized paths before native connect', async () => {
+  const { fakeHostSocketPath } = await import('./fakes/fake-host-socket.ts');
+  for (const home of ['/' + 'x'.repeat(104), '/' + 'é'.repeat(45)]) {
+    const path = join(home, '.cland-host/run/agent.sock');
+    assert.throws(() => fakeHostSocketPath(home), error => {
+      assert.match((error as Error).message, /104-byte/);
+      assert.ok((error as Error).message.includes(path));
+      return true;
+    });
+  }
+  const suffix = '/.cland-host/run/agent.sock';
+  const home = '/' + 'x'.repeat(104 - 1 - suffix.length - 1);
+  assert.equal(Buffer.byteLength(fakeHostSocketPath(home)) + 1, 104);
+  assert.throws(() => fakeHostSocketPath(home + 'x'), /104-byte/);
+});
+
+test('fake host setup guards long names and retains short paths across independent readers', async t => {
+  const { createFakeHost, fakeHost, hostDirectory, hostPath } = await import('./fakes/fake-host.ts');
+  const root = await tempProject(t);
+  const name = 'x'.repeat(104);
+  const oversized = join(hostDirectory(root, name), 'home', '.cland-host/run/agent.sock');
+  await assert.rejects(createFakeHost(root, name), error => {
+    assert.ok((error as Error).message.includes(oversized));
+    return true;
+  });
+  const host = await createFakeHost(root, 'one');
+  assert.ok(Buffer.byteLength(join(host.run, 'agent.sock')) + 1 <= 104);
+  const reader = await fakeHost({ CLAND_FAKE_HOST_ROOT: root, CLAND_FAKE_HOSTS: 'one' }, 'one');
+  assert.equal(reader.home, host.home);
+  assert.equal(await hostPath(host.home, '.cland-host/run/agent.sock'), join(host.run, 'agent.sock'));
+  await assert.rejects(hostPath(host.home, '../escape'), /escapes home/);
+});
