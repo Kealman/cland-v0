@@ -3,7 +3,7 @@ id: T-1599
 kind: task
 title: The ssh Host over the host agent
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1366
 branch: t/T-1599-the-ssh-host-over-the-host-agent
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-03T11:27:21.570Z
+updated: 2026-11-03T11:53:56.930Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ Hot files: `hub/src/host/ssh-host.ts` (new), `hub/src/adapters/index.ts`, `hub/s
 
 ## Acceptance criteria
 
-- [ ] C1. The Host contract suite passes on a fake host through the fake `ssh` stand-in (test).
-  - failed: rev-35 [reviewer] · 2026-11-03T11:27:21.570Z · note Failed-prepare close can omit fenced native Git ownership; disconnected run completion and failed-abort admission fences remain incomplete, and close leaks late connection acquisition.
+- [x] C1. The Host contract suite passes on a fake host through the fake `ssh` stand-in (test).
+  - done: impl-1599 · 2026-11-03T11:53:56.930Z
 - [x] C2. A spawn on a fake host carries none of the hub's own environment, and `DIGITALOCEAN_TOKEN`, the remotes' tokens and the project secret never reach it even when the caller passes them (test).
   - done: impl-1599 · 2026-11-03T11:24:55.931Z
 - [x] C3. With fake hosts registered, the registry holds `local` and one `ssh` Host per record, a launch with `host: "f1"` reaches f1's agent, and `CLAND_TEST_HOSTS` still works (test).
