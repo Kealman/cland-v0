@@ -1,10 +1,9 @@
-import { createServer } from 'node:net';
-import { dirname, join } from 'node:path';
-import { statDirectory } from '../adapters/session-cwd.ts';
-import { occupants } from './occupants.ts';
-import { worktreeInstall } from './worktree-install.ts';
-import { mkdir, rm, rmdir, truncate, writeFile, chmod, stat, lstat, realpath, readFile, open } from 'node:fs/promises';
 import { folderFiles } from '../hub/artifact-folder.ts';
+import { dirname, join } from 'node:path';
+import { occupants } from './occupants.ts';
+import { open } from 'node:fs/promises';
+import { fileOperations } from './agent/files.ts';
+import { worktreeOperations } from './agent/worktrees.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
 import { processStarted, processAlive, pidAlive } from '../adapters/processes.ts';
@@ -16,75 +15,14 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
   return {
     name: 'local',
     layout: input => Object.freeze({ ...input, runDirectory: join(dirname(input.discoveryFile), 'run'), logDirectory: join(dirname(input.discoveryFile), 'log') }),
-    writeFile: async (path, bytes, options) => {
-      if (options?.truncate !== undefined) {
-        if (bytes.byteLength) throw new Error('Host truncate requires empty bytes');
-        await truncate(path, options.truncate);
-      } else await writeFile(path, bytes, options?.mode === undefined ? {} : { mode: options.mode });
-      if (options?.mode !== undefined) await chmod(path, options.mode);
-    },
-    makeDirectory: async (path, mode) => { await mkdir(path, mode === undefined ? {} : { mode }); },
-    removePath: async (path, options) => {
-      if (options?.directory) await rmdir(path);
-      else await rm(path, { force: true });
-    },
-    freePort: async () => {
-      const server = createServer();
-      return new Promise<number>((resolve, reject) => {
-        server.once('error', reject);
-        server.listen(0, '127.0.0.1', () => {
-          const address = server.address();
-          server.close(error => {
-            if (error) reject(error);
-            else if (address && typeof address === 'object') resolve(address.port);
-            else reject(new Error('could not choose a Host loopback port'));
-          });
-        });
-      });
-    },
+    ...fileOperations,
+    listFolder: path => folderFiles(path),
     forward: async (_sessionId, endpoint) => endpoint,
     unforward: async () => {},
 
     limitPolls: true,
-    worktreeAdd: async ({ root, path, branch, territory, reuseOnly, detached, beforeInstall }) => {
-      if (!reuseOnly) {
-        if (territory) {
-          const fetched = await run('git', ['-c', 'gc.auto=0', 'fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', territory.path, territory.tip], env, undefined, false, undefined, 'utf8', root);
-          if (fetched.error || fetched.code !== 0) throw new Error(fetched.stderr || fetched.error || 'git fetch task branch failed');
-          const current = await run('git', ['-c', 'gc.auto=0', 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], env, undefined, false, undefined, 'utf8', root);
-          if (current.error || (current.code !== 0 && current.code !== 1)) throw new Error(current.stderr || current.error || 'git task branch inspection failed');
-          const trees = await run('git', ['-c', 'gc.auto=0', 'worktree', 'list', '--porcelain'], env, undefined, false, undefined, 'utf8', root);
-          if (trees.error || trees.code !== 0) throw new Error(trees.stderr || trees.error || 'git worktree inspection failed');
-          if (trees.stdout.split('\n').includes(`branch refs/heads/${branch}`)) throw new Error(`task branch ${branch} is already checked out`);
-          const updated = await run('git', ['-c', 'gc.auto=0', 'update-ref', '--no-deref', `refs/heads/${branch}`, territory.tip, current.code === 0 ? current.stdout.trim() : '0'.repeat(40)], env, undefined, false, undefined, 'utf8', root);
-          if (updated.error || updated.code !== 0) throw new Error(updated.stderr || updated.error || 'git task branch failed');
-        }
-        const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'add', ...(detached ? ['--detach'] : []), '--', path, branch], env, undefined, false, undefined, 'utf8', root);
-        if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree add failed');
-      }
-      if (await beforeInstall?.() === false) return {};
-      const warning = await worktreeInstall(root, path);
-      return warning ? { warning } : {};
-    },
-    worktreeRemove: async ({ root, path }) => {
-      const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'remove', '--', path], env, undefined, false, undefined, 'utf8', root);
-      if (result.error || result.code !== 0) throw new Error(result.stderr || result.error || 'git worktree remove failed');
-    },
+    ...worktreeOperations(env),
     occupants,
-    statDirectory,
-    realpath: path => realpath(path).catch(() => path),
-    fileType: async path => {
-      const info = await lstat(path).catch((error: NodeJS.ErrnoException) => {
-        if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
-        throw error;
-      });
-      return !info ? 'missing' : info.isSymbolicLink() ? 'symlink' : info.isFile() ? 'file' : info.isDirectory() ? 'directory' : 'other';
-    },
-    readFile: async path => {
-      if (!(await stat(path)).isFile()) throw new Error('Host readFile requires a regular file');
-      return readFile(path);
-    },
-    listFolder: path => folderFiles(path),
     run: command => run(command.command, command.args, command.env, command.timeoutMs, false, command.signal, 'utf8', command.cwd),
     spawn: async (command, options) => {
       const output = command.logFile ? await open(command.logFile, 'a') : undefined;

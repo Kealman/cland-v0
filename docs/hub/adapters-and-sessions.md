@@ -533,6 +533,25 @@ An exit missed during agent downtime keeps unknown authority and refuses stop
 until host reboot/recycling; do not add a Node supervisor per launch. The agent
 has no systemd dependency or launch-memory gate. No role grant changes.
 
+The additive file/command operations share the local Host implementations under
+`host/agent/`: `statDirectory {path}`, `realpath {path}`, `fileType {path}`,
+`listFolder {path}`, `occupants {path,sessions:[{name,cwd}]}`, and `freePort {}`.
+`readFile {path}` returns a base64 string with a 512 KiB decoded cap (regular
+files only, including through symlinks); `writeFile {path,bytes,options?}` accepts
+canonical base64 with the same cap and optional `mode`/`truncate`. Empty bytes
+are required for truncate. `makeDirectory {path,mode?}` creates one directory;
+`removePath {path,options?:{directory?:boolean}}` removes only that path or an
+empty directory, without following symlinks. Mutations return null.
+`run {command,args,cwd,env,timeoutMs?}` returns `{code,stdout,stderr,error?}`;
+timeout uses the local Host owned-group SIGKILL and native-close boundary.
+`worktreeAdd {root,path,branch,territory?,reuseOnly?,detached?}` returns
+`{warning?}` with the shared root-install link/staleness policy;
+`worktreeRemove {root,path}` refuses dirty worktrees. The hub-side beforeInstall
+callback is not serializable and is absent from this wire operation. Existing
+protocol 1 process operations and hello shapes remain unchanged. Responses over
+the 1 MiB frame cap are errors. See the
+[file-operation test guide](../agents/tests/hub-test-host-agent-files.test.ts.md).
+
 ## Per-host Git socket (T-1591)
 
 For the Git listener and proxy, use the scratch bare-repository seam in

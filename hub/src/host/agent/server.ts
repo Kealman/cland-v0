@@ -7,7 +7,8 @@ import type { ProcessHooks } from './processes.ts';
 import { AgentProcesses } from './processes.ts';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
-import { AGENT_PROTOCOL, LineDecoder, parseRequest } from './protocol.ts';
+import { agentOperations } from './operations.ts';
+import { AGENT_PROTOCOL, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
 export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void> };
 export async function serveAgent(options: AgentOptions) {
   if (!options.secret) throw new Error('host secret required');
@@ -29,6 +30,7 @@ export async function serveAgent(options: AgentOptions) {
   const authenticatedConnections = new Set<Socket>();
   const broadcast = (frame: unknown) => { for (const peer of authenticatedConnections) if (!peer.destroyed) peer.write(JSON.stringify(frame) + "\n"); };
   const processes = new AgentProcesses(options.runDir, options.env ?? process.env, broadcast, options.processHooks);
+  const operations = agentOperations(options.env ?? process.env);
   await processes.load(); const bootId = await processes.bootId();
   let memoryWork = Promise.resolve();
   let memoryTimer: NodeJS.Timeout | undefined;
@@ -67,9 +69,15 @@ export async function serveAgent(options: AgentOptions) {
                 case 'signal': result = await processes.signal(request.args); break;
                 case 'stop': result = await processes.stop(request.args); break;
                 case 'processes': result = await processes.processes(); break;
-                default: throw new Error('unknown operation');
+                default: {
+                  const operation = Object.hasOwn(operations, request.op) ? operations[request.op] : undefined;
+                  if (!operation) throw new Error('unknown operation');
+                  result = await operation(request.args);
+                }
               }
-              connection.write(JSON.stringify({ id, ok: true, result }) + '\n');
+              const reply = JSON.stringify({ id, ok: true, result });
+              if (Buffer.byteLength(reply) > MAX_LINE_BYTES) throw new Error('agent result exceeds frame cap');
+              connection.write(reply + '\n');
             }
           } catch (error) {
             const frame = JSON.stringify({ id, ok: false, error: error instanceof Error ? error.message : 'operation failed' }) + '\n';
