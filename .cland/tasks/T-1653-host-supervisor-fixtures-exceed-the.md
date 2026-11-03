@@ -3,7 +3,7 @@ id: T-1653
 kind: task
 title: host-supervisor fixtures exceed the macOS 104-byte Unix socket path limit under the suite's temp root
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: C-325
 blocked_by: []
 regression_of: T-1594
-topic: null
-branch: null
+topic: topic-1359
+branch: t/T-1653-host-supervisor-fixtures-exceed-the
 created: 2026-11-03T04:59:56.359Z
-updated: 2026-11-03T04:59:56.359Z
+updated: 2026-11-03T05:00:29.777Z
 ---
 
 ## Summary
