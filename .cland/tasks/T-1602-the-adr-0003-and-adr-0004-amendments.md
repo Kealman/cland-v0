@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1364
 branch: t/T-1602-the-adr-0003-and-adr-0004-amendments
 created: 2026-11-02T03:33:55.945Z
-updated: 2026-11-03T07:26:10.640Z
+updated: 2026-11-03T07:47:07.040Z
 ---
 
 ## Summary
@@ -31,12 +31,15 @@ Hot files: `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`, `d
 - [x] C1. ADR 0003 has a dated amendment naming `.cland/run/spoke.sock`, the per-host git socket, the per-host secret and its refusal of human authority, and stating that no new listener binds a network address.
   - done: impl-1602 · 2026-11-03T07:23:35.150Z
   - verified: rev-36 [reviewer] · run rev-36-1602-source-1 · 2026-11-03T07:26:09.397Z · commit a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
+  - verified: rev-36 [reviewer] · run rev-36-1602-final-1 · 2026-11-03T07:47:07.039Z · commit a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
 - [x] C2. ADR 0004 has a dated amendment naming `git daemon --inetd` per connection on per-host sockets, the per-host allow list with its revocation before merges, the refusal of deletions and of `dev` and `main`, and item branches created in the territory.
   - done: impl-1602 · 2026-11-03T07:23:35.287Z
   - verified: rev-36 [reviewer] · run rev-36-1602-source-1 · 2026-11-03T07:26:09.397Z · commit a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
+  - verified: rev-36 [reviewer] · run rev-36-1602-final-1 · 2026-11-03T07:47:07.040Z · commit a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
 - [x] C3. Both amendments link spec §3.2, §3.3 and §3.12, and use the glossary's Host, Host agent and Tunnel.
   - done: impl-1602 · 2026-11-03T07:23:35.413Z
   - verified: rev-36 [reviewer] · run rev-36-1602-source-1 · 2026-11-03T07:26:09.397Z · commit a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
+  - verified: rev-36 [reviewer] · run rev-36-1602-final-1 · 2026-11-03T07:47:07.040Z · commit a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
 
 ## Notes
 
@@ -76,5 +79,37 @@ Evidence limits: read A-16202 report at dev722f1ce5. It explicitly scopes stage 
 
 A-16204 local typecheck/static/wording/lint reports are supplemental; its publication says final lint pending, while the request reports later completion. No queued run exists at this head yet, so no suite pass/coverage/timing claimed. After clear source, run required mode-free verification at unchanged head; affected after-stage QA remains separate. Reviewer used source/log reads only, no tests/typecheck/browser/probes, no edits/merges.
 A-16206: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16206-t-1602-source-review-of-host-adr-amendments.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1602 · 2026-11-03T07:46:09.733Z
+
+Same-head mode-free verification8452cd89/A-16218 exits0 at a1299c8aaa446eaaf8cb98ea9735bb3a250f5294:4907pass/0fail/cancel/skip/todo. T0/T1/fallback allT2/Web completed; T3 deferred to merge batch, T4/repetitions unexecuted. Linuxx64 droplet c-8lon1 Node24.21/Neovim0.12.5, isolated Chrome Headless Shell156.0.8078.4r1248; lifetime1078s/cost$0.0749. Log confirms test guide index current, closed-item wording controls passed/554docs/1657items/0findings. Lint/budgets/ratchet advisory report-only findings retained. Final evidence review requested from Reviewer in item topic; clean unchanged source-reviewed head.
+
+### rev-36 · 2026-11-03T07:47:07.040Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1602-final-1
+commit: a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1602 final evidence review
+Head a1299c8aaa446eaaf8cb98ea9735bb3a250f5294
+Run rev-36-1602-final-1; scope evidence; clear; findings []; C1–C3 verified.
+Standing source review rev-36-1602-source-1 / A-16206 establishes the dated ADR content, landed socket/admission/lease/locking rules and glossary/spec links. All three are documentation criteria. Branch tip independently read unchanged; no source edits/dev merge since review.
+
+A-16218 / mode-free suite8452cd89-ec74-4055-83c7-183bd1ab00ab completed exit0,4907pass,zero fail/cancel/skip/todo. Independently read exact provenance head above/tree6876a9dbcf64d31b95ec4509f8ef63ff2a076581, cache null. Linuxx64 6.8.0-142-generic, droplet c-8 lon1, workers2, Nodev24.21.0/Neovimv0.12.5.
+T0/allT1/fallback allT2/Web completed. No changed T3/T4 files; T3 deferred to merge batch, T4/repetitions unexecuted. This is required task scope, not an all-tier occasion. Host typecheck gate names this same tree and was not repeated remotely.
+Browser: isolated /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; Google Chrome for Testing156.0.8078.4. Native lifetime1078s/cost$0.0749 are resource metrics, not suite wall.
+Report-only duration/budget/lint/ratchet findings remain advisories; skip reason report mode/missing0.
+
+Actual documentation guard facts read apart from exit: skill provenance15 upstream headers/licenses checked; derived test-guide index current; closed-item wording seeded diagnostics passed and554 documents/1657tracker items/0findings. Four named hub/test/test-docs.test.ts cases pass (existing-file links; retained historical anchors/references; missing/conflicting/dangling index positive controls; deterministic index/identity validation). Related documentation vocabulary guards pass. These guards supplement the source link/content review; they do not independently establish real SSH deployment.
+
+No new runtime/browser/native-host behavior is claimed by the docs item or this verdict. Stage QA A-16202's fake transport/scratch scope remains the stated limit; affected after-stage QA and merge batch are separate. No test/typecheck/probe/browser run by Reviewer; source/log reads only.
+A-16219: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16219-t-1602-final-evidence-for-adr-amendments.md
 
 Criteria: C1 verified, C2 verified, C3 verified.

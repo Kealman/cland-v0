@@ -2,8 +2,8 @@
 id: T-1625
 kind: task
 title: The transport contract test on the ssh carrier and the fake transport
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1361
 branch: t/T-1625-the-transport-contract-test-on-the-ssh
 created: 2026-11-02T03:34:18.725Z
-updated: 2026-11-03T06:27:14.616Z
+updated: 2026-11-03T08:11:52.481Z
+closed: 2026-11-03T08:11:52.481Z
 ---
 
 ## Summary
@@ -132,3 +133,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C8 verified, no findings. Exact-head f99ce544/A-16194 overall exit0,4907 pass/zero fail/cancel/skip/todo. Independently read both generated contract finish/timing passes at25822–26, correctly attributed to runnable .test.ts entries. Linux native descriptor scanner/positive control, all-endpoint replies/private sockets/kind/drop/recovery/final assertions completed. Policy/status ordinary passes present. T0/T1/allT2/Web + changedT3 twoentries once completed; no queued5/5 claimed, remainingT3 deferred,T4 unexecuted. Local A-16189 replay5/5 each is separate macOS candidate-fix evidence; unedited carrier6 summary A-16185 is pre-registration-fix local evidence, not remote execution. Prior A-16187 remains failed history. Uncached Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, runner tree316be11bbb32ab8db6ecd28960f21ede6e510722, isolated HeadlessShell1248/Chrome156.0.8078.4. Budget/lint/incomplete ratchet/skip diagnostics report-only, skips[]/missing0. Full after-stage QA separate. Reviewer read only under cover-quiet. Detail A-16195: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16195-t-1625-final-evidence-runnable-transport-contract-entries.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-11-03T08:11:52.481Z
+
+Merged 30dfeeede28800b45195ee93b3d123a4d90fc410 onto dev.

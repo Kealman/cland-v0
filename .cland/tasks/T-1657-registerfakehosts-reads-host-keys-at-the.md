@@ -3,7 +3,7 @@ id: T-1657
 kind: task
 title: registerFakeHosts reads host keys at the fake-host root, but createFakeHost now writes them behind the short-socket alias
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1365
 branch: t/T-1657-registerfakehosts-reads-host-keys-at-the
 created: 2026-11-03T05:54:51.539Z
-updated: 2026-11-03T07:25:18.410Z
+updated: 2026-11-03T07:48:12.123Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ One shared resolver for the fake-host directory, used by both `createFakeHost` a
 
 - [x] C1. A hub started with `CLAND_FAKE_HOST_ROOT` pointing at a fresh `createFakeHost` root registers each fake host with the key `createFakeHost` wrote and a client-key path that exists (test).
   - done: impl-1657 · 2026-11-03T07:23:30.182Z
+  - verified: rev-35 [reviewer] · run rev-35-1657-final-1 · 2026-11-03T07:48:11.990Z · commit acf4fecadfae3af59aa8a482abfc1ccacb1a078f
 - [x] C2. The same test passes with TMPDIR at a `/private/tmp/cland-suite-<36-char uuid>` root on macOS (test).
   - done: impl-1657 · 2026-11-03T07:23:30.385Z
+  - verified: rev-35 [reviewer] · run rev-35-1657-final-1 · 2026-11-03T07:48:11.990Z · commit acf4fecadfae3af59aa8a482abfc1ccacb1a078f
 
 ## Comments
 
@@ -50,3 +52,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear; Standards/Spec zero findings. Existing hostDirectory logic moves unchanged to neutral shared module, imported by startup and fixture; compatibility re-export retained. Both-controls/absolute-root/id validation and skip-existing/revoked behavior unchanged. Tests use actual fresh two-host fixtures, exact pins/client-key path+contents and byte limits, including explicit macOS UUID-TMPDIR branch; missing-control and redaction assertions retained. Matching docs migrate obsolete layout; no wire/schema/tier/permission change. C1/C2 runtime-unverified pending fresh exact-head mode-free verify plus named macOS long-root receipt/native exit/source linkage; A-16203 local working-tree summary is supplemental. Reviewer read only, no tests/probes/browser/checks/edits. Affected after-stage QA separate. Detail A-16205: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16205-t-1657-source-review-shared-fake-host-directory-resolution.md.
+
+### rev-35 · 2026-11-03T07:48:11.990Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1657-final-1
+commit: acf4fecadfae3af59aa8a482abfc1ccacb1a078f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1/C2 verified, no findings. Same-head1149aa9b/A-16220 exit0,4908 pass/zero fail/cancel/skip/todo. Independently checked host-records10/helper4 ordinary outcomes, fresh enabled/suite-tmpdir cases and exactly5 Linux suite-tmpdir load passes. A-16207 pins reviewed head and raw macOSarm64 Node24.21 native exit0 with all10 named cases including actual /private/tmp UUID branch; C2 is established from that macOS receipt, not inferred from Linux. Exact pins/client-key bytes/path existence/socket limits retained. T0/T1/allT2/Web completed; T3 merge-batch deferred,T4 unexecuted. Uncached Linuxx64 c-8lon1 Node24.21/Nvim0.12.5, runner tree9751558710cf7d5cf53e621331a3be16b3162bde, isolated HeadlessShell1248/Chrome156.0.8078.4. Budget/lint/incomplete ratchet/skip checks report-only, skips[]/missing0. Affected after-stage QA separate. Reviewer read only. Detail A-16221: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16221-t-1657-final-evidence-fresh-fake-host-startup-on-both-platforms.md.
+
+Criteria: C1 verified, C2 verified.
