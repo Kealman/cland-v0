@@ -1,3 +1,4 @@
+import { LOCAL_MOD_DIR } from '../src/host/launch-layout.ts';
 // Reusable Host process contract; native cases are registered by the T3 wrapper.
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, writeFile, realpath, mkdir, symlink, stat } from 'node:fs/promises';
@@ -70,7 +71,7 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
       }
       const input = { discoveryFile: join(root, '.cland', 'hub.json'), node: '/node', cli: '/cli', spoke: '/spoke' };
       const paths = host.layout(input);
-      assert.deepEqual(paths, { ...input, runDirectory: join(root, '.cland', 'run'), logDirectory: join(root, '.cland', 'log') });
+      assert.deepEqual(paths, { ...input, modDir: LOCAL_MOD_DIR, runDirectory: join(root, '.cland', 'run'), logDirectory: join(root, '.cland', 'log') });
       assert.ok(Object.isFrozen(paths));
     } finally { await rm(root, { recursive: true, force: true }); }
   });

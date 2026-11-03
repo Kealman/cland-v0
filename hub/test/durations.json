@@ -9593,7 +9593,7 @@
     "hub/test/session-host-placement.test.ts::coordinator launch, relaunch and fresh resume refuse a test Host before effects": 0.10083,
     "hub/test/session-host-placement.test.ts::coordinator move refuses the durable remote target without moving roles": 0.104974,
     "hub/test/session-host-placement.test.ts::coordinator set refuses the durable remote target without moving roles": 0.098731,
-    "hub/test/session-host-placement.test.ts::production OpenCode launch reaches the explicitly selected nonlocal Host spawn": 0.109388,
+    "hub/test/session-host-placement.test.ts::production OpenCode launch refuses unsupported nonlocal shared-ignore preparation without fallback": 0.109388,
     "hub/test/session-host-placement.test.ts::spoke launch forwards Host placement and Coordinator handover refuses its remote row": 0.140162,
     "hub/test/session-host-placement.test.ts::unknown launch Host is refused by name before reservation or spawn; legacy launch defaults local": 0.229458,
     "hub/test/session-host-routing.test.ts::claude-code stop routes its Linux birth and signal only to the row Host": 0.039401,

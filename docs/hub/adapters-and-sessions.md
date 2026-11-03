@@ -654,7 +654,8 @@ are optional for older standalone adapter fixtures. Inject `hosts: [local]` into
 Sessions rather than separate process probe functions. For default-adapter
 environment wiring, `projectHub`/`serveProject` also accept `hosts`; see
 `docs/agents/tests/hub-test-project-hub.test.ts.md`. Production lookups resolve hosts through the registry (T-1552)
-and refuse unregistered hosts. Keep rollback file metadata hub-local and preserve
+and refuse unregistered hosts. Read rollback mode metadata locally only for local Hosts; refuse nonlocal
+existing-file replacement without restorable metadata (T-1644), and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
 
 Claude Code rows on a Host other than `local` run one `claude agents --json`
@@ -726,11 +727,25 @@ legacy createArtifact callers and leave creator attribution to its own item.
 For Host launch files, use the recording cases in
 `docs/agents/tests/hub-test-launch-files.test.ts.md`. Journal writes with
 LaunchFiles.write; rollback uses Host write/truncate/remove operations and retains
-the previous durable journal format. Undo metadata reads stay hub-local. The local
+the previous durable journal format. Undo metadata reads stay local only for the local Host. Nonlocal existing-file
+replacement refuses with T-1644 because mode metadata cannot be restored; new
+files use Host fileType and removePath. The local
 layout resolver preserves discovery/node/CLI/spoke inputs and derives run/log
 paths beside discovery; freePort probes then releases IPv4 loopback, and local
-forward/unforward preserve endpoints. Adapter layout adoption belongs to its
-own item; keep session-launch and session-stop-races controls unedited.
+forward/unforward preserve endpoints. Adapters resolve their launch paths from the selected Host layout. Claude writes
+its private settings and MCP files through LaunchFiles; the layout's optional
+modDir supplies --plugin-dir. The local Host supplies the historical installed
+mod directory; a nonlocal Claude layout without modDir refuses launch. The SSH
+Host fills this field in its stage. Codex uses layout run/log directories and
+node/spoke/discovery entries, preserving the local long-socket fallback. Its
+network-local sandbox denies the canonical Host run directory that contains the
+app-server socket, alongside the local temporary socket fallback; discovery-only
+standalone policy callers retain the legacy discovery-relative denial. OpenCode
+uses layout discovery/node/spoke entries, Host password reads and freePort.
+Its atomic shared-ignore algorithm remains in host/local-opencode-files.ts for
+local launches only; nonlocal preparation refuses with T-1644, which owns Host
+metadata and atomic publish/append support. Keep session-launch and
+session-stop-races controls unedited.
 
 Use the reusable Host contract for directory identity/refusals, exact file bytes,
 folder safety, worktree add/remove and alias containment. Keep shared install

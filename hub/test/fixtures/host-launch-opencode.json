@@ -1,0 +1,53 @@
+{
+  "command": {
+    "command": "/fixture/harness",
+    "args": [
+      "serve",
+      "--hostname",
+      "127.0.0.1",
+      "--port",
+      "43210"
+    ],
+    "cwd": "<ROOT>",
+    "env": {
+      "XDG_CONFIG_HOME": "<ROOT>/config",
+      "XDG_STATE_HOME": "<ROOT>/state",
+      "XDG_CACHE_HOME": "<ROOT>/cache",
+      "GIT_AUTHOR_NAME": "Fixture Test",
+      "GIT_AUTHOR_EMAIL": "fixture@example.test",
+      "GIT_COMMITTER_NAME": "Fixture Test",
+      "GIT_COMMITTER_EMAIL": "fixture@example.test",
+      "CLAUDE_CONFIG_DIR": "<ROOT>/claude",
+      "CODEX_HOME": "<ROOT>/codex",
+      "FAKE_CLAUDE_HOME": "<ROOT>/fake-claude",
+      "FAKE_CODEX_HOME": "<ROOT>/fake-codex",
+      "FAKE_OPENCODE_HOME": "<ROOT>/fake-opencode",
+      "PATH": "/fixture/bin",
+      "HOME": "<ROOT>/home",
+      "GIT_CONFIG_GLOBAL": "<ROOT>/home/.gitconfig",
+      "GIT_CONFIG_NOSYSTEM": "1",
+      "OPENCODE_DB": "<ROOT>/account/opencode.db",
+      "CLAND_HUB_FILE": "<ROOT>/.cland/hub.json",
+      "CLAND_SESSION_ID": "fixture-session",
+      "CLAND_SESSION_NAME": "worker",
+      "CLAND_ROLE": "implementer",
+      "OPENCODE_CONFIG": "<ROOT>/.cland/opencode/worker/opencode.json",
+      "OPENCODE_PASSWORD": "<PASSWORD>"
+    },
+    "logFile": "<ROOT>/.cland/opencode/worker/serve.log"
+  },
+  "disk": {
+    ".cland/opencode/.gitignore": {
+      "mode": 420,
+      "bytes": "# managed by cland: generated OpenCode configs and server passwords, never committed\n*\n"
+    },
+    ".cland/opencode/worker/opencode.json": {
+      "mode": 420,
+      "bytes": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"mcp\": {\n    \"servers\": {\n      \"cland\": {\n        \"type\": \"local\",\n        \"command\": [\n          \"/fixture/node\",\n          \"/fixture/spoke\"\n        ],\n        \"environment\": {\n          \"CLAND_HUB_FILE\": \"<ROOT>/.cland/hub.json\",\n          \"CLAND_SESSION_ID\": \"fixture-session\",\n          \"CLAND_SESSION_NAME\": \"worker\",\n          \"CLAND_DELIVERY\": \"adapter\",\n          \"CLAND_ROLE\": \"implementer\"\n        }\n      }\n    }\n  }\n}\n"
+    },
+    ".cland/opencode/worker/password": {
+      "mode": 384,
+      "bytes": "<PASSWORD>\n"
+    }
+  }
+}

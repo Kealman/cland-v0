@@ -74,6 +74,12 @@ export class LaunchFiles {
 
   async file(path: string, append = false): Promise<void> {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
+      if (this.#host.name !== 'local') {
+        const kind = yield* wait(this.#host.fileType(path));
+        if (kind === 'missing') this.#undo.push({ kind: 'remove', path });
+        else throw new Error('nonlocal existing-file rollback needs Host mode metadata (T-1644)');
+        return;
+      }
       let before;
       try { before = yield* wait(hubFileMeta(path)); } catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; before = null; }
       if (!before)

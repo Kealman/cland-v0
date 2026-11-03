@@ -28,10 +28,10 @@ import { harnessBinary } from '../doctor/harnesses.ts';
 // The process table keeps the socket as `harnessId` and the thread id as `harnessSessionId`.
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
-import type { Host } from '../host/host.ts';
+import type { Host, HostLaunchLayout } from '../host/host.ts';
 import { localHost } from '../host/local.ts';
 import { randomUUID } from 'node:crypto';
-import { access, readFile, rm } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
@@ -200,7 +200,7 @@ export type ThreadPolicy = { thread: { approvalPolicy: string; permissions?: str
  *               one of them takes `command/exec` under any profile, which would be a way out of the sandbox.
  *               `full`: the whole network, the proxy off.
  */
-export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd: string, policy: LaunchPolicy, resumed: Resumed = untimed, machine: Host = localHost()): Promise<ThreadPolicy> {
+export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'> & Partial<Pick<HostLaunchLayout, 'runDirectory'>>, cwd: string, policy: LaunchPolicy, resumed: Resumed = untimed, machine: Host = localHost()): Promise<ThreadPolicy> {
   return continueWith((function* (): Generator<Promise<unknown>, ThreadPolicy, unknown> {
     const approvalPolicy = policy.approval ?? 'never';
     const box = policy.sandbox;
@@ -227,7 +227,8 @@ export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'>, cwd
     let network: Record<string, unknown> | null = null;
     if (box.network === 'local') {
       const cland = yield* wait(real(dirname(host.discoveryFile), resumed, machine));
-      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed, machine))]: 'allow', [yield* wait(real(tmpdir(), resumed, machine))]: 'allow', [join(cland, 'run')]: 'deny', [join(yield* wait(real(tmpdir(), resumed, machine)), 'cland-run')]: 'deny' };
+      const run = host.runDirectory === undefined ? join(cland, 'run') : yield* wait(real(host.runDirectory, resumed, machine));
+      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed, machine))]: 'allow', [yield* wait(real(tmpdir(), resumed, machine))]: 'allow', [run]: 'deny', [join(yield* wait(real(tmpdir(), resumed, machine)), 'cland-run')]: 'deny' };
       network = { enabled: true, allow_local_binding: true, unix_sockets };
     }
     else if (box.network === 'full')
@@ -438,11 +439,11 @@ export class CodexAdapter implements HarnessAdapter {
 
   /** The session's socket: in `.cland/run/`, or in the temp directory's `cland-run/` when that path is too long for
    *  a Unix socket. Both directories are closed to a sandboxed session (`threadPolicy`). */
-  #socketPath(sessionId: string): string {
+  #socketPath(sessionId: string, machine: Host): string {
     const file = `cx-${sessionId.replace(/-/g, '').slice(0, 12)}.sock`;
-    const inProject = join(dirname(this.#host.discoveryFile), 'run', file);
+    const inProject = join(machine.layout(this.#host).runDirectory, file);
     // sun_path is 104 bytes on macOS, 108 on Linux
-    return Buffer.byteLength(inProject) <= 100 ? inProject : join(this.#tmpRun, file);
+    return machine.name !== 'local' || Buffer.byteLength(inProject) <= 100 ? inProject : join(this.#tmpRun, file);
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
@@ -453,13 +454,14 @@ export class CodexAdapter implements HarnessAdapter {
     }, unknown> {
       this.#assertOpen();
       yield* this.#activeWait(files.directory(dirname(socket), 0o700));
-      yield* this.#activeWait(rm(socket, { force: true }));
+      yield* this.#activeWait(machine.removePath(socket));
       files.removeOnFailure(socket);
-      const logDir = join(dirname(this.#host.discoveryFile), 'log');
+      const layout = machine.layout(this.#host);
+      const logDir = layout.logDirectory;
       yield* this.#activeWait(files.directory(logDir));
       const logFile = join(logDir, `codex-${p.name}.log`);
       yield* this.#activeWait(files.file(logFile, true));
-      const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(this.#host, p.name, p.role, p.sessionId), ...overrides.flatMap((o) => ['-c', o])];
+      const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(layout, p.name, p.role, p.sessionId), ...overrides.flatMap((o) => ['-c', o])];
       let exited: string | null = null;
       let pid: number | undefined;
       {
@@ -469,7 +471,7 @@ export class CodexAdapter implements HarnessAdapter {
         const env = {
           ...this.#env,
           ...p.accountEnv,
-          PATH: [dirname(this.#host.node), this.#env.PATH].filter(Boolean).join(delimiter),
+          PATH: [dirname(layout.node), this.#env.PATH].filter(Boolean).join(delimiter),
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,
           ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
@@ -891,8 +893,8 @@ export class CodexAdapter implements HarnessAdapter {
       authorize();
       const files = new LaunchFiles(resumed, machine);
       const sessionId = request.sessionId ?? randomUUID();
-      this.#tmpRun = yield* this.#activeWait(tmpRunDir(resumed));
-      const socket = this.#socketPath(sessionId);
+      if (machine.name === 'local') this.#tmpRun = yield* this.#activeWait(tmpRunDir(resumed));
+      const socket = this.#socketPath(sessionId, machine);
       const base = { host: machine.name, account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, sessionId, cwd: request.cwd };
       let pid: number | undefined;
       let client: AppServerConnection | undefined;
@@ -952,16 +954,16 @@ export class CodexAdapter implements HarnessAdapter {
   async #threadPolicy(machine: Host, cwd: string, policy: LaunchPolicy, files: LaunchFiles, resumed: Resumed = untimed): Promise<ThreadPolicy> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ThreadPolicy, unknown> {
       if (policy.sandbox?.network === 'local')
-        for (const dir of [join(dirname(this.#host.discoveryFile), 'run'), yield* this.#activeWait(tmpRunDir(resumed))])
+        for (const dir of machine.name === 'local' ? [machine.layout(this.#host).runDirectory, yield* this.#activeWait(tmpRunDir(resumed))] : [machine.layout(this.#host).runDirectory])
           yield* this.#activeWait(files.directory(dir, 0o700));
-      return yield* this.#activeWait(threadPolicy(this.#host, cwd, policy, resumed, machine));
+      return yield* this.#activeWait(threadPolicy(machine.layout(this.#host), cwd, policy, resumed, machine));
     }).call(this), resumed);
   }
 
   attachCommand(p: HarnessProcess): string {
     // never a `-c` or a `--profile`: either one puts the TUI in embedded mode, where it has no external surface
     const bin = this.#bin === 'codex' ? 'codex' : sq(this.#bin);
-    return accountPrefix(p.accountEnv) + [bin, 'resume', '--remote', sq(`unix://${p.harnessId ?? this.#socketPath(p.sessionId)}`), '--cd', sq(p.cwd), sq(p.harnessSessionId ?? '')].join(' ');
+    return accountPrefix(p.accountEnv) + [bin, 'resume', '--remote', sq(`unix://${p.harnessId ?? this.#socketPath(p.sessionId, this.#machine(p))}`), '--cd', sq(p.cwd), sq(p.harnessSessionId ?? '')].join(' ');
   }
 
   // ---------------------------------------------------------------- inject
@@ -1333,7 +1335,7 @@ export class CodexAdapter implements HarnessAdapter {
         }
         this.#stopping.delete(p.sessionId);
       });
-      if (ended && p.harnessId) await rm(p.harnessId, { force: true });
+      if (ended && p.harnessId) await this.#machine(p).removePath(p.harnessId);
     }
   }
 
@@ -1347,9 +1349,8 @@ export class CodexAdapter implements HarnessAdapter {
       const machine = this.#machine(p);
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
-      if (!p.harnessId)
-        this.#tmpRun = yield* this.#activeWait(tmpRunDir(resumed));
-      const socket = p.harnessId ?? this.#socketPath(p.sessionId);
+      if (!p.harnessId && machine.name === 'local') this.#tmpRun = yield* this.#activeWait(tmpRunDir(resumed));
+      const socket = p.harnessId ?? this.#socketPath(p.sessionId, this.#machine(p));
       if (!p.harnessSessionId)
         return { found: false, reason: 'no thread id recorded', alive: yield* this.#activeWait(machine.alive(p)) };
       const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };

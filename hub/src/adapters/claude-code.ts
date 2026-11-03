@@ -1,3 +1,4 @@
+import { LOCAL_MOD_DIR as MOD_DIR } from '../host/launch-layout.ts';
 import { isLinuxIdentity } from '../host/process-host.ts';
 import { launchGenerationKey, launchOwnerKey } from './launch-generation.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
@@ -31,17 +32,15 @@ import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 //            the same flags (they are not restored by the harness).
 //
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
-import { sessionRunDirectory } from '../../../shared/session-credential.ts';
+import { createHash } from 'node:crypto';
 import { continueWith, wait, untimed } from './continuations.ts';
 import { LaunchFiles } from './launch-files.ts';
 import type { Host } from '../host/host.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { claudeLocalHost } from './claude-code-local.ts';
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { accountPrefix } from '../accounts/registry.ts';
 import { addUsage } from './usage.ts';
@@ -54,7 +53,7 @@ import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, typ
 export const CLAUDE_CODE = 'claude-code';
 
 /** The cland mod, loaded into every session the adapter launches (`--plugin-dir`). */
-export const MOD_DIR = fileURLToPath(new URL('../../mod/cland', import.meta.url));
+export { LOCAL_MOD_DIR as MOD_DIR } from '../host/launch-layout.ts';
 
 export const CLAUDE_CODE_CLAUSE_AT_SPAWN = false;
 
@@ -436,17 +435,20 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- launch
 
   /** The command a hook runs: `cland hook <event>` naming the session, its launch and the hub, nothing secret. */
-  #hookCommand(event: string, name: string, launch: string): string {
-    return [this.#host.node, this.#host.cli, 'hook', event, '--session', name, '--launch', launch, '--hub-file', this.#host.discoveryFile].map(sq).join(' ');
+  #hookCommand(event: string, name: string, launch: string, layout: ReturnType<Host['layout']>): string {
+    return [layout.node, layout.cli, 'hook', event, '--session', name, '--launch', launch, '--hub-file', layout.discoveryFile].map(sq).join(' ');
   }
 
   /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. `worktree`:
    *  the session's own task worktree, where the harness's own worktrees are refused. */
   async #sessionFlags(name: string, role: string | null, sessionId: string, cwd: string, worktree: string | null, files: LaunchFiles, launchToken?: string, machine: Host = this.#local): Promise<string[]> {
+    const layout = machine.layout(this.#host);
+    const modDir = layout.modDir ?? (machine.name === 'local' ? MOD_DIR : undefined);
+    if (!modDir) throw new Error('remote layout has no mod directory yet');
     const launchId = randomUUID();
     const spokeEnv: Record<string, string> = {
       CLAND_LAUNCH_ID: launchId,
-      CLAND_HUB_FILE: this.#host.discoveryFile,
+      CLAND_HUB_FILE: layout.discoveryFile,
       CLAND_SESSION_ID: sessionId,
       CLAND_SESSION_NAME: name,
       // the adapter injects: the spoke only accepts deliveries
@@ -456,14 +458,14 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
       ...(role ? { CLAND_ROLE: role } : {}),
     };
-    const mcp = { mcpServers: { cland: { type: 'stdio', command: this.#host.node, args: [this.#host.spoke], env: spokeEnv } } };
+    const mcp = { mcpServers: { cland: { type: 'stdio', command: layout.node, args: [layout.spoke], env: spokeEnv } } };
     const hooks: Record<string, unknown[]> = {};
     for (const [hookEvent, event] of Object.entries(HOOK_EVENTS)) {
       // The Bash guard is synchronous: exit 2 refuses the tool. Signals stay async.
-      hooks[hookEvent] = [{ ...(hookEvent === 'PreToolUse' ? { matcher: 'Bash' } : {}), hooks: [{ type: 'command', command: this.#hookCommand(event, name, launchId), ...(hookEvent === 'PreToolUse' ? {} : { async: true }), timeout: 10 }] }];
+      hooks[hookEvent] = [{ ...(hookEvent === 'PreToolUse' ? { matcher: 'Bash' } : {}), hooks: [{ type: 'command', command: this.#hookCommand(event, name, launchId, layout), ...(hookEvent === 'PreToolUse' ? {} : { async: true }), timeout: 10 }] }];
     }
     // not async: its exit status is the refusal
-    if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, launchId)} --worktree ${sq(worktree)}`, timeout: 10 }] }];
+    if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, launchId, layout)} --worktree ${sq(worktree)}`, timeout: 10 }] }];
     const configuredIsolation = await Promise.all(['settings.json', 'settings.local.json'].map(async file => {
       try {
         const settings = JSON.parse(Buffer.from(await machine.readFile(join(cwd, '.claude', file))).toString('utf8'));
@@ -474,20 +476,18 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       hooks,
       ...(configuredIsolation.some(Boolean) ? {} : { worktree: { bgIsolation: BG_ISOLATION } }),
       // what the mod reads to find its session and the hub
-      env: { CLAND_LAUNCH_ID: launchId, DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}), CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
+      env: { CLAND_LAUNCH_ID: launchId, DISABLE_AUTOUPDATER: '1', CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}), CLAND_HUB_FILE: layout.discoveryFile, CLAND_NODE: layout.node, CLAND_CLI: layout.cli },
     };
     // --bg does not retain the launcher's environment. Private settings survive native re-exec;
     // the command line carries only paths, never the session credential.
-    const directory = join(sessionRunDirectory(dirname(this.#host.discoveryFile), sessionId), launchId);
+    const directory = join(layout.runDirectory, 'sessions', createHash('sha256').update(sessionId).digest('hex'), launchId);
     await files.directory(directory, 0o700);
     const mcpFile = join(directory, 'mcp.json');
     const settingsFile = join(directory, 'settings.json');
-    await files.file(mcpFile);
-    await writeFile(mcpFile, JSON.stringify(mcp), { mode: 0o600 });
-    await files.file(settingsFile);
-    await writeFile(settingsFile, JSON.stringify(settings), { mode: 0o600 });
+    await files.write(mcpFile, Buffer.from(JSON.stringify(mcp)), 0o600);
+    await files.write(settingsFile, Buffer.from(JSON.stringify(settings)), 0o600);
     this.#setGeneration(sessionId, launchId);
-    return ['--mcp-config', mcpFile, '--settings', settingsFile, '--plugin-dir', MOD_DIR];
+    return ['--mcp-config', mcpFile, '--settings', settingsFile, '--plugin-dir', modDir];
   }
 
   #setGeneration(sessionId: string, generation: string): void {

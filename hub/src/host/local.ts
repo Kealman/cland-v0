@@ -1,3 +1,4 @@
+import { LOCAL_MOD_DIR } from './launch-layout.ts';
 import { folderFiles } from '../hub/artifact-folder.ts';
 import { dirname, join } from 'node:path';
 import { occupants } from './occupants.ts';
@@ -14,7 +15,7 @@ import type { Host, HostProcessUsage } from './host.ts';
 export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Record<string, unknown>) => void = () => {}): Host {
   return {
     name: 'local',
-    layout: input => Object.freeze({ ...input, runDirectory: join(dirname(input.discoveryFile), 'run'), logDirectory: join(dirname(input.discoveryFile), 'log') }),
+    layout: input => Object.freeze({ ...input, modDir: LOCAL_MOD_DIR, runDirectory: join(dirname(input.discoveryFile), 'run'), logDirectory: join(dirname(input.discoveryFile), 'log') }),
     ...fileOperations,
     listFolder: path => folderFiles(path),
     forward: async (_sessionId, endpoint) => endpoint,

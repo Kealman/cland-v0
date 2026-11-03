@@ -110,3 +110,12 @@ test('Host boundary catches helper namespace accesses from actual exporters and 
     }
   }
 });
+
+ test('Host boundary rejects session file mutation imports and namespaces', () => {
+  for (const file of ['claude-code.ts', 'codex.ts', 'opencode/server.ts'])
+    for (const name of ['writeFile', 'mkdir', 'rm', 'chmod'])
+      for (const module of ['node:fs', 'node:fs/promises']) {
+        assert.match(hostBoundaryFindings(file, `import { ${name} as disk } from '${module}';`).join('\n'), new RegExp(`${name} import`));
+        assert.match(hostBoundaryFindings(file, `import * as fs from '${module}'; fs.${name}(path);`).join('\n'), new RegExp(`fs.${name}`));
+      }
+ });

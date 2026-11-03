@@ -1,0 +1,52 @@
+{
+  "command": {
+    "command": "/fixture/harness",
+    "args": [
+      "--bg",
+      "--session-id",
+      "fixture-session",
+      "--name",
+      "worker",
+      "--mcp-config",
+      "<ROOT>/.cland/run/sessions/d6440983c454c2e5999fdb66bbe9cf5f89a8f5847d6c9578ef14afd26eee122c/<UUID>/mcp.json",
+      "--settings",
+      "<ROOT>/.cland/run/sessions/d6440983c454c2e5999fdb66bbe9cf5f89a8f5847d6c9578ef14afd26eee122c/<UUID>/settings.json",
+      "--plugin-dir",
+      "<MOD>"
+    ],
+    "cwd": "<ROOT>",
+    "env": {
+      "XDG_CONFIG_HOME": "<ROOT>/config",
+      "XDG_DATA_HOME": "<ROOT>/opencode",
+      "XDG_STATE_HOME": "<ROOT>/state",
+      "XDG_CACHE_HOME": "<ROOT>/cache",
+      "GIT_AUTHOR_NAME": "Fixture Test",
+      "GIT_AUTHOR_EMAIL": "fixture@example.test",
+      "GIT_COMMITTER_NAME": "Fixture Test",
+      "GIT_COMMITTER_EMAIL": "fixture@example.test",
+      "CLAUDE_CONFIG_DIR": "<ROOT>/claude",
+      "CODEX_HOME": "<ROOT>/codex",
+      "FAKE_CLAUDE_HOME": "<ROOT>/fake-claude",
+      "FAKE_CODEX_HOME": "<ROOT>/fake-codex",
+      "FAKE_OPENCODE_HOME": "<ROOT>/fake-opencode",
+      "PATH": "/fixture/bin",
+      "HOME": "<ROOT>/home",
+      "GIT_CONFIG_GLOBAL": "<ROOT>/home/.gitconfig",
+      "GIT_CONFIG_NOSYSTEM": "1",
+      "OPENCODE_DB": "<ROOT>/account/opencode.db",
+      "DISABLE_AUTOUPDATER": "1"
+    },
+    "timeoutMs": 30000,
+    "signal": {}
+  },
+  "disk": {
+    ".cland/run/sessions/d6440983c454c2e5999fdb66bbe9cf5f89a8f5847d6c9578ef14afd26eee122c/<UUID>/mcp.json": {
+      "mode": 384,
+      "bytes": "{\"mcpServers\":{\"cland\":{\"type\":\"stdio\",\"command\":\"/fixture/node\",\"args\":[\"/fixture/spoke\"],\"env\":{\"CLAND_LAUNCH_ID\":\"<UUID>\",\"CLAND_HUB_FILE\":\"<ROOT>/.cland/hub.json\",\"CLAND_SESSION_ID\":\"fixture-session\",\"CLAND_SESSION_NAME\":\"worker\",\"CLAND_DELIVERY\":\"adapter\",\"CLAND_ROLE\":\"implementer\"}}}}"
+    },
+    ".cland/run/sessions/d6440983c454c2e5999fdb66bbe9cf5f89a8f5847d6c9578ef14afd26eee122c/<UUID>/settings.json": {
+      "mode": 384,
+      "bytes": "{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'literal-rm' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"timeout\":10}]}],\"SessionStart\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'session-start' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"UserPromptSubmit\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'turn-start' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'turn-end' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"StopFailure\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'turn-end' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"PermissionRequest\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'permission' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"PostToolUse\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'tool-done' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"Notification\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'notification' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"Elicitation\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'elicitation' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"SessionEnd\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'session-end' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"SubagentStart\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'subagent-start' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}],\"SubagentStop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"'/fixture/node' '/fixture/cli' 'hook' 'subagent-stop' '--session' 'worker' '--launch' '<UUID>' '--hub-file' '<ROOT>/.cland/hub.json'\",\"async\":true,\"timeout\":10}]}]},\"worktree\":{\"bgIsolation\":\"none\"},\"env\":{\"CLAND_LAUNCH_ID\":\"<UUID>\",\"DISABLE_AUTOUPDATER\":\"1\",\"CLAND_SESSION_NAME\":\"worker\",\"CLAND_SESSION_ID\":\"fixture-session\",\"CLAND_HUB_FILE\":\"<ROOT>/.cland/hub.json\",\"CLAND_NODE\":\"/fixture/node\",\"CLAND_CLI\":\"/fixture/cli\"}}"
+    }
+  }
+}

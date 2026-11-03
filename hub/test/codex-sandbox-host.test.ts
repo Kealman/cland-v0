@@ -116,3 +116,36 @@ test('spawn and relaunch serialize the captured session Host policy', async t =>
   assert.equal(natives[0]!.calls.find(call => call.method === 'thread/start')?.params.permissions, 'cland');
   assert.equal(natives[1]!.calls.find(call => call.method === 'thread/resume')?.params.permissions, 'cland');
 });
+
+test('mapped network-local launch denies the canonical directory containing its app-server socket', async t => {
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, {});
+  const state = join(root, 'host-state');
+  const runDirectory = join(state, 'runtime-alias');
+  const canonicalRun = join(root, 'canonical-runtime');
+  await mkdir(state);
+  await mkdir(canonicalRun);
+  await symlink(canonicalRun, runDirectory);
+  const canonical = await realpath(runDirectory);
+  let captured: HostCommand | undefined;
+  const machine: Host = {
+    ...localHost(env), name: 'mapped',
+    layout: input => ({ ...input, discoveryFile: join(state, 'hub.json'), runDirectory, logDirectory: join(root, 'host-log') }),
+    run: async () => ({ code: 0, stdout: 'codex 0.160.0', stderr: '' }),
+    spawn: async command => { captured = command; throw new Error('captured native launch'); },
+  };
+  const adapter = new CodexAdapter({
+    root, discoveryFile: join(root, '.cland/hub.json'), node: '/fixture/node', cli: '/fixture/cli', spoke: '/fixture/spoke',
+    hostForLaunch: () => machine, log: () => {}, signal: () => {}, exited: () => {}, recordPid: () => {},
+  }, { env, bin: '/fixture/codex' });
+  try {
+    await assert.rejects(adapter.spawn({ name: 'worker', sessionId: 'mapped-session', role: null, model: null, cwd: root,
+      sandbox: { mode: 'workspace-write', writableRoots: [], network: 'local' } }), /captured native launch/);
+    assert.ok(captured);
+    assert.equal(captured.args[2], `unix://${runDirectory}/cx-mappedsessio.sock`);
+    const profile = captured.args.find(arg => arg.startsWith('permissions.cland='));
+    assert.ok(profile);
+    assert.ok(profile.includes(`${JSON.stringify(canonical)}="deny"`), profile);
+    assert.ok(captured.args.includes('features.network_proxy=true'));
+  } finally { await adapter.close(); }
+});

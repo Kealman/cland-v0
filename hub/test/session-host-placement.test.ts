@@ -156,7 +156,7 @@ test('spoke launch forwards Host placement and Coordinator handover refuses its 
   assert.ok(roles.roles.find(r => r.role === 'coordinator')?.holders.some(h => h.name === 'coord'));
 });
 
-test('production OpenCode launch reaches the explicitly selected nonlocal Host spawn', async t => {
+test('production OpenCode launch refuses unsupported nonlocal shared-ignore preparation without fallback', async t => {
   const { OpenCodeAdapter } = await import('../src/adapters/opencode.ts');
   const { fixtureEnvironment } = await import('./fixture-environment.ts');
   const { testHost } = await import('../src/host/test-host.ts');
@@ -169,7 +169,8 @@ test('production OpenCode launch reaches the explicitly selected nonlocal Host s
     const machine = testHost(name, e => operations.push(`${name}:${e.operation}`));
     return {
       ...machine,
-      // Reach the intended spawn boundary after scratch-local preparation.
+      // Reach the explicit nonlocal file-preparation boundary in scratch storage.
+      layout: fileHost.layout,
       makeDirectory: fileHost.makeDirectory,
       writeFile: fileHost.writeFile,
       removePath: fileHost.removePath,
@@ -189,9 +190,9 @@ test('production OpenCode launch reaches the explicitly selected nonlocal Host s
   const ui = await sessionUi(t, hub.discovery);
   const reply = await ui.request({ type: 'session.launch', name: 'remote-opencode', role: 'implementer', harness: 'opencode', host: 't1' });
   assert.equal(reply.ok, false);
-  assert.match(String(reply.error), /test host t1 refuses spawn/);
-  assert.ok(operations.includes('t1:spawn'));
-  assert.deepEqual(launches, [{ host: 't1', role: 'implementer' }]);
+  assert.match(String(reply.error), /nonlocal OpenCode shared ignore.*T-1644/);
+  assert.ok(!operations.includes('t1:spawn'));
+  assert.deepEqual(launches, []);
   assert.ok(!operations.includes('local:spawn'), 'placement never falls back to local spawn');
   const listed = await ui.request({ type: 'session.list' });
   assert.deepEqual((listed.value as { processes: unknown[] }).processes, []);

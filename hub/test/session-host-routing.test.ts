@@ -7,6 +7,7 @@ import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
+import { localHost } from '../src/host/local.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { tempProject, projectHub, connectUi, eventually, flushProjectLogs } from './harness.ts';
@@ -21,7 +22,8 @@ async function seed(root: string) {
 test('startup, poll, resume and stop reach only the named Host despite a live local PID collision', async t => {
   const root = await tempProject(t);
   const calls: string[] = [];
-  const record = (name: string) => testHost(name, e => calls.push(`${name}:${e.operation}`));
+  // The limitPolls getter is pure fixture configuration, not a process operation.
+  const record = (name: string) => ({ ...testHost(name, e => { if (e.operation !== 'limitPolls') calls.push(`${name}:${e.operation}`); }), layout: localHost(fixtureEnvironment(root, {})).layout });
   let alive = true;
   const remote = { ...record('t1'), alive: async () => { calls.push('t1:alive'); return alive; }, stop: async () => { calls.push('t1:stop'); alive = false; return true; } };
   const core = new HubCore();
@@ -43,7 +45,7 @@ test('startup, poll, resume and stop reach only the named Host despite a live lo
   assert.equal(calls.filter(c => c === 't1:stop').length, 1);
   await sweepOrphans(root, () => {});
   assert.ok(calls.includes('t1:identity'));
-  assert.equal(calls.some(c => c.startsWith('local:')), false);
+  assert.equal(calls.some(c => c.startsWith('local:')), false, JSON.stringify(calls));
   assert.doesNotThrow(() => process.kill(process.pid, 0));
 });
 
@@ -75,7 +77,7 @@ test('projectHub frame stop uses CLAND_TEST_HOSTS and leaves the colliding local
   const table = new ProcessTable(join(root, '.cland/hub.db'));
   table.put(await seed(root));
   table.close();
-  const hub = await projectHub(t, root, { CLAND_TEST_HOSTS: 't1' }, { adapters: [host => new OpenCodeAdapter(host, { env: fixtureEnvironment(root, process.env), pollMs: 10 })] });
+  const hub = await projectHub(t, root, { CLAND_TEST_HOSTS: 't1' }, { adapters: [host => new OpenCodeAdapter({ ...host, hostForProcess: row => ({ ...host.hostForProcess!(row), layout: localHost(fixtureEnvironment(root, {})).layout }) }, { env: fixtureEnvironment(root, process.env), pollMs: 10 })] });
   const ui = await connectUi(t, hub.discovery);
   const stopped = await ui.request({ type: 'session.stop', session: 'remote' });
   assert.equal(stopped.ok, false, 'test host refuses native signals');
@@ -109,7 +111,7 @@ for (const harness of ['codex', 'claude-code'] as const) test(`${harness} stop r
   const { ClaudeCodeAdapter } = await import('../src/adapters/claude-code.ts');
   const root = await tempProject(t);
   const calls: string[] = [];
-  const remote = { ...testHost('t1', e => calls.push(`t1:${e.operation}`)), run: async () => { calls.push('t1:run'); return { code: 0, stdout: '', stderr: '' }; }, stop: async (p: import('../src/host/host.ts').HostProcess) => {
+  const remote = { ...testHost('t1', e => calls.push(`t1:${e.operation}`)), layout: localHost(fixtureEnvironment(root, {})).layout, run: async () => { calls.push('t1:run'); return { code: 0, stdout: '', stderr: '' }; }, stop: async (p: import('../src/host/host.ts').HostProcess) => {
     calls.push('t1:stop');
     assert.equal(p.pid, process.pid);
     assert.equal(p.pidIdentity, `linux:test-t1:${process.pid}`);

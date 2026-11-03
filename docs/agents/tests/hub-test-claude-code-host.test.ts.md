@@ -44,3 +44,7 @@ The remote fixture registers query releases at acquisition and releases all
 gates before its bounded adapter-close drain. Abandoned-setup controls dispose
 before and after the entry receipt without the normal explicit release, join
 inspection completion, and retain zero later commands/timers.
+
+Remote discovery fixtures supply the scratch file Host's layout (including its
+mod directory) and fileType now that launch preparation uses those Host queries.
+The native discovery, ownership and cleanup assertions remain unchanged.

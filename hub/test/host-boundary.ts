@@ -3,12 +3,13 @@ import { readdir, readFile } from 'node:fs/promises';
 
 /** Native implementation edges, not session orchestration. Keep reasons reviewable. */
 export const hostBoundaryExceptions = {
+  'local-opencode-files.ts': 'Local Host atomic shared-ignore publication preserves concurrency; nonlocal support is T-1644.',
   'processes.ts': 'Native local liveness/birth helpers used by the local Host.',
   'session-cwd.ts': 'Native directory identity/refusal implementation used by the local Host.',
   'claude-code-local.ts': 'Standalone local Host compatibility, including synthetic legacy fixtures.',
 };
 const helpers = new Set(['pidAlive', 'processAlive', 'sameProcess', 'endProcess', 'processIdentityAsync', 'systemProcesses', 'sessionCwdRefusal']);
-const metadata = new Set(['stat', 'lstat', 'realpath', 'statSync', 'lstatSync', 'realpathSync']);
+const metadata = new Set(['stat', 'lstat', 'realpath', 'statSync', 'lstatSync', 'realpathSync', 'writeFile', 'mkdir', 'rm', 'chmod']);
 const nativeModule = (name: string) => name.replace(/^node:/, '');
 
 export function hostBoundaryFindings(file: string, source: string): string[] {

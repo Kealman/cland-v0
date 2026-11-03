@@ -15,3 +15,8 @@ This proves serialization, not OS sandbox enforcement.
 Preservation files remain unedited: codex-adapter.test.ts (T3),
 codex-delivery.test.ts and codex-native.test.ts (T2),
 codex-workspace-git.test.ts (T4; macOS Seatbelt availability applies).
+
+The mapped network-local launch case gives runtime a symlink path independent of
+its discovery directory. At the native launch boundary it asserts the actual
+socket path and that its canonical parent is denied in the serialized profile.
+Legacy discovery-only callers and the local policy byte fixture remain unchanged.

@@ -115,7 +115,6 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #spawnDeadlineMs: number;
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
-  readonly #clandDir: string;
   readonly #watched = new Map<string, Watch>();
   readonly #watching = new Map<string, WatchTicket>();
   readonly #usage = new Map<string, SessionUsage>();
@@ -142,7 +141,6 @@ export class OpenCodeAdapter implements HarnessAdapter {
     // cland's own variables stay out, and so does a password or config meant for another OpenCode server
     for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') && !['OPENCODE_CONFIG', 'OPENCODE_CONFIG_CONTENT', 'OPENCODE_PASSWORD', 'OPENCODE_DB', 'XDG_DATA_HOME'].includes(k)) env[k] = v;
     this.#env = env;
-    this.#clandDir = dirname(host.discoveryFile);
   }
 
   #assertOpen(): void { if (this.#closed) throw new Error('the OpenCode adapter is closed'); }
@@ -199,16 +197,17 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return this.#host.hostForProcess?.(p) ?? localHost(this.#processEnv, this.#host.log);
   }
 
-  #files(name: string): ServerFiles {
-    return serverFiles(this.#clandDir, name);
+  #files(name: string, host: Host = localHost(this.#processEnv, this.#host.log)): ServerFiles {
+    return serverFiles(dirname(host.layout(this.#host).discoveryFile), name);
   }
 
   // ---------------------------------------------------------------- launch
 
   /** The OpenCode config the session's server reads: the spoke as a local MCP server, with the session's identity. */
-  #config(name: string, role: string | null, sessionId: string, launchToken?: string): Record<string, unknown> {
+  #config(name: string, role: string | null, sessionId: string, launchToken?: string, machine: Host = localHost(this.#processEnv, this.#host.log)): Record<string, unknown> {
+    const layout = machine.layout(this.#host);
     const environment: Record<string, string> = {
-      CLAND_HUB_FILE: this.#host.discoveryFile,
+      CLAND_HUB_FILE: layout.discoveryFile,
       CLAND_SESSION_ID: sessionId,
       CLAND_SESSION_NAME: name,
       ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
@@ -216,7 +215,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       CLAND_DELIVERY: 'adapter',
       ...(role ? { CLAND_ROLE: role } : {}),
     };
-    return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
+    return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [layout.node, layout.spoke], environment } } } };
   }
 
   async #launch(p: Pick<HarnessProcess, 'host' | 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
@@ -224,16 +223,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       p = { ...p, accountEnv: p.accountEnv ?? { OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv) } };
-      const files = this.#files(p.name);
       const host = this.#host.hostForLaunch?.(p) ?? localHost(this.#processEnv, this.#host.log);
+      const files = this.#files(p.name, host);
       const transaction = new LaunchFiles(resumed, host);
       let pid: number | undefined;
       try {
-        const password = yield* this.#activeWait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
+        const password = yield* this.#activeWait(prepareFiles(dirname(host.layout(this.#host).discoveryFile), files, this.#config(p.name, p.role, p.sessionId, launchToken, host), !relaunch, transaction, resumed, entry => this.#host.log(entry), host));
         yield* this.#activeWait(transaction.file(files.log, true));
         const env = withoutExecutorCredentials({
           ...accountEnvironment(this.#env, p.accountEnv),
-          CLAND_HUB_FILE: this.#host.discoveryFile,
+          CLAND_HUB_FILE: host.layout(this.#host).discoveryFile,
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,
           ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
@@ -335,8 +334,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
   renamed(p: HarnessProcess, from: string): void {
     const ticket = this.#watching.get(p.sessionId);
     if (ticket) ticket.process = { ...ticket.process, name: p.name };
-    const source = this.#files(from).dir;
-    const target = this.#files(p.name).dir;
+    const source = this.#files(from, this.#processHost(p)).dir;
+    const target = this.#files(p.name, this.#processHost(p)).dir;
     if (!existsSync(source) || existsSync(target)) return;
     renameSync(source, target);
     const w = this.#watched.get(p.sessionId);
@@ -345,7 +344,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   attachCommand(p: HarnessProcess): string {
     const bin = this.#bin === 'opencode' ? 'opencode' : bare(this.#bin);
-    const password = this.#files(p.name).password;
+    const password = this.#files(p.name, this.#processHost(p)).password;
     // in the session's directory: a TUI elsewhere makes the server open an instance there, whose MCP servers start a
     // second spoke for the session, which replaces the one the session's tool calls go through
     return accountPrefix(p.accountEnv) + `OPENCODE_PASSWORD="$(cat ${sq(password)})" ${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')} ${sq(p.cwd)}`;
@@ -356,7 +355,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   async #client(p: HarnessProcess): Promise<OpenCodeClient> {
     const watched = this.#watched.get(p.sessionId);
     if (watched && watched.client.url === p.harnessId) return watched.client;
-    const password = await readPassword(this.#files(p.name));
+    const password = await readPassword(this.#files(p.name, this.#processHost(p)), untimed, this.#processHost(p));
     if (!p.harnessId || !password) throw new Error(`no server url or password recorded for ${p.name}`);
     return new OpenCodeClient(p.harnessId, password);
   }
@@ -482,7 +481,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     if (!p.harnessId || !p.harnessSessionId) return;
     ticket.pending = true;
     try {
-      const password = await readPassword(this.#files(p.name));
+      const password = await readPassword(this.#files(p.name, this.#processHost(p)), untimed, this.#processHost(p));
       if (this.#closed || this.#watching.get(p.sessionId) !== ticket) return;
       if (!password) {
         if (!ticket.warned) this.#host.log({ event: 'opencode-no-password', session: ticket.process.name });
@@ -793,7 +792,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       else if (!p.harnessId || !p.harnessSessionId)
         reason = 'no server url or session recorded';
       else {
-        const password = yield* this.#activeWait(readPassword(this.#files(p.name), resumed));
+        const password = yield* this.#activeWait(readPassword(this.#files(p.name, this.#processHost(p)), resumed, this.#processHost(p)));
         if (!password)
           reason = 'the server password file is gone';
         else {

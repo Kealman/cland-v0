@@ -31,7 +31,7 @@ export type HostStopOptions = {
 
 export type HostEndpoint = { socket: string } | { port: number };
 export type HostLaunchLayoutInput = { discoveryFile: string; node: string; cli: string; spoke: string };
-export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: string; logDirectory: string }>;
+export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: string; logDirectory: string; modDir?: string }>;
 
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {

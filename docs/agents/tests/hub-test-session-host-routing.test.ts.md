@@ -31,3 +31,11 @@ T-1556 migrates the two remote Claude poll acquisition cases: timer ticks now
 assert no discovery and no candidate PID proof/acquisition, preserve the saved
 Linux birth identity and native owner, and observe Host liveness only for a
 recorded PID. The resume acquisition cases retain their assertions.
+
+Attach rendering also consumes a row Host's layout. Recording doubles supply the
+scratch local Host's pure layout resolver without changing their name, process
+methods or signal refusal. The CLAND_TEST_HOSTS frame case still uses that
+registry's identity/stop implementations; only its adapter-side layout is supplied.
+The first case excludes the pure limitPolls setup getter from its process trace,
+while retaining its no-local-operation and local PID survival assertions. All
+birth, stop, persistence and collision assertions remain.
