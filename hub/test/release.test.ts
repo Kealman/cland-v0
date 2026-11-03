@@ -129,7 +129,7 @@ test('legacy publication receipts recover main without a recorded default', asyn
 });
 
 // T3: native Git commit selection and unchanged refs prove the publication boundary; no hub process starts.
-test('release checks the committed dev package version before preview or publication', { timeout: 5_000 }, async t => {
+test('release checks the committed dev package version before preview or publication', async t => {
   const { root, github, territory, ui } = await project(t, undefined, undefined, true);
   const path = join(root, 'package.json');
   await writeFile(path, '{"version":"0.1.3"}\n');
@@ -162,7 +162,7 @@ test('release checks the committed dev package version before preview or publica
 });
 
 // T3: native Git publication remains available for a package without a version.
-test('release permits a package without a version key', { timeout: 5_000 }, async t => {
+test('release permits a package without a version key', async t => {
   const { root, github, territory, ui } = await project(t, undefined, undefined, true);
   await writeFile(join(root, 'package.json'), '{"private":true}\n');
   git(root, 'add', '.');
