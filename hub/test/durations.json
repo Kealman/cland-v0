@@ -93,9 +93,11 @@
       "A-14825",
       "A-14829",
       "A-15091",
-      "A-15096"
+      "A-15096",
+      "A-15983",
+      "A-15995"
     ],
-    "commit": "6ab47eef202acfe13bbdc9e605d14aba190777a7"
+    "commit": "986afe46b587899bcf9ebb3f51781d3491a904ca"
   },
   "budget": {
     "testSeconds": 5,
@@ -3087,6 +3089,230 @@
     },
     "hub/test/fixture-socket-path.test.ts": {
       "seconds": 0.018821,
+      "tests": 2
+    },
+    "hub/test/answer-users.test.ts": {
+      "seconds": 0.735535,
+      "tests": 2
+    },
+    "hub/test/artifact-host.test.ts": {
+      "seconds": 0.219135,
+      "tests": 4
+    },
+    "hub/test/artifact-user.test.ts": {
+      "seconds": 1.720654,
+      "tests": 4
+    },
+    "hub/test/auth-mode.test.ts": {
+      "seconds": 3.994898,
+      "tests": 7
+    },
+    "hub/test/claude-code-host.test.ts": {
+      "seconds": 0.146944,
+      "tests": 18
+    },
+    "hub/test/cli-as-user.test.ts": {
+      "seconds": 7.808237,
+      "tests": 6
+    },
+    "hub/test/codex-host.test.ts": {
+      "seconds": 0.35147,
+      "tests": 19
+    },
+    "hub/test/codex-sandbox-host.test.ts": {
+      "seconds": 0.031787,
+      "tests": 3
+    },
+    "hub/test/executor-deletion-confirmation.test.ts": {
+      "seconds": 3.38929,
+      "tests": 7
+    },
+    "hub/test/executor-deletion-watchdog.test.ts": {
+      "seconds": 2.530963,
+      "tests": 1
+    },
+    "hub/test/executor-reap-confirmation.test.ts": {
+      "seconds": 4.145939,
+      "tests": 9
+    },
+    "hub/test/executor-recovery-collection.test.ts": {
+      "seconds": 1.116118,
+      "tests": 1
+    },
+    "hub/test/executor-snapshot-confirmation.test.ts": {
+      "seconds": 0.789314,
+      "tests": 3
+    },
+    "hub/test/fake-ssh.test.ts": {
+      "seconds": 6.698835,
+      "tests": 9
+    },
+    "hub/test/host-agent-boundary.test.ts": {
+      "seconds": 0.113177,
+      "tests": 2
+    },
+    "hub/test/host-agent.test.ts": {
+      "seconds": 10.835437,
+      "tests": 18
+    },
+    "hub/test/host-boundary.test.ts": {
+      "seconds": 0.737376,
+      "tests": 11
+    },
+    "hub/test/host-contract-coverage.test.ts": {
+      "seconds": 0.276466,
+      "tests": 4
+    },
+    "hub/test/host-git-daemon.test.ts": {
+      "seconds": 4.363378,
+      "tests": 4
+    },
+    "hub/test/host-limit-poller.test.ts": {
+      "seconds": 0.045039,
+      "tests": 1
+    },
+    "hub/test/host-local-contract.test.ts": {
+      "seconds": 5.348189,
+      "tests": 14
+    },
+    "hub/test/host-local-liveness.test.ts": {
+      "seconds": 0.029167,
+      "tests": 1
+    },
+    "hub/test/host-orphans.test.ts": {
+      "seconds": 3.45372,
+      "tests": 2
+    },
+    "hub/test/host-records.test.ts": {
+      "seconds": 0.619989,
+      "tests": 9
+    },
+    "hub/test/host-registry.test.ts": {
+      "seconds": 0.512209,
+      "tests": 4
+    },
+    "hub/test/hub-lock-heartbeat.test.ts": {
+      "seconds": 0.840515,
+      "tests": 4
+    },
+    "hub/test/hub-lock-identity.test.ts": {
+      "seconds": 0.479627,
+      "tests": 27
+    },
+    "hub/test/hub-lock-readers.test.ts": {
+      "seconds": 0.201228,
+      "tests": 14
+    },
+    "hub/test/inbox-query.test.ts": {
+      "seconds": 47.241295,
+      "tests": 4
+    },
+    "hub/test/invites.test.ts": {
+      "seconds": 0.016787,
+      "tests": 4
+    },
+    "hub/test/launch-files.test.ts": {
+      "seconds": 0.039932,
+      "tests": 3
+    },
+    "hub/test/message-display-name.test.ts": {
+      "seconds": 0.033554,
+      "tests": 1
+    },
+    "hub/test/message-users.test.ts": {
+      "seconds": 0.396289,
+      "tests": 1
+    },
+    "hub/test/opencode-host.test.ts": {
+      "seconds": 0.553559,
+      "tests": 9
+    },
+    "hub/test/passwords.test.ts": {
+      "seconds": 0.168468,
+      "tests": 2
+    },
+    "hub/test/session-host-placement.test.ts": {
+      "seconds": 1.263947,
+      "tests": 11
+    },
+    "hub/test/session-host-routing.test.ts": {
+      "seconds": 1.294933,
+      "tests": 16
+    },
+    "hub/test/session-host.test.ts": {
+      "seconds": 0.325121,
+      "tests": 8
+    },
+    "hub/test/spoke-unix-edge.test.ts": {
+      "seconds": 1.486558,
+      "tests": 12
+    },
+    "hub/test/state-inventory.test.ts": {
+      "seconds": 0.935951,
+      "tests": 2
+    },
+    "hub/test/state-paths-lint.test.ts": {
+      "seconds": 5.853967,
+      "tests": 5
+    },
+    "hub/test/state-paths.test.ts": {
+      "seconds": 0.001981,
+      "tests": 1
+    },
+    "hub/test/suite-coordinator.test.ts": {
+      "seconds": 0.53483,
+      "tests": 10
+    },
+    "hub/test/territory-task-branch.test.ts": {
+      "seconds": 9.411301,
+      "tests": 10
+    },
+    "hub/test/transport-config.test.ts": {
+      "seconds": 2.401789,
+      "tests": 5
+    },
+    "hub/test/transport-kind.test.ts": {
+      "seconds": 0.001306,
+      "tests": 1
+    },
+    "hub/test/transport-records.test.ts": {
+      "seconds": 0.004032,
+      "tests": 1
+    },
+    "hub/test/user-invites.test.ts": {
+      "seconds": 3.940192,
+      "tests": 5
+    },
+    "hub/test/users.test.ts": {
+      "seconds": 0.06676,
+      "tests": 4
+    },
+    "hub/test/web-signin.test.ts": {
+      "seconds": 1.975223,
+      "tests": 3
+    },
+    "hub/test/webauthn.test.ts": {
+      "seconds": 0.033725,
+      "tests": 11
+    },
+    "nvim/test/message-users-live.test.ts": {
+      "seconds": 0.576845,
+      "tests": 1
+    },
+    "nvim/test/message-users.test.ts": {
+      "seconds": 0.282449,
+      "tests": 1
+    },
+    "web/test/message-users.test.ts": {
+      "seconds": 2.924704,
+      "tests": 1
+    },
+    "web/test/passkeys.test.ts": {
+      "seconds": 4.297033,
+      "tests": 2
+    },
+    "web/test/signin.test.ts": {
+      "seconds": 5.180662,
       "tests": 2
     }
   },
@@ -9110,15 +9336,402 @@
     "hub/test/verifier-routing.test.ts::queued explicit request head survives restart before verifier assignment": 0.218363,
     "hub/test/verifier-routing.test.ts::reviewer declines only its exact accepted request and returns a reason without a verdict": 0.144688,
     "hub/test/verifier-routing.test.ts::role-addressed qa request pins its explicit head before delivery": 0.10852,
-    "hub/test/verifier-routing.test.ts::role-addressed reviewer request pins its explicit head before delivery": 0.093639
+    "hub/test/verifier-routing.test.ts::role-addressed reviewer request pins its explicit head before delivery": 0.093639,
+    "hub/test/adapter-native-boundary.test.ts::CodexAdapter: post-spawn log close failure retains the normal live session and child": 0.364592,
+    "hub/test/adapter-native-boundary.test.ts::CodexAdapter: pre-spawn log handle close rejection rolls back a revoked launch": 0.043098,
+    "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: config handle close rejection rolls back before native spawn": 0.005108,
+    "hub/test/adapter-native-boundary.test.ts::OpenCodeAdapter: post-spawn log close failure retains the normal live session and child": 0.272227,
+    "hub/test/answer-users.test.ts::answers retain authenticated attribution in single mode": 0.377618,
+    "hub/test/answer-users.test.ts::answers retain authenticated attribution in users mode": 0.357917,
+    "hub/test/artifact-host.test.ts::artifact source type and binary bytes are read only on the supplied Host": 0.047884,
+    "hub/test/artifact-host.test.ts::folder source listing and nested files remain on its Host": 0.028597,
+    "hub/test/artifact-host.test.ts::session frames resolve relative paths through Sessions Host while human frames use local": 0.117281,
+    "hub/test/artifact-host.test.ts::upload checks stored attachment types on local Host while new bytes stay in the frame": 0.025373,
+    "hub/test/artifact-user.test.ts::cookie-authenticated artifacts use the second user and human now placement, ignoring forged creator fields": 0.322438,
+    "hub/test/artifact-user.test.ts::cookie-authenticated artifacts use the second user and human watch placement, ignoring forged creator fields": 0.344005,
+    "hub/test/artifact-user.test.ts::single-mode human artifacts preserve the previous wire shape without a creator user id": 0.163417,
+    "hub/test/artifact-user.test.ts::users-mode human creation and upload retain creator identity in index, audit and journal; agents stay sessions": 0.890794,
+    "hub/test/auth-mode.test.ts::failed single transition keeps admission fenced until a successful recovery reload": 0.571174,
+    "hub/test/auth-mode.test.ts::failed users transition keeps admission fenced until a successful recovery reload": 0.426064,
+    "hub/test/auth-mode.test.ts::hand-edited users mode is refused before startup or reload can skip the authorized switch": 0.135797,
+    "hub/test/auth-mode.test.ts::local and cookie-authenticated human requests audit their user, including web impersonation refusal": 0.622044,
+    "hub/test/auth-mode.test.ts::reset fences admission and drains active native web owners": 0.134081,
+    "hub/test/auth-mode.test.ts::reset fences admission and drains expired native web owners": 0.123395,
+    "hub/test/auth-mode.test.ts::switch creates one first admin, reload preserves it, and reset retains it behind single-mode refusal": 1.982343,
+    "hub/test/claude-code-host.test.ts::Claude close joins an in-flight Host liveness observation before releasing the adapter": 0.003467,
+    "hub/test/claude-code-host.test.ts::Claude close joins and fences resume at directory delay": 0.002768,
+    "hub/test/claude-code-host.test.ts::Claude close joins and fences resume at fallback alive": 0.002044,
+    "hub/test/claude-code-host.test.ts::Claude close joins and fences resume at listed identity": 0.002298,
+    "hub/test/claude-code-host.test.ts::Claude close joins and fences resume at signed-out alive": 0.003102,
+    "hub/test/claude-code-host.test.ts::Claude close reports incomplete relaunch cleanup and retains private files when Host stop refuses": 0.007269,
+    "hub/test/claude-code-host.test.ts::Claude close stops a relaunched native job held at identity and removes its private launch files": 0.007546,
+    "hub/test/claude-code-host.test.ts::Claude identities, resume fallback, signed-out liveness and stop stay on the row Host": 0.013343,
+    "hub/test/claude-code-host.test.ts::Claude launch, directory discovery and settings reach the selected Host with unchanged command inputs": 0.030037,
+    "hub/test/claude-code-host.test.ts::local discovery keeps its schedule beside a nonlocal row with the same config directory": 0.008152,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude abandoned discovery setup drains after its entry receipt": 0.006157,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude abandoned discovery setup drains before its entry receipt": 0.006423,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude discovers each launch exactly once even in the same directory interval": 0.010952,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude missing launch PID stays supervised and reports unknown without timer discovery": 0.007639,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude relaunch drains predecessor discovery and discovers its new PID once": 0.010186,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude restart resume discovers at most once when listed": 0.00758,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude restart resume discovers at most once when missing": 0.009275,
+    "hub/test/claude-code-host.test.ts::nonlocal Claude timers use only Host liveness and observe death without another command": 0.008706,
+    "hub/test/cli-as-user.test.ts::CLI ask --as retains stand-in identity and journal": 0.489026,
+    "hub/test/cli-as-user.test.ts::CLI ask --as retains user identity and journal": 0.618369,
+    "hub/test/cli-as-user.test.ts::human write matrix in single mode as alex preserves local and shell authority": 1.130424,
+    "hub/test/cli-as-user.test.ts::human write matrix in single mode as default preserves local and shell authority": 1.212199,
+    "hub/test/cli-as-user.test.ts::human write matrix in users mode as alex preserves local and shell authority": 2.092378,
+    "hub/test/cli-as-user.test.ts::human write matrix in users mode as default preserves local and shell authority": 2.265841,
+    "hub/test/cli-help.test.ts::cland host serve --help exits without starting an agent": 0.118559,
+    "hub/test/cli-help.test.ts::cland host serve -h exits without starting an agent": 0.123386,
+    "hub/test/codex-host.test.ts::a late Host liveness reply cannot retire a replacement Codex row": 0.155573,
+    "hub/test/codex-host.test.ts::Codex close joins and coalesces a held Host probe (rejection)": 0.002513,
+    "hub/test/codex-host.test.ts::Codex close joins and coalesces a held Host probe (success)": 0.00391,
+    "hub/test/codex-host.test.ts::Codex close joins held launch accepted work": 0.00302,
+    "hub/test/codex-host.test.ts::Codex close joins held launch identity work": 0.002684,
+    "hub/test/codex-host.test.ts::Codex close joins held launch prepare work": 0.005401,
+    "hub/test/codex-host.test.ts::Codex close joins held launch version work": 0.002503,
+    "hub/test/codex-host.test.ts::Codex close joins held relaunch accepted work": 0.004449,
+    "hub/test/codex-host.test.ts::Codex close joins held relaunch identity work": 0.007986,
+    "hub/test/codex-host.test.ts::Codex close joins held relaunch prepare work": 0.002415,
+    "hub/test/codex-host.test.ts::Codex close joins held relaunch version work": 0.001683,
+    "hub/test/codex-host.test.ts::Codex close joins live resume alive without returning a running row": 0.002863,
+    "hub/test/codex-host.test.ts::Codex close joins live resume connect without returning a running row": 0.003245,
+    "hub/test/codex-host.test.ts::Codex close reports incomplete late-launch cleanup and retains its durable receipt": 0.006831,
+    "hub/test/codex-host.test.ts::Codex keeps Host liveness polling while reconnect connection acquisition is held": 0.053233,
+    "hub/test/codex-host.test.ts::Codex launch refuses the Host directory refusal before running a command": 0.021062,
+    "hub/test/codex-host.test.ts::Codex launches, resumes, polls and stops only through the selected Host": 0.065601,
+    "hub/test/codex-host.test.ts::Codex version failure from the Host refuses spawn": 0.002603,
+    "hub/test/codex-host.test.ts::held launch close assertions reject an early close receipt while work continues": 0.003895,
+    "hub/test/codex-sandbox-host.test.ts::Codex takes roots, linked git bytes and socket paths from the selected Host": 0.002796,
+    "hub/test/codex-sandbox-host.test.ts::local Codex policies retain the captured byte-identical overrides": 0.020017,
+    "hub/test/codex-sandbox-host.test.ts::spawn and relaunch serialize the captured session Host policy": 0.008974,
+    "hub/test/discord-cards.test.ts::users-mode Discord decline opens its native modal and attributes the saved answer": 0.134662,
+    "hub/test/discord-cards.test.ts::users-mode Discord other opens its native modal and attributes the saved answer": 0.144557,
+    "hub/test/discord-inbound-media.test.ts::Discord held CDN input retains its admitted project owner (reassigned: false)": 0.172592,
+    "hub/test/discord-inbound-media.test.ts::Discord held CDN input retains its admitted project owner (reassigned: true)": 0.187592,
+    "hub/test/doctor-harness-probe.test.ts::doctor ps row requires its own process start time and names procps as the fix": 0.005282,
+    "hub/test/executor-deletion-confirmation.test.ts::accepted DELETE is checkpointed before held failing confirmation GET and keeps its original bound": 0.689182,
+    "hub/test/executor-deletion-confirmation.test.ts::DELETE 404 never confirms a droplet or key still readable by id": 0.016255,
+    "hub/test/executor-deletion-confirmation.test.ts::fake split answers last for the requested GET reads and slow GET respects deadline": 0.005985,
+    "hub/test/executor-deletion-confirmation.test.ts::release remembers additional droplet ids omitted from later lists across reload": 0.741301,
+    "hub/test/executor-deletion-confirmation.test.ts::release remembers additional key ids omitted from later lists across reload": 0.740605,
+    "hub/test/executor-deletion-confirmation.test.ts::release retains spend and attention until droplet GET confirms absence": 0.703727,
+    "hub/test/executor-deletion-confirmation.test.ts::release retains spend and attention until key GET confirms absence": 0.492235,
+    "hub/test/executor-deletion-watchdog.test.ts::watchdog receipt follows GET 404 for both droplet and key after split DELETE answers": 2.530963,
+    "hub/test/executor-reap-confirmation.test.ts::provider sweep counts only GET-confirmed deletions (DELETE=204)": 0.370594,
+    "hub/test/executor-reap-confirmation.test.ts::provider sweep counts only GET-confirmed deletions (DELETE=404)": 0.443048,
+    "hub/test/executor-reap-confirmation.test.ts::provider sweep counts only GET-confirmed deletions (DELETE=gone)": 0.297316,
+    "hub/test/executor-reap-confirmation.test.ts::reap recovers hidden pending droplet identity across project rename and executor reload": 0.367363,
+    "hub/test/executor-reap-confirmation.test.ts::reap recovers hidden pending key identity across project rename and executor reload": 0.325744,
+    "hub/test/executor-reap-confirmation.test.ts::reap reports live droplet GET after DELETE 404 and retries next reap with lease open": 1.030617,
+    "hub/test/executor-reap-confirmation.test.ts::reap reports live key GET after DELETE 404 and retries next reap with lease open": 0.425144,
+    "hub/test/executor-reap-confirmation.test.ts::recovered pending droplet refuses changed provider identity": 0.43462,
+    "hub/test/executor-reap-confirmation.test.ts::recovered pending key refuses changed provider identity": 0.451493,
+    "hub/test/executor-recovery-collection.test.ts::executor recovery publishes a completed shard group without another scheduler tick": 1.116118,
+    "hub/test/executor-snapshot-confirmation.test.ts::cleanup retains snapshot ownership through DELETE404 GET200 and retries by id": 0.028222,
+    "hub/test/executor-snapshot-confirmation.test.ts::prepare retains retirement record when replacement DELETE404 still has live GET": 0.70254,
+    "hub/test/executor-snapshot-confirmation.test.ts::retire retains snapshot ownership through DELETE404 GET200 and retries by id": 0.058552,
+    "hub/test/fake-ssh.test.ts::held one-shot cancellation joins its writer before fixture removal": 0.557075,
+    "hub/test/fake-ssh.test.ts::kill-master refuses copied and stale ownership; failed bind preserves live receipt": 2.061779,
+    "hub/test/fake-ssh.test.ts::master relays both Unix directions, dynamic forward/cancel, exit leaves stale control": 0.76251,
+    "hub/test/fake-ssh.test.ts::master remains usable beyond the former launch close deadline": 0.701391,
+    "hub/test/fake-ssh.test.ts::master SIGKILL closes forwards; gone refuses later connections": 0.832863,
+    "hub/test/fake-ssh.test.ts::one-shot command uses fake host HOME and stdin": 0.207859,
+    "hub/test/fake-ssh.test.ts::production binaries ignore either incomplete fake gate": 0.004507,
+    "hub/test/fake-ssh.test.ts::rejects missing/wrong pins, occupied forwards and TCP listen; loopback destination uses Unix map": 1.218239,
+    "hub/test/fake-ssh.test.ts::scp writes exact bytes inside host home and refuses escape": 0.352612,
+    "hub/test/host-agent-boundary.test.ts::agent imports only Node built-ins and agent modules": 0.104971,
+    "hub/test/host-agent-boundary.test.ts::JSONL byte limits apply per line across coalesced, fragmented and multibyte chunks": 0.008206,
+    "hub/test/host-agent.test.ts::accepted spawn keeps its PID and exit ownership after log descriptor close failure": 0.320575,
+    "hub/test/host-agent.test.ts::agent authenticates hello, negotiates protocol and retains connection after unknown op": 0.028543,
+    "hub/test/host-agent.test.ts::agent death before first process checkpoint recovers gated admission and fast completion": 0.651825,
+    "hub/test/host-agent.test.ts::agent persists detached process identity and usage, fences stale signals and emits native exit": 0.771952,
+    "hub/test/host-agent.test.ts::agent refuses pre-hello ops, keeps malformed authenticated lines open and fences reboot identity": 0.013379,
+    "hub/test/host-agent.test.ts::confirmed closed recovery checkpoints bounded history and shares one observation pass": 0.020388,
+    "hub/test/host-agent.test.ts::detached child survives native agent death and is recovered by the CLI restart": 0.728152,
+    "hub/test/host-agent.test.ts::detached descendant captured before reparenting stays owned; uncaptured escape is never signalled": 0.955607,
+    "hub/test/host-agent.test.ts::failed protocol stop still joins independent native cleanup before fixture root deletion": 0.440249,
+    "hub/test/host-agent.test.ts::live root close retains descendant births through restart and permits later complete stop": 0.385363,
+    "hub/test/host-agent.test.ts::live-root resource samples retain a captured reparented writer and count each PID once": 0.817569,
+    "hub/test/host-agent.test.ts::recovery never inherits signal authority from a stale serialized birth": 0.223357,
+    "hub/test/host-agent.test.ts::recovery observation cannot replace a concurrently checkpointed native exit code": 0.317489,
+    "hub/test/host-agent.test.ts::root exit missed while agent is down retains unknown authority and refuses stop without signals": 0.822974,
+    "hub/test/host-agent.test.ts::signal excludes a newly arrived group member and refuses changed native birth before any target": 0.532458,
+    "hub/test/host-agent.test.ts::socket mode failure drains acquisition and permits the same path to restart": 0.007125,
+    "hub/test/host-agent.test.ts::spawn release follows admission and native exit publishes exactly once after its own checkpoint": 0.312519,
+    "hub/test/host-agent.test.ts::stop observes descendants after the root exits and kills a TERM-resistant child": 3.485913,
+    "hub/test/host-boundary.test.ts::Host boundary catches helper namespace accesses from actual exporters and reexports": 0.003953,
+    "hub/test/host-boundary.test.ts::Host boundary discovers a planted bypass in a new nested adapter": 0.005482,
+    "hub/test/host-boundary.test.ts::Host boundary follows the named fs promises namespace": 0.000724,
+    "hub/test/host-boundary.test.ts::Host boundary permits harmless clock namespaces and rejects native helper namespaces": 0.001161,
+    "hub/test/host-boundary.test.ts::Host boundary permits only the two guarded crash self-kills": 0.006538,
+    "hub/test/host-boundary.test.ts::Host boundary rejects dynamic native imports and ignores type-only or textual mentions": 0.001656,
+    "hub/test/host-boundary.test.ts::Host boundary rejects every native helper import, including aliases": 0.001708,
+    "hub/test/host-boundary.test.ts::Host boundary rejects filesystem metadata imports and namespace calls": 0.012538,
+    "hub/test/host-boundary.test.ts::Host boundary rejects native process imports with file and use diagnostics": 0.015486,
+    "hub/test/host-boundary.test.ts::Host boundary scans the current adapters recursively": 0.683643,
+    "hub/test/host-boundary.test.ts::Host boundary scopes named hub-file metadata exceptions to their existing calls": 0.004487,
+    "hub/test/host-contract-coverage.test.ts::Host contract exercises every interface member and detects an uncovered addition": 0.089811,
+    "hub/test/host-contract-coverage.test.ts::Host spawn contract inventory includes logFile and exited with positive omission controls": 0.075895,
+    "hub/test/host-contract-coverage.test.ts::Host spawn option inventory detects an uncovered callback addition": 0.055145,
+    "hub/test/host-contract-coverage.test.ts::Host stop option inventory detects an uncovered callback addition": 0.055615,
+    "hub/test/host-git-daemon.test.ts::daemon environment removes inherited write authority and pins receive policy": 0.002212,
+    "hub/test/host-git-daemon.test.ts::eight admitted daemons per host; excess is refused, logged and close joins native exits": 0.85208,
+    "hub/test/host-git-daemon.test.ts::failed socket permissions drain admitted native children before reporting the original startup error": 0.107171,
+    "hub/test/host-git-daemon.test.ts::proxy clones, pushes and fetches a large pack; protected refs and deletes stay guarded": 3.401915,
+    "hub/test/host-limit-poller.test.ts::idle poll checks the Host before every read and preserves admission when allowed": 0.045039,
+    "hub/test/host-local-contract.test.ts::Host file operations preserve cwd refusals, identity, paths, bytes and folder safety": 0.010814,
+    "hub/test/host-local-contract.test.ts::Host fileType does not follow symlinks and reports absent paths": 0.004282,
+    "hub/test/host-local-contract.test.ts::Host freePort releases a bindable IPv4 loopback port": 0.013865,
+    "hub/test/host-local-contract.test.ts::Host local forwards preserve both endpoints and launch layout preserves current paths": 0.00605,
+    "hub/test/host-local-contract.test.ts::Host occupants resolve aliases and separate sibling prefixes and expose Host polling policy": 0.005679,
+    "hub/test/host-local-contract.test.ts::Host processes reports resident bytes and CPU percent for the whole parent-child tree": 0.690286,
+    "hub/test/host-local-contract.test.ts::Host run returns output and exit status with the supplied cwd and environment": 0.05855,
+    "hub/test/host-local-contract.test.ts::Host spawn appends both output streams and publishes native exit and signal receipts": 0.478783,
+    "hub/test/host-local-contract.test.ts::Host spawn checks final authority after opening its log and refuses without launching": 0.39818,
+    "hub/test/host-local-contract.test.ts::Host spawn detaches its session and group, preserves env/cwd, identity fences liveness and stop": 1.128435,
+    "hub/test/host-local-contract.test.ts::Host spawn retains accepted PID and completion when log descriptor close fails": 0.976568,
+    "hub/test/host-local-contract.test.ts::Host stop captures births before callbacks, refuses declined authority and retains the owner logger": 1.340681,
+    "hub/test/host-local-contract.test.ts::Host worktrees add the given branch, share installs, warn and refuse dirty removal": 0.200423,
+    "hub/test/host-local-contract.test.ts::Host writes exact bytes and mode, truncates, makes and removes only owned paths": 0.035593,
+    "hub/test/host-local-liveness.test.ts::local Host bare-PID liveness reads existence without identity subprocess work": 0.029167,
+    "hub/test/host-orphans.test.ts::orphan fixture seals the final native environment and preserves explicit scratch profiles": 0.28565,
+    "hub/test/host-orphans.test.ts::remote rows neither protect nor authorize sweeping local matching PIDs": 3.16807,
+    "hub/test/host-records.test.ts::C1 hosts table is additive and survives reopen with existing data": 0.060449,
+    "hub/test/host-records.test.ts::C2 private files contain plaintext; database and public records contain only digest": 0.045328,
+    "hub/test/host-records.test.ts::C3 fake registration requires both variables: false": 0.083718,
+    "hub/test/host-records.test.ts::C3 fake registration requires both variables: root-only": 0.087483,
+    "hub/test/host-records.test.ts::C3 fake registration requires both variables: true": 0.224244,
+    "hub/test/host-records.test.ts::C4 deep project roots use deterministic short private socket paths": 0.00187,
+    "hub/test/host-records.test.ts::C5 secrets are host-bound and revocation persists without automatic remint": 0.033188,
+    "hub/test/host-records.test.ts::Store upgrades existing remote tables alongside host records (existing host: false)": 0.04483,
+    "hub/test/host-records.test.ts::Store upgrades existing remote tables alongside host records (existing host: true)": 0.038879,
+    "hub/test/host-registry.test.ts::legacy process database migrates host in place and persists named hosts": 0.023544,
+    "hub/test/host-registry.test.ts::real project hub registers only opted-in test hosts and keeps local session frames unchanged": 0.452829,
+    "hub/test/host-registry.test.ts::test Host logs every operation, returns synthetic Linux identities and refuses native work": 0.001775,
+    "hub/test/host-registry.test.ts::without the test-host environment only local is registered; unknown rows stay unknown": 0.034061,
+    "hub/test/hub-lock-heartbeat.test.ts::heartbeat write failure logs and retries next beat without stopping": 0.118176,
+    "hub/test/hub-lock-heartbeat.test.ts::replacement token logs lost lock and joins normal shutdown without removing successor": 0.125598,
+    "hub/test/hub-lock-heartbeat.test.ts::serving hub replaces whole heartbeat each interval and fences foreign contenders across lapses": 0.450486,
+    "hub/test/hub-lock-heartbeat.test.ts::unreadable ownership is not positive replacement proof": 0.146255,
+    "hub/test/hub-lock-identity.test.ts::foreign {\"hostname\":\"host-a\",\"bootId\":\"boot-a\",\"pidNamespace\":\"pid:[2]\"} refuses fresh and takes over lapsed without probing pid": 0.004863,
+    "hub/test/hub-lock-identity.test.ts::foreign {\"hostname\":\"host-a\",\"bootId\":\"boot-b\",\"pidNamespace\":\"pid:[1]\"} refuses fresh and takes over lapsed without probing pid": 0.005047,
+    "hub/test/hub-lock-identity.test.ts::foreign {\"hostname\":\"host-b\",\"bootId\":\"boot-a\",\"pidNamespace\":\"pid:[1]\"} refuses fresh and takes over lapsed without probing pid": 0.006237,
+    "hub/test/hub-lock-identity.test.ts::foreign break guard cannot probe pid and permits recovery only after lapse": 0.144093,
+    "hub/test/hub-lock-identity.test.ts::generic synchronous and asynchronous acquisitions keep their prior record shapes": 0.018722,
+    "hub/test/hub-lock-identity.test.ts::hub acquisition persists identity, heartbeat and the existing ownership fields whole": 0.023506,
+    "hub/test/hub-lock-identity.test.ts::identity reads the shared Linux boot id and namespace, and the Darwin boot-session UUID": 0.000565,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"heartbeat\":\"2026-11-02T04:00:00.000Z\"} in guard refuses without PID probes or removal": 0.004961,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"heartbeat\":\"2026-11-02T04:00:00.000Z\"} in main refuses without PID probes or removal": 0.002244,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":\"foreign\"} in guard refuses without PID probes or removal": 0.002159,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":\"foreign\"} in main refuses without PID probes or removal": 0.003007,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"\",\"bootId\":\"boot-a\",\"pidNamespace\":\"pid:[1]\"}} in guard refuses without PID probes or removal": 0.002022,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"\",\"bootId\":\"boot-a\",\"pidNamespace\":\"pid:[1]\"}} in main refuses without PID probes or removal": 0.002307,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"foreign\",\"bootId\":\"boot\"}} in guard refuses without PID probes or removal": 0.002643,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"foreign\",\"bootId\":\"boot\"}} in main refuses without PID probes or removal": 0.002771,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"host-a\",\"bootId\":\"boot-a\",\"pidNamespace\":false}} in guard refuses without PID probes or removal": 0.002442,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"host-a\",\"bootId\":\"boot-a\",\"pidNamespace\":false}} in main refuses without PID probes or removal": 0.002326,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"host-a\",\"bootId\":7,\"pidNamespace\":\"pid:[1]\"}} in guard refuses without PID probes or removal": 0.002617,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":{\"hostname\":\"host-a\",\"bootId\":7,\"pidNamespace\":\"pid:[1]\"}} in main refuses without PID probes or removal": 0.002134,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":null} in guard refuses without PID probes or removal": 0.002165,
+    "hub/test/hub-lock-identity.test.ts::malformed identity {\"hostIdentity\":null} in main refuses without PID probes or removal": 0.002475,
+    "hub/test/hub-lock-identity.test.ts::native-to-embedded fixture handoff reclaims a dead same-host holder and preserves foreign refusal": 0.214238,
+    "hub/test/hub-lock-identity.test.ts::same-host and legacy {\"pid\":999999,\"started\":\"old\",\"hostIdentity\":{\"hostname\":\"host-a\",\"bootId\":\"boot-a\",\"pidNamespace\":\"pid:[1]\"},\"heartbeat\":\"2026-11-02T05:00:00.000Z\"} retain death and reuse rules": 0.005019,
+    "hub/test/hub-lock-identity.test.ts::same-host and legacy {\"pid\":999999,\"started\":\"old\",\"startedUtc\":\"utc\"} retain death and reuse rules": 0.005351,
+    "hub/test/hub-lock-identity.test.ts::same-host and legacy {\"pid\":999999,\"started\":\"old\",\"token\":\"old\"} retain death and reuse rules": 0.005574,
+    "hub/test/hub-lock-identity.test.ts::same-host and legacy {\"pid\":999999,\"started\":\"old\"} retain death and reuse rules": 0.005793,
+    "hub/test/hub-lock-identity.test.ts::same-host and legacy {\"pid\":999999} retain death and reuse rules": 0.004346,
+    "hub/test/hub-lock-readers.test.ts::a failed held stop preserves a foreign successor with the same numeric PID": 0.013023,
+    "hub/test/hub-lock-readers.test.ts::foreign reader shares exact lapse boundary, unknown and future heartbeat rules with acquisition": 0.006015,
+    "hub/test/hub-lock-readers.test.ts::held offline migration fences a lost lock": 0.020404,
+    "hub/test/hub-lock-readers.test.ts::held offline migration renews across several lapse periods and releases": 0.024763,
+    "hub/test/hub-lock-readers.test.ts::migration rechecks ownership after held temporary write before publishing item bytes": 0.032191,
+    "hub/test/hub-lock-readers.test.ts::offline migration handles foreign age 5000 without local signals": 0.00651,
+    "hub/test/hub-lock-readers.test.ts::offline migration handles foreign age 65000 without local signals": 0.02428,
+    "hub/test/hub-lock-readers.test.ts::orphan reader rejects foreign PID-table matches before looking at local rows; legacy remains local": 0.004279,
+    "hub/test/hub-lock-readers.test.ts::start refuses fresh foreign holder before spawning; stop retains both files without local signals": 0.035816,
+    "hub/test/hub-lock-readers.test.ts::start treats a lapsed foreign holder as eligible for the existing launch path": 0.006253,
+    "hub/test/hub-lock-readers.test.ts::status and doctor describe foreign age 5000 without local probes": 0.010928,
+    "hub/test/hub-lock-readers.test.ts::status and doctor describe foreign age 65000 without local probes": 0.00702,
+    "hub/test/hub-lock-readers.test.ts::stop preserves foreign holder with lapsed heartbeat": 0.005061,
+    "hub/test/hub-lock-readers.test.ts::stop preserves foreign holder with unknown heartbeat": 0.004685,
+    "hub/test/inbox-query.test.ts::1,000 real sends and their mirror notices across windows do not rebuild or emit": 39.819811,
+    "hub/test/inbox-query.test.ts::candidate flags preserve reads, asks, hub notices and cross-topic request replies": 0.052035,
+    "hub/test/inbox-query.test.ts::existing large synthetic database migrates and serves hub.status within 15 seconds": 3.743576,
+    "hub/test/inbox-query.test.ts::synthetic inbox candidates stay equivalent and indexed as retained history doubles": 3.625873,
+    "hub/test/init-config.test.ts::sign-in mode defaults survive managed update and generic settings cannot change it": 0.002572,
+    "hub/test/invites.test.ts::invite storage contains only digest and expiry, surviving a new Users owner": 0.004408,
+    "hub/test/invites.test.ts::names reject reserved words, roles, sessions, duplicates and non-slugs with the rule": 0.000807,
+    "hub/test/invites.test.ts::replacement and reset revoke every open invite": 0.001326,
+    "hub/test/invites.test.ts::user creation admits web authority while invite renewal stays local and fields validate": 0.010246,
+    "hub/test/launch-files.test.ts::LaunchFiles recovers a pre-change pending-stop journal through the Host": 0.004989,
+    "hub/test/launch-files.test.ts::LaunchFiles routes directory, write, restore, truncate and removal through its Host": 0.033478,
+    "hub/test/launch-files.test.ts::test Host refuses every added mutation and endpoint operation by name": 0.001465,
+    "hub/test/message-display-name.test.ts::human display names resolve at read time and disappear in single mode": 0.033554,
+    "hub/test/message-users.test.ts::users own stored messages, history and coordinator envelopes; legacy single messages follow the first user": 0.396289,
+    "hub/test/opencode-host.test.ts::Host launch rollback retains files until its native completion receipt": 0.055415,
+    "hub/test/opencode-host.test.ts::OpenCode close joins held resume alive and fences relaunch": 0.053742,
+    "hub/test/opencode-host.test.ts::OpenCode close joins held resume identity and fences relaunch": 0.053411,
+    "hub/test/opencode-host.test.ts::OpenCode close joins stream Host liveness and prevents late reconnect work": 0.111996,
+    "hub/test/opencode-host.test.ts::OpenCode close owns a late accepted spawn and joins rollback before releasing files": 0.111195,
+    "hub/test/opencode-host.test.ts::OpenCode close reports incomplete launch cleanup and retains its durable owner": 0.059279,
+    "hub/test/opencode-host.test.ts::OpenCode launches once through Host with unchanged serve arguments, environment, cwd and log": 0.023053,
+    "hub/test/opencode-host.test.ts::OpenCode poll, resume and stop use the row Host and preserve its birth identity": 0.025653,
+    "hub/test/opencode-host.test.ts::OpenCode revocation during Host log open is checked before native spawn": 0.059815,
+    "hub/test/opencode-native.test.ts::scripted OpenCode close retains lifecycle ownership until the adapter drain finishes": 0.569681,
+    "hub/test/pairing-approval.test.ts::users approval requires a named owner, preserves other pairings and resolves input only from native pairing": 1.393524,
+    "hub/test/pairing-service.test.ts::captured pairing cannot acquire a new owner and unpair cannot resurrect inherited bindings": 0.020636,
+    "hub/test/pairing-service.test.ts::users pairings replace only their owner and reset retains the first user without touching single rows": 0.022018,
+    "hub/test/passwords.test.ts::credential commit rolls back invite and activation when session issuance fails; expired invites stay refused": 0.002775,
+    "hub/test/passwords.test.ts::scrypt records have independent salts and verify only the supplied password": 0.165693,
+    "hub/test/session-host-placement.test.ts::a successful registered Host launch persists placement and fresh resume keeps it": 0.102568,
+    "hub/test/session-host-placement.test.ts::aide launch, relaunch and fresh resume refuse a test Host before effects": 0.097085,
+    "hub/test/session-host-placement.test.ts::aide move refuses the durable remote target without moving roles": 0.10235,
+    "hub/test/session-host-placement.test.ts::aide set refuses the durable remote target without moving roles": 0.089303,
+    "hub/test/session-host-placement.test.ts::another role reaches the selected test Host spawn and keeps its refusal": 0.089098,
+    "hub/test/session-host-placement.test.ts::coordinator launch, relaunch and fresh resume refuse a test Host before effects": 0.10083,
+    "hub/test/session-host-placement.test.ts::coordinator move refuses the durable remote target without moving roles": 0.104974,
+    "hub/test/session-host-placement.test.ts::coordinator set refuses the durable remote target without moving roles": 0.098731,
+    "hub/test/session-host-placement.test.ts::production OpenCode launch reaches the explicitly selected nonlocal Host spawn": 0.109388,
+    "hub/test/session-host-placement.test.ts::spoke launch forwards Host placement and Coordinator handover refuses its remote row": 0.140162,
+    "hub/test/session-host-placement.test.ts::unknown launch Host is refused by name before reservation or spawn; legacy launch defaults local": 0.229458,
+    "hub/test/session-host-routing.test.ts::claude-code stop routes its Linux birth and signal only to the row Host": 0.039401,
+    "hub/test/session-host-routing.test.ts::codex stop routes its Linux birth and signal only to the row Host": 0.04072,
+    "hub/test/session-host-routing.test.ts::projectHub frame stop uses CLAND_TEST_HOSTS and leaves the colliding local process alive": 0.276528,
+    "hub/test/session-host-routing.test.ts::remote Claude poll keeps pending PID Linux ownership without discovery": 0.026335,
+    "hub/test/session-host-routing.test.ts::remote Claude poll keeps replacement PID Linux ownership without discovery": 0.02967,
+    "hub/test/session-host-routing.test.ts::remote Claude replacement refuses changed-birth authority": 0.032386,
+    "hub/test/session-host-routing.test.ts::remote Claude replacement refuses closed authority": 0.031011,
+    "hub/test/session-host-routing.test.ts::remote Claude replacement refuses different-conversation authority": 0.032774,
+    "hub/test/session-host-routing.test.ts::remote Claude replacement refuses different-job authority": 0.036233,
+    "hub/test/session-host-routing.test.ts::remote Claude replacement refuses stale-conversation authority": 0.032228,
+    "hub/test/session-host-routing.test.ts::remote Claude replacement refuses stale-job authority": 0.034493,
+    "hub/test/session-host-routing.test.ts::remote Claude resume persists pending PID Linux proof without a legacy timestamp": 0.081742,
+    "hub/test/session-host-routing.test.ts::remote Claude resume persists replacement PID Linux proof without a legacy timestamp": 0.076927,
+    "hub/test/session-host-routing.test.ts::remote Claude without a recorded PID cannot stop by native harness id alone": 0.036977,
+    "hub/test/session-host-routing.test.ts::remote pending-stop recovery completes with Linux birth and no legacy timestamp": 0.039688,
+    "hub/test/session-host-routing.test.ts::startup, poll, resume and stop reach only the named Host despite a live local PID collision": 0.44782,
+    "hub/test/session-host.test.ts::a legacy durable pending-stop receipt reopens and recovers through Host processes and identity": 0.028905,
+    "hub/test/session-host.test.ts::AdapterHost resolves rows and launches to local and launch/relaunch use its directory refusals": 0.053306,
+    "hub/test/session-host.test.ts::deaf episodes use Host liveness both at startup and on the held-message timer": 0.135035,
+    "hub/test/session-host.test.ts::Implementer pool restart checks the requested cwd through Host before stopping the idle member": 0.026438,
+    "hub/test/session-host.test.ts::launch identity and legacy stop read the recording Host identity": 0.028239,
+    "hub/test/session-host.test.ts::legacy LaunchFiles receipt upgrades identity durably and stops through its Host before undo": 0.001525,
+    "hub/test/session-host.test.ts::remote legacy timestamps never acquire signal authority during stop or LaunchFiles recovery": 0.028899,
+    "hub/test/session-host.test.ts::remote process liveness and signals require its matching Linux birth, never a local probe": 0.022774,
+    "hub/test/spoke-unix-edge.test.ts::C1: long and UTF-8 roots select a stable short endpoint distinct from the human socket": 0.001214,
+    "hub/test/spoke-unix-edge.test.ts::C1: started hub welcomes spokes over its private Unix WebSocket (short root)": 0.304602,
+    "hub/test/spoke-unix-edge.test.ts::C1: started hub welcomes spokes over its private Unix WebSocket (system temp root)": 0.111426,
+    "hub/test/spoke-unix-edge.test.ts::C1: URL-safe fallback welcomes a spoke with : in root and TMPDIR": 0.131101,
+    "hub/test/spoke-unix-edge.test.ts::C1: URL-safe fallback welcomes a spoke with # in root and TMPDIR": 0.136426,
+    "hub/test/spoke-unix-edge.test.ts::C1: URL-safe fallback welcomes a spoke with é in root and TMPDIR": 0.113374,
+    "hub/test/spoke-unix-edge.test.ts::C1: URL-safe fallback welcomes a spoke with space here in root and TMPDIR": 0.135643,
+    "hub/test/spoke-unix-edge.test.ts::C2: Unix upgrade refuses missing bearer like loopback": 0.096199,
+    "hub/test/spoke-unix-edge.test.ts::C2: Unix upgrade refuses wrong bearer like loopback": 0.097656,
+    "hub/test/spoke-unix-edge.test.ts::C3: replaces a stale socket and removes its own endpoint on stop": 0.114174,
+    "hub/test/spoke-unix-edge.test.ts::C3: stopping an old hub preserves a replacement endpoint": 0.121684,
+    "hub/test/spoke-unix-edge.test.ts::C4: both spoke edges refuse a client hello after authenticated upgrade": 0.123059,
+    "hub/test/state-inventory.test.ts::hub state writes stay in scratch HOME with a fake-provider lease and fake harness": 0.610909,
+    "hub/test/state-inventory.test.ts::inventory rejects a hub-owned outside-HOME write while ignoring a concurrent suite writer": 0.325042,
+    "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": 5.827634,
+    "hub/test/state-paths-lint.test.ts::per-host short socket exceptions accept only their registered expressions": 0.000913,
+    "hub/test/state-paths-lint.test.ts::state inventory follows shell HOME, launcher aliases, command variables and split Library paths": 0.003948,
+    "hub/test/state-paths-lint.test.ts::state inventory rejects newly introduced home and temporary paths": 0.016414,
+    "hub/test/state-paths-lint.test.ts::state inventory requires a macOS platform guard on native paths and commands": 0.005058,
+    "hub/test/state-paths.test.ts::per-user state precedence preserves executor override, XDG and HOME fallbacks": 0.001981,
+    "hub/test/suite-coordinator.test.ts::a local-only matching key cannot bypass the Coordinator droplet cap": 0.078832,
+    "hub/test/suite-coordinator.test.ts::Coordinator admits two keys, joins retries after restart and queues at remote capacity": 0.09554,
+    "hub/test/suite-coordinator.test.ts::Coordinator default cap retains the old refusal": 0.054483,
+    "hub/test/suite-coordinator.test.ts::coordinator_suites defaults, validates and round trips": 0.006813,
+    "hub/test/suite-coordinator.test.ts::local and role bounds remain (coordinator)": 0.042033,
+    "hub/test/suite-coordinator.test.ts::local and role bounds remain (implementer)": 0.044574,
+    "hub/test/suite-coordinator.test.ts::local and role bounds remain (null)": 0.040713,
+    "hub/test/suite-coordinator.test.ts::local and role bounds remain (qa)": 0.041676,
+    "hub/test/suite-coordinator.test.ts::local and role bounds remain (reviewer)": 0.046445,
+    "hub/test/suite-coordinator.test.ts::two Coordinator droplet keys execute concurrently within the remote budget": 0.083721,
+    "hub/test/suite-wait-metrics.test.ts::shutdown suppresses verification-wait through held drainage (prior sample: false)": 0.22328,
+    "hub/test/suite-wait-metrics.test.ts::shutdown suppresses verification-wait through held drainage (prior sample: true)": 0.127406,
+    "hub/test/telegram-inbound.test.ts::two native Telegram chats retain their paired user on messages and answers": 0.263653,
+    "hub/test/territory-task-branch.test.ts::a concurrent territory ref is never adopted or assigned launch provenance": 1.418166,
+    "hub/test/territory-task-branch.test.ts::divergent dev tips: local starts at root and nonlocal starts at territory": 1.296425,
+    "hub/test/territory-task-branch.test.ts::existing territory branch supplies its tip, including a root with a different tip": 0.437674,
+    "hub/test/territory-task-branch.test.ts::failed Host add rolls back the newly created territory ref and root branch": 0.535874,
+    "hub/test/territory-task-branch.test.ts::Host checkout uses its own fetched tip when another fetch replaces FETCH_HEAD": 0.633613,
+    "hub/test/territory-task-branch.test.ts::item launch calls the admitted Host rather than the worktree service default": 0.671213,
+    "hub/test/territory-task-branch.test.ts::local baseline: root task branch, tip, worktree path and journal remain unchanged": 1.70907,
+    "hub/test/territory-task-branch.test.ts::prune deletes only an unchanged launch-created territory branch": 1.76723,
+    "hub/test/territory-task-branch.test.ts::root-only branches keep their tip and do not create a territory ref": 0.431849,
+    "hub/test/territory-task-branch.test.ts::territory branch exists at territory dev before the launch Host adds its worktree under lock": 0.510187,
+    "hub/test/topic-withdraw.test.ts::users withdraw only their persisted messages despite identical display names; admins can withdraw legacy input": 0.14346,
+    "hub/test/transport-config.test.ts::host transport \"outbound\" refuses start and CLI reload": 0.808473,
+    "hub/test/transport-config.test.ts::host transport \"tcp\" refuses start and CLI reload": 0.605688,
+    "hub/test/transport-config.test.ts::host transport false refuses start and CLI reload": 0.594391,
+    "hub/test/transport-config.test.ts::quoted empty pool transport is refused at startup": 0.007108,
+    "hub/test/transport-config.test.ts::ssh, omitted transport and malformed non-transport hosts keys preserve config behavior": 0.386129,
+    "hub/test/transport-kind.test.ts::transport parser accepts ssh and reserves outbound for 0.4.x": 0.001306,
+    "hub/test/transport-records.test.ts::host get and list reject invalid persisted transport kinds without changing ssh rows": 0.004032,
+    "hub/test/user-invites.test.ts::all auth and user commands refuse authenticated session shells before mutation": 1.934039,
+    "hub/test/user-invites.test.ts::auth switch CLI accepts the previous hub result without an invite URL": 0.145287,
+    "hub/test/user-invites.test.ts::failed auth reload fences invite commands until successful recovery": 0.730013,
+    "hub/test/user-invites.test.ts::held reset refuses invite commands before users or invites change": 0.191965,
+    "hub/test/user-invites.test.ts::user add prints an edge invite for an invited admin": 0.938888,
+    "hub/test/users.test.ts::auth changes stay local while user listing admits web authority and all stay absent from gateway": 0.003739,
+    "hub/test/users.test.ts::first user rejects reserved and colliding names without creating a user": 0.018934,
+    "hub/test/users.test.ts::reset joins registered durable revokers in one transaction": 0.020283,
+    "hub/test/users.test.ts::the first admin is unique and reset retains attribution rows": 0.023804,
+    "hub/test/web-auth-unit.test.ts::a user-bound link persists its user across store restart and profile reads": 0.037972,
+    "hub/test/web-auth-unit.test.ts::single-mode profile keeps the previous wire shape without a user": 0.024446,
+    "hub/test/web-authority-unit.test.ts::message ownership uses ids, preserves single mode and limits unattributed input to admins": 0.001046,
+    "hub/test/web-authority-unit.test.ts::user authority reads stored roles per call and supports an omitted test-role request": 0.010427,
+    "hub/test/web-authority.test.ts::web user commands name users mode in single mode and admit an authenticated admin in users mode": 0.131488,
+    "hub/test/web-signin.test.ts::an invite registers a password and issues a user-bound cookie exactly once": 0.509813,
+    "hub/test/web-signin.test.ts::invite admission refuses foreign origins, wrong methods, short passwords and unknown tokens without cookies": 0.597517,
+    "hub/test/web-signin.test.ts::password sign-in hides credential failures and sign-out revokes only its browser": 0.867893,
+    "hub/test/webauthn.test.ts::assertion key algorithms and malformed signatures fail closed with bounded reasons": 0.001325,
+    "hub/test/webauthn.test.ts::C1 registers none algorithm -7 with a usable public key": 0.007002,
+    "hub/test/webauthn.test.ts::C1 registers none algorithm -8 with a usable public key": 0.000971,
+    "hub/test/webauthn.test.ts::C2 checks ceremony type, challenge, origin, cross-origin, RP and presence/verification for both ceremonies": 0.002178,
+    "hub/test/webauthn.test.ts::C3 tampering signed bytes, identity and replay counters are refused; zero counters remain usable": 0.002782,
+    "hub/test/webauthn.test.ts::C3 unsigned RP hash, UP, UV and counter mutations are refused for -7": 0.002057,
+    "hub/test/webauthn.test.ts::C3 unsigned RP hash, UP, UV and counter mutations are refused for -8": 0.001749,
+    "hub/test/webauthn.test.ts::C4 bounded CBOR refuses truncation, indefinite lengths, oversize, deep nesting, duplicates and unsupported COSE": 0.006199,
+    "hub/test/webauthn.test.ts::C4 malformed runtime values and assertion extensions never escape the result boundary": 0.001428,
+    "hub/test/webauthn.test.ts::C5 verifier imports only node built-ins": 0.005819,
+    "hub/test/webauthn.test.ts::extension maps are consumed exactly; foreign keys, malformed JSON and non-none attestations are refused": 0.002215,
+    "hub/test/worktree-host.test.ts::an install failure after confinement retains the registered worktree and branch": 0.659116,
+    "hub/test/worktree-host.test.ts::claim, item launch and prune route each created/removed worktree through Host under lock": 2.121287,
+    "hub/test/worktree-host.test.ts::default local Host shares root modules and reports a stale install": 0.546744,
+    "hub/test/worktree-host.test.ts::Host occupants govern list and prune even with a different recorded cwd": 0.607342,
+    "hub/test/worktree-host.test.ts::post-Git confinement precedes every install read, including an install failure": 1.893484,
+    "hub/test/worktree-host.test.ts::prune rechecks Host occupants at both locked admission and the last pre-Git boundary": 1.322435,
+    "hub/test/worktree-host.test.ts::prune retains a directory when the Host reports a changed worktree or session identity": 1.158554,
+    "hub/test/worktree-host.test.ts::revocation after durable branch creation removes only its captured tip": 1.249779,
+    "hub/test/worktree-host.test.ts::territory add/remove use the supplied Host under lock and return its install warning": 2.022639,
+    "nvim/test/inbox-actions.test.ts::full: alex 1 approves once and folds the recorded approval to its attributed outcome": 0.417115,
+    "nvim/test/inbox-actions.test.ts::panel: alex 1 approves once and folds the recorded approval to its attributed outcome": 0.389034,
+    "nvim/test/message-users-live.test.ts::an open Neovim thread renders the other user from the production live message frame": 0.576845,
+    "nvim/test/message-users.test.ts::first user sees own messages as you and same-name users by display name, with old wire fallback": 0.282449,
+    "nvim/test/remotes.test.ts::pairing card chooses a users-mode owner with native key presses": 0.262316,
+    "web/test/accounts.test.ts::Accounts profile shows the signed-in user display name in users mode": 0.927533,
+    "web/test/accounts.test.ts::Accounts users fold lists facts and creates one invited admin with an ephemeral invite": 1.752108,
+    "web/test/accounts.test.ts::mounted Accounts clears its users and invite when reconnecting from users to single mode": 1.35452,
+    "web/test/message-users.test.ts::desktop and phone distinguish users with identical display names by id": 2.924704,
+    "web/test/passkeys.test.ts::passkey invite registration and fresh-context sign-in consume the invite and persist only public credential facts": 2.827573,
+    "web/test/passkeys.test.ts::WebAuthn unavailable leaves only password registration and explains it in a tooltip": 1.46946,
+    "web/test/phone-approvals.test.ts::approval card renders alex from the saved outcome": 0.755854,
+    "web/test/phone-approvals.test.ts::approval card renders human from the saved outcome": 0.775436,
+    "web/test/signin.test.ts::invite view shows the user and signs in with a password POST without sending a password frame": 2.035458,
+    "web/test/signin.test.ts::users-mode password form and Profile sign-out isolate browser sessions and return revoked tabs to sign-in": 3.145204,
+    "web/test/withdraw.test.ts::users see Withdraw only for their own messages and legacy admin input with equal display names": 1.574964
   },
   "allow": {
     "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
-      "seconds": 13,
+      "seconds": 14.774,
       "owner": "C-216",
-      "added": "2026-11-02",
-      "expires": "2026-11-09",
-      "reason": "T-1636 C3: full hub source AST inventory is disk-sensitive. Linux stage cover cd742656 shard 2 (A-15910) observed 8.459 s against 5 s; other same-day samples were 1.1–2.2 s (Coordinator report). 13 s rounds up 1.5x the worst observed sample; seven-day allowance pending scan optimization in T-1638."
+      "added": "2026-11-03",
+      "expires": "2026-11-10",
+      "reason": "T-1636 C3: full hub source AST inventory is disk-sensitive. Linux stage cover cd742656 shard 2 (A-15910) observed 8.459 s against 5 s; other same-day samples were 1.1–2.2 s (Coordinator report). 13 s rounds up 1.5x the worst observed sample; seven-day allowance pending scan optimization in T-1638. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under C-216 seven-day policy; removed by T-1638 (bounded scan). Passing cover/batch samples: A-15905 2.243445542 s; A-15909 1.9237545 s; A-15961 1.954675417 s; A-15982 1.746804542 s; A-15983 9.849199971 s; A-15991 2.459104833 s; A-15995 1.806067583 s. Cap 14.774 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/inbox-query.test.ts": {
       "seconds": 61.355,
@@ -9150,11 +9763,11 @@
       "reason": "C4 constructs and copies a 50,000-message legacy fixture, then proves native index/backfill and frame readiness; local observed 5.30s."
     },
     "hub/test/claude-code-sessions-lifecycle.test.ts::Claude relaunch stops the previous native job after its PID has exited": {
-      "seconds": 8.967,
+      "seconds": 9.272,
       "owner": "E-880",
-      "added": "2026-10-30",
-      "expires": "2026-11-06",
-      "reason": "T-1471 keeps two real native launches, observed old-PID reap, explicit previous-job stop and exactly one live native job. A-14603 at 3bc380c2e on Linux x64 c-8 lon1 Node24.21.0: ordinary 5.182492985 s; five passing load samples 5.558342759, 5.977673096, 5.953064235, 5.298225241 and 4.793166403 s. Cap rounds 1.5x the worst passing sample upward to milliseconds. Coordinator decision a4d16807 approves E-880 ownership and seven-day expiry. No assertions, timeouts, file-level or blanket budgets change."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1471 keeps two real native launches, observed old-PID reap, explicit previous-job stop and exactly one live native job. A-14603 at 3bc380c2e on Linux x64 c-8 lon1 Node24.21.0: ordinary 5.182492985 s; five passing load samples 5.558342759, 5.977673096, 5.953064235, 5.298225241 and 4.793166403 s. Cap rounds 1.5x the worst passing sample upward to milliseconds. Coordinator decision a4d16807 approves E-880 ownership and seven-day expiry. No assertions, timeouts, file-level or blanket budgets change. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 6.180917375 s; A-15983 4.635773696 s; A-15991 2.921245833 s; A-15995 2.563065958 s. Cap 9.272 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
       "seconds": 4.98,
@@ -11004,11 +11617,11 @@
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
     },
     "hub/test/suite-timeouts.test.ts::verify reaps fast-exit inherited-pipe writers and preserves unrelated processes": {
-      "seconds": 15,
+      "seconds": 22.792,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "T-410 fast-exit inherited-pipe writer census: 3 s silence watchdog plus TERM/KILL/native receipts; A-14101 measured 9.727 s on Linux c-8 with 2 workers, rounded 1.5x headroom."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-410 fast-exit inherited-pipe writer census: 3 s silence watchdog plus TERM/KILL/native receipts; A-14101 measured 9.727 s on Linux c-8 with 2 workers, rounded 1.5x headroom. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 15.194117459 s; A-15983 12.129831572 s; A-15991 10.91273525 s; A-15995 10.828477958 s. Cap 22.792 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
       "seconds": 16.939424,
@@ -11593,53 +12206,53 @@
       "reason": "T-1201 lints all 85 committed qa/briefs against an independent compiler-source oracle; this real-repo corpus control was the agreed bar for its bounded lexer (review-loop cap, 2026-10-24). Samples: macOS/local stage cover 7a8445c1 (A-11552) 4.078 s; Linux c-8 lon1 item verify 8d8e04c9 (A-11526) 4.071 s; Linux c-8 lon1 stage cover e70d2393 shard-1 (A-11549) 12.466 s under shard load. The 18.7 s cap rounds 1.5x the worst sample upward. Assertions unchanged. Owned by E-880 (D72 legacy owner) so E-1196 can close. Renewed 2026-10-26 (T-1338): recent passing samples A-12333 10.929478443 s, A-12360 4.148720988 s, A-12338 5.0689815 s, A-12224 3.719521292 s; A-12333/A-12360 Linux droplet, A-12338/A-12224 macOS local (duration budgets report-only). The 16.395 s cap rounds 1.5x the worst recent passing sample (10.929478443 s) upward to milliseconds; E-880 retains ownership within its 31-day span limit."
     },
     "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
-      "seconds": 8,
+      "seconds": 14.317,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "T-1436 bounds synchronous ordinary-text commits and indexes outbox source, last-row and depth reads; its exact-source completion observer avoids full-ledger decoding. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this 620-to-500 production-frame case at 5.165974280 s, with all assertions passing and 16,545 decoded rows below the 50,000 work guard; overall exit 1 was the separate new rollback-kill duration gate and Web was unrun. Eight seconds rounds 1.5 times that full-case sample upward, shrinking the former 45 s allowance. Loaded macOS evidence A-14086 at executable-equivalent 9f9528b3 passed all ten samples at 1.603-1.705 s. E-880 owns this allowance through the existing expiry. Native reaction I/O, semantic assertions and the absolute 10 s completion wait remain."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1436 bounds synchronous ordinary-text commits and indexes outbox source, last-row and depth reads; its exact-source completion observer avoids full-ledger decoding. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this 620-to-500 production-frame case at 5.165974280 s, with all assertions passing and 16,545 decoded rows below the 50,000 work guard; overall exit 1 was the separate new rollback-kill duration gate and Web was unrun. Eight seconds rounds 1.5 times that full-case sample upward, shrinking the former 45 s allowance. Loaded macOS evidence A-14086 at executable-equivalent 9f9528b3 passed all ten samples at 1.603-1.705 s. E-880 owns this allowance through the existing expiry. Native reaction I/O, semantic assertions and the absolute 10 s completion wait remain. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 6.701301459 s; A-15983 9.544623969 s; A-15991 3.93371775 s; A-15995 3.063100125 s. Cap 14.317 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. T-1641 tracks the separate flaky history completion failure; A-15966 failed at 11.116819722 s (500 inputs and overflow settlement: not within 10000 ms), excluded from passing-sample sizing; this allowance does not fix that failure."
     },
     "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": {
-      "seconds": 10,
+      "seconds": 11.145,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "real hub process start, admission, SIGKILL, owned-writer drain and exactly-once recovery in Discord history catch-up (T-1413). Coordinator decision 3a147fbb approves 10 s based on the passing Linux x64 c-8 lon1 run ab55068b at dec9e7713 (A-13594), 6.355606305 s, and local macOS 5.73 s. These are thin samples; 1.5 times the worst is rounded upward to 10 s, matching the native Telegram kill headroom. The Linux overall run remained red solely for this missing measured allowance and Web was unrun. Protocol, Identify spacing, kill/identity/recovery/drain assertions and timeouts are unchanged; the separate R-1278 45 s full-history allowance remains unchanged."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "real hub process start, admission, SIGKILL, owned-writer drain and exactly-once recovery in Discord history catch-up (T-1413). Coordinator decision 3a147fbb approves 10 s based on the passing Linux x64 c-8 lon1 run ab55068b at dec9e7713 (A-13594), 6.355606305 s, and local macOS 5.73 s. These are thin samples; 1.5 times the worst is rounded upward to 10 s, matching the native Telegram kill headroom. The Linux overall run remained red solely for this missing measured allowance and Web was unrun. Protocol, Identify spacing, kill/identity/recovery/drain assertions and timeouts are unchanged; the separate R-1278 45 s full-history allowance remains unchanged. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 7.429344296 s; A-15982 6.994221084 s; A-15983 7.398685366 s; A-15991 6.237307708 s; A-15995 6.391545916 s. Cap 11.145 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. T-1641 tracks the separate flaky history completion failure; A-15966 failed at 11.116819722 s (500 inputs and overflow settlement: not within 10000 ms), excluded from passing-sample sizing; this allowance does not fix that failure."
     },
     "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history page commit rolls back and finishes the batch once": {
-      "seconds": 10,
+      "seconds": 11.227,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "T-1436 proves native hub SIGKILL mid-page-commit rolls back the interrupted group and restart replays every selected input exactly once. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this assertion-passing identity at 6.396172347 s; its enforced new-identity 5 s duration gate caused exit 1 and Web was unrun. Ten seconds rounds 1.5 times that measured sample (9.594 s) upward. E-880 owns the seven-day allowance approved by the Coordinator. Native Identify spacing, captured-process exit/drain, rollback and exactly-once assertions remain unchanged."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1436 proves native hub SIGKILL mid-page-commit rolls back the interrupted group and restart replays every selected input exactly once. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this assertion-passing identity at 6.396172347 s; its enforced new-identity 5 s duration gate caused exit 1 and Web was unrun. Ten seconds rounds 1.5 times that measured sample (9.594 s) upward. E-880 owns the seven-day allowance approved by the Coordinator. Native Identify spacing, captured-process exit/drain, rollback and exactly-once assertions remain unchanged. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 7.484488998 s; A-15982 7.013315209 s; A-15983 7.325735516 s; A-15991 6.503396375 s; A-15995 6.217914459 s. Cap 11.227 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. T-1641 tracks the separate flaky history completion failure; A-15966 failed at 11.116819722 s (500 inputs and overflow settlement: not within 10000 ms), excluded from passing-sample sizing; this allowance does not fix that failure."
     },
     "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": {
-      "seconds": 15,
+      "seconds": 18.018,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "T-1421: Pinned 24-item shape corpus replaces the full live copy (previous Linux under-load samples 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 9.404423108 s with all assertions passing, but the suite exited 1 on this enforced 5 s new-identity duration gate. Local Darwin arm64 targeted parent 2.831899667 s. 15 s rounds up approximately 1.5x Linux for about 40% Web timing variation. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1421: Pinned 24-item shape corpus replaces the full live copy (previous Linux under-load samples 44–57 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 9.404423108 s with all assertions passing, but the suite exited 1 on this enforced 5 s new-identity duration gate. Local Darwin arm64 targeted parent 2.831899667 s. 15 s rounds up approximately 1.5x Linux for about 40% Web timing variation. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 12.011479875 s; A-15983 9.616526808 s; A-15995 3.991946166 s. Cap 18.018 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": {
-      "seconds": 15.2,
+      "seconds": 22.197,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "T-1421: The unchanged generated 1,004-item startup scale case stays beside the bounded 24-item corpus that replaces the full copy (previous Linux under-load full copies 44\u201357 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 10.100 s with all assertions passing; local Darwin arm64 targeted case 4.429718667 s. 15.2 s rounds up approximately 1.5x Linux. Byte caps, durable checkpoint and file/read-count assertions remain unchanged. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1421: The unchanged generated 1,004-item startup scale case stays beside the bounded 24-item corpus that replaces the full copy (previous Linux under-load full copies 44–57 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 10.100 s with all assertions passing; local Darwin arm64 targeted case 4.429718667 s. 15.2 s rounds up approximately 1.5x Linux. Byte caps, durable checkpoint and file/read-count assertions remain unchanged. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 14.797888094 s; A-15982 9.067386625 s; A-15983 11.059680232 s; A-15991 7.882723125 s; A-15995 5.328371541 s. Cap 22.197 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": {
-      "seconds": 80,
+      "seconds": 120.574,
       "owner": "E-880",
-      "added": "2026-10-29",
-      "expires": "2026-11-05",
-      "reason": "T-1248: 5,000-row byte-bounded startup-page proof required by C1; A-13990 measured 52.622 s on Linux c-8 with 2 workers. The 12-row injected-byte T1 and 3-row frame T2 cases retain byte-boundary, ordered complete unique membership and legacy-shape assertions at small scale."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1248: 5,000-row byte-bounded startup-page proof required by C1; A-13990 measured 52.622 s on Linux c-8 with 2 workers. The 12-row injected-byte T1 and 3-row frame T2 cases retain byte-boundary, ordered complete unique membership and legacy-shape assertions at small scale. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15983 80.382282538 s; A-15995 27.399580792 s. Cap 120.574 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/measure-memory.test.ts::offline analyzer reads a real V8 snapshot and finds an owned large array": {
-      "seconds": 7.925,
+      "seconds": 11.068,
       "owner": "E-880",
-      "added": "2026-10-30",
-      "expires": "2026-11-06",
-      "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced."
+      "added": "2026-11-03",
+      "expires": "2026-12-03",
+      "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 7.378123208 s; A-15983 5.407016151 s; A-15991 3.775349667 s; A-15995 3.572024167 s. Cap 11.068 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     }
   }
 }
