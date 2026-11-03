@@ -1,3 +1,4 @@
+import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
 // The Codex adapter (spec 4.3, research `harness-surfaces` §2). Codex runs each session on an app-server the hub
@@ -426,7 +427,7 @@ export class CodexAdapter implements HarnessAdapter {
       this.#assertOpen();
       const { refusal } = yield* this.#activeWait(machine.statDirectory(cwd));
       if (refusal) throw new Error(refusal);
-      const result = yield* this.#activeWait(machine.run({ command: this.#bin, args: ['--version'], cwd, env: withoutExecutorCredentials({ ...this.#env, ...accountEnv }), timeoutMs: 15000 }));
+      const result = yield* this.#activeWait(machine.run({ command: this.#bin, args: ['--version'], cwd, env: hostCommandEnvironment(machine, this.#env, accountEnv ?? {}), timeoutMs: 15000 }));
       if (result.error || result.code !== 0) throw new Error(`${this.#bin} --version: ${result.error || result.stderr || `exit ${result.code}`}`);
       const out = result.stdout;
       const v = /(\d+)\.(\d+)\.(\d+)/.exec(out);
@@ -468,15 +469,14 @@ export class CodexAdapter implements HarnessAdapter {
         // detached, in its own process group: it outlives the hub, and its MCP children (the spoke) go with it
         // the session's shell inherits the app-server's environment: `cland` run there acts as the session, not as the
         // human, and `node` is the hub's own, whatever else the PATH holds (a Node outside the engines range fails the suite)
-        const env = {
-          ...this.#env,
+        const env = hostCommandEnvironment(machine, this.#env, {
           ...p.accountEnv,
-          PATH: [dirname(layout.node), this.#env.PATH].filter(Boolean).join(delimiter),
+          ...(machine.name === 'local' ? { PATH: [dirname(layout.node), this.#env.PATH].filter(Boolean).join(delimiter) } : {}),
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,
           ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
           ...(p.role ? { CLAND_ROLE: p.role } : {}),
-        };
+        });
         authorize();
         const child = yield* wait(machine.spawn({ command: this.#bin, args, cwd: p.cwd, env: withoutExecutorCredentials(env), logFile }, { authorize: () => resumed(() => { this.#assertOpen(); authorize(); }) }));
         child.exited.then(result => { exited = `exited (${result.code ?? result.signal})`; });

@@ -8,13 +8,8 @@ export type HostCommand = {
   logFile?: string;
 };
 export type HostRunResult = { code: number | null; stdout: string; stderr: string; error?: string };
-export type HostProcessUsage = {
-  pid: number;
-  parent: number;
-  /** Resident bytes and ps CPU percentage, summed over this PID and its descendants. */
-  rssBytes: number;
-  cpuPercent: number;
-};
+export type { HostProcessUsage } from './agent/process-usage.ts';
+import type { HostProcessUsage } from './agent/process-usage.ts';
 
 /** Hub-side final authority after host-side log preparation, immediately before spawn. */
 export type HostSpawnOptions = { authorize?: () => void };

@@ -1,3 +1,4 @@
+import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
 // The OpenCode adapter (spec 4.3, research `harness-surfaces` §3; built against opencode v2.0.24). OpenCode 2.x
@@ -222,16 +223,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
-      p = { ...p, accountEnv: p.accountEnv ?? { OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv) } };
       const host = this.#host.hostForLaunch?.(p) ?? localHost(this.#processEnv, this.#host.log);
+      p = { ...p, accountEnv: p.accountEnv ?? (host.name === 'local' ? {OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv)} : {}) };
       const files = this.#files(p.name, host);
       const transaction = new LaunchFiles(resumed, host);
       let pid: number | undefined;
       try {
         const password = yield* this.#activeWait(prepareFiles(dirname(host.layout(this.#host).discoveryFile), files, this.#config(p.name, p.role, p.sessionId, launchToken, host), !relaunch, transaction, resumed, entry => this.#host.log(entry), host));
         yield* this.#activeWait(transaction.file(files.log, true));
-        const env = withoutExecutorCredentials({
-          ...accountEnvironment(this.#env, p.accountEnv),
+        const env = hostCommandEnvironment(host, accountEnvironment(this.#env, p.accountEnv), {
+          ...(host.name === 'local' ? {} : p.accountEnv),
           CLAND_HUB_FILE: host.layout(this.#host).discoveryFile,
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,

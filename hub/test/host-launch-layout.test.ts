@@ -56,7 +56,14 @@ for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (cons
       if (mapped) expected = expected.replaceAll('<MOD>', '/host/mod').replaceAll('<TMP>/cland-run/', '<ROOT>/host/runtime/').replaceAll('<ROOT>/.cland/run', '<ROOT>/host/runtime').replaceAll('<ROOT>/.cland/log', '<ROOT>/host/logs')
         .replaceAll('<ROOT>/.cland', '<ROOT>/host').replaceAll('.cland/run', 'host/runtime').replaceAll('.cland/opencode', 'host/opencode')
         .replaceAll('/fixture:/fixture/bin', '/host:/fixture/bin').replaceAll('/fixture/node', '/host/node').replaceAll('/fixture/cli', '/host/cli').replaceAll('/fixture/spoke', '/host/spoke');
-      const baselineValue = JSON.parse(expected) as { disk: typeof disk };
+      const baselineValue = JSON.parse(expected) as { disk: typeof disk; command: HostCommand };
+      if (mapped && name !== 'opencode') {
+        baselineValue.command.env = name === 'claude' ? {
+          OPENCODE_DB: '<ROOT>/account/opencode.db', DISABLE_AUTOUPDATER: '1',
+        } : {
+          OPENCODE_DB: '<ROOT>/account/opencode.db', CLAND_SESSION_ID: 'fixture-session', CLAND_SESSION_NAME: 'worker', CLAND_ROLE: 'implementer',
+        };
+      }
       if (name === 'opencode' && mask === 0o002) {
         const prefix = mapped ? 'host' : '.cland';
         baselineValue.disk[`${prefix}/opencode/.gitignore`]!.mode = 0o664;

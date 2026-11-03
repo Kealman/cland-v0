@@ -35,3 +35,8 @@ temporary directory on other platforms) before creating the project and hosts.
 It restores TMPDIR and drains the embedded hub before owned directory cleanup;
 no native child process is started. Both startup cases reproduce ENOENT with
 the old registration layout. Missing-variable controls still register no hosts.
+
+Registration-only T2 cases inject inert named Hosts to keep startup free of
+carrier processes. The production daemon now creates carriers for uninjected
+registered records; T3 host-ssh-contract covers that ownership and an agent-backed
+launch. Registration, secret-redaction and connected-path assertions stay here.

@@ -8,13 +8,14 @@ import assert from 'node:assert/strict';
 import { tempProject, projectHub, connectUi } from './harness.ts';
 import { claimTransport } from '../src/transport/transport.ts';
 import { describe } from '../src/cli/hub.ts';
+import { testHost } from '../src/host/test-host.ts';
 import type { HubStatus } from '../src/protocol.ts';
 test('C6 hub status exposes tunnel facts and CLI tolerates the previous reply shape', async t=>{
   const root=await tempProject(t);
   await mkdir(join(root,'.cland'),{recursive:true});
   const store = new Store(join(root,'.cland','hub.db'));
   new HostSecretStore(root,store.hosts).register({id:'one',address:'one',user:'agent',clientKeyPath:'/unused',knownHosts:'synthetic'}); store.close();
-  const hub=await projectHub(t,root), ui=await connectUi(t,hub.discovery);
+  const hub=await projectHub(t,root,{}, {hosts:[testHost('one',()=>{})]}), ui=await connectUi(t,hub.discovery);
   let facts: import('../src/transport/transport.ts').HostTunnelStatus={name:'one',state:'up' as const,since:'2026-11-03T00:00:00.000Z',lastProbe:{at:'2026-11-03T00:00:30.000Z',ok:true},reconnects:2};
   const release=claimTransport(root,{kind:'ssh',host:'one',start:async()=>{},stop:async()=>{},wake:()=>{},status:()=>facts});t.after(release);
   // Register metadata only; this fixture never starts SSH.

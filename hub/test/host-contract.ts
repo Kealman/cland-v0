@@ -17,7 +17,7 @@ async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
   return eventually('native Host completion receipt', () => receipt);
 }
 
-export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
+export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean; endpoints?: Parameters<Host['forward']>[1][]; forward?: (endpoint: Awaited<ReturnType<Host['forward']>>) => void; layout?: ReturnType<Host['layout']> }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
   register('Host writes exact bytes and mode, truncates, makes and removes only owned paths', async () => {
     const root = await mkdtemp(join(tmpdir(), 'host-writes-'));
     try {
@@ -65,13 +65,15 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
     const root = await mkdtemp(join(tmpdir(), 'host-layout-'));
     try {
       const host = factory(fixtureEnvironment(root, process.env));
-      for (const endpoint of [{ socket: join(root, 'session.sock') }, { port: 12345 }]) {
-        assert.deepEqual(await host.forward('session-id', endpoint), endpoint);
+      for (const endpoint of expected?.endpoints ?? [{ socket: join(root, 'session.sock') }, { port: 12345 }]) {
+        const forwarded = await host.forward('session-id', endpoint);
+        if (expected?.forward) expected.forward(forwarded);
+        else assert.deepEqual(forwarded, endpoint);
         await host.unforward('session-id');
       }
       const input = { discoveryFile: join(root, '.cland', 'hub.json'), node: '/node', cli: '/cli', spoke: '/spoke' };
       const paths = host.layout(input);
-      assert.deepEqual(paths, { ...input, modDir: LOCAL_MOD_DIR, runDirectory: join(root, '.cland', 'run'), logDirectory: join(root, '.cland', 'log') });
+      assert.deepEqual(paths, expected?.layout ?? { ...input, modDir: LOCAL_MOD_DIR, runDirectory: join(root, '.cland', 'run'), logDirectory: join(root, '.cland', 'log') });
       assert.ok(Object.isFrozen(paths));
     } finally { await rm(root, { recursive: true, force: true }); }
   });

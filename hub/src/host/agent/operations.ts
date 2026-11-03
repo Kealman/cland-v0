@@ -42,7 +42,15 @@ async function boundedRead(path: string): Promise<string> {
   } finally { await file.close(); }
 }
 
-export function agentOperations(env: NodeJS.ProcessEnv): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
+export function parseAgentRun(a: Record<string, unknown>) {
+      if (!Array.isArray(a.args) || !a.args.every(v => typeof v === 'string' && !v.includes('\0'))) throw new Error('invalid command args');
+      const commandEnv = object(a.env);
+      if (!Object.values(commandEnv).every(v => typeof v === 'string')) throw new Error('invalid command env');
+      const timeout = integer(a.timeoutMs, 'timeoutMs');
+  return {command:text(a.command,'command'),args:a.args as string[],env:commandEnv as NodeJS.ProcessEnv,timeoutMs:timeout,cwd:text(a.cwd,'cwd')};
+}
+
+export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
   const trees = worktreeOperations(env);
   const path = (a: Record<string, unknown>) => text(a.path, 'path');
   return {
@@ -68,11 +76,8 @@ export function agentOperations(env: NodeJS.ProcessEnv): Record<string, (args: R
       return occupants(path(a), a.sessions.map(value => { const row = object(value); return {name:text(row.name,'name'),cwd:text(row.cwd,'cwd')}; }));
     },
     run: a => {
-      if (!Array.isArray(a.args) || !a.args.every(v => typeof v === 'string' && !v.includes('\0'))) throw new Error('invalid command args');
-      const commandEnv = object(a.env);
-      if (!Object.values(commandEnv).every(v => typeof v === 'string')) throw new Error('invalid command env');
-      const timeout = integer(a.timeoutMs, 'timeoutMs');
-      return run(text(a.command, 'command'), a.args, commandEnv as NodeJS.ProcessEnv, timeout, false, undefined, 'utf8', text(a.cwd, 'cwd'));
+      const command=parseAgentRun(a);
+      return run(command.command,command.args,command.env,command.timeoutMs,false,signal,'utf8',command.cwd);
     },
     worktreeAdd: a => {
       const territory = a.territory === undefined ? undefined : object(a.territory);

@@ -1,0 +1,180 @@
+import { randomUUID } from 'node:crypto';
+import { AgentClient } from './agent-client.ts';
+import { PREPARED_HOST_CAPABILITY } from './agent/protocol.ts';
+import { remoteCommandEnvironment } from './command-environment.ts';
+import type { Host, HostCommand, HostLaunchLayout, HostCapturedProcess } from './host.ts';
+import type { SshTransport } from '../transport/ssh.ts';
+import type { AgentEvent } from './agent/protocol.ts';
+import type { PreparedOutcome } from './agent/prepared.ts';
+
+type Options = { log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
+/** No fallback to native hub operations, including while connecting or disconnected. */
+export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce(): void } {
+  let closed = false;
+  let quiescing = false;
+  const unknown = new Set<string>();
+  const waits = new Map<NodeJS.Timeout, () => void>();
+  let completionTimer: NodeJS.Timeout | undefined;
+  let completionWork: Promise<void> | undefined;
+  const pause = () => new Promise<void>(resolve => {
+    if(closed||quiescing){resolve();return;}
+    const timer=setTimeout(()=>{waits.delete(timer);resolve();},500);waits.set(timer,resolve);
+  });
+  const incomplete = (token:string) => Object.assign(new Error(`host ${o.name}: tunnel outcome unknown for ${token}; storage remains fenced`),{code:'CLAND_HOST_OUTCOME_UNKNOWN',operation:token});
+  const cancelPending = () => {quiescing=true;for(const [timer,resolve] of waits){clearTimeout(timer);resolve();}waits.clear();};
+
+  let client: AgentClient | undefined, connecting: Promise<AgentClient> | undefined;
+  const ownedClients=new Set<AgentClient>(),closeErrors=new Map<AgentClient,unknown>();
+  const closeConnection=async(value:AgentClient)=>{
+    try{await value.close();ownedClients.delete(value);closeErrors.delete(value);}
+    catch(error){if(ownedClients.has(value))closeErrors.set(value,error);throw error;}
+  };
+  const lostConnection=async(value:AgentClient,token:string)=>{unknown.add(token);if(client===value)client=undefined;await closeConnection(value).catch(()=>{});};
+  const completions = new Map<string, (value: {code: number | null; signal: string | null}) => void>();
+  const receipts = new Map<string, AgentEvent & {event:'process-exited'}>();
+  const key = (pid: number, identity: string) => `${pid}:${identity}`;
+  const event = (frame: AgentEvent) => {
+    if (frame.event !== 'process-exited') return;
+    const id = key(frame.pid, frame.identity), resolve = completions.get(id);
+    if (resolve) { completions.delete(id); resolve({ code: frame.code, signal: frame.signal }); }
+    else {receipts.set(id, frame); if(receipts.size>256) receipts.delete(receipts.keys().next().value!);}
+  };
+  const check = () => { if(o.available && !o.available()) throw new Error(`host ${o.name}: tunnel admission revoked`); if(closed) throw new Error(`host ${o.name}: tunnel Host closed`); if (o.transport.status().state !== 'up') throw new Error(`host ${o.name}: tunnel is not up${o.codeDirectory ? `; requires code directory ${o.codeDirectory}` : ''}`); };
+  const connected = async () => {
+    check();
+    if (client) return client;
+    connecting ??= o.connect().then(async value => {
+      ownedClients.add(value);
+      value.once('closed',()=>{ownedClients.delete(value);closeErrors.delete(value);if(client===value)client=undefined;scheduleCompletions();});
+      if(closed){await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
+      if (!value.hello.capabilities?.includes(PREPARED_HOST_CAPABILITY)) { await closeConnection(value); throw new Error(`host ${o.name}: tunnel agent missing capability ${PREPARED_HOST_CAPABILITY}`); }
+      client = value; value.on('event', event);
+      const rows=await value.request('native-receipts',{}) as AgentEvent[];
+      if(closed){if(client===value)client=undefined;await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
+      for(const row of rows)event(row);
+      return value;
+    }).finally(() => { connecting = undefined; });
+    return connecting;
+  };
+  function scheduleCompletions() {
+    if(closed||quiescing||completionTimer||completionWork||!completions.size)return;
+    completionTimer=setTimeout(()=>{
+      completionTimer=undefined;
+      completionWork=(async()=>{
+        try {const connection=await connected();const rows=await connection.request('native-receipts',{}) as AgentEvent[];for(const row of rows)event(row);}catch{/* A missing receipt stays pending through carrier recovery. */}
+      })().finally(()=>{completionWork=undefined;scheduleCompletions();});
+    },500);
+  }
+  const mutation = () => {check();if(quiescing)throw new Error(`host ${o.name}: tunnel Host quiescing`);if(unknown.size)throw incomplete(unknown.values().next().value!);};
+  const settle = async <T>(token:string,recoveryKey:string):Promise<T> => {
+    unknown.add(token);
+    for(;;) {
+      if(closed||quiescing)throw incomplete(token);
+      let outcome:PreparedOutcome|undefined;
+      try{outcome=await (await connected()).request('settle-prepared',{token,recoveryKey}) as PreparedOutcome;}catch{/* No terminal outcome: keep the admitted operation fenced. */}
+      if(outcome?.state==='accepted'){unknown.delete(token);return outcome.result as T;}
+      if(outcome?.state==='failed'){unknown.delete(token);throw new Error(`host ${o.name}: tunnel agent confirmed failure: ${outcome.error}`);}
+      await pause();
+    }
+  };
+  const rpc = async <T>(op: string, args: Record<string, unknown> = {}, timeoutMs?: number): Promise<T> => {
+    check();
+    try { return await (await connected()).request(op, args, timeoutMs) as T; }
+    catch (error) { throw Object.assign(new Error(`host ${o.name}: tunnel agent ${op}: ${(error as Error).message}`), {code:(error as NodeJS.ErrnoException).code}); }
+  };
+  const prepared = async <T>(kind:string,args:Record<string,unknown>,callback?:(targets:HostCapturedProcess[])=>Promise<boolean|void>|boolean|void):Promise<T|false> => {
+    if(kind!=='stop')mutation();
+    const connection=await connected(),token=randomUUID(),recoveryKey=randomUUID();
+    let result:{token:string|null;targets?:{pid:number;identity:string}[];settled?:T};
+    try{result=await connection.request(`prepare-${kind}`,{...args,operationId:token,recoveryKey}) as typeof result;}
+    catch(error) {if((error as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED')throw error;await lostConnection(connection,token);return settle<T>(token,recoveryKey);}
+    if(!result.token)return result.settled??false;
+    try {
+      const install=await callback?.((result.targets??[]).map(row=>({pid:row.pid,pidStarted:row.identity,pidIdentity:row.identity})));
+      check();if(client!==connection)throw new Error(`host ${o.name}: tunnel changed during preparation`);
+      try{return await connection.request('commit-prepared',{token:result.token,install:install!==false},60000) as T;}
+      catch{await lostConnection(connection,token);return settle<T>(token,recoveryKey);}
+    } catch(error) {
+      // Abort is complete only after its cleanup receipt; a lost abort also reconciles.
+      try{await connection.request('abort-prepared',{token:result.token});}
+      catch{await lostConnection(connection,token);try{await settle<T>(token,recoveryKey);}catch(settlement){if(unknown.has(token))throw settlement;}}
+      throw error;
+    }
+  };
+  const wire = (command: HostCommand) => {
+    command.signal?.throwIfAborted();
+    return { command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
+  };
+  const host: Host & {close():Promise<void>;quiesce():void} = {
+    name:o.name, limitPolls:false, layout: () => Object.freeze({...o.layout}),
+    writeFile: async (path,bytes,options) => { mutation(); await rpc('writeFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}); },
+    makeDirectory: async (path,mode) => {mutation();await rpc('makeDirectory',{path,mode});},
+    removePath: async (path,options) => {mutation();await rpc('removePath',{path,options});},
+    freePort: () => rpc('freePort'),
+    forward: async (session,endpoint) => {check(); return o.transport.forward(session,endpoint);},
+    unforward: async session => {check(); await o.transport.unforward(session);},
+    spawn: async (command,options) => {
+      if(o.codeDirectory && await rpc('fileType',{path:o.codeDirectory}) !== 'directory') throw new Error(`host ${o.name}: tunnel agent missing version directory ${o.codeDirectory}`);
+      const result = await prepared<{pid:number;identity:string;warning?:string}>('spawn',wire(command),() => options?.authorize?.());
+      if (!result) throw new Error(`host ${o.name}: tunnel spawn not prepared`);
+      if(result.warning){try{o.log?.({event:'host-spawn-log-close-failed',pid:result.pid,error:result.warning});}catch{/* Diagnostics cannot discard native ownership. */}}
+      const id = key(result.pid,result.identity);
+      const exited = new Promise<{code:number|null;signal:string|null}>(resolve => { const receipt = receipts.get(id); if (receipt) {receipts.delete(id);resolve(receipt);} else completions.set(id,resolve); });
+      scheduleCompletions();
+      return {pid:result.pid,exited};
+    },
+    run: async command => {
+      mutation();
+      const args=wire(command),connection=await connected(),token=randomUUID(),recoveryKey=randomUUID();
+      const abort=()=>{void connection.request('cancel-run',{token}).catch(()=>{});};
+      command.signal?.addEventListener('abort',abort,{once:true});
+      try {
+        const result=connection.request('run-host',{...args,token,recoveryKey},(command.timeoutMs ?? 20000)+2000);
+        if(command.signal?.aborted) abort();
+        return await result as Awaited<ReturnType<Host['run']>>;
+      } catch(error) {
+        if((error as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED')throw error;
+        await lostConnection(connection,token);return settle<Awaited<ReturnType<Host['run']>>>(token,recoveryKey);
+      }
+      finally {command.signal?.removeEventListener('abort',abort);}
+    },
+    identity: async pid => {const identity = await rpc<string|null>('identity',{pid}); return identity ? {pid,pidStarted:identity,pidIdentity:identity} : null;},
+    alive: async row => {
+      if (row.pid === null) {check();return false;}
+      const observed = await host.identity(row.pid);
+      return !!observed && (row.pidIdentity != null ? observed.pidIdentity === row.pidIdentity : row.pidStarted != null ? observed.pidStarted === row.pidStarted : true);
+    },
+    stop: async (row,options) => {
+      check(); if (row.pid === null) return true;
+      if (!row.pidIdentity) return false;
+      const result = await prepared<boolean>('stop',{pid:row.pid,identity:row.pidIdentity}, async tree => { options?.authorize?.(tree); await options?.beforeSignal?.(tree); });
+      if (result) options?.log?.({event:'harness-ended',pid:row.pid});
+      return result;
+    },
+    statDirectory: path => rpc('statDirectory',{path}),
+    realpath: path => rpc('realpath',{path}),
+    fileType: path => rpc('fileType',{path}),
+    readFile: async path => Buffer.from(await rpc<string>('readFile',{path}),'base64'),
+    listFolder: path => rpc('listFolder',{path}),
+    worktreeAdd: async options => {
+      const {beforeInstall,...args} = options;
+      const result = await prepared<{warning?:string}>('worktree',args,async () => beforeInstall?.());
+      if (!result) throw new Error(`host ${o.name}: tunnel worktree not prepared`); return result;
+    },
+    worktreeRemove: async options => {mutation();await rpc('worktreeRemove',options);},
+    occupants: (path,sessions) => rpc('occupants',{path,sessions}),
+    processes: () => rpc('processUsage'),
+    quiesce: cancelPending,
+    close: async () => {
+      closed=true;cancelPending();clearTimeout(completionTimer);completionTimer=undefined;client=undefined;
+      for(const value of [...ownedClients])await closeConnection(value).catch(()=>{});
+      await connecting?.catch(()=>{});await completionWork;
+      for(const value of [...ownedClients])await closeConnection(value).catch(()=>{});
+      const failures=[...closeErrors.values()];
+      if(unknown.size)failures.push(incomplete(unknown.values().next().value!));
+      if(failures.length===1)throw failures[0];
+      if(failures.length)throw new AggregateError(failures,`host ${o.name}: tunnel cleanup incomplete`);
+    },
+  };
+  return host;
+}

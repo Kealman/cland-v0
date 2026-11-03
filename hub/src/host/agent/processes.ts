@@ -1,11 +1,12 @@
 import { spawn, execFile } from 'node:child_process';
 import { readFile, mkdir, readdir, rm, open, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import type { FileHandle } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { join, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { agentBootId, observeProcesses } from './native.ts';
+import { agentBootId, observeProcesses, isCapturedOrExited } from './native.ts';
 import { checkpoint } from './storage.ts';
 import type { AgentEvent } from './protocol.ts';
 const exec = promisify(execFile);
@@ -19,9 +20,11 @@ export type ProcessHooks = {
   beforeSignals?: (targets: readonly { pid: number; identity: string }[]) => Promise<void>;
   observed?: (count: number) => void;
   beforeRecoveryObservation?: () => Promise<void>;
+  beforeRemainingObservation?: (pids: readonly number[]) => Promise<void>;
 };
 export class AgentProcesses {
   #rows: ProcessRow[] = [];
+  #receipts = new Map<string, AgentEvent>();
   #closed = false;
   #file: string;
   #launches: string;
@@ -41,6 +44,7 @@ export class AgentProcesses {
   }
   async load() {
     try { this.#rows = JSON.parse(await readFile(this.#file, 'utf8')); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    for(const row of this.#rows)if(row.rootExitObserved&&row.code!==undefined)this.#receipts.set(`${row.pid}:${row.identity}`,{event:'process-exited',pid:row.pid,identity:row.identity,code:row.code,signal:row.signal??null});
     await mkdir(this.#launches, { recursive: true, mode: 0o700 });
     for (const name of await readdir(this.#launches)) if (/^[a-f0-9-]{36}$/.test(name)) this.#admissions.add(name);
   }
@@ -48,6 +52,8 @@ export class AgentProcesses {
   async identity(pid: number): Promise<string | null> { return (await observeProcesses([pid], this.#env)).get(pid)?.identity ?? null; }
   #persist(phase: 'spawn' | 'exit' | 'recover'): Promise<void> {
     this.#rows = [...this.#rows.filter(row => !row.ended), ...this.#rows.filter(row => row.ended).slice(-256)];
+    const keys=new Set(this.#rows.map(row=>`${row.pid}:${row.identity}`));
+    for(const key of this.#receipts.keys())if(!keys.has(key))this.#receipts.delete(key);
     const rows = this.#rows.map(row => ({ ...row }));
     this.#save = this.#save.then(async () => { await this.#hooks.beforeCheckpoint?.(phase); await checkpoint(this.#file, rows); });
     return this.#save;
@@ -125,7 +131,7 @@ export class AgentProcesses {
       }
     }
   }
-  async spawn(args: Record<string, unknown>) {
+  async spawn(args: Record<string, unknown>, preparedLog?: FileHandle, admission?: {launchId: string; accepted: (result: {pid:number;identity:string}) => Promise<void>}) {
     if (this.#closed) throw new Error('agent closing');
     if (!process.execve) throw new Error('native execve unavailable');
     if (typeof args.command !== 'string' || !args.command || !Array.isArray(args.args) || !args.args.every(a => typeof a === 'string') || typeof args.cwd !== 'string' || !args.env || typeof args.env !== 'object' || Array.isArray(args.env)) throw new Error('invalid spawn');
@@ -139,14 +145,14 @@ export class AgentProcesses {
       if (!found) throw new Error('command unavailable'); command = found;
     }
     await this.reconcile();
-    const launchId = randomUUID(), directory = join(this.#launches, launchId);
+    const launchId = admission?.launchId ?? randomUUID(), directory = join(this.#launches, launchId);
     await mkdir(directory, { mode: 0o700 }); this.#inflight.add(launchId);
     const fakeEnv = { CLAND_FAKE_HOSTS: this.#env.CLAND_FAKE_HOSTS, CLAND_HOST_BOOT_ID_FILE: this.#env.CLAND_HOST_BOOT_ID_FILE };
     // Admission, argv and environment precede native execution; no environment in argv.
     await checkpoint(join(directory, 'plan.json'), { launchId, command, args: args.args, cwd: args.cwd, env, fakeEnv });
     await checkpoint(join(directory, 'admission.json'), { launchId }); this.#admissions.add(launchId);
     let log;
-    try { log = typeof args.logFile === 'string' ? await open(args.logFile, 'a', 0o600) : undefined; }
+    try { log = preparedLog ?? (typeof args.logFile === 'string' ? await open(args.logFile, 'a', 0o600) : undefined); }
     catch (error) { this.#inflight.delete(launchId); await this.#removeAdmission(launchId); throw error; }
     let child;
     try { child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('./bootstrap.ts', import.meta.url)), directory], { cwd: args.cwd, env, detached: true, stdio: ['ignore', log?.fd ?? 'ignore', log?.fd ?? 'ignore'] }); }
@@ -202,6 +208,7 @@ export class AgentProcesses {
           } catch { row.authority = 'unknown'; }
           if (row.ended) await checkpoint(join(directory, 'closed.json'), row);
           await this.#persist('exit');
+          this.#receipts.set(`${row.pid}:${row.identity}`,{event:'process-exited',pid:row.pid,identity:row.identity,...exit});
           this.#emit({ event: 'process-exited', pid: row.pid, identity: row.identity, ...exit, authority: row.authority, ended: row.ended === true });
           if (row.ended) await this.#removeAdmission(launchId);
           this.#settling.delete(row);
@@ -211,6 +218,7 @@ export class AgentProcesses {
       });
       this.#nativeCompletions.set(row, nativeCompletion);
       void nativeCompletion.then(() => this.#nativeCompletions.delete(row), () => this.#nativeCompletions.delete(row));
+      await admission?.accepted({pid:row.pid,identity:row.identity});
       await checkpoint(join(directory, 'release.json'), { identity: row.identity }); accepted = true;
       child.unref(); acceptedResult = { pid: row.pid, identity: row.identity }; return acceptedResult;
     } catch (error) {
@@ -290,6 +298,27 @@ export class AgentProcesses {
     }
     return sent;
   }
+  capture(args: Record<string, unknown>) { return this.#capture(args); }
+  completionReceipts() {return [...this.#receipts.values()];}
+  async operationReceipt(launchId: string): Promise<{state:'accepted';result:{pid:number;identity:string}} | {state:'pending';reason:string} | {state:'failed';error:string}> {
+    await this.reconcile();
+    const row=this.#rows.find(row=>row.launchId===launchId);
+    if(row)return {state:'accepted',result:{pid:row.pid,identity:row.identity}};
+    if(this.#admissions.has(launchId))return {state:'pending',reason:'native admission birth incomplete'};
+    return {state:'failed',error:'commit interrupted before native admission'};
+  }
+  async captureForStop(args: Record<string, unknown>) {
+    await this.reconcile();
+    const row = this.#rows.find(row => row.pid === args.pid && row.identity === args.identity);
+    if (row?.ended && row.authority === 'closed') return { closed: true, targets: null };
+    if (row) {
+      const targets = await this.#capture(args);
+      return { closed: row.ended === true && row.authority === 'closed', targets };
+    }
+    const proof = (await observeProcesses([Number(args.pid)], this.#env)).get(Number(args.pid));
+    // No retained owner exists after reconciliation; only positive native absence settles it.
+    return { closed: proof?.ended === true, targets: null };
+  }
   async signal(args: Record<string, unknown>): Promise<boolean> {
     if (!['SIGTERM', 'SIGKILL', 'SIGINT', 'SIGHUP', 'SIGUSR1', 'SIGUSR2'].includes(String(args.signal))) throw new Error('unsupported signal');
     const captured = await this.#capture(args); if (!captured) return false;
@@ -297,14 +326,16 @@ export class AgentProcesses {
   }
   async stop(args: Record<string, unknown>): Promise<boolean> {
     const captured = await this.#capture(args); if (!captured) return false;
+    if (args.captured && targetKey(args.captured as ProcessTarget[]) !== targetKey(captured)) return false;
     const owner = this.#rows.find(row => row.pid === args.pid && row.identity === args.identity)!;
     this.#stopping.add(owner);
     try {
       if (!await this.#signalTargets(captured, 'SIGTERM')) return false;
       const remaining = async () => {
         const current = await this.#group(args.pid as number);
+        await this.#hooks.beforeRemainingObservation?.(current.map(row=>row.pid));
         const observations = await observeProcesses([...captured.map(p => p.pid), ...current.map(p => p.pid)], this.#env);
-        for (const row of current) if (!captured.some(proof => proof.pid === row.pid && proof.identity === observations.get(row.pid)?.identity)) return null;
+        for (const row of current) if (!isCapturedOrExited(observations.get(row.pid),captured.find(proof=>proof.pid===row.pid)?.identity)) return null;
         const survivors = [];
         for (const proof of captured) {
           const observation = observations.get(proof.pid);

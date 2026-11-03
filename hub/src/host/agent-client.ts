@@ -20,7 +20,7 @@ export class AgentClient extends EventEmitter {
           const frame = JSON.parse(line);
           if (frame.event) { this.emit('event', frame); continue; }
           const pending = this.#pending.get(frame.id);
-          if (pending) { this.#pending.delete(frame.id); clearTimeout(pending.timer); if (frame.ok) pending.resolve(frame.result); else pending.reject(new Error(frame.error)); }
+          if (pending) { this.#pending.delete(frame.id); clearTimeout(pending.timer); if (frame.ok) pending.resolve(frame.result); else pending.reject(Object.assign(new Error(frame.error), typeof frame.code === 'string' ? {code:frame.code} : {})); }
         } catch { socket.destroy(new Error('malformed agent reply')); }
       }
     });

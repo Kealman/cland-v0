@@ -41,7 +41,7 @@ import { gitIn, type Git } from '../tracker/verdict-git.ts';
 import { Tracker } from '../tracker/tracker.ts';
 import type { TipSchedule } from '../tracker/freshness.ts';
 import type { LogFn } from '../log.ts';
-import { projectSessions, type ProjectSessions, type AdapterFactory } from '../adapters/index.ts';
+import { projectSshHosts, projectSessions, type ProjectSessions, type AdapterFactory } from '../adapters/index.ts';
 import { CrewFile, crewSummary } from '../crew.ts';
 import { RulebookFile } from '../rules/file.ts';
 import { ProjectConfiguration } from './configuration.ts';
@@ -81,7 +81,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hostConfigurations?: Readonly<Record<string, import('../host/registry.ts').HostConfiguration>>; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -261,6 +261,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'), clock);
   let adapters: ProjectSessions | null = null;
+  let sshHosts: Awaited<ReturnType<typeof projectSshHosts>> | null = null;
   let accountPoller: AccountPoller | null = null;
   let web: WebEdge | null = null;
   let store: Store;
@@ -561,7 +562,9 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
         // Both journal and session projections depend on the adapters' open table.
         await attempt(() => hub.core.close());
         await attempt(() => hub.dispatcher.close());
+        sshHosts?.quiesce();
         await attempt(() => adapters?.close());
+        await attempt(() => sshHosts?.close());
         await attempt(() => tracker.stop());
         await attempt(() => lintWarmer.close());
         await attempt(() => crew.stop());
@@ -664,7 +667,8 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   try {
     log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
-    adapters = projectSessions({ ...(options.hosts ? { hosts: options.hosts } : {}), ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
+    sshHosts = await projectSshHosts({root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
+    adapters = projectSessions({ hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
     await adapters.sessions.sweepArchive();
     await startGateway();

@@ -1,3 +1,4 @@
+export { projectSshHosts } from '../host/registry.ts';
 import type { Host } from '../host/host.ts';
 import { testHost } from '../host/test-host.ts';
 import type { DatabaseSync } from 'node:sqlite';

@@ -1,3 +1,4 @@
+import { testHost } from '../src/host/test-host.ts';
 // T2: host records, private secret files and real project startup; no native SSH.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -96,7 +97,7 @@ for (const both of [true, false, 'root-only', 'suite-tmpdir'] as const) test(`C3
   const root = await hostProject(t), fakeRoot = join(root, 'fake');
   mkdirSync(fakeRoot);
   const hosts = await Promise.all(['f1', 'f2'].map(id => createFakeHost(fakeRoot, id)));
-  const hub = await projectHub(t, root, { ...(both !== 'root-only' ? { CLAND_FAKE_HOSTS: 'f1,f2' } : {}), ...(both !== false ? { CLAND_FAKE_HOST_ROOT: fakeRoot } : {}) });
+  const hub = await projectHub(t, root, { ...(both !== 'root-only' ? { CLAND_FAKE_HOSTS: 'f1,f2' } : {}), ...(both !== false ? { CLAND_FAKE_HOST_ROOT: fakeRoot } : {}) }, { hosts: enabled ? ['f1', 'f2'].map(id => testHost(id, () => {})) : [] });
   const ui = await connectUi(t, hub.discovery);
   const db = new DatabaseSync(join(root, '.cland', 'hub.db')); t.after(() => db.close());
   const rows = db.prepare('select * from hosts order by id').all();

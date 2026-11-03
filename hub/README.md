@@ -20,6 +20,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
 - [SSH transport](../docs/hub/ssh-transport.md)
+- [SSH Host](../docs/hub/ssh-host.md)
 - [The Agents record, the journal and hygiene](../docs/hub/the-agents-record-the-journal-and-hygiene.md)
 - [Per-user state](../docs/hub/per-user-state.md)
 - [Accounts and limits](../docs/hub/accounts-and-limits.md)

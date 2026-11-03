@@ -4,6 +4,10 @@ import { promisify } from 'node:util';
 import { linuxIdentity, readLinuxBootId } from './identity.ts';
 const exec = promisify(execFile);
 export type Observation = { identity: string | null; ended: boolean };
+/** A ps member can be reaped before its subsequent birth observation. Unknown is never absence. */
+export function isCapturedOrExited(proof: Observation | undefined, identity: string | undefined): boolean {
+  return proof?.ended === true || typeof identity === 'string' && proof?.identity === identity;
+}
 export async function agentBootId(env: NodeJS.ProcessEnv): Promise<string> {
   if (process.platform === 'linux') return (await readLinuxBootId()).trim();
   if (!env.CLAND_FAKE_HOSTS || !env.CLAND_HOST_BOOT_ID_FILE) throw new Error('non-Linux agent requires fake host boot-id file');

@@ -1,3 +1,4 @@
+import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { LOCAL_MOD_DIR as MOD_DIR } from '../host/launch-layout.ts';
 import { isLinuxIdentity } from '../host/process-host.ts';
 import { launchGenerationKey, launchOwnerKey } from './launch-generation.ts';
@@ -324,7 +325,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     if (p.account) for (const key of AUTH_VARIABLES) delete env[key];
     const controller = new AbortController();
     const machine = this.#machine(p);
-    const commandInput = { command: this.#bin, args, cwd, env: { ...env, DISABLE_AUTOUPDATER: '1', ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, timeoutMs, signal: controller.signal };
+    const commandInput = { command: this.#bin, args, cwd, env: hostCommandEnvironment(machine, env, { ...(machine.name === 'local' ? {} : p.accountEnv), DISABLE_AUTOUPDATER: '1', ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }), timeoutMs, signal: controller.signal };
     const work = machine.run(commandInput).then(r => resumed(() => {
       if (r.error || r.code === null) throw new Error(`${this.#bin} ${args[0] ?? ''}: ${r.error ?? 'command ended without an exit code'}`);
       return { code: r.code, stdout: r.stdout, stderr: r.stderr };
@@ -586,7 +587,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...this.#inheritedEnv(), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    return this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...((this.#host.hostForLaunch?.(request)?.name ?? request.host ?? 'local') === 'local' ? this.#inheritedEnv() : {}), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
   }
 
   nativeSessionHint(p: HarnessProcess, result?: import('./contract.ts').NativeJobInspection): void {
@@ -972,9 +973,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       // and richer overlays intact; let a legacy default row inherit today's hub env.
       if (!p.account && p.accountEnv?.CLAUDE_CONFIG_DIR && Object.keys(p.accountEnv).length === 1
         && resolve(p.accountEnv.CLAUDE_CONFIG_DIR) === resolve(this.#env.HOME || homedir(), '.claude')) {
-        p.accountEnv = this.#inheritedEnv();
+        p.accountEnv = (p.host ?? 'local') === 'local' ? this.#inheritedEnv() : {};
       }
-      p.accountEnv ??= this.#inheritedEnv();
+      p.accountEnv ??= (p.host ?? 'local') === 'local' ? this.#inheritedEnv() : {};
       const d = this.#directory(p);
       this.watch(p);
       const remote = (p.host ?? 'local') !== 'local';

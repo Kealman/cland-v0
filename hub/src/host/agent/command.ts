@@ -1,5 +1,20 @@
 import { spawn } from 'node:child_process';
+import { MAX_LINE_BYTES } from './protocol.ts';
 export type RunResult = { code: number | null; stdout: string; stderr: string; error?: string };
+/** Leave room for both reply envelopes; oversized results retain native facts and diagnostic tails. */
+export function boundedCommandResult(result: RunResult): RunResult {
+  if (Buffer.byteLength(JSON.stringify(result)) <= MAX_LINE_BYTES / 2) return result;
+  return {
+    code: result.code,
+    stdout: result.stdout.slice(-4096),
+    stderr: result.stderr.slice(-4096),
+    error: `command output exceeds agent frame cap (${MAX_LINE_BYTES} bytes); stdout ${Buffer.byteLength(result.stdout)} bytes, stderr ${Buffer.byteLength(result.stderr)} bytes; native exit code ${result.code}${result.error ? `; ${result.error.slice(-4096)}` : ''}`,
+  };
+}
+export const nativeCommandIncomplete = (result: Pick<RunResult,'error'>): boolean => result.error?.includes('cleanup incomplete') === true;
+export function nativeCommandFailure(result: RunResult, fallback: string): Error {
+  return Object.assign(new Error(result.error || result.stderr || fallback),nativeCommandIncomplete(result)?{code:'CLAND_NATIVE_INCOMPLETE'}:{});
+}
 const PROBE_CLOSE_TIMEOUT_MS = 1000;
 
 /** A probe's deadline: `fallbackMs`, or `CLAND_DOCTOR_PROBE_TIMEOUT_MS` (tests that fake a tool that never answers). */

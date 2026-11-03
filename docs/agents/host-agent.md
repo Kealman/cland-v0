@@ -43,3 +43,18 @@ A host agent does not call hub.sock. Session CLI, hooks and mod-bridge clients
 using its forwarded socket carry their own session credentials. A host secret
 never acts as the human; see [Host-secret admission and revocation](../hub/adapters-and-sessions.md#host-secret-admission-and-revocation).
 Only the human CLI or Neovim on a local connection may run `cland host revoke <id>`.
+
+## SSH Host callbacks and environments
+
+The [SSH Host](../hub/ssh-host.md) requires the optional `host-prepared-v1`
+capability. Additive prepare/commit/abort operations preserve hub-side callback
+boundaries and expire unfinished resources on a deadline, disconnect or restart.
+Monolithic protocol-1 operations remain supported. Error replies may carry an
+optional native `code`; clients accept older replies without it. Remote adapter
+commands carry explicit additions; the agent merges its own base and filters
+hub-only credentials after overlays. No hub base environment is forwarded.
+
+Stop rechecks a ps member's native observation: a positive `ended:true` is closed
+even when the PID was reaped between snapshots. An absent birth without positive
+end remains unresolved and grants no ownership. This applies equally to resumed
+native owners and newly captured trees; legacy timestamps grant no signals.

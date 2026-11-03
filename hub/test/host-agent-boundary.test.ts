@@ -6,7 +6,9 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 const root = fileURLToPath(new URL('../src/host/agent/', import.meta.url));
-function findings(path: string, source: string): string[] {
+const credentials = fileURLToPath(new URL('../../shared/executor-credentials.ts', import.meta.url));
+const environmentOwner = resolve(root, 'command-environment.ts');
+function findings(path: string, source: string, allowCredentials = true): string[] {
   const errors: string[] = [];
   function visit(node: ts.Node) {
     let spec: ts.Expression | undefined;
@@ -16,14 +18,23 @@ function findings(path: string, source: string): string[] {
     }
     if (spec && ts.isStringLiteral(spec)) {
       const value = spec.text;
-      if (!value.startsWith('node:') && !(value.startsWith('.') && resolve(dirname(path), value).startsWith(root))) errors.push(value);
+      const target=value.startsWith('.')?resolve(dirname(path),value):value;
+      const agentModule=path.startsWith(root)&&value.startsWith('.')&&target.startsWith(root);
+      const credentialLeaf=allowCredentials&&path===environmentOwner&&target===credentials;
+      if(!value.startsWith('node:')&&!agentModule&&!credentialLeaf)errors.push(target);
     }
     ts.forEachChild(node, visit);
   }
   visit(ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)); return errors;
 }
-test('agent imports only Node built-ins and agent modules', async () => {
+test('agent imports only Node built-ins, agent modules and its single credential leaf', async () => {
   for (const source of ["import x from 'ws'", "export * from '../../processes.ts'", "const x = import('../local.ts')", "require(name)"]) assert.ok(findings(resolve(root, 'server.ts'), source).length);
+  const ownerSource=await readFile(environmentOwner,'utf8');
+  assert.deepEqual(findings(environmentOwner,ownerSource,false),[credentials],'omitting exact leaf authorization names the rejected file');
+  assert.deepEqual(findings(credentials,await readFile(credentials,'utf8')),[],'allowed leaf has Node-only transitive closure');
+  assert.ok(findings(credentials,"import '../hub/src/host/local.ts'").length);
+  assert.ok(findings(credentials,"import './other-shared.ts'").length);
+  assert.ok(findings(resolve(root,'server.ts'),"import '../../../../shared/executor-credentials.ts'").length,'only the environment owner may import the leaf');
   for await (const file of glob('**/*.ts', { cwd: root })) assert.deepEqual(findings(resolve(root, file), await readFile(resolve(root, file), 'utf8')), [], file);
 });
 

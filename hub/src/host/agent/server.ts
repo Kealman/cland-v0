@@ -1,3 +1,6 @@
+import { processUsage } from './process-usage.ts';
+import { remoteCommandEnvironment } from './command-environment.ts';
+import { PreparedOperations } from './prepared.ts';
 import { createConnection, createServer } from 'node:net';
 import type { Socket } from 'node:net';
 import { mkdir, chmod, unlink } from 'node:fs/promises';
@@ -6,11 +9,12 @@ import { totalmem, freemem } from 'node:os';
 import type { ProcessHooks } from './processes.ts';
 import { AgentProcesses } from './processes.ts';
 import { readFile } from 'node:fs/promises';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { checkpoint } from './storage.ts';
-import { agentOperations } from './operations.ts';
-import { AGENT_PROTOCOL, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
-export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void> };
+import { run as runCommand } from './command.ts';
+import { agentOperations, parseAgentRun } from './operations.ts';
+import { AGENT_PROTOCOL, PREPARED_HOST_CAPABILITY, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
+export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket) => void };
 export async function serveAgent(options: AgentOptions) {
   if (!options.secret) throw new Error('host secret required');
   await mkdir(options.runDir, { recursive: true, mode: 0o700 });
@@ -32,23 +36,47 @@ export async function serveAgent(options: AgentOptions) {
   const broadcast = (frame: unknown) => { for (const peer of authenticatedConnections) if (!peer.destroyed) peer.write(JSON.stringify(frame) + "\n"); };
   const processes = new AgentProcesses(options.runDir, options.env ?? process.env, broadcast, options.processHooks);
   const operations = agentOperations(options.env ?? process.env);
-  await processes.load(); const bootId = await processes.bootId();
+  await processes.load();
+  const prepared = new PreparedOperations(options.runDir, options.env ?? process.env, processes);
+  await prepared.start();
+  const bootId = await processes.bootId();
   let memoryWork = Promise.resolve();
   let memoryTimer: NodeJS.Timeout | undefined;
   let recoveryTimer: NodeJS.Timeout | undefined;
   let admitting = false;
   const pending = new Set<Promise<void>>();
+  const cleanupFailures = new Set<unknown>();
+  const retain = (work:Promise<void>) => {
+    const observed:Promise<void>=work.catch(error=>{cleanupFailures.add(error);try{options.cleanupError?.(error);}catch{}}).then(()=>{pending.delete(observed);});
+    pending.add(observed);
+  };
   const server = createServer(connection => {
     if (!admitting) { connection.destroy(); return; }
     connections.add(connection);
     connection.on('close', () => { connections.delete(connection); authenticatedConnections.delete(connection); });
     connection.on('error', () => {});
     let authenticated = false, chain = Promise.resolve();
+    const owned = new Set<string>();
+    const commands = new Map<string, AbortController>();
+    const cancelled = new Set<string>();
+    connection.once('close', () => {for(const [token,controller] of commands){
+      prepared.fenceCommand(token);
+      retain((async()=>{try{await options.beforeRunCancel?.(token);}finally{controller.abort();}})());
+    }});
+    connection.once('close', () => { retain(chain.then(async () => {
+      const failures:unknown[]=[];
+      for(const token of owned) {try{await prepared.abort(token);owned.delete(token);}catch(error){failures.push(error);}}
+      if(failures.length)throw new AggregateError(failures,'connection prepared cleanup incomplete');
+    })); });
     const decoder = new LineDecoder();
     connection.on('data', (chunk: Buffer) => {
       let lines: string[];
       try { lines = decoder.push(chunk); } catch { connection.destroy(); return; }
       for (const line of lines) {
+        // Cancellation must reach the in-flight command before the serial reply queue.
+        if(authenticated) {
+          try {const request=parseRequest(line); if(request.op === 'cancel-run') {const token=String(request.args.token);cancelled.add(token);commands.get(token)?.abort();}} catch {}
+        }
         chain = chain.then(async () => {
           if (connection.destroyed || connection.writableEnded) return;
           let id: string | null = null;
@@ -59,11 +87,38 @@ export async function serveAgent(options: AgentOptions) {
               const valid = typeof secret === 'string' && Buffer.byteLength(secret) === Buffer.byteLength(options.secret) && timingSafeEqual(Buffer.from(secret), Buffer.from(options.secret));
               if (!valid || request.args.protocol !== AGENT_PROTOCOL) throw new Error('hello secret or protocol refused');
               authenticated = true; authenticatedConnections.add(connection);
-              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId } }) + '\n');
+              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [PREPARED_HOST_CAPABILITY] } }) + '\n');
             } else {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
+              if(['spawn','run','run-host','writeFile','makeDirectory','removePath','worktreeAdd','worktreeRemove'].includes(request.op))prepared.assertMutable();
               switch (request.op) {
+                case 'native-receipts': result = processes.completionReceipts(); break;
+                case 'processUsage': result = await processUsage(options.env ?? process.env); break;
+                case 'cancel-run': cancelled.delete(String(request.args.token)); result = null; break;
+                case 'run-host': {
+                  const token=typeof request.args.token==='string'?request.args.token:randomUUID();
+                  const recoveryKey=typeof request.args.recoveryKey==='string'?request.args.recoveryKey:randomUUID();
+                  const controller=new AbortController();
+                  if(commands.has(token))throw new Error('command already admitted');
+                  const {token:_token,recoveryKey:_recovery,...command}=request.args;
+                  let parsed:ReturnType<typeof parseAgentRun>;
+                  try{parsed=parseAgentRun({...command,env:remoteCommandEnvironment({...options.env??process.env,...command.env as NodeJS.ProcessEnv})});}
+                  catch(error){throw Object.assign(error instanceof Error?error:new Error(String(error)),{code:'CLAND_AGENT_ADMISSION_REFUSED'});}
+                  commands.set(token,controller);if(cancelled.delete(token))controller.abort();
+                  try {result=await prepared.runCommand(token,recoveryKey,command,async()=>{
+                    if(connection.destroyed)prepared.fenceCommand(token);
+                    options.runStarted?.(token,connection);
+                    return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd);
+                  });} finally {commands.delete(token);}
+                  break;
+                }
+                case 'prepare-spawn': result = await prepared.prepare('spawn', request.args); break;
+                case 'prepare-stop': result = await prepared.prepare('stop', request.args); break;
+                case 'prepare-worktree': result = await prepared.prepare('worktree', request.args); break;
+                case 'commit-prepared': if (!owned.has(String(request.args.token))) throw new Error('prepared operation not owned'); result = await prepared.commit(String(request.args.token), request.args.install !== false); owned.delete(String(request.args.token)); break;
+                case 'settle-prepared': result = await prepared.settle(String(request.args.token),String(request.args.recoveryKey)); break;
+                case 'abort-prepared': if (!owned.has(String(request.args.token))) throw new Error('prepared operation not owned'); result = await prepared.abort(String(request.args.token)); owned.delete(String(request.args.token)); break;
                 case 'spawn': result = await processes.spawn(request.args); break;
                 case 'identity': result = await processes.identity(Number(request.args.pid)); break;
                 case 'alive': result = await processes.alive(request.args); break;
@@ -76,16 +131,18 @@ export async function serveAgent(options: AgentOptions) {
                   result = await operation(request.args);
                 }
               }
+              if (request.op.startsWith('prepare-') && result && typeof result === 'object' && Object.hasOwn(result, 'token') && typeof (result as {token?:unknown}).token === 'string') owned.add((result as {token:string}).token);
+              options.afterOperation?.(request.op,connection);
               const reply = JSON.stringify({ id, ok: true, result });
               if (Buffer.byteLength(reply) > MAX_LINE_BYTES) throw new Error('agent result exceeds frame cap');
               connection.write(reply + '\n');
             }
           } catch (error) {
-            const frame = JSON.stringify({ id, ok: false, error: error instanceof Error ? error.message : 'operation failed' }) + '\n';
+            const frame = JSON.stringify({ id, ok: false, error: error instanceof Error ? error.message : 'operation failed', ...(typeof (error as NodeJS.ErrnoException)?.code === 'string' ? {code:(error as NodeJS.ErrnoException).code} : {}) }) + '\n';
             if (!authenticated || /hello secret/.test(error instanceof Error ? error.message : '')) connection.end(frame); else connection.write(frame);
           }
         });
-        const work = chain; pending.add(work); void work.finally(() => pending.delete(work));
+        retain(chain);
       }
     });
   });
@@ -93,7 +150,13 @@ export async function serveAgent(options: AgentOptions) {
     admitting = false; clearInterval(memoryTimer); clearTimeout(recoveryTimer);
     for (const connection of connections) connection.destroy();
     if (server.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-    await memoryWork; await Promise.all(pending); await processes.drain();
+    await memoryWork;
+    while(pending.size) await Promise.all([...pending]);
+    const failures:unknown[]=[];
+    try{await prepared.close();cleanupFailures.clear();}catch(error){failures.push(error);}
+    try{await processes.drain();}catch(error){failures.push(error);}
+    failures.push(...cleanupFailures);
+    if(failures.length)throw new AggregateError(failures,'agent cleanup incomplete');
   };
   try {
     await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(socket, resolve); });

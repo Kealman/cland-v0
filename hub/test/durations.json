@@ -9502,7 +9502,7 @@
     "hub/test/fake-ssh.test.ts::production binaries ignore either incomplete fake gate": 0.004507,
     "hub/test/fake-ssh.test.ts::rejects missing/wrong pins, occupied forwards and TCP listen; loopback destination uses Unix map": 1.218239,
     "hub/test/fake-ssh.test.ts::scp writes exact bytes inside host home and refuses escape": 0.352612,
-    "hub/test/host-agent-boundary.test.ts::agent imports only Node built-ins and agent modules": 0.104971,
+    "hub/test/host-agent-boundary.test.ts::agent imports only Node built-ins, agent modules and its single credential leaf": 0.104971,
     "hub/test/host-agent-boundary.test.ts::JSONL byte limits apply per line across coalesced, fragmented and multibyte chunks": 0.008206,
     "hub/test/host-agent.test.ts::accepted spawn keeps its PID and exit ownership after log descriptor close failure": 0.320575,
     "hub/test/host-agent.test.ts::agent authenticates hello, negotiates protocol and retains connection after unknown op": 0.028543,
@@ -9899,6 +9899,13 @@
     "hub/test/web-cookie-secure.test.ts::invite and password sign-in cookies share tunnel and local Secure policy": 0.267448
   },
   "allow": {
+    "hub/test/host-ssh-contract.test.ts::ssh Host runs every shared Host behavioral contract through fake ssh": {
+      "seconds": 11.001,
+      "owner": "E-880",
+      "added": "2026-11-03",
+      "expires": "2026-11-10",
+      "reason": "T-1599 aggregates all 14 unchanged Host behavioral rows through one real fake-SSH carrier and authenticated agent, including native PID/exit, retained descendants, output, worktrees and joined teardown. Passing wrapper samples: local macOS Node24.21.0 A-16263 7.099404042 s, source-equivalent precommit bytes of 83428a67a; Linux x64 c-8 nyc1 run 4fd7d495 at 0b693d330 (A-16269) 7.33375717 s, with all 14 nested rows passing although the overall receipt failed Git wording and this enforcing legacy 5 s aggregate cap. 11.001 s rounds 1.5x the worst passing sample upward to milliseconds. Both samples replay through the production checker with before-fail/after-pass controls. This seven-day allowance changes only the aggregate identity budget; all row assertions, native receipts and timeouts remain unchanged."
+    },
     "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
       "seconds": 14.774,
       "owner": "C-216",
