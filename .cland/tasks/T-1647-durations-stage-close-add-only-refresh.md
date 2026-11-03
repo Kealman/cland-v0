@@ -2,8 +2,8 @@
 id: T-1647
 kind: task
 title: "Durations: stage-close add-only refresh and renew seven allowances expiring 2026-11-05"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1356
 branch: t/T-1647-durations-stage-close-add-only-refresh
 created: 2026-11-03T00:38:49.827Z
-updated: 2026-11-03T01:08:43.829Z
+updated: 2026-11-03T02:27:35.380Z
+closed: 2026-11-03T02:27:35.380Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified, no remaining findings. Exact-head0077bb25/A-16066 exit0,4834 pass/zero fail/cancel/skip/todo. Independently checked refresh7/runner-budget3/duration-budget12/tier19/remote-budget17 controls plus actual host lint0refusals and successful manifest/shard planning; source add-only/cap/date proofs carry forward. Prior low resolved by A-16061:40 native run provenance records and209 unchanged sample outcome/metadata linkages independently checked, failed/partial result distinctions retained. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/allT2/Web complete,T3 deferred to batch,T4 unexecuted. Budget/lint/ratchet/skip-reason diagnostics report-only; host typecheck at runner tree3f3690557 not remotely repeated. QA none. Reviewer executed no tests/browser/edits. Detail A-16067: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16067-t-1647-final-evidence-duration-planning-and-provenance-correction.md.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-03T02:27:35.380Z
+
+Merged e352d2995af8d4c25ef6a83165804f9c4bae248c onto dev.

@@ -3,7 +3,7 @@ id: T-1601
 kind: task
 title: The adapters take their launch layout and files from the session's Host
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1352
 branch: t/T-1601-the-adapters-take-their-launch-layout
 created: 2026-11-02T03:33:55.630Z
-updated: 2026-11-03T01:54:00.348Z
+updated: 2026-11-03T02:30:29.820Z
 ---
 
 ## Summary
@@ -31,22 +31,27 @@ Hot files: `hub/src/adapters/claude-code.ts`, `hub/src/adapters/codex.ts`, `hub/
   - done: impl-1601 · 2026-11-03T00:17:57.727Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.676Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.828Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
 - [x] C2. On the `local` host the argv, environment, file paths, modes and contents of a launch of each harness are byte-identical to today's (test).
   - done: impl-1601 · 2026-11-03T00:17:58.093Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.828Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
 - [x] C3. OpenCode's port comes from the launch Host's freePort and its password is read through that Host (test).
   - done: impl-1601 · 2026-11-02T23:51:15.745Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.829Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
 - [x] C4. The boundary lint also fails when an adapter or `opencode/server.ts` imports `writeFile`, `mkdir`, `rm` or `chmod` from `node:fs` or `node:fs/promises` for a session-side path (test).
   - done: impl-1601 · 2026-11-02T23:51:16.483Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.829Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
 - [x] C5. The claude-code-adapter, codex-adapter, opencode-adapter, opencode-native and launch-files test files pass with no test edited.
   - done: impl-1601 · 2026-11-02T23:51:17.164Z
   - verified: rev-36 [reviewer] · run rev-36-1601-final-1 · 2026-11-03T00:42:12.111Z · commit 6ac72d6a261442c803122c087a371c5c1e76f709
   - verified: rev-35 [reviewer] · run rev-35-1601-final-1 · 2026-11-03T01:51:10.677Z · commit f232340a7b702fc9153e3afe5686da4b010e2148
+  - verified: rev-35 [reviewer] · run rev-35-1601-final-2 · 2026-11-03T02:24:18.829Z · commit a32b187faeebc08c5882e4b2661baaae4115de92
 
 ## Notes
 
@@ -267,3 +272,58 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final integration clear; C1–C5 verified, no findings. Exact-head23a40c56/A-16100 exit0,4931 pass/zero fail/cancel/skip/todo; actual layout16,sandbox4,routing16,boundary12,native32,LaunchFiles3 and Host/coverage incoming controls pass. C5 Claude6/Codex13/OpenCode21 raw native names+exit0 retained A-16083–85/A-16088 at actual predecessorbc1b426a8; independent hub/src+hub/test diff to docs-onlyf232 empty, explicitly production/test-equivalent, not exact-commit native execution. Five C5 test files unedited. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/allT2/selected T3 fourfiles75identities/Web completed, remainingT3 deferred,T4 unexecuted. Budgets/lint/ratchet/skip checks report-only; full affected/after-stage QA remains separate. Reviewer ran no tests/browser and edited nothing. Detail A-16103: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16103-t-1601-final-integration-evidence-layouts-and-native-preservation.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1601 · 2026-11-03T01:56:48.613Z
+
+Coordinator1239b18e authorized immediate merge instead of waitingT1597. Heada32b187fa merges pinned incomingd39161065 once with priorf232340a7. Only skill paragraph conflicted; all six headings from both actual parents retained, incoming current APIs/anchor verified present. Raw current-head layout16/C5 Claude6,Codex13,OpenCode21,OpenCode-native32,LaunchFiles3 pass, nativeexit0, logsA-16110–15. Hub typecheck/testlint pass (report-only122findings59files). Delta review requested before fresh verification; no prior queued receipt counted current.
+
+### rev-35 · 2026-11-03T01:57:53.672Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1601-delta-source-3
+commit: a32b187faeebc08c5882e4b2661baaae4115de92
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Second authorized merge delta source clear; no findings. Coordinator1239b18e read; actual f232/d391 parents pinned. All six skill sections retained against both parents, incoming skill exact; named publication APIs/docs anchor now exist. Only CHANGES authored merge content. Launch implementations/Host local/layout/sandbox and layout/boundary/C5 tests unchanged from prior clearf232; incoming Telegram/Cookie runtime requires fresh integration verification. A-16116 raw exact-head local layout16/C5 native exits0 are targeted supplements, no queued carry-over. C1–C5 remain runtime-unverified pending fresh mode-free verify at this head. QA affected/after-stage separate. Reviewer ran no tests/browser and made no edits. Detail A-16117: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16117-t-1601-second-integration-delta-source-review.md.
+
+### rev-35 · 2026-11-03T02:24:18.829Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1601-final-2
+commit: a32b187faeebc08c5882e4b2661baaae4115de92
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Second integration final clear; C1–C5 verified, no findings. Exact-head d8b34180/A-16124 exit0,4953 pass/zero fail/cancel/skip/todo. Independently read layout16/sandbox4/boundary12/routing16/Host preservation/native32/LaunchFiles3 timing facts plus incoming Telegram/shared/cookie/Host-agent/coverage controls. C5 native Claude6/Codex13/OpenCode21 raw named outcomes and separate exits0 now exact-head A-16111–13/A-16116, Darwin27 arm64 Node24.21 sealed fake harnesses/no browser; all five preservation files unchanged. Uncached Linux x64 c-8sfo2 Node24.21/Nvim0.12.5, isolated Headless Shell1248/Chrome for Testing156.0.8078.4; T0/T1/allT2/selected T3 fourfiles75identities/Web completed,remainingT3 batch-deferred,T4 unexecuted. Budget/lint/ratchet/skip diagnostics report-only; no incomplete baseline/projection counted as pass. QA affected/after-stage separate. Reviewer ran no tests/browser/probes or edits. Detail A-16125: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16125-t-1601-second-integration-final-evidence.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### hub · 2026-11-03T02:28:24.100Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"a32b187faeebc08c5882e4b2661baaae4115de92","head":"c4d737064e479b3808252bfe65cd5a57509402f6","dev":"e352d2995af8d4c25ef6a83165804f9c4bae248c","mergeBase":"d391610653bc108d2e8ae2b394929a52d5eb3a19","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":[".agents/skills/implement/CHANGES/T-1601-integration.md","docs/agents/tests/hub-test-claude-code-host.test.ts.md","docs/agents/tests/hub-test-codex-sandbox-host.test.ts.md","docs/agents/tests/hub-test-host-launch-layout.test.ts.md","docs/agents/tests/hub-test-session-host-placement.test.ts.md","docs/agents/tests/hub-test-session-host-routing.test.ts.md","docs/agents/tests/index.md","docs/hub/adapters-and-sessions.md","hub/src/adapters/claude-code.ts","hub/src/adapters/codex.ts","hub/src/adapters/launch-files.ts","hub/src/adapters/opencode.ts","hub/src/adapters/opencode/server.ts","hub/src/host/host.ts","hub/src/host/launch-layout.ts","hub/src/host/local-opencode-files.ts","hub/src/host/local.ts","hub/test/claude-code-host.test.ts","hub/test/codex-sandbox-host.test.ts","hub/test/fixtures/host-launch-claude.json","hub/test/fixtures/host-launch-codex.json","hub/test/fixtures/host-launch-opencode.json","hub/test/host-boundary.test.ts","hub/test/host-boundary.ts","hub/test/host-contract.ts","hub/test/host-launch-layout.test.ts","hub/test/session-host-placement.test.ts","hub/test/session-host-routing.test.ts","hub/test/tiers.json"],"devPaths":[".cland/tasks/T-1591-the-per-host-git-socket-and-git-daemon.md",".cland/tasks/T-1594-the-supervisor.md",".cland/tasks/T-1596-per-host-secret-admission-and-revocation.md",".cland/tasks/T-1597-the-per-host-allow-list-of-leased-task.md",".cland/tasks/T-1601-the-adapters-take-their-launch-layout.md","hub/test/durations.json"],"overlap":[],"dependency":{"status":"unknown","reason":"import graph incomplete or budget exceeded"},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-1601 · 2026-11-03T02:29:29.771Z
+
+Merge-prep stale duration key repaired ate4211fc19 after authorized one-time merge of incominge352d2995. Old placement spawn title renamed to current nonlocal shared-ignore refusal title; value0.109388 retained. npm run test:tiers reproduced refusal before edit and passes all manifest identities afterward (182free/497machine). No production/test-source diff beyond durations; diff clean. Delta review before fresh verify.
+
+### rev-35 · 2026-11-03T02:30:29.820Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1601-delta-source-4
+commit: e4211fc198223ced964b3d1646eafa69a5894656
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Duration-only authorized delta source clear, no findings. Coordinator96d1028a read. Incoming e352d2995 is reviewed T-1647 manifest/tracker metadata; runtime/test sources and skill unchanged from prior cleara32. Repair changes exactly one tests-map key to the actual placement refusal test title at159, retaining0.109388 as explicitly authorized historical baseline, no new measurement claim. A-16133 records old-key exact identity refusal then test:tiers exit0/global182free+497machine. No other repair timing/cap/expiry edits. C1–C5 remain runtime-unverified pending fresh same-head mode-free verify; prior queued/native receipts retain historical heads. QA affected/after-stage separate. Reviewer executed no tests/browser or edits. Detail A-16135: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16135-t-1601-duration-identity-repair-source-review.md.

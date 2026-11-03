@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1351
 branch: t/T-1597-the-per-host-allow-list-of-leased-task
 created: 2026-11-02T03:33:54.676Z
-updated: 2026-11-03T01:56:02.210Z
+updated: 2026-11-03T02:28:57.584Z
 ---
 
 ## Summary
@@ -27,20 +27,25 @@ Hot files: `hub/src/territory.ts` (`TERRITORY_HOOK`, hook install), `hub/src/hos
 ## Acceptance criteria
 
 - [x] C1. Through host A's git socket a push to a task branch leased to A succeeds, and a push to a branch leased to host B, to an unleased task branch, to a tag or to `dev` is refused with a reason naming the host (test).
-  - done: impl-1597 · 2026-11-02T23:57:00.786Z
   - verified: rev-37 [reviewer] · run rev-37-1597-evidence-2 · 2026-11-03T00:49:36.060Z · commit afa67de1f750d92a015c61ae434f7b718976eca7
+  - done: impl-1597 · 2026-11-03T02:04:22.268Z
+  - verified: rev-37 [reviewer] · run rev-37-1597-evidence-3 · 2026-11-03T02:28:57.015Z · commit 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
 - [x] C2. Grant and revoke rewrite the allow list only under the territory lock, and a push racing a revoke is either accepted before it or refused after it, never merged after the revoke (test).
-  - done: impl-1597 · 2026-11-03T00:25:37.965Z
   - verified: rev-37 [reviewer] · run rev-37-1597-evidence-2 · 2026-11-03T00:49:36.060Z · commit afa67de1f750d92a015c61ae434f7b718976eca7
+  - done: impl-1597 · 2026-11-03T02:04:23.312Z
+  - verified: rev-37 [reviewer] · run rev-37-1597-evidence-3 · 2026-11-03T02:28:57.015Z · commit 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
 - [x] C3. Before a merge or a merge batch reads a task branch, the hub revokes every host's lease on it under the territory lock, and a later host push to it is refused (test).
-  - done: impl-1597 · 2026-11-02T23:57:02.357Z
   - verified: rev-37 [reviewer] · run rev-37-1597-evidence-2 · 2026-11-03T00:49:36.060Z · commit afa67de1f750d92a015c61ae434f7b718976eca7
+  - done: impl-1597 · 2026-11-03T02:04:23.528Z
+  - verified: rev-37 [reviewer] · run rev-37-1597-evidence-3 · 2026-11-03T02:28:57.015Z · commit 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
 - [x] C4. A territory initialised before this change gets the new hook at hub start, and pushes from the hub's own guarded operations (no `CLAND_PUSH_HOST`) behave as today (test).
-  - done: impl-1597 · 2026-11-02T23:57:03.641Z
   - verified: rev-37 [reviewer] · run rev-37-1597-evidence-2 · 2026-11-03T00:49:36.060Z · commit afa67de1f750d92a015c61ae434f7b718976eca7
+  - done: impl-1597 · 2026-11-03T02:04:23.865Z
+  - verified: rev-37 [reviewer] · run rev-37-1597-evidence-3 · 2026-11-03T02:28:57.016Z · commit 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
 - [x] C5. The territory-cli, territory-lock, merge and task-worktrees test files pass with no test edited.
-  - done: impl-1597 · 2026-11-02T23:57:04.816Z
   - verified: rev-37 [reviewer] · run rev-37-1597-evidence-2 · 2026-11-03T00:49:36.060Z · commit afa67de1f750d92a015c61ae434f7b718976eca7
+  - done: impl-1597 · 2026-11-03T02:04:24.076Z
+  - verified: rev-37 [reviewer] · run rev-37-1597-evidence-3 · 2026-11-03T02:28:57.016Z · commit 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
 
 ## Notes
 
@@ -123,3 +128,31 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-1597 · 2026-11-03T01:56:02.210Z
 
 Batch failure classified (b), confirmed before product changes: deterministic native regression `node --test --test-name-pattern='revoke joins a receive' hub/test/host-allow-list.test.ts` failed in821.983ms with `TerritoryBusy: another territory operation holds the lock` at public revoke after Git client had exited while fs.rm of that receive's exact territory.lock was held. Distinct mkdtemp fixture identities rule out shared roots; no cleanup error is injected. Coordinator decision7e3a3955: only public revoke gets bounded wait (HOST_PUSH_TIMEOUT_MS + small margin, injectable); receive/merge retain refusal/retry and lock order; same-owner context must not wait on itself. Existing lock module has no release notification; reuse its bounded25ms–1s backoff helper, no new polling loop. Deadline preserves current busy message. Will keep native release/ref assertions and prove five local repetitions alongside authorized test load, then fresh source/verify. One-line T-1591 seam note requires Coordinator because original task.comment own-item refusal remains binding.
+
+### rev-37 · 2026-11-03T02:05:45.912Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1597-source-3
+commit: 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Revoke-wait source clear, Standards/Spec no findings; A-16123. Coordinator public-only bounded wait decision confirmed. Public revoke alone opts into existing bounded retry helper with cap+2s default/injectable deadline; wrappers default0, receive/grant/merge refusal/order unchanged. Active matching-root ALS context reused without self-wait; write assertion/release drainage retained. Deterministic held-release test observes client exit plus contender read before releasing exact lock, then durable empty list; deadline/reentry controls retain policy assertions. Docs/skill/change record updated, C5 files unedited. Independently streamed A-16121:10 unique allow-list cases each base+5 local load passes (60completions), no non-pass; authorized darwin arm64 Node24.21 disposable-source package run, no artificial CPU stress/full suite/browser. Extra standard Neovim smoke files distinguished; zero-test launcher attempt not coverage. Lock20/typecheck/lint reports supplemental. All C1–C5 await new exact-head queued/native preservation evidence; prior green applies only to prior head, failed batch stays red. No Reviewer execution/edits. If authorized dev merge occurs after T-1601 landing, new head needs another source review before verify.
+
+### rev-37 · 2026-11-03T02:28:57.016Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1597-evidence-3
+commit: 15dd47c9459e9c92e2fe48296ba6f9c1f4dd4581
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final revoke-wait evidence clear, no findings; all C1–C5 verified. A-16126 exact-head run31b99f6d exits0,4850/4850 fail/cancel/skip/todo0. Independent per-record finish scan: native allow-list10/daemon4 pass once incl original policy, held async release and reentrant ownership; batches75unique/85pass completions (both contention cases base+5T2 load), task-worktrees19 all pass. A-16130 refreshed exact-head raw C5 CLI26/lock20/merge7 local darwin arm64 Node24.21 each exit0/signal explicitly unreported, zero fail/cancel/skip. A-16121 authorized same-head local load proof10cases×(base+5) retained; not added to queued aggregate. A-16132 maps criteria/limits. Linux x64 droplet Node24.21 Neovim0.12.5 isolated Headless Shell156.0.8078.4r1248; T0/T1/all-T2/Web/selectedT3 once complete(2files/14identities), remainingT3 deferred/no queuedT3 repeats/T4 unexecuted. Uncached canonical tree515f55841218b4b724f7ebadabda8a8b9e9438aa; exact-case gate passes, lint122/59files/legacy budgets/ratchet report-only, skip reason report missing0. Prior green remains prior-head, failed batch red. No Reviewer tests/browser/edits; QA after-stage.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
