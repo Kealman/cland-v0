@@ -25,6 +25,12 @@ test('doctor uses its fixture environment rather than the parent crew session', 
     const result = await report(root, tools.env);
     assert.equal(check(result.report, 'hub').verdict, 'ok', notOk(result.report).join('\n'));
     assert.equal(result.code, 0, notOk(result.report).join('\n'));
+    const missing = await report(root, { ...tools.env, ...parent });
+    assert.equal(missing.code, 1, 'explicit missing discovery never falls back to the project');
+    assert.match(check(missing.report, 'hub').detail, /outer-hub\.json is missing/);
+    // The explicit run environment must name a real scratch hub before it can
+    // exercise production credential admission. The outer process stays untouched.
+    await writeFile(parent.CLAND_HUB_FILE, await readFile(join(root, '.cland', 'hub.json')), { mode: 0o600 });
     const explicit = await report(root, { ...tools.env, ...parent });
     assert.equal(explicit.code, 1, 'explicit session credentials still use production admission');
     assert.match(check(explicit.report, 'hub').detail, /outer-doctor-fixture.*credential is missing or invalid/);

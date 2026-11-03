@@ -3,7 +3,7 @@ import { fail, ok, warn, type Check } from './report.ts';
 import { basename, join } from 'node:path';
 import { readText } from '../init/files.ts';
 import { defaultConfig, parseConfig } from '../init/config.ts';
-import { layout, pidAlive, readDiscovery } from '../project.ts';
+import { hubDiscovery, pidAlive, readDiscovery } from '../project.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
 import type { RemoteStatusResult } from '../protocol.ts';
 import { remoteRedactor } from '../remote/redact.ts';
@@ -50,10 +50,10 @@ export async function checkRemotes(root: string, env: NodeJS.ProcessEnv): Promis
         ? `argv[0] not found: ${redact.text(config.speech.command[0])}` : 'empty command',
       'edit [speech] command in .cland/config.toml'));
   }
-  const discovery = readDiscovery(layout(root).discovery);
+  const discovery = readDiscovery(hubDiscovery(root,env));
   let status: RemoteStatusResult | undefined;
   let unavailable = 'hub not running';
-  if (discovery && pidAlive(discovery.pid)) {
+  if (discovery && (discovery.remote || pidAlive(discovery.pid))) {
     try { status = await askHubFrame(discovery, { type: 'remote.status' }, 3000, env) as RemoteStatusResult; }
     catch { unavailable = 'local remote status unavailable'; }
   }

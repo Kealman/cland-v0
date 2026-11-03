@@ -32,7 +32,7 @@ import { VisibilityPreferenceFile } from './visibility-preferences.ts';
 import { Store } from './store.ts';
 import { createHubBase, createWebSocketEdge, type HubBase, type WebSocketEdge } from './server.ts';
 import { createSocketEdge, type SocketEdge } from './socket.ts';
-import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type Discovery, type Layout } from '../project.ts';
+import { ensureSkeleton, layout, removeDiscovery, writeDiscovery, type LocalDiscovery, type Layout } from '../project.ts';
 import { lockHostIdentity } from './lock-identity.ts';
 import { acquireLock, HUB_LOCK_HEARTBEAT_MS, HubLocked, type LockProcessTable } from './lock.ts';
 import { VERSION } from '../version.ts';
@@ -67,7 +67,7 @@ export type ListenMode = 'required' | 'optional' | 'never';
 export type Daemon = {
   layout: Layout;
   /** What `hub.json` says; null when the hub has no listeners (and so wrote no `hub.json`). */
-  discovery: Discovery | null;
+  discovery: LocalDiscovery | null;
   hub: HubBase;
   /** Production process log: asynchronous file appends; shared by every edge. */
   log: LogFn;
@@ -678,7 +678,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     throw error;
   }
 
-  const discovery: Discovery = { root, socket: l.socket, port: ws.port, webPort: web.status.port, secret, pid: process.pid, version: VERSION };
+  const discovery: LocalDiscovery = { root, socket: l.socket, port: ws.port, webPort: web.status.port, secret, pid: process.pid, version: VERSION };
   log({ event: 'hub-startup-step', step: 'publishing discovery', pid: process.pid });
   primeInbox();
   writeDiscovery(l.discovery, discovery);

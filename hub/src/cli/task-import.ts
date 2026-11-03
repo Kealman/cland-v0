@@ -151,7 +151,7 @@ export async function runImportGithub(args: string[], cwd: string, io: Io, env: 
   }
   const root = projectRoot(cwd);
   const d = readDiscovery(hubDiscovery(cwd, env));
-  if (!d || !pidAlive(d.pid)) {
+  if (!d || (!d.remote && !pidAlive(d.pid))) {
     io.err(`cland: no hub running for ${root} — start it with \`cland hub start\`\n`);
     return 1;
   }

@@ -16,7 +16,7 @@ import { eventually } from './harness.ts';
 import type { Socket } from 'node:net';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-export async function sshHostFixture(t: TestContext) {
+export async function sshHostFixture(t: TestContext, options: {startTransport?: boolean} = {}) {
   const root = join(realpathSync('/tmp'), 'cland-suite-' + randomUUID()); await mkdir(root,{mode:0o700});
   const previous = process.cwd(); process.chdir(root);
   const cleanup = ownDirectory(undefined,root);
@@ -53,7 +53,9 @@ export async function sshHostFixture(t: TestContext) {
   await writeFile(join(fake.directory,'ports.json'),JSON.stringify({'12345':join(fake.home,'session.sock')}));
   const supervisor = join(root,'supervisor'); await writeFile(supervisor,'#!/bin/sh\n[ "$1" = --check ]\n',{mode:0o700});
   transport = new SshTransport({root,record,secrets,hubSocket:fixtureSocketPath(root,'hub'),spokeSocket:fixtureSocketPath(root,'spoke'),remoteRun:fake.run,supervisor,agentCommand:['stub'],env});
-  await transport.start(); await eventually('fake tunnel up',()=>transport!.status().state === 'up' || undefined,10000);
+  if (options.startTransport !== false) {
+    await transport.start(); await eventually('fake tunnel up',()=>transport!.status().state === 'up' || undefined,10000);
+  }
   for(const path of [fixtureSocketPath(root,'hub'),fixtureSocketPath(root,'spoke'),...['agent','hub','spoke','git'].map(name=>join(fake.run,name+'.sock')),hostPaths(root,'f1').agentSocket,hostPaths(root,'f1').gitSocket,hostPaths(root,'f1').controlSocket,hostPaths(root,'f1').sessionSocket('session-id')]) assert.ok(Buffer.byteLength(path)+1<=104,path);
   const layout = Object.freeze({discoveryFile:join(fake.home,'hub.json'),node:process.execPath,cli:'/remote/cland.ts',spoke:'/remote/spoke.ts',runDirectory:fake.run,logDirectory:join(fake.home,'log')});
   host = sshHost({log:entry=>diagnostics.push(entry),name:'f1',transport,layout,connect:()=>AgentClient.connect(hostPaths(root,'f1').agentSocket,secrets.readSecret('f1'))});

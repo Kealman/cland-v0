@@ -1,5 +1,5 @@
 import { readDiscovery } from '../../shared/project-discovery.ts';
-export { projectRoot, hubDiscovery, readDiscovery, type Discovery } from '../../shared/project-discovery.ts';
+export { projectRoot, hubDiscovery, readDiscovery, type Discovery, type LocalDiscovery, type RemoteDiscovery } from '../../shared/project-discovery.ts';
 import type { Discovery } from '../../shared/project-discovery.ts';
 // A project's `.cland/` folder: where it is, what it holds, and the discovery file a client finds the
 // hub through (spec 4.2, 4.9). Everything here is files; no process is started or spoken to.

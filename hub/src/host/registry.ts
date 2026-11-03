@@ -7,6 +7,7 @@ import type { Host, HostLaunchLayout } from './host.ts';
 import { remoteHostLayout, remoteCodeDirectory, remoteSupervisor } from './remote-layout.ts';
 import { sshHost } from './ssh-host.ts';
 import { SshTransport, type SshOptions } from '../transport/ssh.ts';
+import { remoteDiscovery, publishRemoteDiscovery } from './discovery.ts';
 import { AgentClient } from './agent-client.ts';
 import { startGitDaemon, type GitDaemonOptions } from './git-daemon.ts';
 import { territoryPath } from '../territory.ts';
@@ -28,7 +29,10 @@ export async function projectSshHosts(options: {createTransport?: (options:SshOp
       const installed = fileURLToPath(new URL('../../..',import.meta.url));
       const layout = remoteHostLayout(home, { ...(fake ? {node:process.execPath,cli:join(installed,'hub/bin/cland.ts'),spoke:join(installed,'hub/bin/cland-spoke.ts')} : {}), ...config?.layout });
       const code = remoteCodeDirectory(layout);
-      const carrier = (options.createTransport ?? (o=>new SshTransport(o)))({ root:options.root,record,secrets,hubSocket:options.hubSocket,spokeSocket:options.spokeSocket,remoteRun:layout.runDirectory,supervisor:config?.supervisor ?? remoteSupervisor(layout),agentCommand:[layout.node,layout.cli,'host','serve'],env:options.env,log:message=>options.log({event:'host-tunnel',host:record.id,message}) });
+      const carrier = (options.createTransport ?? (o=>new SshTransport(o)))({ beforeReady:async(signal)=>{
+        const client = await AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id));
+        try { await publishRemoteDiscovery(client,layout.discoveryFile,remoteDiscovery(layout.runDirectory,secrets.readSecret(record.id)),signal); } finally { await client.close(); }
+      }, root:options.root,record,secrets,hubSocket:options.hubSocket,spokeSocket:options.spokeSocket,remoteRun:layout.runDirectory,supervisor:config?.supervisor ?? remoteSupervisor(layout),agentCommand:[layout.node,layout.cli,'host','serve'],env:options.env,log:message=>options.log({event:'host-tunnel',host:record.id,message}) });
       const host = sshHost({...(fake ? {} : {codeDirectory:code}),available:()=>options.records.get(record.id)?.state === 'registered',name:record.id,transport:carrier,layout,connect:()=>AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id))});
       quiescers.push(()=>host.quiesce());
       let daemon: {close():Promise<void>} | undefined;

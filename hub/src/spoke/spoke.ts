@@ -126,7 +126,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   if (discoveryFile) {
     endpoint = () => {
       const d = readDiscovery(discoveryFile);
-      return d ? { url: `ws://127.0.0.1:${d.port}`, secret: d.secret } : null;
+      return d ? { url: d.remote ? d.spoke : `ws://127.0.0.1:${d.port}`, secret: d.secret } : null;
     };
     const first = endpoint();
     if (first) ({ url, secret } = first);
@@ -145,7 +145,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   const projectRoot = discoveryFile ? readDiscovery(discoveryFile)?.root : undefined;
   const clandDir = discoveryFile ? projectRoot ? join(projectRoot, '.cland') : dirname(discoveryFile) : null;
   let mapped = false;
-  if (clandDir && !name && !launchToken && sessionId) {
+  if (clandDir && !readDiscovery(discoveryFile!)?.remote && !name && !launchToken && sessionId) {
     try { mapped = hasRoleMappedSession(join(clandDir, 'hub.db'), sessionId); }
     catch (err) { log(`could not read this session's role mapping: ${err instanceof Error ? err.message : String(err)}`); }
   }

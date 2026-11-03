@@ -1,0 +1,297 @@
+# T-1600 discovery consumer inventory (before edits)
+
+Search: readDiscovery, hub.json, CLAND_HUB_FILE, ws+unix: across production, all tier tests, startup probes, shipped skills and QA briefs.
+
+Migrate parser, spoke endpoint selection, CLI hub lifecycle/status, task/offline-import liveness, doctor project/remotes, web command, setup and executor PID readers. Socket-only CLI/hook/mod bridge consumers retain socket and secret with session credentials. Web has no discovery reader; Neovim uses socket/secret without pid checks. Existing local fixture/QA files retain old shape as compatibility coverage.
+
+Matched consumers:
+
+- nvim/README.md
+- qa/briefs/T-231.md
+- qa/briefs/E-412-stage-3.md
+- qa/briefs/T-270.md
+- shared/project-discovery.ts
+- qa/briefs/E-414-stage-1.md
+- shared/wire/index.ts
+- qa/briefs/E-1006-stage-2.md
+- qa/briefs/T-274.md
+- qa/briefs/E-1536.md
+- qa/briefs/E-1532-stage-2.md
+- hub/src/spoke/spoke.ts
+- hub/src/spoke/hub-client.ts
+- qa/briefs/T-275.md
+- qa/briefs/T-117.md
+- qa/briefs/T-230.md
+- qa/briefs/E-412-stage-2.md
+- qa/briefs/T-271.md
+- hub/src/host/remote-layout.ts
+- nvim/lua/cland/hub.lua
+- qa/briefs/E-579.md
+- qa/briefs/E-468.md
+- qa/briefs/T-108.md
+- hub/src/hub/server.ts
+- qa/briefs/E-415-stage-2.md
+- qa/briefs/E-1536-stage-4.md
+- qa/briefs/E-1538.md
+- .agents/skills/qa/qa-record.sh
+- qa/briefs/E-426.md
+- qa/briefs/E-413.md
+- nvim/test/client.test.ts
+- qa/briefs/E-1536-stage-1.md
+- qa/briefs/E-413-stage-1.md
+- hub/src/project.ts
+- hub/mod/cland/hooks/register.ts
+- qa/briefs/E-1538-stage-2.md
+- qa/briefs/E-423.md
+- qa/briefs/E-611.md
+- qa/briefs/E-415-stage-3.md
+- qa/briefs/E-424.md
+- qa/briefs/T-229.md
+- qa/briefs/E-414.md
+- qa/briefs/T-269.md
+- qa/briefs/E-413-stage-2.md
+- qa/briefs/E-1531-stage-3.md
+- qa/briefs/E-1536-stage-2.md
+- qa/briefs/E-1538-stage-1.md
+- qa/briefs/E-789-stage-1.md
+- qa/briefs/T-114.md
+- qa/briefs/T-276.md
+- qa/briefs/E-613.md
+- qa/briefs/E-420.md
+- qa/briefs/E-1006.md
+- qa/briefs/E-612.md
+- qa/briefs/E-412-stage-1.md
+- nvim/test/qa.test.ts
+- qa/briefs/E-425.md
+- qa/briefs/T-272.md
+- qa/briefs/E-617.md
+- nvim/init.lua
+- qa/briefs/E-418-stage-1.md
+- qa/briefs/E-414-stage-3.md
+- hub/test/suite.test.ts
+- qa/briefs/E-1536-stage-3.md
+- qa/briefs/E-417-stage-1.md
+- qa/briefs/E-1531.md
+- qa/briefs/T-115.md
+- qa/briefs/T-273.md
+- hub/src/hub/daemon.ts
+- qa/briefs/E-414-stage-2.md
+- qa/briefs/E-1531-stage-2.md
+- nvim/test/startup-budget-support.ts
+- qa/briefs/E-1006-stage-1.md
+- hub/test/durations.json
+- nvim/test/rulebook.test.ts
+- hub/test/tracker-async.test.ts
+- web/test/readme.test.ts
+- hub/src/executor/droplet/spend-hubs.ts
+- hub/test/host-contract.ts
+- hub/test/web-auth.test.ts
+- hub/test/host-ssh-contract.test.ts
+- hub/test/tracker-component.test.ts
+- hub/test/executor-spend.test.ts
+- hub/test/startup-deadline-component.test.ts
+- hub/test/roles-template-component.test.ts
+- hub/test/host-command-environment.test.ts
+- hub/test/claude-code-sessions-lifecycle.test.ts
+- hub/test/spoke-unix-edge.test.ts
+- hub/test/cli.test.ts
+- hub/test/account-coalescing.test.ts
+- hub/test/aide-migration.test.ts
+- hub/test/host-secret-admission.test.ts
+- hub/test/suite-admission-cost.test.ts
+- hub/test/opencode-launch-policy.test.ts
+- hub/test/push.test.ts
+- hub/test/skills-onboarding.test.ts
+- hub/test/cli-identity.test.ts
+- hub/test/session-credential-io.test.ts
+- hub/src/protocol.ts
+- hub/test/codex-workspace-git.test.ts
+- hub/test/lead-permissions-component.test.ts
+- hub/test/opencode-host.test.ts
+- hub/test/opencode-adapter.test.ts
+- hub/test/suite-runner.test.ts
+- hub/test/hook-bridge-doctor.test.ts
+- hub/test/demo.test.ts
+- hub/test/skills-qa.test.ts
+- hub/test/codex-host.test.ts
+- hub/test/open.test.ts
+- hub/test/test-admission.test.ts
+- hub/test/suite-support.ts
+- hub/test/fake-harness-capabilities.test.ts
+- hub/test/hub-lock-readers.test.ts
+- hub/test/plan-stage-fixture.ts
+- hub/test/adapter-native-boundary.test.ts
+- hub/test/release-item.test.ts
+- hub/test/topics.test.ts
+- hub/test/verify-submission.test.ts
+- hub/test/tracker-rank.test.ts
+- hub/src/adapters/opencode.test.ts
+- hub/test/harness.ts
+- hub/test/cover-quiet.test.ts
+- hub/src/adapters/codex.ts
+- hub/test/suite-remote-process.test.ts
+- hub/test/suite-admission.test.ts
+- hub/src/adapters/opencode.ts
+- hub/test/git-maintenance-cli.test.ts
+- hub/test/fixture-worker-lifecycle.test.ts
+- hub/src/adapters/claude-code.ts
+- hub/test/fixture-environment.test.ts
+- hub/src/adapters/codex/app-server.ts
+- hub/src/tracker/offline-migrate.ts
+- hub/test/fakes/codex/fake-codex.ts
+- hub/test/session-cwd.test.ts
+- hub/src/adapters/contract.ts
+- hub/test/startup-ready-component.test.ts
+- hub/test/claude-code-environment.test.ts
+- hub/test/account-fixture-isolation.test.ts
+- hub/test/claude-code-host.test.ts
+- hub/test/ssh-host-fixture.ts
+- hub/test/host-launch-layout.test.ts
+- hub/test/suite-human.test.ts
+- hub/src/cli/auth.ts
+- hub/test/run-suite.ts
+- hub/src/cli/task.ts
+- hub/test/claude-code-schedule.test.ts
+- hub/test/fakes/legacy-remote-hub.ts
+- hub/src/cli/merge.ts
+- hub/src/cli/web.ts
+- hub/src/cli/release.ts
+- hub/src/setup/hub.ts
+- hub/src/cli/artifact.ts
+- hub/src/cli/config.ts
+- hub/src/cli/suite.ts
+- hub/src/cli/models.ts
+- hub/src/doctor/remotes.ts
+- hub/test/doctor-cli.test.ts
+- hub/test/v01-migration.test.ts
+- hub/src/cli/host.ts
+- hub/test/roles-snapshot-cli.test.ts
+- hub/test/worktree-cli.test.ts
+- hub/src/cli/remote.ts
+- hub/test/orphan-servers.test.ts
+- hub/test/web-edge.test.ts
+- hub/src/cli/task-import.ts
+- hub/src/cli/subscriptions.ts
+- hub/src/cli/hook.ts
+- hub/test/user-invites.test.ts
+- hub/test/termination-ownership.test.ts
+- hub/src/cli/session.ts
+- hub/test/account-cli.test.ts
+- hub/test/daemon.test.ts
+- hub/test/scenarios/setup.test.ts
+- hub/src/cli/role.ts
+- hub/src/doctor/project.ts
+- hub/test/codex-sandbox-host.test.ts
+- hub/test/scenarios/hook-bridge.test.ts
+- hub/test/scenarios/startup-smoke.test.ts
+- hub/src/cli/hub.ts
+- hub/test/edges.test.ts
+- hub/test/scenarios/hub-lifecycle.test.ts
+- hub/test/aide-import-cli.test.ts
+- hub/test/gateway.test.ts
+- hub/test/mod-bridge.test.ts
+- hub/test/tracker-hierarchy.test.ts
+- hub/test/doctor.test.ts
+- hub/test/fixtures/host-launch-codex.json
+- hub/test/fixtures/host-launch-opencode.json
+- hub/test/fixtures/shared-defects/A-3645.log
+- hub/test/suite-admission-native.test.ts
+- hub/test/fixtures/host-launch-claude.json
+- hub/src/cli/crew.ts
+- hub/test/tracker-levels.test.ts
+- hub/test/fixtures/tracker-snapshot/items.json
+- hub/src/cli/open.ts
+- hub/src/cli/demo.ts
+- hub/src/cli/publish.ts
+- hub/src/cli/executor.ts
+- hub/src/cli/account.ts
+- hub/src/cli/push.ts
+- hub/src/cli/inbox.ts
+- hub/src/cli/rule.ts
+- hub/src/cli/worktree.ts
+
+## Final dispositions
+
+- shared/project-discovery.ts: additive discriminated remote shape; old local wire regression kept. hub daemon output stays explicitly LocalDiscovery, because daemon always serves locally.
+- spoke/spoke.ts: remote endpoint on each reconnect; no remote database lookup.
+- cli/hub.ts: socket liveness for remote; process management refused without PID use. cli/task.ts and task-import.ts: skip remote PID precheck.
+- doctor/project.ts and doctor/remotes.ts: explicit CLAND_HUB_FILE honoured; skip local PID and lock checks for remote discovery.
+- cli/hook.ts, mod bridge, other CLI readers, shared socket-client.ts, credential-actor.ts, tracker/offline-migrate.ts, setup/hub.ts and executor/droplet/spend-hubs.ts: socket/secret use already compatible; no shape/authority change needed. Setup obtains PID from authenticated status, not discovery.
+- Neovim lua hub reader uses socket/secret; browser uses hub-provided connections, no remote discovery parsing.
+- Production startup probes and existing QA/skill examples construct local files; local shape retained. All matched test tiers and colocated tests retain their current local fixtures. New remote regressions supplement them.
+- transport/ssh.ts: additive option beforeReady (Coordinator4d4f7a7e), no Transport member change. Existing SSH transport and transport contract tests run unchanged.
+
+Review A-16288 / Coordinator f3e4c421: beforeReady now receives AbortSignal. Registry and injected test callbacks migrated; Transport and HostTunnelStatus wire members stay unchanged. Cleanup-incomplete uses connecting plus an explicit path-free reason. Frozen help consumer hub/test/fixtures/cli-usage/commands.json intentionally migrates only HUB_USAGE and DOCTOR_USAGE blocks.
+
+## Failed-evidence explicit-discovery fixture audit
+
+Search CLAND_HUB_FILE across hub/src, hub/test, Neovim/Web tests, QA and shipped skills. Doctor fixture passes its explicit env directly to runDoctor; first isolation call ignores process.env correctly, second call explicitly overlays parent including an absent outer-hub.json. Migrate that second setup: missing explicit path remains a failure, valid copied scratch discovery then reaches unchanged credential-refusal assertion. Other matches retain existing socket-only/local fixtures or strip inherited values; none has this doctor double-call pattern.
+
+- qa/briefs/T-231.md
+- qa/briefs/T-270.md
+- .agents/skills/qa/qa-record.sh
+- qa/briefs/E-1006-stage-2.md
+- qa/briefs/T-274.md
+- hub/test/suite.test.ts
+- qa/briefs/T-275.md
+- qa/briefs/T-117.md
+- qa/briefs/T-230.md
+- qa/briefs/E-412-stage-2.md
+- qa/briefs/T-271.md
+- hub/test/durations.json
+- qa/briefs/E-579.md
+- qa/briefs/E-468.md
+- qa/briefs/T-108.md
+- qa/briefs/E-426.md
+- hub/test/suite-admission-cost.test.ts
+- qa/briefs/E-423.md
+- qa/briefs/E-424.md
+- nvim/test/qa.test.ts
+- qa/briefs/E-1536-stage-2.md
+- qa/briefs/E-789-stage-1.md
+- qa/briefs/T-114.md
+- qa/briefs/T-276.md
+- qa/briefs/E-412-stage-1.md
+- qa/briefs/T-272.md
+- qa/briefs/T-273.md
+- qa/briefs/T-229.md
+- qa/briefs/E-1006-stage-1.md
+- qa/briefs/T-269.md
+- qa/briefs/T-115.md
+- qa/briefs/E-1006.md
+- qa/briefs/E-425.md
+- hub/test/fixture-environment.test.ts
+- hub/src/spoke/spoke.ts
+- hub/src/adapters/codex.ts
+- hub/src/adapters/opencode.ts
+- hub/src/adapters/claude-code.ts
+- .agents/skills/implement/CHANGES/T-1600-consumers.md
+- hub/test/host-command-environment.test.ts
+- .agents/skills/implement/CHANGES/T-1600-remote-discovery.md
+- hub/test/remote-discovery-cli.test.ts
+- hub/test/doctor.test.ts
+- hub/test/host-secret-admission.test.ts
+- hub/test/demo.test.ts
+- hub/src/cli/hub.ts
+- hub/test/test-admission.test.ts
+- hub/test/mod-bridge.test.ts
+- hub/src/cli/usage/hub.ts
+- hub/test/opencode-adapter.test.ts
+- hub/src/cli/usage/doctor.ts
+- hub/test/skills-qa.test.ts
+- hub/test/suite-support.ts
+- hub/test/hub-lock-readers.test.ts
+- hub/test/cover-quiet.test.ts
+- hub/test/suite-remote-process.test.ts
+- hub/test/fixtures/cli-usage/commands.json
+- hub/test/fixtures/host-launch-opencode.json
+- hub/test/remote-discovery-host.test.ts
+- hub/test/fixtures/host-launch-codex.json
+- hub/test/fixtures/host-launch-claude.json
+- hub/test/suite-human.test.ts
+- hub/test/account-cli.test.ts
+- hub/test/worktree-cli.test.ts
+
+## Batch duration correction (Coordinator a1406d49/131c42c9)
+
+SshOptions readinessPollMs/readinessTimeoutMs are additive test timing seams; sole production constructor registry leaves defaults unchanged. Existing constructors in transport-ssh, transport-forwards, transport-contract-fixture, ssh-host-fixture retain defaults; remote-discovery-host explicitly injects short timings. sshHostFixture startTransport optional defaults true; host-prepared and host-ssh-contract stay unchanged, remote-discovery-host opts out of its unused first carrier. Existing socket-byte and process census checks remain. Split combined C2/C4/C5 into independent cases with all original assertions. No allowance or baseline change.

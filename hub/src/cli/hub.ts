@@ -77,10 +77,11 @@ const ownsProject = (lockFile: string, pid: number, readers: typeof import('../h
  * process that does not hold the project's lock — a reused pid), a hub that does not answer, or nothing.
  */
 export async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'foreign'; info: NonNullable<ReturnType<typeof readForeignHolder>> } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery }> {
+  const d = readDiscovery(l.discovery);
+  if (d?.remote) return await probe(d) ? {kind:'live', d} : {kind:'mute', d};
   const readers = existsSync(l.lock) ? await import('../hub/lock.ts') : null;
   const foreign = readers?.readForeignHolder(l.lock);
   if (foreign) return { kind: 'foreign', info: foreign };
-  const d = readDiscovery(l.discovery);
   if (!d) return { kind: 'none' };
   if (!pidAlive(d.pid)) return { kind: 'stale', d, why: `pid ${d.pid} is gone` };
   if (await probe(d)) return { kind: 'live', d };
@@ -104,6 +105,10 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
     return 0;
   }
   const found = await inspect(l);
+  if ((found.kind === 'live' || found.kind === 'mute') && found.d.remote) {
+    io.err('cland: manage the remote hub on its owning machine\n');
+    return 1;
+  }
   const { readForeignHolder, describeForeignHolder, liveHolder } = await import('../hub/lock.ts');
   if (found.kind === 'foreign' && found.info.active) {
     io.err(`cland: ${describeForeignHolder(found.info)}\n`);
@@ -201,7 +206,7 @@ async function status(l: Layout, json: boolean, io: Io, history = false): Promis
       } catch (error) {
         const statusError = error instanceof Error ? error.message : String(error);
         io.out(json ? `${JSON.stringify({ running: true, root: found.d.root ?? root, pid: found.d.pid, statusError })}\n`
-          : `hub running for ${found.d.root ?? root} (pid ${found.d.pid})\nfull status unavailable: ${statusError}\n`);
+          : `hub running for ${found.d.root ?? root}${found.d.remote ? ' (remote)' : ` (pid ${found.d.pid})`}\nfull status unavailable: ${statusError}\n`);
       }
       return 0;
     }
@@ -217,7 +222,7 @@ async function status(l: Layout, json: boolean, io: Io, history = false): Promis
       io.out(json ? `${JSON.stringify({ running: false, root, stale: found.d.pid })}\n` : `no hub running for ${root} (stale ${l.discovery}: ${found.why})\n`);
       return 1;
     case 'mute':
-      io.err(`cland: pid ${found.d.pid} holds ${l.discovery} but does not answer on ${found.d.socket}\n`);
+      io.err(found.d.remote ? `cland: remote hub does not answer on ${found.d.socket} — restore the host tunnel\n` : `cland: pid ${found.d.pid} holds ${l.discovery} but does not answer on ${found.d.socket}\n`);
       return 1;
   }
 }
@@ -239,6 +244,10 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
   if (!d) {
     io.out(`no hub running for ${root}\n`);
     return 0;
+  }
+  if (d.remote) {
+    io.err('cland: manage the hub on its owning machine; remote discovery is retained\n');
+    return 1;
   }
   if (pidAlive(d.pid)) {
     const ownedBeforeStop = ownsProject(l.lock, d.pid, readers);

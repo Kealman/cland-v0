@@ -14,7 +14,7 @@ import { parseConfig } from '../init/config.ts';
 import { isManagedFile, readText } from '../init/files.ts';
 import { BLOCK_END, DOCS } from '../init/instructions.ts';
 import { MANIFEST, readManifest, SKILLS_SOURCE } from '../init/skills.ts';
-import { CLAND_DIR, layout, pidAlive, readDiscovery, type Layout } from '../project.ts';
+import { CLAND_DIR, hubDiscovery, layout, pidAlive, readDiscovery, type Layout } from '../project.ts';
 import type { HubStatus } from '../protocol.ts';
 import { KNOWN_GOOD_FREE_MODELS } from '../adapters/opencode/client.ts';
 import { parseRoles } from '../roles/config.ts';
@@ -57,6 +57,14 @@ async function checkHub(l: Layout, readers: ProjectReaders, env: NodeJS.ProcessE
   const rel = (p: string) => relative(l.root, p);
   const text = readText(l.discovery);
   const d = text === null ? null : readDiscovery(l.discovery);
+  if (d?.remote) {
+    try {
+      await askHubFrame(d, {type:'hub.status'}, probeTimeout(env,3000), env);
+      return [ok('hub', `remote hub answers on ${d.socket}`), ok('hub.json', 'valid remote discovery; no local process ownership')];
+    } catch (error) {
+      return [fail('hub', `remote hub does not answer on ${d.socket} (${errorText(error)})`, 'restore the host tunnel'), ok('hub.json','valid remote discovery')];
+    }
+  }
   // the lock's holder, its start time asked of `ps` with a deadline: a hung `ps` cannot hold the doctor up
   const foreign = readForeignHolder(l.lock, readers.lockOptions);
   const holder = foreign ? null : await liveHolderAsync(l.lock, readers.started ?? (async (pid, timezone) => {
@@ -316,7 +324,8 @@ function checkInstructions(root: string): Check[] {
 
 /** Every project check; a folder `cland init` never ran in is one failure. */
 export async function checkProject(root: string, readers: ProjectReaders = {}, env: NodeJS.ProcessEnv = process.env): Promise<Check[]> {
-  const l = layout(root);
+  const l = { ...layout(root), discovery: hubDiscovery(root, env) };
+  if (!existsSync(l.dir) && readDiscovery(l.discovery)?.remote) return checkHub(l,readers,env);
   if (!existsSync(l.dir)) return [fail('project', `${root} has no ${CLAND_DIR}/: not a cland project`, `cland init ${root}`)];
   const problems = (readers.territoryProblems ?? territoryProblems)(root);
   const territory = problems === null ? ok('territory', 'not a git repository: no territory needed') : problems.length ? fail('territory', problems.join('; '), 'cland init (restore origin to .cland/territory.git if it was changed)') : ok('territory', 'origin is the local bare repository; main and dev protected; HEAD on dev');

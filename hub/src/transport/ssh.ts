@@ -1,3 +1,4 @@
+import { drained, ReadinessCleanupIncomplete } from './readiness.ts';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { HostEndpoint } from '../host/host.ts';
 import { createConnection } from 'node:net';
@@ -30,6 +31,13 @@ async function controlEndpointAbsent(path: string): Promise<boolean> {
   });
 }
 export type SshOptions = {
+  /** Joined before up and during stop; caller bounds its agent operations. */
+  beforeReady?: (signal: AbortSignal) => Promise<void>;
+  beforeReadyTimeoutMs?: number;
+  beforeReadyDrainMs?: number;
+  /** Injectable polling bound; production retains 100 ms / 10 seconds. */
+  readinessPollMs?: number;
+  readinessTimeoutMs?: number;
   root: string; record: HostRecord; secrets: Pick<HostSecretStore, 'readSecret'>;
   hubSocket: string; spokeSocket: string; remoteRun: string;
   /** Installed absolute path, not shell source. Code delivery is a separate owner. */
@@ -61,6 +69,8 @@ export class SshTransport implements Transport {
   #children = new Map<ChildProcess, () => Promise<void>>(); #retry: (() => void) | undefined; #watch?: ClockTimer;
   #forwards = new Map<string, SessionForward>();
   #forwardWork: Promise<unknown> = Promise.resolve();
+  #beforeReady: Promise<void> | undefined;
+  #readinessAbort: AbortController | undefined;
   #masterReady = false;
   #retireMaster: (() => Promise<void>) | undefined;
   #forwardAbort = new AbortController();
@@ -144,6 +154,11 @@ export class SshTransport implements Transport {
   wake(): void { this.#retry?.(); }
   async stop(): Promise<void> {
     this.#running = false; this.#forwardAbort.abort(); this.#clock.clearInterval(this.#watch); this.wake();
+    this.#readinessAbort?.abort();
+    if (this.#beforeReady && !await drained(this.#beforeReady, this.#o.beforeReadyDrainMs ?? 1000)) {
+      this.#state.reason = 'host readiness cleanup incomplete';
+      throw new ReadinessCleanupIncomplete();
+    }
     await Promise.all([...this.#children.values()].map(terminate => terminate()));
     await this.#loop; await this.#forwardWork;
     await this.#serial(async () => {
@@ -211,10 +226,10 @@ export class SshTransport implements Transport {
           let exited = false; void master.closed.then(() => { exited = true; this.wake(); });
           try {
             // Readiness is multiplexing plus an authenticated end-to-end receipt.
-            const deadline = performance.now() + 10000;
+            const deadline = performance.now() + (o.readinessTimeoutMs ?? 10000);
             while (this.#running && !exited && performance.now() < deadline) {
               if (await this.#command([...base,'-S',paths.controlSocket,'-O','check',destination]) && await this.#probe()) break;
-              await this.#pause(100);
+              await this.#pause(o.readinessPollMs ?? 100);
             }
             if (!this.#running || exited || !this.#state.lastProbe?.ok || performance.now() >= deadline) throw new Error('master readiness failed');
             await this.#serial(async () => {
@@ -239,6 +254,36 @@ export class SshTransport implements Transport {
               }
             });
             if (!this.#running || exited) throw new Error('master closed during forward restore');
+            if (o.beforeReady) {
+              this.#readinessAbort = new AbortController();
+              this.#beforeReady = Promise.resolve().then(() => o.beforeReady!(this.#readinessAbort!.signal));
+              let timer: NodeJS.Timeout | undefined;
+              try {
+                const deadline = new Promise<never>((_, reject) => {
+                  timer = setTimeout(() => {
+                    this.#state.reason = 'host readiness timed out';
+                    o.log?.(`host ${this.host}: host readiness timed out`);
+                    reject(new Error('host discovery readiness timed out'));
+                  }, o.beforeReadyTimeoutMs ?? 30000);
+                });
+                await Promise.race([this.#beforeReady, deadline]);
+              } catch (error) {
+                this.#readinessAbort.abort();
+                if (!await drained(this.#beforeReady, o.beforeReadyDrainMs ?? 1000)) {
+                  this.#state.reason = 'host readiness cleanup incomplete';
+                  o.log?.(`host ${this.host}: host readiness cleanup incomplete`);
+                  // Retain this master and its ownership until positive drain.
+                  // stop surfaces incomplete instead of waiting without a bound.
+                  await this.#beforeReady.catch(() => {});
+                }
+                throw error;
+              } finally {
+                if (timer) clearTimeout(timer);
+                this.#beforeReady = undefined;
+                this.#readinessAbort = undefined;
+              }
+            }
+            if (!this.#running || exited) throw new Error('master closed during discovery');
             this.#masterReady = true;
             this.#stateTo('up'); this.#policy.connected();
             while (this.#running && !exited) {
@@ -247,10 +292,11 @@ export class SshTransport implements Transport {
             }
           } finally { if (!exited) await master.terminate(); await master.closed; this.#masterReady = false; this.#retireMaster = undefined; await this.#forwardWork; }
         } catch (error) {
-          this.#state.reason = error instanceof ControlEndpointFenced ? 'control endpoint has not closed' : 'SSH connection or pinned-key admission failed';
+          this.#state.reason = error instanceof ControlEndpointFenced ? 'control endpoint has not closed' : error instanceof Error && error.message === 'host discovery differs; atomic replacement required' ? 'host discovery differs; atomic replacement required' : 'SSH connection or pinned-key admission failed';
           o.log?.(`host ${this.host}: ${this.#state.reason}`);
         }
-        this.#policy.disconnected(); this.#stateTo('down');
+        this.#policy.disconnected();
+        this.#stateTo(this.#state.reason === 'host discovery differs; atomic replacement required' ? 'connecting' : 'down');
         if (this.#running) { this.#state.reconnects++; const backoff = this.#policy.failed(); await this.#pause(o.reconnectDelayMs?.(backoff) ?? backoff); }
       }
     } catch { this.#state.reason = 'transport configuration unavailable'; o.log?.(`host ${this.host}: ${this.#state.reason}`); }

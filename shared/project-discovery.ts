@@ -4,7 +4,8 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 const CLAND_DIR = '.cland';
 
 /** The discovery file: what a client needs to reach the project's hub. */
-export type Discovery = {
+export type LocalDiscovery = {
+  remote?: false;
   /** The hub's project root, independent of where this file is copied. Absent in older files. */
   root?: string;
   /** The Unix socket the UI and the CLI speak JSON lines on. */
@@ -17,6 +18,14 @@ export type Discovery = {
   pid: number;
   version: string;
 };
+
+export type RemoteDiscovery = Omit<LocalDiscovery, 'pid' | 'port' | 'remote'> & {
+  remote: true;
+  spoke: string;
+  pid?: never;
+  port?: never;
+};
+export type Discovery = LocalDiscovery | RemoteDiscovery;
 
 /**
  * The project a command run in `cwd` belongs to. Linked worktrees share the main worktree's project;
@@ -54,7 +63,10 @@ export function hubDiscovery(cwd: string, env: NodeJS.ProcessEnv = process.env):
 export function readDiscovery(file: string): Discovery | null {
   try {
     const d = JSON.parse(readFileSync(file, 'utf8')) as Partial<Discovery>;
-    if (typeof d.socket !== 'string' || typeof d.port !== 'number' || typeof d.secret !== 'string' || typeof d.pid !== 'number' || typeof d.version !== 'string') return null;
+    if (typeof d.socket !== 'string' || typeof d.secret !== 'string' || typeof d.version !== 'string') return null;
+    if (d.remote === true) {
+      if (typeof d.spoke !== 'string' || !validUnixSpoke(d.spoke) || !isAbsolute(d.socket) || d.pid !== undefined || d.port !== undefined) return null;
+    } else if ((d.remote !== undefined && d.remote !== false) || typeof d.port !== 'number' || typeof d.pid !== 'number') return null;
     if (d.root !== undefined && (typeof d.root !== 'string' || !isAbsolute(d.root))) return null;
     return d as Discovery;
   } catch {
@@ -62,3 +74,10 @@ export function readDiscovery(file: string): Discovery | null {
   }
 }
 
+
+/** ws uses the pathname literally, splitting the socket from the request path at a colon. */
+function validUnixSpoke(endpoint: string): boolean {
+  if (!endpoint.startsWith('ws+unix:/') || !endpoint.endsWith(':/')) return false;
+  const path = endpoint.slice(8,-2);
+  try { const url = new URL(endpoint); return isAbsolute(path) && !path.includes(':') && url.pathname === `${path}:/` && !url.search && !url.hash; } catch { return false; }
+}
