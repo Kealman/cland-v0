@@ -1120,6 +1120,31 @@ controls immediate. Use the fake-clock matrices in the setup-remotes and
 doctor-remotes per-test guides. Pairing remains an explicit human gesture and
 approval; existing role clauses suffice.
 
+### Discord with several users
+
+With `[auth] mode = "users"` and the native Discord adapter enabled with a
+resolved token, each paired Discord user id acts as its project user. Several
+paired users may share a server text channel. Unpaired members send no hub
+input and cannot answer cards; card refusals remain private. Single mode keeps
+its one paired sender and channel.
+
+General and inbox cards have one publication per paired channel. Discord input
+is mirrored to other paired channels with the author's project name, and never
+echoed to its origin channel. Every mapped card copy folds with the first
+answerer's project name, including copies made by `/cland inbox`. That command
+re-sends only in the invoking channel. Native ids, enforced nonces and unknown
+send fences remain durable; General/artifact reservations, availability and
+history cursors are scoped by channel in users mode. Recovery includes all
+paired members of each channel. Startup resumes channel-scoped frozen history
+before accepting replay input, including when the saved Gateway session takes
+Resume without a fresh READY. A channel's revoked member cannot send input
+or receive reactions; publications remain authorized while another paired
+member remains there. A channel permission failure does not disable other
+users-mode channels, including during history and gap recovery. Failed warnings
+retain their channel checkpoint; a later recovery may retry a positively refused
+send, while unknown sends retain their fence. Invalid bot credentials still
+stop the adapter.
+
 ### Telegram publications in users mode
 
 When `[auth] mode = "users"`, General and inbox cards reach each paired user's

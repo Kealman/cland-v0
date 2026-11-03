@@ -1,3 +1,4 @@
+import { discordChannelKey } from './discord-state.ts';
 import { discordLateText } from './discord-catchup.ts';
 import { discordCdn, CdnError } from './discord-cdn.ts';
 import type { RemoteRedactor } from './redact.ts';
@@ -183,10 +184,12 @@ export class DiscordInbound {
     this.#store.putMessage({ chatId: channel, messageId: message, topic: saved.topic, message: saved.id, ask: null, approval: null });
     this.#store.set(`discord.inbound:${message}`, JSON.stringify({ channel, user, message, hub: saved.id, delivered: saved.stage === 'delivered' || saved.stage === 'injected' }));
   }
-  #confirmCursor(messageId: string): void {
+  #confirmCursor(messageId: string, channel = this.#store.pairing()?.chatId): void {
+    if (!channel) return;
+    const key = discordChannelKey(this.#store, 'discord.lastMessageId', channel);
     this.#store.transaction(() => {
-      const previous = this.#store.get('discord.lastMessageId');
-      if (!previous || BigInt(messageId) > BigInt(previous)) this.#store.set('discord.lastMessageId', messageId);
+      const previous = this.#store.get(key);
+      if (!previous || BigInt(messageId) > BigInt(previous)) this.#store.set(key, messageId);
     });
   }
   receive(frame: HubFrame): void | Promise<void> {
@@ -208,14 +211,14 @@ export class DiscordInbound {
       const receipt = { ...pending.receipt, hub: saved.id, delivered: saved.stage === 'delivered' || saved.stage === 'injected' };
       this.#store.set(`discord.inbound:${receipt.message}`, JSON.stringify(receipt));
       this.#store.putMessage({ chatId: receipt.channel, messageId: receipt.message, topic: saved.topic, message: saved.id, ask: null, approval: null });
-      this.#confirmCursor(receipt.message);
+      this.#confirmCursor(receipt.message, receipt.channel);
       pending.resolve(saved);
     }
     else if (this.#signal.aborted) pending.reject(new Error('Discord input cancelled'));
     else {
       // A terminal hub refusal is handled input, not a broken gateway exchange.
       this.#store.set(`discord.inbound:${pending.receipt.message}`, '1');
-      this.#confirmCursor(pending.receipt.message);
+      this.#confirmCursor(pending.receipt.message, pending.receipt.channel);
       pending.resolve(null);
     }
   }

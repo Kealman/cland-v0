@@ -72,7 +72,7 @@ function renderReply(reply: PhoneReply): string[] {
   return pages;
 }
 
-function discordHelp(project: string): string[] {
+function discordHelp(project: string, users = false): string[] {
   return renderReply(helpReply(project, { groups: [
     { label: 'Follow', lines: ['General messages arrive here.', 'Asks and approvals arrive as cards; use their buttons.', '/cland inbox re-sends open ask cards oldest first. Earlier copies keep working.'] },
     { label: 'Send', lines: ['Write to the Coordinator or reply to a mirrored message.', 'Use /cland decision or /cland question with a text field.', 'Plans are approved in the workbench.'] },
@@ -82,7 +82,7 @@ function discordHelp(project: string): string[] {
       '• /cland unmute: Resume General here', '• /cland decision <text>: Send a decision',
       '• /cland question <text>: Ask a question', '• /cland help: Commands and trust',
     ] },
-  ], small: ['Only the paired Discord user in this channel can act.',
+  ], small: [users ? 'Only paired Discord users in this channel can act.' : 'Only the paired Discord user in this channel can act.',
     'Pairing is approved locally. Session, release and configuration controls stay in the workbench.'] }));
 }
 
@@ -182,7 +182,7 @@ export class DiscordCommands {
         if (command === 'decision' || command === 'question') {
           const text = d.data?.options?.[0]?.options?.find(option => option.name === 'text')?.value;
           if (typeof text !== 'string' || !text.trim()) return 'Provide a text field.';
-          await this.#request('topic.send', { topic: 'general', kind: command, text }, { chatId: identity.chatId, messageId: d.id! });
+          await this.#request('topic.send', { topic: 'general', kind: command, text }, { chatId: identity.chatId, messageId: d.id!, ...(pairing?.clandUserId ? { messengerUserId: identity.userId } : {}) });
           return 'Sent';
         }
         if (command === 'inbox' && this.#publishInbox) {
@@ -195,7 +195,7 @@ export class DiscordCommands {
         }
         if (command === 'mute' || command === 'unmute')
           return this.#store?.applyMute(`discord.mute:${d.id}`, command === 'mute') ?? null;
-        return command === 'status' ? this.#status() : command === 'help' ? discordHelp(this.#name()) : 'This command is not available yet.';
+        return command === 'status' ? this.#status() : command === 'help' ? discordHelp(this.#name(), pairing?.clandUserId !== undefined) : 'This command is not available yet.';
       });
       return;
     }

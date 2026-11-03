@@ -1,3 +1,4 @@
+import { discordChannelKey } from './discord-state.ts';
 import { setImmediate as yieldIO } from 'node:timers/promises';
 import type { DiscordApi, DiscordMessage } from './discord-api.ts';
 import type { DiscordInbound } from './discord-inbound.ts';
@@ -16,9 +17,12 @@ export function discordLateText(text: string, timestamp: unknown, returnedAt: st
 /** Freeze a bounded batch before advancing its cursor, including across interruptions. */
 export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, inbound: DiscordInbound,
   returnedAt: string, signal: AbortSignal, overflow: (key: string) => Promise<void>, limit = DISCORD_HISTORY_LIMIT): Promise<void> {
-  const pair = store.pairing(), cursor = store.get('discord.lastMessageId');
-  if (!pair || !cursor) return;
-  const raw = store.get('discord.history');
+  const pair = store.pairing();
+  if (!pair) return;
+  const cursor = store.get(discordChannelKey(store, 'discord.lastMessageId', pair.chatId));
+  if (!cursor) return;
+  const historyKey = discordChannelKey(store, 'discord.history', pair.chatId);
+  const raw = store.get(historyKey);
   let batch = raw ? JSON.parse(raw) as { channel: string; user: string; returnedAt: string; messages: DiscordMessage[]; overflow: boolean; key: string } : null;
   if (batch && (batch.channel !== pair.chatId || batch.user !== pair.userId)) batch = null;
   if (!batch) {
@@ -32,7 +36,7 @@ export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, i
       if (!page.length) break;
       for (const m of page) {
         if (BigInt(m.id) <= BigInt(cursor)) { done = true; break; }
-        if (m.channel_id === pair.chatId && m.author.id === pair.userId && !m.author.bot && m.webhook_id === undefined
+        if (m.channel_id === pair.chatId && !!store.pairingFor(pair.chatId, m.author.id) && !m.author.bot && m.webhook_id === undefined
           && (m.type === 0 || m.type === 19) && (m.content.trim() || m.attachments?.length)) messages.push(m);
       }
       const next = page.at(-1)!.id;
@@ -40,7 +44,7 @@ export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, i
       before = next;
     }
     batch = { channel: pair.chatId, user: pair.userId, returnedAt, messages: messages.slice(0, limit).reverse(), overflow: messages.length > limit, key: `discord.history-overflow:${channel.last_message_id}` };
-    store.set('discord.history', JSON.stringify(batch));
+    store.set(historyKey, JSON.stringify(batch));
   }
   for (let index = 0; index < batch.messages.length;) {
     signal.throwIfAborted();
@@ -59,5 +63,5 @@ export async function catchDiscordHistory(api: DiscordApi, store: RemoteStore, i
     await yieldIO();
   }
   if (batch.overflow) await overflow(batch.key);
-  store.set('discord.history', null);
+  store.set(historyKey, null);
 }

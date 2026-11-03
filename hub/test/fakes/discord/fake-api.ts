@@ -221,7 +221,9 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       res.setHeader('X-RateLimit-Remaining', limit - bucket.used);
 
     }
-    const fault = !faults[0]?.method || faults[0].method === req.method ? faults.shift() : undefined;
+    const fault = faults.length && (!faults[0]?.method || faults[0].method === req.method)
+      && (!faults[0]?.path || faults[0].path === path.pathname)
+      && (!faults[0]?.contentIncludes || String(body.content).includes(String(faults[0].contentIncludes))) ? faults.shift() : undefined;
     if (fault) {
       if (typeof fault.bucket === 'string') res.setHeader('X-RateLimit-Bucket', fault.bucket);
       if (fault.response === 'redirect') { res.writeHead(302, { location: '/redirect-target' }); res.end(); return; }

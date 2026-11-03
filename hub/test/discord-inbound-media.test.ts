@@ -1,3 +1,4 @@
+import { discordChannelKey } from '../src/remote/discord-state.ts';
 // T2: sealed production frames and fake Discord CDN / Telegram.
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -301,7 +302,7 @@ for (const reassigned of [false, true]) test(`Discord held CDN input retains its
   const fresh = { ...message, id: '90071992547429001', content: 'Fresh owner media', attachments: [{ ...message.attachments[0], url: `${fake.url}/cdn/fresh-owner` }] };
   await fake.control('cdn', { id: 'fresh-owner', content: Buffer.from('new owner bytes').toString('base64') });
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: fresh });
-  await until(() => state.get('discord.lastMessageId') === fresh.id, { what: 'fresh owner media durable completion after held input', timeoutMs: 3000 });
+  await until(() => state.get(discordChannelKey(state, 'discord.lastMessageId', ids.channel)) === fresh.id, { what: 'fresh owner media durable completion after held input', timeoutMs: 3000 });
   const history = ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: TopicMessage[] }).messages;
   assert.deepEqual(history.map(message => [message.text, message.userId]), reassigned
     ? [['Fresh owner media', bob.id]] : [['Old admitted media', alice.id], ['Fresh owner media', alice.id]]);

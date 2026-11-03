@@ -58,3 +58,8 @@ unchanged-owner control. Register the exchange/startup owner before native work,
 and drain the hub and fake before closing either Store or scratch root. Native
 startup has its own 3 s acquisition bound; the later durable-input receipt has
 a separate 3 s bound.
+
+In users mode that completion receipt is `discord.lastMessageId:<channel>`,
+read using the exact native channel. Single-mode tests keep the legacy cursor
+key. The reassigned and unchanged-owner controls retain their full history,
+project-owner and original artifact-byte assertions after that reader migration.

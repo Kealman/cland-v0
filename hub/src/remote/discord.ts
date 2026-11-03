@@ -1,3 +1,4 @@
+import { DiscordRecoveryIncomplete, hasDiscordHistory } from './discord-state.ts';
 import { flushGap } from './gap.ts';
 import { catchDiscordHistory, discordLateText } from './discord-catchup.ts';
 import { DiscordCards } from './discord-cards.ts';
@@ -5,6 +6,7 @@ import { DiscordIdentifyBudget } from './discord-identify.ts';
 import type { DiscordMediaOptions } from './discord-inbound.ts';
 import { DiscordInbound } from './discord-inbound.ts';
 import type { DiscordMessage } from './discord-api.ts';
+import { remotePublications } from './cards.ts';
 import { mirrorOut } from './mirror.ts';
 import { DiscordOutbox } from './discord-outbox.ts';
 import { randomUUID } from 'node:crypto';
@@ -34,7 +36,7 @@ export class DiscordRemote implements Remote {
   #recovery: Promise<void> | undefined;
   #history: Promise<void> = Promise.resolve();
   #inbound: DiscordInbound | undefined; #bot: string | undefined;
-  #restFailedChannel: string | undefined;
+  readonly #restFailedChannels = new Set<string>();
   #detachExchange: (() => void) | undefined;
   #detachApi: (() => void) | undefined;
   #fatal: Error | undefined;
@@ -58,15 +60,15 @@ export class DiscordRemote implements Remote {
       if (error.status === 401 || error.code === 40001 || error.code === 50014) {
         this.#fatal ??= remoteStopError('discord', 'token');
         void this.#failed(this.#fatal, '').catch(() => {});
-      } else if (channel && options.store?.pairing()?.chatId === channel && [403, 404].includes(error.status)
+      } else if (!options.store?.usersMode() && channel && options.store?.publicationPairings().some(pair => pair.chatId === channel) && [403, 404].includes(error.status)
         && !(error.status === 404 && (error.route.startsWith('PATCH ') || error.route.includes('/reactions/')))) {
         this.#fatal ??= remoteStopError('discord', 'blocked', `REST ${error.status}`);
         void this.#failed(this.#fatal, '').catch(() => {});
       }
     });
     this.#detachExchange = api.onExchange((channel, ok) => {
-      if (this.#abort.signal.aborted || options.store?.pairing()?.chatId !== channel) return;
-      this.#restFailedChannel = ok ? undefined : channel;
+      if (this.#abort.signal.aborted || !options.store?.publicationPairings().some(pair => pair.chatId === channel)) return;
+      if (ok) this.#restFailedChannels.delete(channel); else this.#restFailedChannels.add(channel);
       this.#connectionChanged();
       for (const listener of this.#listeners) listener();
     });
@@ -98,7 +100,7 @@ export class DiscordRemote implements Remote {
       this.#offlineTimer.unref();
     }
   }
-  #restFailed(): boolean { return this.#restFailedChannel !== undefined && this.#restFailedChannel === this.#options.store?.pairing()?.chatId; }
+  #restFailed(): boolean { return !!this.#options.store?.publicationPairings().some(pair => this.#restFailedChannels.has(pair.chatId)); }
   subscribe(changed: () => void): () => void { this.#listeners.add(changed); return () => { this.#listeners.delete(changed); }; }
   async start(_send: RemoteSend, _pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt, batch?: import('./gateway.ts').RemoteBatch): Promise<void> {
     const cancel = () => {
@@ -130,18 +132,25 @@ export class DiscordRemote implements Remote {
     const cards = this.#cards?.receive(frame);
     const feedback = this.#inbound?.receive(frame);
     if (this.#abort.signal.aborted || frame.type !== 'message' || frame.topic.id !== 'general') return Promise.all([cards, feedback]).then(() => {});
-    const pairing = this.#options.store?.pairing();
-    const mirrored = mirrorOut(frame.message, 'discord');
-    if (mirrored && frame.message.fromKind !== 'hub' && this.#options.store?.suppressMutedMessage(frame.message.id)) return;
-    if (pairing && mirrored) return this.#outbox?.publication(pairing.chatId, frame.message, mirrored.header, mirrored.silent)
-      .catch(error => this.#outwardError(error));
+    const store = this.#options.store;
+    if (!store) return;
+    if (frame.message.fromKind !== 'hub' && store.suppressMutedMessage(frame.message.id)) return;
+    return remotePublications(store, async pair => {
+      // A channel is shared: suppress the sender's channel even when another
+      // paired member is its publication representative.
+      if (frame.message.via === 'discord' && frame.message.fromKind === 'human'
+        && store.publicationPairings().some(p => p.clandUserId === frame.message.userId && p.chatId === pair.chatId)) return;
+      const mirrored = mirrorOut(frame.message, 'discord', pair.clandUserId);
+      if (mirrored) await this.#outbox?.publication(pair.chatId, frame.message, mirrored.header, mirrored.silent);
+    }).catch(error => this.#outwardError(error)).then(() => {});
   }
+
   run(): Promise<void> {
     return this.#running ??= (async () => {
       try {
         this.#connectionChanged();
         await this.#inbound?.recover();
-        if (this.#options.store?.get('discord.history')) this.#beginHistory();
+        if (this.#options.store && hasDiscordHistory(this.#options.store)) this.#beginHistory();
         const gateway = await this.#api.getGatewayBot({ signal: this.#abort.signal });
         if (this.#abort.signal.aborted) return;
         const url = discordGatewayUrl(gateway.url, this.#options.fake ?? false);
@@ -189,10 +198,25 @@ export class DiscordRemote implements Remote {
     this.#freshRecovery = true; this.#catching = true;
     const store = this.#options.store;
     this.#history = (store && this.#inbound && this.#outbox
-      ? catchDiscordHistory(this.#api, store, this.#inbound, this.#clock.now().toISOString(), this.#abort.signal,
-        key => this.#outbox!.recoveryWarning(store.pairing()!.chatId, 'Older Discord messages were not passed on.', key), this.#options.historyLimit)
+      ? remotePublications(store, pair => this.#recoverDestination(pair, () => catchDiscordHistory(this.#api, store, this.#inbound!, this.#clock.now().toISOString(), this.#abort.signal,
+        key => this.#outbox!.recoveryWarning(pair.chatId, 'Older Discord messages were not passed on.', key), this.#options.historyLimit))).then(() => {})
       : Promise.resolve()).then(() => { this.#catching = false; });
     void this.#history.catch(() => {});
+  }
+  async #recoverDestination<T>(pair: Pairing, work: () => Promise<T>): Promise<T | undefined> {
+    try { return await work(); }
+    catch (error) {
+      this.#abort.signal.throwIfAborted();
+      if (this.#fatal) throw this.#fatal;
+      if (pair.clandUserId && (error instanceof DiscordError && [403, 404].includes(error.status)
+        || error instanceof DiscordRecoveryIncomplete && error.channel === pair.chatId)) {
+        this.#restFailedChannels.add(pair.chatId);
+        this.#connectionChanged();
+        for (const listener of this.#listeners) listener();
+        return;
+      }
+      throw error;
+    }
   }
   #finishRecovery(): Promise<void> {
     return this.#recovery ??= this.#finishRecoveryWork().finally(() => { this.#recovery = undefined; });
@@ -205,10 +229,10 @@ export class DiscordRemote implements Remote {
     await this.#inbound?.idle();
     const store = this.#options.store;
     if (!store || !this.#outbox) return;
-    await flushGap(store, this.#clock, { stateKey: 'discord.gap', matches: (job, pair) => {
+    await remotePublications(store, pair => this.#recoverDestination(pair, () => flushGap(store, this.#clock, { stateKey: pair.clandUserId ? `discord.gap:${pair.chatId}` : 'discord.gap', matches: (job, pair) => {
       const p = job.payload as { discord?: boolean; channel?: string; user?: string };
-      return p?.discord === true && p.channel === pair.chatId && p.user === pair.userId;
-    } }, (chat, text, key) => this.#outbox!.recoveryWarning(chat, text, key));
+      return p?.discord === true && p.channel === pair.chatId && (pair.clandUserId !== undefined || p.user === pair.userId);
+    } }, (chat, text, key) => this.#outbox!.recoveryWarning(chat, text, key))));
     this.#outbox.holdRecovery(false);
     if (this.#freshRecovery) {
       let key = store.get('discord.history-recovery');

@@ -1,3 +1,4 @@
+import { DiscordRecoveryIncomplete, discordChannelKey } from './discord-state.ts';
 import { artifactBody, artifactFile, artifactPlan } from './artifact-plan.ts';
 import { renderDiscord } from './discord-render.ts';
 import type { Artifact, Message } from '../protocol.ts';
@@ -28,7 +29,7 @@ export class DiscordOutbox {
     this.#signal.throwIfAborted();
     const lane = this.#lane(channel);
     if (this.#store.outboxForSource(source).some(job => job.kind === 'edit' && job.target === target && job.source === source && intent(job).content === content && ['queued', 'sent'].includes(job.state))) return;
-    lane.enqueue({ kind: 'edit', target, source, payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, edit: target } });
+    lane.enqueue({ kind: 'edit', target, source, payload: { discord: true, channel, user: this.#store.publicationPairings().find(pair => pair.chatId === channel)?.userId, content, edit: target } });
     await lane.drain();
   }
   #closedLine(ask: string): string | undefined {
@@ -49,7 +50,7 @@ export class DiscordOutbox {
       if (this.#store.outboxForSource(source).some(job => job.kind === 'edit' && job.target === copy.messageId && job.source === source
         && intent(job).content === line && ['queued', 'sent'].includes(job.state))) continue;
       this.#lane(copy.chatId).enqueue({ kind: 'edit', target: copy.messageId, source,
-        payload: { discord: true, channel: copy.chatId, user: this.#store.pairing()?.userId, content: line, edit: copy.messageId } });
+        payload: { discord: true, channel: copy.chatId, user: this.#store.publicationPairings().find(pair => pair.chatId === copy.chatId)?.userId, content: line, edit: copy.messageId } });
     }
   }
   async closeCard(ask: string, card: Pick<AskCard, 'state' | 'outcome'>): Promise<void> {
@@ -69,7 +70,7 @@ export class DiscordOutbox {
     // Durable attempt proof and the original nonce deadline still fence retries.
     if (resend) lane.setAvailable(true);
     if (!this.#store.outboxForSource(source).length) lane.enqueue({ kind: 'card', source,
-      payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components,
+      payload: { discord: true, channel, user: this.#store.publicationPairings().find(pair => pair.chatId === channel)?.userId, content, components,
         mapping: { chatId: channel, topic, message: ask, ask: approval ? null : ask, approval: approval ? ask : null } } });
     await lane.drain();
   }
@@ -78,7 +79,7 @@ export class DiscordOutbox {
     const key = `${resend ? `${resend}:` : ''}${source}`;
     if (resend) lane.setAvailable(true);
     if (!this.#store.outboxForSource(key).length) lane.enqueue({ kind: 'card', source: key,
-      payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, components: [],
+      payload: { discord: true, channel, user: this.#store.publicationPairings().find(pair => pair.chatId === channel)?.userId, content, components: [],
         mapping: { chatId: channel, topic, message, ask: null, approval: null } } });
     await lane.drain();
   }
@@ -91,14 +92,18 @@ export class DiscordOutbox {
     await lane.drain();
   }
   async recoveryWarning(channel: string, content: string, source: string): Promise<void> {
-    await this.send(channel, content, source, true);
-    const job = this.#store.outboxForSource(source).find(row => row.source === source && intent(row).channel === channel);
-    if (job?.state !== 'sent') throw new Error('Discord recovery warning delivery incomplete');
+    this.#signal.throwIfAborted();
+    const lane = this.#lane(channel);
+    lane.setAvailable(true);
+    this.#enqueue(lane, channel, content, source, true, source, undefined, undefined, undefined, this.#store.usersMode());
+    await lane.drain();
+    const job = this.#store.outboxForSource(this.#source(channel, source)).findLast(row => row.source === this.#source(channel, source) && intent(row).channel === channel);
+    if (job?.state !== 'sent') throw new DiscordRecoveryIncomplete(channel);
   }
   async react(channel: string, message: string, emoji: '👌' | '👀', user: string): Promise<void> {
     this.#signal.throwIfAborted();
-    const pair = this.#store.pairing();
-    if (pair?.chatId !== channel || pair.userId !== user) return;
+    const pair = this.#store.pairingFor(channel, user);
+    if (!pair) return;
     const lane = this.#lane(channel), source = `discord.reaction:${channel}:${message}:${emoji}`;
     if (!this.#store.outboxForSource(source).length) lane.enqueue({ kind: 'message', source,
       payload: { discord: true, channel, user, reaction: { message, emoji } } });
@@ -115,19 +120,21 @@ export class DiscordOutbox {
     });
     await lane.drain();
   }
-  #enqueue(lane: Outbox, channel: string, content: string, source: string, silent: boolean, message: string, reply?: string, files?: string[], batch?: string): void {
-    if (this.#store.outboxForSource(source).length) return;
+  #enqueue(lane: Outbox, channel: string, content: string, source: string, silent: boolean, message: string, reply?: string, files?: string[], batch?: string, retryDropped = false): void {
+    source = this.#source(channel, source);
+    const previous = this.#store.outboxForSource(source);
+    if (previous.some(job => !retryDropped || job.state !== 'dropped')) return;
     const id = lane.enqueue({ kind: 'general', source,
-      payload: { discord: true, channel, user: this.#store.pairing()?.userId, content, silent, ...(batch ? { batch } : {}), ...(reply ? { reply } : {}), ...(files?.length ? { files } : {}),
+      payload: { discord: true, channel, user: this.#store.publicationPairings().find(pair => pair.chatId === channel)?.userId, content, silent, ...(batch ? { batch } : {}), ...(reply ? { reply } : {}), ...(files?.length ? { files } : {}),
         mapping: { chatId: channel, topic: 'general', message, ask: null, approval: null } } });
-    for (const artifact of files ?? []) this.#store.set(`discord.artifact:${artifact}`, id);
+    for (const artifact of files ?? []) this.#store.set(`discord.artifact:${this.#source(channel, artifact)}`, id);
   }
   /** Reserve each artifact in the messenger ledger before any native I/O. */
   async publication(channel: string, message: Message, header: string, silent: boolean): Promise<void> {
     const reply = message.replyTo ? this.#store.messageForSource(channel, message.replyTo)?.messageId : undefined;
     if (!this.#files || !message.artifact && !message.artifacts?.length) return this.sendGroup(channel, renderDiscord(header, message.text), message.id, silent, reply);
     const lane = this.#lane(channel);
-    if (this.#store.get(`discord.publication:${message.id}`)) { await lane.drain(); return; }
+    if (this.#store.get(`discord.publication:${this.#source(channel, message.id)}`)) { await lane.drain(); return; }
     const plan = artifactPlan(this.#files.root, message, header, { photo: 0, document: 20 * 1024 * 1024, caption: 2000, images: [] });
     this.#store.transaction(() => {
       lane.setAvailable(true);
@@ -141,7 +148,7 @@ export class DiscordOutbox {
           if (part.text) for (const text of renderDiscord(header, part.text)) enqueue(text);
           continue;
         }
-        const reserved = this.#store.get(`discord.artifact:${part.artifact}`);
+        const reserved = this.#store.get(`discord.artifact:${this.#source(channel, part.artifact)}`);
         const previous = reserved ? this.#store.outbox(undefined, reserved)[0] : undefined;
         if (previous) {
           flush();
@@ -164,7 +171,7 @@ export class DiscordOutbox {
         caption = part.caption; group.push(part.artifact); bytes += file.size;
       }
       flush();
-      this.#store.set(`discord.publication:${message.id}`, '1');
+      this.#store.set(`discord.publication:${this.#source(channel, message.id)}`, '1');
     });
     await lane.drain();
   }
@@ -195,11 +202,18 @@ export class DiscordOutbox {
         sourceOpen: job => job.kind !== 'card' || !cardKey(job) || (!this.#store.get(`discord.card-closure:${cardKey(job)}`)
           || this.#store.get(`discord.card-reconcile:${job.id}`) === '1'
           || this.#store.attempts(job.id).some(attempt => attempt.outcome !== 'never-left')),
-        admit: job => { const pair = this.#store.pairing(); return pair?.chatId === channel && pair.userId === intent(job).user; } });
+        availabilityKey: discordChannelKey(this.#store, 'outbox.unavailable', channel),
+        admit: job => this.#admitted(intent(job)) });
       this.#lanes.set(channel, lane);
     }
     return lane;
   }
+  #admitted(input: Intent): boolean {
+    if (input.reaction) return !!this.#store.pairingFor(input.channel, input.user);
+    return this.#store.publicationPairings().some(pair => pair.chatId === input.channel
+      && (pair.clandUserId !== undefined || pair.userId === input.user));
+  }
+  #source(channel: string, source: string): string { return discordChannelKey(this.#store, source, channel); }
   #recordMessage(job: OutboxJob, message: DiscordMessage): void {
     const planned = JSON.parse(this.#store.get(`discord.outbox.prepared:${job.id}`) ?? '[]') as Array<{ artifact: string; name: string }>;
     const attachments = (message as DiscordMessage & { attachments?: Array<{ filename: string }> }).attachments ?? [];
@@ -253,8 +267,7 @@ export class DiscordOutbox {
       } catch { this.#signal.throwIfAborted(); content += `\n▣ ${id} · file unavailable`; }
     }
     this.#signal.throwIfAborted();
-    const pair = this.#store.pairing();
-    if (pair?.chatId !== input.channel || pair.userId !== input.user) return { status: 'superseded' };
+    if (!this.#admitted(input)) return { status: 'superseded' };
     // A nonce can return an earlier accepted attempt even when today's file read fails.
     // Keep every attempted artifact/name pair so its native receipt remains attributable.
     const earlier = JSON.parse(this.#store.get(`discord.outbox.prepared:${job.id}`) ?? '[]') as Array<{ artifact: string; name: string }>;
