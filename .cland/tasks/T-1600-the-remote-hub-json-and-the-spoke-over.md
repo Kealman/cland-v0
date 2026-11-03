@@ -3,7 +3,7 @@ id: T-1600
 kind: task
 title: "The remote hub.json and the spoke over ws+unix:"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,9 +13,9 @@ blocked_by:
   - T-1596
   - T-1599
 topic: null
-branch: null
+branch: t/T-1600-the-remote-hub-json-and-the-spoke-over
 created: 2026-11-02T03:33:55.459Z
-updated: 2026-11-03T07:19:33.205Z
+updated: 2026-11-03T14:31:34.066Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-1599
 kind: task
 title: The ssh Host over the host agent
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1366
 branch: t/T-1599-the-ssh-host-over-the-host-agent
 created: 2026-11-02T03:33:55.137Z
-updated: 2026-11-03T13:13:05.020Z
+updated: 2026-11-03T14:31:07.839Z
+closed: 2026-11-03T14:31:07.839Z
 ---
 
 ## Summary
@@ -218,3 +219,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, no findings; C1–C5 verified. Exact source-cleared/current head run597abaf5/A-16275 passed T0/T1/fallback allT2/changedT3/Web, aggregate4964/4964 and zero fail/cancel/skip/todo. Independently inspected all14 nested shared behavior passes, SSH19 and prepared12 top-level passes including every prior repair, environment6, registry2, transport-status1, boundary2, layout16/records10/routing16 and stop-observation3. Exact generated names and log lines mapped to each criterion in A-16277. SelectedT3 twofiles/31 top-level identities once; remainingT3 merge-batch deferred, T4 unexecuted, after-stageQA separate. Uncached droplet Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, runner treeb0e4cde8d4eddd462af2f9c95d1d580ae975a82a; isolated HeadlessShell1248/ChromeForTesting156.0.8078.4, browser path in artifact; skips[]/missing0 report. Budgets/lint/ratchet report-only; dated aggregate allowance source-reviewed, current wrapper4.3949004s. Host typecheck recorded at same tree, not repeated remotely. Billing cost/lifetime absent/unknown. Deferred native controls have only qualified historical macOS supplements, no remote-execution claim. Prior failed A-16265/A-16269 stay failed. No Reviewer runtime execution/edits/browser. Detail A-16277: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16277-t-1599-final-clear-exact-head-host-and-prepared-operation-evidence.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-03T14:31:07.839Z
+
+Merged aa42c6efdd56a5e2def4b88fea2804e02e726d62 onto dev.
