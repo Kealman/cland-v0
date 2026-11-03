@@ -59,6 +59,7 @@ The scripts intentionally leave stale control and forward sockets on
 abrupt exit to exercise carrier cleanup/reconnect. No second transport carrier
 or transport contract is defined here (T-1625 owns the reusable contract).
 
+<!-- cland-allow-closed-wording: "stand-in" names the fake ssh component, not a placeholder -->
 T-1595 extends the stand-in's known-hosts value parser for quoted paths and
 multiple filenames. Fake authentication combines user/global entries as OpenSSH
 does. FAKE_SSH_GLOBAL_KNOWN_HOSTS opts into one scratch default global file;
