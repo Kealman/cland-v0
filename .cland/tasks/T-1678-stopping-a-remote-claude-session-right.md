@@ -3,7 +3,7 @@ id: T-1678
 kind: task
 title: Stopping a remote Claude session right after a turn still refuses with 'process identity cannot be verified'
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1674
 topic: topic-1383
 branch: t/T-1678-stopping-a-remote-claude-session-right
 created: 2026-11-04T15:25:21.631Z
-updated: 2026-11-04T19:08:34.956Z
+updated: 2026-11-04T20:46:12.937Z
 ---
 
 ## Summary
@@ -38,9 +38,8 @@ Capture the actual process records (PID, birth, parent, command) at both capture
 - [x] C2. An explicit stop issued immediately after a completed remote Claude turn, and one issued mid-turn while the root spawns hooks, both complete without a manual re-stop, 20/20 under load in an isolated Linux container (evidence).
   - done: impl-1678 · 2026-11-04T18:39:10.404Z
   - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
-- [x] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, and (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan; each is listed in the review request (coord decisions c5caf575, e756201c and this one) (test).
-  - done: impl-1678 · 2026-11-04T18:24:54.672Z
-  - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
+- [ ] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan, and (d) the synchronous TERM-resistant SessionEnd control's timing: grace 300 ms to the production 3000 ms and its outer test timeout 10 s to 15 s, with every assertion and the production policy unchanged; each is listed in the review request (coord decisions c5caf575, e756201c, ac23003b, 7e849c61 and 2a68c8dd) (test).
+  - failed: rev-35 [reviewer] · 2026-11-04T20:46:12.937Z · note New deadline control triggers frozen lint wall-clock-assertion count1 > allowance0; documented virtual-clock annotation is missing.
 
 ## Comments
 
@@ -152,3 +151,50 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear,no findings; C1–C3verified at unchanged source-clear ecccc6cd3. A-16672 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16672-t-1678-final-clear-classified-failure-deterministic-linux-load-and-safety-contro.md independently records C1 process-capture classification A-16603/A-16630, clean A-16671 current22hash/43file export,40 matched native load start/finish passes=20/20each,all timestamps inside4peerphase intervals,4clean rounds/49native closes0/signalnull/container0. Old A-16665 stale extras superseded,old A-16653busy-only campaign notC2. Configured f095b0bc/A-16670 exit0/5054pass/zero fail,cancel,skip,todo; actual helper24/concurrency4/remote26/ownerparent+3modes/closure4/docs4 pass. Native heldturn/completed/orphanheld/detachedescape/retainedhook safety names checked; approvedC3exceptions explicit. T0/allT1/fallbackallT2/changedT3twofiles30base/Web complete,remainingT3batch,T4unexecuted. UncachedLinuxx64 Node24.21/Nvim0.12.5 isolatedHeadlessShell1248 Chrome156.0.8078.4 runner tree37f640978af7df4443ddb6f020c8d986b493b336 distinct from reviewed/campaigna77770de47b854126ba9cd164b1ea509df5c536c; headagrees. Local campaignLinuxarm64/no browser distinct. Budgets/ratchet/skip diagnostics report-only; billingunknown notzero. Real-Claude gracefulTERM assumption unverified/accountQA follow-up remains; no peritemQA. No Reviewer execution/probes/browser/edits/Git mutation/delegation.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1678 · 2026-11-04T19:49:47.954Z
+
+Coordinator05d03160 authorized one dev83bfa83d merge after T1609 landed. New head efd7879ff pushed clean; expected3conflicts resolved preserving both README/fixture semantics and regenerating closure32files; cap11s cites Linux6.714/Mac5.721210417,ownerC216 expiry11-11 unchanged/report mode. A-16676 fresh7-file export records isolated Macarm64 Node24.21 typecheck0 and requested unit24/concurrency4/remote26/refpush4=58pass/four native0 receipts under lock (released). Merge changed no stop helper/control/fake bytes; processes.ts only operationRecord insertion, verified against A-16671 hash after stripping it. C2 campaign stands per Coordinator; old f095/A-16670 earlier-head only. Delta review requested before new exact-head configured verify.
+
+### rev-35 · 2026-11-04T19:51:16.604Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-delta-source-1
+commit: efd7879ff9d8f6dea2e61f6bf43d02ec05192737
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged delta source clear,no findings. Coordinator05d03160 one-merge parents ecccc6cd3+dev83bfa83d confirmed. Stop helper/tests/fake byte-identical; stripping exact operationRecord addition reproduces whole prior processes.ts. Shared reader adds no stop/signal authority; stopped-owner guards remain. Fixture unions env/full hooks with shared builder after overlay; README/rootfirst+attach+refpush retained; owner guide indexed. All32closure hashes match. Parsed upstream allowances unchanged+4task entries; retained-hook11s/C216/Nov11 cites Linux6.714/Mac5.721,1.5xrounded10.071; globalmode/waits unchanged. A-16677 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16677-t-1678-merged-delta-source-clear-unchanged-stop-policy-with-ref-push-integration.md. A-16676 fresh7file macOSNode24.21 hubtypes0/full4files58passes/four native0null supplements,no browser/configured claim. C1–C3awaitfinalmerged-head evidence; Coordinator explicitly carries A-16671 deterministic20/20each for unchanged stop code,not merged rerun. Exact-head modefree verify may proceed; prior f095b0bc historical. RealClaude unverifiedassumption/QA followup retained. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+### rev-35 · 2026-11-04T20:14:12.057Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1678-merged-evidence-1
+commit: efd7879ff9d8f6dea2e61f6bf43d02ec05192737
+scope: evidence
+findings: [{"severity":"medium","text":"A-16684 records the TERM-resistant SessionEnd control failing: stopClaude returned null with 'stop deadline expired during capture'; C3 does not pass at the merged head. Cause remains unclassified.","file":"hub/test/claude-code-remote.test.ts","line":164}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear. A-16684 actual assertion/timing inspected; source delta verdict unchanged. C1 diagnosis and explicitly authorized C2 historical carry retain their limits. No combined complete pass claim: aggregate summaries differ. See newly published merged-head failure artifact. No tests run by reviewer.
+
+Criteria: C3 failed (Same-head configured native control fails at line 164 with stop deadline expired during capture; selected T3 and overall exit 1, Web unexecuted.).
+
+### rev-35 · 2026-11-04T20:46:12.937Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1678-delta-source-2
+commit: 32de98653680be4051cc3096d026ff6cea54d9d0
+scope: delta
+findings: [{"severity":"medium","text":"Add the documented reasoned trailing lint-allow-wall-clock annotation for the new mocked-Date delta assertion. Full valid-Git lint reports wall-clock-assertion1 > frozen0. Preserve exact deadline assertion and frozen baseline; fresh comment-only pin/full lint before verify.","file":"hub/test/claude-stop-owner-component.test.ts","line":70}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Post-merge correction not clear only for one medium frozen-lint annotation; confirmed e37de692. A-16697 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16697-t-1678-c3-correction-review-native-proof-checked-virtual-clock-lint-annotation-m.md. Independently read Coordinator timing/outer-timeout authorization; shipping hub/src unchanged/all32closure match. Exact owner/adapter virtual deadline/held-row source checked. A-16696 actual24files/20full nativefiles/same26names520passes/20code0null closes/10paired overlaps, normalized10s testhash matchesfinal15s and ownerhashmatches. Worst8.834195546×1.5->14sC216Nov11explicit; no x64 cause or same-head postcommit proof claimed. A-16690 first raw overwritten/stagesunavailable limits retained, second traces qualified; old A-16684 remainsfailed. C3failed,C1/C2unverifiedcarry; lead routing authorizedC3(d)text. Fresh annotation-only source pin before configured verify. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C3 failed (New deadline control triggers frozen lint wall-clock-assertion count1 > allowance0; documented virtual-clock annotation is missing.).
