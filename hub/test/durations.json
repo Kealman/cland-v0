@@ -104,9 +104,10 @@
       "A-16430",
       "A-16488",
       "A-16508",
-      "A-16515"
+      "A-16515",
+      "A-16530"
     ],
-    "commit": "231e8ee27d0bb650b5cc38fc7836947e01aa4d8e"
+    "commit": "9fd751049d3f0cb31f54ff36830926eabd29799d"
   },
   "budget": {
     "testSeconds": 5,
@@ -3455,6 +3456,18 @@
     "hub/test/spoke-lazy-tools.test.ts": {
       "seconds": 0.119393,
       "tests": 1
+    },
+    "hub/test/claude-agent-launch.test.ts": {
+      "seconds": 0.074339,
+      "tests": 11
+    },
+    "hub/test/claude-code-remote.test.ts": {
+      "seconds": 113.58046,
+      "tests": 21
+    },
+    "hub/test/claude-stop.test.ts": {
+      "seconds": 0.011568,
+      "tests": 19
     }
   },
   "tests": {
@@ -10078,7 +10091,60 @@
     "hub/test/launch-settlement.test.ts::deferred recovery reports a hung settlement and retains one producer until the receipt": 0.11301,
     "hub/test/launch-settlement.test.ts::settlement preserves synchronous callbacks and retries a rejected async callback": 0.003219,
     "hub/test/session-host-placement.test.ts::production OpenCode launch prepares nonlocal shared ignore and reaches only selected Host spawn": 0.130402,
-    "hub/test/spoke-lazy-tools.test.ts::C4 concurrent first tool listings and every documented tool answer through unchanged handlers": 0.119393
+    "hub/test/spoke-lazy-tools.test.ts::C4 concurrent first tool listings and every documented tool answer through unchanged handlers": 0.119393,
+    "hub/test/claude-agent-launch.test.ts::an invalid native job handle never becomes a stop option": 0.004387,
+    "hub/test/claude-agent-launch.test.ts::Claude cleanup removes only the pinned job and leaves another session job intact": 0.007005,
+    "hub/test/claude-agent-launch.test.ts::Claude jobs symlink refuses before commands can copy the planted token outside the private root": 0.00356,
+    "hub/test/claude-agent-launch.test.ts::Claude launch fails closed on ambiguous discovery []": 0.02117,
+    "hub/test/claude-agent-launch.test.ts::Claude launch fails closed on ambiguous discovery [{\"id\":\"abc\",\"pid\":42,\"sessionId\":\"native\"},{\"id\":\"abc\",\"pid\":43,\"sessionId\":\"native\"}]": 0.00635,
+    "hub/test/claude-agent-launch.test.ts::Claude launch fails closed on ambiguous discovery malformed": 0.00529,
+    "hub/test/claude-agent-launch.test.ts::Claude launch pins jobs before execution and refuses a replacement directory": 0.004404,
+    "hub/test/claude-agent-launch.test.ts::Claude receipt pins generation native birth and uid and refuses PID reuse": 0.007002,
+    "hub/test/claude-agent-launch.test.ts::Claude refuses nonprivate account root before any command and rejects foreign-owner metadata": 0.002406,
+    "hub/test/claude-agent-launch.test.ts::concurrent release callers share one durable settlement producer": 0.005479,
+    "hub/test/claude-agent-launch.test.ts::terminal receipt forget requires confirmed private directory deletion": 0.007286,
+    "hub/test/claude-code-remote.test.ts::adopted Claude settles one descendant born between stop capture and commit before any signal": 6.560189,
+    "hub/test/claude-code-remote.test.ts::agent restart does not inherit Claude dynamic child acquisition from its serialized marker": 5.6199,
+    "hub/test/claude-code-remote.test.ts::an unowned reparented child stays unacquired across explicit stops": 7.463186,
+    "hub/test/claude-code-remote.test.ts::Claude hook born across root exit remains unacquired": 4.449925,
+    "hub/test/claude-code-remote.test.ts::Claude TERM-resistant SessionEnd hook is captured and killed by native birth": 6.350797,
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart adoption": 4.907785,
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart missing-receipt": 3.295763,
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart missing-state": 3.561718,
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart prune-failure": 4.838589,
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart result": 4.714851,
+    "hub/test/claude-code-remote.test.ts::hub restart after tree closure re-adopts its durable generation and releases the job": 6.646901,
+    "hub/test/claude-code-remote.test.ts::late SessionEnd after the recovery snapshot never grants an adopted closed receipt": 4.466693,
+    "hub/test/claude-code-remote.test.ts::lost native forget-restart reply settles without replaying native stop": 5.752331,
+    "hub/test/claude-code-remote.test.ts::lost native release reply settles without replaying native stop": 5.860618,
+    "hub/test/claude-code-remote.test.ts::lost native release-restart reply settles without replaying native stop": 6.24555,
+    "hub/test/claude-code-remote.test.ts::older host agent refuses Claude launch capability before starting a command": 0.741081,
+    "hub/test/claude-code-remote.test.ts::pinned native hook exit between prepare and commit settles without a manual re-stop": 5.398395,
+    "hub/test/claude-code-remote.test.ts::remote Claude failed adoption handshake joins rollback and removes its credential copies only": 5.056384,
+    "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": 8.388178,
+    "hub/test/claude-code-remote.test.ts::terminal remote PID settlement cleans before publishing exit without recurring CLI": 5.562997,
+    "hub/test/claude-code-remote.test.ts::terminal remote PID settlement holds the row on native failure without recurring CLI": 7.698629,
+    "hub/test/claude-stop.test.ts::a new Claude stop admission starts a fresh single-use budget": 0.000262,
+    "hub/test/claude-stop.test.ts::Claude helper admission budget outer spent preserves the one-recapture boundary": 0.000274,
+    "hub/test/claude-stop.test.ts::Claude helper admission budget second descendant preserves the one-recapture boundary": 0.001165,
+    "hub/test/claude-stop.test.ts::Claude helper admission budget unused preserves the one-recapture boundary": 0.000635,
+    "hub/test/claude-stop.test.ts::Claude persistent unknown member gets one identity re-read before signals": 0.00018,
+    "hub/test/claude-stop.test.ts::Claude refuses a foreign UID already present in its captured set before any signal": 0.0004,
+    "hub/test/claude-stop.test.ts::Claude SessionEnd after root exit has bounded native ownership": 0.000295,
+    "hub/test/claude-stop.test.ts::Claude SessionEnd foreign has bounded native ownership": 0.000372,
+    "hub/test/claude-stop.test.ts::Claude SessionEnd ignores TERM has bounded native ownership": 0.001082,
+    "hub/test/claude-stop.test.ts::Claude SessionEnd natural has bounded native ownership": 0.002758,
+    "hub/test/claude-stop.test.ts::Claude SessionEnd reparented has bounded native ownership": 0.000354,
+    "hub/test/claude-stop.test.ts::Claude transient unknown member gets one identity re-read before signals": 0.000464,
+    "hub/test/claude-stop.test.ts::pinned Claude member birth replacement is settled before comparing captures": 0.000191,
+    "hub/test/claude-stop.test.ts::pinned Claude member exit is settled before comparing captures": 0.000931,
+    "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses foreign UID": 0.000557,
+    "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses old PID": 0.000391,
+    "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses reparented": 0.000379,
+    "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses root birth gone": 0.000479,
+    "hub/test/claude-stop.test.ts::second pre-signal descendant churn is incomplete without sending any signal": 0.000399,
+    "hub/test/host-contract-coverage.test.ts::local Host retains no optional Claude launch or adoption implementation": 0.789481,
+    "hub/test/state-paths.test.ts::host Claude account root preserves config override and host HOME precedence": 0.000277
   },
   "allow": {
     "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": {
