@@ -59,6 +59,18 @@ even when the PID was reaped between snapshots. An absent birth without positive
 end remains unresolved and grants no ownership. This applies equally to resumed
 native owners and newly captured trees; legacy timestamps grant no signals.
 
+## Atomic file RPCs
+
+The additive `publishFile`, `appendFile` and `stat` operations share the local
+Host implementation. Publish defaults to create-only and returns false on an
+existing path; `options.replace:true` atomically replaces complete bytes, with
+optional mode. Stat returns native mode and size. Payload validation uses the
+same 512 KiB cap as writeFile. SSH uses `prepare-publishFile` / `prepare-appendFile`
+with the existing `commit-prepared` and `settle-prepared` result protocol. Direct
+file RPCs remain available for compatibility and discovery's same-stream drain
+owner. Unknown interrupted commits retain their ownership checkpoint and refuse
+mutations instead of replaying side effects. See [SSH Host](../hub/ssh-host.md#atomic-files-and-metadata).
+
 ## Host territory worktrees
 
 The SSH registry prepares a managed territory clone for task worktrees after

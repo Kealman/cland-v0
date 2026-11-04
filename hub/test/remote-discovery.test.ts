@@ -21,14 +21,14 @@ test('C1 remote discovery accepts socket credentials without a local pid or port
 });
 
 import { publishRemoteDiscovery, remoteDiscovery } from '../src/host/discovery.ts';
-test('different discovery refuses before a failing overwrite; identical bytes skip the writer',async()=>{
+test('different discovery attempts atomic replacement; identical bytes skip the writer',async()=>{
  const candidate=remoteDiscovery('/tmp/host-run','synthetic-host');
  const prior=Buffer.from(JSON.stringify({...candidate,secret:'synthetic-old-host'}));
  let writes=0;
  const client={request:async(op:string)=>{if(op==='readFile')return prior.toString('base64');writes++;throw new Error('synthetic failed overwrite');}};
- await assert.rejects(publishRemoteDiscovery(client,'/unused',candidate),/discovery differs/);
- assert.equal(writes,0);assert.equal(JSON.parse(prior.toString()).secret,'synthetic-old-host');
+ await assert.rejects(publishRemoteDiscovery(client,'/unused',candidate),/synthetic failed overwrite/);
+ assert.equal(writes,1);assert.equal(JSON.parse(prior.toString()).secret,'synthetic-old-host');
  const same=Buffer.from(JSON.stringify(candidate,null,2)+'\n');
  await publishRemoteDiscovery({request:async(op:string)=>{assert.equal(op,'readFile');return same.toString('base64');}},'/unused',candidate);
- assert.equal(writes,0);
+ assert.equal(writes,1);
 });

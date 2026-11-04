@@ -48,6 +48,7 @@ async function fixture(t: TestContext, withRoles = false, durable = true) {
     writeFile: (path,bytes,options) => base.writeFile(mapped(path),bytes,options),
     readFile: path => base.readFile(mapped(path)),
     fileType: path => base.fileType(mapped(path)),
+    stat: path => base.stat(mapped(path)),
     statDirectory: path => base.statDirectory(mapped(path)),
     run: async () => ({code:0,stdout:'codex 0.160.0',stderr:''}),
     spawn: async () => ({pid:process.pid,exited:exited.promise}),

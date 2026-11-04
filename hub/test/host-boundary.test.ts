@@ -46,10 +46,10 @@ test('Host boundary permits only the two guarded crash self-kills', () => {
   }
 });
 
-test('Host boundary scopes named hub-file metadata exceptions to their existing calls', () => {
+test('Host boundary rejects former local metadata exemptions', () => {
   const declaration = "import { stat } from 'node:fs/promises';\n";
-  assert.deepEqual(hostBoundaryFindings('launch-files.ts', declaration + 'const hubFileMeta = (path: string) => stat(path);'), []);
-  assert.deepEqual(hostBoundaryFindings('opencode/server.ts', declaration + 'stat(files.log);'), []);
+  assert.match(hostBoundaryFindings('launch-files.ts', declaration + 'const hubFileMeta = (path: string) => stat(path);').join('\n'), /stat call/);
+  assert.match(hostBoundaryFindings('opencode/server.ts', declaration + 'stat(files.log);').join('\n'), /stat call/);
   for (const file of ['launch-files.ts', 'opencode/server.ts']) {
     assert.match(hostBoundaryFindings(file, declaration + 'stat(session.cwd);').join('\n'), /:2: stat call/);
     assert.match(hostBoundaryFindings(file, "import { realpath } from 'node:fs/promises';").join('\n'), /realpath import/);

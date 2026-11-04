@@ -2,7 +2,10 @@
 
 The hub registers an SSH Host for each registered host record at startup and
 starts its carrier. `local`, injected Hosts and `CLAND_TEST_HOSTS` retain their
-registry paths. Revoked records are excluded; operations recheck registration.
+registry paths. The testHost recording double refuses native files by default;
+its stat delegates only when the double explicitly installs the shared local
+fileType/writeFile/removePath functions for scratch file preparation. Real SSH
+Hosts always use agent stat and never take that test-only path. Revoked records are excluded; operations recheck registration.
 The daemon owns sessions, agent clients, carriers and per-host Git listeners in
 that shutdown order. Stopping the hub joins its owned I/O; detached host
 harnesses and the host supervisor survive.
@@ -61,9 +64,26 @@ requiring an absent version directory refuse with its path; a down tunnel also
 names the required code directory. Code installation is outside this Host.
 
 No remote `modDir` is assumed. Claude refuses a layout without it; callers may
-supply an installed host-side mod directory. OpenCode retains its refusal for
-remote shared-ignore preparation until Host atomic file operations are supplied.
-This item does not bypass either boundary.
+supply an installed host-side mod directory. OpenCode prepares its shared ignore
+through the launch Host, preserving existing contents and appending a missing wildcard.
+
+## Atomic files and metadata
+
+`publishFile(path, bytes, {mode?, replace?})` writes and syncs a unique sibling
+staging file, then links it without clobbering (false means a path already exists)
+or renames it when `replace:true`. It cleans staging before returning. Concurrent
+create-only writers have one winner; readers see complete published bytes.
+`appendFile` appends exact bytes with O_APPEND. `stat` follows links and returns
+native mode and size; missing paths reject with their native error code. These
+additive RPCs preserve existing operations and use the existing 512 KiB payload
+cap. SSH publish/append use prepare/commit tokens and durable result receipts:
+a lost accepted reply reconciles the exact operation without replaying append.
+A disconnected in-flight file writer fences mutations on both Host and agent;
+settlement and shutdown join it. After an agent restart, an interrupted file
+commit with no durable result stays pending and fenced; it is never replayed. Older agents refuse unknown operations; there is no local fallback.
+Launch rollback uses stat permissions to restore an overwritten file and size to
+truncate an appended log. Discovery replaces changed per-host credentials using
+atomic publication with mode 0600; identical bytes keep the current file.
 
 ## Command environments
 

@@ -42,6 +42,24 @@ async function boundedRead(path: string): Promise<string> {
   } finally { await file.close(); }
 }
 
+function fileBytes(value: unknown): Buffer {
+  if (typeof value !== 'string' || value.length > Math.ceil(FILE_BYTE_CAP / 3) * 4 || /[^A-Za-z0-9+/=]/.test(value)) throw new Error('invalid base64 bytes or byte cap exceeded');
+  const bytes = Buffer.from(value, 'base64');
+  if (bytes.toString('base64') !== value) throw new Error('invalid base64 bytes');
+  if (bytes.length > FILE_BYTE_CAP) throw new Error('writeFile exceeds byte cap');
+  return bytes;
+}
+
+export function parseAgentFile(a: Record<string, unknown>, kind: 'publishFile' | 'appendFile') {
+  const path = text(a.path, 'path');
+  const bytes = fileBytes(a.bytes);
+  const options = a.options === undefined ? {} : object(a.options);
+  return {path, bytes, options: kind === 'appendFile' ? {} : {
+    ...(options.mode === undefined ? {} : {mode: integer(options.mode, 'mode', 0o7777)!}),
+    ...(options.replace === undefined ? {} : {replace: flag(options.replace)!}),
+  }};
+}
+
 export function parseAgentRun(a: Record<string, unknown>) {
       if (!Array.isArray(a.args) || !a.args.every(v => typeof v === 'string' && !v.includes('\0'))) throw new Error('invalid command args');
       const commandEnv = object(a.env);
@@ -54,6 +72,9 @@ export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): R
   const trees = worktreeOperations(env);
   const path = (a: Record<string, unknown>) => text(a.path, 'path');
   return {
+    stat: a => fileOperations.stat(path(a)),
+    publishFile: a => { const {path, bytes, options} = parseAgentFile(a, 'publishFile'); return fileOperations.publishFile(path, bytes, options); },
+    appendFile: async a => { const {path, bytes} = parseAgentFile(a, 'appendFile'); await fileOperations.appendFile(path, bytes); return null; },
     statDirectory: a => fileOperations.statDirectory(path(a)),
     realpath: a => fileOperations.realpath(path(a)),
     fileType: a => fileOperations.fileType(path(a)),
@@ -61,10 +82,7 @@ export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): R
     listFolder: a => fileOperations.listFolder(path(a)),
     writeFile: async a => {
       const options = a.options === undefined ? {} : object(a.options);
-      if (typeof a.bytes !== 'string' || a.bytes.length > Math.ceil(FILE_BYTE_CAP / 3) * 4 || /[^A-Za-z0-9+/=]/.test(a.bytes)) throw new Error('invalid base64 bytes or byte cap exceeded');
-      const bytes = Buffer.from(a.bytes, 'base64');
-      if (bytes.toString('base64') !== a.bytes) throw new Error('invalid base64 bytes');
-      if (bytes.length > FILE_BYTE_CAP) throw new Error('writeFile exceeds byte cap');
+      const bytes = fileBytes(a.bytes);
       await fileOperations.writeFile(path(a), bytes, { ...(options.mode === undefined ? {} : {mode: integer(options.mode, 'mode', 0o7777)!}), ...(options.truncate === undefined ? {} : {truncate: integer(options.truncate, 'truncate')!}) });
       return null;
     },

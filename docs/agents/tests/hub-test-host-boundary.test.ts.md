@@ -23,10 +23,6 @@ Named exceptions from the dev audit:
 - `claude-code-local.ts`: standalone local Host compatibility and synthetic fixtures.
 - `*.test.*`: test source; Host implementations in `hub/src/host` are outside the
   adapter root by design.
-- `launch-files.ts`: `stat(path)` only as the `hubFileMeta` arrow body, for hub-owned
-  rollback metadata. Its stat import is allowed; other stat calls still fail.
-- `opencode/server.ts`: `stat(files.log)` only, reading the hub-side log offset.
-  Other metadata calls/imports still fail.
 - `sessions.ts`: SIGKILL of process.pid only in the immediate positive
   CLAND_TEST_CRASH_AT launch-reserved or stop-recorded branch.
 
@@ -37,3 +33,5 @@ outside narrow exceptions. A disposable nested new-file fixture proves discovery
 finds a planted bypass, then passes after its source is replaced with a Host call.
 The real adapter tree must separately return no findings. Source review still
 checks the semantics of each exception and the adequacy of runtime Host tests.
+
+Former LaunchFiles and OpenCode stat exceptions are rejected explicitly; both use Host.stat.

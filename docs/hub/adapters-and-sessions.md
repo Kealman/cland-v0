@@ -704,8 +704,7 @@ are optional for older standalone adapter fixtures. Inject `hosts: [local]` into
 Sessions rather than separate process probe functions. For default-adapter
 environment wiring, `projectHub`/`serveProject` also accept `hosts`; see
 `docs/agents/tests/hub-test-project-hub.test.ts.md`. Production lookups resolve hosts through the registry (T-1552)
-and refuse unregistered hosts. Read rollback mode metadata locally only for local Hosts; refuse nonlocal
-existing-file replacement without restorable metadata (T-1644), and preserve
+and refuse unregistered hosts. Read rollback mode and size through Host.stat for every Host, and preserve
 old pending-stop receipts. No CLI flag, setting or role permission changes.
 
 Claude Code rows on a Host other than `local` run one `claude agents --json`
@@ -777,9 +776,8 @@ legacy createArtifact callers and leave creator attribution to its own item.
 For Host launch files, use the recording cases in
 `docs/agents/tests/hub-test-launch-files.test.ts.md`. Journal writes with
 LaunchFiles.write; rollback uses Host write/truncate/remove operations and retains
-the previous durable journal format. Undo metadata reads stay local only for the local Host. Nonlocal existing-file
-replacement refuses with T-1644 because mode metadata cannot be restored; new
-files use Host fileType and removePath. The local
+the previous durable journal format. Undo metadata uses Host.stat; existing files restore their bytes and permissions,
+appended logs restore their size, and new files use Host removePath. The local
 layout resolver preserves discovery/node/CLI/spoke inputs and derives run/log
 paths beside discovery; freePort probes then releases IPv4 loopback, and local
 forward/unforward preserve endpoints. Adapters resolve their launch paths from the selected Host layout. Claude writes
@@ -792,9 +790,9 @@ network-local sandbox denies the canonical Host run directory that contains the
 app-server socket, alongside the local temporary socket fallback; discovery-only
 standalone policy callers retain the legacy discovery-relative denial. OpenCode
 uses layout discovery/node/spoke entries, Host password reads and freePort.
-Its atomic shared-ignore algorithm remains in host/local-opencode-files.ts for
-local launches only; nonlocal preparation refuses with T-1644, which owns Host
-metadata and atomic publish/append support. Keep session-launch and
+Its shared-ignore algorithm in adapters/opencode/ignore.ts uses Host atomic
+create-only publish and append on both local and nonlocal Hosts, preserving
+existing contents and repairing a missing wildcard. Keep session-launch and
 session-stop-races controls unedited.
 
 Use the reusable Host contract for directory identity/refusals, exact file bytes,

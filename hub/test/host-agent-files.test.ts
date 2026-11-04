@@ -2,7 +2,7 @@
 // Lifecycle: scratch HOME/Git environment; RPC completion and server drain before fixture removal.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm, stat, symlink, realpath } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, stat, readdir, symlink, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createConnection } from 'node:net';
 import { dirname, join } from 'node:path';
@@ -16,11 +16,13 @@ async function fixture(t: test.TestContext, connect: (server: Agent) => Promise<
   const root = await mkdtemp(join(tmpdir(), 'agent-files-'));
   let server: Agent | undefined;
   let client: AgentClient | undefined;
+  let second: AgentClient | undefined;
   let setup = Promise.resolve();
   let closing: Promise<void> | undefined;
   const cleanup = () => closing ??= (async () => {
     // Teardown can run on test cancellation while acquisition is still pending.
     await setup.catch(() => {});
+    await second?.close();
     await client?.close();
     await server?.close();
     await rm(root, { recursive: true, force: true });
@@ -37,7 +39,9 @@ async function fixture(t: test.TestContext, connect: (server: Agent) => Promise<
   catch (error) { await cleanup(); throw error; }
   assert.ok(client);
   const connected = client;
-  return { root, env, local: localHost(env), rpc: (op: string, args: Record<string, unknown>) => connected.request(op, args) };
+  second = await AgentClient.connect(server!.socket, 'synthetic');
+  const concurrent = second;
+  return { root, env, local: localHost(env), rpcSecond: (op: string, args: Record<string, unknown>) => concurrent.request(op, args), rpc: (op: string, args: Record<string, unknown>) => connected.request(op, args) };
 }
 
 test('agent C1/C2 file reads match local and transfer exact bounded bytes', { timeout: 10000 }, async t => {
@@ -136,4 +140,22 @@ test('agent fixture drains server and removes root after failed connection setup
     probe.once('connect', () => probe.destroy());
     probe.once('close', () => error ? reject(error) : resolve());
   }), /ENOENT|ECONNREFUSED/);
+});
+
+for (const remote of [false, true]) test(`atomic publish, append and stat preserve concurrent writers (${remote ? 'agent' : 'local'})`, {timeout: 3000}, async t => {
+  const {root, local, rpc, rpcSecond} = await fixture(t);
+  const path = join(root, 'published');
+  let calls = 0;
+  const concurrentRpc = (op: string, args: Record<string, unknown>) => (++calls % 2 ? rpc : rpcSecond)(op, args);
+  const publish = (bytes: Buffer, replace = false) => remote ? concurrentRpc('publishFile', {path, bytes: bytes.toString('base64'), options: {replace, mode: 0o640}}) : local.publishFile(path, bytes, {replace, mode: 0o640});
+  const results = await Promise.all([publish(Buffer.from('one')), publish(Buffer.from('two'))]);
+  assert.deepEqual(results.slice().sort(), [false, true]);
+  assert.equal(await readFile(path, 'utf8'), results[0] ? 'one' : 'two');
+  await publish(Buffer.from('replacement'), true);
+  const append = (bytes: Buffer) => remote ? concurrentRpc('appendFile', {path, bytes: bytes.toString('base64')}) : local.appendFile(path, bytes);
+  await Promise.all([append(Buffer.from('A')), append(Buffer.from('B'))]);
+  assert.match(await readFile(path, 'utf8'), /^replacement(AB|BA)$/);
+  const info = remote ? await rpc('stat', {path}) : await local.stat(path);
+  assert.deepEqual(info, {mode: (await stat(path)).mode, size: 13});
+  assert.deepEqual((await readdir(root)).filter(n => n.includes('.stage-')), []);
 });

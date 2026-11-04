@@ -7,11 +7,6 @@ import type { ChildProcess } from 'node:child_process';
 import { dirname } from 'node:path';
 import type { Resumed } from '../hub/worktrees.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
-import { stat } from 'node:fs/promises';
-
-/** Metadata belongs to the hub's undo files, never to a session cwd. */
-const hubFileMeta = (path: string) => stat(path);
-
 type FileUndo = { kind: 'remove' | 'directory'; path: string }
   | { kind: 'truncate'; path: string; size: number }
   | { kind: 'restore'; path: string; content: string; mode: number };
@@ -75,21 +70,15 @@ export class LaunchFiles {
 
   async file(path: string, append = false): Promise<void> {
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
-      if (this.#host.name !== 'local') {
-        const kind = yield* wait(this.#host.fileType(path));
-        if (kind === 'missing') this.#undo.push({ kind: 'remove', path });
-        else throw new Error('nonlocal existing-file rollback needs Host mode metadata (T-1644)');
-        return;
-      }
       let before;
-      try { before = yield* wait(hubFileMeta(path)); } catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; before = null; }
+      try { before = yield* wait(this.#host.stat(path)); } catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; before = null; }
       if (!before)
         this.#undo.push({ kind: 'remove', path });
       else if (append)
         this.#undo.push({ kind: 'truncate', path, size: before.size });
       else {
         const content = yield* wait(this.#host.readFile(path));
-        const mode = before.mode;
+        const mode = before.mode & 0o7777;
         this.#undo.push({ kind: 'restore', path, content: Buffer.from(content).toString('base64'), mode });
       }
     }).call(this), this.resumed);

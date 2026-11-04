@@ -108,6 +108,9 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   const host: Host & {close():Promise<void>;quiesce():void} = {
     name:o.name, limitPolls:false, layout: () => Object.freeze({...o.layout}),
     writeFile: async (path,bytes,options) => { mutation(); await rpc('writeFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}); },
+    publishFile: (path,bytes,options) => prepared<boolean>('publishFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}),
+    appendFile: async (path,bytes) => {await prepared<null>('appendFile',{path,bytes:Buffer.from(bytes).toString('base64')});},
+    stat: path => rpc('stat',{path}),
     makeDirectory: async (path,mode) => {mutation();await rpc('makeDirectory',{path,mode});},
     removePath: async (path,options) => {mutation();await rpc('removePath',{path,options});},
     freePort: () => rpc('freePort'),

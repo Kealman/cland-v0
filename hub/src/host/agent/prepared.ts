@@ -1,3 +1,5 @@
+import { parseAgentFile } from './operations.ts';
+import { fileOperations } from './files.ts';
 import { randomUUID } from 'node:crypto';
 import { open, lstat, opendir, mkdir, unlink, readFile, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
@@ -13,7 +15,7 @@ import { reserveCheckout, observeCheckout, validateCheckout, cleanupCheckout } f
 import type { CheckoutOwnership, FileBirth } from './prepared-checkout.ts';
 
 type Phase = 'preparing' | 'git-running' | 'prepared' | 'committing';
-type Plan = { kind: 'spawn' | 'worktree' | 'stop' | 'run'; phase: Phase; args: Record<string, unknown>; recoveryKey?: string; cleanup?: FileBirth & {path:string}; checkout?: CheckoutOwnership; targets?: ProcessTarget[] };
+type Plan = { kind: 'spawn' | 'worktree' | 'stop' | 'run' | 'publishFile' | 'appendFile'; phase: Phase; args: Record<string, unknown>; recoveryKey?: string; cleanup?: FileBirth & {path:string}; checkout?: CheckoutOwnership; targets?: ProcessTarget[] };
 export type PreparedOutcome = {state:'accepted';result:unknown} | {state:'failed';error:string} | {state:'pending';reason:string};
 type Pending = { deadline: number; plan: Plan; log?: FileHandle; timer?: NodeJS.Timeout };
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -104,6 +106,7 @@ export class PreparedOperations {
     const pending:Pending={deadline:Infinity,plan};this.#pending.set(token,pending);
     try {
       await checkpoint(this.#path(token),plan);
+    if(kind==='publishFile'||kind==='appendFile') parseAgentFile(args,kind);
     if(kind==='spawn') {
       args={...args,env:remoteCommandEnvironment(args.env as NodeJS.ProcessEnv)};
       const env=remoteCommandEnvironment({...this.#env,...args.env as NodeJS.ProcessEnv});
@@ -139,6 +142,7 @@ export class PreparedOperations {
     }
   });}
   async #recoverCommit(token:string,plan:Plan):Promise<PreparedOutcome> {
+    if(plan.kind==='publishFile'||plan.kind==='appendFile')return {state:'pending',reason:'file commit completion unknown; never replay'};
     if(plan.kind==='run')return {state:'pending',reason:'native command completion unknown'};
     if(plan.kind==='spawn') {
       const native=await this.#processes.operationReceipt(token);
@@ -159,9 +163,15 @@ export class PreparedOperations {
     const pending=this.#pending.get(token);if(!pending)throw new Error('prepared operation expired or unavailable');
     if(Date.now()>=pending.deadline) {await this.#abort(token);throw new Error('prepared operation expired');}
     clearTimeout(pending.timer);const {plan}=pending;if(plan.phase==='git-running')throw new Error('prepared Git writer completion unknown; cleanup incomplete');plan.phase='committing';await checkpoint(this.#path(token),plan);
+    let fileCompleted = false;
     try {
       let result:unknown;
-      if(plan.kind==='spawn') {
+      if(plan.kind==='publishFile'||plan.kind==='appendFile') {
+        const {path,bytes,options}=parseAgentFile(plan.args,plan.kind);
+        if(plan.kind==='publishFile') result=await fileOperations.publishFile(path,bytes,options);
+        else {await fileOperations.appendFile(path,bytes);result=null;}
+        fileCompleted = true;
+      } else if(plan.kind==='spawn') {
         const cleanup=plan.cleanup;delete plan.cleanup;await checkpoint(this.#path(token),plan);
         try {result=await this.#processes.spawn({...plan.args,env:remoteCommandEnvironment({...this.#env,...plan.args.env as NodeJS.ProcessEnv})},pending.log,{launchId:token,accepted:async result=>{await this.#saveOutcome(token,plan,{state:'accepted',result});}});}
         catch(error){if(!(await this.#outcome(token))&&cleanup)plan.cleanup=cleanup;throw error;}
@@ -173,6 +183,9 @@ export class PreparedOperations {
     } catch(error) {
       const saved=await this.#outcome(token);
       if(saved?.outcome.state==='accepted') {await this.#removePlan(token);return saved.outcome.result;}
+      if (fileCompleted) {
+        this.#fenced.add(token);this.#failures.set(token,error instanceof Error?error:new Error(String(error)));throw error;
+      }
       this.#fenced.add(token);await pending.log?.close();
       await this.#cleanup(token,plan);await this.#saveOutcome(token,plan,{state:'failed',error:String(error)});await this.#removePlan(token);throw error;
     }

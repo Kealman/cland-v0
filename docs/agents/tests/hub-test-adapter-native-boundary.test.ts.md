@@ -24,3 +24,14 @@ failure: the launch rejects, starts no app-server child and rolls back its log
 and socket directory. Host.spawn rechecks authorization after async log preparation.
 The fake version CLI now answers through a short native process on Host.run;
 identity, all other native processes and the rollback assertions stay real.
+
+T-1644 forced injection-point migration preserves every assertion and test name:
+OpenCode ignore creation/partial writes inject the Host publication staging
+FileHandle.writeFile, selected by its exact scratch parent and .stage- basename.
+Append faults inject fs.promises.appendFile. A concurrent editor is planted
+after the native staging write completes, before publication. These keep native
+staging cleanup, once-failed append retry and no-clobber preservation reachable.
+Config/password, link and all lifecycle injection paths remain unchanged.
+
+Each of the six relocated cases increments and asserts its own injection counter,
+proving the production Host boundary was reached in that case.

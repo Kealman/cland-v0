@@ -131,7 +131,7 @@ test('publication RPC timeout retains writer until a positive same-stream drain 
  let release!:()=>void;let barrierEntered=false;let reads=0;
  const gate=new Promise<void>(resolve=>{release=resolve;});
  const publication=publishRemoteDiscovery({request:async op=>{
-  if(op==='writeFile')throw new Error('agent request timed out; outcome unknown');
+  if(op==='publishFile')throw new Error('agent request timed out; outcome unknown');
   if(reads++===0)throw Object.assign(new Error('absent'),{code:'ENOENT'});
   barrierEntered=true;await gate;return Buffer.from('written').toString('base64');
  }},'/unused',remoteDiscovery('/tmp/run','synthetic-host'));
@@ -144,7 +144,7 @@ test('publication RPC timeout retains writer until a positive same-stream drain 
 
 import { AgentClient } from '../src/host/agent-client.ts';
 import { tunnelStatuses } from '../src/transport/transport.ts';
-test('changed discovery keeps the prior private bytes and reports connecting refusal', {timeout:10000},async t=>{
+test('changed host secret atomically replaces prior discovery and reaches up', {timeout:10000},async t=>{
  const f=await sshHostFixture(t);await f.transport.stop();
  const candidate=remoteDiscovery(f.fake.run,f.secrets.readSecret('f1'));
  const file=join(f.fake.run,'hub.json');
@@ -155,8 +155,7 @@ test('changed discovery keeps the prior private bytes and reports connecting ref
   try {await publishRemoteDiscovery(client,file,candidate,signal);} finally {await client.close();}
  }});
  f.addCleanup(()=>carrier.stop());await carrier.start();
- await eventually('changed publication refusal',()=>tunnelStatuses(f.root,[f.records.get('f1')!])[0]?.reason==='host discovery differs; atomic replacement required'||undefined,2000);
- assert.equal(carrier.status().state,'connecting');
- assert.equal(await readFile(file,'utf8'),prior);
+ await eventually('changed publication completed before up',()=>carrier.status().state==='up'||undefined,2000);
+ assert.equal(await readFile(file,'utf8'),JSON.stringify(candidate,null,2)+'\n');
  assert.equal((await stat(file)).mode&0o777,0o600);
 });

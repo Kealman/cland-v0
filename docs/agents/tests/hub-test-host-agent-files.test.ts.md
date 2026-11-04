@@ -22,3 +22,8 @@ shared Node/load/disk preflight in docs/agents/tests.md. Existing preservation
 owners are host-agent.test.ts, host-agent-boundary.test.ts,
 host-local-contract.test.ts, worktree-host.test.ts, doctor-run.test.ts and
 artifact-folders.test.ts; these retain their original assertions.
+
+Atomic publication tests submit two concurrent writers and require exactly one
+create-only success, the winner's complete bytes, replacement, concurrent append
+and native mode/size equality. Both local and agent implementations execute the
+same cases, with staging census checked after all writes finish.

@@ -34,6 +34,13 @@ export interface Host {
   readonly layout: (input: HostLaunchLayoutInput) => HostLaunchLayout;
   /** Exact bytes; an explicit mode applies to existing files too. truncate requires empty bytes. */
   writeFile(path: string, bytes: Uint8Array, options?: { mode?: number; truncate?: number }): Promise<void>;
+  /** Atomically publish complete bytes. Default preserves existing paths and returns false;
+   * replace atomically replaces them. Staging is cleaned before resolution. */
+  publishFile(path: string, bytes: Uint8Array, options?: { mode?: number; replace?: boolean }): Promise<boolean>;
+  /** Append exact bytes with O_APPEND; creates a missing file using the process umask. */
+  appendFile(path: string, bytes: Uint8Array): Promise<void>;
+  /** Follows links, like native stat; missing paths reject with ENOENT. */
+  stat(path: string): Promise<{ mode: number; size: number }>;
   /** One directory; parents are owned and journaled separately by the caller. */
   makeDirectory(path: string, mode?: number): Promise<void>;
   /** Never recursive. directory removes an empty directory only; otherwise unlink the path itself. */

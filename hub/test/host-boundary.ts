@@ -3,7 +3,6 @@ import { readdir, readFile } from 'node:fs/promises';
 
 /** Native implementation edges, not session orchestration. Keep reasons reviewable. */
 export const hostBoundaryExceptions = {
-  'local-opencode-files.ts': 'Local Host atomic shared-ignore publication preserves concurrency; nonlocal support is T-1644.',
   'processes.ts': 'Native local liveness/birth helpers used by the local Host.',
   'session-cwd.ts': 'Native directory identity/refusal implementation used by the local Host.',
   'claude-code-local.ts': 'Standalone local Host compatibility, including synthetic legacy fixtures.',
@@ -23,16 +22,6 @@ export function hostBoundaryFindings(file: string, source: string): string[] {
     findings.push(`${file}:${tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1}: ${use} bypasses Host`);
   };
   const text = (node: ts.Node) => node.getText(tree).replace(/\s+/g, '');
-  // These imports supply only hub-owned rollback metadata / the hub-side log offset.
-  // Their uses are checked individually below; no whole-file filesystem exemption.
-  const hubStatImport = (name: string) => name === 'stat' && (file === 'launch-files.ts' || file === 'opencode/server.ts');
-  const hubStatCall = (node: ts.CallExpression) => {
-    if (text(node) === 'stat(files.log)' && file === 'opencode/server.ts') return true;
-    const parent = node.parent;
-    return file === 'launch-files.ts' && text(node) === 'stat(path)'
-      && ts.isArrowFunction(parent) && ts.isVariableDeclaration(parent.parent)
-      && parent.parent.name.getText(tree) === 'hubFileMeta';
-  };
   const crashSelfKill = (node: ts.CallExpression) => {
     if (file !== 'sessions.ts' || text(node) !== "process.kill(process.pid,'SIGKILL')") return false;
     let parent: ts.Node = node.parent;
@@ -57,7 +46,7 @@ export function hostBoundaryFindings(file: string, source: string): string[] {
       if (helpers.has(name)) report(binding, `${name} import`);
       if ((module === 'fs' || module === 'fs/promises') && metadata.has(name)) {
         fsBindings.set(binding.name.text, name);
-        if (!hubStatImport(name)) report(binding, `${name} import`);
+        report(binding, `${name} import`);
       }
     }
     if (module === 'fs' || module === 'fs/promises') {
@@ -70,7 +59,7 @@ export function hostBoundaryFindings(file: string, source: string): string[] {
       if (text(node.expression) === 'process.kill' || text(node.expression) === 'process["kill"]' || text(node.expression) === "process['kill']") {
         if (!crashSelfKill(node)) report(node, 'process.kill');
       }
-      if (ts.isIdentifier(node.expression) && fsBindings.has(node.expression.text) && !hubStatCall(node)) report(node, `${fsBindings.get(node.expression.text)} call`);
+      if (ts.isIdentifier(node.expression) && fsBindings.has(node.expression.text)) report(node, `${fsBindings.get(node.expression.text)} call`);
       // Dynamic/require native imports cannot use the static type-only exemption.
       if ((node.expression.kind === ts.SyntaxKind.ImportKeyword || text(node.expression) === 'require') && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
         const module = nativeModule(node.arguments[0].text);

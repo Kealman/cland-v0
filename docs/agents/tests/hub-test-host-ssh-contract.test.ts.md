@@ -42,3 +42,21 @@ the separate aggregate budget gate. The allowance rounds 1.5 times the worst
 sample upward to milliseconds. Both passing samples replay through the production
 checker with before-failure and after-pass controls; row/native assertions and
 timeouts are unchanged. The allowance is not a whole-suite passing receipt.
+
+T-1644 adds a production OpenCode adapter launch through the fake SSH Host and
+real agent spawn. A native child checkpoints its environment before readiness;
+the raw monolithic spawn is the planted-secret positive control. OpenCode's
+captured environment retains explicit allowed values and excludes hub-only
+credentials. The fixture stops the row, joins agent/carrier, and asserts its
+empty process census before removing storage. The shared contract also exercises
+atomic create/replace, append, stat and overwritten-mode rollback through RPC.
+
+File publication and append regressions drop accepted commit replies and hold
+native writes while closing the admitted stream. They assert both Host and
+agent mutation fences, then release the writer and require its exact durable
+result and once-only bytes. No latency sleep supplies the completion boundary.
+
+The older-agent stat control replays an unknown-operation reply on the actual
+authenticated agent wire. Production SSH Host and LaunchFiles must reject before
+any mutation or undo entry, preserving the original file bytes/mode. Handshake
+and native-receipt queries are the only other requests; no local fallback runs.

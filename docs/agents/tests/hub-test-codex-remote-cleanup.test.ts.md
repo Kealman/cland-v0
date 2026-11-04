@@ -18,3 +18,7 @@ assertion-failure controls exercise the actual registered teardown with held
 subscription/settlement producers, observe their written completion file while
 storage and roots are still open, and verify removal afterwards. Keep these
 controls when changing fixture setup or ownership hooks.
+
+T-1644 forced fixture edit: stat maps into the same scratch storage as the
+recording Host fileType/read/write/remove operations. The planted hub-side mirror
+and all original assertions remain unchanged.

@@ -29,7 +29,9 @@ contract covers native capture/callback/signal order and absent/reused identitie
 Nonlocal process cases build from testHost and processHost. File preparation
 explicitly uses localHost operations with fixtureEnvironment on the disposable
 project; directory/stat/write/remove operations must succeed before the synthetic
-process boundary. Production testHost keeps its named file refusals. They count
+process boundary. Default testHost keeps its named file refusals. Its stat method recognizes only
+explicit delegation of the shared local fileType/writeFile/removePath functions
+by a scratch recording double; arbitrary overrides grant no native access. They count
 one discovery for each of two launches in one interval, observe several Host
 liveness receipts and death, retain a missing PID as supervised/running with an
 unknown-PID diagnostic, and reopen the adapter for listed and missing restart

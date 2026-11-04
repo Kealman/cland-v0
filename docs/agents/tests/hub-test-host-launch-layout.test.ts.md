@@ -5,10 +5,8 @@ harness binary starts. Baselines were captured before the adapter migration;
 root, installed mod directory, system temporary directory, generated UUID and
 password are normalized. The local argv/environment and generated file bytes and
 modes must match those literals. Mapped recording Hosts choose distinct runtime,
-log, discovery, executable and mod paths. OpenCode's mapped control retains the
-local Host name to exercise the local atomic shared-ignore helper; actual nonlocal
-preparation explicitly refuses with T-1644. Password reads and nonlocal rollback
-metadata refusals have separate controls. The capture stops before the Host opens
+log, discovery, executable and mod paths. OpenCode's mapped control uses a nonlocal Host name. Password reads and rollback
+restoration of bytes, permissions and append offsets have separate controls. The capture stops before the Host opens
 native process logs or creates a socket; unchanged adapter lifecycle files prove
 that later boundary using fake harnesses.
 

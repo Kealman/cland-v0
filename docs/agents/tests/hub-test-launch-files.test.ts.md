@@ -10,3 +10,13 @@ the Host name and operation in each error and log.
 Keep session-launch.test.ts and session-stop-races.test.ts unedited as controls;
 session-host.test.ts additionally exercises durable old pending-stop recovery.
 The reusable native cases live in host-contract.ts through the T3 local wrapper.
+
+The testHost stat guard refuses by default and for arbitrary fileType overrides.
+Only a double explicitly delegating shared local fileType/writeFile/removePath
+receives native stat metadata; publish/append keep their default refusals. The
+unchanged claude-code-host test remains a preservation control for that seam.
+
+The mapped remote rollback guard plants distinct hub and Host bytes/modes. Native
+hub stat/read spies reject access, with positive controls before resetting the
+counter. Production LaunchFiles restores the remote bytes/mode and leaves the
+hub mirror unchanged and unread.

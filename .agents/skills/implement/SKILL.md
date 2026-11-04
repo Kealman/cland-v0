@@ -131,6 +131,12 @@ Empty/missing speech commands keep audio and name command setup.
 
 ## Host admission
 
+Host file preparation uses `publishFile` for atomic create-only or replacement,
+`appendFile` for shared-ignore repair and `stat` for rollback permissions/offsets.
+OpenCode's shared ignore runs on its launch Host; do not add local filesystem
+exceptions. Remote publish/append settle their prepared token after a lost reply;
+never retry an unknown append. See [atomic files](../../../docs/hub/ssh-host.md#atomic-files-and-metadata).
+
 SSH item worktrees come from the host clone's socket origin; the hub grants the
 branch lease and stores the owning host/root/path in hub.db. List and prune use
 that owner after restart. Preserve the executable proxy wrapper: Git does not

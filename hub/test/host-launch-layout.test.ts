@@ -31,7 +31,7 @@ for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (cons
       captured = { command, disk };
       throw new Error('recorded launch boundary');
     };
-    const machine = { ...localHost(env), name: mapped && name !== 'opencode' ? 'recording' : 'local',
+    const machine = { ...localHost(env), name: mapped ? 'recording' : 'local',
       layout: (input: HostLaunchLayoutInput) => mapped ? { discoveryFile: join(root, 'host/hub.json'), node: '/host/node', cli: '/host/cli', spoke: '/host/spoke', modDir: '/host/mod', runDirectory: join(root, 'host/runtime'), logDirectory: join(root, 'host/logs') } : localHost(env).layout(input),
       freePort: async () => 43210,
       run: async (command: HostCommand) => command.args[0] === '--version' ? { code: 0, stdout: 'codex 0.160.0', stderr: '' } : record(command), spawn: record };
@@ -57,8 +57,8 @@ for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (cons
         .replaceAll('<ROOT>/.cland', '<ROOT>/host').replaceAll('.cland/run', 'host/runtime').replaceAll('.cland/opencode', 'host/opencode')
         .replaceAll('/fixture:/fixture/bin', '/host:/fixture/bin').replaceAll('/fixture/node', '/host/node').replaceAll('/fixture/cli', '/host/cli').replaceAll('/fixture/spoke', '/host/spoke');
       const baselineValue = JSON.parse(expected) as { disk: typeof disk; command: HostCommand };
-      if (mapped && name !== 'opencode') {
-        baselineValue.command.env = name === 'claude' ? {
+      if (mapped) {
+        baselineValue.command.env = name === 'opencode' ? {CLAND_HUB_FILE:'<ROOT>/host/hub.json',CLAND_ROLE:'implementer',CLAND_SESSION_ID:'fixture-session',CLAND_SESSION_NAME:'worker',OPENCODE_DB:'<ROOT>/account/opencode.db',OPENCODE_CONFIG:'<ROOT>/host/opencode/worker/opencode.json',OPENCODE_PASSWORD:'<PASSWORD>'} : name === 'claude' ? {
           OPENCODE_DB: '<ROOT>/account/opencode.db', DISABLE_AUTOUPDATER: '1',
         } : {
           OPENCODE_DB: '<ROOT>/account/opencode.db', CLAND_SESSION_ID: 'fixture-session', CLAND_SESSION_NAME: 'worker', CLAND_ROLE: 'implementer',
@@ -82,28 +82,31 @@ test('OpenCode password reads use the supplied Host', async () => {
   assert.deepEqual(reads, ['/host/opencode/worker/password']);
 });
 
-test('nonlocal file replacement refuses missing rollback metadata and new files undo through their Host', async () => {
+test('nonlocal rollback restores overwritten bytes and mode and truncates appended logs', async t => {
   const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
-  const writes: string[] = [];
-  const removed: string[] = [];
-  const machine = { ...localHost(), name: 'recording', fileType: async (path: string) => path === '/existing' ? 'file' as const : 'missing' as const,
-    writeFile: async (path: string) => { writes.push(path); }, removePath: async (path: string) => { removed.push(path); } };
+  const { writeFile } = await import('node:fs/promises');
+  const root = await tempProject(t); const path = join(root, 'existing');
+  await writeFile(path, 'before', {mode: 0o640});
+  const machine = {...localHost(), name: 'remote'};
   const files = new LaunchFiles(undefined, machine);
-  await assert.rejects(files.write('/existing', Buffer.from('new')), /T-1644/);
-  await files.write('/new', Buffer.from('new'));
+  await files.write(path, Buffer.from('after'), 0o600);
   await files.rollback();
-  assert.deepEqual(writes, ['/new']);
-  assert.deepEqual(removed, ['/new']);
+  assert.equal(await readFile(path, 'utf8'), 'before');
+  assert.equal((await stat(path)).mode & 0o777, 0o640);
+  const logs = new LaunchFiles(undefined, machine); await logs.file(path, true);
+  await machine.appendFile(path, Buffer.from('tail')); await logs.rollback();
+  assert.equal(await readFile(path, 'utf8'), 'before');
 });
 
-test('nonlocal OpenCode shared-ignore preparation refuses the unsupported atomic boundary', async t => {
+test('nonlocal OpenCode prepares shared ignore through supplied Host', async t => {
   const { prepareFiles, serverFiles } = await import('../src/adapters/opencode/server.ts');
   const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
   const root = await tempProject(t, 'cx-', '/tmp');
   const machine = { ...localHost(), name: 'remote' };
   const files = new LaunchFiles(undefined, machine);
-  try { await assert.rejects(prepareFiles(root, serverFiles(root, 'worker'), {}, true, files, undefined, undefined, machine), /T-1644/); }
-  finally { await files.rollback(); }
+  await prepareFiles(root, serverFiles(root, 'worker'), {}, true, files, undefined, undefined, machine);
+  assert.equal(await readFile(join(root, 'opencode/.gitignore'), 'utf8'), '# managed by cland: generated OpenCode configs and server passwords, never committed\n*\n');
+  await files.rollback();
 });
 
 test('Claude nonlocal layout without a mod directory refuses before native launch', async t => {
@@ -114,4 +117,20 @@ test('Claude nonlocal layout without a mod directory refuses before native launc
   const adapter = new ClaudeCodeAdapter(host, { env, bin: '/fixture/claude' });
   try { await assert.rejects(adapter.spawn({ name: 'worker', role: null, model: null, cwd: root }), /remote layout has no mod directory yet/); }
   finally { await adapter.close(); }
+});
+
+for (const existing of [false, true]) test(`OpenCode ignore preserves concurrent editor bytes (${existing ? 'before read' : 'at publish'})`, async t => {
+  const {prepareIgnore} = await import('../src/adapters/opencode/ignore.ts');
+  const {writeFile, readdir} = await import('node:fs/promises');
+  const {untimed} = await import('../src/adapters/continuations.ts');
+  const root = await tempProject(t), path = join(root, '.gitignore');
+  const machine = localHost(); let publishCalls = 0;
+  if (existing) await writeFile(path, 'user-rule');
+  const host = {...machine, name: 'remote', publishFile: async (...args: Parameters<typeof machine.publishFile>) => {
+    publishCalls++; await writeFile(path, 'user-rule'); return machine.publishFile(...args);
+  }};
+  await prepareIgnore(root, untimed, () => {}, host);
+  assert.equal(publishCalls, existing ? 0 : 1);
+  assert.equal(await readFile(path, 'utf8'), 'user-rule\n*\n');
+  assert.deepEqual((await readdir(root)).filter(n => n.startsWith('.stage-')), []);
 });

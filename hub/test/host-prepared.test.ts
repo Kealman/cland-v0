@@ -214,3 +214,40 @@ for (const mode of ['commit inspection','abort removal','restart removal'] as co
  assert.equal(launches,1);await access(path);
  const before=Number(await readFile(marker,'utf8'));await eventually('unjoined writer remains live while cleanup refuses',async()=>Number(await readFile(marker,'utf8'))>before||undefined,5000);
 });
+
+for (const kind of ['publishFile', 'appendFile']) test(`restart retains interrupted ${kind} commit without replay`, async t => {
+ const root=await tempProject(t),env=fixtureEnvironment(root,process.env);
+ const processes=new AgentProcesses(root,env,()=>{});await processes.load();
+ const directory=join(root,'prepared');await mkdir(directory);
+ const token='11111111-1111-1111-1111-111111111111',recoveryKey='synthetic-recovery';
+ const path=join(root,'effect');await writeFile(path,'once');
+ const plan={kind,phase:'committing',args:{path,bytes:Buffer.from('once').toString('base64')},recoveryKey};
+ await checkpoint(join(directory,token+'.json'),plan);
+ const prepared=new PreparedOperations(root,env,processes);await prepared.start();
+ beforeDirectories(t,async()=>{await assert.rejects(prepared.close(),/cleanup incomplete/);await processes.drain();});
+ assert.throws(()=>prepared.assertMutable(),/ownership incomplete/);
+ assert.deepEqual(await prepared.settle(token,recoveryKey),{state:'pending',reason:'file commit completion unknown; never replay'});
+ await assert.rejects(prepared.settle(token,'wrong-owner'),/not owned/);
+ assert.equal(await readFile(path,'utf8'),'once');
+ assert.deepEqual(JSON.parse(await readFile(join(directory,token+'.json'),'utf8')),plan);
+});
+
+import { fileOperations } from '../src/host/agent/files.ts';
+test('completed append retains ownership when its durable result cannot be written', async t => {
+ const root=await tempProject(t),env=fixtureEnvironment(root,process.env);
+ const processes=new AgentProcesses(root,env,()=>{});await processes.load();
+ const prepared=new PreparedOperations(root,env,processes);await prepared.start();
+ beforeDirectories(t,async()=>{await assert.rejects(prepared.close(),/cleanup incomplete/);await processes.drain();});
+ const path=join(root,'effect'),recoveryKey='synthetic-recovery';
+ const admission=await prepared.prepare('appendFile',{path,bytes:Buffer.from('once').toString('base64'),recoveryKey});
+ const native=fileOperations.appendFile;
+ t.mock.method(fileOperations,'appendFile',async (...args: Parameters<typeof native>)=>{
+   await native(...args);
+   await mkdir(join(root,'prepared-results',admission.token!+'.json.new'));
+ });
+ await assert.rejects(prepared.commit(admission.token!),/EISDIR/);
+ assert.throws(()=>prepared.assertMutable(),/ownership incomplete/);
+ assert.deepEqual(await prepared.settle(admission.token!,recoveryKey),{state:'pending',reason:'file commit completion unknown; never replay'});
+ assert.equal(await readFile(path,'utf8'),'once');
+ assert.equal(JSON.parse(await readFile(join(root,'prepared',admission.token!+'.json'),'utf8')).phase,'committing');
+});

@@ -46,6 +46,28 @@ test('C2 explicit additions merge with agent base while planted hub tokens never
  assert.equal(received.EXPLICIT,'allowed');
  for(const key of Object.keys(planted)) assert.equal(received[key],undefined,key);
  assert.equal(received.CLAND_HOST_SECRET,undefined);
+ // Exercise the production OpenCode adapter over the same real agent spawn boundary.
+ const {OpenCodeAdapter} = await import('../src/adapters/opencode.ts');
+ const {OpenCodeClient} = await import('../src/adapters/opencode/client.ts');
+ const opencodeOutput=join(f.fake.home,'opencode-environment.json');
+ const bin=join(f.fake.home,'fake-opencode');
+ await writeFile(bin,`#!${process.execPath}\nrequire('fs').writeFileSync(process.env.CAPTURE,JSON.stringify(process.env));setInterval(()=>{},1000);\n`,{mode:0o700});
+ t.mock.method(OpenCodeClient.prototype,'request',async (_method:string,path:string)=>{
+   if(path==='/api/session/active') {await eventually('OpenCode native env capture',async()=>{try{return JSON.parse(await readFile(opencodeOutput,'utf8'));}catch{return undefined;}},2000);return {data:{}};}
+   if(path==='/api/session')return {data:{id:'fake-host-session'}};
+   throw new Error(`unexpected ${path}`);
+ });
+ const adapter=new OpenCodeAdapter({root:f.root,discoveryFile:join(f.root,'unused.json'),node:process.execPath,cli:'/cli',spoke:'/spoke',hostForLaunch:()=>f.host,hostForProcess:()=>f.host,log:()=>{},signal:()=>{},exited:()=>{},recordPid:()=>{}},{bin,env:{...env,...planted},stopGraceMs:10});
+ f.addCleanup(()=>adapter.close());
+ const row=await adapter.spawn({name:'worker',sessionId:'opencode-fixture',role:'implementer',model:'openai/gpt-5.2',cwd:f.fake.home,accountEnv:{CAPTURE:opencodeOutput,EXPLICIT:'opencode-allowed',...planted}});
+ try {
+   const captured=JSON.parse(await readFile(opencodeOutput,'utf8'));
+   assert.equal(captured.EXPLICIT,'opencode-allowed');
+   for(const key of Object.keys(planted))assert.equal(captured[key],undefined,key);
+   assert.equal(captured.CLAND_HOST_SECRET,undefined);
+   assert.equal(await readFile(join(f.fake.home,'opencode/.gitignore'),'utf8'),'# managed by cland: generated OpenCode configs and server passwords, never committed\n*\n');
+ } finally {await adapter.stop(row);}
+
 });
 test('C4 down tunnel refuses every operation with host/tunnel reason and starts no process or file writer', {timeout:15000}, async t => {
  const f = await sshHostFixture(t); await f.transport.stop();
@@ -78,11 +100,11 @@ for(const [name,Adapter] of Object.entries({claude:ClaudeCodeAdapter,codex:Codex
  const received=JSON.parse(await readFile(output,'utf8'));assert.equal(received.HUB_ONLY,undefined);
 });
 
-test('OpenCode nonlocal launch preserves its atomic preparation refusal and starts no process',{timeout:15000},async t=>{
+test('OpenCode nonlocal missing executable fails after Host file preparation and leaves no process',{timeout:15000},async t=>{
  const f=await sshHostFixture(t);const before=fixtureProcessCensus(f.root).map(p=>[p.pid,p.identity]);
  const host:AdapterHost={root:f.root,discoveryFile:join(f.root,'hub.json'),node:process.execPath,cli:'/hub/cli',spoke:'/hub/spoke',hostForLaunch:()=>f.host,log:()=>{},signal:()=>{},exited:()=>{},recordPid:()=>{}};
  const adapter=new OpenCodeAdapter(host,{env:fixtureEnvironment(f.root,process.env,{HUB_ONLY:'synthetic-hub-only'}),bin:'/fake/harness',pollMs:600000});f.addCleanup(async()=>{await adapter.close();});
- await assert.rejects(adapter.spawn({name:'worker',host:'f1',role:null,model:null,cwd:f.fake.home}),/Host atomic publish\/append/);
+ await assert.rejects(adapter.spawn({name:'worker',host:'f1',role:null,model:null,cwd:f.fake.home}),/command unavailable/);
  assert.deepEqual(fixtureProcessCensus(f.root).map(p=>[p.pid,p.identity]),before);
 });
 
@@ -218,4 +240,73 @@ for(const dropped of [false,true]) test(`Host.run settles oversized escaped outp
  assert.ok(completed!.stdout.endsWith('stdout-end'));assert.ok(completed!.stderr.endsWith('stderr-end'));
  const follow=await f.host.run({command:process.execPath,args:['-e',"process.stdout.write('unfenced')"],cwd:f.fake.home,env:{}});
  assert.deepEqual(follow,{code:0,stdout:'unfenced',stderr:''});
+});
+
+for (const operation of ['publishFile', 'appendFile'] as const) test(`Host ${operation} settles lost accepted reply without duplicate bytes`, {timeout: 4000}, async t => {
+  const f = await sshHostFixture(t), path = join(f.fake.home, 'file-effect');
+  const hold = f.holdSettlementReplies(); f.addCleanup(async () => hold.release());
+  f.dropNextCommitReply();
+  let completed = false;
+  const writing = f.host[operation](path, Buffer.from('once')).then(result => { completed = true; return result; });
+  await eventually('accepted file reply lost and reconciliation requested', () => hold.attempts() || undefined, 2000);
+  assert.equal(completed, false);
+  await assert.rejects(f.host.removePath(path), /outcome unknown/);
+  assert.equal(await readFile(path, 'utf8'), 'once');
+  hold.release();
+  assert.equal(await writing, operation === 'publishFile' ? true : undefined);
+  assert.equal(await readFile(path, 'utf8'), 'once');
+  await f.host.removePath(path);
+});
+
+import { fileOperations } from '../src/host/agent/files.ts';
+for (const operation of ['publishFile', 'appendFile'] as const) test(`Host ${operation} retains a held native writer across stream loss`, {timeout: 4000}, async t => {
+  const f = await sshHostFixture(t), path = join(f.fake.home, 'held-file-effect');
+  const native = fileOperations[operation];
+  let release!: () => void, entered = false;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const request = AgentClient.prototype.request;
+  let commit: AgentClient | undefined, completed = false;
+  t.mock.method(AgentClient.prototype, 'request', function(this: AgentClient, op: string, args: Record<string, unknown>, timeout?: number) {
+    if (op === 'commit-prepared') commit = this;
+    return request.call(this, op, args, timeout);
+  });
+  t.mock.method(fileOperations, operation, async (...args: Parameters<typeof native>) => {
+    if (args[0] === path) { entered = true; await gate; }
+    return (native as (...args: Parameters<typeof native>) => Promise<unknown>)(...args);
+  });
+  f.addCleanup(async () => { release(); await writing; });
+  const writing = f.host[operation](path, Buffer.from('once')).then(result => { completed = true; return result; });
+  await eventually('native file writer entered', () => entered || undefined, 1500);
+  assert.ok(commit); await commit.close();
+  await eventually('held file owner enters SSH unknown fence', async () => {
+    try { await f.host.removePath(join(f.fake.home, 'unrelated')); return undefined; }
+    catch (error) { return /outcome unknown/.test(String(error)) || undefined; }
+  }, 2000);
+  assert.equal(completed, false);
+  const stranger = await AgentClient.connect(f.paths.agentSocket, f.secrets.readSecret('f1'));
+  try { await assert.rejects(stranger.request('removePath', {path}), /ownership incomplete/); }
+  finally { await stranger.close(); }
+  release();
+  assert.equal(await writing, operation === 'publishFile' ? true : undefined);
+  assert.equal(await readFile(path, 'utf8'), 'once');
+  await f.host.removePath(path);
+});
+
+test('SSH LaunchFiles refuses an older agent without stat before any file mutation', {timeout:4000}, async t => {
+ const f=await sshHostFixture(t),path=join(f.fake.home,'existing-launch-file');
+ await writeFile(path,'original',{mode:0o640});
+ const nativeRequest=AgentClient.prototype.request;
+ const requests:string[]=[];
+ // Replay the old agent's unknown-operation reply on the actual authenticated wire.
+ t.mock.method(AgentClient.prototype,'request',function(this:AgentClient,op:string,args:Record<string,unknown>,timeout?:number){
+   requests.push(op);
+   return nativeRequest.call(this,op==='stat'?'legacy-agent-without-stat':op,args,timeout);
+ });
+ const {LaunchFiles}=await import('../src/adapters/launch-files.ts');
+ const files=new LaunchFiles(undefined,f.host);
+ await assert.rejects(files.write(path,Buffer.from('replacement'),0o600),/host f1: tunnel agent stat: unknown operation/);
+ assert.deepEqual(requests.filter(op=>!['hello','native-receipts'].includes(op)),['stat']);
+ assert.deepEqual(await files.snapshot(),{undo:[],children:[]});
+ assert.equal(await readFile(path,'utf8'),'original');
+ assert.equal((await (await import('node:fs/promises')).stat(path)).mode&0o777,0o640);
 });

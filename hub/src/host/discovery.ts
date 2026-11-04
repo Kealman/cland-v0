@@ -8,7 +8,7 @@ export function remoteDiscovery(runDirectory: string, secret: string): RemoteDis
   return {remote:true, socket:join(runDirectory,'hub.sock'), spoke:`ws+unix:${join(runDirectory,'spoke.sock')}:/`, secret, version:VERSION};
 }
 
-/** Reconnect preserves identical bytes. Atomic replacement is supplied by T-1644. */
+/** Reconnect preserves identical bytes; changed credentials publish as complete private bytes. */
 export async function publishRemoteDiscovery(client: Pick<AgentClient, 'request'>, file: string, discovery: RemoteDiscovery, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
   const bytes = Buffer.from(JSON.stringify(discovery,null,2)+'\n');
@@ -17,9 +17,8 @@ export async function publishRemoteDiscovery(client: Pick<AgentClient, 'request'
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   signal?.throwIfAborted();
   if (current?.equals(bytes)) return;
-  if (current) throw new Error('host discovery differs; atomic replacement required');
   try {
-    await client.request('writeFile',{path:file,bytes:bytes.toString('base64'),options:{mode:0o600}});
+    await client.request('publishFile',{path:file,bytes:bytes.toString('base64'),options:{mode:0o600,replace:true}});
   } catch (error) {
     if (/outcome unknown|agent closed/.test(error instanceof Error ? error.message : '')) {
       // A second request on this serial stream is a positive boundary after the

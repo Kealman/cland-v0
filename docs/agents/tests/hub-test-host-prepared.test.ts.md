@@ -35,3 +35,7 @@ Failed-add coverage accepts Git's native "already checked out" and "already
 used by worktree" diagnostics for a branch owned by another checkout. It still
 requires the add to reject and its reserved directory to be removed; replacement
 and restart assertions are unchanged.
+
+Interrupted publish/append commit checkpoints remain fenced after restart when
+no durable result exists. Settlement checks the captured recovery owner, keeps
+the plan and effect bytes, reports pending, and never replays append.

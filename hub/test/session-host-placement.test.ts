@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 // T2: Host placement admission through projectHub frames; fake harnesses, no native children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -158,7 +159,7 @@ test('spoke launch forwards Host placement and Coordinator handover refuses its 
   assert.ok(roles.roles.find(r => r.role === 'coordinator')?.holders.some(h => h.name === 'coord'));
 });
 
-test('production OpenCode launch refuses unsupported nonlocal shared-ignore preparation without fallback', async t => {
+test('production OpenCode launch prepares nonlocal shared ignore and reaches only selected Host spawn', async t => {
   const { OpenCodeAdapter } = await import('../src/adapters/opencode.ts');
   const { fixtureEnvironment } = await import('./fixture-environment.ts');
   const { testHost } = await import('../src/host/test-host.ts');
@@ -175,6 +176,7 @@ test('production OpenCode launch refuses unsupported nonlocal shared-ignore prep
       layout: fileHost.layout,
       makeDirectory: fileHost.makeDirectory,
       writeFile: fileHost.writeFile,
+      publishFile: fileHost.publishFile, appendFile: fileHost.appendFile, stat: fileHost.stat, readFile: fileHost.readFile,
       removePath: fileHost.removePath,
       freePort: fileHost.freePort,
       statDirectory: async () => ({ refusal: null, identity: null }),
@@ -192,9 +194,10 @@ test('production OpenCode launch refuses unsupported nonlocal shared-ignore prep
   const ui = await sessionUi(t, hub.discovery);
   const reply = await ui.request({ type: 'session.launch', name: 'remote-opencode', role: 'implementer', harness: 'opencode', host: 't1' });
   assert.equal(reply.ok, false);
-  assert.match(String(reply.error), /nonlocal OpenCode shared ignore.*T-1644/);
-  assert.ok(!operations.includes('t1:spawn'));
-  assert.deepEqual(launches, []);
+  assert.match(String(reply.error), /test host t1 refuses spawn/);
+  assert.ok(operations.includes('t1:spawn'));
+  assert.deepEqual(launches, [{host: 't1', role: 'implementer'}]);
+  assert.match(await (await import('node:fs/promises')).readFile(join(root, '.cland/opencode/.gitignore'), 'utf8'), /\n\*\n$/);
   assert.ok(!operations.includes('local:spawn'), 'placement never falls back to local spawn');
   const listed = await ui.request({ type: 'session.list' });
   assert.deepEqual((listed.value as { processes: unknown[] }).processes, []);

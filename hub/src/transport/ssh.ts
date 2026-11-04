@@ -306,11 +306,11 @@ export class SshTransport implements Transport {
             }
           } finally { if (!exited) await master.terminate(); await master.closed; this.#masterReady = false; this.#retireMaster = undefined; await this.#forwardWork; }
         } catch (error) {
-          this.#state.reason = error instanceof ControlEndpointFenced ? 'control endpoint has not closed' : error instanceof Error && error.message === 'host discovery differs; atomic replacement required' ? 'host discovery differs; atomic replacement required' : 'SSH connection or pinned-key admission failed';
+          this.#state.reason = error instanceof ControlEndpointFenced ? 'control endpoint has not closed' : 'SSH connection or pinned-key admission failed';
           o.log?.(`host ${this.host}: ${this.#state.reason}`);
         }
         this.#policy.disconnected();
-        this.#stateTo(this.#state.reason === 'host discovery differs; atomic replacement required' ? 'connecting' : 'down');
+        this.#stateTo('down');
         if (this.#running) { this.#state.reconnects++; const backoff = this.#policy.failed(); await this.#pause(o.reconnectDelayMs?.(backoff) ?? backoff); }
       }
     } catch { this.#state.reason = 'transport configuration unavailable'; o.log?.(`host ${this.host}: ${this.#state.reason}`); }

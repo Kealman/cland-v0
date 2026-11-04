@@ -19,12 +19,12 @@ Host directory/write/remove/freePort operations allow preparation to reach that
 spawn boundary; the shared fixture environment seals its inputs. Keep the spawn
 refusal, operation log and no-local-fallback assertions unchanged.
 
-The production OpenCode remote control now expects the explicit T-1644
-shared-ignore refusal before any spawn and retains the no-local-fallback and
+The production OpenCode remote control prepares the shared ignore and reaches
+only the selected Host spawn, retaining the no-local-fallback and
 no-process-row assertions. The fake adapter control still reaches the selected
 Host's spawn refusal. Scratch preparation supplies the file Host's layout.
 
 The three Codex/Implementer placement doubles explicitly delegate realpath to
 owned scratch Host metadata because these launches carry sandbox policy. Default
 testHost remains refusing; Sessions skips realpath for OpenCode's absent sandbox
-policy and retains its original nonlocal preparation refusal assertion.
+policy and reaches the selected Host's spawn refusal after file preparation.

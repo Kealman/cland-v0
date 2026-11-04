@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
@@ -17,6 +17,20 @@ import { ToolForbidden } from '../src/roles/permissions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { eventually, tempProject } from './harness.ts';
 import { sessionRunDirectory, writeSessionCredential } from '../../shared/session-credential.ts';
+
+// Host publication owns the staging descriptor, including partial-write cleanup.
+function ignoreStagingWrite(t: TestContext, root: string, effect: (write: (bytes: string | Uint8Array) => Promise<void>, bytes: Uint8Array) => Promise<void>): void {
+  const native = fsp.open;
+  t.mock.method(fsp, 'open', async (...args: Parameters<typeof fsp.open>) => {
+    const file = await native(...args);
+    if (dirname(String(args[0])) === root && basename(String(args[0])).startsWith('.stage-')) {
+      const write = file.writeFile.bind(file);
+      t.mock.method(file, 'writeFile', (bytes: Uint8Array) => effect(data => write(data), bytes));
+    }
+    return file;
+  });
+  syncBuiltinESMExports();
+}
 
 async function guarded(work: () => Promise<void>): Promise<void> {
   const savedFs = Object.fromEntries(Object.entries(fs).filter(([key, value]) => key.endsWith('Sync') && typeof value === 'function'));
@@ -401,6 +415,7 @@ for (const Adapter of adapters) {
   const faults = Adapter === CodexAdapter ? ['mkdir', 'policy-dir', 'log-dir', 'rm', 'log-stat', 'open', 'spawn', 'connect', 'thread/start', 'turn/start', 'log'] : Adapter === OpenCodeAdapter ? ['mkdir', 'session-dir', 'ignore', 'ignore-partial', 'ignore-link', 'ignore-append', 'config', 'config-partial', 'password', 'password-partial', 'chmod', 'log-stat', 'open', 'spawn', 'read-log', 'server-exit', 'no-answer', 'session', 'log'] : ['bg', 'log'];
   for (const fault of faults) test(`${Adapter.name}: failure at ${fault} leaves no session files or live child`, async t => {
     const f = await fixture(t, Adapter);
+    let injected = 0;
     if (['mkdir', 'rm', 'chmod', 'open'].includes(fault)) {
       const method = fault as 'mkdir' | 'rm' | 'chmod' | 'open';
       const native = fsp[method];
@@ -428,11 +443,27 @@ for (const Adapter of adapters) {
     } else if (fault === 'ignore-link') {
       t.mock.method(fsp, 'link', async () => { throw new Error(`planted ${fault} failure`); });
       syncBuiltinESMExports();
-    } else if (['ignore', 'ignore-partial', 'ignore-append', 'config', 'password', 'config-partial', 'password-partial'].includes(fault)) {
-      if (fault === 'ignore-append') {
-        await fsp.mkdir(join(f.root, '.cland/opencode'), { recursive: true });
-        await fsp.writeFile(join(f.root, '.cland/opencode/.gitignore'), '#');
-      }
+    } else if (fault === 'ignore' || fault === 'ignore-partial') {
+      let fired = false;
+      ignoreStagingWrite(t, join(f.root, '.cland/opencode'), async (write, bytes) => {
+        if (fired) return write(bytes);
+        fired = true;
+        injected++;
+        if (fault === 'ignore-partial') await write('#');
+        throw new Error(`planted ${fault} failure`);
+      });
+    } else if (fault === 'ignore-append') {
+      await fsp.mkdir(join(f.root, '.cland/opencode'), { recursive: true });
+      const ignore = join(f.root, '.cland/opencode/.gitignore');
+      await fsp.writeFile(ignore, '#');
+      const native = fsp.appendFile;
+      let fired = false;
+      t.mock.method(fsp, 'appendFile', (...args: unknown[]) => {
+        if (!fired && String(args[0]) === ignore) { fired = true; injected++; return Promise.reject(new Error(`planted ${fault} failure`)); }
+        return Reflect.apply(native, fsp, args);
+      });
+      syncBuiltinESMExports();
+    } else if (['config', 'password', 'config-partial', 'password-partial'].includes(fault)) {
       const native = fsp.writeFile;
       let fired = false;
       t.mock.method(fsp, 'writeFile', (...args: unknown[]) => {
@@ -447,6 +478,7 @@ for (const Adapter of adapters) {
       syncBuiltinESMExports();
     } else f.setFault(fault);
     await guarded(async () => { await assert.rejects(f.adapter.spawn(f.request), /planted|did not answer/); });
+    if (['ignore', 'ignore-partial', 'ignore-append'].includes(fault)) assert.ok(injected > 0, 'relocated ignore fault reached the native Host path');
     assert.equal(await fsp.access(join(f.root, '.cland/log/codex-impl.log')).then(() => true, () => false), false);
     assert.equal(await fsp.access(join(f.root, '.cland/opencode/impl')).then(() => true, () => false), false);
     assert.deepEqual(await fsp.readdir(join(f.root, '.cland/run')).catch(() => []), []);
@@ -600,20 +632,23 @@ test('OpenCode leaves an existing wildcard untouched', async t => {
 
 test('OpenCode retries a partial append without replacing the existing ignore contents', async t => {
   const f = await fixture(t, OpenCodeAdapter);
+  let injected = 0;
   const root = join(f.root, '.cland/opencode');
   const ignore = join(root, '.gitignore');
   await fsp.mkdir(root, { recursive: true }); await fsp.writeFile(ignore, '# custom');
-  const native = fsp.writeFile;
+  const native = fsp.appendFile;
   let partial = true;
-  t.mock.method(fsp, 'writeFile', (...args: unknown[]) => {
+  t.mock.method(fsp, 'appendFile', (...args: unknown[]) => {
     if (partial && String(args[0]) === ignore) {
       partial = false;
+      injected++;
       return Reflect.apply(native, fsp, [args[0], '\n', ...args.slice(2)]).then(() => { throw new Error('partial append EIO'); });
     }
     return Reflect.apply(native, fsp, args);
   });
   syncBuiltinESMExports();
   await guarded(async () => { await assert.rejects(f.adapter.spawn(f.request), /partial append EIO/); });
+  assert.ok(injected > 0, 'relocated ignore injection reached the native Host path');
   assert.equal(await fsp.readFile(ignore, 'utf8'), '# custom\n');
   assert.equal(await fsp.access(join(root, 'impl')).then(() => true, () => false), false);
   await guarded(async () => { await f.adapter.spawn(f.request); });
@@ -624,14 +659,16 @@ test('OpenCode retries a partial append without replacing the existing ignore co
 
 test('OpenCode preserves an ignore created during staging, adds its missing wildcard and warns', async t => {
   const f = await fixture(t, OpenCodeAdapter);
+  let injected = 0;
   const root = join(f.root, '.cland/opencode');
   const ignore = join(root, '.gitignore');
-  const native = fsp.writeFile;
-  t.mock.method(fsp, 'writeFile', (...args: unknown[]) => Reflect.apply(native, fsp, args).then(async () => {
-    if (String(args[0]).includes('.stage-')) await native(ignore, 'custom-ignore\n');
-  }));
-  syncBuiltinESMExports();
+  ignoreStagingWrite(t, root, async (write, bytes) => {
+    injected++;
+    await write(bytes);
+    await fsp.writeFile(ignore, 'custom-ignore\n');
+  });
   await guarded(async () => { await f.adapter.spawn(f.request); });
+  assert.ok(injected > 0, 'relocated ignore injection reached the native Host path');
   const content = await fsp.readFile(ignore, 'utf8');
   assert.match(content, /^custom-ignore\n/);
   assert.ok(content.split('\n').includes('*'));
@@ -658,17 +695,19 @@ test('OpenCode no-clobber publication preserves an ignore created after its fina
 
 test('OpenCode partial shared-metadata write is removed and a retry publishes the complete ignore', async t => {
   const f = await fixture(t, OpenCodeAdapter);
-  const native = fsp.writeFile;
+  let injected = 0;
   let partial = true;
-  t.mock.method(fsp, 'writeFile', (...args: unknown[]) => {
-    if (partial && String(args[0]).endsWith('.gitignore')) {
+  ignoreStagingWrite(t, join(f.root, '.cland/opencode'), async (write, bytes) => {
+    if (partial) {
       partial = false;
-      return Reflect.apply(native, fsp, [args[0], '#', ...args.slice(2)]).then(() => { throw new Error('partial metadata EIO'); });
+      injected++;
+      await write('#');
+      throw new Error('partial metadata EIO');
     }
-    return Reflect.apply(native, fsp, args);
+    await write(bytes);
   });
-  syncBuiltinESMExports();
   await guarded(async () => { await assert.rejects(f.adapter.spawn(f.request), /partial metadata EIO/); });
+  assert.ok(injected > 0, 'relocated ignore injection reached the native Host path');
   assert.equal(await fsp.access(join(f.root, '.cland/opencode/.gitignore')).then(() => true, () => false), false);
   await guarded(async () => { await f.adapter.spawn(f.request); });
   assert.match(await fsp.readFile(join(f.root, '.cland/opencode/.gitignore'), 'utf8'), /\n\*\n$/);

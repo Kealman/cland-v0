@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import { createServer } from 'node:net';
-import { mkdir, rm, rmdir, truncate, writeFile, chmod, stat, lstat, realpath, readFile } from 'node:fs/promises';
+import { appendFile, link, rename, open, mkdir, rm, rmdir, truncate, writeFile, chmod, stat, lstat, realpath, readFile } from 'node:fs/promises';
 import { statDirectory } from './stat-directory.ts';
 import { folderFiles } from './folder.ts';
 export const fileOperations = {
@@ -10,6 +12,22 @@ export const fileOperations = {
       } else await writeFile(path, bytes, options?.mode === undefined ? {} : { mode: options.mode });
       if (options?.mode !== undefined) await chmod(path, options.mode);
     },
+    publishFile: async (path: string, bytes: Uint8Array, options?: {mode?: number; replace?: boolean}): Promise<boolean> => {
+      const staging = join(dirname(path), `.stage-${randomUUID()}`);
+      const file = await open(staging, 'wx', options?.mode ?? 0o666);
+      try {
+        try { await file.writeFile(bytes); if (options?.mode !== undefined) await file.chmod(options.mode); await file.sync(); }
+        finally { await file.close(); }
+        if (options?.replace) await rename(staging, path);
+        else {
+          try { await link(staging, path); }
+          catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false; throw error; }
+        }
+        return true;
+      } finally { await rm(staging, {force: true}); }
+    },
+    appendFile: async (path: string, bytes: Uint8Array) => { await appendFile(path, bytes); },
+    stat: async (path: string) => { const info = await stat(path); return {mode: info.mode, size: info.size}; },
     makeDirectory: async (path: string, mode?: number) => { await mkdir(path, mode === undefined ? {} : { mode }); },
     removePath: async (path: string, options?: {directory?: boolean}) => {
       if (options?.directory) await rmdir(path);

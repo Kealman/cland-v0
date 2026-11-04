@@ -57,6 +57,8 @@ export async function serveAgent(options: AgentOptions) {
     connection.on('error', () => {});
     let authenticated = false, chain = Promise.resolve();
     const owned = new Set<string>();
+    const fileOwners = new Set<string>();
+    connection.once('close', () => { for (const token of fileOwners) prepared.fenceCommand(token); });
     const commands = new Map<string, AbortController>();
     const cancelled = new Set<string>();
     connection.once('close', () => {for(const [token,controller] of commands){
@@ -91,7 +93,7 @@ export async function serveAgent(options: AgentOptions) {
             } else {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
-              if(['spawn','run','run-host','writeFile','makeDirectory','removePath','worktreeAdd','worktreeRemove'].includes(request.op))prepared.assertMutable();
+              if(['spawn','run','run-host','writeFile','publishFile','appendFile','makeDirectory','removePath','worktreeAdd','worktreeRemove'].includes(request.op))prepared.assertMutable();
               switch (request.op) {
                 case 'native-receipts': result = processes.completionReceipts(); break;
                 case 'processUsage': result = await processUsage(options.env ?? process.env); break;
@@ -113,12 +115,14 @@ export async function serveAgent(options: AgentOptions) {
                   });} finally {commands.delete(token);}
                   break;
                 }
+                case 'prepare-publishFile': result = await prepared.prepare('publishFile', request.args); break;
+                case 'prepare-appendFile': result = await prepared.prepare('appendFile', request.args); break;
                 case 'prepare-spawn': result = await prepared.prepare('spawn', request.args); break;
                 case 'prepare-stop': result = await prepared.prepare('stop', request.args); break;
                 case 'prepare-worktree': result = await prepared.prepare('worktree', request.args); break;
-                case 'commit-prepared': if (!owned.has(String(request.args.token))) throw new Error('prepared operation not owned'); result = await prepared.commit(String(request.args.token), request.args.install !== false); owned.delete(String(request.args.token)); break;
+                case 'commit-prepared': if (!owned.has(String(request.args.token))) throw new Error('prepared operation not owned'); result = await prepared.commit(String(request.args.token), request.args.install !== false); owned.delete(String(request.args.token)); fileOwners.delete(String(request.args.token)); break;
                 case 'settle-prepared': result = await prepared.settle(String(request.args.token),String(request.args.recoveryKey)); break;
-                case 'abort-prepared': if (!owned.has(String(request.args.token))) throw new Error('prepared operation not owned'); result = await prepared.abort(String(request.args.token)); owned.delete(String(request.args.token)); break;
+                case 'abort-prepared': if (!owned.has(String(request.args.token))) throw new Error('prepared operation not owned'); result = await prepared.abort(String(request.args.token)); owned.delete(String(request.args.token)); fileOwners.delete(String(request.args.token)); break;
                 case 'spawn': result = await processes.spawn(request.args); break;
                 case 'identity': result = await processes.identity(Number(request.args.pid)); break;
                 case 'alive': result = await processes.alive(request.args); break;
@@ -131,7 +135,7 @@ export async function serveAgent(options: AgentOptions) {
                   result = await operation(request.args);
                 }
               }
-              if (request.op.startsWith('prepare-') && result && typeof result === 'object' && Object.hasOwn(result, 'token') && typeof (result as {token?:unknown}).token === 'string') owned.add((result as {token:string}).token);
+              if (request.op.startsWith('prepare-') && result && typeof result === 'object' && Object.hasOwn(result, 'token') && typeof (result as {token?:unknown}).token === 'string') { const token = (result as {token:string}).token; owned.add(token); if (request.op === 'prepare-publishFile' || request.op === 'prepare-appendFile') fileOwners.add(token); }
               options.afterOperation?.(request.op,connection);
               const reply = JSON.stringify({ id, ok: true, result });
               if (Buffer.byteLength(reply) > MAX_LINE_BYTES) throw new Error('agent result exceeds frame cap');

@@ -69,3 +69,59 @@ test('test Host refuses every added mutation and endpoint operation by name', as
   assert.throws(() => host.layout({ discoveryFile: '', node: '', cli: '', spoke: '' }), /refuses layout/);
   assert.deepEqual(records.map(row => row.operation), [...Object.keys(operations), 'layout']);
 });
+
+test('test Host stat requires explicit local file delegation', async t => {
+  const root = await tempProject(t);
+  const file = join(root, 'metadata');
+  await writeFile(file, 'bytes', {mode: 0o640});
+  const local = localHost(fixtureEnvironment(root, process.env));
+  const host = testHost('metadata-double', () => {});
+  await assert.rejects(host.stat(file), /refuses stat/);
+  await assert.rejects(({...host, fileType: async () => 'file' as const}).stat(file), /refuses stat/);
+  await assert.rejects(({...host, fileType: local.fileType, writeFile: local.writeFile}).stat(file), /refuses stat/);
+  await assert.rejects(({...host, fileType: local.fileType, removePath: local.removePath}).stat(file), /refuses stat/);
+  const delegated = {...host, fileType: local.fileType, writeFile: local.writeFile, removePath: local.removePath};
+  assert.deepEqual(await delegated.stat(file), await local.stat(file));
+  await assert.rejects(delegated.stat(join(root, 'missing')), {code: 'ENOENT'});
+  await assert.rejects(delegated.appendFile(file, Buffer.from('refused')), /refuses appendFile/);
+  await assert.rejects(delegated.publishFile(file, Buffer.from('refused')), /refuses publishFile/);
+  assert.equal(await readFile(file, 'utf8'), 'bytes');
+});
+
+import fsp from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+test('remote LaunchFiles reads only Host metadata and bytes while the hub mirror stays unread', async t => {
+  const root = await tempProject(t), mirror = join(root, 'hub-file'), remote = join(root, 'remote-file');
+  await writeFile(mirror, 'hub-only', {mode: 0o644});
+  await writeFile(remote, 'remote-before', {mode: 0o640});
+  const nativeRead = fsp.readFile, nativeStat = fsp.stat;
+  let mirrorReads = 0;
+  t.mock.method(fsp, 'readFile', (...args: Parameters<typeof fsp.readFile>) => {
+    if (String(args[0]) === mirror) { mirrorReads++; throw new Error('hub mirror read forbidden'); }
+    return Reflect.apply(nativeRead, fsp, args);
+  });
+  t.mock.method(fsp, 'stat', (...args: Parameters<typeof fsp.stat>) => {
+    if (String(args[0]) === mirror) { mirrorReads++; throw new Error('hub mirror stat forbidden'); }
+    return Reflect.apply(nativeStat, fsp, args);
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  assert.throws(() => fsp.stat(mirror), /hub mirror stat forbidden/);
+  assert.throws(() => fsp.readFile(mirror), /hub mirror read forbidden/);
+  assert.equal(mirrorReads, 2, 'positive controls reach both native mirror guards');
+  mirrorReads = 0;
+  const base = localHost(fixtureEnvironment(root, process.env));
+  const mapped = (path: string) => { assert.equal(path, mirror); return remote; };
+  const host = {...base, name: 'remote', stat: (path: string) => base.stat(mapped(path)),
+    readFile: (path: string) => base.readFile(mapped(path)),
+    writeFile: (path: string, bytes: Uint8Array, options?: Parameters<typeof base.writeFile>[2]) => base.writeFile(mapped(path), bytes, options)};
+  const files = new LaunchFiles(undefined, host);
+  await files.write(mirror, Buffer.from('remote-after'), 0o600);
+  assert.equal(await nativeRead(remote, 'utf8'), 'remote-after');
+  await files.rollback();
+  assert.equal(await nativeRead(remote, 'utf8'), 'remote-before');
+  assert.equal((await nativeStat(remote)).mode & 0o777, 0o640);
+  assert.equal(mirrorReads, 0);
+  assert.equal(await nativeRead(mirror, 'utf8'), 'hub-only');
+  assert.equal((await nativeStat(mirror)).mode & 0o777, 0o644);
+});

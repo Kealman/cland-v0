@@ -10,10 +10,9 @@ import type { Resumed } from '../../hub/worktrees.ts';
 import { continueWith, wait, untimed } from '../continuations.ts';
 import { OpenCodeClient } from './client.ts';
 import type { Host } from '../../host/host.ts';
-import { stat } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { localHost } from '../../host/local.ts';
-import { prepareIgnore } from '../../host/local-opencode-files.ts';
+import { prepareIgnore } from './ignore.ts';
 import { LaunchFiles } from '../launch-files.ts';
 import { dirname, join } from 'node:path';
 
@@ -29,8 +28,7 @@ export async function prepareFiles(clandDir: string, files: ServerFiles, config:
   return continueWith((function* (): Generator<Promise<unknown>, string, unknown> {
     const root = join(clandDir, 'opencode');
     yield* wait(transaction.directory(files.dir));
-    if (host.name !== 'local') throw new Error('nonlocal OpenCode shared ignore needs Host atomic publish/append (T-1644)');
-    yield* wait(prepareIgnore(root, transaction, resumed, log));
+    yield* wait(prepareIgnore(root, resumed, log, host));
     yield* wait(transaction.write(files.config, Buffer.from(`${JSON.stringify(config, null, 2)}\n`)));
     let password = !freshPassword ? yield* wait(readPassword(files, resumed, host)) ?? '' : '';
     if (!password) password = randomBytes(24).toString('base64url');
@@ -59,9 +57,7 @@ export async function startServer(options: { host: Host; bin: string; cwd: strin
     // The shared database outlives a launch transaction and is never rolled back with its session files.
     if (options.env.OPENCODE_DB) yield* wait(new LaunchFiles(options.resumed, options.host).directory(dirname(options.env.OPENCODE_DB), 0o700));
     const deadline = Date.now() + options.deadlineMs;
-    let start = 0;
-    if (options.host.name === 'local') start = yield* wait(stat(files.log).then(s => s.size, err => { if (err.code === 'ENOENT') return 0; throw err; }));
-    else if ((yield* wait(options.host.fileType(files.log))) !== 'missing') throw new Error('nonlocal log append needs Host size metadata (T-1644)');
+    let start = yield* wait(options.host.stat(files.log).then(s => s.size, err => { if (err.code === 'ENOENT') return 0; throw err; }));
     let explanation = '';
     const attempted = new Set<number>();
     while (Date.now() < deadline) {
