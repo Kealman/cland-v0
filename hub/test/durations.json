@@ -109,9 +109,10 @@
       "A-16557",
       "A-16573",
       "A-16574",
-      "A-16639"
+      "A-16639",
+      "A-16658"
     ],
-    "commit": "2dbd79bdc997d99c0b5ba22fec645e941cdc9b3d"
+    "commit": "decb0775dbc5a26e47f43a5db21032628b36196c"
   },
   "budget": {
     "testSeconds": 5,
@@ -3504,6 +3505,10 @@
     "hub/test/host-survival-native.test.ts": {
       "seconds": 43.305768,
       "tests": 1
+    },
+    "hub/test/host-attach.test.ts": {
+      "seconds": 2.811995,
+      "tests": 5
     }
   },
   "tests": {
@@ -10225,7 +10230,13 @@
     "hub/test/opencode-remote-cleanup.test.ts::OpenCode remote stop drains snapshots and subscription before cancelling its forward": 0.169191,
     "hub/test/opencode-remote-cleanup.test.ts::OpenCode Unix client close aborts active HTTP and SSE and joins native close receipts": 0.1035,
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": 10.682408,
-    "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": 43.305768
+    "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": 43.305768,
+    "hub/test/host-attach.test.ts::claude-code host attach uses private environment, refuses foreign records and exit preserves native identity": 1.177269,
+    "hub/test/host-attach.test.ts::codex host attach uses private environment, refuses foreign records and exit preserves native identity": 0.594944,
+    "hub/test/host-attach.test.ts::codex-held host attach uses private environment, refuses foreign records and exit preserves native identity": 0.530804,
+    "hub/test/host-attach.test.ts::opencode host attach uses private environment, refuses foreign records and exit preserves native identity": 0.503234,
+    "hub/test/host-attach.test.ts::printed terminal SSH pins host keys, disables sharing and forwards, and contains no secret": 0.005744,
+    "hub/test/host-contract-coverage.test.ts::optional terminal printer contract covers absence and its exact session command": 0.00213
   },
   "allow": {
     "hub/test/host-attach-routing.test.ts::host session.attach and list return pinned separate SSH command; prior local frame stays compatible": {
