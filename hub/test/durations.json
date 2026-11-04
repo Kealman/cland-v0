@@ -105,9 +105,10 @@
       "A-16488",
       "A-16508",
       "A-16515",
-      "A-16530"
+      "A-16530",
+      "A-16557"
     ],
-    "commit": "9fd751049d3f0cb31f54ff36830926eabd29799d"
+    "commit": "8f4a4ba2a57cb505deedc7ee58ae30eccbed8d67"
   },
   "budget": {
     "testSeconds": 5,
@@ -3468,6 +3469,14 @@
     "hub/test/claude-stop.test.ts": {
       "seconds": 0.011568,
       "tests": 19
+    },
+    "hub/test/host-agent-closure.test.ts": {
+      "seconds": 0.377044,
+      "tests": 4
+    },
+    "hub/test/host-agent-restart.test.ts": {
+      "seconds": 43.156362,
+      "tests": 10
     }
   },
   "tests": {
@@ -10144,7 +10153,24 @@
     "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses root birth gone": 0.000479,
     "hub/test/claude-stop.test.ts::second pre-signal descendant churn is incomplete without sending any signal": 0.000399,
     "hub/test/host-contract-coverage.test.ts::local Host retains no optional Claude launch or adoption implementation": 0.789481,
-    "hub/test/state-paths.test.ts::host Claude account root preserves config override and host HOME precedence": 0.000277
+    "hub/test/state-paths.test.ts::host Claude account root preserves config override and host HOME precedence": 0.000277,
+    "hub/test/claude-agent-launch.test.ts::restart restore consumes live generation receipts and skips pending released and confirmed closed workers": 0.005357,
+    "hub/test/claude-agent-launch.test.ts::restart restore reports a vanished generation without blocking a healthy receipt": 0.006444,
+    "hub/test/host-agent-closure.test.ts::committed agent closure matches the complete source and native asset graph": 0.142992,
+    "hub/test/host-agent-closure.test.ts::host registry startup imports no development-only package": 0.232617,
+    "hub/test/host-agent-closure.test.ts::recovery handshake preserves previous hello shape and gates the additive restore operation": 0.000577,
+    "hub/test/host-agent-closure.test.ts::restart requires exact fresh native birth and refuses reused or inherited PID authority": 0.000858,
+    "hub/test/host-agent-restart.test.ts::C1-C3 kill-agent reconnect reads retained table without signalling harness": 4.083481,
+    "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": 15.100529,
+    "hub/test/host-agent-restart.test.ts::C3 adopted Claude worker survives version replacement with receipt authority and no signal": 7.589982,
+    "hub/test/host-agent-restart.test.ts::C4 corrupt and escaping bundles never become selectable": 2.160762,
+    "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": 4.210429,
+    "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps unresolved generation isolated from healthy recovery": 4.051819,
+    "hub/test/host-agent-restart.test.ts::held mismatched acquisition after close closes its client without delivery": 1.413602,
+    "hub/test/host-agent-restart.test.ts::held mismatched acquisition after quiesce closes its client without delivery": 1.466836,
+    "hub/test/host-agent-restart.test.ts::Host close joins installation and fences a late restart publication": 1.935442,
+    "hub/test/host-agent-restart.test.ts::registry loads in scratch runtime with development packages unavailable": 1.14348,
+    "hub/test/host-command-environment.test.ts::Host.close joins a held observation connection independently of recovery receipts": 0.001851
   },
   "allow": {
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
