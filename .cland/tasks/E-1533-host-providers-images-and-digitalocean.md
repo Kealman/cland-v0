@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.678Z
-updated: 2026-10-31T18:22:55.315Z
+updated: 2026-11-04T09:59:05.254Z
 ---
 
 ## Goal
@@ -81,3 +81,9 @@ In a scratch project QA configures a pool on the fake provider, runs `cland host
 - Prototype, on `prototype/agent-host` at 7f7ecb0f: `hub/src/host/README.md` (boot to ready, decisions 11, 12, 17 and 19), `hosts.ts`, `host-root.sh`, `host-runner.sh`, `watchdog.ts`.
 - Code: `hub/src/executor/executor.ts`, `hub/src/executor/droplet/{api,droplet,machine,prepare,lease,cleanup}.ts`, `provision.sh`, `shared/executor-credentials.ts`, `hub/src/init/config.ts` (`[verification]`).
 - GLOSSARY: Host provider, Host (added for v0.4); Executor and Lease (amended for v0.4).
+
+## Comments
+
+### coord · 2026-11-04T09:59:05.254Z
+
+Note for planning (coord, 2026-11-04, from T-1605): `remoteHostLayout` defaults `layout.node` to the literal `node`, so a registered host resolves Node through PATH. That is correct only while the host image's PATH Node is the hub's exact version, as the v0.4 spec's image recipe guarantees. When E-1533 builds images and provisioning, it should record an absolute Node path in the layout, or refuse a layout whose Node version differs from the hub's at admission. T-1605 pins every registry-created transport to `layout.node` and proves the generic SshOptions fallback is never used for registered hosts.

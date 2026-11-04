@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1376
 branch: t/T-1605-host-agent-restart-and-version-mismatch
 created: 2026-11-02T03:33:56.605Z
-updated: 2026-11-04T03:35:04.275Z
+updated: 2026-11-04T10:02:46.767Z
 ---
 
 ## Summary
@@ -28,10 +28,11 @@ Hot files: `hub/src/host/agent-client.ts`, `hub/src/host/ssh-host.ts`, `hub/src/
 ## Acceptance criteria
 
 - [x] C1. After `fake-host.ts kill-agent`, the hub's client reconnects within 5 s, re-reads the table, and every running row on that host stays running with the same identity (test).
-  - done: impl-1605 · 2026-11-04T03:25:08.910Z
+  - done: impl-1605 · 2026-11-04T09:54:45.428Z
 - [x] C2. A host agent reporting another version gets the hub's code delivered over the master and is restarted, and its next hello reports the hub's version (test).
   - done: impl-1605 · 2026-11-04T03:32:20.749Z
-- [ ] C3. Processes the old agent spawned are in the new agent's table after a version restart, and none was signalled (test).
+- [x] C3. Processes the old agent spawned are in the new agent's table after a version restart, and none was signalled (test).
+  - done: impl-1605 · 2026-11-04T09:07:19.573Z
 - [x] C4. Code delivery carries no secret and never writes outside the host's code directory (test).
   - done: impl-1605 · 2026-11-04T03:12:35.401Z
 
@@ -91,3 +92,112 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Initial source scope clear, findings []. All A-16464/A-16467 findings addressed: compiler-free generated projection; idempotent verified install reuse/owned cleanup; advancing verifier/retention; exact native birth and lifecycle fencing; guides; one shared agentVersionHandoff used by registry and fixture; immutable already-selected no-signal receipt plus applied readiness checkpoint joined on shutdown. Fault controls retain lost install reply, pre-publication interruption, accepted-publication reply loss, explicit same-child replay receipt/hello and consecutive upgrades/no worker signals. Independently checked all24 closure source SHA-256 entries match pinned commit and six preservation files unedited. Candidate local macOS Node24.21 targeted10/10 report remains supplemental, not configured/current Linux proof; earlier8a0a12/13 stays failed. Details A-16471 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16471-t-1605-initial-source-clear-shared-version-handoff-and-idempotent-selection.md. C1–C4 unverified; full adopted-worker C3 intentionally pending, not finding. IMPORTANT Coordinator61eae5eb verification hold remains: T-1607 must land, Coordinator authorizes one dev merge, integrated head gets final delta source review, then configured verify. This initial clear is not final readiness or authorization to verify now. Affected after-stage QA separate. No Reviewer tests/probes/browser/edits/Git mutations/delegation.
+
+### impl-1605 · 2026-11-04T08:15:15.116Z
+
+Integration contract consumer inventory before edits: production ssh-host.ts (launch/adopt capability gate), agent server.ts (hello/adopt/remove/forget), claude.ts receipt owner; original hello client regression and transport probe/QA E-1532 stage2/3 consumers remain unchanged by optional capability. T1607 receipt/ownership tests: claude-code-remote, claude-agent-launch, claude-stop; agent boundary, supervisor, Host SSH, launch-recovery tests exercise retained table/lifecycle. Docs host-agent.md and restart fixture guide describe recovery. New restore-claude op/capability will be additive, registry-only hook before table read; older hello without capability is skipped. No persisted PID adoption or startup/liveness restore. Successful per-generation adoption is remembered per agent lifetime to avoid resetting capture/census admission on reconnect; closed/released receipts are skipped via the existing producer's checks.
+
+### rev-35 · 2026-11-04T08:44:57.692Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1605-delta-source-1
+commit: a03572846bfccd57b46e87308a27ed0e4bb70770
+scope: delta
+findings: [{"severity":"medium","text":"Scope incomplete generation restoration to that generation: receipt validation can fail for a root that exited during downtime before confirmedClosed, rejecting the entire hook that gates table publication and all recovery/mutation operations, including healthy workers and cleanup.","file":"hub/src/host/agent/claude.ts","line":68},{"severity":"low","text":"Document the new live/pending/released/confirmed-closed restore classification control and its repaired incomplete-generation boundary in this file's guide.","file":"docs/agents/tests/hub-test-claude-agent-launch.test.ts.md","line":3}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Integrated delta not clear: one medium recovery barrier defect plus one low guide gap. Implementer confirms no sufficient current owner in3795bbd8; will reconcile retained ledger then keep unresolved generation records/fences without granting new authority or blocking healthy recovery, with native downtime-exit+healthy-survivor regression. Independently checked all27 runtime closure hashes, additive old-hello regression, shared production/test restore hook, cached successful generation admission, independent owned observation stream and merged native/Host contract consumers. Earlier initial source fixes remain intact. Coordinator-authorized provisional durations and later Linux reconciliation exception retained. Detail A-16534 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16534-t-1605-integrated-delta-scope-restore-failures-to-generations.md. A-16531/32 actual macOS dev3/3/broken0/3/fixed3/3 remain distinguished; candidate201/201/static reports are local supplements, no configured/Linux/browser/full-tier receipt. C1/C3 failed, C2/C4 unverified. Fresh source review before verify; no extra dev merge implied. No Reviewer execution/edits/Git mutations. After-stage QA separate.
+
+Criteria: C1 failed (An unresolved Claude generation can reject the whole reconnect restoration and prevent healthy retained rows from becoming available.), C3 failed (Exit-during-agent-downtime lacks per-generation classification; receipt failure blocks the complete restored table and cleanup path.).
+
+### impl-1605 · 2026-11-04T09:00:26.069Z
+
+Consumer refresh for optional restore reporting: production agent/claude.ts owns outcome type/parser; server.ts keeps legacy restore-claude {} -> null, optionally report:true -> incomplete generation/stage list; agent-client.ts requests report and accepts previous null as unknown; registry.ts logs complete/incomplete/unknown facts; ssh-host.ts still consumes shared hook only at recovery acquisition. Tests: host-agent-closure previous hello/null-report control; claude-agent-launch pending/released/closed and vanished-peer unit controls; host-agent-restart native downtime controls. QA E-1532 stage2/3 probes and other standalone AgentClient users only hello/connect, unaffected. No field/frame removed or made required. Native downgrade/update compatibility retained.
+
+### rev-35 · 2026-11-04T09:09:12.677Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1605-delta-source-2
+commit: 057e07abb90d4da925cadffdc3a76ca2f1792061
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integrated source clear, both A-16534 findings resolved. Reconcile retained ledger before receipt validation; preserve/report pending/receipt/adoption failures per generation without granting authority or blocking healthy recovery. Native downtime closure/unresolved-writer controls keep positive native exit, signal-free release/forget or retained receipt/settings/writer, healthy owned row and mutation. Optional report keeps legacy null result and prior-null unknown via shared parser; refreshed consumers/docs/receipt guide match. Independently checked all27 closure hashes against pinned Git bytes; prior initial source fixes carry forward. Detail A-16536 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16536-t-1605-integrated-source-clear-generation-scoped-recovery.md. C1–C4 remain run-dependent/unverified. A-16535 candidate local macOS Node24.21 fourteen-file204/204/static reports are supplemental, not configured/Linux/browser/full-tier evidence; earlier red receipts remain failed history. Exact-head mode-free verification may proceed. Coordinator506d8348 still requires Linux reconciliation of five provisional C-216 allowances and durations-only delta review before enqueue; affected after-stage QA separate. No Reviewer execution, edits or Git mutations.
+
+### rev-35 · 2026-11-04T09:10:57.897Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1605-evidence-1
+commit: 057e07abb90d4da925cadffdc3a76ca2f1792061
+scope: evidence
+findings: [{"severity":"medium","text":"Configured verification stops at enforcing child-environment lint: spawn requires a sealed fixture builder with explicit extras or a documented intentional seam. No runtime tier can execute until this source seam passes the shipped guard.","file":"hub/test/host-agent-restart.test.ts","line":28}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear. A-16537 run8024d454 overall/T0 exit1 before droplet creation. Actual output: hub/test/host-agent-restart.test.ts:28: spawn requires a sealed fixture builder with explicit extras; intentional seams need // cland-allow-child-env: reason. Root typecheck/contrast and Web build completed; test:static stopped on that refusal. This is not evidence of a runtime credential leak. T1/T2/T3/Web runtime unexecuted, counts unavailable, platform/browsernull, no Linux allowance samples. Planned/projected/report-only diagnostics are not executed coverage. Detail A-16538 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16538-t-1605-failed-t0-evidence-child-environment-lint.md. C1 incomplete/failed verification, C2–C4 unverified. Corrected head needs fresh source review before verify; no Reviewer execution or bypass.
+
+Criteria: C1 failed (Required verification incomplete: run8024d454 stopped at T0 child-environment lint; runtime reconnect test did not execute.).
+
+### rev-35 · 2026-11-04T09:15:53.799Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1605-delta-source-3
+commit: c1f4ca0801e07646601e4524247e87fe82ff9d7b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear: exactly one-line delta from057e07abb reapplies fixtureEnvironment(f.root,process.env,env) directly at supervisor spawn after final overlay. Shared credential/Git filter retained; no copied policy/exemption, production/assertion change or dev merge. A-16536 integrated source review carries forward; detail A-16539 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16539-t-1605-source-clear-sealed-supervisor-launch-environment.md. Reported local macOS Node24.21 lint/guard/hub typecheck and affected2 cases pass are supplements, not configured/Linux/browser evidence. Prior8024d454 remains failed T0; runtime tiers unexecuted. C1–C4 unverified; C1 done restoration remains lead's action (task.view still failed verification mark). Fresh exact-head mode-free verify may proceed. Linux provisional allowance reconciliation and durations-only review required before enqueue; after-stage QA separate. No Reviewer execution/edits/Git mutations.
+
+### rev-35 · 2026-11-04T09:23:07.896Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1605-evidence-2
+commit: c1f4ca0801e07646601e4524247e87fe82ff9d7b
+scope: evidence
+findings: [{"severity":"medium","text":"Migrate the held initial-receipts close consumer to the recovery stream: host.identity now finishes on the observation stream before the timer independently reaches native-receipts, so this trigger no longer holds the operation whose close/join assertions it claims. Preserve assertions and add independent observation close coverage.","file":"hub/test/host-command-environment.test.ts","line":46}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear. Exact A-16540 failure: AssertionError assert.ok(await observation), host-command-environment.test.ts:47:62, actual:null expected:true. Source trace identifies missed consumer of the new observation/recovery split, not a proven production-close failure or duration-budget failure. T0 exit0/T1 exit1; T2/T3/Web unexecuted. Linuxx64 6.8.0-142-generic c-8nyc1 Node24.21/Nvim0.12.5, tree6d50f909f25bb24c68654a878c06b30ad0a2bf3f, cache/occasionnull/browsernull/skips[]/skip-reason report missing0. No new T3 Linux allowance sample. Report-only budgets/lint remain advisories; partial counts/projections not pass. Detail A-16541 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16541-t-1605-t1-evidence-migrate-held-close-consumer-to-split-streams.md. C1 incomplete/failed verification, C2–C4 unverified; fresh source review after repair before retry. No Reviewer execution/edits/Git mutations.
+
+Criteria: C1 failed (Configured verification0435ab7c failed T1 held-close regression; runtime reconnect/version T3 evidence remains unexecuted.).
+
+### impl-1605 · 2026-11-04T09:50:35.878Z
+
+Consumer sweep repair now at 72777a268 (following forced T1 migration cb3b01e68). Unchanged transport-ssh regression classified with quiet detached origin/dev 3/3 versus task 0/3; A-16543 has full redacted native footers. Production repair separates supervisor helper Node from wrapped agent COMMAND; unchanged test now passes three isolated confirmations (18/18), plus the initial 6/6 green. Running all 23 inventoried consumers and six additional preservation/recovery files sequentially before fresh source review; no verification submitted yet.
+
+### rev-35 · 2026-11-04T09:57:37.665Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1605-delta-source-4
+commit: 72777a268cef1266e25d90ffac02d0d58695ac46
+scope: delta
+findings: [{"severity":"low","text":"Bound observation-control setup and register failure cleanup releasing its gate/joining Host.close; await entered.promise is unbounded, as is recovery arrival at46. Preserve final rejection/closed/zero-operation assertions.","file":"hub/test/host-command-environment.test.ts","line":59}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Delta source clear; one low, no high/medium. Recovery close control now uses freePort/initial receipts, final assertions retained; independent observation close case added. Supervisor helper/replacement Node is independent of wrapped COMMAND, shell-quoted bootstrap agentNode defaults to remote PATH node and registry pins layout.node; exact captured-child signal owner unchanged. Docs and all27 closure hashes independently checked. A-16542/45 refresh full consumer/helper sweep; A-16543 actual dev3/3 vs task0/3 readiness failures and unedited fixed3/3 remain distinct. A-16544 local Darwinarm64 Node24.21 sequential29-file310/310/native exit0 signalnull plusT0 check0 are supplements, not configured/Linux/browser/tier passes. Detail A-16546 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16546-t-1605-delta-source-clear-wrapper-compatible-supervisor-helpers.md. C1–C4 unverified; exact-head verify may proceed with recorded low. Linux allowance reconciliation/durations-only review remains before enqueue, after-stage QA separate. No Reviewer execution/edits/Git mutation.
+
+### rev-35 · 2026-11-04T10:02:46.766Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1605-delta-source-5
+commit: bdabe9bb47cdd698450fbf8f758c49ac6afd71ab
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-16546 low resolved. Test/guide-only delta bounds promise-only hold setup/close/operation receipts by100 microtasks, registers release+Host.close+operation cleanup before trigger and preserves final assertions. Registry control asserts explicit agentNode==layout.node==agentCommand[0] for default node and custom absolute runtime with spaces, using real scratch records/registry and inert sealed owners; no layout/admission change. No production/closure/durations/dev-merge delta. Prior integrated production source conclusions carry forward. Detail A-16548 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16548-t-1605-source-clear-bounded-holds-and-registry-runtime-guard.md. A-16547 local Darwinarm64 Node24.21 focused18/18/native exit0/static0 are supplements; A-16544 prior-head310/310 remains prior-head. C1–C4 unverified; exact-head mode-free verify may proceed. Linux allowance reconciliation/durations-only review required before enqueue, after-stage QA separate. No Reviewer execution/edits/Git mutations.
