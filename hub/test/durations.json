@@ -99,9 +99,11 @@
       "A-16249",
       "A-16282",
       "A-16304",
-      "A-16314"
+      "A-16314",
+      "A-16427",
+      "A-16430"
     ],
-    "commit": "20ade9e177238349d813fd1240afcfbbfec5b704"
+    "commit": "64d7ba0dbccda1067dc9c5951b1ea7f5376ce743"
   },
   "budget": {
     "testSeconds": 5,
@@ -3405,6 +3407,14 @@
     },
     "hub/test/remote-discovery.test.ts": {
       "seconds": 0.0043,
+      "tests": 2
+    },
+    "hub/test/host-ssh-registry.test.ts": {
+      "seconds": 0.045088,
+      "tests": 2
+    },
+    "hub/test/spoke-import-graph.test.ts": {
+      "seconds": 0.101395,
       "tests": 2
     }
   },
@@ -9977,7 +9987,14 @@
     "hub/test/remote-discovery-host.test.ts::readiness timeout aborts and drains before autonomous retry": 3.225868,
     "hub/test/remote-discovery-host.test.ts::undrained readiness fences ownership and stop reports cleanup incomplete": 2.126006,
     "hub/test/remote-discovery.test.ts::C1 remote discovery accepts socket credentials without a local pid or port; preserves old local shape": 0.003356,
-    "hub/test/remote-discovery.test.ts::different discovery refuses before a failing overwrite; identical bytes skip the writer": 0.000944
+    "hub/test/remote-discovery.test.ts::different discovery refuses before a failing overwrite; identical bytes skip the writer": 0.000944,
+    "hub/test/discord-users.test.ts::Discord users refuse a second paired approval answer and preserve every folded copy": 0.319847,
+    "hub/test/discord-users.test.ts::Discord users slash commands preserve invocation attribution and first answer across inbox copies": 0.499326,
+    "hub/test/host-ssh-registry.test.ts::default version layout derives code root and supervisor once": 0.001527,
+    "hub/test/host-ssh-registry.test.ts::registry startup uses default installed supervisor and cleanup drains all owners after carrier failure": 0.043561,
+    "hub/test/host-supervisor.test.ts::teardown joins a replacement started while restart-owner shutdown is held": 2.046256,
+    "hub/test/spoke-import-graph.test.ts::C1 spoke eager startup graph excludes SQLite, journal, tracker and tool implementations": 0.100687,
+    "hub/test/spoke-import-graph.test.ts::startup graph detects transitive runtime edges and excludes erased or deferred imports": 0.000708
   },
   "allow": {
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
