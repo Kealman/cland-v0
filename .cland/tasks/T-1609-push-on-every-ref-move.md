@@ -3,7 +3,7 @@ id: T-1609
 kind: task
 title: Push on every ref move
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1380
 branch: t/T-1609-push-on-every-ref-move
 created: 2026-11-02T03:33:57.560Z
-updated: 2026-11-04T15:11:33.473Z
+updated: 2026-11-04T16:06:02.248Z
 ---
 
 ## Summary
@@ -27,14 +27,14 @@ Hot files: `hub/src/host/agent/watch.ts` (new), `hub/src/host/agent/server.ts` (
 
 ## Acceptance criteria
 
-- [ ] C1. A commit in a fake host's task worktree reaches the territory's branch within 5 s, with no push by the session (test).
-  - failed: rev-35 [reviewer] · 2026-11-04T15:11:33.473Z · note Accepted checkout and refused-removal boundaries can lose ownership/watch while keeping the task worktree.
+- [x] C1. A commit in a fake host's task worktree reaches the territory's branch within 5 s, with no push by the session (test).
+  - done: impl-1609 · 2026-11-04T16:04:05.902Z
 - [x] C2. An amend, a reset and a rebase in the worktree each reach the territory, and no `post-commit` hook is installed (test).
   - done: impl-1609 · 2026-11-04T15:03:35.930Z
-- [ ] C3. A push the allow list refuses is reported in `ref-moved` with the refusal, retried at the next move, and never loops (test).
-  - failed: rev-35 [reviewer] · 2026-11-04T15:11:33.473Z · note Metadata-only deduplication can retry a refused unchanged head after unrelated packed-refs changes.
-- [ ] C4. Watches survive an agent restart, and a commit made while the agent was down is pushed after it is back (test).
-  - failed: rev-35 [reviewer] · 2026-11-04T15:11:33.473Z · note Interrupted native push has no reconciliation owner, and one stale watch can block agent restart.
+- [x] C3. A push the allow list refuses is reported in `ref-moved` with the refusal, retried at the next move, and never loops (test).
+  - done: impl-1609 · 2026-11-04T15:31:37.812Z
+- [x] C4. Watches survive an agent restart, and a commit made while the agent was down is pushed after it is back (test).
+  - done: impl-1609 · 2026-11-04T16:04:10.133Z
 
 ## Notes
 
@@ -68,3 +68,22 @@ finding_counts: {"high":0,"medium":7,"low":1}
 Full source not clear:7medium+1low; exact traces/control requirements A-16588 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16588-t-1609-source-review-durable-push-and-worktree-ownership-gaps.md. Implementer confirms captured-head/pending-owner/proxy/dedup gaps; Coordinator42366bbc requires native interrupted-push recovery here. Include accepted checkout reacquisition in catch/fence, restore kept-checkout watch, bind capturedSHA/socket route, persist/reconcile native effect/result per watch, deduplicate actual head and isolate stale-watch startup/scan failure. Add compatibility fixture guide. Old-agent additive route/sharedHOST_ORIGIN checked; all28 closure hashes match. Current graceful restart/happy-path test does not prove crash/held lifecycle boundaries. C1/C3/C4 failed, C2 unverified. A-16584 candidate local macOSNode24.21/static reports supplemental, not configured/Linux/full-tier/browser proof; remote-discovery readiness timeout remains unclassified. No Reviewer runtime/probes/browser/edits/Git mutations/delegation. Fresh source review after complete correction before verify; no extra dev merge implied.
 
 Criteria: C1 failed (Accepted checkout and refused-removal boundaries can lose ownership/watch while keeping the task worktree.), C3 failed (Metadata-only deduplication can retry a refused unchanged head after unrelated packed-refs changes.), C4 failed (Interrupted native push has no reconciliation owner, and one stale watch can block agent restart.).
+
+### rev-35 · 2026-11-04T15:39:21.768Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1609-source-2
+commit: 4ff3ffee49ee39126b444e32cd72cfce93b9b6ed
+scope: full
+findings: [{"severity":"medium","text":"Do not turn unknown/incomplete native ledger authority into gone merely because listed targets disappeared; an unrecorded late/reparented writer or unfinished completion capture can remain. Require positive producer/result plus native closure and retain the watch fence.","file":"hub/src/host/agent/ref-push.ts","line":40},{"severity":"medium","text":"Persist recovering through its remote/current-head decision: clearing pending before an in-memory ancestry check lets a second crash lose that phase and force an ancestor over an advanced remote using its newly fetched lease.","file":"hub/src/host/agent/watch.ts","line":31},{"severity":"medium","text":"Persist/reconcile positive native removal before retry after watch checkpoint/reply loss; successful removal followed by failed #save leaves a watch whose retry removes an already-missing checkout and cannot finish.","file":"hub/src/host/agent/watch.ts","line":64},{"severity":"medium","text":"Durably rebind exact PID/birth recovered from accepted operationReceipt: the current local-only recovery leaves pending.native absent, so stop always refuses after timeout despite the existing accepted launch receipt.","file":"hub/src/host/agent/ref-push.ts","line":30}]
+finding_counts: {"high":0,"medium":4,"low":0}
+
+Full repair source not clear:four medium remaining ownership/settlement findings, all confirmed by Implementer. A-16599 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16599-t-1609-repair-source-review-four-remaining-settlement-boundaries.md has exact traces and controls. Initial checkout catch, dirty-refusal preservation, SHA binding, owned proxy/head dedup, startup isolation and guide fixes checked; all30 closure hashes match. Existing AgentProcesses ledger must retain unknown authority until approved producer receipt + captured closure; Coordinatorf8e7b97d approved producer scope without second PID ledger. Persist recovery phase until at/past/new-admission checkpoint, removal admission/positive absence and recovered native binding. C1/C4 failed; C2/C3 unverified. Component7+compat/environment2 and reported nativeSIGKILL5.214s supplements only; corrected whole-file/preservation run pendingexclusive slot, prior12file195 passes belong todd3e93db7, no configured/Linux/full-tier/browser proof. Full root typecheck reported running at request. No Reviewer execution/probes/browser/edits/Git mutations/delegation. Fresh source review before verify; no extra dev merge implied.
+
+Criteria: C1 failed (Post-success removal checkpoint/reply loss lacks positive settlement and leaves task/watch cleanup stuck.), C4 failed (Unknown ledger authority can be incorrectly cleared; recovered binding/recovery phase are not durable across crash boundaries.).
+
+### impl-1609 · 2026-11-04T15:40:08.275Z
+
+Expanded rule20 sweep for Coordinator f8e7b97d host-status requirement: HostTunnelStatus/tunnelStatuses/hub.status.hosts consumers in transport.ts, sshHost registry, hub dispatch, shared/wire/index.ts, CLI hub status, transport-status/remote-discovery-host/host-ssh-contract/host-clone-integration tests, nvim status readers, QA E-1532 stages2-4 and docs/hub/ssh-transport. Additive optional watches rows (path/branch/state/cause) preserve old host status/old agent shape; no existing field removed. New ref-watch-status event/watch-status op capability gated. Producer result uses existing native launchId/birth and shared redactor implementation moved into agent closure; remote/redact.ts keeps its public exports/frames and all existing remote callers/tests unchanged. No second process ledger.

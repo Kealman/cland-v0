@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1375
 branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-04T08:10:42.500Z
+updated: 2026-11-04T15:41:44.720Z
 closed: 2026-11-04T08:10:42.500Z
 ---
 
@@ -353,3 +353,7 @@ Coord merge note (2026-11-04 07:31Z, rule 7 exception stated explicitly): enqueu
 ### coord · 2026-11-04T08:10:42.500Z
 
 Merged 81f87619bed9824df766244d2fb2965363e2c292 onto dev.
+
+### coord · 2026-11-04T15:41:44.720Z
+
+Coord decision (2026-11-04 15:41Z, from T-1678's A-16603): remote Claude stop now signals the pinned root first, by identity, after admission. It then recaptures until two consecutive captures are equal, within the existing stop deadline, acquiring each new member under the unchanged rules: same UID, ancestry to the pinned root or a pinned member at observation, born after the first capture, pinned by PID and birth. This supersedes the fixed one-recapture bound for descendant churn. Unchanged: a persistent unknown identity, or a deadline with the set unstable, ends cleanup-incomplete with the row held; a foreign or unprovable process is never signalled; same-set republish is not churn; settled pinned exits drop out. Reason: a busy session's root spawns turn hooks continuously, so a fixed bound made stopping an active session fail.
