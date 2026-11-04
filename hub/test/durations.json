@@ -110,9 +110,10 @@
       "A-16573",
       "A-16574",
       "A-16639",
-      "A-16658"
+      "A-16658",
+      "A-16675"
     ],
-    "commit": "decb0775dbc5a26e47f43a5db21032628b36196c"
+    "commit": "c69c7f2f5caf3127bee9bc3f5e13c900ca9e0bb1"
   },
   "budget": {
     "testSeconds": 5,
@@ -3509,6 +3510,14 @@
     "hub/test/host-attach.test.ts": {
       "seconds": 2.811995,
       "tests": 5
+    },
+    "hub/test/host-push-on-ref-move.test.ts": {
+      "seconds": 29.979137,
+      "tests": 4
+    },
+    "hub/test/host-ref-watch-compat.test.ts": {
+      "seconds": 0.003083,
+      "tests": 3
     }
   },
   "tests": {
@@ -10236,7 +10245,14 @@
     "hub/test/host-attach.test.ts::codex-held host attach uses private environment, refuses foreign records and exit preserves native identity": 0.530804,
     "hub/test/host-attach.test.ts::opencode host attach uses private environment, refuses foreign records and exit preserves native identity": 0.503234,
     "hub/test/host-attach.test.ts::printed terminal SSH pins host keys, disables sharing and forwards, and contains no secret": 0.005744,
-    "hub/test/host-contract-coverage.test.ts::optional terminal printer contract covers absence and its exact session command": 0.00213
+    "hub/test/host-contract-coverage.test.ts::optional terminal printer contract covers absence and its exact session command": 0.00213,
+    "hub/test/host-push-on-ref-move.test.ts::C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and downtime without hooks": 13.130422,
+    "hub/test/host-push-on-ref-move.test.ts::interrupted admitted native push survives agent SIGKILL and recovery publishes only the current head": 7.049351,
+    "hub/test/host-push-on-ref-move.test.ts::killed producer without result stays named and fenced until a later successful leased head": 7.525602,
+    "hub/test/host-push-on-ref-move.test.ts::native producer receipt is private and contains bounded redacted output without planted credentials": 2.273762,
+    "hub/test/host-ref-watch-compat.test.ts::new client accepts previous agent hello without issuing watch operations": 0.001796,
+    "hub/test/host-ref-watch-compat.test.ts::new status reader accepts the previous watch-v1 agent without requesting an unsupported operation": 0.000687,
+    "hub/test/host-ref-watch-compat.test.ts::push environment removes inherited Git routes and installs only the owned Unix proxy override": 0.0006
   },
   "allow": {
     "hub/test/host-push-on-ref-move.test.ts::killed producer without result stays named and fenced until a later successful leased head": {
