@@ -2,8 +2,8 @@
 id: T-1604
 kind: task
 title: The host's clone and its worktrees from the territory
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1371
 branch: t/T-1604-the-host-s-clone-and-its-worktrees-from
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-04T01:13:11.814Z
+updated: 2026-11-04T03:01:54.724Z
+closed: 2026-11-04T03:01:54.724Z
 ---
 
 ## Summary
@@ -166,3 +167,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final readiness evidence clear; C1–C5 verified, no findings. A-16439 independently streams all six named integration passes in A-16437 exact-head uncached dc885e8d exit0/4933pass, including held-ready/retry and native lost-reply close preserving ownership through durable cleanup. A-16438 exact-head local Darwinarm64 Node24.21 raw/native exit0 preservation: task-worktrees19/worktree-cli4/remote-discovery7/SSH Host33, all unedited. Coordinator4a4de991 lifted hold and explicitly required no dev merge; unchanged81dc93ee confirmed. LocalmacOS T0/Linuxx64 c-8ams3 Node24.21 Nvim0.12.5 T1/allfallbackT2/changedT3once/Web complete. RemainingT3/T4/after-stage affectedQA separate; report-only budgets/lint/ratchet/skip missing0. Isolated HeadlessShell1248/ChromeForTesting156.0.8078.4. Resource1118s/$0.0776 not suite wall. Reviewer ran no runtime checks/probes/browser/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-04T03:01:54.724Z
+
+Merged ce6195767243e2a45d78dddc309d12c69cb63d07 onto dev.

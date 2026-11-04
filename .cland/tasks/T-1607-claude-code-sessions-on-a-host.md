@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1375
 branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-04T00:27:41.521Z
+updated: 2026-11-04T04:09:59.913Z
 ---
 
 ## Summary
@@ -30,10 +30,10 @@ Hot files: `hub/src/adapters/claude-code.ts`, `hub/src/host/agent/processes.ts` 
 
 - [x] C1. Through the frame protocol a Claude Code session launched on a fake host with the scripted Claude fake receives a delivery and reports its state from its hooks (test).
   - done: impl-1607 · 2026-11-03T23:33:48.830Z
-- [ ] C2. The worker found by the one `agents --json` is adopted into the host agent's table with its Linux identity, and liveness and stop go through the agent (test).
-  - failed: rev-35 [reviewer] · 2026-11-03T23:42:22.644Z · note Normal/failure terminal paths lack durable settlement ownership, and adopted capture can acknowledge tree closure while an unowned late hook remains alive.
-- [x] C3. The session's hooks and mod bridge connect through the host's `hub.sock` and are dispatched as that session, and their settings carry host paths only (test).
-  - done: impl-1607 · 2026-11-04T00:10:17.196Z
+- [x] C2. The worker found by the one `agents --json` is adopted into the host agent's table with its Linux identity, and liveness and stop go through the agent (test).
+  - done: impl-1607 · 2026-11-04T03:28:25.610Z
+- [ ] C3. The session's hooks and mod bridge connect through the host's `hub.sock` and are dispatched as that session, and their settings carry host paths only (test).
+  - failed: rev-36 [reviewer] · 2026-11-04T04:09:59.913Z · note Required mapped Claude launch preservation cases fail close with supervised failed generation; recording observer not migrated to typed non-admission/settlement contract.
 - [x] C4. Over several poll intervals no short-lived `claude` command runs on the host for the running row (test).
   - done: impl-1607 · 2026-11-03T23:33:49.321Z
 - [x] C5. The claude-code-adapter, claude-code-sessions and claude-code-schedule test files pass with no test edited.
@@ -83,3 +83,103 @@ Coordinator 66fe13ce: deterministic native descendant injected between prepare-s
 ### impl-1607 · 2026-11-04T00:27:41.521Z
 
 Correction checkpoint pushed: d51e28ce2f30efa8c6cf211b2f1e2e898aef976e. Evidence A-16431; accepted20/20 source-specific repetition A-16426. Source finding C3/jobs preflight fixed; late-hook, terminal settlement and pre-signal ownership controls green. Native remote15/15 on runtime-equivalent candidate (only Markdown EOF formatting differs), focused T1/T2 files32/32 and unchanged C5 generated cases72/72 at d51; all-package typecheck and test:lint pass (122 report-only findings, zero refusals; known advisory limits retained). C2 is still incomplete for durable failed-launch LaunchSettled integration. Blocker/help needed: T-1606 lands after T-1644, then Coordinator sends the authorized merge instruction. No new dev merge/source review/verification/QA claim. Keeping claim; idle for dependency instruction.
+
+### impl-1607 · 2026-11-04T02:45:07.142Z
+
+Coordinator3d3d176f approves optional HarnessAdapter.settleFailedLaunch(process). Consumer search (before editing) covered HarnessAdapter/LaunchRecoveryPending/recoveryObservers/settleFailedLaunch across production, all test tiers, shared/web/nvim, skills/docs/QA. Consumers: adapters/contract,index,sessions,codex,opencode,claude-code,launch-files; tests session-archive,codex-host,opencode-host,request-guard,tracker-native-boundary,fakes/harness,fakes/scripted-codex; docs/hub/adapters-and-sessions. Existing structural adapters and all non-Claude adapters remain unedited: optional member absent preserves behavior. Sessions uses it only for file-backed pending launches without an in-memory observer; ordinary owned-process cleanup remains unchanged. No frame/wire or PendingStop/LaunchFilesState schema changes. Claude alone consumes exact-generation adapter state. Agent's pending launch record gains config/jobs/private-directory metadata and a pinned printed job/cause, with no credential/content or PID signal authority. Existing complete receipts retain their shape; pending receipts refuse explicitly.
+
+### impl-1607 · 2026-11-04T03:28:25.759Z
+
+Implemented A-16407 corrections and the approved T-1606 settlement migration; pushed c7452c7018e139eb967381c6fd82531bb0d63fed. A-16466 records consumer inventory, exact test-head provenance, C1–C5 evidence, permission/recovery boundary flags, and forced Claude-only observer edits. Historical A-16426 remains linked. No verification yet; fresh source review next.
+
+### rev-36 · 2026-11-04T03:32:41.541Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-source-2
+commit: c7452c7018e139eb967381c6fd82531bb0d63fed
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected/reworked source clear, all A-16407 findings resolved; no findings. A-16469 covers jobs preflight, late-hook closure fence/one validated recapture, durable bounded terminal/failed-launch settlement, observer-absent Sessions fallback and post-clear metadata-only prune, native-ID permission binding, forced Claude-only typed observer migration and matching docs. Direct Coordinator authorizations read. Codex/OpenCode/LaunchFiles/LaunchSettled and three C5 files unchanged. C1–C5 remain runtime-unverified; mode-free verification may proceed at exactc7452c701. A16466 final focused37/static checks local macOS evidence read; broader8b164 prior-head/historical20× receipts labelled supplemental, not current Linux. Reviewer ran no checks/browser/probes/edits/delegation.
+
+### rev-36 · 2026-11-04T03:40:05.011Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1607-evidence-1
+commit: c7452c7018e139eb967381c6fd82531bb0d63fed
+scope: evidence
+findings: [{"severity":"medium","text":"Required queued verification fails the state-path inventory on unregistered HOME reads: command.env.HOME and env.HOME. Use the shared state-path resolution or an approved exact registration with matching documentation and planted guards; the current run is not clear.","file":"hub/src/host/agent/claude.ts","line":83}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Verification evidence not clear; A-16475. A16474 actual AssertionError reports ['host/agent/claude.ts:83: HOME access: command.env.HOME','host/agent/claude.ts:83: HOME access: env.HOME'] versus []. Same-head run5b2e6bb5 autoexit1/T1failed; T0passed, T2/T3/T4/Web unexecuted/interrupted. C3failed; C1/C2/C4/C5unverified. This is the required inventory guard, not report-only timing/lint advisories. Correct shared path resolution/approved exact registration with docs/guards, request fresh source review before rerun. No Reviewer execution.
+
+Criteria: C3 failed (Required T1 state-path inventory fails at agent/claude.ts83 for command.env.HOME and env.HOME; later runtime phases unexecuted.).
+
+### impl-1607 · 2026-11-04T03:43:23.757Z
+
+Pushed a67ce0a36fcd2194fcc8337dc845dc3b2a79f07a fixes own failed verify5b2e6bb5 state-path inventory defect. A-16476 records original red, unchanged guard green, owner/reason registration and exact-head 45/45+remote20/check. Fresh source review requested; no dev merge or verification rerun yet.
+
+### rev-36 · 2026-11-04T03:43:58.202Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-source-3
+commit: a67ce0a36fcd2194fcc8337dc845dc3b2a79f07a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+State-path correction source clear, no findings; A-16477. Exact precedence moved to shared hostClaudeConfigDirectory with explicit host environments, no hub HOME fallback. Exact inventory owner/reason registrations and pure precedence case added; scanner/assertion/planted controls unchanged, canonical UID0700 gate intact. Rest of approved permission/recovery source A16469 unchanged. A16476 local exact-head45+20/native exit0/check pass inspected; no current queued/Linux claim. C1–C5 runtime criteria remain unverified. Repeat exact-head preservation supplements and mode-free verify; prior A16474 remains failed. Reviewer ran no tests/probes/checks/browser/edits.
+
+### rev-36 · 2026-11-04T03:50:36.138Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1607-evidence-2
+commit: a67ce0a36fcd2194fcc8337dc845dc3b2a79f07a
+scope: evidence
+findings: [{"severity":"medium","text":"The account-root fix imports ../../state-paths.ts outside the agent's allowed dependency closure. Required T1 host-agent-boundary.test.ts fails on that exact import. Keep resolution in one Node-only agent-owned helper (with exact inventory registration) rather than weakening the boundary or copying the parser.","file":"hub/src/host/agent/claude.ts","line":7}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-16482. A16479 actual AssertionError claude.ts lists '/home/runner/cland/hub/src/state-paths.ts' versus [] at host-agent-boundary.test.ts38. Run104d0239 autoexit1/T1failed, T0passed; T2/T3/T4/Web unexecuted. C3failed; other criteria unverified. I missed the existing import guard during the last source correction review. Preserve one Node-only agent-owned resolver and exact state inventory registration with both guards intact; fresh source review required before rerun. No Reviewer execution.
+
+Criteria: C3 failed (Required host-agent dependency boundary fails: agent/claude.ts imports ../../state-paths.ts outside Node-only agent closure.).
+
+### impl-1607 · 2026-11-04T03:53:09.813Z
+
+Pushed eb812bfd2b0fc3eef01047022442425c79ea0355 for Coordinator-approved agent-owned shared path resolver. A-16483 records both guards unedited and green,47/47+20/20/check exact-head passes. Fresh source review before verify.
+
+### rev-36 · 2026-11-04T03:53:40.485Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-source-4
+commit: eb812bfd2b0fc3eef01047022442425c79ea0355
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Agent-owned resolver source clear; no findings. A-16484. One Node-only agent/state-paths implementation, sibling agent import and root re-export of identical function object, exact inventory registration moved. Direct Coordinator5b96e26f checked; both guards/scanner unedited, precedence/private-directory gate unchanged. A16483 local47+20/native exit0/check pass read; no queued/Linux execution yet. C1–C5 runtime-unverified; refresh current-head preservation and mode-free verify, including T2/later named outcomes. Previous A16474/A16479 remain failed. No Reviewer tests/probes/checks/browser/edits.
+
+### rev-36 · 2026-11-04T04:09:59.913Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1607-evidence-3
+commit: eb812bfd2b0fc3eef01047022442425c79ea0355
+scope: evidence
+findings: [{"severity":"medium","text":"Both mapped Claude snapshot cases fail teardown because their recording observer throws an untyped launch error, which the new recovery contract correctly retains as supervised; adapter.close then rejects. Migrate this synthetic no-native observer to the typed non-admission/Host resolution contract or provide complete settlement, retaining all baseline argv/env/bytes/mode assertions and other adapters.","file":"hub/test/host-launch-layout.test.ts","line":31}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-16489. Actual A16486 failure is 'Claude launch cleanup incomplete: failed generation remains supervised' at adapter1314 for both mapped Claude umasks, not baseline byte mismatch. T0/T1 passed; T2failed, T3/T4/Web unexecuted. C3failed; others unverified. Preserve production generic-error supervision; migrate synthetic no-native observer honestly, retain all exact baseline assertions/Codex/OpenCode cases, request fresh source review before rerun. No Reviewer execution.
+
+Criteria: C3 failed (Required mapped Claude launch preservation cases fail close with supervised failed generation; recording observer not migrated to typed non-admission/settlement contract.).

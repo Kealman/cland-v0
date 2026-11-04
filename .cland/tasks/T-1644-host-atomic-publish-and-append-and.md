@@ -2,8 +2,8 @@
 id: T-1644
 kind: task
 title: Host atomic publish and append, and OpenCode's shared ignore through the Host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels: []
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1372
 branch: t/T-1644-host-atomic-publish-and-append-and
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-04T01:18:11.887Z
+updated: 2026-11-04T04:10:01.567Z
+closed: 2026-11-04T04:10:01.567Z
 ---
 
 ## Summary
@@ -32,18 +33,22 @@ Add atomic publish (create-if-absent) and append to the Host contract, implement
   - done: impl-1644 · 2026-11-03T22:17:39.613Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-4 · 2026-11-04T03:36:55.074Z · commit 22233b23460cdb62465b675528bc2ab45d2eb9e3
 - [x] C2. OpenCode's shared-ignore preparation goes through the launch Host. On `local` the result is byte-identical to today, and T-1601's lint exemption is removed (test).
   - done: impl-1644 · 2026-11-03T22:09:12.864Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-4 · 2026-11-04T03:36:55.074Z · commit 22233b23460cdb62465b675528bc2ab45d2eb9e3
 - [x] C3. An OpenCode launch on a fake nonlocal host prepares the shared ignore on that host (test).
   - done: impl-1644 · 2026-11-03T22:09:12.986Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-4 · 2026-11-04T03:36:55.075Z · commit 22233b23460cdb62465b675528bc2ab45d2eb9e3
 - [x] C4. The Host contract offers a stat with mode and size, so the launch-file rollback restores an overwritten file's mode on a nonlocal Host and T-1601's nonlocal overwrite refusal is removed (test)
   - done: impl-1644 · 2026-11-03T22:38:50.840Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-4 · 2026-11-04T03:36:55.075Z · commit 22233b23460cdb62465b675528bc2ab45d2eb9e3
 
 ## Comments
 
@@ -334,3 +339,95 @@ Old task0e027541/A-16373 and batchcbf4407c/A-16433 remain failed/incomplete. Old
 A-16441: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16441-t-1644-final-evidence-after-six-native-injection-repairs.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-37 · 2026-11-04T03:15:36.332Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-delta-1
+commit: c7e052f51acf223a76c5ecdb369bff4b6f254b40
+scope: delta
+findings: [{"severity":"low","text":"Dev-added guide sentence still says OpenCode retains the original nonlocal preparation refusal assertion; current test prepares ignore and reaches the selected Host spawn refusal. Update the sentence to match the preserved test behavior.","file":"docs/agents/tests/hub-test-session-host-placement.test.ts.md","line":30}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+T-1644 source delta after authorized dev merge
+Headc7e052f51acf223a76c5ecdb369bff4b6f254b40; parentsbc5dfea1c5cde2afded1ac960342d566adb090b9 andce6195767243e2a45d78dddc309d12c69cb63d07.
+Runrev-37-1644-delta-1; scopedelta; clear with one low documentation finding.
+Prior task source/final audits remain parent evidence only. Reviewer read both parent comparisons, combined resolutions, interacting source/tests/docs and current item; no tests, typecheck, browser, edits or merge.
+
+Standards:
+Low — docs/agents/tests/hub-test-session-host-placement.test.ts.md:30 says OpenCode retains its original nonlocal preparation refusal assertion. The preceding paragraph and current test instead prepare the shared ignore and reach the selected Host spawn refusal. This dev-added sentence survived the merge with stale behavior wording; update it to the spawn-boundary assertion so guidance agrees with the shipped test.
+No high/medium findings.
+
+Spec:
+No findings. One Coordinator-authorized dev merge is present; no second merge. T-1644 Host atomic file semantics, ownership fences, nonlocal OpenCode preparation and legacy undo format survive. Comparing LaunchFiles against dev shows only the reviewed Host.stat migration/removal of local metadata helper and permission mask; bounded asynchronous settlement, retained callback flight, retry/drain and LaunchRecoveryPending callback type are retained exactly from dev. Comparing the task parent shows those dev settlement additions present. No production localHost compatibility path was introduced.
+
+Forced T-1606 test edit:
+Actual prior error quoted in A-16461/topic: `durable settlement after forward cleanup: not within15000ms`; reported clean detached dev3/3 versus merged0/3 distinguished the inconsistent mapped fixture. Coordinator00dd9229 directs the narrow correction. Against dev, codex-remote-cleanup.test.ts changes exactly one line: stat maps to the same remote scratch storage as its read/write/fileType/remove operations. Planted same-path hub mirror and all original assertions remain unchanged.
+The added separate LaunchFiles guard plants distinct remote/hub bytes and modes; actual native mirror stat/read spies reject and are positively invoked before counters reset. Production remote write/rollback uses Host mappings, restores remote bytes0640, leaves mirror bytes0644 unchanged and records zero native mirror reads. The spies restore with builtin ESM export synchronization. This proves selected Host metadata/content rather than merely checking final unchanged mirror bytes.
+
+Resolutions:
+- Both Host atomic-file and territory clone skill/agent-doc sections retained, subsystem README facts combined, current OpenCode/stat/discovery descriptions preserved.
+- Short scratch roots from dev coexist with T-1644 positive OpenCode/rollback/editor cases; session placement keeps dev realpath delegates and task publish/append/stat/read delegates, selected-spawn/no-local-fallback assertions.
+- Parsed durations manifest against both parents: all seven dev measured additions and its existing allowance addition retained; seven obsolete task identity keys removed with no replacement measurements. All shared existing test values and allowances unchanged. No symbol/case rename introduced by resolution.
+- Host/agent prepared code and the six asserted injection controls remain as reviewed. Incoming dev worktrees, Codex placement/settlement and slim-spoke changes come from their landed parent; this delta review checks merge retention/interactions, not a new claim to rerun their entire release evidence.
+
+A-16461 reports supplemental macOS Node24.21 targeted native69/layout18/SSH38/Claude18/recovery4/OpenCode9/settlement4/Codex10/transport6, guard file5 plus static checks; dev3/3, broken merge0/3, fixed3/3 are labelled. Earlier preservation checks precede only fixture/guard additions on identical production sources. No current-head queued Linux receipt yet; prior greenb558c8a1 coversbc5dfea1 only.
+All C1–C4 remain runtime-unverified at this changed head; fresh configured verification and named current-head integration/guard outcomes remain required. Later batch repetitions and after-stage QA stay separate.
+Standards1low; Spec0 findings.
+A-16462: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16462-t-1644-dev-merge-delta-review-at-c7e052f5.md
+
+### rev-37 · 2026-11-04T03:16:25.120Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-delta-2
+commit: 22233b23460cdb62465b675528bc2ab45d2eb9e3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1644 source refresh at22233b23460cdb62465b675528bc2ab45d2eb9e3; rev-37-1644-delta-2; scope delta; clear; findings[]. Compared with c7e052f51acf223a76c5ecdb369bff4b6f254b40: exactly one guide sentence changes, correcting the sole low from rev-37-1644-delta-1/A-16462. The placement guide now agrees with current test behavior: OpenCode completes file preparation and reaches only the selected Host's spawn refusal. Standards0 findings; Spec0 findings. Production, tests, merge parents/resolutions and all other files are unchanged. Prior delta audit A-16462 remains applicable with its low resolved. No tests/typecheck/browser/edits performed by Reviewer; reported wording lint is supplemental. C1–C4 remain runtime-unverified at this changed head; fresh configured verification must name22233b23460cdb62465b675528bc2ab45d2eb9e3. Previous queued results cover parents only. Deferred batch repetitions and stage QA remain separate.
+A-16463: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16463-t-1644-source-refresh-resolving-placement-guide-wording.md
+
+### rev-37 · 2026-11-04T03:36:55.075Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-evidence-4
+commit: 22233b23460cdb62465b675528bc2ab45d2eb9e3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1644 final merged-head evidence
+Head22233b23460cdb62465b675528bc2ab45d2eb9e3; runrev-37-1644-evidence-4; scopeevidence; clear; findings[]; verifiedC1–C4.
+Current source clearance rev-37-1644-delta-2/A-16463 plus delta audit A-16462 and earlier full audits apply. The sole documentation low is resolved. Branch is unchanged. Read-only canonical-tree reconstruction c3cc83acf7d6b9b24e83d4a934f147afce8d2938 matches suite provenance.
+
+Run a024dc79-08ac-4db2-b218-ed2414fab052 / A-16472 is finished exit0,5100pass/0fail/cancel/skip/todo. Uncached Linuxx64 6.8.0-142-generic, droplet c-8 lon1, Node24.21.0, Neovim0.12.5, workers2. Isolated Chrome Headless Shell1248 binary /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; reported Google Chrome for Testing156.0.8078.4.
+T0/T1/allT2fallback/Web and selected merged-landing T3/T4 completed. Precision: T3 duration receipt is8files/134top-level identities executed once without repetitions; T4 separately has1footprint identity executed once, repetitions skipped. Remaining T3 stays deferred to merge batch. T2 has load repetitions, including the new mirror guard.42.598s added-wall T3 check and11.592s T4 check cover selected phases/exclude machine wait; neither is whole-run time. Budget/lint/ratchet notices remain report-only; skipReasonCheck report/missing0. Footprint is measurement-only, not an RSS gate or new performance acceptance claim.
+
+Streamed native finish records (all outcomes/scopes retained before deduplication), finding no nonpass outcomes in required files. Unique generated names / pass records:
+nativeBoundary69/69; ClaudeHost18/18; agentFiles8/8; boundary12/17; layout18/38; prepared15/15; launchFiles5/15; placement11/16; SSH38/38; remoteDiscoveryHost7/7; remoteDiscovery2/7; contractCoverage4/4; OpenCodeHost9/9; sessionLaunch2/2; sessionHost8/8; CodexCleanup10/10; settlement4/4; cloneIntegration6/6; supervisor4/4; CodexRemoteAgent1/1; footprint1/1. Nested/generated identities and repeated records are not additional coverage.
+
+C1 verified: local/agent concurrent publish/append/stat cases and SSH shared byte/mode/create/replace/append/stat contract pass; lost accepted reply and held writer tests pass for both publishFile and appendFile; prepared restart no-replay, wrong-owner and durable-result-checkpoint-failure controls pass. Reviewed implementation semantics are unchanged across the merge.
+C2 verified: local/mapped OpenCode baseline bytes/modes, concurrent-editor controls, source boundary/exemption controls and native fault/retry cases pass. All six formerly failing native identities have one pass each: ignore, ignore-partial, ignore-append failures; partial append retry; ignore created during staging; partial metadata cleanup/retry. Reviewed counters>0 and original final assertions are retained.
+C3 verified: selected nonlocal OpenCode placement/spawn and actual-agent native-child environment/shared-ignore path pass with original planted-secret positive control and allowed-value assertion; no local fallback or real external harness claim.
+C4 verified: nonlocal overwrite bytes/mode restoration and appended-log truncation, legacy undo and SSH older-agent missing-stat refusal pass. Merge-specific forced Codex stat remap passes within10/10, including `durable remote handshake recovery retains Host and retries forward cancellation before settlement` and `async Codex settlement precedes recovery-row and role release`. All four bounded settlement cases pass, retaining one hanging producer and retrying only after failure/receipt.
+
+New guard `remote LaunchFiles reads only Host metadata and bytes while the hub mirror stays unread` passes once in base plus5load repetitions. Source positively arms native mirror read/stat refusals before resetting its counter; final remote restore and unchanged/unread mirror assertions remain. It is not merely an unchanged-bytes observation.
+Coordinator discovery carry-over retains changed-secret atomic replacement/reaches-up and same-stream publication drain in7/7 remoteDiscoveryHost. Claude18/18 and the six native injection counters remain preservation evidence after the dev integration.
+
+Standalone launch-recovery/transport-forwards/host-local-contract/session-stop-races have no queued finish records here. A-16461 separately reports macOS targeted recovery4/transport6 and other preservation on the same production/test tree before the final wording-only commit; no Linux pass is invented for those deferred files. Prior failed batchcbf4407c and failed task0e027541 remain failed/incomplete. Old passing task runs apply only to their own heads and are not summed with this run.
+
+All C1–C4 verified by current reviewed source and exact-head named results. Remaining batch repetitions, deferred files and after-stage QA remain separate. Reviewer performed read-only source/log inspection, no tests/typecheck/browser or edits.
+A-16473: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16473-t-1644-final-integrated-evidence-at-22233b23.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-04T04:10:01.567Z
+
+Merged 32e217854056072425f5fd1cbc463765f619f46c onto dev.
