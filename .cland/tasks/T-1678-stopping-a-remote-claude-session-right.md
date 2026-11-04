@@ -2,8 +2,8 @@
 id: T-1678
 kind: task
 title: Stopping a remote Claude session right after a turn still refuses with 'process identity cannot be verified'
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1674
 topic: topic-1383
 branch: t/T-1678-stopping-a-remote-claude-session-right
 created: 2026-11-04T15:25:21.631Z
-updated: 2026-11-04T22:16:34.604Z
+updated: 2026-11-04T23:16:23.128Z
+closed: 2026-11-04T23:16:23.128Z
 ---
 
 ## Summary
@@ -277,3 +278,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-11-04T22:16:34.604Z
 
 Coord merge note (2026-11-04 22:16Z, rule 7 exception stated explicitly): re-enqueued at 4fbd14da after batch 751b0ac6 failed only on two setup-wait timeouts in load-gate repetition 3 (A-16714) and a missing allowance. The change since b755fa67 is test-only: the root-first cases' initial-turn setup wait now uses the shared eventually default, approved as C3(e), plus measured allowances. The per-test caps come from the true worst samples in A-16715, and the file cap 225 s from the 148.1 s batch sample. Evidence: verify c5270f98 (A-16707) at 4d73cb62, 5 full Linux load runs at the test-only head (A-16716, with the metadata reconstruction in A-16718), the delta review, and this batch's T1 and T3.
+
+### coord · 2026-11-04T23:16:23.128Z
+
+Merged 6edcfe1211c581829a956dace1d0fbb2e29dc9d8 onto dev.
