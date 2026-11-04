@@ -38,15 +38,6 @@ for(const mode of ['foreign UID','reparented','old PID','root birth gone'] as co
  assert.ok('reason' in result);
 });
 
-test('second pre-signal descendant churn is incomplete without sending any signal',async()=>{
- let signals=0;const uid=process.getuid!();
- const result=await stopClaude(root,[root,hook],{},async()=>{signals++;return true;},1,async()=>{},{
-   snapshot:async()=>[{pid:100,parent:1,group:100,uid},{pid:101,parent:100,group:100,uid},{pid:102,parent:101,group:100,uid}],
-   observe:async pids=>new Map(pids.map(pid=>[pid,{identity:pid===100?root.identity:pid===101?hook.identity:'linux:boot:3',ended:false}])),
- });
- assert.equal(result,null);assert.equal(signals,0);
-});
-
 for(const ended of [true,false])test(`pinned Claude member ${ended?'exit':'birth replacement'} is settled before comparing captures`,async()=>{
  const {claudeDescendantCapture}=await import('../src/host/agent/claude-stop.ts');
  const uid=process.getuid!(),proof=new Map([[100,{identity:root.identity,ended:false}],[101,{identity:ended?null:'linux:boot:replacement',ended}]]);
@@ -66,21 +57,64 @@ for(const persistent of [false,true])test(`Claude ${persistent?'persistent':'tra
  else{assert.ok(result);assert.deepEqual(signals,[100]);}
 });
 
-for(const mode of ['unused','outer spent','second descendant'] as const)test(`Claude helper admission budget ${mode} preserves the one-recapture boundary`,async()=>{
- let snapshots=0,ended=false,spent=mode==='outer spent',takes=0;const signals:number[]=[],checkpoints:number[][]=[],uid=process.getuid!();
- const result=await stopClaude(root,[root],{},async targets=>{assert.ok(checkpoints.some(rows=>rows.includes(101)),'new birth checkpoint precedes TERM');signals.push(...targets.map(t=>t.pid));ended=true;return true;},1,async targets=>{checkpoints.push(targets.map(t=>t.pid));},{
-   admission:{initial:new Set([100]),take:()=>{takes++;if(spent)return false;spent=true;return true;}},
-   snapshot:async()=>{snapshots++;return ended?[]:[{pid:100,parent:1,group:100,uid},{pid:101,parent:100,group:100,uid},...(mode==='second descendant'&&snapshots>1?[{pid:102,parent:101,group:100,uid}]:[])];},
+test('Claude signals the spawner then converges across successive descendant births',async()=>{
+ let now=0,term=false,ended=false,samples=0;const uid=process.getuid!(),signals:number[][]=[],checkpoints:number[][]=[];
+ const result=await stopClaude(root,[root],{},async targets=>{signals.push(targets.map(t=>t.pid));if(!term){assert.deepEqual(targets,[root]);term=true;}else ended=true;return true;},3,async targets=>{checkpoints.push(targets.map(t=>t.pid));},{
+   admission:{initial:new Set([100])},
+   now:()=>now,pause:async()=>{now++;},
+   snapshot:async()=>{if(ended)return [];if(term)samples++;return [{pid:100,parent:1,group:100,uid},{pid:101,parent:100,group:100,uid},...(samples>1?[{pid:102,parent:101,group:100,uid}]:[])];},
    observe:async pids=>new Map(pids.map(pid=>[pid,{identity:ended?null:pid===100?root.identity:pid===101?hook.identity:'linux:boot:3',ended}])),
  });
- assert.equal(takes,1,'the helper asks for the admission budget once');
- if(mode==='unused'){assert.ok(result);assert.deepEqual(signals,[100]);}
- else{assert.equal(result,null);assert.deepEqual(signals,[]);}
+ assert.ok(result);assert.deepEqual(signals[0],[100]);assert.ok(signals.some(pids=>pids.includes(102)));assert.ok(checkpoints.some(pids=>pids.includes(101)&&pids.includes(102)));
 });
 
-test('a new Claude stop admission starts a fresh single-use budget',async()=>{
- const {claudeStopAdmission}=await import('../src/host/agent/claude-stop.ts');
- const first=claudeStopAdmission(new Set([100])),next=claudeStopAdmission(new Set([100,101]));
- assert.equal(first.take(),true);assert.equal(first.take(),false);assert.equal(next.take(),true);assert.equal(next.take(),false);
- assert.deepEqual([...next.initial],[100,101]);
+for(const mode of ['successive births','settled exits','unstable deadline'] as const)test(`Claude post-TERM convergence: ${mode}`,async()=>{
+ let now=0,term=false,ended=false,sample=0;const uid=process.getuid!(),signals:number[][]=[],reasons:string[]=[];
+ const result=await stopClaude(root,[root],{},async targets=>{signals.push(targets.map(t=>t.pid));if(term&&mode!=='unstable deadline')ended=true;term=true;return true;},3,async()=>{},{
+   admission:{initial:new Set([100])},now:()=>now,pause:async()=>{now++;},diagnostic:reason=>reasons.push(reason),
+   snapshot:async()=>{if(ended)return [];const n=term?++sample:0;return [{pid:100,parent:1,group:100,uid},...Array.from({length:n?mode==='unstable deadline'?n:Math.min(n,3):0},(_,i)=>({pid:101+i,parent:100,group:100,uid}))];},
+   observe:async pids=>new Map(pids.map(pid=>{const gone=ended||mode==='settled exits'&&pid===101&&sample>1;return [pid,{identity:gone?null:pid===100?root.identity:`linux:boot:${pid}`,ended:gone}];})),
+ });
+ if(mode==='unstable deadline'){assert.equal(result,null);assert.deepEqual(signals,[[100]],'unstable descendants are never signalled');assert.match(reasons.join(';'),/deadline/);assert.equal(now,9);}
+ else {assert.ok(result);assert.ok(signals.some(pids=>pids.includes(103)),'all converged births are joined');}
+});
+
+test('Claude captures a new writer from a pinned live parent after root exit',async()=>{
+ const {claudeDescendantCapture}=await import('../src/host/agent/claude-stop.ts');const uid=process.getuid!();
+ assert.deepEqual(claudeDescendantCapture(root,[root,hook],new Set([100,101]),[{pid:101,parent:1,group:100,uid},{pid:102,parent:101,group:100,uid}],new Map([[100,{identity:null,ended:true}],[101,{identity:hook.identity,ended:false}],[102,{identity:'linux:boot:3',ended:false}]])),{targets:[hook,{pid:102,identity:'linux:boot:3'}]});
+});
+
+test('Claude persistent unknown after root TERM retains incomplete ownership',async()=>{
+ let triggered=false,reads=0;const signals:number[]=[],uid=process.getuid!(),reasons:string[]=[];
+ const result=await stopClaude(root,[root],{},async targets=>{signals.push(...targets.map(t=>t.pid));triggered=true;return true;},3,async()=>{},{
+   admission:{initial:new Set([100])},now:()=>0,diagnostic:reason=>reasons.push(reason),
+   snapshot:async()=>[{pid:100,parent:1,group:100,uid},...(triggered?[{pid:101,parent:100,group:100,uid}]:[])],
+   observe:async pids=>{if(triggered)reads++;return new Map(pids.map(pid=>[pid,pid===100?{identity:root.identity,ended:false}:{identity:null,ended:false}]));},
+ });
+ assert.equal(result,null);assert.deepEqual(signals,[100]);assert.equal(reads,2,'unknown receives exactly one native re-read');assert.match(reasons.join(';'),/birth unavailable/);
+});
+
+for(const state of ['exited','replaced','unknown'] as const)test(`Claude retry after root ${state} retains only pinned hook authority`,async()=>{
+ let now=0,ended=false;const signals:number[][]=[],uid=process.getuid!();
+ const result=await stopClaude(root,[root,hook],{},async targets=>{signals.push(targets.map(target=>target.pid));ended=true;return true;},2,async()=>{},{
+   now:()=>now,pause:async()=>{now++;},admission:{initial:new Set([100,101])},
+   snapshot:async()=>[...(state==='replaced'?[{pid:100,parent:1,group:100,uid}]:[]),...(!ended?[{pid:101,parent:1,group:100,uid}]:[])],
+   observe:async pids=>new Map(pids.map(pid=>[pid,pid===100?{identity:state==='replaced'?'linux:boot:replacement':null,ended:state==='exited'}:{identity:ended?null:hook.identity,ended}])),
+ });
+ if(state==='unknown'){assert.equal(result,null);assert.deepEqual(signals,[]);}
+ else {assert.deepEqual(result,[]);assert.deepEqual(signals,[[101]],'retry signals only the retained live birth');}
+});
+
+test('Claude deadline retains a pinned hook for a later root-absent retry',async()=>{
+ let now=0,rootEnded=false,hookEnded=false,retry=false;let retained=[root,hook];const uid=process.getuid!(),signals:number[][]=[];
+ const facts={admission:{initial:new Set([100,101])},now:()=>now,pause:async()=>{now++;},
+   snapshot:async()=>[...(!rootEnded?[{pid:100,parent:1,group:100,uid}]:[]),...(!hookEnded?[{pid:101,parent:rootEnded?1:100,group:100,uid}]:[])],
+   observe:async(pids:number[])=>new Map(pids.map(pid=>[pid,{identity:pid===100?rootEnded?null:root.identity:hookEnded?null:hook.identity,ended:pid===100?rootEnded:hookEnded}])),
+ };
+ const signal=async(targets:readonly typeof root[])=>{signals.push(targets.map(target=>target.pid));if(targets.some(target=>target.pid===100))rootEnded=true;if(retry)hookEnded=true;return true;};
+ assert.equal(await stopClaude(root,retained,{},signal,2,async targets=>{retained=[...targets];},facts),null,'first deadline leaves the TERM-resistant pinned hook held');
+ assert.deepEqual(retained,[hook]);assert.equal(rootEnded,true);assert.equal(hookEnded,false);
+ retry=true;signals.length=0;
+ assert.deepEqual(await stopClaude(root,retained,{},signal,2,async targets=>{retained=[...targets];},facts),[]);
+ assert.deepEqual(signals,[[101]],'a later stop joins only the retained birth');assert.deepEqual(retained,[]);
 });

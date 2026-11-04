@@ -1,19 +1,23 @@
 # hub/test/claude-stop.test.ts
 
-T1 scripts the public Claude stop owner's process census, native births, UID and clock. Natural SessionEnd closure, TERM-resistant hook escalation, root exit, reparenting and foreign UID cases assert checkpoint-before-signal and retain final no-signal controls. No native process or timer runs. The real scripted-Claude hook lifecycle is exercised separately by claude-code-remote.test.ts.
+T1 scripts the public Claude stop owner's census, births, UID and clock. Natural
+SessionEnd closure, TERM-resistant escalation, root exit, reparenting and foreign
+UID controls retain checkpoint-before-signal and no-foreign-signal assertions.
+Unknown births get exactly one re-read. No native process or timer runs.
 
-The shared acquisition-policy controls reject a foreign UID, reparented process,
-PID present before capture and vanished root birth. A second pre-signal churn
-returns incomplete with zero signals, supplementing the native one-churn control.
+T-1678 replaces the old fixed recapture-budget controls with root-first TERM,
+successive new births, settled exits and unstable-deadline convergence. Two empty
+captures confirm closure. A new child can be acquired through a pinned live
+parent after root exit; an unproved orphan, foreign UID, old census PID or changed
+root cannot grant new authority. The real harness lifecycle remains covered in
+claude-code-remote.test.ts.
 
-Pinned exits and replacements drop from capture comparisons without acquiring
-their replacements. Transient/persistent unknown controls count the one native
-re-read of only that member before any signal; persistent unknown sends none.
-The earlier second-new-descendant, foreign UID, reparenting and root-birth
-controls retain their final assertions.
-
-Admission controls cover a helper spending the unused outer budget, an already
-spent outer budget refusing a new member, and a second descendant appearing
-during validation. Fresh admission instances each permit one spend. The same
-production budget/canonical capture-key exports are used by both native layers;
-no budget is obtained from a frame or persisted record.
+Retained-hook retry covers positive root exit and birth replacement with exact
+pinned child authority. It signals only that child; an unknown root birth still
+refuses without signals. The test uses an injected clock and no native process.
+The two-attempt control first expires its injected stop deadline with a pinned
+hook retained after root exit, then joins that same birth on a fresh explicit
+stop. The native companion covers the AgentProcesses admission path.
+The replaced-root helper control includes the live replacement in its original
+group through closure; it never omits that row to make retry pass. The T2 owner
+companion covers reconciliation and admission with the same boundary.

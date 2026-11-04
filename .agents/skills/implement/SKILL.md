@@ -171,10 +171,14 @@ through restart recovery; recurring liveness/discovery never launches a CLI.
 Keep the row and role held with the cleanup-incomplete cause until settlement.
 For adopted Claude, a positively exited or replaced pinned birth is settled,
 not descendant churn. Unknown identity gets one bounded native re-read; a
-persistent unknown remains incomplete. Keep the single recapture for new
-unpinned descendants and the UID/ancestry/birth gates unchanged.
-That budget is shared across the outer capture and final pre-TERM helper for
-one admitted stop, held only in memory; a new admission creates a fresh budget.
+persistent unknown remains incomplete. Adopted stop sends TERM to the pinned root
+before descendant convergence; two consecutive matching captures authorize
+survivor escalation and two empty captures confirm closure within the stop deadline.
+Keep the first-census, UID and live pinned-parent ancestry gates; checkpoint every
+new birth before signalling it. A pinned live parent can anchor a new child after
+the root exits; an unproved orphan cannot. There is no fixed recapture count.
+Scripted proof assumes graceful Claude shutdown; real-binary behavior is unverified.
+A late orphan without observed ancestry stays held, never signalled by group.
 See [agent receipts](../../../docs/agents/host-agent.md#claude-launch-receipts).
 
 ## Users-mode remote publications

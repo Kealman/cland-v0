@@ -123,7 +123,7 @@ filesystem decisions and accept old error replies without it.
 | Operation | Boundary |
 | --- | --- |
 | `prepare-spawn` | Open the remote log and return a connection-owned token before hub authorization. Commit uses that held descriptor. |
-| `prepare-stop` | Capture and checkpoint the native tree, then return its births for hub authorization and `beforeSignal`. Commit revalidates the captured set; adopted Claude settles positively exited/replaced pinned births without spending its single new-descendant recapture. Unknown births get one bounded re-read and persistent unknown remains incomplete. |
+| `prepare-stop` | Checkpoint native pins for hub authorization and `beforeSignal`; adopted Claude uses the root and a best-effort positive descendant baseline. Commit revalidates authority; adopted Claude sends TERM to the pinned root, then converges on two matching descendant captures within the stop deadline. UID, live-parent ancestry, first-census exclusion and native births gate acquisition; positive pinned exits settle. Unknown births get one bounded re-read and persistent unknown remains incomplete. |
 | `prepare-worktree` | Complete Git work before the hub's `beforeInstall` callback. |
 | `commit-prepared` | Consume the token once; optional `install:false` retains Git work and skips installation. |
 | `abort-prepared` | Close held resources and clean newly created empty logs or newly created worktrees. |

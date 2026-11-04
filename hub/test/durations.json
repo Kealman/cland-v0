@@ -10174,10 +10174,6 @@
     "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": 8.388178,
     "hub/test/claude-code-remote.test.ts::terminal remote PID settlement cleans before publishing exit without recurring CLI": 5.562997,
     "hub/test/claude-code-remote.test.ts::terminal remote PID settlement holds the row on native failure without recurring CLI": 7.698629,
-    "hub/test/claude-stop.test.ts::a new Claude stop admission starts a fresh single-use budget": 0.000262,
-    "hub/test/claude-stop.test.ts::Claude helper admission budget outer spent preserves the one-recapture boundary": 0.000274,
-    "hub/test/claude-stop.test.ts::Claude helper admission budget second descendant preserves the one-recapture boundary": 0.001165,
-    "hub/test/claude-stop.test.ts::Claude helper admission budget unused preserves the one-recapture boundary": 0.000635,
     "hub/test/claude-stop.test.ts::Claude persistent unknown member gets one identity re-read before signals": 0.00018,
     "hub/test/claude-stop.test.ts::Claude refuses a foreign UID already present in its captured set before any signal": 0.0004,
     "hub/test/claude-stop.test.ts::Claude SessionEnd after root exit has bounded native ownership": 0.000295,
@@ -10192,7 +10188,6 @@
     "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses old PID": 0.000391,
     "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses reparented": 0.000379,
     "hub/test/claude-stop.test.ts::pre-signal Claude capture refuses root birth gone": 0.000479,
-    "hub/test/claude-stop.test.ts::second pre-signal descendant churn is incomplete without sending any signal": 0.000399,
     "hub/test/host-contract-coverage.test.ts::local Host retains no optional Claude launch or adoption implementation": 0.789481,
     "hub/test/state-paths.test.ts::host Claude account root preserves config override and host HOME precedence": 0.000277,
     "hub/test/claude-agent-launch.test.ts::restart restore consumes live generation receipts and skips pending released and confirmed closed workers": 0.005357,
@@ -10355,11 +10350,11 @@
       "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 4.280448 s; A-16521 4.914584 s; A-16524 7.478454 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 12 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
     },
     "hub/test/claude-code-remote.test.ts::Claude TERM-resistant SessionEnd hook is captured and killed by native birth": {
-      "seconds": 9,
+      "seconds": 19,
       "owner": "C-216",
       "added": "2026-11-04",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.497372 s; A-16521 3.754708 s; A-16524 5.759289 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 12.499550391 s; prior macOS arm64 Node24.21 sample 8.235731416 s. The 19 s C-216 allowance rounds 1.5x worst (18.7493255865 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
     },
     "hub/test/claude-code-remote.test.ts::Claude hook born across root exit remains unacquired": {
       "seconds": 7,
@@ -10467,12 +10462,12 @@
       "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.612240 s; A-16521 3.018265 s; A-16524 4.273872 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
     },
     "hub/test/claude-code-remote.test.ts": {
-      "seconds": 90,
+      "seconds": 225,
       "file": true,
       "owner": "C-216",
       "added": "2026-11-04",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decision 8f8a0401 approves a seven-day aggregate file allowance. Linux x64 c-8 lon1 Node24.21.0, two workers: A-16511 at 3bc5ba0d5 measured 58.659 s; A-16517 at merged head 60c445704 measured 60.959 s, with all 21 native assertions passing but the overall run interrupted by the enforced 60 s file gate. Splitting is excluded by the same decision because the frame launch case measured 4.665 s and 4.280 s, and the reparented-child case 4.210 s and 4.371 s, above the 4 s split threshold. The 90 s cap is about 1.5 times the worst sample; C-216 owns reducing aggregate fixture cost. Test titles, individual budgets, assertions, native ownership gates, wait bounds, ordering and cleanup are unchanged."
+      "reason": "T-1678 Coordinator 35a0544e authorizes the aggregate file refresh after batch09d9af98/A-16714: Linux x64 c-8sfo2 Node24.21 file sample 148.1 s under peak load 9.39, with initial-turn setup failures before stop in positive repetition3. The 225 s file allowance rounds 1.5x (222.15 s) upward with headroom. This is file-duration evidence from a failed batch, not a passing file or stop-latency claim. Prior T-1607 C-216 allowance was 90 s; owner, added date, expiry 2026-11-11 and global report mode stay unchanged. Assertions, production stop timing, acquisition and cleanup are unchanged; the separate initial setup adaptation uses the shared native fixture bound."
     },
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
       "seconds": 30,
@@ -13015,6 +13010,41 @@
       "added": "2026-11-03",
       "expires": "2026-12-03",
       "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 7.378123208 s; A-15983 5.407016151 s; A-15991 3.775349667 s; A-15995 3.572024167 s. Cap 11.068 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude root-first stop mid-turn": {
+      "seconds": 14,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 9.141946981 s; prior macOS arm64 Node24.21 sample 5.616728167 s. The 14 s C-216 allowance rounds 1.5x worst (13.7129204715 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude root-first stop completed turn": {
+      "seconds": 14,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 9.262970845 s; prior macOS arm64 Node24.21 sample 5.705533333 s. The 14 s C-216 allowance rounds 1.5x worst (13.8944562675 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude exit-time orphan stays held after independent cleanup": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 6.616230213 s; prior macOS arm64 Node24.21 sample 3.363429083 s. The 10 s C-216 allowance rounds 1.5x worst (9.9243453195 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude retained hook retries after the pinned root exited": {
+      "seconds": 15,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 9.759662688 s; prior macOS arm64 Node24.21 sample 5.721210417 s. The 15 s C-216 allowance rounds 1.5x worst (14.6394940320 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude orphan detached-child escape retains unknown authority": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 6.876509874 s; prior macOS arm64 Node24.21 sample 2.452095791 s. The 11 s C-216 allowance rounds 1.5x worst (10.3147648110 s) upward to whole seconds. Detached-child base sample5.493756007 s is lower than its6.876509874 s load-gate maximum. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
     }
   }
 }

@@ -18,8 +18,8 @@ import { FakeClock } from './fake-clock.ts';
 import { observeProcesses } from '../src/host/agent/native.ts';
 import { systemProcesses } from '../src/system-processes.ts';
 
-async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
- const f=await sshHostFixture(t,{startTransport:false});
+async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
+ const f=await sshHostFixture(t,{startTransport:false,...(options.signals||options.stopHooks?{processHooks:{...options.stopHooks,...(options.signals?{beforeSignals:async(targets:readonly {pid:number;identity:string}[])=>{options.signals!.push(...targets);await options.stopHooks?.beforeSignals?.(targets);}}:{})}}:{})});
  const fake=await fakeClaude(t,{awaitSignals:options.awaitSignals??true,stopCrash:options.stopCrash??false});
  await options.setup?.(f,fake);
  const code=join(f.fake.home,'code');await symlink(new URL('../../',import.meta.url).pathname,code);
@@ -130,9 +130,9 @@ test('older host agent refuses Claude launch capability before starting a comman
  await assert.rejects(older.launchClaude!({command:'/never-run',args:['--bg'],env:{},cwd:f.fake.home},'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),/missing capability claude-launch-adopt-v1/);
 });
 
-for(const asynchronous of [false,true])test(asynchronous?'Claude hook born across root exit remains unacquired':'Claude TERM-resistant SessionEnd hook is captured and killed by native birth', {timeout:10000},async t=>{
+for(const asynchronous of [false,true])test(asynchronous?'Claude hook born across root exit remains unacquired':'Claude TERM-resistant SessionEnd hook is captured and killed by native birth', {timeout:asynchronous?10000:15000},async t=>{
  const {ownProcess}=await import('./process-cleanup.ts');
- const {stopClaude,claudeProcessMembers}=await import('../src/host/agent/claude-stop.ts');
+ const {stopClaude,claudeProcessMembers,CLAUDE_STOP_GRACE_MS}=await import('../src/host/agent/claude-stop.ts');
  let marker='';let extraHook:unknown;
  const d=await remoteClaudeFixture(t,{awaitSignals:!asynchronous,settings:settings=>{settings.hooks.SessionEnd.push({hooks:[extraHook]});},setup:async(f)=>{
    marker=join(f.fake.home,'hook-ready');const script=join(f.fake.home,'session-end.cjs');
@@ -154,7 +154,7 @@ for(const asynchronous of [false,true])test(asynchronous?'Claude hook born acros
      const observed=await d.machine.identity(target.pid);if(!observed)continue;if(observed.pidIdentity!==target.identity)return false;
      try{process.kill(target.pid,signal);signals.push({pid:target.pid,signal});if(target.pid===root.pid&&signal==='SIGTERM')termSent=true;}catch(error){if((error as NodeJS.ErrnoException).code!=='ESRCH'||await d.machine.identity(target.pid)!==null)throw error;}
    }return true;
- },300,async targets=>{checkpoints.push(targets.map(target=>target.pid));},{diagnostic:reason=>diagnostics.push(reason),snapshot:async()=>{
+ },asynchronous?300:CLAUDE_STOP_GRACE_MS,async targets=>{checkpoints.push(targets.map(target=>target.pid));},{diagnostic:reason=>diagnostics.push(reason),snapshot:async()=>{
    if(asynchronous&&termSent){await eventually('native root exit before late-hook acquisition census',async()=>(await observeProcesses([root.pid!],d.f.env)).get(root.pid!)?.ended||undefined,1000);rootExitConfirmed=true;}
    return claudeProcessMembers(d.f.env);
  }});
@@ -324,9 +324,10 @@ for(const failing of [false,true])test(`terminal remote PID settlement ${failing
 
 for(const mode of ['descendant','reparented','retirement'] as const)test(mode==='retirement'?'pinned native hook exit between prepare and commit settles without a manual re-stop':mode==='reparented'?'an unowned reparented child stays unacquired across explicit stops':'adopted Claude settles one descendant born between stop capture and commit before any signal',async t=>{
  const reparented=mode==='reparented',retiring=mode==='retirement';
+ const signalled:Array<{pid:number;identity:string}>=[];
  const {ownProcess}=await import('./process-cleanup.ts');
  let trigger='',ready='',childReady='',childExit='',hook:unknown,exitHook:unknown;
- const d=await remoteClaudeFixture(t,{awaitSignals:false,settings:settings=>{
+ const d=await remoteClaudeFixture(t,{awaitSignals:false,...(reparented?{signals:signalled}:{}),settings:settings=>{
    const hooks=settings.hooks as unknown as Record<string,Array<{hooks:Array<{async?:boolean}>}>>;
    hooks.SessionStart!.push({hooks:[hook as {async?:boolean}]});hooks.SessionEnd!.push({hooks:[exitHook as {async?:boolean}]});
    for(const entry of hooks.SessionEnd!)for(const command of entry.hooks)command.async=false;
@@ -336,11 +337,12 @@ for(const mode of ['descendant','reparented','retirement'] as const)test(mode===
    await writeFile(script,`const fs=require('fs'),{spawn}=require('child_process'),{pathToFileURL}=require('url');\n(async()=>{const [trigger,ready,childReady,childExit,builder,root]=process.argv.slice(2);const {fixtureEnvironment}=await import(pathToFileURL(builder));let started=false;const watcher=fs.watch(require('path').dirname(trigger),()=>{if(started||!fs.existsSync(trigger))return;started=true;watcher.close();${retiring?'process.exit(0);':`const descendant=spawn(process.execPath,['-e',"const fs=require('fs'),end=process.argv[2];const watcher=fs.watch(require('path').dirname(end),()=>{if(fs.existsSync(end))watcher.close();});fs.writeFileSync(process.argv[1],String(process.pid));",childReady,childExit],{env:fixtureEnvironment(root,process.env),stdio:'ignore'});${reparented?'descendant.unref();process.exit(0);':''}`}});fs.writeFileSync(ready,String(process.pid));})().catch(error=>{console.error(error);process.exitCode=1;});\n`);
    const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
    hook={type:'command',command:[process.execPath,script,trigger,ready,childReady,childExit,builder,f.root].map(quote).join(' '),async:true};
-   exitHook={type:'command',command:[process.execPath,'-e',"require('fs').writeFileSync(process.argv[1],'done')",childExit].map(quote).join(' ')};
+   exitHook={type:'command',command:[process.execPath,'-e',reparented?"void 0":"require('fs').writeFileSync(process.argv[1],'done')",childExit].map(quote).join(' ')};
  }});
  const parent=await eventually('native churn producer armed',async()=>{try{return Number(await readFile(ready,'utf8'))||undefined;}catch{return undefined;}},2000);
  await eventually('initial turn completed before stop capture',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
  await joinInitialHookWriters(d);
+ const pinnedRoot=reparented?await d.machine.identity(d.row.pid):null;if(reparented)assert.ok(pinnedRoot?.pidIdentity);
  const original=d.machine.stop.bind(d.machine);let child=0,admissions=0,childCleanup:ReturnType<typeof ownProcess>|undefined;
  d.machine.stop=(row,options)=>original(row,{...options,beforeSignal:async tree=>{
    admissions++;if(reparented&&admissions>1)return;assert.equal(admissions,1,'the admitted stop is never replayed');
@@ -357,15 +359,29 @@ for(const mode of ['descendant','reparented','retirement'] as const)test(mode===
  const result=await d.ui.request({type:'session.stop',session:'worker'},5000);
  if(reparented){
    assert.equal(result.ok,false);assert.match(result.error!,/could not stop/);assert.equal(admissions,1);
-   assert.ok(await d.machine.identity(child));assert.ok(await d.machine.identity(d.row.pid));
+   assert.ok(await d.machine.identity(child),'unowned writer lifetime is independent of SessionEnd');
+   const {AgentProcesses}=await import('../src/host/agent/processes.ts');const {mkdir}=await import('node:fs/promises');
+   const restoredRoot=join(d.f.fake.home,'restored-orphan-observer');await mkdir(restoredRoot);
+   await writeFile(join(restoredRoot,'processes.json'),await readFile(join(d.f.fake.run,'processes.json')));
+   let restoredSignals=0;
+   const restored=new AgentProcesses(restoredRoot,fixtureEnvironment(restoredRoot,d.f.env),()=>{},{beforeSignals:async()=>{restoredSignals++;}});
+   await restored.load();d.f.addCleanup(()=>restored.drain());
+   const held={pid:d.row.pid,identity:pinnedRoot!.pidIdentity};
+   await assert.rejects(restored.captureForStop(held),/authority unknown/,'serialized state grants no signal or closure authority');
    const again=await d.ui.request({type:'session.stop',session:'worker'},5000);assert.equal(again.ok,false,'explicit re-stop cannot promote an unowned orphan');assert.equal(admissions,1);
    assert.ok(await d.machine.identity(child));assert.equal((await d.fake.calls()).filter(call=>call.args[0]==='stop').length,0);
    const rows=(await d.ui.request({type:'session.list'})).value as {processes:Array<{name:string;status:string;stateReason?:string}>};const row=rows.processes.find(row=>row.name==='worker')!;assert.equal(row.status,'running');assert.match(row.stateReason!,/cleanup-incomplete/);
    const roles=(await d.ui.request({type:'role.list'})).value as {roles:Array<{role:string;holders:Array<{name:string}>}>};assert.ok(roles.roles.find(role=>role.role==='implementer')?.holders.some(holder=>holder.name==='worker'));
-   await childCleanup?.();const settled=await d.ui.request({type:'session.stop',session:'worker'},5000);assert.equal(settled.ok,true,settled.error);assert.equal(admissions,2);
+   assert.equal(signalled.some(target=>target.pid===child),false,'no signal ever reaches the unowned orphan');
+   assert.ok(signalled.some(target=>target.pid===d.row.pid&&target.identity===pinnedRoot!.pidIdentity),'root TERM uses the pinned birth');
+   await childCleanup?.();
+   await assert.rejects(restored.captureForStop(held),/authority unknown/,"positive absence grants no closure authority");
+   assert.equal(restoredSignals,0,'recovered observations grant no signal authority');
+   const heldAgain=await d.ui.request({type:'session.stop',session:'worker'},5000);assert.equal(heldAgain.ok,false,'independent orphan cleanup cannot prove closure');assert.match(heldAgain.error!,/authority unknown/);assert.equal(admissions,1,'unknown authority never admits another signal');
+   const heldRows=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;authority:string;ended?:boolean}>;assert.ok(heldRows.some(row=>row.pid===d.row.pid&&row.authority==='unknown'&&!row.ended));
  }else{assert.equal(result.ok,true,result.error);assert.equal(admissions,1);}
  assert.equal(await d.machine.identity(child),null,'owned cleanup has joined the child by pinned birth');
- assert.equal((await d.fake.calls()).filter(call=>call.args[0]==='stop').length,1);
+ assert.equal((await d.fake.calls()).filter(call=>call.args[0]==='stop').length,reparented?0:1);
 });
 
 for(const mode of ['adoption','result','missing-receipt','missing-state','prune-failure'] as const)test(`failed Claude launch restart ${mode}`,async t=>{
@@ -410,4 +426,127 @@ for(const mode of ['adoption','result','missing-receipt','missing-state','prune-
      assert.deepEqual(JSON.parse(metadata.meta('launch-settlement-prunes')!),[]);assert.equal(table.pendingStops().length,0);assert.equal(nativeStops,0);assert.equal(adopts,0);assert.equal((await d.fake.calls()).length,calls,'orphan marker prune performs no native work');
    }else{assert.equal(metadata.meta('claude-failed:'+sid),'');assert.deepEqual(JSON.parse(metadata.meta('launch-settlement-prunes')!),[]);}
  }
+});
+
+for(const boundary of ['mid-turn','completed turn'] as const)test(`remote Claude root-first stop ${boundary}`,{timeout:15000},async t=>{
+ let d:Awaited<ReturnType<typeof remoteClaudeFixture>>,arm='',request='',ready='',childReady='',release='',startHook:unknown,endHook:unknown,admitted=false;
+ let completed=0;
+ d=await remoteClaudeFixture(t,boundary==='mid-turn'?{setup:async f=>{
+   arm=join(f.fake.home,'held-turn-arm');request=join(f.fake.home,'held-turn-spawn');ready=join(f.fake.home,'held-turn-ready');childReady=join(f.fake.home,'held-turn-child');release=join(f.fake.home,'held-turn-release');
+   const script=join(f.fake.home,'held-turn.cjs'),builder=new URL('./fixture-environment.ts',import.meta.url).pathname;
+   await writeFile(script,`const fs=require('fs'),{spawn}=require('child_process'),{pathToFileURL}=require('url');
+(async()=>{const [arm,request,ready,childReady,release,builder,root]=process.argv.slice(2);if(!fs.existsSync(arm))return;const {fixtureEnvironment}=await import(pathToFileURL(builder));let input='';for await(const chunk of process.stdin)input+=chunk;const turn=JSON.parse(input);let child,closing=false;
+const watcher=fs.watch(require('path').dirname(arm),()=>{if(fs.existsSync(release)&&!closing){closing=true;watcher.close();if(child){child.once('close',()=>process.exit(0));child.kill();}else process.exit(0);}else if(fs.existsSync(request)&&!child&&!closing){child=spawn(process.execPath,['-e',"require('fs').writeFileSync(process.argv[1],String(process.pid));setInterval(()=>{},1000);",childReady],{env:fixtureEnvironment(root,process.env),stdio:'ignore'});}});
+fs.writeFileSync(ready,JSON.stringify({pid:process.pid,turnId:turn.prompt_id,session:turn.session_id}));})().catch(error=>{console.error(error);process.exitCode=1;});`);
+   const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
+   startHook={type:'command',command:[process.execPath,script,arm,request,ready,childReady,release,builder,f.root].map(quote).join(' ')};
+   endHook={type:'command',command:[process.execPath,'-e',"require('fs').writeFileSync(process.argv[1],'release')",release].map(quote).join(' ')};
+ },settings:settings=>{
+   const hooks=settings.hooks as unknown as Record<string,Array<{hooks:unknown[]}>>;
+   hooks.UserPromptSubmit!.push({hooks:[startHook]});hooks.SessionEnd!.push({hooks:[endHook]});
+ },stopHooks:{beforeSignals:async targets=>{
+   if(!targets.some(target=>target.pid===d.row.pid)||admitted)return;
+   const turn=JSON.parse(await readFile(ready,'utf8')) as {pid:number;turnId:string;session:string};
+   assert.ok(turn.turnId);assert.equal(turn.session,JSON.parse(await readFile(join(d.fake.home,'jobs',d.row.harnessId+'.json'),'utf8')).sessionId);
+   assert.equal(((await d.fake.log(d.row.harnessId)).match(/session.measure done/g)??[]).length,completed,'the same native turn cannot complete while its hook is held');
+   assert.ok((await observeProcesses([turn.pid],d.f.env)).get(turn.pid)?.identity,'the held hook is native and live at signal admission');
+   const born=eventually('hook spawns a new writer at root TERM admission',async()=>{try{const pid=Number(await readFile(childReady,'utf8'));return pid&&(await observeProcesses([pid],d.f.env)).get(pid)?.identity?pid:undefined;}catch{return undefined;}},2000);void born.catch(()=>{});
+   await writeFile(request,'spawn');const child=await born;
+   const members=await systemProcesses(undefined,undefined,undefined,false,d.f.env);
+   assert.ok(members.some(row=>row.pid===child&&row.parent===turn.pid),'fresh native writer belongs to the held hook');
+   await assert.rejects(stat(release),{code:'ENOENT'},'only SessionEnd releases the held producer');admitted=true;
+ }}}:{});
+ await eventually('initial native turn completion',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
+ await joinInitialHookWriters(d);
+ completed=((await d.fake.log(d.row.harnessId)).match(/session.measure done/g)??[]).length;
+ if(boundary==='mid-turn')await writeFile(arm,'armed');
+ const completion=boundary==='completed turn'?eventually('fresh native turn completion',async()=>((await d.fake.log(d.row.harnessId)).match(/session.measure done/g)??[]).length>completed||undefined,3000):undefined;
+ void completion?.catch(()=>{});
+ const held=boundary==='mid-turn'?eventually('fresh native hook holds this turn',async()=>{try{return JSON.parse(await readFile(ready,'utf8')) as {turnId:string};}catch{return undefined;}},3000):undefined;void held?.catch(()=>{});
+ const mark=d.ui.frames.length;
+ const busy=eventually('fresh native turn busy hook',()=>d.ui.frames.slice(mark).find(frame=>frame.type==='session.state'&&frame.session==='worker'&&frame.state==='busy'&&frame.source==='hook')||undefined,3000);void busy.catch(()=>{});
+ const delivery=await d.ui.request({type:'topic.send',topic:'general',text:'@worker root-first fresh turn',to:['worker']});assert.equal(delivery.ok,true,delivery.error);
+ await busy;
+ if(boundary==='completed turn'){await completion;await joinInitialHookWriters(d);}else await held;
+ const result=await d.ui.request({type:'session.stop',session:'worker'},10000);assert.equal(result.ok,true,result.error);
+ if(boundary==='mid-turn')assert.equal(admitted,true,'the live native producer spawned at root TERM admission');
+ assert.equal(await d.nativeAlive(d.row),false,'the captured root birth is gone after one explicit stop');
+ const rows=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;ended?:boolean;authority?:string}>;
+ assert.ok(rows.some(row=>row.pid===d.row.pid&&row.ended&&row.authority==='closed'),'durable tree closure precedes success');
+});
+
+for(const detached of [false,true])test(detached?'remote Claude orphan detached-child escape retains unknown authority':'remote Claude exit-time orphan stays held after independent cleanup',{timeout:15000},async t=>{
+ const {ownProcess}=await import('./process-cleanup.ts');
+ let d:Awaited<ReturnType<typeof remoteClaudeFixture>>|undefined,marker='',escape='',escaped='',hook:unknown,gated=false;
+ const signals:Array<{pid:number;identity:string}>=[];
+ d=await remoteClaudeFixture(t,{awaitSignals:false,signals,settings:settings=>settings.hooks.SessionEnd.push({hooks:[hook]}),setup:async f=>{
+   marker=join(f.fake.home,'exit-orphan');const script=join(f.fake.home,'exit-orphan.cjs');
+   escape=join(f.fake.home,'orphan-escape');escaped=join(f.fake.home,'escaped-child');
+   await writeFile(script,`const fs=require('fs'),{spawn}=require('child_process'),{pathToFileURL}=require('url');
+(async()=>{const [marker,escape,escaped,builder,root]=process.argv.slice(2);const {fixtureEnvironment}=await import(pathToFileURL(builder));const watcher=fs.watch(require('path').dirname(escape),()=>{if(!fs.existsSync(escape))return;watcher.close();const child=spawn(process.execPath,['-e',"require('fs').writeFileSync(process.argv[1],String(process.pid));setInterval(()=>{},1000);",escaped],{env:fixtureEnvironment(root,process.env),detached:true,stdio:'ignore'});child.unref();process.exit(0);});fs.writeFileSync(marker,String(process.pid));})().catch(error=>{console.error(error);process.exitCode=1;});`);
+   const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
+   hook={type:'command',command:[process.execPath,script,marker,escape,escaped,new URL('./fixture-environment.ts',import.meta.url).pathname,f.root].map(quote).join(' '),async:true};
+ },stopHooks:{beforeRemainingObservation:async()=>{
+   if(gated||!d||!signals.some(target=>target.pid===d!.row.pid))return;
+   await eventually('native root exit before first post-TERM census',async()=>(await observeProcesses([d!.row.pid],d!.f.env)).get(d!.row.pid)?.ended||undefined,2000);
+   await eventually('orphan native PID and birth receipt',async()=>{try{const pid=Number(await readFile(marker,'utf8'));return (await observeProcesses([pid],d!.f.env)).get(pid)?.identity||undefined;}catch{return undefined;}},2000);
+   gated=true;
+ }}});
+ await eventually('startup turn completed',async()=>(await d!.fake.log(d!.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await joinInitialHookWriters(d);
+ const ready=eventually('independent exit-time writer PID',async()=>{try{return Number(await readFile(marker,'utf8'))||undefined;}catch{return undefined;}},3000);void ready.catch(()=>{});
+ const stopping=d.ui.request({type:'session.stop',session:'worker'},10000);
+ const pid=await ready,cleanup=ownProcess(undefined,pid);d.f.addCleanup(cleanup);
+ const result=await stopping;assert.equal(gated,true);assert.equal(result.ok,false,result.error);assert.match(result.error!,/could not stop/);
+ const orphanIdentity=(await observeProcesses([pid],d.f.env)).get(pid)?.identity;assert.ok(orphanIdentity,'orphan is alive at refusal');
+ assert.equal(signals.some(target=>target.pid===pid),false,'no signal ever reaches the exit-time orphan');
+ const rows=(await d.ui.request({type:'session.list'})).value as {processes:Array<{name:string;status:string;stateReason?:string}>};
+ const row=rows.processes.find(row=>row.name==='worker')!;assert.equal(row.status,'running');assert.match(row.stateReason!,/cleanup-incomplete/);
+ const roles=(await d.ui.request({type:'role.list'})).value as {roles:Array<{role:string;holders:Array<{name:string}>}>};assert.ok(roles.roles.find(role=>role.role==='implementer')?.holders.some(holder=>holder.name==='worker'));
+ let escapedPid=0;
+ if(detached){
+   const born=eventually('detached escape child native receipt',async()=>{try{const pid=Number(await readFile(escaped,'utf8'));return pid&&(await observeProcesses([pid],d!.f.env)).get(pid)?.identity?pid:undefined;}catch{return undefined;}},2000);void born.catch(()=>{});
+   await writeFile(escape,'escape');escapedPid=await born;d.f.addCleanup(ownProcess(undefined,escapedPid));
+   await eventually('rejected orphan exits after detached fork',async()=>(await observeProcesses([pid],d!.f.env)).get(pid)?.ended||undefined,2000);
+   const members=await systemProcesses(undefined,undefined,undefined,false,d.f.env);assert.ok(members.some(row=>row.pid===escapedPid&&row.group===escapedPid&&row.parent!==pid),'escaped writer outlives the rejected parent in a new native group');
+ }else await cleanup();
+ const {claudeProcessMembers}=await import('../src/host/agent/claude-stop.ts');
+ const known=(JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string;targets?:Array<{pid:number;identity:string}>}>).find(row=>row.pid===d!.row.pid)!;
+ const pins=[{pid:known.pid,identity:known.identity},...(known.targets??[]),{pid,identity:orphanIdentity}];
+ await eventually('all listed births and the old root group positively gone',async()=>{
+   const proof=await observeProcesses(pins.map(target=>target.pid),d!.f.env);
+   return pins.every(target=>proof.get(target.pid)?.ended||!!target.identity&&!!proof.get(target.pid)?.identity&&proof.get(target.pid)!.identity!==target.identity)&&!(await claudeProcessMembers(d!.f.env)).some(member=>member.group===d!.row.pid)||undefined;
+ },2000);
+ if(detached)assert.ok((await observeProcesses([escapedPid],d.f.env)).get(escapedPid)?.identity,'escaped writer survives every old birth and group');
+ const held=await d.ui.request({type:'session.stop',session:'worker'},10000);assert.equal(held.ok,false,'absence of known births cannot prove session closure');assert.match(held.error!,/authority unknown/);
+ assert.equal(await d.nativeAlive(d.row),false);assert.equal(signals.some(target=>target.pid===pid||target.pid===escapedPid),false,'unknown ownership adds no signal authority');
+ const ledger=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;ended?:boolean;authority?:string}>;assert.ok(ledger.some(row=>row.pid===d!.row.pid&&row.authority==='unknown'&&!row.ended),'unknown row remains held after listed births disappear');
+ const heldRoles=(await d.ui.request({type:'role.list'})).value as {roles:Array<{role:string;holders:Array<{name:string}>}>};assert.ok(heldRoles.roles.find(role=>role.role==='implementer')?.holders.some(holder=>holder.name==='worker'));
+});
+
+test('remote Claude retained hook retries after the pinned root exited',{timeout:15000},async t=>{
+ let d:Awaited<ReturnType<typeof remoteClaudeFixture>>|undefined,marker='',hook:unknown,interrupted=false;
+ const signals:Array<{pid:number;identity:string}>=[];
+ d=await remoteClaudeFixture(t,{awaitSignals:false,signals,setup:async f=>{
+   marker=join(f.fake.home,'retained-hook');const script=join(f.fake.home,'retained-hook.cjs');
+   await writeFile(script,"require('fs').writeFileSync(process.argv[2],String(process.pid));setInterval(()=>{},1000);");
+   const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
+   hook={type:'command',command:[process.execPath,script,marker].map(quote).join(' '),async:true};
+ },settings:settings=>{
+   const hooks=settings.hooks as unknown as Record<string,Array<{hooks:unknown[]}>>;hooks.SessionStart!.push({hooks:[hook]});
+ },stopHooks:{beforeRemainingObservation:async()=>{
+   if(interrupted||!d||!signals.some(target=>target.pid===d!.row.pid))return;
+   await eventually('first stop positively observes root exit',async()=>(await observeProcesses([d!.row.pid],d!.f.env)).get(d!.row.pid)?.ended||undefined,2000);
+   await joinInitialHookWriters(d);interrupted=true;
+   throw new Error('injected interruption after root exit with retained hook');
+ }}});
+ const pid=await eventually('retained hook native PID',async()=>{try{const pid=Number(await readFile(marker,'utf8'));return pid&&(await observeProcesses([pid],d!.f.env)).get(pid)?.identity?pid:undefined;}catch{return undefined;}},2000);
+ await eventually('startup turn done',async()=>(await d!.fake.log(d!.row.harnessId)).includes('session.measure done')||undefined,2000);await joinInitialHookWriters(d);
+ const first=await d.ui.request({type:'session.stop',session:'worker'},10000);assert.equal(first.ok,false);assert.match(first.error!,/injected interruption/);assert.equal(interrupted,true);
+ assert.equal(await d.nativeAlive(d.row),false);const identity=(await observeProcesses([pid],d.f.env)).get(pid)?.identity;assert.ok(identity,'retained child outlives the root');
+ const before=signals.length;
+ const retried=await d.ui.request({type:'session.stop',session:'worker'},10000);assert.equal(retried.ok,true,retried.error);
+ assert.ok(signals.slice(before).some(target=>target.pid===pid&&target.identity===identity),'retry signals the exact retained hook birth');assert.equal(signals.slice(before).some(target=>target.pid===d!.row.pid),false,'retry never signals a vanished root');
+ assert.equal((await observeProcesses([pid],d.f.env)).get(pid)?.ended,true);
+ const rows=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;ended?:boolean;authority?:string}>;assert.ok(rows.some(row=>row.pid===d!.row.pid&&row.ended&&row.authority==='closed'),'retained-hook closure is durable before success');
 });

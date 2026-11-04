@@ -1,4 +1,4 @@
-import { stopClaude, claudeProcessMembers, claudeDescendantCapture, claudePinnedTargets, observeClaudeProcesses, claudeStopAdmission, processTargetKey as targetKey } from './claude-stop.ts';
+import { CLAUDE_STOP_GRACE_MS, stopClaude, claudeProcessMembers, claudeDescendantCapture, claudePinnedTargets, claudeRootReplacement, observeClaudeProcesses, processTargetKey as targetKey } from './claude-stop.ts';
 import { spawn, execFile } from 'node:child_process';
 import { readFile, mkdir, readdir, rm, open, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
@@ -98,7 +98,7 @@ export class AgentProcesses {
       // Native close owns exact code/signal; this observer never replaces them.
       if (row.ended || this.#settling.has(row) || this.#stopping.has(row) || row.rootExitObserved !== versions.get(row)) continue;
       const proof = observations.get(row.pid);
-      if(row.adopted && proof?.ended)row.rootExitObserved=true;
+      if(row.adopted && (proof?.ended||proof?.identity&&proof.identity!==row.identity))row.rootExitObserved=true;
       if (row.authority === 'unknown') continue;
       if (proof?.identity === row.identity && row.code === undefined) {
         const targetVersion = targetKey(row.targets);
@@ -115,14 +115,15 @@ export class AgentProcesses {
         continue;
       }
       const targets = row.targets ?? [];
-      const survivors = targets.filter(target => observations.get(target.pid)?.identity === target.identity);
-      const unresolved = targets.some(target => {
-        const observation = observations.get(target.pid);
-        return !observation?.ended && observation?.identity !== target.identity;
+      const pinned=row.adopted?claudePinnedTargets(targets,observations):undefined;
+      const survivors=row.adopted?pinned??[]:targets.filter(target=>observations.get(target.pid)?.identity===target.identity);
+      const unresolved=row.adopted?!pinned:targets.some(target=>{
+        const observation=observations.get(target.pid);
+        return !observation?.ended&&observation?.identity!==target.identity;
       });
       const group = await this.#group(row.pid);
       if (row.ended || this.#settling.has(row) || row.targets !== targets) continue;
-      if (unresolved || group.some(member => !survivors.some(target => target.pid === member.pid))) row.authority = 'unknown';
+      if (unresolved || group.some(member => !(row.adopted&&claudeRootReplacement(row,member.pid,observations))&&!survivors.some(target => target.pid === member.pid))) row.authority = 'unknown';
       else if (!survivors.length) { row.targets = []; row.authority = 'closed'; row.ended = true; }
       else { row.targets = survivors; row.authority = 'owned'; }
     }
@@ -316,12 +317,12 @@ export class AgentProcesses {
         const proof=await observeClaudeProcesses([...previous,...(row.targets??[]),...live].map(target=>target.pid),this.#env);
         const before=claudePinnedTargets(previous,proof),current=claudePinnedTargets(row.targets??[],proof),settled=claudePinnedTargets(live,proof);
         // Reconciliation can publish this same native capture while it is in flight.
-        // The stop owner compares it with the approved set and owns the recapture budget.
+        // The stop owner retains admission authority and converges after root TERM.
         if(!before||!current||!settled||targetKey(current)!==targetKey(settled))return null;
         captured=settled;
       }
     } else {
-      if(row.adopted && (await observeProcesses([row.pid],this.#env)).get(row.pid)?.ended)row.rootExitObserved=true;
+      if(row.adopted){const proof=(await observeClaudeProcesses([row.pid],this.#env)).get(row.pid);if(proof?.ended||proof?.identity&&proof.identity!==row.identity)row.rootExitObserved=true;}
       if (!row.rootExitObserved) {
         row.authority = 'unknown'; await this.#persist('recover');
         throw new Error('process authority unknown; stop requires host reboot or recycling');
@@ -339,7 +340,7 @@ export class AgentProcesses {
       // after reconciliation's snapshot and still be writing in this group.
       const members=await this.#group(row.pid);
       const observations=await observeClaudeProcesses(members.map(member=>member.pid),this.#env);
-      if(members.some(member=>!observations.get(member.pid)?.ended&&!captured.some(target=>target.pid===member.pid&&target.identity===observations.get(member.pid)?.identity))){
+      if(members.some(member=>!observations.get(member.pid)?.ended&&!claudeRootReplacement(row,member.pid,observations)&&!captured.some(target=>target.pid===member.pid&&target.identity===observations.get(member.pid)?.identity))){
         row.authority='unknown';await this.#persist('recover');return null;
       }
       if(!captured.length){row.ended=true;row.authority='closed';}
@@ -374,6 +375,26 @@ export class AgentProcesses {
     return {state:'failed',error:'commit interrupted before native admission'};
   }
   async captureForStop(args: Record<string, unknown>) {
+    const owned=this.#rows.find(row=>row.pid===args.pid&&row.identity===args.identity&&!row.ended);
+    if(owned&&owned.authority==='owned'&&this.#adopted.has(owned)&&!this.#stopping.has(owned)){
+      await this.#save;
+      const census=await claudeProcessMembers(this.#env);
+      const previous=owned.targets?.length?[...owned.targets]:[{pid:owned.pid,identity:owned.identity}];
+      const proof=await observeClaudeProcesses([owned.pid,...previous.map(target=>target.pid),...census.map(member=>member.pid)],this.#env);
+      const root=proof.get(owned.pid),member=census.find(member=>member.pid===owned.pid);
+      if(root?.identity===owned.identity){
+        if(!member||member.uid!==process.getuid?.())return {closed:false,targets:null};
+        // Descendants are a best-effort baseline, never a pre-TERM churn gate.
+        const observed=claudeDescendantCapture(owned,previous,new Set(),census,proof);
+        const targets='targets' in observed?observed.targets:claudePinnedTargets(previous,proof)??previous;
+        owned.targets=targets;await this.#persist('recover');
+        this.#stopCaptures.set(owned,{key:targetKey(targets),pids:new Set(census.map(member=>member.pid))});
+        return {closed:false,targets};
+      }
+      if(!root?.ended&&!root?.identity)return {closed:false,targets:null};
+      // Positive exit/replacement retires only the old root birth; retained child pins still own retry.
+      owned.rootExitObserved=true;await this.#persist('recover');
+    }
     await this.reconcile();
     const row = this.#rows.find(row => row.pid === args.pid && row.identity === args.identity);
     if (row?.ended && row.authority === 'closed') return { closed: true, targets: null };
@@ -395,44 +416,28 @@ export class AgentProcesses {
   async stop(args: Record<string, unknown>): Promise<boolean> {
     if(this.#rows.some(row=>row.adopted && row.pid===args.pid && row.identity===args.identity && row.ended && row.authority==='closed'))return true;
     const freshOwner=this.#rows.find(row=>row.pid===args.pid&&row.identity===args.identity);
+    if(freshOwner&&this.#adopted.has(freshOwner)&&!args.captured){
+      const admitted=await this.captureForStop(args);
+      if(admitted.closed)return true;
+      if(!admitted.targets)return false;
+      args={...args,captured:admitted.targets};
+    }
     const baseline=freshOwner?this.#stopCaptures.get(freshOwner):undefined;if(freshOwner)this.#stopCaptures.delete(freshOwner);
-    const admission=freshOwner&&this.#adopted.has(freshOwner)?claudeStopAdmission(baseline?.pids??new Set((await claudeProcessMembers(this.#env)).map(row=>row.pid))):undefined;
-    let captured = await this.#capture(args,!freshOwner||!this.#adopted.has(freshOwner)); if (!captured) return this.#rows.some(row=>row.adopted && row.pid===args.pid && row.identity===args.identity && row.ended && row.authority==='closed');
-    const owner = this.#rows.find(row => row.pid === args.pid && row.identity === args.identity)!;
-    if(args.captured&&this.#adopted.has(owner)){
-      const proof=await observeClaudeProcesses([...(args.captured as ProcessTarget[]),...captured].map(target=>target.pid),this.#env);
-      const approved=claudePinnedTargets(args.captured as ProcessTarget[],proof),current=claudePinnedTargets(captured,proof);
-      if(!approved||!current)return false;
-      if(targetKey(approved)===targetKey(current))args={...args,captured:current};
-      captured=current;
-    }
-    if (args.captured && targetKey(args.captured as ProcessTarget[]) !== targetKey(captured)) {
-      const approved=args.captured as ProcessTarget[];
-      if(!this.#adopted.has(owner)||baseline?.key!==targetKey(approved))return false;
-      const members=await claudeProcessMembers(this.#env);
-      const proof=await observeClaudeProcesses([...approved.map(target=>target.pid),...captured.map(target=>target.pid),...members.map(member=>member.pid)],this.#env);
-      if(proof.get(owner.pid)?.identity!==owner.identity)return false;
-      const acquired=claudeDescendantCapture(owner,approved,baseline.pids,members,proof);
-      if('reason' in acquired)return false;
-      const expected=acquired.targets;
-      const previous=claudePinnedTargets(approved,proof);if(!previous)return false;
-      if(targetKey(expected)!==targetKey(previous)&&!admission?.take())return false;
-      // Exactly one recapture, before signalling. A second change is incomplete.
-      const recaptured=await this.#capture(args,false);
-      if(!recaptured)return false;
-      const finalProof=await observeClaudeProcesses([...expected,...recaptured].map(target=>target.pid),this.#env);
-      const expectedLive=claudePinnedTargets(expected,finalProof),currentLive=claudePinnedTargets(recaptured,finalProof);
-      if(!expectedLive||!currentLive||targetKey(currentLive)!==targetKey(expectedLive))return false;
-      captured=currentLive;
-    }
-    if(this.#adopted.has(owner)){owner.targets=captured;await this.#persist('recover');}
+    const admission=freshOwner&&this.#adopted.has(freshOwner)?{initial:baseline?.pids??new Set((await claudeProcessMembers(this.#env)).map(row=>row.pid))}:undefined;
+    const prepared=freshOwner&&this.#adopted.has(freshOwner)&&args.captured;
+    if(prepared&&baseline?.key!==targetKey(args.captured as ProcessTarget[]))return false;
+    // An admitted Claude stop must reach root TERM before any new descendant capture.
+    const captured=prepared?args.captured as ProcessTarget[]:await this.#capture(args,!freshOwner||!this.#adopted.has(freshOwner));
+    if(!captured)return this.#rows.some(row=>row.adopted&&row.pid===args.pid&&row.identity===args.identity&&row.ended&&row.authority==='closed');
+    const owner=this.#rows.find(row=>row.pid===args.pid&&row.identity===args.identity)!;
+    if(!this.#adopted.has(owner)&&args.captured&&targetKey(args.captured as ProcessTarget[])!==targetKey(captured))return false;
     this.#stopping.add(owner);
     try {
       if(this.#adopted.has(owner)){
         const closed=await stopClaude({pid:owner.pid,identity:owner.identity},captured,this.#env,async(targets,signal)=>{
           for(const target of [...targets].reverse())if(!await this.#signalTargets([target],signal,true))return false;
           return true;
-        },3000,async targets=>{owner.targets=[...targets];await this.#persist('recover');},admission?{admission}:undefined);
+        },CLAUDE_STOP_GRACE_MS,async targets=>{owner.targets=[...targets];await this.#persist('recover');},admission?{admission,snapshot:async()=>{await this.#hooks.beforeRemainingObservation?.((owner.targets??[]).map(target=>target.pid));return claudeProcessMembers(this.#env);},unresolved:async reason=>{owner.authority='unknown';await this.#persist('recover');throw new Error('could not stop: process authority unknown; stop requires host reboot or recycling: '+reason);}}:undefined);
         if(!closed)return false;
         Object.assign(owner,{authority:'closed',ended:true,rootExitObserved:true,targets:[],code:null,signal:null});
         await this.#persist('recover');return true;

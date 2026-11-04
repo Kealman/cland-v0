@@ -4,7 +4,9 @@ The aggregate file allowance is 90 seconds, owned by C-216 from 2026-11-04
 through 2026-11-11. Coordinator decision 8f8a0401 uses Linux x64 samples
 58.659 seconds (A-16511) and 60.959 seconds (A-16517). Two case identities
 exceed the decision's four-second split threshold, so the cases stay together.
-Individual budgets, assertions, fixture bounds, ordering and cleanup stay intact.
+That dated file allowance itself changes no individual allowance or fixture
+assertion. T-1678's approved stop/fixture migrations are described below; its
+new native identities have dated C-216 per-test allowances in durations.json.
 
 T3 uses the fake SSH carrier and scripted Claude, with an in-process projectHub. It exercises generation-pinned worker adoption, delivery through the forwarded host sockets, pushed hook/mod states, four injected poll intervals with completed Host liveness receipts and no additional Claude commands, private credential file modes/scans, and confirmed stop. The shared SSH fixture and fake Claude owner independently join native writers before root removal and require an empty process census. Socket paths retain the shared 104-byte bound. An older agent capability control refuses before native command admission. No real SSH, network service or Claude login is used.
 
@@ -36,9 +38,9 @@ injected intervals run no further Claude commands. Dates remain real.
 A native startup-hook producer arms a filesystem observer before capture. The
 Host's beforeSignal seam then releases one new child and observes its PID/birth
 after prepare-stop but before commit. This was red with the same identity
-refusal as the release-loss anomaly, then green after one validated recapture;
-the admitted operation is not replayed. A SessionEnd receipt lets the short-lived
-child finish naturally so the test remains comfortably below five seconds.
+refusal as the release-loss anomaly. The current stop signals the pinned root
+and converges on the child births; the admitted operation is not replayed. A
+SessionEnd receipt lets the owned short-lived child finish naturally.
 
 Setup snapshots that worker group's transient cland-hook writers after the
 turn-complete marker and joins positive native exit/replacement receipts for
@@ -70,3 +72,74 @@ intent with no pending row. The next embedded-hub start prunes both with zero
 adopt/stop/Claude calls. The fixture explicitly sets its role's writable roots
 to the fake checkout (.) using the shipped role editor, satisfying T-1606's host
 policy resolution without relying on absent default Git directories.
+
+T-1678 adds `remote Claude root-first stop mid-turn` and `remote Claude root-first
+stop completed turn`. Observers are armed before fresh topic delivery. The
+mid-turn case holds the exact fresh native prompt in a synchronous hook. At the
+native root-signal seam it checks that prompt's live producer birth, unchanged
+completion count and unreleased gate, then makes that producer spawn a fresh
+child and observes its native birth and parent before allowing TERM. SessionEnd
+releases the producer and joins its child. The turn cannot finish between its
+busy frame and stop admission. The completed-turn variant counts the native
+completion log beyond its baseline and joins turn-end hook writers.
+Both require one explicit stop, native root absence and a durable closed ledger.
+The two cases are repeated under load on isolated Linux after source review;
+platform-specific samples and any C-216 allowance belong to the evidence.
+
+The unowned-orphan control keeps its writer alive independently of SessionEnd.
+The beforeSignals observer proves pinned root TERM and no orphan signal.
+Explicit stops refuse while it lives and after independent cleanup; row and role
+stay held. A copied process ledger grants no signal or closure authority.
+
+The fake graceful shutdown latches TERM once, starts no new turn hooks/mod posts
+or queued turns, and joins managed posts in awaitSignals mode before root exit.
+This models the unverified real-Claude shutdown assumption in host-agent.md.
+Async SessionEnd without awaitSignals proves the adverse outcome instead.
+
+`remote Claude exit-time orphan stays held after independent cleanup` gates the
+first post-TERM census on root exit and the independent writer's native birth.
+It retains row/role, proves zero signal requests to that writer, then requires
+continued refusal after independent cleanup. `remote Claude orphan detached-child
+escape retains unknown authority` makes that rejected orphan fork a detached
+new-group writer and exit. Even with every known birth gone, stop still refuses,
+never signals the escaped writer and keeps the unknown ledger and role held.
+The process owner's optional beforeRemainingObservation hook supplies the fault
+seam; normal callers have none. Only fixture-owned native cleanup removes these
+writers. No observation-only absence fence can settle unknown authority.
+
+`remote Claude retained hook retries after the pinned root exited` interrupts the
+first stop after positive native root exit, with an already captured independent
+hook still live. The second explicit stop signals that same child birth and no
+root, then confirms durable closure. It proves the owner/admission path, while
+the T1 scripted control separately proves a deadline-expired first stop and retry.
+
+C3 timing adaptation (Coordinator e7e0b799/7e849c61): the synchronous
+TERM-resistant SessionEnd control uses exported production CLAUDE_STOP_GRACE_MS
+(3000 ms), replacing its test-only 300 ms grace/900 ms total. Its purpose stays
+native-birth capture and KILL; every assertion remains unchanged. Coordinator
+2a68c8dd also permits a 15 s outer Node envelope for native setup plus the 9 s
+helper deadline. The asynchronous companion keeps its 300 ms grace and 10 s
+envelope. The 20 full-file load repetitions retained the stricter 10 s outer
+envelope, as authorized evidence for the final 15 s envelope.
+
+A-16684's x64 deadline failure was not reproduced by two five-run ARM load
+batches. Buffered traces closed in 629.646–647.242 ms; the worst snapshot took
+19.673 ms and identity observation 24.211 ms. No single pathological call was
+observed on ARM; this does not claim a measured x64 cause. The separate owner
+component expires its shared virtual stop clock and requires actual adapter
+cleanup-incomplete plus the durable native row held. Production stop timing and
+acquisition policy remain unchanged.
+
+Batch setup adaptation (Coordinator a977afe9): both positive root-first cases
+use the shared eventually/testWaitMs native setup bound for the initial turn's
+completion receipt (default 15 s, CLAND_TEST_WAIT_MS may override), replacing an
+explicit 2 s setup limit. Batch09d9af98/A-16714 repetition3 timed out before any
+stop in both cases; repetitions1,2,4,5 and the base stop assertions passed. Stop
+observations, held-turn gates and the production stop deadline are unchanged.
+C-216 case allowances use the worst passing base or load-gate batch sample,
+including the detached-child control; counts and durations remain distinct from
+failed setup attempts. Five full-file Linux load runs validate this test-only
+change before delta review and authorized exception enqueue.
+The aggregate file allowance is 225 s, authorized by Coordinator 35a0544e from
+the failed batch's 148.1 s file sample (1.5 times is 222.15 s). That duration
+is evidence of file cost, not a passing stop result.

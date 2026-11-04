@@ -11,7 +11,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 
-for (const mode of ['same birth', 'different capture', 'second descendant'] as const) test(`Claude concurrent reconciliation: ${mode}`, async t => {
+for (const mode of ['same birth', 'different capture', 'second descendant', 'legacy direct'] as const) test(mode==='legacy direct'?'Claude direct stop accepts previous frame without captured pins':`Claude concurrent reconciliation: ${mode}`, async t => {
   const root = await mkdtemp(join(tmpdir(), 'claude-capture-'));
   await writeFile(join(root, 'boot'), '11111111-1111-1111-1111-111111111111');
   const env = fixtureEnvironment(root, process.env, { CLAND_FAKE_HOSTS: '1', CLAND_HOST_BOOT_ID_FILE: join(root, 'boot') });
@@ -29,7 +29,7 @@ import {readFileSync as requireRead} from 'node:fs';writeFileSync(root+'/ready',
   const cleanup = [ownProcess(undefined, child.pid)];
   let interleave: (() => Promise<void>) | undefined;
   let injected = 0, signals = 0;
-  const owner = new AgentProcesses(join(root, 'agent'), env, () => {}, { beforeSignals: async () => { signals++; }, afterCapture: async () => {
+  const owner = new AgentProcesses(join(root, 'agent'), env, () => {}, { beforeSignals: async () => { signals++; if(mode==='second descendant'&&injected===1)await inject(2); }, afterCapture: async () => {
     const work = interleave; interleave = undefined; await work?.();
   } });
   t.after(async () => { for (const clean of cleanup.reverse()) await clean(); await eventually('native parent close receipt', () => closed || undefined, 2000); assert.equal(closed, true); await owner.drain(); await rm(root, { recursive: true, force: true }); });
@@ -50,10 +50,16 @@ import {readFileSync as requireRead} from 'node:fs';writeFileSync(root+'/ready',
   interleave = async () => {
     if (mode === 'different capture') await inject(2);
     await owner.reconcile(); reconciled = true;
-    if (mode === 'second descendant') interleave = async () => { await inject(2); await owner.reconcile(); };
   };
-  const stopped = await owner.stop({ ...worker, captured: approved });
+  const capture = await owner.capture(worker);
+  const stopped = capture ? await owner.stop(mode==='legacy direct'?worker:{ ...worker, captured: approved }) : false;
   assert.equal(reconciled, true, 'reconciliation completed inside the native capture boundary');
+  if (mode === 'second descendant' || mode === 'legacy direct') {
+    assert.equal(stopped, true);assert.equal(injected, mode==='second descendant'?2:1);
+    assert.equal(await owner.identity(first), null, 'convergence joins the injected births');
+    assert.equal(await owner.confirmedClosed(worker), true);
+    return;
+  }
   assert.equal(stopped, mode === 'same birth');
   assert.equal(injected, mode === 'same birth' ? 1 : 2, 'the genuine-change controls reach their second native birth');
   if (mode === 'same birth') {

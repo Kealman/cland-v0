@@ -5,11 +5,18 @@ root. The `afterCapture` fault hook runs reconciliation after native capture and
 before its concurrent-update check, deterministically scheduling the memory
 timer's competing operation without a timer delay.
 
-The same-birth case must stop and join its one injected descendant. The differing
-capture control adds another native member before reconciliation, so the row and
-fresh capture differ. The second-descendant control adds it during the final
-recapture. Both controls require incomplete stop, two observed child births and
-zero signals. Existing Claude stop budget tests remain separate and unchanged.
+The public owner.capture(worker) call exercises the guard at its fault seam
+before stop consumes the prepared pins. The same-birth case stops and joins its injected descendant. The differing
+capture control adds a native member before reconciliation, leaving conflicting
+observers; it requires incomplete stop with zero signals. T-1678 intentionally
+changes the second-descendant control: a second native child injected just before
+the pinned root TERM is now joined through root-first stop and bounded convergence. The original
+same-set republish acceptance remains covered separately.
 
 Cleanup stops every owned writer, observes the root's native close, drains the
 process owner's writes and only then removes the scratch directory.
+
+The additional legacy-direct case sends the previous stop argument shape
+(PID and birth, without captured pins). A fresh live owner creates its own
+admission baseline before root TERM; caller-supplied or serialized metadata
+cannot create that authority. Native root/child closure remains required.

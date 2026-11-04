@@ -1,5 +1,13 @@
 # Stage QA brief: E-1532 stage 4 — harnesses and git on hosts
 
+Historical stage-4 evidence: T-1678 in stage 5 supersedes the fixed one-recapture
+stop semantics below with root-first TERM and bounded convergence. The budget
+names and source sentences below describe the pinned stage-4 build, not the
+current stage-5 candidate. Use docs/agents/host-agent.md and T-1678's review
+request for current stop behavior; do not replay those historical assertions
+against a stage-5 head.
+
+
 Everything the run needs is in this file or in the files it names: whoever runs it cannot ask. Commands are for bash (zsh reads `$S:q`, `$B:h` or `${B}:hub` as modifiers; always brace a variable before `:`). The run is local, on macOS (BSD `stat -f`, Node 24 with `node:sqlite`, `uuidgen`, `lsof`, the pinned Neovim of `node nvim/bin/nvim-path.ts`). No check here is Linux-only: every named file and scratch row runs on this macOS run, and a platform skip is a FAIL, not a pass. **No real SSH, host, droplet, volume, key or network (R-1530's QA rule):** the carrier runs only through the fake `ssh` and `scp` stand-ins of `hub/test/fakes/` against fake hosts made by the build's own `createFakeHost` (`hub/test/fakes/fake-host.ts`); the scratch hub's two hosts are fake hosts on this Mac, whose agents are the build's `cland host serve` run by the shipped supervisor as local processes. **No real harness:** Codex, OpenCode and Claude Code run only as the build's fakes and scripted fakes inside the named files; no session is launched by the scratch rows. No browser, no GUI.
 
 ## Corrections folded in from earlier E-1532 runs

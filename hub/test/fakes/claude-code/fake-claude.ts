@@ -40,6 +40,8 @@
 // FAKE_CLAUDE_DROP_FIRST=1 drops the first prompt the mod submits (as a harness hook would), so it is never confirmed.
 // FAKE_CLAUDE_AWAIT_SIGNALS=1 drains hook/mod posts at each turn boundary. Tests that require a pushed
 // busy then idle use this receipt barrier: a fast turn cannot stale-drop its own delayed busy signal.
+// TERM latches shutdown: no new turn/mod posts start. In await-signals mode existing
+// settings/mod posts drain before exit; async SessionEnd without that mode remains adversarial.
 // A logged-out marker under FAKE_CLAUDE_HOME or the session's config directory fails turns with authentication_failed.
 // State lives under FAKE_CLAUDE_HOME (sessions/<id>.json, jobs/<id>.json, jobs/<id>.log). FAKE_CLAUDE_TURN_MS is
 // how long a turn "thinks" (default 300).
@@ -265,12 +267,15 @@ async function runSession(id: string): Promise<number> {
   // the settings hooks: a shell command, the payload on stdin; `async` ones run in the background
   let promptId: string | undefined;
   const awaitSignals = env.FAKE_CLAUDE_AWAIT_SIGNALS === '1';
+  let stopping = false;
   const posts = new Set<Promise<unknown>>();
   const drainPosts = async () => { while (posts.size) await Promise.all([...posts]); };
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
+    if (stopping && event !== 'SessionEnd') return;
     const background: Array<Promise<void>> = [];
     for (const entry of hooksOf(event)) {
       for (const h of entry.hooks) {
+        if (stopping && event !== 'SessionEnd') return;
         if (h.type !== 'command') continue;
         const run = new Promise<void>((resolve) => {
           // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
@@ -286,6 +291,7 @@ async function runSession(id: string): Promise<number> {
           child.stdin.on('error', () => {});
           child.stdin.end(JSON.stringify({ session_id: job.sessionId, prompt_id: promptId, hook_event_name: event, cwd: job.cwd, ...payload }));
         });
+        if (awaitSignals) { posts.add(run); void run.then(() => posts.delete(run), () => posts.delete(run)); }
         if (!h.async) await run;
         else background.push(run);
       }
@@ -329,6 +335,7 @@ async function runSession(id: string): Promise<number> {
     tools.set(name, client);
   }
   const callTool = async (name: string, args: Record<string, unknown>) => {
+    if (stopping) return null;
     const client = tools.get('cland');
     if (!client) return null;
     const r = await client.callTool({ name, arguments: args });
@@ -350,6 +357,7 @@ async function runSession(id: string): Promise<number> {
     clock: { now: async () => Date.now(), sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) },
     process: {
       run: (argv: string[], init: { stdin?: string; timeoutMs?: number } = {}) => {
+        if (stopping) return Promise.resolve({ exitCode: 143, stdout: '', stderr: 'session stopping' });
         const posted = new Promise((resolve, reject) => {
           // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
           const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -374,6 +382,7 @@ async function runSession(id: string): Promise<number> {
         return posted;
       },
       spawn: ({ argv }: { argv: string[] }) => {
+        if (stopping) return (async function* () { return { code: null, signal: 'SIGTERM' as const }; })();
         // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
         const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
         children.add(child);
@@ -415,6 +424,7 @@ async function runSession(id: string): Promise<number> {
     prompt: {
       submit: ({ text }: { text: string }) =>
         new Promise<{ text: string } | { drop: string }>((resolve) => {
+          if (stopping) { resolve({ drop: 'session stopping' }); return; }
           // FAKE_CLAUDE_DROP_FIRST: a hook of the harness drops the first submitted prompt (the mod must not confirm it)
           if (env.FAKE_CLAUDE_DROP_FIRST === '1' && !dropped) {
             dropped = true;
@@ -430,16 +440,17 @@ async function runSession(id: string): Promise<number> {
   };
   let measuredLimits = '[]';
   const dispatch = async (event: string, e: Record<string, unknown>, core: (e: Record<string, unknown>) => unknown) => {
+    if (stopping) return undefined;
     const chain = modHooks.get(event) ?? [];
     const at = (i: number) => async (input: Record<string, unknown>): Promise<unknown> => (i < chain.length ? (chain[i] as Hook)($, input, at(i + 1)) : core(input));
     try {
       const result = await at(0)(e);
-      if (event === 'turn.complete') {
+      if (event === 'turn.complete' && !stopping) {
         const rateLimits = readJson<unknown[]>(join(env.CLAUDE_CONFIG_DIR || join(env.HOME ?? '', '.claude'), 'rate-limits.json')) ?? [];
         const changed = JSON.stringify(rateLimits) !== measuredLimits;
         measuredLimits = JSON.stringify(rateLimits);
         await dispatch('session.measure', { context: { used: 900 }, cost: { total: 7 }, rateLimits, changed: changed ? ['rateLimits', 'context', 'cost'] : ['context', 'cost'] }, () => ({}));
-        log('session.measure done');
+        if (!stopping) log('session.measure done');
       }
       return result;
     } catch (err) {
@@ -462,7 +473,10 @@ async function runSession(id: string): Promise<number> {
     approve = null;
   });
   const shutdown = async () => {
+    if (stopping) return;
+    stopping = true;
     await runHooks('SessionEnd', { reason: 'other' });
+    if (awaitSignals) await drainPosts();
     for (const c of children) c.kill();
     for (const client of tools.values()) await client.close().catch(() => {});
     process.exit(0);
@@ -481,6 +495,7 @@ async function runSession(id: string): Promise<number> {
   const turnMs = Number(env.FAKE_CLAUDE_TURN_MS ?? 300);
   for (;;) {
     if (awaitSignals) await drainPosts();
+    if (stopping) return 0;
     const next = queue.shift();
     if (!next) {
       await new Promise<void>((r) => (wake = r));
@@ -495,6 +510,7 @@ async function runSession(id: string): Promise<number> {
     await runHooks('UserPromptSubmit', { prompt: next.text });
     await dispatch('turn.start', { text: next.text, turnId }, () => ({ turnId }));
     if (awaitSignals) await drainPosts();
+    if (stopping) return 0;
     next.started();
     const hold = join(JOBS, `${id}.turn-hold`);
     if (existsSync(hold)) {
@@ -510,6 +526,7 @@ async function runSession(id: string): Promise<number> {
       });
       log(`turn released: ${turnId}`);
     } else await new Promise((r) => setTimeout(r, turnMs));
+    if (stopping) return 0;
     if (existsSync(join(HOME, 'logged-out')) || existsSync(join(job.configDir, 'logged-out'))) {
       setStatus('idle');
       await runHooks('StopFailure', { error: 'authentication_failed', error_details: 'OAuth token has expired. Please run claude auth login.' });

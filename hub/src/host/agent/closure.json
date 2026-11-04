@@ -6,7 +6,7 @@
     },
     {
       "path": "hub/src/host/agent/claude-stop.ts",
-      "sha256": "cd8d08482714d649d2814295938cca69032f24d6d25f64fa6337f71471d0d7e5"
+      "sha256": "4acb240f909096365fcd0a882c4274b015b2d42c3bf4a7d8c7f1ea8e788557eb"
     },
     {
       "path": "hub/src/host/agent/claude.ts",
@@ -70,7 +70,7 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "c8f5ea2f180876c4095adca7f5aebf76c4d445853455d6c047e9b0239ecccc22"
+      "sha256": "a64255993dbb657fe157a876645145c3b318f2024dd9e1898eccbe9eb79a10b4"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",

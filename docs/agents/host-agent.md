@@ -23,7 +23,7 @@ The private process table retains active/unresolved ownership and the latest 256
 
 The hub-side `AgentClient` multiplexes requests and emits `event` and `closed`. Timed-out requests report an unknown outcome; callers must reconcile before retrying a mutating operation. Stream close rejects pending requests. The SSH Host owns reconnection and retained-table reconciliation, as described below.
 
-Authority `owned` means every signal target has an admitted root or a durable descendant birth captured while ancestry was intact or by its live native close owner. Each target is independently revalidated before signaling. Authority `closed` and ended=true mean the owned tree was observed gone. Authority `unknown` fences an exit missed during agent downtime or an ownership observation that cannot be completed. Stop refuses with `process authority unknown; stop requires host reboot or recycling` and signals nothing. Observational process listing still works; it does not manufacture descendant authority from a numeric group. A host reboot ends its sessions through the host lifecycle (T-1613), and recycling clears unresolved host state. Reverting a fake boot-id file does not restore revoked authority.
+Authority `owned` means every signal target has an admitted root or a durable descendant birth captured while ancestry was intact or by its live native close owner. Each target is independently revalidated before signaling. Authority `closed` and ended=true mean the owned tree was observed gone. Authority `unknown` fences an exit missed during agent downtime or an ownership observation that cannot be completed. Stop refuses with `process authority unknown; stop requires host reboot or recycling` and signals nothing. Observational process listing still works; it does not manufacture descendant authority from a numeric group. A changed boot identity ends its sessions through the host lifecycle (T-1613); host revoke settlement records unresolved ownership as a leftover. Recycling without proven boot change is not closure evidence. Reverting a fake boot-id file does not restore revoked authority.
 
 This follows the Coordinator's 2026-11-02 06:35Z decision on T-1588: no long-lived Node supervisor per launch, preserving session density on small disposable hosts. [The shell supervisor](../hub/adapters-and-sessions.md#host-agent-supervisor) supervises the agent itself; a missed exit stays conservatively fenced, and the host lifecycle clears it.
 
@@ -112,33 +112,64 @@ cleanup-incomplete cause. Its exact-generation marker permits one retry through
 re-adopt after hub restart; no liveness timer retries CLI commands. Explicit
 stop remains available for recovery.
 
-For an adopted worker, a newly born descendant between stop preparation and
-commit can change the approved tree before any signal. One bounded recapture
-uses the same ancestry, UID, initial-census and native-birth policy as SessionEnd
-joining. A second change or an unproved process remains incomplete and is never
-replayed. A pinned member's positive exit or changed native birth settles that
-old member and is removed from comparisons; it does not spend the recapture
-allowance or authorize the replacement. An unknown identity gets one native
-re-read before the decision. A persistent unknown still ends incomplete. Only
-new unpinned descendants count as new capture; the one-recapture bound, UID,
-ancestry and birth gates stay in force. Other refusals retain the running row and role with cleanup-incomplete;
-recovery uses an explicit re-stop after the blocking ownership condition resolves.
-The one recapture budget belongs to the admitted stop, shared by the agent's
-outer capture comparison and the final pre-TERM helper. It is a fresh in-memory
-closure for each admission, never a frame field or persisted flag. If the outer
-layer has not spent it, the helper can capture the first late descendant only
-after a fresh matching UID/ancestry/birth observation and durable checkpoint.
-If already spent, or a further descendant appears during that validation, the
-operation remains incomplete with no replay.
+For a freshly adopted worker, admission validates the pinned root birth and UID,
+then checkpoints a best-effort positive descendant baseline and first census.
+Descendant churn or a concurrent descendant-set mismatch cannot refuse that
+admission; unproved members gain no authority and remain subject to post-TERM
+ancestry, UID and birth checks. Public capture retains its independent
+reconciliation guard. Unknown or recovered owners keep their conservative path.
+Commit uses the admitted pins and census without a fresh descendant capture,
+validates the pinned root and signals that birth with TERM before waiting
+for descendant stability. A busy root can still start turn or SessionEnd writers
+while exiting. The stop owner repeatedly captures their identities until two
+consecutive sets match, within the native closure helper's existing three-phase deadline (9 seconds
+with the default 3-second grace). It checkpoints every acquired or retired set
+before signalling descendants. Stable survivors receive TERM, then KILL; closure
+requires two consecutive empty captures, never just root absence.
 
-Concurrent reconciliation may publish the identities that an in-flight capture
-has just observed. Capture accepts that update only when the reconciled and
-freshly settled sets match by PID and native birth. The outer stop still compares
-the accepted set with its approved capture and spends the admission's single
-recapture for a new descendant. A differing reconciled set remains incomplete.
+This graceful path assumes real Claude Code starts no new turn hooks after
+SIGTERM, beyond SessionEnd. That assumption has not been verified against the
+real binary. The scripted fixture latches stopping once, prevents new turn/mod
+posts, and in awaitSignals mode joins already-started managed posts before native
+exit. Its asynchronous SessionEnd mode stays available for adverse controls. If
+a real harness violates the assumption and a child is orphaned before ancestry
+can be observed, stop safely ends cleanup-incomplete with the row and role held;
+it never signals a process based only on the old numeric root or group.
+
+
+New members require the same UID, a currently observed parent chain through the
+pinned root or an already pinned live birth, and absence from the first census.
+Every acquired member is pinned by PID and native birth. A pinned parent can
+anchor a new child after the root exits; an orphan with no proved live parent
+cannot. Already pinned descendants retain authority across reparenting. Positive
+exit or a changed birth settles the old member without authorizing its replacement.
+An unknown identity gets one native re-read; persistent unknown, a foreign UID,
+unproved ancestry or an unstable set at the deadline ends cleanup-incomplete and
+keeps the row and role held. There is no descendant-count or recapture budget.
+The admission census is in-memory authority, never a frame field or persisted flag.
+A failed post-TERM acquisition durably marks authority unknown. It never gains
+signal or closure authority from later absence of known births or the old group:
+an unobserved detached writer may still survive. Explicit stops keep that row and
+role held with the process-authority-unknown cleanup-incomplete cause, even after
+independent fixture cleanup. Release requires a proven changed boot identity
+through host-generation retention, host revoke settlement naming the leftover,
+or an already supported explicit human override. Stop adds no override or native
+ownership capability. An owned row with positively exited root can retry its
+already pinned live descendant births; it never signals a replacement root.
+A positively different birth at the old root PID is excluded from the old tree
+refusal census. Every other unowned member still refuses, including a child
+that cannot be attributed to a live pinned parent; numeric group reuse grants
+no acquisition or signal authority.
+
+
+Concurrent reconciliation can publish the same identities an in-flight capture
+observed. Capture accepts that update only when the reconciled and freshly settled
+sets match by PID and native birth. A differing concurrent set remains incomplete;
+the convergence loop does not turn a conflicting observer into signal authority.
 
 An unconfirmed explicit stop is not retried by liveness timers or startup. It
-keeps its generation-scoped cause until explicit re-stop confirms cleanup.
+keeps its generation-scoped cause. An owned row may explicitly retry retained
+pins; an unknown-authority row requires the release paths above.
 Recovery may finish an already released receipt or confirmed private-deletion
 checkpoint, which grants no signal authority.
 
@@ -275,8 +306,8 @@ private files, gains no fresh authority and appears in the incomplete report; it
 does not block the table or mutations for healthy generations. Caller PIDs and serialized adopted flags grant no authority.
 The agent remembers successfully admitted live generations until release or
 forget, sharing the normal explicit-adopt path so reconnects do not reset its native census.
-Stop still creates its own single recapture budget and preserves settled-exit
-rules; recovery never signals a worker or retries an incomplete stop.
+Stop retains its first census and converges after signalling the pinned root,
+with settled-exit rules intact; recovery never signals a worker or retries an incomplete stop.
 
 After changing the runtime, regenerate closure.json, including claude.ts,
 claude-stop.ts and state-paths.ts, using the committed source projection workflow.

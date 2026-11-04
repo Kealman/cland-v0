@@ -3,14 +3,10 @@ import { promisify } from 'node:util';
 import { observeProcesses, type Observation } from './native.ts';
 import type { ProcessTarget } from './processes.ts';
 const exec=promisify(execFile);
-type Facts={snapshot:()=>Promise<ClaudeStopMember[]>;observe:typeof observeProcesses;now:()=>number;pause:()=>Promise<void>;diagnostic:(reason:string)=>void;admission:ClaudeStopAdmission};
+export const CLAUDE_STOP_GRACE_MS=3000;
+type Facts={snapshot:()=>Promise<ClaudeStopMember[]>;observe:typeof observeProcesses;now:()=>number;pause:()=>Promise<void>;diagnostic:(reason:string)=>void;admission:ClaudeStopAdmission;unresolved:(reason:string)=>Promise<void>};
 export type ClaudeStopMember={pid:number;parent:number;group:number;uid:number};
-export type ClaudeStopAdmission={readonly initial:ReadonlySet<number>;take():boolean};
-/** Created inside one admitted stop; neither the budget nor its closure is persisted or transmitted. */
-export function claudeStopAdmission(initial:ReadonlySet<number>):ClaudeStopAdmission {
-  let available=true;
-  return {initial:new Set(initial),take:()=>{if(!available)return false;available=false;return true;}};
-}
+export type ClaudeStopAdmission={readonly initial:ReadonlySet<number>};
 export const processTargetKey=(targets:readonly ProcessTarget[]|undefined)=>(targets??[]).map(target=>`${target.pid}:${target.identity}`).sort().join('|');
 /** Unknown is not an exit. One native re-read may resolve it; there is no polling retry. */
 export async function observeClaudeProcesses(pids:number[],env:NodeJS.ProcessEnv,observe:typeof observeProcesses=observeProcesses):Promise<Map<number,Observation>> {
@@ -34,71 +30,81 @@ export async function claudeProcessMembers(env:NodeJS.ProcessEnv,pids?:readonly 
   if(members.some(row=>!Number.isSafeInteger(row.pid)||!Number.isSafeInteger(row.uid)))throw new Error('Claude process observation incomplete');
   return members;
 }
-/** One authority rule for pre-signal recapture and post-TERM acquisition. */
+/** A different live root birth is outside this tree; its numeric PID grants no authority. */
+export function claudeRootReplacement(root:ProcessTarget,pid:number,proof:ReadonlyMap<number,Observation>):boolean {
+  const identity=proof.get(pid)?.identity;
+  return pid===root.pid&&!!identity&&identity!==root.identity;
+}
+/** Only observed parent chains through pinned live births grant new descendant authority. */
 export function claudeDescendantCapture(root:ProcessTarget,original:readonly ProcessTarget[],initial:ReadonlySet<number>,rows:readonly ClaudeStopMember[],proof:ReadonlyMap<number,Observation>):{targets:ProcessTarget[]}|{reason:string} {
   const pinned=claudePinnedTargets(original,proof);if(!pinned)return {reason:'captured descendant birth unavailable'};
   const owned=new Map(pinned.map(target=>[target.pid,target])),uid=process.getuid?.();
   if(pinned.some(target=>rows.some(row=>row.pid===target.pid&&row.uid!==uid)))return {reason:'captured process UID differs'};
-  const liveRoot=proof.get(root.pid)?.identity===root.identity;
   const anchored=new Set(pinned.map(target=>target.pid));
   let changed=true;
   while(changed){changed=false;for(const row of rows)if(!anchored.has(row.pid)&&anchored.has(row.parent)&&!proof.get(row.pid)?.ended){
-    if(!liveRoot)return {reason:'root birth ended before new descendant capture'};
     if(initial.has(row.pid))return {reason:'new descendant was present before stop admission'};
     if(row.uid!==uid)return {reason:'new descendant UID differs'};
     const identity=proof.get(row.pid)?.identity;if(!identity)return {reason:'new descendant birth unavailable'};
     owned.set(row.pid,{pid:row.pid,identity});anchored.add(row.pid);changed=true;
   }}
-  if(rows.some(row=>row.group===root.pid&&!owned.has(row.pid)&&!proof.get(row.pid)?.ended))return {reason:'unowned reparented group member remains'};
+  if(rows.some(row=>row.group===root.pid&&!owned.has(row.pid)&&!proof.get(row.pid)?.ended&&!claudeRootReplacement(root,row.pid,proof)))return {reason:'unowned reparented group member remains'};
   return {targets:[...owned.values()]};
 }
-/** Claude can start SessionEnd writers after TERM. Only live-root ancestry grants new authority. */
-export async function stopClaude(root:ProcessTarget,original:readonly ProcessTarget[],env:NodeJS.ProcessEnv,signal:(targets:readonly ProcessTarget[],signal:NodeJS.Signals)=>Promise<boolean>,graceMs=3000, checkpoint:(targets:readonly ProcessTarget[])=>Promise<void>=async()=>{}, facts?:Partial<Facts>):Promise<ProcessTarget[]|null> {
+/** Stop the pinned spawner, converge on owned births, then join every writer within the stop deadline. */
+export async function stopClaude(root:ProcessTarget,original:readonly ProcessTarget[],env:NodeJS.ProcessEnv,signal:(targets:readonly ProcessTarget[],signal:NodeJS.Signals)=>Promise<boolean>,graceMs=CLAUDE_STOP_GRACE_MS, checkpoint:(targets:readonly ProcessTarget[])=>Promise<void>=async()=>{}, facts?:Partial<Facts>):Promise<ProcessTarget[]|null> {
   const snapshot=facts?.snapshot ?? (()=>claudeProcessMembers(env));
   const observe=(pids:number[],environment:NodeJS.ProcessEnv)=>observeClaudeProcesses(pids,environment,facts?.observe),now=facts?.now ?? Date.now;
   const incomplete=(reason:string):null=>{facts?.diagnostic?.(reason);return null;};
+  const deadline=now()+3*graceMs;
   const initialRows=await snapshot(),agentUid=process.getuid?.();
   if(original.some(target=>initialRows.some(row=>row.pid===target.pid&&row.uid!==agentUid)))return incomplete('captured process UID differs');
-  let initial=new Set(initialRows.map(row=>row.pid));
-  const checkedSignal=async(targets:readonly ProcessTarget[],kind:NodeJS.Signals)=>{const rows=await snapshot();if(targets.some(target=>rows.some(row=>row.pid===target.pid&&row.uid!==agentUid)))return false;return signal(targets,kind);};
+  const initial=facts?.admission?.initial??new Set(initialRows.map(row=>row.pid));
+  const checkedSignal=async(targets:readonly ProcessTarget[],kind:NodeJS.Signals)=>{const rows=await snapshot();if(now()>=deadline)return false;if(targets.some(target=>rows.some(row=>row.pid===target.pid&&row.uid!==agentUid)))return false;return signal(targets,kind);};
   const owned=new Map(original.map(row=>[row.pid,row]));
-  const admissionProof=await observe([...owned.keys(),...initialRows.map(row=>row.pid)],env);
-  if(admissionProof.get(root.pid)?.identity!==root.identity)return incomplete('root birth ended before stop signals');
-  let admission=claudeDescendantCapture(root,original,facts?.admission?.initial??initial,initialRows,admissionProof);
-  if('reason' in admission)return incomplete(admission.reason);
-  const added=admission.targets.some(target=>!original.some(previous=>previous.pid===target.pid&&previous.identity===target.identity));
-  if(added){
-    if(!facts?.admission?.take())return incomplete('pre-signal recapture budget already spent');
-    const rows=await snapshot(),proof=await observe([...admission.targets.map(target=>target.pid),...rows.map(row=>row.pid)],env);
-    if(proof.get(root.pid)?.identity!==root.identity)return incomplete('root birth ended before recapture checkpoint');
-    const expected=claudePinnedTargets(admission.targets,proof);
-    if(!expected)return incomplete('recapture member birth unavailable');
-    const fresh=claudeDescendantCapture(root,admission.targets,facts.admission.initial,rows,proof);
-    if('reason' in fresh)return incomplete(fresh.reason);
-    if(processTargetKey(fresh.targets)!==processTargetKey(expected))return incomplete('second pre-signal descendant churn');
-    admission=fresh;initial=new Set(rows.map(row=>row.pid));
-  }
-  owned.clear();for(const target of admission.targets)owned.set(target.pid,target);
-  if(processTargetKey([...owned.values()])!==processTargetKey(original))await checkpoint([...owned.values()]);
-  if(!await checkedSignal([root],'SIGTERM'))return incomplete('root TERM was not confirmed');
+  const admissionProof=await observe([...owned.keys(),root.pid],env);
+  const rootProof=admissionProof.get(root.pid);
+  const pins=claudePinnedTargets(original,admissionProof);
+  if(!pins)return incomplete('captured descendant birth unavailable');
+  const rootLive=rootProof?.identity===root.identity;
+  if(!rootLive&&(!rootProof?.ended&&!rootProof?.identity||!pins.some(target=>target.pid!==root.pid)))return incomplete('root birth unavailable without retained live descendants');
+  owned.clear();for(const target of pins)owned.set(target.pid,target);
+  if(processTargetKey(pins)!==processTargetKey(original))await checkpoint(pins);
+  // A retry retains exact child births after positive root exit/replacement; never signal its replacement.
+  if(rootLive&&!await checkedSignal([root],'SIGTERM'))return incomplete('root TERM was not confirmed');
   const remaining=async():Promise<ProcessTarget[]|null>=>{
     const rows=await snapshot();
     const proof=await observe([...owned.keys(),...rows.map(row=>row.pid)],env);
     const acquired=claudeDescendantCapture(root,[...owned.values()],initial,rows,proof);
-    if('reason' in acquired)return incomplete(acquired.reason);
+    if('reason' in acquired){
+      await facts?.unresolved?.(acquired.reason);
+      return incomplete(acquired.reason);
+    }
     const changed=acquired.targets.length!==owned.size||acquired.targets.some(target=>owned.get(target.pid)?.identity!==target.identity);
     owned.clear();for(const target of acquired.targets)owned.set(target.pid,target);
     if(changed)await checkpoint([...owned.values()]);
     return [...owned.values()];
   };
+  // Each phase shares the existing total stop bound; no recapture count fences a busy root.
+  let previous:string|undefined;
   for(const escalation of [null,'SIGTERM','SIGKILL'] as const){
-    let live=await remaining();if(!live)return null;if(!live.length)return [...owned.values()];
-    if(escalation){const targets=escalation==='SIGTERM'?live.filter(target=>target.pid!==root.pid):live;if(targets.length&&!await checkedSignal(targets,escalation))return null;}
-    const deadline=now()+graceMs;
-    while(now()<deadline){
-      live=await remaining();if(!live)return null;if(!live.length)return [...owned.values()];
+    const phaseDeadline=Math.min(deadline,now()+graceMs);
+    let signalled:string|undefined;
+    while(now()<phaseDeadline){
+      const live=await remaining();if(!live)return null;
+      if(now()>=deadline)return incomplete('stop deadline expired during capture');
+      const key=processTargetKey(live),stable=key===previous;previous=key;
+      if(!live.length&&!stable)continue;
+      if(stable){
+        if(!live.length)return [];
+        if(escalation&&signalled!==key){
+          const targets=escalation==='SIGTERM'?live.filter(target=>target.pid!==root.pid):live;
+          if(targets.length&&!await checkedSignal(targets,escalation))return incomplete('descendant signal was not confirmed');
+          signalled=key;continue;
+        }
+      }
       await (facts?.pause?.() ?? new Promise<void>(resolve=>setTimeout(resolve,10)));
     }
   }
-  return null;
+  return incomplete('stop deadline expired before stable tree closure');
 }
