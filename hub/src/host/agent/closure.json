@@ -66,7 +66,7 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "6335c0a8166a1a05840e73de267b8f4eb9453bdcdd56648f4371ed3bf74fa852"
+      "sha256": "a6ea7ebd575f16bb25c3f8f9fe90699ea51108c6ee1240a1c034038f5e535d22"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",

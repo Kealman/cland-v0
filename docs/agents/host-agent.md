@@ -131,6 +131,12 @@ after a fresh matching UID/ancestry/birth observation and durable checkpoint.
 If already spent, or a further descendant appears during that validation, the
 operation remains incomplete with no replay.
 
+Concurrent reconciliation may publish the identities that an in-flight capture
+has just observed. Capture accepts that update only when the reconciled and
+freshly settled sets match by PID and native birth. The outer stop still compares
+the accepted set with its approved capture and spends the admission's single
+recapture for a new descendant. A differing reconciled set remains incomplete.
+
 An unconfirmed explicit stop is not retried by liveness timers or startup. It
 keeps its generation-scoped cause until explicit re-stop confirms cleanup.
 Recovery may finish an already released receipt or confirmed private-deletion

@@ -21,6 +21,7 @@ export type ProcessHooks = {
   observed?: (count: number) => void;
   beforeRecoveryObservation?: () => Promise<void>;
   beforeRemainingObservation?: (pids: readonly number[]) => Promise<void>;
+  afterCapture?: () => Promise<void>;
 };
 export class AgentProcesses {
   #rows: ProcessRow[] = [];
@@ -309,11 +310,14 @@ export class AgentProcesses {
       const live = await this.#liveTargets(row);
       if (!live) return null;
       captured = live;
+      await this.#hooks.afterCapture?.();
       if(targetKey(row.targets)!==targetVersion){
         if(!row.adopted)return null;
         const proof=await observeClaudeProcesses([...previous,...(row.targets??[]),...live].map(target=>target.pid),this.#env);
         const before=claudePinnedTargets(previous,proof),current=claudePinnedTargets(row.targets??[],proof),settled=claudePinnedTargets(live,proof);
-        if(!before||!current||!settled||targetKey(before)!==targetKey(current))return null;
+        // Reconciliation can publish this same native capture while it is in flight.
+        // The stop owner compares it with the approved set and owns the recapture budget.
+        if(!before||!current||!settled||targetKey(current)!==targetKey(settled))return null;
         captured=settled;
       }
     } else {
