@@ -111,9 +111,10 @@
       "A-16574",
       "A-16639",
       "A-16658",
-      "A-16675"
+      "A-16675",
+      "A-16725"
     ],
-    "commit": "c69c7f2f5caf3127bee9bc3f5e13c900ca9e0bb1"
+    "commit": "00fdead03000b8dfa37c836e2b8888d3574cda22"
   },
   "budget": {
     "testSeconds": 5,
@@ -3518,6 +3519,14 @@
     "hub/test/host-ref-watch-compat.test.ts": {
       "seconds": 0.003083,
       "tests": 3
+    },
+    "hub/test/host-flush-native.test.ts": {
+      "seconds": 8.429393,
+      "tests": 4
+    },
+    "hub/test/host-flush.test.ts": {
+      "seconds": 0.895446,
+      "tests": 13
     }
   },
   "tests": {
@@ -10247,7 +10256,41 @@
     "hub/test/host-push-on-ref-move.test.ts::native producer receipt is private and contains bounded redacted output without planted credentials": 2.273762,
     "hub/test/host-ref-watch-compat.test.ts::new client accepts previous agent hello without issuing watch operations": 0.001796,
     "hub/test/host-ref-watch-compat.test.ts::new status reader accepts the previous watch-v1 agent without requesting an unsupported operation": 0.000687,
-    "hub/test/host-ref-watch-compat.test.ts::push environment removes inherited Git routes and installs only the owned Unix proxy override": 0.0006
+    "hub/test/host-ref-watch-compat.test.ts::push environment removes inherited Git routes and installs only the owned Unix proxy override": 0.0006,
+    "hub/test/claude-capture-concurrency.test.ts::Claude direct stop accepts previous frame without captured pins": 0.698513,
+    "hub/test/claude-code-remote.test.ts::remote Claude exit-time orphan stays held after independent cleanup": 4.389186,
+    "hub/test/claude-code-remote.test.ts::remote Claude orphan detached-child escape retains unknown authority": 4.969853,
+    "hub/test/claude-code-remote.test.ts::remote Claude retained hook retries after the pinned root exited": 8.418384,
+    "hub/test/claude-code-remote.test.ts::remote Claude root-first stop completed turn": 6.404761,
+    "hub/test/claude-code-remote.test.ts::remote Claude root-first stop mid-turn": 6.23307,
+    "hub/test/claude-stop.test.ts::Claude captures a new writer from a pinned live parent after root exit": 0.000404,
+    "hub/test/claude-stop.test.ts::Claude deadline retains a pinned hook for a later root-absent retry": 0.00095,
+    "hub/test/claude-stop.test.ts::Claude persistent unknown after root TERM retains incomplete ownership": 0.000406,
+    "hub/test/claude-stop.test.ts::Claude post-TERM convergence: settled exits": 0.000519,
+    "hub/test/claude-stop.test.ts::Claude post-TERM convergence: successive births": 0.001835,
+    "hub/test/claude-stop.test.ts::Claude post-TERM convergence: unstable deadline": 0.00079,
+    "hub/test/claude-stop.test.ts::Claude retry after root exited retains only pinned hook authority": 0.00058,
+    "hub/test/claude-stop.test.ts::Claude retry after root replaced retains only pinned hook authority": 0.000325,
+    "hub/test/claude-stop.test.ts::Claude retry after root unknown retains only pinned hook authority": 0.000118,
+    "hub/test/claude-stop.test.ts::Claude signals the spawner then converges across successive descendant births": 0.000981,
+    "hub/test/host-flush-native.test.ts::host session verify flushes its owner before admission and never opens the host cwd locally": 0.728499,
+    "hub/test/host-flush-native.test.ts::interrupted ready publication is abandoned under its Git lock and fresh admission runs at a new path": 3.922858,
+    "hub/test/host-flush-native.test.ts::queued host verification retains pinned territory snapshot through restart and removes it after completion": 3.671106,
+    "hub/test/host-flush-native.test.ts::snapshot admission rejects a planted parent symlink and cleanup preserves a replacement directory": 0.10693,
+    "hub/test/host-flush.test.ts::a moving worktree cannot acquire a receipt for a previous head": 0.000322,
+    "hub/test/host-flush.test.ts::a successful flush with a differing territory head is refused": 0.000424,
+    "hub/test/host-flush.test.ts::flush refuses agent unavailable with both heads": 0.00037,
+    "hub/test/host-flush.test.ts::flush refuses lease failure with both heads": 0.000293,
+    "hub/test/host-flush.test.ts::flush refuses watch fenced: native outcome unknown with both heads": 0.000944,
+    "hub/test/host-flush.test.ts::older Host implementation explicitly refuses flush without a local fallback": 0.000298,
+    "hub/test/host-flush.test.ts::reported HEAD is checked against the captured owner and never used as authority": 0.000346,
+    "hub/test/host-flush.test.ts::reusable optional flush contract drives SSH drain before the matching watch receipt": 0.001337,
+    "hub/test/host-flush.test.ts::reusable optional flush contract names capability absence before sending any flush request": 0.002662,
+    "hub/test/host-flush.test.ts::reusable optional flush contract waits for the exact operation and covers local absence": 0.640374,
+    "hub/test/host-flush.test.ts::status renders pending and named snapshot leftovers while accepting the previous hub shape": 0.038664,
+    "hub/test/host-flush.test.ts::unpublished host HEAD waits for the leased flush before territory admission": 0.001919,
+    "hub/test/host-flush.test.ts::wire validation accepts additive CLI HEAD reports and the previous request shape": 0.207493,
+    "hub/test/host-local-contract.test.ts::Host optional branch flush preserves local absence and names unregistered worktrees": 0.011104
   },
   "allow": {
     "hub/test/host-flush-native.test.ts::interrupted ready publication is abandoned under its Git lock and fresh admission runs at a new path": {
