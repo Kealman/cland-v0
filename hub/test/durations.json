@@ -103,9 +103,10 @@
       "A-16427",
       "A-16430",
       "A-16488",
-      "A-16508"
+      "A-16508",
+      "A-16515"
     ],
-    "commit": "c5d9fcb5dd1f2778059e80cf0933b3d1a6802a81"
+    "commit": "231e8ee27d0bb650b5cc38fc7836947e01aa4d8e"
   },
   "budget": {
     "testSeconds": 5,
@@ -3434,6 +3435,26 @@
     "hub/test/opencode-remote.test.ts": {
       "seconds": 5.525748,
       "tests": 2
+    },
+    "hub/test/codex-remote-cleanup.test.ts": {
+      "seconds": 1.824908,
+      "tests": 10
+    },
+    "hub/test/codex-remote.test.ts": {
+      "seconds": 0.765545,
+      "tests": 1
+    },
+    "hub/test/host-lease-lock.test.ts": {
+      "seconds": 0.048024,
+      "tests": 2
+    },
+    "hub/test/launch-settlement.test.ts": {
+      "seconds": 0.178136,
+      "tests": 4
+    },
+    "hub/test/spoke-lazy-tools.test.ts": {
+      "seconds": 0.119393,
+      "tests": 1
     }
   },
   "tests": {
@@ -10031,7 +10052,33 @@
     "hub/test/remote-discovery.test.ts::different discovery attempts atomic replacement; identical bytes skip the writer": 0.000924,
     "hub/test/state-paths-lint.test.ts::Codex temp-root registration accepts only the local versus host expression": 0.001032,
     "hub/test/opencode-remote.test.ts::fake Host concurrent port allocations preserve all routes before session forwards": 1.418434,
-    "hub/test/opencode-remote.test.ts::remote OpenCode frame delivery uses Unix forward and host-secret spoke; identity stop cancels it": 4.107314
+    "hub/test/opencode-remote.test.ts::remote OpenCode frame delivery uses Unix forward and host-secret spoke; identity stop cancels it": 4.107314,
+    "hub/test/codex-remote-cleanup.test.ts::async Codex settlement precedes recovery-row and role release": 0.094656,
+    "hub/test/codex-remote-cleanup.test.ts::confirmed remote death retains failed forward cleanup until the retry receipt": 0.085711,
+    "hub/test/codex-remote-cleanup.test.ts::durable remote handshake recovery retains Host and retries forward cancellation before settlement": 0.128027,
+    "hub/test/codex-remote-cleanup.test.ts::forced failure releases held settlement before fixture storage and roots": 0.082777,
+    "hub/test/codex-remote-cleanup.test.ts::forced failure releases held subscription before fixture storage and roots": 0.03597,
+    "hub/test/codex-remote-cleanup.test.ts::revoked remote recovery reports its pinned Host and preserves pending ownership": 0.092799,
+    "hub/test/codex-remote-cleanup.test.ts::standalone Codex deferred rollback cancels its forward after native cleanup": 1.042251,
+    "hub/test/codex-remote-cleanup.test.ts::stop joins held remote reconnect connect": 0.085981,
+    "hub/test/codex-remote-cleanup.test.ts::stop joins held remote reconnect forward": 0.089781,
+    "hub/test/codex-remote-cleanup.test.ts::stop joins held remote reconnect subscription": 0.086955,
+    "hub/test/codex-remote.test.ts::remote Codex frame launch uses a session forward and host sandbox paths": 0.765545,
+    "hub/test/codex-sandbox-host.test.ts::remote Codex policy refuses a missing run directory before consulting paths": 0.003076,
+    "hub/test/host-launch-layout.test.ts::nonlocal OpenCode prepares shared ignore through supplied Host": 0.007018,
+    "hub/test/host-launch-layout.test.ts::nonlocal rollback restores overwritten bytes and mode and truncates appended logs": 0.00396,
+    "hub/test/host-launch-layout.test.ts::OpenCode ignore preserves concurrent editor bytes (at publish)": 0.005619,
+    "hub/test/host-launch-layout.test.ts::OpenCode ignore preserves concurrent editor bytes (before read)": 0.002327,
+    "hub/test/host-lease-lock.test.ts::locked grant refuses no owner and a different-root owner": 0.009524,
+    "hub/test/host-lease-lock.test.ts::locked grant succeeds under its active matching root owner": 0.0385,
+    "hub/test/launch-files.test.ts::remote LaunchFiles reads only Host metadata and bytes while the hub mirror stays unread": 0.006924,
+    "hub/test/launch-files.test.ts::test Host stat requires explicit local file delegation": 0.003013,
+    "hub/test/launch-settlement.test.ts::a hanging settlement is bounded while concurrent retries share the producer": 0.010731,
+    "hub/test/launch-settlement.test.ts::deferred path retries a rejecting settlement and records successful recovery": 0.051176,
+    "hub/test/launch-settlement.test.ts::deferred recovery reports a hung settlement and retains one producer until the receipt": 0.11301,
+    "hub/test/launch-settlement.test.ts::settlement preserves synchronous callbacks and retries a rejected async callback": 0.003219,
+    "hub/test/session-host-placement.test.ts::production OpenCode launch prepares nonlocal shared ignore and reaches only selected Host spawn": 0.130402,
+    "hub/test/spoke-lazy-tools.test.ts::C4 concurrent first tool listings and every documented tool answer through unchanged handlers": 0.119393
   },
   "allow": {
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
