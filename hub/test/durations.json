@@ -9980,6 +9980,13 @@
     "hub/test/remote-discovery.test.ts::different discovery refuses before a failing overwrite; identical bytes skip the writer": 0.000944
   },
   "allow": {
+    "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
+      "seconds": 30,
+      "owner": "C-216",
+      "added": "2026-11-03",
+      "expires": "2026-11-10",
+      "reason": "T-1608 C2 requires ten real idle seconds after consumed welcome plus native spoke startup and joined cleanup; T4 measurement only, never an RSS threshold. Local Darwin arm64 Node24.21 measured 11.039 s including setup and teardown; 30 s accommodates droplet startup. Two native passing samples10.513454209s and11.039158541s; replay retained in item artifact. Coordinator a326ffb5 explicitly keeps30s and corrects nonlegacy expiry to7days."
+    },
     "hub/test/host-ssh-contract.test.ts::ssh Host runs every shared Host behavioral contract through fake ssh": {
       "seconds": 11.001,
       "owner": "E-880",

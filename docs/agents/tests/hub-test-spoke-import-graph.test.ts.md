@@ -1,0 +1,5 @@
+# hub/test/spoke-import-graph.test.ts
+
+T1 parses repository sources starting at hub/bin/cland-spoke.ts. It follows static runtime imports and reexports, side-effect imports and top-level literal import()/require() edges; type-only edges disappear and function-scoped dynamic imports are deferred. External packages are terminal edges; their implementations are outside this repository's policy. The named deny list forbids SQLite, journal, store, tracker modules, tool schemas and argument validation in the eager graph. The in-memory positive control catches transitive tracker and SQLite edges without importing or running any production module.
+
+This is an eager import policy, not whole-program control-flow analysis. Conditional imports in runSpoke remain necessary for the unnamed local role-mapping fallback and skipped-connection journal; named/credentialed sessions avoid them. Existing spoke-identity regressions keep those fallback behaviors covered. The T4 footprint test separately measures a named native spoke after consumed welcome and ten idle seconds.

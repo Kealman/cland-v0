@@ -15,8 +15,6 @@ import type { Clock } from '../hub/clock.ts';
 //                       only acks; otherwise the spoke delivers into the session as a Claude Code channel event
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_KEEPALIVE_MS, CLAND_HUB_REQUEST_TIMEOUT_MS,
 //   CLAND_HUB_WELCOME_TIMEOUT_MS   timings, for tests
-import { subscriptionInput } from '../subscriptions.ts';
-import { sendRecipients } from '../send-input.ts';
 import { randomUUID } from 'node:crypto';
 import type { Readable, Writable } from 'node:stream';
 import { dirname, join } from 'node:path';
@@ -25,18 +23,12 @@ import { SpokeStdioTransport } from './stdio.ts';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
-import { TOOLS } from './tools.ts';
-import { InvalidArgument, validateToolArguments } from '../tool-arguments.ts';
 import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS, WELCOME_TIMEOUT_MS } from './hub-client.ts';
-import { RULE_TOOL_NAMES } from './rule-tools.ts';
 import type { RuleRequest } from '../protocol.ts';
 import type { DistributiveOmit } from './hub-client.ts';
-import { TASK_TOOL_NAMES, taskFrame } from './task-tools.ts';
 import { KEEPALIVE_MS, isSendKind, type HandoverNote, type Message, type SendOutcome, type TopicRef } from '../protocol.ts';
 import { envelope } from '../adapters/contract.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
-import { Journal, journalPath } from '../hub/journal.ts';
-import { hasRoleMappedSession } from '../hub/store.ts';
 import { VERSION } from '../version.ts';
 
 
@@ -146,7 +138,10 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   const clandDir = discoveryFile ? projectRoot ? join(projectRoot, '.cland') : dirname(discoveryFile) : null;
   let mapped = false;
   if (clandDir && !readDiscovery(discoveryFile!)?.remote && !name && !launchToken && sessionId) {
-    try { mapped = hasRoleMappedSession(join(clandDir, 'hub.db'), sessionId); }
+    try {
+      const { hasRoleMappedSession } = await import('../hub/store.ts');
+      mapped = hasRoleMappedSession(join(clandDir, 'hub.db'), sessionId);
+    }
     catch (err) { log(`could not read this session's role mapping: ${err instanceof Error ? err.message : String(err)}`); }
   }
   // A discovered project requires a name, an existing session-id role mapping, or a hub launch credential.
@@ -155,10 +150,20 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
     ? 'cland hub connection skipped: no CLAND_SESSION_NAME, mapped session role or hub launch credential — start the session through cland, or set CLAND_SESSION_NAME to a name assigned with `cland role set`'
     : null;
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...TOOLS] }));
+  // Tool schemas and their tracker/validator dependencies are unnecessary for hello/welcome.
+  // ESM shares initialization across concurrent first requests and subsequent calls.
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const { TOOLS } = await import('./tools.ts');
+    return { tools: [...TOOLS] };
+  });
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const args = (req.params.arguments ?? {}) as Record<string, unknown>;
     if (!hub) return text({ ok: false, error: skipped ?? notConfigured }, true);
+    const [{ InvalidArgument, validateToolArguments }, { subscriptionInput }, { sendRecipients },
+      { RULE_TOOL_NAMES }, { TASK_TOOL_NAMES, taskFrame }] = await Promise.all([
+      import('../tool-arguments.ts'), import('../subscriptions.ts'), import('../send-input.ts'),
+      import('./rule-tools.ts'), import('./task-tools.ts'),
+    ]);
     try {
       validateToolArguments(req.params.name, args);
       switch (req.params.name) {
@@ -379,6 +384,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
 
   if (skipped && clandDir) {
     log(skipped);
+    const { Journal, journalPath } = await import('../hub/journal.ts');
     const journal = new Journal(journalPath(clandDir));
     journal.write({ event: 'spoke-connection-skipped', cwd, reason: skipped });
     try { await journal.close(); }

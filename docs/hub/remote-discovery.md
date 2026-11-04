@@ -11,3 +11,9 @@ The carrier awaits its optional `beforeReady(signal)` callback after the authent
 Publication skips identical bytes on reconnect, so hub restarts keep the file unchanged. The current agent creates the initial file at mode 0600 through its existing file operation. A different existing record is retained intact and publication refuses: the host remains `connecting` with reason `host discovery differs; atomic replacement required`, following normal backoff. Atomic replacement is owned by T-1644 and will replace this interim refusal. Revoking a host closes its peers and refuses the next spoke hello.
 
 Embedding tests can inject `readinessPollMs` and `readinessTimeoutMs` on SshOptions; omitted values retain the carrier's100ms polling and10second setup deadline. These options do not alter readiness receipts or production defaults.
+
+## Spoke startup imports
+
+The spoke loads connection, framing and delivery code at startup. Tool schemas load on the first MCP tools/list request; argument validation and tool frame helpers load on the first tools/call request. ESM shares module initialization across concurrent requests. Named or credentialed sessions do not load the local database or journal to connect, on either platform. An unnamed local session with a native session id still loads the store for its role-mapping lookup; remote discovery skips that lookup. A skipped discovered connection loads and closes the journal to preserve its reason record. Tool schemas, wire frames and refusal shapes remain shared with the hub.
+
+The static startup import policy and native idle RSS measurement are described in [the import-graph test guide](../agents/tests/hub-test-spoke-import-graph.test.ts.md) and [the footprint guide](../agents/tests/hub-test-spoke-footprint.test.ts.md). Linux comparisons name the exact baseline and branch heads, droplet runs, sizes and regions; a missing reading is unknown and no RSS threshold is enforced.
