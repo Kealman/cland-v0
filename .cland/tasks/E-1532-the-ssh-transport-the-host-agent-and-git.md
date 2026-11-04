@@ -16,7 +16,7 @@ follows:
 topic: topic-1362
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-03T22:00:56.718Z
+updated: 2026-11-04T11:50:36.683Z
 ---
 
 ## Goal
@@ -137,6 +137,7 @@ stages:
         - T-1605
       - - T-1608
       - - T-1644
+      - - T-1674
   - name: push, attach and survival
     qa:
       scope: none
@@ -147,6 +148,7 @@ stages:
       - - T-1611
       - - T-1612
         - T-1613
+      - - T-1666
   - name: relaunch elsewhere
     qa:
       scope: full
