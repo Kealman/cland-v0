@@ -1,0 +1,104 @@
+// T3: real fake SSH master, agent-owned OpenCode server and its production spoke.
+// Native lifecycle and socket census prove remote ownership and Unix-only hub traffic.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
+import { readFile, writeFile, stat } from 'node:fs/promises';
+import { createServer, type AddressInfo } from 'node:net';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { sshHostFixture } from './ssh-host-fixture.ts';
+import { projectHub, connectUi, eventually } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { OpenCodeClient, type ServerEvent } from '../src/adapters/opencode/client.ts';
+import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
+import { sshHost } from '../src/host/ssh-host.ts';
+import { AgentClient } from '../src/host/agent-client.ts';
+import { SshTransport } from '../src/transport/ssh.ts';
+import { remoteDiscovery } from '../src/host/discovery.ts';
+import { layout } from '../src/project.ts';
+import { Store } from '../src/hub/store.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
+
+test('remote OpenCode frame delivery uses Unix forward and host-secret spoke; identity stop cancels it', {timeout:20000}, async t => {
+  const f = await sshHostFixture(t, {startTransport:false});
+  const bin = new URL('./fakes/opencode/opencode', import.meta.url).pathname;
+  const remote = {...f.layout, cli:new URL('../bin/cland.ts',import.meta.url).pathname, spoke:new URL('../bin/cland-spoke.ts',import.meta.url).pathname};
+  const carrier = new SshTransport({root:f.root,record:f.records.get('f1')!,secrets:f.secrets,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,remoteRun:f.fake.run,supervisor:f.supervisor,agentCommand:['stub'],env:f.env});
+  const machine = sshHost({name:'f1',transport:carrier,layout:remote,connect:()=>AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'))});
+  f.addCleanup(()=>carrier.stop()); f.addCleanup(()=>machine.close());
+  const stops: unknown[] = [], releases: string[] = [];
+  const host = {...machine, spawn: (command:Parameters<typeof machine.spawn>[0], options?:Parameters<typeof machine.spawn>[1])=>machine.spawn({...command,env:{ ...command.env, FAKE_OPENCODE_HOME:join(f.fake.home,'native'),FAKE_OPENCODE_SOCKET:join(f.fake.home,'session.sock'),FAKE_OPENCODE_TURN_MS:'30' }},options), freePort:async()=>12345, stop:async(...args:Parameters<typeof machine.stop>)=>{stops.push(args[0]);return machine.stop(...args);},unforward:async(id:string)=>{await machine.unforward(id);releases.push(id);}};
+  const hub = await projectHub(t,f.root,{}, {hosts:[host],adapters:[boundary=>new OpenCodeAdapter(boundary,{bin,env:fixtureEnvironment(f.root,process.env),stopGraceMs:50})]});
+  f.addCleanup(()=>hub.stop());
+  const store = new Store(join(f.root,'.cland/hub.db')); f.addCleanup(async()=>store.close());
+  store.hosts.insert({...f.records.get('f1')!,clientKeyPath:'/fake',knownHosts:'fake'},f.secrets.readSecret('f1'));
+  const discovery = remoteDiscovery(f.fake.run,f.secrets.readSecret('f1'));
+  assert.notEqual(discovery.secret,hub.discovery.secret);
+  await writeFile(remote.discoveryFile,JSON.stringify(discovery),{mode:0o600});
+  assert.match(discovery.spoke,/spoke\.sock/);
+  await carrier.start();
+  await eventually('remote carrier up',()=>carrier.status().state==='up'||undefined,5000);
+  const census = async()=>{try{return (await promisify(execFile)('lsof',['-nP','-a','-p',String(process.pid),'-iTCP'],{env:fixtureEnvironment(f.root,process.env)})).stdout;}catch(error){if((error as {code?:number}).code===1)return '';throw error;}};
+  const control=createServer(); await new Promise<void>(r=>control.listen(0,'127.0.0.1',r));
+  assert.match(await census(),new RegExp(':'+(control.address() as AddressInfo).port+'\\b'));
+  await new Promise<void>(r=>control.close(()=>r()));
+  const baseline=await census();
+  assert.doesNotMatch(baseline,/:12345\b/);
+  const ui=await connectUi(t,hub.discovery); await ui.request({type:'subscribe'});
+  const launch=await ui.request({type:'session.launch',name:'worker',harness:'opencode',host:'f1',cwd:f.fake.home,role:'implementer',model:'opencode/fake-paid',accountEnv:{FAKE_OPENCODE_HOME:join(f.fake.home,'native'),FAKE_OPENCODE_SOCKET:join(f.fake.home,'session.sock'),FAKE_OPENCODE_TURN_MS:'30'}},15000).catch(async error=>{ console.error(await readFile(join(f.fake.home,'opencode/worker/serve.log'),'utf8').catch(()=>'')); throw error; });
+  assert.equal(launch.ok,true,launch.error);
+  const rows=async()=>((await ui.request({type:'session.list'})).value as {processes:HarnessProcessView[]}).processes;
+  await eventually('exact remote spoke connected',async()=> ((await ui.request({type:'hub.status'})).value as {sessions:Array<{name:string}>}).sessions.find(p=>p.name==='worker')||undefined,5000).catch(async error=>{console.error(await readFile(join(f.fake.home,'opencode/worker/serve.log'),'utf8'));throw error;});
+  const row = (await rows()).find(p=>p.name==='worker')!;
+  const config=JSON.parse(await readFile(join(f.fake.home,'opencode/worker/opencode.json'),'utf8'));
+  assert.equal(config.mcp.servers.cland.environment.CLAND_HUB_FILE,remote.discoveryFile);
+  assert.equal(config.mcp.servers.cland.command[1],remote.spoke);
+  const endpoint=await machine.forward(row.sessionId,{port:12345});assert.ok('socket' in endpoint);
+  const password=(await readFile(join(f.fake.home,'opencode/worker/password'),'utf8')).trim();
+  const observer=new OpenCodeClient(row.harnessId!,password,endpoint.socket);
+  const nativeEvents:ServerEvent[]=[];let observing=false;
+  const observingStream=observer.events(event=>nativeEvents.push(event),()=>{observing=true;},new AbortController().signal).catch(()=>{});
+  f.addCleanup(async()=>{await observer.close();await observingStream;});
+  await eventually('native completion observer subscribed',()=>observing||undefined);
+  await observer.request('POST','/test/completion',{paused:true});
+  const reply=eventually('remote spoke reply persisted and published',()=>ui.frames.find(frame=>frame.type==='message' && JSON.stringify(frame).includes('pong: remote receipt')),5000);
+  const sent=await ui.request({type:'topic.send',topic:'general',to:['worker'],text:'remote receipt'}); assert.equal(sent.ok,true,sent.error);
+  await eventually('native prompt durably captured',async()=>{try{return (await readFile(join(f.fake.home,'native/prompts',row.harnessSessionId!+'.log'),'utf8')).includes('remote receipt')||undefined;}catch{return undefined;}},5000);
+  await reply;
+  const inbox=await eventually('exact inbox delivery observed',()=>{
+    const admitted=nativeEvents.find(e=>e.type==='session.inbox.enqueued'&&JSON.stringify(e.data).includes('remote receipt'));
+    const inboxId=admitted?.data?.inboxID;
+    return typeof inboxId==='string' ? nativeEvents.find(e=>e.type==='session.inbox.delivered'&&e.data?.inboxID===inboxId) : undefined;
+  });
+  assert.equal(inbox.data?.sessionID,row.harnessSessionId);
+  assert.ok(nativeEvents.some(e=>e.type==='session.execution.started'&&e.data?.sessionID===row.harnessSessionId));
+  await eventually('exact remote execution busy while completion withheld',async()=>(await rows()).find(p=>p.sessionId===row.sessionId)?.state==='busy'||undefined);
+  assert.equal((await rows()).find(p=>p.sessionId===row.sessionId)?.state,'busy');
+  assert.equal(nativeEvents.some(e=>e.type==='session.execution.succeeded'&&e.data?.sessionID===row.harnessSessionId),false);
+  await observer.request('POST','/test/completion',{paused:false});
+  await eventually('exact native execution completion after delivered inbox',()=>nativeEvents.find(e=>e.type==='session.execution.succeeded'&&e.data?.sessionID===row.harnessSessionId));
+  await eventually('remote idle after completed turn',async()=> (await rows()).find(p=>p.sessionId===row.sessionId)?.state==='idle'||undefined,5000);
+  assert.equal((await rows()).find(p=>p.sessionId===row.sessionId)?.state,'idle');
+  await observer.close();await observingStream;
+  assert.equal(await census(),baseline,'no added hub TCP sockets, including connections; fixture hub listeners predate launch');
+  const stopped=await ui.request({type:'session.stop',session:'worker'}); assert.equal(stopped.ok,true,stopped.error);
+  assert.deepEqual(stops.map(p=>(p as {pid:number}).pid),[row.pid]);
+  assert.ok((stops[0] as {pidIdentity:string}).pidIdentity);
+  assert.deepEqual(releases,[row.sessionId]);
+  assert.equal(await machine.alive(row),false);
+  await assert.rejects(stat(f.paths.sessionSocket(row.sessionId)),{code:'ENOENT'});
+});
+
+test('fake Host concurrent port allocations preserve all routes before session forwards', {timeout:10000}, async t=>{
+ const f=await sshHostFixture(t);
+ const ports=await Promise.all([f.host.freePort(),f.host.freePort()]);
+ const routes=JSON.parse(await readFile(join(f.fake.directory,'ports.json'),'utf8'));
+ for(const port of [12345,...ports])assert.equal(routes[port],join(f.fake.home,'session.sock'));
+ for(const [index,port] of ports.entries()){
+  const id='route-'+index;
+  const endpoint=await f.host.forward(id,{port});assert.ok('socket' in endpoint);
+  assert.ok(await stat(endpoint.socket));await f.host.unforward(id);
+  await assert.rejects(stat(endpoint.socket),{code:'ENOENT'});
+ }
+});

@@ -1,3 +1,4 @@
+import { boundedSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
@@ -93,7 +94,7 @@ type LaunchScope = { accepted: Array<{ files: LaunchFiles; name: string; session
 type WatchedApproval = { tracker: SessionTracker; reported: boolean; validation?: number; answerIn?: 'hub' | 'tui'; answering?: boolean; outcome?: ApprovalOutcome };
 
 /** One watched session: its server's client, the event subscription, and what the stream says. */
-type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; approvals: Map<string, WatchedApproval>; owners: Map<string, string>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
+type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; approvals: Map<string, WatchedApproval>; owners: Map<string, string>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string>; subscription?: Promise<void>; snapshots: Set<Promise<unknown>> };
 /** PID supervision survives missing native connection material. One attempt per session may read it. */
 type WatchTicket = { process: HarnessProcess; pending: boolean; warned: boolean };
 
@@ -178,24 +179,77 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   async #failedLaunch(owner: { files: LaunchFiles; name: string; sessionId: string }, error: unknown): Promise<never> {
+    const finish = boundedSettlement(async () => {
+      const client = await this.#connections.get(owner.sessionId)?.work.catch(() => undefined);
+      await client?.close();
+      await this.#unforward(owner.sessionId);
+      this.#connections.delete(owner.sessionId);
+    });
     if (this.#closed) {
-      try { await owner.files.rollback(); }
+      try { await owner.files.rollback(); await finish(); }
       catch (cleanup) {
         this.#cleanupFailures.set(owner.sessionId, cleanup);
-        try { return await this.#recoveries.failed(owner.sessionId, owner.name, owner.files, error, () => {}); }
+        try { return await this.#recoveries.failed(owner.sessionId, owner.name, owner.files, error, finish); }
         finally { if (!owner.files.pids.length) this.#cleanupFailures.delete(owner.sessionId); }
       }
       throw error;
     }
-    return this.#recoveries.failed(owner.sessionId, owner.name, owner.files, error, () => {});
+    return this.#recoveries.failed(owner.sessionId, owner.name, owner.files, error, finish);
   }
 
-  #background(work: () => Promise<void>): void {
-    void this.#track(Promise.resolve().then(() => { if (!this.#closed) return work(); })).catch(error => { if (!this.#closed) this.#host.log({ event: 'opencode-watch-failed', error: String(error) }); });
+  #background(work: () => Promise<void>): Promise<void> {
+    return this.#track(Promise.resolve().then(() => { if (!this.#closed) return work(); })).catch(error => { if (!this.#closed) this.#host.log({ event: 'opencode-watch-failed', error: String(error) }); });
   }
 
   #processHost(p: HarnessProcess): Host {
     return this.#host.hostForProcess?.(p) ?? localHost(this.#processEnv, this.#host.log);
+  }
+
+  readonly #forwards = new Map<string, Host>();
+  readonly #terminal = new Set<string>();
+  readonly #exiting = new Map<string, { process: HarnessProcess; detail: string; stopped: boolean; work?: Promise<void> }>();
+  readonly #connections = new Map<string, { url: string; work: Promise<OpenCodeClient> }>();
+  readonly #forwardCleanup = new Map<string, Promise<void>>();
+
+  async #connectTo(machine: Host, sessionId: string, url: string, password: string): Promise<OpenCodeClient> {
+    if (machine.name === 'local') return new OpenCodeClient(url, password);
+    this.#assertOpen();
+    if (this.#terminal.has(sessionId) || this.#stopping.has(sessionId)) throw new Error('OpenCode session is stopping');
+    const previous = this.#connections.get(sessionId);
+    if (previous?.url === url) return previous.work;
+    const work = this.#track(Promise.resolve().then(async () => {
+      if (previous) { await (await previous.work.catch(() => undefined))?.close(); await this.#unforward(sessionId); }
+      return this.#forwardClient(machine, sessionId, url, password);
+    }));
+    this.#connections.set(sessionId, { url, work });
+    void work.catch(() => { if (this.#connections.get(sessionId)?.work === work) this.#connections.delete(sessionId); });
+    return work;
+  }
+
+  async #forwardClient(machine: Host, sessionId: string, url: string, password: string): Promise<OpenCodeClient> {
+    this.#assertOpen();
+    if (this.#terminal.has(sessionId) || this.#stopping.has(sessionId)) throw new Error('OpenCode session is stopping');
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1' || !parsed.port) throw new Error(`invalid OpenCode endpoint on host ${machine.name}`);
+    this.#forwards.set(sessionId, machine);
+    const endpoint = await machine.forward(sessionId, { port: Number(parsed.port) });
+    if (!('socket' in endpoint)) throw new Error(`OpenCode requires a Unix session forward on host ${machine.name}`);
+    this.#assertOpen();
+    if (this.#terminal.has(sessionId) || this.#stopping.has(sessionId)) throw new Error('OpenCode session is stopping');
+    return new OpenCodeClient(url, password, endpoint.socket);
+  }
+
+  #unforward(sessionId: string): Promise<void> {
+    const pending = this.#forwardCleanup.get(sessionId);
+    if (pending) return Promise.resolve(boundedSettlement(() => pending)());
+    const machine = this.#forwards.get(sessionId);
+    if (!machine) return Promise.resolve();
+    const work = Promise.resolve().then(async () => {
+      await machine.unforward(sessionId);
+      this.#forwards.delete(sessionId);
+    }).finally(() => { this.#forwardCleanup.delete(sessionId); });
+    this.#forwardCleanup.set(sessionId, work);
+    return Promise.resolve(boundedSettlement(() => work)());
   }
 
   #files(name: string, host: Host = localHost(this.#processEnv, this.#host.log)): ServerFiles {
@@ -223,6 +277,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
+      this.#terminal.delete(p.sessionId);
       const host = this.#host.hostForLaunch?.(p) ?? localHost(this.#processEnv, this.#host.log);
       p = { ...p, accountEnv: p.accountEnv ?? (host.name === 'local' ? {OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv)} : {}) };
       const files = this.#files(p.name, host);
@@ -239,10 +294,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
           ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}),
           ...(p.role ? { CLAND_ROLE: p.role } : {}),
         });
-        const started = yield* this.#activeWait(startServer({ host, bin: this.#bin, cwd: p.cwd, env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize: () => { this.#assertOpen(); authorize(); }, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
+        const started = yield* this.#activeWait(startServer({ host, client: (url, password) => this.#connectTo(host, p.sessionId, url, password), bin: this.#bin, cwd: p.cwd, env, files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize: () => { this.#assertOpen(); authorize(); }, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
         pid = started.pid;
         const { url } = started;
-        const client = new OpenCodeClient(url, password);
+        const client = yield* this.#activeWait(this.#connectTo(host, p.sessionId, url, password));
         const policy = { ...sessionPolicy(p), warnings: [] as string[] };
         let model: ModelRef | null = p.model ? parseModel(p.model) : null;
         let session = p.harnessSessionId ? yield* this.#activeWait(client.session(p.harnessSessionId)) : null;
@@ -358,7 +413,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     if (watched && watched.client.url === p.harnessId) return watched.client;
     const password = await readPassword(this.#files(p.name, this.#processHost(p)), untimed, this.#processHost(p));
     if (!p.harnessId || !password) throw new Error(`no server url or password recorded for ${p.name}`);
-    return new OpenCodeClient(p.harnessId, password);
+    return this.#connectTo(this.#processHost(p), p.sessionId, p.harnessId, password);
   }
 
   async inject(p: HarnessProcess, message: Message, topic: TopicRef | null): Promise<void> {
@@ -491,9 +546,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
       }
       const owners = new Map<string, string>(JSON.parse(this.#host.adapterState?.read(`opencode.approvalOwners:${p.sessionId}`) ?? '[]') as Array<[string, string]>);
       const children = new Map([...owners.values()].filter(id => id !== p.harnessSessionId).map(id => [id, new SessionTracker(id)]));
-      const w: Watch = { process: ticket.process, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children, approvals: new Map(), owners, abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
+      const w: Watch = { process: ticket.process, client: await this.#connectTo(this.#processHost(p), p.sessionId, p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children, approvals: new Map(), owners, abort: new AbortController(), inbox: new Map(), turnMessages: new Set(), snapshots: new Set() };
+      if (this.#closed || this.#watching.get(p.sessionId) !== ticket) return;
       this.#watched.set(p.sessionId, w);
-      this.#background(() => this.#subscribe(w));
+      w.subscription = this.#background(() => this.#subscribe(w));
     } finally { ticket.pending = false; }
   }
 
@@ -658,7 +714,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
           () => {
             failures = 0;
             // the stream is live-only: what it missed comes from a snapshot taken once it is open
-            Promise.all([w.tracker, ...w.children.values()].map(async tracker => ({ tracker, snapshot: await w.client.snapshot(tracker.sessionId) })))
+            const snapshot = Promise.all([w.tracker, ...w.children.values()].map(async tracker => ({ tracker, snapshot: await w.client.snapshot(tracker.sessionId) })))
               .then(snapshots => {
                 if (!streamCurrent || this.#watched.get(w.process.sessionId) !== w || w.abort.signal.aborted) return;
                 // Publish the whole family together: a parent's idle snapshot must not briefly clear
@@ -684,6 +740,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
                 snapshotEvents = null;
                 this.#host.log({ event: 'opencode-snapshot-failed', session: w.process.name, error: err instanceof Error ? err.message : String(err) });
               });
+            w.snapshots.add(snapshot);
+            void snapshot.finally(() => w.snapshots.delete(snapshot));
           },
           w.abort.signal,
         );
@@ -723,11 +781,12 @@ export class OpenCodeAdapter implements HarnessAdapter {
     for (const ticket of [...this.#watching.values()]) {
       const p = ticket.process;
       if (this.#stopping.has(p.sessionId)) continue;
+      if (this.#exiting.has(p.sessionId)) { await this.#settleExit(p, this.#exiting.get(p.sessionId)!.detail); continue; }
       const alive = p.pid === null || await this.#processHost(p).alive(p);
       if (this.#closed || this.#watching.get(p.sessionId) !== ticket || this.#stopping.has(p.sessionId)) continue;
       if (!alive) {
-        this.#unwatch(p.sessionId);
-        this.#host.exited(p.sessionId, `pid ${p.pid} is gone`);
+        if (this.#processHost(p).name !== 'local') await this.#settleExit(p, `pid ${p.pid} is gone`);
+        else { this.#unwatch(p.sessionId); this.#host.exited(p.sessionId, `pid ${p.pid} is gone`); }
       } else if (!this.#watched.has(p.sessionId)) this.#background(() => this.#watch(ticket));
     }
   }
@@ -735,8 +794,50 @@ export class OpenCodeAdapter implements HarnessAdapter {
   #gone(w: Watch, detail: string): void {
     if (this.#stopping.has(w.process.sessionId)) return;
     if (this.#watched.get(w.process.sessionId) !== w) return;
-    this.#unwatch(w.process.sessionId);
-    this.#host.exited(w.process.sessionId, detail);
+    if (this.#processHost(w.process).name !== 'local') {
+      w.abort.abort();
+      this.#background(() => this.#settleExit(w.process, detail));
+    } else {
+      this.#unwatch(w.process.sessionId);
+      this.#host.exited(w.process.sessionId, detail);
+    }
+  }
+
+  async #drainRemote(p: HarnessProcess): Promise<void> {
+    const w = this.#watched.get(p.sessionId);
+    // Abort the stream before joining requests; no later reconnect/snapshot may start.
+    w?.abort.abort();
+    this.#watched.delete(p.sessionId);
+    const client = w?.client ?? await this.#connections.get(p.sessionId)?.work.catch(() => undefined);
+    await client?.close();
+    if (w) await Promise.allSettled([...(w.subscription ? [w.subscription] : []), ...w.snapshots]);
+  }
+
+  /** Native death retains its watch/timer until agent cleanup and cancellation both settle. */
+  #settleExit(p: HarnessProcess, detail: string): Promise<void> {
+    let owner = this.#exiting.get(p.sessionId);
+    if (!owner) {
+      owner = { process: p, detail, stopped: false };
+      this.#exiting.set(p.sessionId, owner);
+      this.#terminal.add(p.sessionId);
+    }
+    if (owner.work) return Promise.resolve(boundedSettlement(() => owner.work!)());
+    const captured = owner;
+    const work = this.#track(Promise.resolve().then(async () => {
+      await this.#connections.get(p.sessionId)?.work.catch(() => {});
+      if (!captured.stopped) {
+        if (!await this.#processHost(captured.process).stop(captured.process, { graceMs: this.#stopGraceMs, allowReused: true })) throw new Error(`OpenCode exit cleanup incomplete for ${p.name}`);
+        captured.stopped = true;
+      }
+      await this.#drainRemote(p);
+      await this.#unforward(p.sessionId);
+      this.#connections.delete(p.sessionId);
+      this.#exiting.delete(p.sessionId);
+      this.#unwatch(p.sessionId);
+      if (!this.#closed && !this.#stopping.has(p.sessionId)) this.#host.exited(p.sessionId, captured.detail);
+    }).finally(() => { delete captured.work; }));
+    captured.work = work;
+    return Promise.resolve(boundedSettlement(() => work)());
   }
 
   #unwatch(sessionId: string): void {
@@ -771,6 +872,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
         log: entry => resumed(() => this.#host.log({ ...entry, harness: this.harness, session: p.name })),
       })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
       ended = true;
+      this.#terminal.add(p.sessionId);
+      await this.#exiting.get(p.sessionId)?.work?.catch(() => {});
+      await this.#connections.get(p.sessionId)?.work.catch(() => {});
+      if (this.#processHost(p).name === 'local') this.#unwatch(p.sessionId);
+      else await this.#drainRemote(p);
+      await this.#unforward(p.sessionId);
+      this.#connections.delete(p.sessionId);
+      this.#exiting.delete(p.sessionId);
     } finally {
       resumed(() => {
         if (ended) this.#unwatch(p.sessionId);
@@ -797,7 +906,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         if (!password)
           reason = 'the server password file is gone';
         else {
-          const client = new OpenCodeClient(p.harnessId, password);
+          const client = yield* this.#activeWait(this.#connectTo(this.#processHost(p), p.sessionId, p.harnessId, password));
           try {
             const session = yield* this.#activeWait(client.session(p.harnessSessionId));
             if (session) {
@@ -826,11 +935,20 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#watching.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
-    for (const w of this.#watched.values()) w.abort.abort();
+    const watches = [...this.#watched.values()];
+    for (const w of watches) w.abort.abort();
     this.#watched.clear();
     this.#closing = (async () => {
+      for (const connection of this.#connections.values()) await (await connection.work.catch(() => undefined))?.close();
+      await Promise.allSettled(watches.filter(w => this.#processHost(w.process).name !== 'local').flatMap(w => [...w.snapshots]));
       await Promise.allSettled([...this.#flights, ...(this.#pidCheck ? [this.#pidCheck] : [])]);
-      this.#recoveries.close();
+      await this.#recoveries.drain();
+      const failures: unknown[] = [];
+      for (const id of this.#forwards.keys()) {
+        try { await this.#unforward(id); } catch (error) { failures.push(error); }
+      }
+      if (failures.length) throw new AggregateError(failures, 'OpenCode forward cleanup incomplete');
+      if (this.#exiting.size) throw new Error(`OpenCode exit cleanup incomplete: ${[...this.#exiting.keys()].join(', ')}`);
       if (this.#cleanupFailures.size) throw new Error(`OpenCode launch cleanup incomplete: ${[...this.#cleanupFailures.keys()].join(', ')}`);
     })();
     return this.#closing;

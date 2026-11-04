@@ -823,3 +823,17 @@ observation receipt, not harness ownership. The fake-host-only `kill-agent`
 control requires `CLAND_HOST_SECRET`, authenticates the named host's live
 `agent.sock`, matches its hello PID to the receipt, then compares a fresh native
 birth before SIGKILL. It refuses foreign, stale or malformed receipts. No kill RPC is added to the agent protocol.
+
+OpenCode on an SSH Host starts its per-session server on host loopback. Readiness,
+HTTP requests and SSE all use the Host's session forward through a hub-side Unix
+socket; the stored `harnessId` remains the host-local URL for native attach.
+The generated MCP configuration starts the spoke from the Host layout and reads
+its private discovery file, whose host secret reaches `spoke.sock` over the carrier.
+Identity-verified stop precedes forward cancellation. Failed launches use bounded,
+single-flight `LaunchSettled` cleanup in memory; post-restart OpenCode forward
+settlement is tracked by T-1671 and is not reconstructed from that callback.
+Remote OpenCode normal-exit settlement also retains supervision while agent
+identity cleanup, HTTP/SSE/snapshot drain and forward cancellation are pending.
+Cancellation failure retries through PID supervision; the exit notice follows
+successful settlement. Explicit stop drains the same client and watch work before
+cancelling the forward.

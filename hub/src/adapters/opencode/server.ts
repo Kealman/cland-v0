@@ -48,7 +48,7 @@ export async function readPassword(files: ServerFiles, resumed: Resumed = untime
   })(), resumed);
 }
 
-export async function startServer(options: { host: Host; bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
+export async function startServer(options: { host: Host; client?: (url: string, password: string) => Promise<OpenCodeClient>; bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
   return continueWith((function* (): Generator<Promise<unknown>, {
     pid: number;
     url: string;
@@ -65,7 +65,7 @@ export async function startServer(options: { host: Host; bin: string; cwd: strin
       if (attempted.has(port)) continue;
       attempted.add(port);
       const url = `http://127.0.0.1:${port}`;
-      const client = new OpenCodeClient(url, options.password);
+
       let exited: string | null = null;
       const child = yield* wait(options.host.spawn({
         command: options.bin,
@@ -78,6 +78,7 @@ export async function startServer(options: { host: Host; bin: string; cwd: strin
         options.transaction.spawned(child, options.log, options.stopGraceMs);
         return child;
       }));
+      const client = yield* wait(options.client ? options.client(url, options.password) : Promise.resolve(new OpenCodeClient(url, options.password)));
       options.authorize?.();
       void child.exited.then(({ code, signal }) => { exited = `exited ${code ?? signal}`; });
       while (Date.now() < deadline && !exited) {

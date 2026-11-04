@@ -174,3 +174,13 @@ Use scratch host socket tests and the unedited territory/merge preservation file
 see `docs/agents/tests/hub-test-host-allow-list.test.ts.md`.
 
 Read the matching [subsystem reference](../../../hub/README.md) for implementation guidance. Follow [documentation placement](../../../docs/agents/documentation.md) when adding item documentation.
+
+OpenCode remote readiness, HTTP and SSE use the same per-session Unix forward.
+Keep its host-local URL in the process record for native attach, and cancel the
+forward after identity-verified stop or failed-launch rollback using LaunchSettled.
+The callback covers the current hub lifetime; post-restart forward settlement is
+tracked by T-1671. Preserve the OpenCode adapter/native tests unchanged when
+changing this path; the remote lifecycle and cleanup guides name its evidence.
+Normal remote exits retain supervision until identity cleanup, client socket and
+watch work drain, and forward cancellation settle; failed cancellation retries
+before the exit notice.

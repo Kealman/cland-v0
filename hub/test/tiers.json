@@ -350,6 +350,8 @@
     "hub/test/opencode-launch-policy.test.ts": "T2",
     "hub/test/opencode-native.test.ts": "T2",
     "hub/test/opencode-policy.test.ts": "T1",
+    "hub/test/opencode-remote-cleanup.test.ts": "T2",
+    "hub/test/opencode-remote.test.ts": "T3",
     "hub/test/orphan-servers-perf.test.ts": "T4",
     "hub/test/orphan-servers.test.ts": "T3",
     "hub/test/orphan-sweep-lock.test.ts": "T3",

@@ -1,4 +1,4 @@
-import { mkdir, writeFile, unlink, rmdir } from 'node:fs/promises';
+import { mkdir, writeFile, unlink, rmdir, readFile, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -59,5 +59,21 @@ export async function sshHostFixture(t: TestContext, options: {startTransport?: 
   for(const path of [fixtureSocketPath(root,'hub'),fixtureSocketPath(root,'spoke'),...['agent','hub','spoke','git'].map(name=>join(fake.run,name+'.sock')),hostPaths(root,'f1').agentSocket,hostPaths(root,'f1').gitSocket,hostPaths(root,'f1').controlSocket,hostPaths(root,'f1').sessionSocket('session-id')]) assert.ok(Buffer.byteLength(path)+1<=104,path);
   const layout = Object.freeze({discoveryFile:join(fake.home,'hub.json'),node:process.execPath,cli:'/remote/cland.ts',spoke:'/remote/spoke.ts',runDirectory:fake.run,logDirectory:join(fake.home,'log')});
   host = sshHost({log:entry=>diagnostics.push(entry),name:'f1',transport,layout,connect:()=>AgentClient.connect(hostPaths(root,'f1').agentSocket,secrets.readSecret('f1'))});
+  const freePort = host.freePort.bind(host);
+  let portWrites = Promise.resolve();
+  additional.push(() => portWrites);
+  host.freePort = async () => {
+    const port = await freePort();
+    const write = portWrites.then(async () => {
+      const path = join(fake.directory, 'ports.json');
+      const routes = JSON.parse(await readFile(path, 'utf8'));
+      routes[port] = join(fake.home, 'session.sock');
+      await writeFile(path + '.next', JSON.stringify(routes));
+      await rename(path + '.next', path);
+    });
+    portWrites = write;
+    await write;
+    return port;
+  };
   return {root,env,fake,host,transport,layout,faults,cleanupErrors,holdRunCancellation:()=>{cancelEntered=false;runGate=new Promise<void>(resolve=>{releaseRun=resolve;});return {entered:()=>cancelEntered,token:()=>runToken,disconnect:()=>runConnection?.destroy(),release:()=>{releaseRun?.();runGate=undefined;}};},dropNextCommitReply:()=>{dropCommitReply=true;},dropNextRunReply:()=>{dropRunReply=true;},holdSettlementReplies:()=>{holdSettlement=true;return {attempts:()=>settlementAttempts,release:()=>{holdSettlement=false;}};}, records, secrets, agent, supervisor, addCleanup:(close:()=>Promise<void>)=>additional.push(close), paths:hostPaths(root,'f1')};
 }

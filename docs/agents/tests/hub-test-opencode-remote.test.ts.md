@@ -1,0 +1,9 @@
+# hub/test/opencode-remote.test.ts
+
+`hub/test/opencode-remote.test.ts` is T3 because it observes an agent-owned native server, production spoke and fake SSH master. All state is under the SSH fixture's disposable root and sealed agent environment. The fake server accepts `FAKE_OPENCODE_SOCKET` to represent its host loopback port with a Unix socket, matching the fake SSH port map; normal fake launches retain TCP binding.
+
+The frame launch waits for the exact worker's host-secret spoke presence, a captured native prompt and the published reply before asserting idle. The census positive control binds a TCP listener and requires lsof to see its port before closing it. The final census equals the pre-launch census (the in-process fixture hub's existing listeners remain); there are no added hub TCP listeners or connections to the fake host port. The authenticated HTTP requests and SSE stream can reach the fake server only over its Unix forward. Stop records the exact native PID/birth receipt passed to the agent and requires native absence plus removal of the session forward.
+
+The shared SSH fixture maps every allocated loopback port to its fake session socket so observer tests that mock OpenCode HTTP still exercise real forward acquisition. Existing preservation test files stay unedited.
+
+The completion control opens a native SSE observer before the delivery, holds execution completion with `/test/completion`, correlates the captured inbox admission/delivery and execution-start events, and requires the exact row to stay busy after pong while success is withheld. It then releases completion, observes that session's native success and keeps the final exact-row idle assertion. The fake's completion hold is off by default. A separate concurrent allocation control checks every retained route and both Unix forward acquisitions; the fixture serializes read/merge/atomic-rename publication rather than overwriting older routes.

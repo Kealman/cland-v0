@@ -234,6 +234,8 @@ async function serve(args: string[]): Promise<number> {
   const runs = new Map<string, Run>();
   const permissions = new Map<string, Map<string, Pending & { request: Record<string, unknown> }>>();
   const messages = new Map<string, Record<string, unknown>>();
+  let completionPaused = false;
+  const completionWaiters = new Set<() => void>();
   let turnPaused = false;
   const turnWaiters = new Set<() => void>();
   let messagePaused = false;
@@ -302,6 +304,7 @@ async function serve(args: string[]): Promise<number> {
         emit('session.inbox.delivered', { sessionID: session.id, inboxID: input.id });
         await answer(session, input.text);
       }
+      if (completionPaused) await new Promise<void>(resolve => { completionWaiters.add(resolve); });
       emit('session.execution.succeeded', { sessionID: session.id });
     } catch (error) {
       if ((error as Error & { interrupted?: boolean }).interrupted) emit('session.execution.interrupted', { sessionID: session.id, reason: 'shutdown' });
@@ -357,6 +360,11 @@ async function serve(args: string[]): Promise<number> {
           if (!messagePaused) for (const resolve of messageWaiters) resolve();
         }
         return send(res, 200, { data: { waiting: messageWaiters.size } });
+      }
+      if (url.pathname === '/test/completion' && method === 'POST') {
+        completionPaused = (await readBody(req)).paused === true;
+        if (!completionPaused) { for (const resolve of completionWaiters) resolve(); completionWaiters.clear(); }
+        return send(res, 200, { data: true });
       }
       if (url.pathname === '/test/turn' && method === 'POST') {
         turnPaused = (await readBody(req)).paused === true;
@@ -543,10 +551,12 @@ async function serve(args: string[]): Promise<number> {
   const bindError = await new Promise<NodeJS.ErrnoException | null>((resolve) => {
     const onError = (error: NodeJS.ErrnoException) => resolve(error);
     server.once('error', onError);
-    server.listen(port, hostname, () => {
+    const listening = () => {
       server.off('error', onError);
       resolve(null);
-    });
+    };
+    if (process.env.FAKE_OPENCODE_SOCKET) server.listen(process.env.FAKE_OPENCODE_SOCKET, listening);
+    else server.listen(port, hostname, listening);
   });
   if (bindError) {
     if (collision && bindError.code === 'EADDRINUSE') {

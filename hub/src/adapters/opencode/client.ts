@@ -2,6 +2,8 @@
 // user `opencode` and the server's password, and its server-sent event stream (`GET /api/event`).
 // Only the routes the adapter uses (verified against the OpenAPI document of opencode v2.0.24).
 import { randomUUID } from 'node:crypto';
+import { request as httpRequest, type ClientRequest } from 'node:http';
+import { Readable } from 'node:stream';
 
 /** OpenCode's model reference; cland writes `<providerID>/<id>#<variant>` when a variant is selected. */
 export type ModelRef = { providerID: string; id: string; variant?: string };
@@ -35,10 +37,44 @@ export class HttpError extends Error {
 export class OpenCodeClient {
   readonly url: string;
   readonly #auth: string;
+  readonly socketPath: string | undefined;
+  readonly #requests = new Map<ClientRequest, Promise<void>>();
+  #closed = false;
 
-  constructor(url: string, password: string) {
+  async close(): Promise<void> {
+    this.#closed = true;
+    const receipts = [...this.#requests];
+    for (const [request] of receipts) request.destroy(new Error('OpenCode client closed'));
+    await Promise.all(receipts.map(([, receipt]) => receipt));
+  }
+
+  constructor(url: string, password: string, socketPath?: string) {
+    this.socketPath = socketPath;
     this.url = url.replace(/\/+$/, '');
     this.#auth = `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
+  }
+
+  /** Remote requests never resolve or connect to the recorded host URL on the hub. */
+  #fetch(path: string, options: RequestInit): Promise<Response> {
+    if (this.#closed) return Promise.reject(new Error('OpenCode client closed'));
+    if (!this.socketPath) return fetch(`${this.url}${path}`, options);
+    return new Promise((resolve, reject) => {
+      const request = httpRequest({ socketPath: this.socketPath, path, method: options.method ?? 'GET',
+        headers: options.headers as Record<string, string>, signal: options.signal ?? undefined, agent: false }, response => {
+        const headers = new Headers();
+        for (const [key, value] of Object.entries(response.headers)) if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(', ') : value);
+        const empty = [204, 205, 304].includes(response.statusCode ?? 0) || options.method === 'HEAD';
+        if (empty) response.resume();
+        resolve(new Response(empty ? null : Readable.toWeb(response) as ReadableStream<Uint8Array>, { status: response.statusCode ?? 500, headers }));
+      });
+      let socketClosed = Promise.resolve();
+      request.once('socket', socket => { socketClosed = new Promise<void>(closed => socket.once('close', () => closed())); });
+      this.#requests.set(request, new Promise<void>(closed => request.once('close', () => {
+        void socketClosed.then(() => { this.#requests.delete(request); closed(); });
+      })));
+      request.on('error', reject);
+      request.end(options.body);
+    });
   }
 
   async request<T>(method: string, path: string, body?: unknown, timeoutMs = 10_000): Promise<T> {
@@ -46,7 +82,7 @@ export class OpenCodeClient {
     const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), timeoutMs);
     timer.unref();
     try {
-      const res = await fetch(`${this.url}${path}`, {
+      const res = await this.#fetch(path, {
         method,
         headers: { authorization: this.#auth, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -151,7 +187,7 @@ export class OpenCodeClient {
    * The stream is live-only: what happens while it is down is not replayed.
    */
   async events(onEvent: (e: ServerEvent) => void, onOpen: () => void, signal: AbortSignal): Promise<void> {
-    const res = await fetch(`${this.url}/api/event`, { headers: { authorization: this.#auth, accept: 'text/event-stream' }, signal });
+    const res = await this.#fetch('/api/event', { headers: { authorization: this.#auth, accept: 'text/event-stream' }, signal });
     if (!res.ok || !res.body) throw new HttpError(res.status, `GET /api/event: ${res.status}`);
     onOpen();
     const decoder = new TextDecoder();
