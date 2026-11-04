@@ -2,8 +2,8 @@
 id: T-1608
 kind: task
 title: The slim Linux spoke
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1374
 branch: t/T-1608-the-slim-linux-spoke
 created: 2026-11-02T03:33:57.391Z
-updated: 2026-11-03T23:04:45.283Z
+updated: 2026-11-04T00:20:21.034Z
+closed: 2026-11-04T00:20:21.034Z
 ---
 
 ## Summary
@@ -132,3 +133,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, C1–C4 verified; no findings. A-16397 independently streams A-16370 baseline RSS130699264bytes and A-16391 after RSS115593216bytes, both actual diagnostics/native case+cleanup file passes; reduction15106048bytes/14.40625MiB/11.5579%, one sample per head. Baseline is approved dev-equivalent test-only31532c77 (production identity independently checked), after exacta9413e5b. Both c-8 Linuxx64 Node24.21; baseline sfo2, after region not recorded(T-1667), retained per Coordinatorb193d322—not inferred. Named C1+positive control2, all44-tool census1, measurement1 and seven unchanged preservation files31 pass remotely; corrected A-16396 supplies exact-head local Darwinarm64 native lifecycle6/6 exit0. After run c36a52a4 exit0/4927pass; T0/allT1/fallbackallT2/changedT4once/Web complete, fullT3 deferred/T4 repetitions skipped/after-stage QA separate. Cache null, isolated HeadlessShell1248 ChromeForTesting156.0.8078.4, budgets/lint/ratchet/skip checks report-only missing0. No Reviewer runtime checks/probes/browser/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1608 · 2026-11-03T23:44:06.589Z
+
+Batch175760df/run9d28e6dc atb2a26b3 (combinedT1604/T1608) failedT3; rawA16410/A16408. Reported shared-defect candidate to leadT1608 and holding diagnosis/edits per role. Exacterrors: host-git-daemon8admittedcase 'Git daemon termination incomplete';host-ssh-contractC3 'registry tunnel up: not within10000ms';remote-discovery-hostC2/C4/C5 'published discovery and carrier ready: not within3000ms'. T0/T1pass,partialT3failed/notfullpass;not classified as caused byT1608. AwaitingCoordinator sharedfix/ownership. No new head/test/suite/merge.
+
+### coord · 2026-11-04T00:20:21.034Z
+
+Merged f2c0d9c0eb7f88751932a6e784309536beab9163 onto dev.

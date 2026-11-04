@@ -3,7 +3,7 @@ id: T-1606
 kind: task
 title: Codex sessions on a host
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1373
 branch: t/T-1606-codex-sessions-on-a-host
 created: 2026-11-02T03:33:56.906Z
-updated: 2026-11-03T23:02:21.638Z
+updated: 2026-11-03T23:57:57.141Z
 ---
 
 ## Summary
@@ -29,12 +29,16 @@ Hot files: `hub/src/adapters/codex.ts`, `hub/test/codex-remote.test.ts` (new)
 
 - [x] C1. Through the frame protocol a Codex session launched on a fake host with the scripted Codex fake receives a delivery and reports its state (test).
   - done: impl-1606 · 2026-11-03T22:35:16.331Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
 - [x] C2. The app-server socket is in the host's run directory and the hub's JSON-RPC client reaches it only through the per-session forward (test).
   - done: impl-1606 · 2026-11-03T22:43:12.474Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
 - [x] C3. The thread policy's writable roots, `.git` directories and network allow-list socket directories come from the host's layout and realpath, with no hub-machine path, and no `danger-full-access` profile is used (test).
-  - done: impl-1606 · 2026-11-03T22:58:42.340Z
+  - done: impl-1606 · 2026-11-03T23:29:22.846Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
 - [x] C4. The `--version` check and the stop go through the host's agent, and the codex-adapter, codex-native and codex-workspace-git test files pass with no test edited.
   - done: impl-1606 · 2026-11-03T22:13:25.305Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
 
 ## Notes
 
@@ -153,3 +157,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, no findings. Complete delta from source-clear db4ec9425 is one guide word, 'local', resolving the last low compatibility ambiguity. Read-only Git comparison confirms hub/src+hub/test identical to that reviewed parent; no dev merge. Previous full implementation review and qualified runtime evidence limits carry forward (A-16392). No criterion verified by prose/source pass; C1–C4 require named same-head runtime/native evidence. A-16385 remains failed historical evidence. Detail A-16394 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16394-t-1606-final-source-pin-local-legacy-guide-clarification.md. Configured verification may proceed at this exact head; affected after-stage QA separate. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
+
+### rev-35 · 2026-11-03T23:21:10.294Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1606-evidence-2
+commit: 6bfcb711cab21d27ddd28b53f8b916196f54ecad
+scope: evidence
+findings: [{"severity":"medium","text":"Four Host placement controls receive 'cannot resolve launch policy on host t1: test host t1 refuses realpath'; three held-spawn host-secret-admission variants also end before their receipt. These shared-policy consumers still use refusing realpath doubles after supplying only statDirectory. Reconcile source prerequisites/explicit fixture paths while preserving admission/spawn/no-local-fallback assertions and production testHost refusals; audit all shared policy consumers.","file":"hub/test/session-host-placement.test.ts","line":90},{"severity":"medium","text":"New host-labelled cleanup-incomplete wrapper changes the local failed-launch error contract; name-reservation.test.ts:205 expects the previous contiguous 'spawned process cleanup failed: process identity cannot be verified' prefix. Preserve compatibility or explicitly migrate the diagnostic consumer without weakening refusal/row/pending cleanup assertions.","file":"hub/src/adapters/sessions.ts","line":1028}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear. A-16402:23589–23704 actual errors: three held-spawn variants 'launch ended before the held spawn receipt'; four placement controls 'cannot resolve launch policy on host t1: test host t1 refuses realpath'; local name-reservation expects old cleanup prefix but receives 'spawned process cleanup failed: cleanup-incomplete on host local: Error: process identity cannot be verified'. These are source/consumer integration gaps, not timing classification. Run43345e45 T0/T1exit0,T2/overallexit1; completed-before-interruption4330/4322pass/8fail, separate delivered tier summary4245/4237pass/8fail retained as distinct aggregates, no inferred reconciliation. T3/T4/Web unexecuted,browsernull; C3 failed,C1/C2/C4 unverified. T1 state inventory now passes; A-16385 remains failed history. Uncached Linuxx64 c-8sfo2 Node24.21/Nvim0.12.5 tree78ca8b937a10e07d81062488f0170eaa441cdefe; report-only budgets/lint/ratchet/skip diagnostics,skips[]/missing0. Billing931s/$0.0647 not wall time. Detail A-16403 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16403-t-1606-failed-evidence-host-policy-and-cleanup-diagnostic-consumers.md. Corrected head needs fresh source review before verify. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C3 failed (New Host-policy prerequisites leave seven existing admission/placement consumers failing before their intended boundary; configured remote policy verification is not clear.).
+
+### impl-1606 · 2026-11-03T23:25:11.669Z
+
+43345e45 consumer correction: no-sandbox policy performs no Host.realpath, preserving the unedited OpenCode preparation boundary. Unedited placement file first improved 7/11→8/11; remaining three Codex/Implementer cases carry actual sandbox policy. Forced metadata-only opt-ins: their three Host doubles in session-host-placement and the Claude/Implementer held-spawn double in host-secret-admission delegate realpath to sealed scratch localHost; default test-host.ts and all behavioral assertions unchanged. Local thrown cleanup error is original byte-for-byte (name-reservation75pass unedited); host-named prefix remains nonlocal only. Remote frame adds a named realpath rejection/no-spawn control so skipping lookup cannot bypass actual sandbox policy. Targeted placement11/admission16 pass.
+
+### rev-35 · 2026-11-03T23:30:21.555Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1606-source-6
+commit: 3cf157f75aefcc55a2b490e2b9816f4726680864
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, no findings. Coordinator1e60e84b correction checked: no sandbox means no policy Host path lookup; actual remote sandbox still resolves through Host and refuses by named cause, with injected realpath/no-spawn frame assertion. Local cleanup rethrows original error/text; nonlocal keeps host-named incomplete diagnostics. Three placement Host doubles and one held-spawn admission double explicitly delegate only scratch sealed realpath; default testHost unchanged, every original assertion retained. OpenCode no-sandbox boundary and name-reservation unchanged. Independent diff confirms Codex module and C4 preservation files unchanged; prior source reviews carry forward. A-16404 source-linked candidate macOS arm64 Node24.21 placement11/admission16/name75/frame1/sandbox5/cleanup10 passes are supplemental, not current-head Linux verification. A-16402 remains failed partial, T3/T4/Web unexecuted. C1–C4 unverified pending named same-head runtime/native evidence. Detail A-16405 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16405-t-1606-source-clear-policy-free-lookup-and-local-error-compatibility.md. No dev merge; exact-head configured verify may proceed, changed head needs fresh source review. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
+
+### rev-35 · 2026-11-03T23:57:56.934Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1606-final-1
+commit: 3cf157f75aefcc55a2b490e2b9816f4726680864
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, findings []. Same-head 4c0c3399/A-16414 exit0/4942 pass/zero fail,cancel,skip,todo; named frame1/agent1/cleanup10/sandbox5/settlement4/native35 and corrected placement11/admission16/name-reservation75 outcomes independently streamed. Cleanup10/frame1/settlement4 and missing-layout identity each have five passing load repetitions. Exact-head native C4 A-16420 adapter13 and A-16421 workspace1 named passes/native exit0/no signal on macOS arm64 Node24.21; raw before/after HEAD and all seven production/test blobs independently match reviewed head. All three C4 test files unchanged against task base. Synthetic Seatbelt/Git is not real Codex enforcement or Linux parity. Linux queued provenance tree16d2f9aa768efebd1c59b33a10931dc32673cd4d, uncached c-8sfo2/Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, isolated Headless Shell1248/ChromeForTesting156.0.8078.4. T0/allT1/fallbackallT2/changedT3agent once/mappedT4guard once/Web complete; remaining T3 deferred to merge batch, T4 repetitions skipped. Budget/lint/ratchet/skip diagnostics report-only; missing baselines/incomplete projections not counted as passes. Billing1028s/$0.0714 not wall time. Prior failed A-16385/A-16402 retained. C1–C4 verified; affected after-stage QA separate. Detail A-16425 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16425-t-1606-final-evidence-queued-integration-and-exact-head-c4-preservation.md. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

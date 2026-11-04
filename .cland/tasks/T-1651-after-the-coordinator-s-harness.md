@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T02:50:04.977Z
-updated: 2026-11-03T02:50:04.977Z
+updated: 2026-11-04T00:06:59.797Z
 ---
 
 ## Summary
@@ -35,3 +35,19 @@ Find why the reconnect injected already-delivered messages. Candidates: a delive
 - [ ] C1. A Claude Code session that receives and acknowledges deliveries, then reconnects (harness re-exec and bridge reconnect), receives none of them again; only messages queued while it was away arrive (test).
 - [ ] C2. A delivery that was queued but never acknowledged before the reconnect arrives exactly once after it (test).
 - [ ] C3. The cause is named in the item with the code path, and the replayed backlog in the 2026-11-03 02:48Z incident is explained by it.
+
+## Comments
+
+### coord · 2026-11-04T00:06:45.496Z
+
+Another occurrence: at about 2026-11-04 00:03Z, coord received impl-1621's report bcc3c494 (topic-1332, ts 2026-11-02T06:15:29Z, reply_to 8c9523a9) as a fresh delivery, about 42 hours after it was sent. T-1621 is closed. The report concerned admission of run 03192ac6. Nobody acted on the replay.
+
+### coord · 2026-11-04T00:06:59.797Z
+
+Burst at 2026-11-04 about 00:06Z. With the hub not restarted (pid 3297, uptime 1d 13h) and the role clause re-delivered to coord (msg 7a685dec, so a spoke reconnect), coord received six deliveries from 2026-11-02 06:15–07:19Z as fresh:
+- impl-1621 bcc3c494;
+- the hub's merge-batch 6874db04 reports for T-1621 and T-1587;
+- impl-1589 04e54417 and 4010e887;
+- impl-1587 980702df.
+
+All the items involved are closed. The replay looks tied to the spoke reconnect, not to a hub restart. Nobody acted on it.
