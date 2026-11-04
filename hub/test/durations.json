@@ -102,9 +102,10 @@
       "A-16314",
       "A-16427",
       "A-16430",
-      "A-16488"
+      "A-16488",
+      "A-16508"
     ],
-    "commit": "eb1c0e7528e395f25750a3c61ed573f9c2294b59"
+    "commit": "c5d9fcb5dd1f2778059e80cf0933b3d1a6802a81"
   },
   "budget": {
     "testSeconds": 5,
@@ -3428,6 +3429,10 @@
     },
     "hub/test/host-clone.test.ts": {
       "seconds": 0.002893,
+      "tests": 2
+    },
+    "hub/test/opencode-remote.test.ts": {
+      "seconds": 5.525748,
       "tests": 2
     }
   },
@@ -10024,7 +10029,9 @@
     "hub/test/host-ssh-contract.test.ts::SSH LaunchFiles refuses an older agent without stat before any file mutation": 0.665426,
     "hub/test/remote-discovery-host.test.ts::changed host secret atomically replaces prior discovery and reaches up": 1.341656,
     "hub/test/remote-discovery.test.ts::different discovery attempts atomic replacement; identical bytes skip the writer": 0.000924,
-    "hub/test/state-paths-lint.test.ts::Codex temp-root registration accepts only the local versus host expression": 0.001032
+    "hub/test/state-paths-lint.test.ts::Codex temp-root registration accepts only the local versus host expression": 0.001032,
+    "hub/test/opencode-remote.test.ts::fake Host concurrent port allocations preserve all routes before session forwards": 1.418434,
+    "hub/test/opencode-remote.test.ts::remote OpenCode frame delivery uses Unix forward and host-secret spoke; identity stop cancels it": 4.107314
   },
   "allow": {
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
