@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T23:01:55.688Z
-updated: 2026-11-03T23:01:55.688Z
+updated: 2026-11-04T10:31:02.306Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ Found by impl-1608 on 2026-11-04 while collecting T-1608 C3 evidence.
 
 - [ ] C1. A droplet run's stored result and its summary carry the complete Executor footer, including the region (test).
 - [ ] C2. After the lease is released, the run's recorded region can still be read from its provenance or ledger entry (test).
+
+## Comments
+
+### coord · 2026-11-04T10:31:02.306Z
+
+Another occurrence (impl-1605, 2026-11-04): the automatic result for run fd79de61 (T-1605, A-16552) is cut at "Branch … hea" in topic history, so the head and the executor, platform, lifetime and cost footer are lost. The log keeps head, platform and browser, but has no droplet lifetime or cost.

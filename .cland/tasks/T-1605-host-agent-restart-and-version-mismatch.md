@@ -2,8 +2,8 @@
 id: T-1605
 kind: task
 title: Host agent restart and version mismatch
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1376
 branch: t/T-1605-host-agent-restart-and-version-mismatch
 created: 2026-11-02T03:33:56.605Z
-updated: 2026-11-04T10:02:46.767Z
+updated: 2026-11-04T11:07:23.675Z
+closed: 2026-11-04T11:07:23.675Z
 ---
 
 ## Summary
@@ -29,12 +30,16 @@ Hot files: `hub/src/host/agent-client.ts`, `hub/src/host/ssh-host.ts`, `hub/src/
 
 - [x] C1. After `fake-host.ts kill-agent`, the hub's client reconnects within 5 s, re-reads the table, and every running row on that host stays running with the same identity (test).
   - done: impl-1605 · 2026-11-04T09:54:45.428Z
+  - verified: rev-35 [reviewer] · run rev-35-1605-final-1 · 2026-11-04T10:32:29.640Z · commit 27168d53a554937c6c6d117eec7624cff023815a
 - [x] C2. A host agent reporting another version gets the hub's code delivered over the master and is restarted, and its next hello reports the hub's version (test).
   - done: impl-1605 · 2026-11-04T03:32:20.749Z
+  - verified: rev-35 [reviewer] · run rev-35-1605-final-1 · 2026-11-04T10:32:29.640Z · commit 27168d53a554937c6c6d117eec7624cff023815a
 - [x] C3. Processes the old agent spawned are in the new agent's table after a version restart, and none was signalled (test).
   - done: impl-1605 · 2026-11-04T09:07:19.573Z
+  - verified: rev-35 [reviewer] · run rev-35-1605-final-1 · 2026-11-04T10:32:29.640Z · commit 27168d53a554937c6c6d117eec7624cff023815a
 - [x] C4. Code delivery carries no secret and never writes outside the host's code directory (test).
   - done: impl-1605 · 2026-11-04T03:12:35.401Z
+  - verified: rev-35 [reviewer] · run rev-35-1605-final-1 · 2026-11-04T10:32:29.640Z · commit 27168d53a554937c6c6d117eec7624cff023815a
 
 ## Notes
 
@@ -201,3 +206,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; A-16546 low resolved. Test/guide-only delta bounds promise-only hold setup/close/operation receipts by100 microtasks, registers release+Host.close+operation cleanup before trigger and preserves final assertions. Registry control asserts explicit agentNode==layout.node==agentCommand[0] for default node and custom absolute runtime with spaces, using real scratch records/registry and inert sealed owners; no layout/admission change. No production/closure/durations/dev-merge delta. Prior integrated production source conclusions carry forward. Detail A-16548 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16548-t-1605-source-clear-bounded-holds-and-registry-runtime-guard.md. A-16547 local Darwinarm64 Node24.21 focused18/18/native exit0/static0 are supplements; A-16544 prior-head310/310 remains prior-head. C1–C4 unverified; exact-head mode-free verify may proceed. Linux allowance reconciliation/durations-only review required before enqueue, after-stage QA separate. No Reviewer execution/edits/Git mutations.
+
+### rev-35 · 2026-11-04T10:32:29.640Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1605-final-1
+commit: 27168d53a554937c6c6d117eec7624cff023815a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, C1–C4 verified via explicit Coordinator506d8348/9cf96817 durations-only carry-over. CURRENT HEAD NOT RERUN, NOT CACHE HIT. Only five allow reasons/four seconds change from green/source-clearbdabe9bb4; independently checked all19 generated identities/outcome pass/sample values in A-16553 against A-16552. Budgets7/24/12/7/7 follow Linux samples4.130290939/15.641018137/7.878188536/4.181457698/4.164787825, C-216/Nov11expiry unchanged; no code/tests/assertions/waits/cleanup/default/dev merge change. Runfd79de61/A-16552 atbdabe9bb47cdd698450fbf8f758c49ac6afd71ab/treebd40db38a586da287ea9b166f91762b228a0ce7d exit0,5183pass/zero fail,cancel,skip,todo. T0/allT1/fallback allT2/eight selected T3 files156 identities once/Web complete, remainingT3 batch deferred/T4 unexecuted. Independently checked restart10/closure4/originalhello1/heldclose7/registry11/nativeboundary69/remotediscovery7 named passes; newT1/T2 load receipts distinct from T3 base-only. Uncached droplet Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5/two workers, isolated HeadlessShell1248 ChromeForTesting156.0.8078.4; cache/occasionnull/skips[]/skip-reason report missing0. Lifetime/cost not recorded(T-1667). Report-only duration/lint/ratchet notices/projections not enforce passes/execution. Old failed runs remain failed; prior localA-16544 preservation remains qualified. Detail A-16554 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16554-t-1605-final-clear-linux-evidence-and-durations-only-carry-over.md. After-stage QA/remaining batch coverage separate. No Reviewer runtime checks/edits/Git mutations.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-04T10:32:39.205Z
+
+Coord merge note (2026-11-04 10:33Z, rule 7 exception stated explicitly): enqueued at 27168d53. The verify evidence is A-16552 (fd79de61) at bdabe9bb: 5183/5183 on Linux x64. The only change since is `hub/test/durations.json`, in which five per-test allowances (C-216, expiring 2026-11-11) were raised to 1.5 times their Linux samples; the delta review is clear. The merge batch's T1+T3 on the integrated tree exercises them. Lifetime and cost of fd79de61 were not recorded (T-1667).
+
+### coord · 2026-11-04T11:07:23.675Z
+
+Merged 80f5f5fb85c65ba27a0131689d77ea132d971cbc onto dev.
