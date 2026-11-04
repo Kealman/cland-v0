@@ -3,7 +3,7 @@ id: T-1678
 kind: task
 title: Stopping a remote Claude session right after a turn still refuses with 'process identity cannot be verified'
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1674
 topic: topic-1383
 branch: t/T-1678-stopping-a-remote-claude-session-right
 created: 2026-11-04T15:25:21.631Z
-updated: 2026-11-04T18:14:34.652Z
+updated: 2026-11-04T19:08:34.956Z
 ---
 
 ## Summary
@@ -34,10 +34,13 @@ Capture the actual process records (PID, birth, parent, command) at both capture
 
 - [x] C1. The failing captures are recorded and the extra process classified (evidence).
   - done: impl-1678 · 2026-11-04T15:41:18.831Z
-- [ ] C2. An explicit stop issued immediately after a completed remote Claude turn, and one issued mid-turn while the root spawns hooks, both complete without a manual re-stop, 20/20 under load in an isolated Linux container (evidence).
-  - failed: rev-35 [reviewer] · 2026-11-04T17:57:11.492Z · note Current20/20 mid-turn campaign proves fresh-busy-followed-by-stop, without a deterministic active-turn/hook boundary.
-- [ ] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, and (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan; each is listed in the review request (coord decisions c5caf575, e756201c and this one) (test).
-  - failed: rev-35 [reviewer] · 2026-11-04T18:14:34.652Z · note Retained pinned-hook retry still fails for a positively replaced root in the owner/reconciliation path; helper-only unit omits that replacement row.
+  - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
+- [x] C2. An explicit stop issued immediately after a completed remote Claude turn, and one issued mid-turn while the root spawns hooks, both complete without a manual re-stop, 20/20 under load in an isolated Linux container (evidence).
+  - done: impl-1678 · 2026-11-04T18:39:10.404Z
+  - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
+- [x] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, and (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan; each is listed in the review request (coord decisions c5caf575, e756201c and this one) (test).
+  - done: impl-1678 · 2026-11-04T18:24:54.672Z
+  - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
 
 ## Comments
 
@@ -102,3 +105,50 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Full repair source not clear:one medium, confirmed7d4924ef. A-16656 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16656-t-1678-repair-not-clear-root-replacement-still-blocks-retained-hook-owner.md records real-owner/reconciliation/helper refusal trace. A-16654 unknown absence closure removed under Coordinator2e340de1; detached-escape/independent-cleanup rows remain held with named cause. Ordinary root-exit retained-hook retry and deterministic live turn/producer/new-child gate now covered in source; root-replacement owner path incomplete. Docs/guides/skill and all27 closure hashes checked. C3 failed,C1/C2unverified; C2 correctly pending new gated20/20. A-16655 macOSNode24.21 selected68/five exits0/static supplements, no fresh Linux/configured/fullsuite/Web/QA claim; old A-16653 campaign remains qualified busy-followed-by-stop. Fresh source review after correction before20/20/verify. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
 
 Criteria: C3 failed (Retained pinned-hook retry still fails for a positively replaced root in the owner/reconciliation path; helper-only unit omits that replacement row.).
+
+### rev-35 · 2026-11-04T18:24:13.510Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1678-source-3
+commit: 4ed533dc1df710bd590d0b17f9a76890051fd1dd
+scope: full
+findings: [{"severity":"medium","text":"Regenerate the index for the new claude-stop-owner-component guide: no row exists for that new document, but test-docs.test.ts requires every guide indexed, so required T1 will fail. Keep the full membership assertion.","file":"docs/agents/tests/index.md","line":41}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source not clear:one medium generated-index omission; no further runtime findings. A-16656 replacement-owner gap resolved by shared positive-root-replacement predicate plus adopted pinned-target settlement; new real-owner scripted-OS test retains live replacement and signals only child101, unowned/unknown controls refuse. Helper snapshot includes replacement. A-16660 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16660-t-1678-source-pass-3-replacement-fixed-missing-owner-guide-index-row.md records proof/limits. A-16654 unknown holding, root-exit retry and deterministic native mid-turn gate retained. All27 closure/21 evidence-source hashes match. A-16659 selected macOSNode24.21 72 outcomes/six native exits0 supplement only; fresh gated Linux20/20/configured/Web/fullsuite pending. C3 failed,C1/C2unverified. One index fix then fresh source review before campaigns/verify; no Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C3 failed (New owner regression's guide is missing from generated index, making required T1 documentation validation fail.).
+
+### rev-35 · 2026-11-04T18:25:35.227Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-source-4
+commit: ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, no findings. Complete sole delta from4ed533dc1 is one correct generated owner-component guide row; A-16660 resolved, runtime/test bytes unchanged. A-16662 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16662-t-1678-source-clear-root-first-convergence-and-complete-guide-index.md records carry/limits. Prior ownership findings resolved: unknown absence never settles, held detached-orphan controls; positive root exit/replacement retires old birth through reconciliation/owner/helper; live replacement component signals only pinned child, other unowned/unknown refuse. Deterministic native held-turn/new-writer gate covers actual root-signal admission. Approved C3 migrations/real-Claude unverified assumption retained. Parent27closure/21evidence hashes match; only index differs here. Reported test-docs4/4 supplemental; A-16659 selected macOS72 predecessor runtime-equivalent, no new native rerun claim. C1–C3unverified; C2 intentionally incomplete until corrected gated Linux20/20each, then configured mode-free verify at unchanged head per Coordinator order. Old A-16653 mid-turn campaign remains qualified busy-followed-by-stop. No Reviewer tests/probes/browser/edits/Git mutation/delegation.
+
+### impl-1678 · 2026-11-04T19:07:40.141Z
+
+Campaign evidence correction: clean declared-only A-16671 supersedes A-16665, whose reused export directory included stale files from an earlier head. New empty directory contains exactly README/current22-hash manifest/current Linux log/40 current gate receipts, all scanned; unchanged ecccc6cd3 C2 proof20/20 each, no rerun. Configured verify f095b0bc/A-16670 is exit0 with5054 passes; allT1, fallbackallT2, changedT3 duration phase andWeb complete on dropletLinuxx64 Node24.21/ChromeHeadlessShell156.0.8078.4, remainingT3 deferred/T4unexecuted, report-only duration diagnostics. Awaiting Coordinator's authorized post-T1609 dev merge; no source edits. New native retry worst6.714s implies C216cap>=10.071s on that next head.
+
+### rev-35 · 2026-11-04T19:08:34.772Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-final-1
+commit: ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear,no findings; C1–C3verified at unchanged source-clear ecccc6cd3. A-16672 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16672-t-1678-final-clear-classified-failure-deterministic-linux-load-and-safety-contro.md independently records C1 process-capture classification A-16603/A-16630, clean A-16671 current22hash/43file export,40 matched native load start/finish passes=20/20each,all timestamps inside4peerphase intervals,4clean rounds/49native closes0/signalnull/container0. Old A-16665 stale extras superseded,old A-16653busy-only campaign notC2. Configured f095b0bc/A-16670 exit0/5054pass/zero fail,cancel,skip,todo; actual helper24/concurrency4/remote26/ownerparent+3modes/closure4/docs4 pass. Native heldturn/completed/orphanheld/detachedescape/retainedhook safety names checked; approvedC3exceptions explicit. T0/allT1/fallbackallT2/changedT3twofiles30base/Web complete,remainingT3batch,T4unexecuted. UncachedLinuxx64 Node24.21/Nvim0.12.5 isolatedHeadlessShell1248 Chrome156.0.8078.4 runner tree37f640978af7df4443ddb6f020c8d986b493b336 distinct from reviewed/campaigna77770de47b854126ba9cd164b1ea509df5c536c; headagrees. Local campaignLinuxarm64/no browser distinct. Budgets/ratchet/skip diagnostics report-only; billingunknown notzero. Real-Claude gracefulTERM assumption unverified/accountQA follow-up remains; no peritemQA. No Reviewer execution/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.

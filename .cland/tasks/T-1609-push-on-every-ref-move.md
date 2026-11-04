@@ -2,8 +2,8 @@
 id: T-1609
 kind: task
 title: Push on every ref move
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1380
 branch: t/T-1609-push-on-every-ref-move
 created: 2026-11-02T03:33:57.560Z
-updated: 2026-11-04T17:05:09.938Z
+updated: 2026-11-04T19:44:23.519Z
+closed: 2026-11-04T19:44:23.519Z
 ---
 
 ## Summary
@@ -28,17 +29,21 @@ Hot files: `hub/src/host/agent/watch.ts` (new), `hub/src/host/agent/server.ts` (
 ## Acceptance criteria
 
 - [x] C1. A commit in a fake host's task worktree reaches the territory's branch within 5 s, with no push by the session (test).
-  - done: impl-1609 · 2026-11-04T16:04:05.902Z
   - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
+  - done: impl-1609 · 2026-11-04T18:33:40.928Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-merged-final-1 · 2026-11-04T19:02:55.908Z · commit 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe
 - [x] C2. An amend, a reset and a rebase in the worktree each reach the territory, and no `post-commit` hook is installed (test).
-  - done: impl-1609 · 2026-11-04T15:03:35.930Z
   - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
+  - done: impl-1609 · 2026-11-04T18:33:41.144Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-merged-final-1 · 2026-11-04T19:02:55.908Z · commit 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe
 - [x] C3. A push the allow list refuses is reported in `ref-moved` with the refusal, retried at the next move, and never loops (test).
-  - done: impl-1609 · 2026-11-04T15:31:37.812Z
   - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
+  - done: impl-1609 · 2026-11-04T18:33:41.548Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-merged-final-1 · 2026-11-04T19:02:55.908Z · commit 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe
 - [x] C4. Watches survive an agent restart, and a commit made while the agent was down is pushed after it is back (test).
-  - done: impl-1609 · 2026-11-04T16:30:36.168Z
   - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
+  - done: impl-1609 · 2026-11-04T18:33:41.770Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-merged-final-1 · 2026-11-04T19:02:55.908Z · commit 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe
 
 ## Notes
 
@@ -166,3 +171,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, no findings; C1–C4 verified at unchanged source-clear head. A-16640 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16640-t-1609-final-clear-exact-head-native-recovery-and-qualified-preservation-evidenc.md independently records A-16631 runfe6d10eb exit0/5033pass/zero fail,cancel,skip,todo. Actual native4 pass (9.766/5.057/1.532/5.249s), recovery13/compat3 each base+5load passes, status1/frozen usage1/help7; prior failure A-16623 stays failed. Linux layout18/Codex cleanup10/redactor4/closure4/stateguards8 pass. T0/allT1/fallbackallT2/changedT3once/Web completed; remainingT3 batch,T4 unexecuted. Uncached Linuxx64 Node24.21/Nvim0.12.5 HeadlessShell1248 ChromeForTesting156.0.8078.4 treed08ffc981c1a8a0a10b0faa94378b194d2acbb58;1297s/$0.0900 billing. Reports/projections not passes. A-16637 corrects A-16635 extraction: actual stop-on-failure15file loop/nativeexit0 retained at predecessor8dd, reported mandatory195+proxy14+native4=213; first stdout fragment truncated, source anchor contemporaneous not in-loop hash, no reconstructed output/current-head195 claim. All14 preservation/proxy test files unchanged; status production changed afterward, limits explicit. QA none. No Reviewer tests/probes/browser/edits/Git mutations/delegation.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1609 · 2026-11-04T18:33:08.729Z
+
+Coordinator-authorized merge done once: 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe, parents fdd40ef64 +31d63c46. Resolved union of registry watchStatus/onTable/terminalAttachCommand, callback readiness after publication, docs/inventory and all duration entries (389 dev +3 task). Full typecheck/static/focused18 pass. No manual symbol renames; searched hub/test+nvim/test for attach/watch/onReady/onTable plus resumeHost/resumeAll/hostReady consumers, including recording Host contracts and startup recovery fixtures. Exclusive merged-head19-file run completed224/224 with every per-file native exit0, captured complete redacted stdout/source linkage. Delta review then exact-head configured verification pending; no old green run reused as current proof.
+
+### rev-35 · 2026-11-04T18:36:10.300Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1609-delta-source-1
+commit: 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head delta source clear,no findings. Coordinator9368596e authorized exact one merge: parents fdd40ef64+dev31d63c46 confirmed. Registry/SSH Host retain watch status, onTable/onReady and guarded terminal printer; ready callback follows restored receipts/version-ready/client publication, preserving reentrant Sessions recovery. Incoming attach/survival lifecycle retained. Agent runtime unchanged from prior reviewed fdd,all32closure hashes match. Parsed durations keep all389dev entries unchanged+3task allowances; frozen HUB watch help and upstream SESSION attach block retained; docs/inventory combined/log-tail wording corrected. A-16664 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16664-t-1609-delta-source-clear-merged-attach-readiness-and-ref-watch-ownership.md records details. A-16663 exact merged-head complete macOSarm64Node24.21 native19files224passes/19exits0 plus reported typecheck/static/focused18 supplemental,no browser/configured/fulltier claim. C1–C4unverified at changed head; exact-head mode-free verify after T1678 quiet slot release. Prior fe6d10eb is historical not cache/current proof. No Reviewer tests/probes/browser/edits/Git mutations/delegation.
+
+### rev-35 · 2026-11-04T19:02:55.908Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1609-merged-final-1
+commit: 332bdf7d12e066532bfb9b4c24d8ed0d61329dfe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear,no findings; C1–C4verified at unchanged source-cleared332bdf7d1. A-16669 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16669-t-1609-merged-head-final-clear-push-attach-survival-and-preservation.md independently records A-16668 run0f05d4a0 exit0/5050pass/zero fail,cancel,skip,todo. Nativepush4/recovery13/compat3/status1/frozen1/help7 all pass; recovery/compat16identities each5load/80pass. Mergedattach5/routing3/survival2+native1 and landed controls pass. T0/allT1/fallbackallT2/selectedT3fourfiles14baseidentities/Web complete; remainingT3batch,T4unexecuted,no native repetition claim. UncachedLinuxx64 Node24.21/Nvim0.12.5 isolatedHeadlessShell1248 Chrome156.0.8078.4 tree1336464d9fc58301c4326af31e85729a2193751b,skips[]/report missing0. Budgets/ratchet/missing-owner reports not gates. A-16663 exact-current-head complete macOS224/19file exits0 supplies full required195preservation/proxy/attach/survival separately; not current Linux195. Old A-16623 failed/fe6d10ebpredecessor history retained,notcache. QAnone. No Reviewer tests/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-04T19:44:23.519Z
+
+Merged c98b7d45719f9ef9bf76c192f8b6f6febf9868f5 onto dev.
