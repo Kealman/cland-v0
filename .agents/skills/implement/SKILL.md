@@ -131,6 +131,12 @@ Empty/missing speech commands keep audio and name command setup.
 
 ## Host admission
 
+SSH item worktrees come from the host clone's socket origin; the hub grants the
+branch lease and stores the owning host/root/path in hub.db. List and prune use
+that owner after restart. Preserve the executable proxy wrapper: Git does not
+interpret `core.gitProxy` as shell source. See
+[host clone and worktrees](../../../docs/hub/ssh-host.md#territory-clone-and-task-worktrees).
+
 When changing forwarded host clients, preserve their session credentials on CLI,
 hook and mod-bridge frames. A host secret never grants human authority. Consult
 [host admission](../../../docs/hub/adapters-and-sessions.md#host-secret-admission-and-revocation)

@@ -1,3 +1,6 @@
+import { addHostTaskWorktree, pruneHostTaskWorktree } from '../host/task-worktrees.ts';
+import { hostCloneRoot } from '../host/clone.ts';
+import type { Store } from './store.ts';
 import type { Host } from '../host/host.ts';
 import { localHost } from '../host/local.ts';
 import { legacyWorktreeGit } from '../host/legacy-worktree-git.ts';
@@ -15,7 +18,7 @@ import type { Claim } from '../tracker/index-db.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import type { LaunchRequest, Sessions } from '../adapters/sessions.ts';
-import { commitsAhead, ensureTaskWorktree, hasTerritory, listTaskWorktrees, removeTaskWorktree, taskBase, type TaskWorktree, type ExpectedBranch } from '../territory.ts';
+import { territoryPath, commitsAhead, ensureTaskWorktree, hasTerritory, listTaskWorktrees, removeTaskWorktree, taskBase, type TaskWorktree, type ExpectedBranch } from '../territory.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
 /** What a claim or a launch made of the item's worktree: the worktree, or why there is none. */
@@ -37,7 +40,7 @@ export type WorktreeEntry = {
 };
 
 /** A session somewhere on disk: a connected spoke's, or a launched harness's. */
-export type SessionCwd = { name: string; cwd: string };
+export type SessionCwd = { name: string; cwd: string; host?: string };
 
 /** The hub writes the branch into the item; the file shows no author for a link. */
 const HUB_ACTOR: Actor = { id: 'hub', name: 'hub', role: null };
@@ -59,6 +62,8 @@ const nativeGit: WorktreeGit = { ensureTaskWorktree, taskBase, listTaskWorktrees
 
 export class TaskWorktrees {
   readonly #git: WorktreeGit;
+  readonly #store: Store | undefined;
+  readonly #resolveHost: ((name:string)=>Host) | undefined;
   readonly #host: Host;
   readonly #env: NodeJS.ProcessEnv;
   readonly #hasTerritory: typeof hasTerritory;
@@ -71,7 +76,8 @@ export class TaskWorktrees {
    *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
   readonly #launching = new Map<string, symbol>();
 
-  constructor(options: { host?: Host; git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+  constructor(options: { store?: Store; resolveHost?: (name:string)=>Host; host?: Host; git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+    this.#store=options.store;this.#resolveHost=options.resolveHost;
     this.#env = options.env ?? process.env;
     this.#host = options.host ?? localHost(this.#env);
     this.#git = options.git ? legacyWorktreeGit(options.git, this.#host) : nativeGit;
@@ -102,7 +108,8 @@ export class TaskWorktrees {
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}, host: Host = this.#host): Promise<TaskWorktree> {
-    const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env, host);
+    const remote=this.#store?.hosts.get(host.name);
+    const worktree = remote ? await addHostTaskWorktree({project:this.root,root:hostCloneRoot(host.layout({discoveryFile:'',node:'',cli:'',spoke:''}).runDirectory,this.root),host,item:view.id,branch:view.branch ?? `t/${view.id}-${slugOf(view)}`,store:this.#store!,env:this.#env,authorize:()=>resumed(authorize)}) : await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env, host);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     resumed(authorize);
@@ -271,7 +278,7 @@ export class TaskWorktrees {
     for (;;) {
       const { sessions, indexed } = resumed(() => {
         const items = this.#tracker.list();
-        return { sessions: this.#sessions(), indexed: entries.map(entry => items.find(item => item.id === entry.item)) };
+        return { sessions: this.#sessions().filter(s=>(s.host ?? 'local')===this.#host.name), indexed: entries.map(entry => items.find(item => item.id === entry.item)) };
       });
       const views: Array<ItemView | null> = [];
       for (const entry of entries) {
@@ -289,7 +296,7 @@ export class TaskWorktrees {
       ]);
       const observed = resumed(() => {
         // Sessions may enter/leave while paths or item files are read. Only use a still-current snapshot.
-        const now = this.#sessions();
+        const now = this.#sessions().filter(s=>(s.host ?? 'local')===this.#host.name);
         if (now.length !== sessions.length || now.some((s, i) => s.name !== sessions[i]!.name || s.cwd !== sessions[i]!.cwd)) return null;
         const current = this.#tracker.list();
         if (entries.some((entry, i) => {
@@ -314,7 +321,7 @@ export class TaskWorktrees {
             resumed(() => {
               const latest = this.#tracker.list().find(item => item.id === entry.item);
               if (latest?.updated !== indexed[i]?.updated || latest?.state !== indexed[i]?.state || latest?.file !== indexed[i]?.file) throw new Error(`${entry.item} changed during prune: keeps its worktree and branch; try again`);
-              const now = this.#sessions();
+              const now = this.#sessions().filter(s=>(s.host ?? 'local')===this.#host.name);
               if (now.length !== sessions.length || now.some((s, i) => s.name !== sessions[i]!.name || s.cwd !== sessions[i]!.cwd)) throw new Error(`${entry.item}: session locations changed during prune; recheck who stands inside its worktree`);
               if (currentDir !== dirs[i] || !sameIdentity(currentDirIdentity, dirIdentities[i]!)) throw new Error(`${entry.item}: worktree identity or containment changed during prune; kept`);
               // Check session identity before refusing occupancy; report both facts when they coincide.
@@ -336,8 +343,18 @@ export class TaskWorktrees {
     const found: Array<Awaited<ReturnType<typeof listTaskWorktrees>>[number] & { ahead: string[] }> = [];
     for (const w of await this.#git.listTaskWorktrees(root, this.#env)) found.push({ ...w, ahead: w.branch ? await this.#git.commitsAhead(root, w.branch, base, this.#env) : [] });
     const observed = await this.#observe(found, resumed);
+    const remote:WorktreeEntry[]=[];
+    for(const row of this.#store?.hostWorktrees() ?? []) {
+      const view=await this.#tracker.viewAsync(row.item,resumed).catch(()=>null);
+      const registered=this.#store?.hosts.get(row.host);
+      if(!registered||registered.state!=='registered')throw new Error(`host ${row.host} ${registered?.state ?? 'gone'}: retained worktree ${row.item} unavailable`);
+      const host=this.#resolveHost?.(row.host);if(!host)throw new Error(`host ${row.host} unavailable for worktree listing`);
+      const sessions=await host.occupants(row.path,this.#sessions().filter(s=>s.host===row.host));
+      remote.push({item:row.item,path:row.path,branch:row.branch,title:view?.title??null,kind:view?.kind??null,state:view?.state??null,sessions,base:null,ahead:await this.#git.commitsAhead(territoryPath(this.root),row.branch,base,this.#env)});
+    }
+
     return resumed(() => {
-      return found.map((w, i): WorktreeEntry => {
+      return [...remote,...found.map((w, i): WorktreeEntry => {
         const { view, sessions } = observed[i]!;
         return {
           item: w.item,
@@ -350,7 +367,7 @@ export class TaskWorktrees {
           base,
           ahead: w.ahead,
         };
-      });
+      })];
     });
   }
 
@@ -406,6 +423,17 @@ export class TaskWorktrees {
             if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
             return entry;
           });
+          const remote=this.#store?.hostWorktrees().find(row=>row.item===item);
+          if(remote) {
+            const host=this.#resolveHost?.(remote.host);if(!host)throw new Error(`host ${remote.host} unavailable for prune`);
+            const expected=expectedBranches.get(item);
+            await pruneHostTaskWorktree({project:this.root,row:remote,host,store:this.#store!,env:this.#env,...(expected?{expected}:{}),validate:async()=>{
+              const current=await this.#tracker.viewAsync(item,resumed);
+              if(current.state!=='closed'||this.#launching.has(item))throw new Error(`${item}: no longer prunable`);
+              if((await host.occupants(remote.path,this.#sessions().filter(s=>s.host===remote.host))).length)throw new Error(`${item}: occupied worktree`);
+            }});
+            removed.push({item,path:remote.path,branch:remote.branch});continue;
+          }
           const done = await this.#git.removeTaskWorktree(this.root, item, async () => {
             const observed = await this.#observe([entry], resumed);
             return resumed(() => {

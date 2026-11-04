@@ -1,3 +1,5 @@
+import { dirname } from 'node:path';
+import { mkdir } from 'node:fs/promises';
 import { run, nativeCommandFailure as failure } from './command.ts';
 import { worktreeInstall } from './worktree-install.ts';
 export type WorktreeAdd = { root: string; path: string; branch: string; territory?: { path: string; tip: string }; reuseOnly?: boolean; detached?: boolean; beforeInstall?: () => void | false | Promise<void | false> };
@@ -15,6 +17,7 @@ export function worktreeOperations(env: NodeJS.ProcessEnv) { return {
           const updated = await run('git', ['-c', 'gc.auto=0', 'update-ref', '--no-deref', `refs/heads/${branch}`, territory.tip, current.code === 0 ? current.stdout.trim() : '0'.repeat(40)], env, undefined, false, undefined, 'utf8', root);
           if (updated.error || updated.code !== 0) throw failure(updated, 'git task branch failed');
         }
+        await mkdir(dirname(path),{recursive:true});
         const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'add', ...(detached ? ['--detach'] : []), '--', path, branch], env, undefined, false, undefined, 'utf8', root);
         if (result.error || result.code !== 0) throw failure(result, 'git worktree add failed');
       }

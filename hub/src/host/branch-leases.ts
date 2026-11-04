@@ -37,10 +37,14 @@ function validate(host: string, branch: string): void {
 }
 export async function grantBranchLease(root: string, host: string, branch: string): Promise<void> {
   validate(host, branch);
-  await withTerritoryLockAsync(root, async () => {
-    const leases = await read(root);
-    if (!leases.some(row => row.host === host && row.branch === branch)) await write(root, [...leases, { host, branch }]);
-  });
+  await withTerritoryLockAsync(root, () => grantBranchLeaseLocked(root, host, branch));
+}
+/** Atomic launch already owns this matching-root lock; never acquire or wait here. */
+export async function grantBranchLeaseLocked(root: string, host: string, branch: string): Promise<void> {
+  if (!territoryLockHeld(root)) throw Object.assign(new Error('branch lease grant requires an active matching territory lock'), {name:'TerritoryLockRequired'});
+  validate(host, branch);
+  const leases = await read(root);
+  if (!leases.some(row => row.host === host && row.branch === branch)) await write(root, [...leases, {host, branch}]);
 }
 export const BRANCH_REVOKE_WAIT_MS = HOST_PUSH_TIMEOUT_MS + 2_000;
 export async function revokeBranchLease(root: string, host: string, branch: string, options: { waitMs?: number } = {}): Promise<void> {

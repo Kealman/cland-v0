@@ -1,3 +1,4 @@
+import type { HostWorktreeRecord } from '../host/task-worktrees.ts';
 import { HostRecords } from '../host/records.ts';
 import { Users } from './users.ts';
 import { COORDINATOR_RETIRED } from './retirement.ts';
@@ -30,6 +31,7 @@ export type ReleasedDigest = { trigger: string; session: string; notes: string[]
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+create table if not exists host_worktrees (item text primary key, value text not null);
 create table if not exists suite_job_summaries (key text primary key, value text not null);
 create table if not exists session_credentials (
   session_id text primary key, credential text not null
@@ -447,6 +449,9 @@ export class Store implements HygieneMemory {
   }
 
 
+  hostWorktrees(): HostWorktreeRecord[] { return (this.#db.prepare('select value from host_worktrees order by item').all() as {value:string}[]).map(row=>JSON.parse(row.value) as HostWorktreeRecord); }
+  saveHostWorktree(row:HostWorktreeRecord):void { this.#db.prepare('insert or replace into host_worktrees(item,value) values(?,?)').run(row.item,JSON.stringify(row)); }
+  deleteHostWorktree(item:string):void { this.#db.prepare('delete from host_worktrees where item=?').run(item); }
   constructor(path: string = ':memory:', open = (path: string) => new DatabaseSync(path)) {
     this.#db = openDatabase(path, open);
     this.#db.function('item_number', { deterministic: true }, raw => {

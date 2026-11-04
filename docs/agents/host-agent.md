@@ -58,3 +58,13 @@ Stop rechecks a ps member's native observation: a positive `ended:true` is close
 even when the PID was reaped between snapshots. An absent birth without positive
 end remains unresolved and grants no ownership. This applies equally to resumed
 native owners and newly captured trees; legacy timestamps grant no signals.
+
+## Host territory worktrees
+
+The SSH registry prepares a managed territory clone for task worktrees after
+carrier readiness; clone work never holds tunnel readiness. Projects without a
+territory attempt no clone. See
+[territory clone and task worktrees](../hub/ssh-host.md#territory-clone-and-task-worktrees)
+for the clone-local proxy, bundle fallback, immutable discovery copy and hub.db
+records used to list/prune after restart. The proxy wrapper contains paths only;
+per-host authentication remains on the forwarded sockets.

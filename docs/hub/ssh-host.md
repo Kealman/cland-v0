@@ -14,6 +14,40 @@ Idle account polling is disabled. A down or connecting tunnel refuses native
 operations with the host name and tunnel reason. There is no local fallback.
 The layout is a pure value so disconnected rows can still name their paths.
 
+## Territory clone and task worktrees
+
+After carrier readiness, the first task worktree prepares a shared clone at `~/.cland-host/work/<project-key>`
+(the first 12 SHA-256 hex digits of the hub project root). Git uses only
+`git://cland/territory.git` and the forwarded `git.sock`. `core.gitProxy` takes an
+executable filename rather than shell source: an atomically published 0700
+`run/git-proxy` wrapper invokes the installed `cland host git-proxy <socket>`.
+The setting is clone-local. If daemon cloning fails, a bundle including HEAD
+and branches travels over scp on the same pinned ControlMaster; origin returns
+to the socket URL. SCP disables independent-connection fallback with `ProxyCommand=false`, so loss
+of the admitted mux fails the copy. Copy refuses destinations outside host run/work directories,
+has a 10-second native deadline, and returns a path-free failure.
+The clone's `.cland/hub.json` has the canonical discovery bytes and mode 0600;
+unchanged bytes survive reconnect and restart, and walk-up discovery from a
+linked worktree needs no `CLAND_HUB_FILE`. No installer runs on this path. Projects without a managed territory attempt
+no clone. Clone work never holds carrier readiness: concurrent task adds share
+one preparation, while clone progress/failure is logged separately. A failed
+clone refuses the task add with its host name. Registry shutdown quiesces the Host, aborts and joins
+preparations before closing the Host, carrier or Git listener. A lost command outcome
+reports incomplete ownership and keeps its storage fenced.
+
+Item launch creates its branch from territory dev (main fallback), grants the
+host a lease under the same territory lock, then fetches and adds the worktree
+through the agent. A confirmed failure revokes the launch lease and deletes only
+a newly created territory ref at its captured tip; an unknown outcome stays
+fenced. A ready-checkpoint failure after an accepted checkout retains its adding
+record, lease and ref rather than rolling back the accepted effect. The root node_modules link uses the existing agent install step.
+`host_worktrees` in hub.db retains item, host, clone root, path, branch and tip.
+TaskWorktrees reads it for launch reuse, list and prune after restart. Prune
+checks the closed item and occupancy, refuses unpublished host work or a moved
+merge tip, removes through the owning agent, then revokes the lease. It deletes a territory branch only at its recorded
+launch base when this launch created it, or at the expected merged tip; existing
+or advanced branches remain. Existing local Git worktree discovery is unchanged.
+
 ## Layout and installation
 
 `remote-layout.ts` owns defaults: `~/.cland-host/code/<VERSION>`, the host's

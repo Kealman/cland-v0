@@ -167,8 +167,8 @@ export class SshTransport implements Transport {
       this.#release?.(); this.#release = undefined; this.#stateTo('down');
     });
   }
-  #launch(args: string[], input = '') {
-    const child = spawn(sshBinaries(this.#o.env ?? process.env).ssh, args, { env: this.#o.env, detached: true, stdio: ['pipe','ignore','ignore'] });
+  #launch(args: string[], input = '', binary = sshBinaries(this.#o.env ?? process.env).ssh) {
+    const child = spawn(binary, args, { env: this.#o.env, detached: true, stdio: ['pipe','ignore','ignore'] });
     const closed = new Promise<number>((resolve) => { child.once('error', () => {}); child.once('close', code => { this.#children.delete(child); resolve(code ?? 255); }); });
     const terminate = async () => {
       if (child.exitCode !== null || child.signalCode !== null) { await closed; return; }
@@ -185,6 +185,20 @@ export class SshTransport implements Transport {
   async #command(args: string[], input = ''): Promise<boolean> {
     if (!this.#running) return false;
     return await this.#launch(args, input).closed === 0;
+  }
+  /** Bundle delivery shares the existing pinned master; stop joins its native close. */
+  copyFile(source: string, destination: string): Promise<void> {
+    return this.#serial(async () => {
+      const o=this.#o;
+      if (!this.#running || !this.#masterReady) throw new Error('host copy: tunnel is not up');
+      const base=o.remoteRun.replace(/\/run$/, '');
+      if (![o.remoteRun+'/',base+'/work/'].some(prefix=>destination.startsWith(prefix)) || destination.split('/').includes('..')) throw new Error('host copy: destination refused');
+      const args=await sshArguments(o);
+      // scp accepts -o equivalents for ssh's -a and -x.
+      const filtered=args.slice(2);
+      const result=await this.#launch([...filtered,'-o',`ControlPath=${hostPaths(o.root,this.host).controlSocket}`,'-o','ControlMaster=no','-o','ProxyCommand=false',source,`${o.record.user}@${o.record.address}:${destination}`],'',sshBinaries(o.env ?? process.env).scp).closed;
+      if(result!==0)throw new Error('host copy failed');
+    });
   }
   async #probe(): Promise<boolean> {
     let client: AgentClient | undefined; let ok = false;
