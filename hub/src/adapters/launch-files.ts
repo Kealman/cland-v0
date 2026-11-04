@@ -1,3 +1,4 @@
+import { boundedSettlement, LAUNCH_SETTLEMENT_MS, type LaunchSettled } from './launch-settlement.ts';
 import type { Host } from '../host/host.ts';
 import { localHost } from '../host/local.ts';
 // Files a launch owns until it commits. On failure restore relaunch inputs and prior logs, and remove
@@ -23,8 +24,8 @@ export type LaunchFilesState = {
 export class LaunchRecoveryPending extends Error {
   readonly sessionId: string;
   readonly files: LaunchFilesState;
-  readonly settled: () => void;
-  constructor(sessionId: string, files: LaunchFilesState, settled: () => void, cause: unknown) {
+  readonly settled: LaunchSettled;
+  constructor(sessionId: string, files: LaunchFilesState, settled: LaunchSettled, cause: unknown) {
     super(cause instanceof Error ? cause.message : String(cause), { cause });
     this.sessionId = sessionId; this.files = files; this.settled = settled;
   }
@@ -180,14 +181,17 @@ export class LaunchFiles {
 
 /** Failed launches remain owned and supervised until verified exit makes resource rollback safe. */
 export class FailedLaunches {
-  readonly #pending = new Map<string, { name: string; files: LaunchFiles; settled: () => void }>();
+  readonly #pending = new Map<string, { name: string; files: LaunchFiles; settled: LaunchSettled }>();
   readonly #log: (entry: Record<string, unknown>) => void;
   readonly #pollMs: number;
   #timer: NodeJS.Timeout | null = null;
   #retrying = false;
+  #draining: Promise<void> | null = null;
+  #drained: (() => void) | undefined;
   readonly #durable: boolean;
+  readonly #settlementMs: number;
 
-  constructor(log: (entry: Record<string, unknown>) => void, pollMs = 1000, durable = false) { this.#log = log; this.#pollMs = pollMs; this.#durable = durable; }
+  constructor(log: (entry: Record<string, unknown>) => void, pollMs = 1000, durable = false, settlementMs = LAUNCH_SETTLEMENT_MS) { this.#settlementMs = settlementMs; this.#log = log; this.#pollMs = pollMs; this.#durable = durable; }
 
   assertAvailable(name: string, identity?: string): void {
     if ([...this.#pending].some(([id, entry]) => id === identity || entry.name === name)) throw new Error(`failed launch of "${name}" is still supervised; cleanup is pending`);
@@ -195,12 +199,17 @@ export class FailedLaunches {
 
   #report(entry: Record<string, unknown>): void { try { this.#log(entry); } catch { /* reporting cannot discard ownership */ } }
 
-  async failed(identity: string, name: string, files: LaunchFiles, cause: unknown, settled: () => void): Promise<never> {
+  async failed(identity: string, name: string, files: LaunchFiles, cause: unknown, settled: LaunchSettled): Promise<never> {
+    settled = boundedSettlement(settled, this.#settlementMs);
     return continueWith((function* (this: FailedLaunches): Generator<Promise<unknown>, never, unknown> {
       // In a hub, persist the receipt before the first termination/resource undo await.
       // Standalone adapters retain their local supervisor for the same failure contract.
       if (this.#durable) throw new LaunchRecoveryPending(identity, yield* wait(files.snapshot()), settled, cause);
-      try { yield* wait(files.rollback()); } catch (error) {
+      try {
+        yield* wait(files.rollback());
+        const result = settled();
+        if (result) yield* wait(result);
+      } catch (error) {
         this.#pending.set(identity, { name, files, settled });
         this.#report({ event: 'launch-recovery-pending', session: name, sessionId: identity, pids: files.pids, error: String(error), cause: String(cause) });
         if (!this.#timer) { this.#timer = setInterval(() => { void this.#retry(); }, this.#pollMs); this.#timer.unref(); }
@@ -208,7 +217,6 @@ export class FailedLaunches {
         if (cause instanceof Error) { cause.message = detail; cause.cause = error; throw cause; }
         throw new Error(detail, { cause: error });
       }
-      settled();
       throw cause;
     }).call(this), files.resumed);
   }
@@ -216,21 +224,25 @@ export class FailedLaunches {
   async #retry(): Promise<void> {
     if (this.#retrying) return;
     this.#retrying = true;
+    this.#draining = new Promise(resolve => { this.#drained = resolve; });
     try {
       for (const [identity, entry] of this.#pending) {
         try { await entry.files.rollback(); }
         catch { continue; }
         try {
+          const result = entry.files.resumed(() => entry.settled());
+          if (result) await result;
           entry.files.resumed(() => {
-            entry.settled();
             this.#pending.delete(identity);
             this.#report({ event: 'launch-recovered', session: entry.name, sessionId: identity });
           });
-        } catch { /* keep the pending entry if observer cleanup could not settle */ }
+        } catch (error) { this.#report({ event: 'launch-cleanup-incomplete', session: entry.name, sessionId: identity, error: String(error) }); }
       }
       if (!this.#pending.size && this.#timer) { clearInterval(this.#timer); this.#timer = null; }
-    } finally { this.#retrying = false; }
+    } finally { this.#retrying = false; this.#drained?.(); this.#draining = null; this.#drained = undefined; }
   }
+
+  async drain(): Promise<void> { this.close(); if (this.#draining) await this.#draining; }
 
   close(): void { if (this.#timer) clearInterval(this.#timer); this.#timer = null; }
 }

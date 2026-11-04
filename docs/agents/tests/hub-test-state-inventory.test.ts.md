@@ -54,3 +54,10 @@ owned by C-216, expiring 2026-11-09. The Linux stage sample in A-15910 was 8.459
 other same-day samples reported by the Coordinator were 1.1–2.2 s. This bounds
 platform I/O variance while preserving the scan and all planted controls; T-1638
 owns the optimization and allowance removal.
+
+Codex registers tmpdir() and '/tmp' only under the exact local-versus-host
+conditional. Remote missing-runDirectory policy refuses before consulting paths;
+only the local Host uses hub tmpdir. The remote /tmp entry names the host temp
+root because HostLaunchLayout has no temp field; Host.realpath follows its
+symlink on the host. The allowed expression and rejected sibling controls in
+state-paths-lint preserve the guard. See ADR0008 and the remote frame policy scan.

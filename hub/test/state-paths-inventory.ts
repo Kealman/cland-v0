@@ -46,8 +46,14 @@ export const PATH_EXCEPTIONS = [
   {
     "file": "adapters/codex.ts",
     "expression": "tmpdir()",
-    "context": "real(tmpdir(), resumed, machine)",
-    "reason": "Codex machine runtime sockets and matching sandbox permissions."
+    "context": "machine.name === 'local' ? tmpdir() : '/tmp'",
+    "reason": "Only local Codex policy reads the hub temp root; remote policy uses Host.realpath('/tmp') as the host temp root. Runtime socket allow-list only; app-server run sockets stay denied and paths fit 104 bytes including terminator."
+  },
+  {
+    "file": "adapters/codex.ts",
+    "expression": "'/tmp'",
+    "context": "machine.name === 'local' ? tmpdir() : '/tmp'",
+    "reason": "Remote Codex host temp root, canonicalized through Host.realpath because layout has no temp-directory field; a host /tmp symlink resolves on that host. No retained hub state; run sockets stay denied with a 104-byte path bound including terminator."
   },
   {
     "file": "adapters/codex.ts",

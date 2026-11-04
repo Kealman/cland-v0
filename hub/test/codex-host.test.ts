@@ -31,7 +31,7 @@ function adapterHost(root: string, host: Host): AdapterHost {
 }
 
 test('Codex launch refuses the Host directory refusal before running a command', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const host: Host = { ...localHost(), statDirectory: async () => ({ refusal: 'recorded Host refusal', identity: null }), run: async () => { throw new Error('must not run'); } };
   const adapter = new CodexAdapter(adapterHost(root, host), { bin: 'missing-fixture-codex', env: fixtureEnvironment(root, process.env) });
   t.after(() => receipt('adapter fixture close', adapter.close()));
@@ -39,7 +39,7 @@ test('Codex launch refuses the Host directory refusal before running a command',
 });
 
 test('Codex launches, resumes, polls and stops only through the selected Host', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, process.env);
   const commands: HostCommand[] = [];
   const versions: HostCommand[] = [];
@@ -111,7 +111,7 @@ test('Codex launches, resumes, polls and stops only through the selected Host', 
 });
 
 test('Codex version failure from the Host refuses spawn', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   let spawns = 0;
   const host: Host = { ...localHost(), run: async () => ({ code: 7, stdout: '', stderr: 'fixture version failure' }), spawn: async () => { spawns++; throw new Error('must not spawn'); } };
   const adapter = new CodexAdapter(adapterHost(root, host), { bin: 'host-codex', env: fixtureEnvironment(root, process.env) });
@@ -122,7 +122,7 @@ test('Codex version failure from the Host refuses spawn', async t => {
 
 
 test('a late Host liveness reply cannot retire a replacement Codex row', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const clock = new FakeClock(Date.now());
   const oldReply = deferred<boolean>();
   const seen: number[] = [];
@@ -152,7 +152,7 @@ test('a late Host liveness reply cannot retire a replacement Codex row', async t
 });
 
 for (const reject of [false, true]) test(`Codex close joins and coalesces a held Host probe (${reject ? 'rejection' : 'success'})`, async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const clock = new FakeClock(Date.now());
   const reply = deferred<boolean>();
   const requested = deferred<void>();
@@ -182,7 +182,7 @@ for (const reject of [false, true]) test(`Codex close joins and coalesces a held
 
 type HeldStage = 'version' | 'prepare' | 'accepted' | 'identity';
 async function heldLaunchClose(t: TestContext, relaunch: boolean, stage: HeldStage, earlyClose = false): Promise<void> {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const release = deferred<void>();
   const exited = deferred<{ code: number | null; signal: string | null }>();
   let entered = false;
@@ -254,7 +254,7 @@ test('held launch close assertions reject an early close receipt while work cont
 test('Codex close reports incomplete late-launch cleanup and retains its durable receipt', async t => {
   const { LaunchRecoveryPending, LaunchFiles } = await import('../src/adapters/launch-files.ts');
   const { stat } = await import('node:fs/promises');
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const release = deferred<void>();
   const exited = deferred<{ code: number | null; signal: string | null }>();
   let admitted = false;
@@ -285,7 +285,7 @@ test('Codex close reports incomplete late-launch cleanup and retains its durable
     await receipt('close completion receipt', closing);
     if (pending instanceof LaunchRecoveryPending && !recovered) {
       await receipt('fixture durable recovery completion', LaunchFiles.restore(pending.files, work => work(), host).rollback());
-      pending.settled();
+      await pending.settled();
     }
   });
   await until(() => admitted, { what: 'late launch setup receipt', timeoutMs: testWaitMs(5000) });
@@ -308,12 +308,12 @@ test('Codex close reports incomplete late-launch cleanup and retains its durable
   // Model the durable recovery owner's later confirmed cleanup, then remove the fixture.
   allowStop = true;
   await receipt('durable recovery completion', LaunchFiles.restore(error.files, work => work(), host).rollback());
-  error.settled();
+  await error.settled();
   recovered = true;
 });
 
 for (const stage of ['alive', 'connect'] as const) test(`Codex close joins live resume ${stage} without returning a running row`, async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const release = deferred<void>();
   let entered = false;
   let producerFinished = false;
@@ -340,7 +340,7 @@ for (const stage of ['alive', 'connect'] as const) test(`Codex close joins live 
 });
 
 test('Codex keeps Host liveness polling while reconnect connection acquisition is held', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const clock = new FakeClock(Date.now());
   const release = deferred<void>();
   const native = new ScriptedCodex();

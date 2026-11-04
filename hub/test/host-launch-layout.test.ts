@@ -15,7 +15,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 
 for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (const [name, Adapter] of Object.entries({ claude: ClaudeCodeAdapter, codex: CodexAdapter, opencode: OpenCodeAdapter })) {
   test(`${mapped ? 'mapped Host' : 'local'} ${name} launch preserves baseline argv, environment and file bytes/modes (umask ${mask.toString(8)})`, async t => {
-    const root = await tempProject(t);
+    const root = await tempProject(t, 'cx-', '/tmp');
     const env = fixtureEnvironment(root, {}, { PATH: '/fixture/bin' });
     const disk: Record<string, { mode: number; bytes: string }> = {};
     const walk = async (dir: string): Promise<void> => {
@@ -99,7 +99,7 @@ test('nonlocal file replacement refuses missing rollback metadata and new files 
 test('nonlocal OpenCode shared-ignore preparation refuses the unsupported atomic boundary', async t => {
   const { prepareFiles, serverFiles } = await import('../src/adapters/opencode/server.ts');
   const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const machine = { ...localHost(), name: 'remote' };
   const files = new LaunchFiles(undefined, machine);
   try { await assert.rejects(prepareFiles(root, serverFiles(root, 'worker'), {}, true, files, undefined, undefined, machine), /T-1644/); }
@@ -107,7 +107,7 @@ test('nonlocal OpenCode shared-ignore preparation refuses the unsupported atomic
 });
 
 test('Claude nonlocal layout without a mod directory refuses before native launch', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, {});
   const machine = { ...localHost(env), name: 'remote', layout: (input: HostLaunchLayoutInput) => ({ ...input, runDirectory: '/remote/run', logDirectory: '/remote/log' }), run: async () => { assert.fail('no native launch'); } };
   const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '/node', cli: '/cli', spoke: '/spoke', hostForLaunch: () => machine, log: () => {}, signal: () => {}, exited: () => {}, recordPid: () => {} };

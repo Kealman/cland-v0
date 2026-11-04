@@ -18,3 +18,8 @@ first-hello tokens cannot join a live foreign session by id with its name or
 without a name; the foreign role, credential and native ping receipt stay intact,
 and the token's own session still admits afterwards. No launch proof is consumed
 before the exact identity reaches core.hello.
+
+Held-spawn Claude/Implementer admission explicitly delegates realpath to scratch
+Host metadata so sandbox policy can resolve before spawn. Default testHost is
+unchanged. Every original host/session/credential admission assertion remains;
+policy construction without a sandbox requires no Host realpath.

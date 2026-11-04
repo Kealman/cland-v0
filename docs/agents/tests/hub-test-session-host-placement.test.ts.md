@@ -23,3 +23,8 @@ The production OpenCode remote control now expects the explicit T-1644
 shared-ignore refusal before any spawn and retains the no-local-fallback and
 no-process-row assertions. The fake adapter control still reaches the selected
 Host's spawn refusal. Scratch preparation supplies the file Host's layout.
+
+The three Codex/Implementer placement doubles explicitly delegate realpath to
+owned scratch Host metadata because these launches carry sandbox policy. Default
+testHost remains refusing; Sessions skips realpath for OpenCode's absent sandbox
+policy and retains its original nonlocal preparation refusal assertion.

@@ -1,6 +1,8 @@
 // T2: Host placement admission through projectHub frames; fake harnesses, no native children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { localHost } from '../src/host/local.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { projectHub, tempProject } from './harness.ts';
 import { sessionUi } from './session-credential-fixture.ts';
 
@@ -87,7 +89,7 @@ test('another role reaches the selected test Host spawn and keeps its refusal', 
   const { fakeHarness } = await import('./fakes/harness.ts');
   const root = await tempProject(t);
   const operations: unknown[] = [];
-  const remote = { ...testHost('t1', e => operations.push(e.operation)), statDirectory: async () => ({ refusal: null, identity: null }) };
+  const remote = { ...testHost('t1', e => operations.push(e.operation)), realpath: localHost(fixtureEnvironment(root,process.env)).realpath, statDirectory: async () => ({ refusal: null, identity: null }) };
   operations.length = 0;
   const hub = await projectHub(t, root, {}, { hosts: [remote], adapters: [(host, clock) => {
     const adapter = fakeHarness('codex', { clock });
@@ -112,7 +114,7 @@ test('a successful registered Host launch persists placement and fresh resume ke
   const { ProcessTable } = await import('../src/adapters/processes.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
-  const remote = { ...testHost('t1', () => {}), statDirectory: async () => ({ refusal: null, identity: null }) };
+  const remote = { ...testHost('t1', () => {}), realpath: localHost(fixtureEnvironment(root,process.env)).realpath, statDirectory: async () => ({ refusal: null, identity: null }) };
   const hub = await projectHub(t, root, {}, { hosts: [remote] });
   const ui = await sessionUi(t, hub.discovery);
   const launched = await ui.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer', host: 't1' });
@@ -135,7 +137,7 @@ test('spoke launch forwards Host placement and Coordinator handover refuses its 
   const { inProcessSpoke } = await import('./harness.ts');
   const { testHost } = await import('../src/host/test-host.ts');
   const root = await tempProject(t);
-  const remote = { ...testHost('t1', () => {}), statDirectory: async () => ({ refusal: null, identity: null }) };
+  const remote = { ...testHost('t1', () => {}), realpath: localHost(fixtureEnvironment(root,process.env)).realpath, statDirectory: async () => ({ refusal: null, identity: null }) };
   const hub = await projectHub(t, root, {}, { hosts: [remote] });
   const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   await coord.waitForPresence(['coord']);

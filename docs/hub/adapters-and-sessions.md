@@ -269,6 +269,36 @@ See [Accounts and limits](accounts-and-limits.md#accounts-and-limits) for the re
 | usage | `thread/tokenUsage/updated` (the thread's total and last normalised under `usage.total` and `usage.last`; the original report including context window stays under `usage.tokens`) and `account/rateLimits/read` after each turn, plus `account/rateLimits/updated` (`usage.rateLimits`). |
 | stop, resume | Stop sends SIGTERM to the app-server (its MCP children end with it), then SIGKILL after 5 s, each only after checking the pid's start time. Resume needs the pid alive and the socket answering `thread/resume {threadId, excludeTurns: true}` for metadata and live state without hydrating turn history (or `thread/read` while the thread has no turn yet). An older server rejecting `excludeTurns` as an invalid parameter is retried without that field. Unix WebSocket replies have a 512 MiB client limit, including full-history replies from older servers; a larger reply leaves the process running with `state: unknown` and `stateReason: "payload limit"` in `session.list`, displayed as `[payload limit]` by the CLI. The reason clears after successful reattachment or stop. A relaunch starts a new app-server on the same socket and resumes the thread from its rollout. |
 
+For a nonlocal Host, Codex uses the Host layout's run/log directories and
+spoke entries. `harnessId` remains the host-side socket; launch, resume and
+reconnect obtain a per-session forward before JSON-RPC connects. Stop releases
+that forward after the agent confirms termination; adapter close joins ongoing
+operations and releases its forwards while detached app-servers survive. Host
+and forwarded socket paths, including the terminator, must fit 104 bytes.
+Stop fences and joins admitted reconnect forward/client/subscription work before
+releasing resources. Confirmed exits keep their forward owner until cancellation
+succeeds; a failed cancellation is reported and retried. Version checks and process stop execute through the host agent. Policy construction performs no Host path lookup when the role/harness has no sandbox. Remote role
+roots are relative to the host checkout and canonicalized by Host.realpath;
+absolute role roots refuse as hub-machine paths. A remote layout missing runDirectory
+refuses before consulting paths. Canonicalization failure
+refuses with the host/path rather than substituting a hub path. Network-local
+profiles use the host discovery/run directories, cwd and host `/tmp` realpath,
+with app-server run sockets denied. Local policy and long-path fallback remain
+unchanged.
+
+Failed launch recovery records the admitted Host, including native handshake
+failures that have no accepted process row. Cleanup on an unknown or revoked
+Host stays pending with a host-named incomplete diagnostic; it never chooses
+local cleanup. Local cleanup errors retain their native text; the host-named
+cleanup-incomplete prefix applies only to nonlocal Hosts. `LaunchRecoveryPending.settled` accepts the additive `LaunchSettled`
+callback (`void | Promise<void>`). Shared `launch-settlement.ts` bounds async
+settlement to 5000 ms and retains one producer across concurrent retries and
+timeouts. Synchronous callbacks run inline. FailedLaunches and Sessions await
+async cleanup before deleting the recovery record or releasing the role; rejection
+or timeout retains the record and reports its cause for deferred retry. Codex
+settlement closes its native client and cancels its forward. Shutdown joins
+admitted recovery work; a missing receipt remains incomplete.
+
 | Capability | |
 | --- | --- |
 | history | none: `Thread.path` is unstable and the rollout format is not a stable interface |

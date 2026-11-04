@@ -19,4 +19,9 @@ codex-workspace-git.test.ts (T4; macOS Seatbelt availability applies).
 The mapped network-local launch case gives runtime a symlink path independent of
 its discovery directory. At the native launch boundary it asserts the actual
 socket path and that its canonical parent is denied in the serialized profile.
-Legacy discovery-only callers and the local policy byte fixture remain unchanged.
+Legacy discovery-only local callers and the local policy byte fixture remain unchanged.
+
+Remote direct threadPolicy callers must supply runDirectory. The missing-layout
+case refuses before any Host.realpath call; discovery-only local callers retain
+the captured legacy bytes. Recording realpath doubles preserve distinct Git
+directory identities rather than mapping every input to the checkout root.

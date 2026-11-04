@@ -15,7 +15,7 @@ import { tempProject } from './harness.ts';
 const fixture = new URL('./fixtures/codex-sandbox-local.json', import.meta.url);
 
 test('local Codex policies retain the captured byte-identical overrides', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const canonical = await realpath(root);
   const temp = await realpath(tmpdir());
   await mkdir(join(root, '.git/worktrees/task'), { recursive: true });
@@ -37,8 +37,18 @@ test('local Codex policies retain the captured byte-identical overrides', async 
   assert.equal(bytes, await readFile(fixture, 'utf8'));
 });
 
+test('remote Codex policy refuses a missing run directory before consulting paths', async t => {
+  const root = await tempProject(t, 'cx-', '/tmp');
+  const calls: string[] = [];
+  const machine: Host = { ...localHost(fixtureEnvironment(root,process.env)), name: 'missing-layout', realpath: async path => { calls.push(path); return path; } };
+  await assert.rejects(threadPolicy({discoveryFile: join(root,'.cland/hub.json')}, root, {
+    sandbox: {mode:'workspace-write',writableRoots:[root],network:'local'},
+  }, undefined, machine), /host missing-layout.*runDirectory/);
+  assert.deepEqual(calls, [], 'missing host layout cannot consult a hub-machine path');
+});
+
 test('Codex takes roots, linked git bytes and socket paths from the selected Host', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const calls: string[] = [];
   const machine: Host = {
     ...localHost(fixtureEnvironment(root, process.env)),
@@ -48,7 +58,9 @@ test('Codex takes roots, linked git bytes and socket paths from the selected Hos
       if (path === root) return '/host/project';
       if (path === join(root, '.cland')) return '/host/state';
       if (path === join(root, 'task')) return '/host/task';
-      if (path === tmpdir()) return '/host/temp';
+      if (path === '/tmp') return '/host/temp';
+      if (path === join(root, '.cland/run')) return '/host/state/run';
+      if (path === '/host/project/.git') return '/host/project/.git';
       if (path === join(root, '.git/worktrees/task')) return '/host/project/.git/worktrees/task';
       throw new Error(`unexpected realpath: ${path}`);
     },
@@ -63,7 +75,7 @@ test('Codex takes roots, linked git bytes and socket paths from the selected Hos
       return Buffer.from('gitdir: ../.git/worktrees/task\n');
     },
   };
-  const result = await threadPolicy({ discoveryFile: join(root, '.cland/hub.json') }, join(root, 'task'), {
+  const result = await threadPolicy({ discoveryFile: join(root, '.cland/hub.json'), runDirectory: join(root,'.cland/run') }, join(root, 'task'), {
     sandbox: { mode: 'workspace-write', writableRoots: [root], network: 'local' },
   }, undefined, machine);
   assert.deepEqual(result, {
@@ -74,18 +86,18 @@ test('Codex takes roots, linked git bytes and socket paths from the selected Hos
       'features.network_proxy=true',
     ],
   });
-  for (const expected of [`real:${root}`, `real:${join(root, 'task')}`, `real:${join(root, '.cland')}`, `real:${tmpdir()}`, `stat:/host/project/.git`, `read:${join(root, 'task/.git')}`, `real:${join(root, '.git/worktrees/task')}`])
+  for (const expected of [`real:${root}`, `real:${join(root, 'task')}`, `real:${join(root, '.cland')}`, 'real:/tmp', 'real:/host/project/.git', `stat:/host/project/.git`, `read:${join(root, 'task/.git')}`, `real:${join(root, '.git/worktrees/task')}`])
     assert.ok(calls.includes(expected), expected);
 });
 
 test('spawn and relaunch serialize the captured session Host policy', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, process.env);
   const commands: HostCommand[] = [];
   const machine: Host = {
     ...localHost(env), name: 'mapped',
     async statDirectory() { return { refusal: null, identity: { dev: 1, ino: 2 } }; },
-    async realpath() { return '/host/project'; },
+    async realpath(path) { return path.endsWith('/.git') ? '/host/project/.git' : '/host/project'; },
     async readFile() { throw new Error('no linked worktree'); },
     async run() { return { code: 0, stdout: 'codex 0.160.0', stderr: '' }; },
     async spawn(command) { commands.push(command); return { pid: 987654, exited: new Promise(() => {}) }; },
@@ -118,7 +130,7 @@ test('spawn and relaunch serialize the captured session Host policy', async t =>
 });
 
 test('mapped network-local launch denies the canonical directory containing its app-server socket', async t => {
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, {});
   const state = join(root, 'host-state');
   const runDirectory = join(state, 'runtime-alias');

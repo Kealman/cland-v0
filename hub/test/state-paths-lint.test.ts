@@ -40,6 +40,13 @@ test('per-host short socket exceptions accept only their registered expressions'
     assert.ok(statePathFindings('host/records.ts', source).length, source);
   }
 });
+test('Codex temp-root registration accepts only the local versus host expression', () => {
+  assert.deepEqual(statePathFindings('adapters/codex.ts', "const temp = machine.name === 'local' ? tmpdir() : '/tmp';"), []);
+  for (const source of ["const temp = machine.name !== 'local' ? tmpdir() : '/tmp';", "join('/tmp', 'unregistered')", "real(tmpdir(), resumed, machine)"]) {
+    assert.ok(statePathFindings('adapters/codex.ts', source).length, source);
+  }
+});
+
 test('hub source conforms to the named state path inventory', async () => {
   assert.deepEqual(await scanStatePaths(new URL('../src/', import.meta.url)), []);
 });

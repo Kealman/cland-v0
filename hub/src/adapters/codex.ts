@@ -1,3 +1,4 @@
+import { boundedSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
@@ -32,7 +33,6 @@ import type { Resumed } from '../hub/worktrees.ts';
 import type { Host, HostLaunchLayout } from '../host/host.ts';
 import { localHost } from '../host/local.ts';
 import { randomUUID } from 'node:crypto';
-import { access, readFile } from 'node:fs/promises';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
@@ -154,7 +154,7 @@ export function mcpOverrides(host: Pick<AdapterHost, 'node' | 'spoke' | 'discove
 /** The name of the permissions profile a launch defines for its thread. */
 export const CLAND_PROFILE = 'cland';
 
-const real = (path: string, resumed: Resumed = untimed, machine: Host = localHost()): Promise<string> => machine.realpath(path).then(value => resumed(() => value), () => resumed(() => path));
+const real = (path: string, resumed: Resumed = untimed, machine: Host = localHost()): Promise<string> => machine.realpath(path).then(value => resumed(() => value), error => resumed(() => { if (machine.name !== 'local') throw new Error(`cannot resolve Codex policy path on host ${machine.name}: ${path}: ${String(error)}`); return path; }));
 const isDir = (machine: Host, path: string, resumed: Resumed): Promise<boolean> => machine.statDirectory(path).then(info => resumed(() => info.refusal === null), () => resumed(() => false));
 const under = (path: string, dir: string): boolean => path === dir || path.startsWith(dir + sep);
 
@@ -184,6 +184,10 @@ const toml = (v: unknown): string => {
  *  relaunch), `overrides` as `-c` values on the app-server's command line. */
 export type ThreadPolicy = { thread: { approvalPolicy: string; permissions?: string }; overrides: string[] };
 
+function assertRemoteRunDirectory(host: Partial<Pick<HostLaunchLayout, 'runDirectory'>>, machine: Pick<Host, 'name'>): void {
+  if (machine.name !== 'local' && (typeof host.runDirectory !== 'string' || !host.runDirectory.trim())) throw new Error(`cannot resolve Codex policy on host ${machine.name}: missing runDirectory`);
+}
+
 /**
  * A launch's approval and sandbox for Codex 0.160.0 (measured: `docs/review-and-qa.md`, "The Codex sandbox").
  * Approvals are never asked unless the launch says otherwise. A sandbox that is a built-in permissions profile is
@@ -203,6 +207,7 @@ export type ThreadPolicy = { thread: { approvalPolicy: string; permissions?: str
  */
 export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'> & Partial<Pick<HostLaunchLayout, 'runDirectory'>>, cwd: string, policy: LaunchPolicy, resumed: Resumed = untimed, machine: Host = localHost()): Promise<ThreadPolicy> {
   return continueWith((function* (): Generator<Promise<unknown>, ThreadPolicy, unknown> {
+    assertRemoteRunDirectory(host, machine);
     const approvalPolicy = policy.approval ?? 'never';
     const box = policy.sandbox;
     if (!box)
@@ -218,7 +223,7 @@ export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'> & Pa
       filesystem[root] = 'write';
       const git = join(root, '.git');
       if (yield* wait(isDir(machine, git, resumed)))
-        gitDirs.push(git);
+        gitDirs.push(machine.name === 'local' ? git : yield* wait(real(git, resumed, machine)));
     }
     const own = yield* wait(worktreeGitDir(machine, cwd, resumed));
     for (const git of gitDirs)
@@ -228,8 +233,9 @@ export async function threadPolicy(host: Pick<AdapterHost, 'discoveryFile'> & Pa
     let network: Record<string, unknown> | null = null;
     if (box.network === 'local') {
       const cland = yield* wait(real(dirname(host.discoveryFile), resumed, machine));
-      const run = host.runDirectory === undefined ? join(cland, 'run') : yield* wait(real(host.runDirectory, resumed, machine));
-      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed, machine))]: 'allow', [yield* wait(real(tmpdir(), resumed, machine))]: 'allow', [run]: 'deny', [join(yield* wait(real(tmpdir(), resumed, machine)), 'cland-run')]: 'deny' };
+      const run = machine.name === 'local' && host.runDirectory === undefined ? join(cland, 'run') : yield* wait(real(host.runDirectory!, resumed, machine));
+      const temp = yield* wait(real(machine.name === 'local' ? tmpdir() : '/tmp', resumed, machine));
+      const unix_sockets: Record<string, string> = { [cland]: 'allow', [yield* wait(real(cwd, resumed, machine))]: 'allow', [temp]: 'allow', [run]: 'deny', [join(temp, 'cland-run')]: 'deny' };
       network = { enabled: true, allow_local_binding: true, unix_sockets };
     }
     else if (box.network === 'full')
@@ -395,21 +401,29 @@ export class CodexAdapter implements HarnessAdapter {
     return this.#track(Promise.resolve().then(() => { this.#assertOpen(); return work(); }));
   }
 
-  async #failedLaunch(sessionId: string, name: string, files: LaunchFiles, error: unknown, settled: () => void): Promise<never> {
+  async #failedLaunch(sessionId: string, name: string, files: LaunchFiles, error: unknown, closeNative: () => void): Promise<never> {
+    let nativeClosed = false;
+    const finish = boundedSettlement(async () => {
+      const connecting = this.#live.get(sessionId)?.connecting;
+      // The callback owns the captured client, including failures before attachment.
+      // Retain this phase across unforward retries; the live row can already be gone.
+      if (!nativeClosed) { closeNative(); nativeClosed = true; }
+      if (connecting) await connecting;
+      await this.#unforward(sessionId);
+    });
     if (this.#closed) {
-      try { await files.rollback(); }
+      try { await files.rollback(); await finish(); }
       catch (cleanup) {
         this.#cleanupFailures.set(sessionId, cleanup);
-        try { return await this.#recoveries.failed(sessionId, name, files, error, settled); }
+        try { return await this.#recoveries.failed(sessionId, name, files, error, finish); }
         finally {
           const remaining = await files.snapshot();
           if (!remaining.children.length && !remaining.undo.length) this.#cleanupFailures.delete(sessionId);
         }
       }
-      settled();
       throw error;
     }
-    return this.#recoveries.failed(sessionId, name, files, error, settled);
+    return this.#recoveries.failed(sessionId, name, files, error, finish);
   }
 
   #track<T>(promise: Promise<T>): Promise<T> {
@@ -442,8 +456,11 @@ export class CodexAdapter implements HarnessAdapter {
    *  a Unix socket. Both directories are closed to a sandboxed session (`threadPolicy`). */
   #socketPath(sessionId: string, machine: Host): string {
     const file = `cx-${sessionId.replace(/-/g, '').slice(0, 12)}.sock`;
-    const inProject = join(machine.layout(this.#host).runDirectory, file);
+    const layout = machine.layout(this.#host);
+    assertRemoteRunDirectory(layout, machine);
+    const inProject = join(layout.runDirectory, file);
     // sun_path is 104 bytes on macOS, 108 on Linux
+    if (machine.name !== 'local' && Buffer.byteLength(inProject) + 1 > 104) throw new Error(`Codex socket exceeds 104 bytes on host ${machine.name}: ${inProject}`);
     return machine.name !== 'local' || Buffer.byteLength(inProject) <= 100 ? inProject : join(this.#tmpRun, file);
   }
 
@@ -488,15 +505,15 @@ export class CodexAdapter implements HarnessAdapter {
       const deadline = Date.now() + this.#spawnDeadlineMs;
       for (;;) {
         if (exited !== null || pid === undefined)
-          throw new Error(`codex app-server ${exited ?? 'did not start'}: ${yield* this.#activeWait(tail(logFile, resumed))}`);
+          throw new Error(`codex app-server ${exited ?? 'did not start'}: ${yield* this.#activeWait(tail(machine, logFile, resumed))}`);
         try {
-          const client = yield* wait(this.#connectTo(socket));
+          const client = yield* wait(this.#connectTo(machine, p.sessionId, socket));
           if (this.#closed) { client.close(); this.#assertOpen(); }
           return { pid, client };
         } catch (err) {
           this.#assertOpen();
           if (Date.now() > deadline) {
-            throw new Error(`codex app-server did not answer on ${socket} within ${this.#spawnDeadlineMs} ms (${err instanceof Error ? err.message : String(err)}): ${yield* this.#activeWait(tail(logFile, resumed))}`);
+            throw new Error(`codex app-server did not answer on ${socket} within ${this.#spawnDeadlineMs} ms (${err instanceof Error ? err.message : String(err)}): ${yield* this.#activeWait(tail(machine, logFile, resumed))}`);
           }
           yield* this.#activeWait(sleep(100));
         }
@@ -504,8 +521,32 @@ export class CodexAdapter implements HarnessAdapter {
     }).call(this), resumed);
   }
 
-  #connectTo(socket: string): Promise<AppServerConnection> {
-    return this.#connect(socket);
+  readonly #forwards = new Map<string, Host>();
+
+  async #connectTo(machine: Host, sessionId: string, socket: string): Promise<AppServerConnection> {
+    if (machine.name === 'local') return this.#connect(socket);
+    // Capture ownership before acquisition: close joins this operation even if forwarding fails.
+    this.#forwards.set(sessionId, machine);
+    const endpoint = await machine.forward(sessionId, { socket });
+    if (!('socket' in endpoint)) throw new Error(`Codex requires a Unix session forward on host ${machine.name}`);
+    if (Buffer.byteLength(endpoint.socket) + 1 > 104) throw new Error(`Codex forwarded socket exceeds 104 bytes on host ${machine.name}`);
+    this.#assertOpen();
+    if (this.#stopping.has(sessionId) || this.#terminal.has(sessionId)) throw new Error('Codex session is stopping');
+    return this.#connect(endpoint.socket);
+  }
+
+  readonly #forwardCleanup = new Map<string, Promise<void>>();
+  #unforward(sessionId: string): Promise<void> {
+    const pending = this.#forwardCleanup.get(sessionId);
+    if (pending) return Promise.resolve(boundedSettlement(() => pending)());
+    const machine = this.#forwards.get(sessionId);
+    if (!machine) return Promise.resolve();
+    const work = Promise.resolve().then(async () => {
+      await machine.unforward(sessionId);
+      this.#forwards.delete(sessionId);
+    }).finally(() => { this.#forwardCleanup.delete(sessionId); });
+    this.#forwardCleanup.set(sessionId, work);
+    return Promise.resolve(boundedSettlement(() => work)());
   }
 
   /** Listen to one app-server connection for one session's thread. */
@@ -513,7 +554,7 @@ export class CodexAdapter implements HarnessAdapter {
     live.client = client;
     const mine = (params: Record<string, unknown>) => params.threadId === live.p.harnessSessionId;
     client.on('notification', (method: string, params: Record<string, unknown>) => {
-      if (this.#closed || live.client !== client) return;
+      if (this.#closed || live.client !== client || this.#stopping.has(live.p.sessionId) || this.#terminal.has(live.p.sessionId)) return;
       switch (method) {
         case 'serverRequest/resolved': {
           if (!mine(params) || (typeof params.requestId !== 'string' && typeof params.requestId !== 'number')) return;
@@ -621,7 +662,7 @@ export class CodexAdapter implements HarnessAdapter {
       }
     });
     client.on('serverRequest', (request: ServerRequest) => {
-      if (this.#closed || live.client !== client) return;
+      if (this.#closed || live.client !== client || this.#stopping.has(live.p.sessionId) || this.#terminal.has(live.p.sessionId)) return;
       if (typeof request.params.threadId === 'string' && request.params.threadId.length > 0 && !mine(request.params)) return;
       this.#host.log({ event: 'harness-request', harness: this.harness, session: live.p.name, method: request.method });
       if (request.method.startsWith('item/') && request.method.endsWith('/requestApproval')) {
@@ -870,13 +911,43 @@ export class CodexAdapter implements HarnessAdapter {
     return live.eventSequence === snapshot.sequence;
   }
 
-  #gone(live: Live, detail: string): void {
-    if (this.#stopping.has(live.p.sessionId)) return;
-    this.#updateState(live, 'unknown');
-    this.#unwatch(live.p.sessionId);
-    live.client?.close();
-    live.client = null;
-    this.#host.exited(live.p.sessionId, detail);
+  readonly #terminal = new Map<string, { live: Live; detail: string }>();
+  readonly #terminalWork = new Map<string, Promise<void>>();
+  #terminalTimer: ClockTimer | null = null;
+
+  #gone(live: Live, detail: string): Promise<void> {
+    const id = live.p.sessionId;
+    if (this.#stopping.has(id)) return Promise.resolve();
+    if (!this.#terminal.has(id)) this.#updateState(live, 'unknown');
+    this.#terminal.set(id, { live, detail });
+    this.#unwatch(id);
+    if (!this.#terminalTimer) {
+      this.#terminalTimer = this.#clock.setInterval(() => {
+        for (const entry of this.#terminal.values()) void this.#gone(entry.live, entry.detail);
+      }, 1000);
+      this.#terminalTimer.unref();
+    }
+    const pending = this.#terminalWork.get(id);
+    if (pending) return pending;
+    const work = this.#track(Promise.resolve().then(async () => {
+      live.client?.close();
+      if (live.connecting) await live.connecting;
+      await this.#unforward(id);
+      if (!this.#closed && !this.#stopping.has(id)) {
+        this.#updateState(live, 'unknown');
+        this.#live.delete(id);
+        this.#host.exited(id, detail);
+      }
+      this.#terminal.delete(id);
+      if (!this.#terminal.size && this.#terminalTimer) {
+        this.#clock.clearInterval(this.#terminalTimer);
+        this.#terminalTimer = null;
+      }
+    }).catch(error => {
+      this.#host.log({ event: 'harness-cleanup-incomplete', harness: this.harness, session: live.p.name, error: String(error) });
+    }).finally(() => { this.#terminalWork.delete(id); }));
+    this.#terminalWork.set(id, work);
+    return work;
   }
 
   // ---------------------------------------------------------------- launch
@@ -953,10 +1024,12 @@ export class CodexAdapter implements HarnessAdapter {
    *  socket path it cannot normalize, and a deny that is ignored is a hole). */
   async #threadPolicy(machine: Host, cwd: string, policy: LaunchPolicy, files: LaunchFiles, resumed: Resumed = untimed): Promise<ThreadPolicy> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, ThreadPolicy, unknown> {
+      const layout = machine.layout(this.#host);
+      assertRemoteRunDirectory(layout, machine);
       if (policy.sandbox?.network === 'local')
-        for (const dir of machine.name === 'local' ? [machine.layout(this.#host).runDirectory, yield* this.#activeWait(tmpRunDir(resumed))] : [machine.layout(this.#host).runDirectory])
+        for (const dir of machine.name === 'local' ? [layout.runDirectory, yield* this.#activeWait(tmpRunDir(resumed))] : [layout.runDirectory])
           yield* this.#activeWait(files.directory(dir, 0o700));
-      return yield* this.#activeWait(threadPolicy(machine.layout(this.#host), cwd, policy, resumed, machine));
+      return yield* this.#activeWait(threadPolicy(layout, cwd, policy, resumed, machine));
     }).call(this), resumed);
   }
 
@@ -1210,7 +1283,7 @@ export class CodexAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- watch: liveness and the connection
 
   watch(p: HarnessProcess): void {
-    if (this.#closed) return;
+    if (this.#closed || this.#terminal.has(p.sessionId)) return;
     this.#stoppedUsage.delete(p.sessionId);
     let live = this.#live.get(p.sessionId);
     if (!live) {
@@ -1271,7 +1344,7 @@ export class CodexAdapter implements HarnessAdapter {
       try {
         const alive = p.pid === null || await this.#machine(p).alive(p);
         if (!current()) return;
-        if (!alive) this.#gone(live, `pid ${p.pid} is gone`);
+        if (!alive) await this.#gone(live, `pid ${p.pid} is gone`);
         else if (reconnect && !live.client) void this.#reconnect(live);
       } catch (error) {
         if (current()) this.#host.log({ event: 'harness-liveness-failed', harness: this.harness, session: p.name, error: String(error) });
@@ -1290,11 +1363,11 @@ export class CodexAdapter implements HarnessAdapter {
       if (this.#closed) return;
       let client: AppServerConnection | null = null;
       try {
-        client = await this.#connectTo(socket);
-        if (this.#closed || this.#live.get(live.p.sessionId) !== live) { client.close(); return; }
+        client = await this.#connectTo(this.#machine(live.p), live.p.sessionId, socket);
+        if (this.#closed || this.#live.get(live.p.sessionId) !== live || this.#stopping.has(live.p.sessionId) || this.#terminal.has(live.p.sessionId)) { client.close(); return; }
         this.#attach(live, client);
         const r = await this.#subscribe(live, client);
-        if (this.#closed || this.#live.get(live.p.sessionId) !== live) { client.close(); return; }
+        if (this.#closed || this.#live.get(live.p.sessionId) !== live || this.#stopping.has(live.p.sessionId) || this.#terminal.has(live.p.sessionId)) { client.close(); return; }
         if (this.#snapshotIsCurrent(live, r) && r.state !== 'unknown') this.#setState(live, r.state);
         void this.#readRateLimits(live);
         // a message whose inject failed while the connection was down waits for no state change: retried now
@@ -1318,9 +1391,15 @@ export class CodexAdapter implements HarnessAdapter {
   async #stop(p: HarnessProcess, resumed: Resumed, authorize: () => void): Promise<void> {
     this.#stopping.add(p.sessionId);
     let ended = false;
+    const liveAtStop = this.#live.get(p.sessionId);
+    const connecting = liveAtStop?.connecting;
+    const probe = liveAtStop ? this.#probes.get(liveAtStop.p) : undefined;
     try {
       authorize();
       if (!await this.#machine(p).stop(p, { graceMs: this.#stopGraceMs, allowReused: p.status === 'exited', authorize: () => resumed(authorize), log: entry => resumed(() => this.#host.log({ ...entry, harness: this.harness, session: p.name })) })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      liveAtStop?.client?.close();
+      if (connecting) await connecting;
+      if (probe) await probe;
       ended = true;
     } finally {
       resumed(() => {
@@ -1335,7 +1414,12 @@ export class CodexAdapter implements HarnessAdapter {
         }
         this.#stopping.delete(p.sessionId);
       });
-      if (ended && p.harnessId) await this.#machine(p).removePath(p.harnessId);
+      if (ended) {
+        await this.#unforward(p.sessionId);
+        this.#terminal.delete(p.sessionId);
+        if (!this.#terminal.size && this.#terminalTimer) { this.#clock.clearInterval(this.#terminalTimer); this.#terminalTimer = null; }
+        if (p.harnessId) await this.#machine(p).removePath(p.harnessId);
+      }
     }
   }
 
@@ -1356,10 +1440,10 @@ export class CodexAdapter implements HarnessAdapter {
       const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
       live.p = p;
       this.#live.set(p.sessionId, live);
-      if ((yield* this.#activeWait(machine.alive(p))) && (yield* this.#activeWait(access(socket).then(() => true, () => false)))) {
+      if ((yield* this.#activeWait(machine.alive(p))) && (yield* this.#activeWait(machine.fileType(socket).then(type => type !== 'missing', () => false)))) {
         let client: AppServerConnection | null = null;
         try {
-          client = yield* wait(this.#connectTo(socket));
+          client = yield* wait(this.#connectTo(machine, p.sessionId, socket));
           this.#assertOpen();
           live.client?.close();
           this.#attach(live, client);
@@ -1410,6 +1494,7 @@ export class CodexAdapter implements HarnessAdapter {
   close(): Promise<void> {
     if (this.#closing) return this.#closing;
     this.#closed = true;
+    this.#recoveries.close();
     this.#stateReasons.clear();
     this.#admissions.clear();
     this.#completedTurns.clear();
@@ -1418,6 +1503,8 @@ export class CodexAdapter implements HarnessAdapter {
     this.#earlyFailures.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
+    if (this.#terminalTimer) this.#clock.clearInterval(this.#terminalTimer);
+    this.#terminalTimer = null;
     this.#watched.clear();
     // the app-servers keep running: a restarted hub re-finds them
     for (const live of this.#live.values()) live.client?.close();
@@ -1425,18 +1512,23 @@ export class CodexAdapter implements HarnessAdapter {
     this.#stoppedUsage.clear();
     this.#closing = (async () => {
       while (this.#flights.size) await Promise.allSettled([...this.#flights]);
-      this.#recoveries.close();
-      if (this.#cleanupFailures.size) throw new Error(`Codex launch cleanup incomplete: ${[...this.#cleanupFailures.keys()].join(', ')}`);
+      const failures: unknown[] = [];
+      try { await this.#recoveries.drain(); } catch (error) { failures.push(error); }
+      for (const id of this.#forwards.keys()) {
+        try { await this.#unforward(id); } catch (error) { failures.push(error); }
+      }
+      if (this.#cleanupFailures.size) failures.push(new Error(`Codex launch cleanup incomplete: ${[...this.#cleanupFailures.keys()].join(', ')}`));
+      if (failures.length) throw new AggregateError(failures, `Codex cleanup incomplete: ${failures.map(String).join('; ')}`);
     })();
     return this.#closing;
   }
 }
 
 /** The end of a log file, for an error message. */
-async function tail(file: string, resumed: Resumed = untimed): Promise<string> {
+async function tail(machine: Host, file: string, resumed: Resumed = untimed): Promise<string> {
   return continueWith((function* (): Generator<Promise<unknown>, string, unknown> {
     try {
-      return ((yield* wait(readFile(file, 'utf8')))).trim().split('\n').slice(-5).join(' | ').slice(-800) || '(no output)';
+      return Buffer.from(yield* wait(machine.readFile(file))).toString('utf8').trim().split('\n').slice(-5).join(' | ').slice(-800) || '(no output)';
     } catch {
       return '(no output)';
     }

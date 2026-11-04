@@ -1,6 +1,8 @@
 // T2: fake harness rows and disposable projectHub socket edges; no SSH or cloud.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { localHost } from '../src/host/local.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { once, on } from 'node:events';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -151,7 +153,7 @@ for (const variant of ['own', 'anonymous', 'foreign-host', 'local', 'roleless'])
   let acceptedId: string | undefined;
   const entered = Promise.withResolvers<{ request: SpawnRequest; row: HarnessProcess }>();
   const release = Promise.withResolvers<void>();
-  const remote = { ...testHost('f1', () => {}), async statDirectory() { return { refusal: null, identity: null }; } };
+  const remote = { ...testHost('f1', () => {}), realpath: localHost(fixtureEnvironment(root,process.env)).realpath, async statDirectory() { return { refusal: null, identity: null }; } };
   const hub = await projectHub(t, root, {}, { hosts: [remote], adapters: [(host, clock) => {
     const fake = fakeHarness('claude-code', { host, clock });
     const spawn = fake.spawn.bind(fake);
