@@ -63,6 +63,21 @@ code. Real images/providers install the version directory (E-1533). Launches
 requiring an absent version directory refuse with its path; a down tunnel also
 names the required code directory. Code installation is outside this Host.
 
+Claude additionally requires agent capability `claude-launch-adopt-v1` for
+its generation-scoped launch receipt and adoption. Its private host MCP/settings
+files carry the launch credential at mode 0600. The existing account config
+root must be agent-owned mode0700; its own job record may retain settings bytes.
+Confirmed cleanup removes that pinned job only, preserving sibling jobs. Command argv, agent receipts and
+command environments contain no session launch credential. Hooks and the mod bridge use the
+forwarded host `hub.sock`, host secret and session launch credential. Confirmed
+stop removes the private generation files and receipt. Unknown native
+outcomes retain the files and fence subsequent mutations; known refusals hold
+the row for explicit re-stop. Local launches
+retain their existing CLI discovery and polling schedule. Remote terminal PID
+observations perform one bounded generation settlement before publishing exit,
+with one restart recovery retry. Failed settlement holds the row and role as
+cleanup-incomplete. Liveness and discovery timers remain CLI-free.
+
 No remote `modDir` is assumed. Claude refuses a layout without it; callers may
 supply an installed host-side mod directory. OpenCode prepares its shared ignore
 through the launch Host, preserving existing contents and appending a missing wildcard.
@@ -108,7 +123,7 @@ filesystem decisions and accept old error replies without it.
 | Operation | Boundary |
 | --- | --- |
 | `prepare-spawn` | Open the remote log and return a connection-owned token before hub authorization. Commit uses that held descriptor. |
-| `prepare-stop` | Capture and checkpoint the native tree, then return its births for hub authorization and `beforeSignal`. Commit revalidates the same captured set. |
+| `prepare-stop` | Capture and checkpoint the native tree, then return its births for hub authorization and `beforeSignal`. Commit revalidates the captured set; adopted Claude settles positively exited/replaced pinned births without spending its single new-descendant recapture. Unknown births get one bounded re-read and persistent unknown remains incomplete. |
 | `prepare-worktree` | Complete Git work before the hub's `beforeInstall` callback. |
 | `commit-prepared` | Consume the token once; optional `install:false` retains Git work and skips installation. |
 | `abort-prepared` | Close held resources and clean newly created empty logs or newly created worktrees. |
@@ -190,3 +205,9 @@ error naming the cap and original output byte counts. Small results retain their
 original bytes. The same stored result serves the first reply and later
 settlement replies, so escaped output and a lost reply cannot prevent completion.
 The retained monolithic `run` operation is unchanged.
+
+Claude cleanup retains a terminal generation receipt until the hub confirms
+private-file deletion and invokes the receipt's forget closure. Lost release or
+forget replies recover without native stop replay. Normal retention is one per
+active/pending generation, zero after confirmed cleanup; no time eviction.
+Revoke/remove integration belongs to T-1666.

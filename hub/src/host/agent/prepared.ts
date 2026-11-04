@@ -225,7 +225,7 @@ export class PreparedOperations {
     });
     const pending=this.#pending.get(token)!;
     const running=Promise.resolve().then(work).then(async result=>{
-      if(nativeCommandIncomplete(result)){this.#fenced.add(token);throw new Error(result.error);}
+      if(nativeCommandIncomplete(result)){this.#fenced.add(token);throw Object.assign(new Error(result.error),{code:'CLAND_NATIVE_INCOMPLETE'});}
       result=boundedCommandResult(result);
       await this.#saveOutcome(token,pending.plan,{state:'accepted',result});await this.#removePlan(token);return result;
     }).catch(error=>{this.#fenced.add(token);this.#failures.set(token,error instanceof Error?error:new Error(String(error)));throw error;});

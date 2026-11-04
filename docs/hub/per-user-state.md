@@ -14,6 +14,14 @@ sockets and harness configuration. New paths must stay project-local or register
 there; `state-paths-lint.test.ts` rejects unregistered home/temp paths and
 unguarded macOS commands. Machine runtime paths need no persistent volume;
 harness configuration stays in its selected HOME or configuration directory.
+The host agent owns the Node-only resolver in `host/agent/state-paths.ts`; the
+hub's `state-paths.ts` re-exports that same function. It resolves Claude's
+existing account root with `hostClaudeConfigDirectory(commandEnv, agentEnv)`:
+command `CLAUDE_CONFIG_DIR`,
+otherwise command `HOME/.claude`, otherwise agent `HOME/.claude`. These are host
+environments; the hub user's HOME is never consulted. The inventory names the
+host agent as owner of this configuration and its generation-owned job records.
+Launch still requires a real agent-owned account directory with mode 0700.
 Per-host short socket fallbacks register each flagged node and immediate parent
 expression in the same item, with a reason naming the OS path bound; see the
 [registration procedure](../agents/tests/hub-test-state-inventory.test.ts.md).

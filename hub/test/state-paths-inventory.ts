@@ -2,6 +2,18 @@
  * Each new runtime path must register its reason here (T-1621 / E-1532 shared seam). */
 export const PATH_EXCEPTIONS = [
   {
+    "file": "host/agent/state-paths.ts",
+    "expression": "commandEnv.HOME",
+    "context": "commandEnv.HOME || agentEnv.HOME",
+    "reason": "hostClaudeConfigDirectory resolves the host agent user's existing Claude account root: command CLAUDE_CONFIG_DIR, otherwise command HOME then agent HOME/.claude. The host agent owns its private jobs; login/trust are preserved, never relocated to hub state."
+  },
+  {
+    "file": "host/agent/state-paths.ts",
+    "expression": "agentEnv.HOME",
+    "context": "commandEnv.HOME || agentEnv.HOME",
+    "reason": "hostClaudeConfigDirectory falls back only to the host agent user's HOME when the admitted command has no HOME. The host agent owns account configuration and generation-pinned job cleanup; it never consults the hub user's HOME."
+  },
+  {
     "file": "accounts/registry.ts",
     "expression": "env.HOME",
     "context": "env.HOME ?? homedir()",

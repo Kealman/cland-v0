@@ -1,7 +1,8 @@
 // T1: pure directory precedence and unchanged spend location.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { userStateDirectory, legacySpendPath } from '../src/state-paths.ts';
+import { userStateDirectory, legacySpendPath, hostClaudeConfigDirectory } from '../src/state-paths.ts';
+import { hostClaudeConfigDirectory as agentClaudeConfigDirectory } from '../src/host/agent/state-paths.ts';
 import { spendPath } from '../src/executor/droplet/spend.ts';
 import { join } from 'node:path';
 test('per-user state precedence preserves executor override, XDG and HOME fallbacks', () => {
@@ -16,4 +17,12 @@ test('per-user state precedence preserves executor override, XDG and HOME fallba
   }
   assert.equal(legacySpendPath({ HOME: '/scratch/home' }), '/scratch/home/.cland/executor/spend.json');
   assert.equal(legacySpendPath({ CLAND_EXECUTOR_STATE: '/scratch/override' }), null);
+});
+test('host Claude account root preserves config override and host HOME precedence', () => {
+  assert.equal(hostClaudeConfigDirectory, agentClaudeConfigDirectory, 'hub re-exports the agent-owned resolver');
+  const agent = { HOME: '/host/agent', CLAUDE_CONFIG_DIR: '/not-command-config' };
+  assert.equal(hostClaudeConfigDirectory({ CLAUDE_CONFIG_DIR: '/host/account', HOME: '/host/command' }, agent), '/host/account');
+  assert.equal(hostClaudeConfigDirectory({ HOME: '/host/command' }, agent), '/host/command/.claude');
+  assert.equal(hostClaudeConfigDirectory({}, agent), '/host/agent/.claude');
+  assert.equal(hostClaudeConfigDirectory({ CLAUDE_CONFIG_DIR: '', HOME: '' }, agent), '/host/agent/.claude');
 });

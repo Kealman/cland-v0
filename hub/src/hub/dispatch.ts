@@ -2296,9 +2296,11 @@ export class Dispatcher {
             if (reason) return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(null, String(frame.type), reason)));
             // Resolve all subsequent CLI handlers from the proved durable identity.
             frame.as = { name: row!.name, sessionId: id, shell: true, credential: as!.credential };
+            const nativeId=frame.type==='session.signal'?(frame.payload as {session_id?:unknown}|undefined)?.session_id:undefined;
             if ((frame.type === 'session.signal' || frame.type === 'session.bridge') &&
-              (frame.sessionId !== undefined && frame.sessionId !== id || frame.session !== undefined && frame.session !== row!.name || frame.launch !== undefined && frame.launch !== row!.launch))
+              (frame.sessionId !== undefined && frame.sessionId !== (frame.type === 'session.signal' ? row!.nativeSessionId ?? id : id) || typeof nativeId==='string' && nativeId!==(row!.nativeSessionId ?? id) || frame.session !== undefined && frame.session !== row!.name || frame.launch !== undefined && frame.launch !== row!.launch))
               return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(row!.role, String(frame.type), 'host plumbing must target its own session')));
+            if (frame.type === 'session.signal' || frame.type === 'session.bridge') frame.session = row!.name;
           }
         }
         if (userId) admittedUsers.set(frame, userId);

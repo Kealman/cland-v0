@@ -147,6 +147,31 @@ When changing forwarded host clients, preserve their session credentials on CLI,
 hook and mod-bridge frames. A host secret never grants human authority. Consult
 [host admission](../../../docs/hub/adapters-and-sessions.md#host-secret-admission-and-revocation)
 for the deny-by-default boundary and local human revocation procedure.
+Remote Claude requires an installed host mod directory and agent capability
+`claude-launch-adopt-v1`; the agent owns the single launch discovery and native
+worker receipt. Adopt by generation, never by caller PID. Keep CLAND_LAUNCH_TOKEN
+in the generation's private 0600 MCP/settings files, outside argv and command
+plans; remove them after confirmed stop and retain them on incomplete cleanup.
+After tree closure, confirm native stop or positive native absence before
+calling the generation receipt’s release callback and deleting private files.
+Recover pending cleanup by re-adopting its durable generation after restart.
+Keep remote Claude MCP/settings outside generic LaunchFiles undo; its bounded
+LaunchSettled callback owns deletion after native settlement. The optional
+settleFailedLaunch fallback rebuilds that callback only when the captured observer
+is absent; missing state/receipt holds the row and role. Forget acknowledgement
+follows durable pending-stop clearance and prunes only settled metadata/cache.
+See the failed-launch section in the adapter/session reference for its restart
+acknowledgement intent and typed non-admission boundary.
+A terminal remote Claude PID owns one bounded native settlement and one retry
+through restart recovery; recurring liveness/discovery never launches a CLI.
+Keep the row and role held with the cleanup-incomplete cause until settlement.
+For adopted Claude, a positively exited or replaced pinned birth is settled,
+not descendant churn. Unknown identity gets one bounded native re-read; a
+persistent unknown remains incomplete. Keep the single recapture for new
+unpinned descendants and the UID/ancestry/birth gates unchanged.
+That budget is shared across the outer capture and final pre-TERM helper for
+one admitted stop, held only in memory; a new admission creates a fresh budget.
+See [agent receipts](../../../docs/agents/host-agent.md#claude-launch-receipts).
 
 ## Users-mode remote publications
 

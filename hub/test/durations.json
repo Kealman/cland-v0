@@ -10081,6 +10081,133 @@
     "hub/test/spoke-lazy-tools.test.ts::C4 concurrent first tool listings and every documented tool answer through unchanged handlers": 0.119393
   },
   "allow": {
+    "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": {
+      "seconds": 12,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 4.280448 s; A-16521 4.914584 s; A-16524 7.478454 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 12 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::Claude TERM-resistant SessionEnd hook is captured and killed by native birth": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.497372 s; A-16521 3.754708 s; A-16524 5.759289 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::Claude hook born across root exit remains unacquired": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.250969 s; A-16521 2.482411 s; A-16524 4.095877 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude failed adoption handshake joins rollback and removes its credential copies only": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.496135 s; A-16521 2.669410 s; A-16524 4.785955 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 8 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::agent restart does not inherit Claude dynamic child acquisition from its serialized marker": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.704309 s; A-16521 3.051725 s; A-16524 4.695709 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 8 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::hub restart after tree closure re-adopts its durable generation and releases the job": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.186895 s; A-16521 3.452053 s; A-16524 5.942786 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::lost native release reply settles without replaying native stop": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.388094 s; A-16521 3.667987 s; A-16524 5.479246 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::lost native release-restart reply settles without replaying native stop": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.447058 s; A-16521 3.609232 s; A-16524 5.547025 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::lost native forget-restart reply settles without replaying native stop": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.560124 s; A-16521 3.858513 s; A-16524 5.162289 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 8 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::terminal remote PID settlement cleans before publishing exit without recurring CLI": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.332897 s; A-16521 3.643262 s; A-16524 4.415314 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::terminal remote PID settlement holds the row on native failure without recurring CLI": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.472126 s; A-16521 4.002847 s; A-16524 6.708110 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 11 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::adopted Claude settles one descendant born between stop capture and commit before any signal": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.144803 s; A-16521 3.388156 s; A-16524 5.571318 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::an unowned reparented child stays unacquired across explicit stops": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 4.371144 s; A-16521 4.870771 s; A-16524 6.323685 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 10 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::pinned native hook exit between prepare and commit settles without a manual re-stop": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.183794 s; A-16521 3.453145 s; A-16524 5.511141 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart adoption": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.598499 s; A-16521 3.004179 s; A-16524 4.109649 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart result": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.756138 s; A-16521 2.887391 s; A-16524 4.187371 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart prune-failure": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.612240 s; A-16521 3.018265 s; A-16524 4.273872 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+    },
+    "hub/test/claude-code-remote.test.ts": {
+      "seconds": 90,
+      "file": true,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1607 Coordinator decision 8f8a0401 approves a seven-day aggregate file allowance. Linux x64 c-8 lon1 Node24.21.0, two workers: A-16511 at 3bc5ba0d5 measured 58.659 s; A-16517 at merged head 60c445704 measured 60.959 s, with all 21 native assertions passing but the overall run interrupted by the enforced 60 s file gate. Splitting is excluded by the same decision because the frame launch case measured 4.665 s and 4.280 s, and the reparented-child case 4.210 s and 4.371 s, above the 4 s split threshold. The 90 s cap is about 1.5 times the worst sample; C-216 owns reducing aggregate fixture cost. Test titles, individual budgets, assertions, native ownership gates, wait bounds, ordering and cleanup are unchanged."
+    },
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
       "seconds": 30,
       "owner": "C-216",

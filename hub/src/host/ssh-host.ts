@@ -1,3 +1,5 @@
+import { MissingClaudeGeneration } from './host.ts';
+import { CLAUDE_LAUNCH_CAPABILITY } from './agent/claude.ts';
 import { randomUUID } from 'node:crypto';
 import { AgentClient } from './agent-client.ts';
 import { PREPARED_HOST_CAPABILITY } from './agent/protocol.ts';
@@ -101,9 +103,11 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       throw error;
     }
   };
+  const claudeProcesses = new Set<string>();
+  const claudeCommands = new WeakMap<HostCommand,string>();
   const wire = (command: HostCommand) => {
     command.signal?.throwIfAborted();
-    return { command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
+    return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
     name:o.name, limitPolls:false, layout: () => Object.freeze({...o.layout}),
@@ -126,6 +130,25 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       scheduleCompletions();
       return {pid:result.pid,exited};
     },
+    launchClaude: async (command,generation) => {
+      const connection=await connected();
+      if(!connection.hello.capabilities?.includes(CLAUDE_LAUNCH_CAPABILITY))throw new Error(`host ${o.name}: tunnel agent missing capability ${CLAUDE_LAUNCH_CAPABILITY}`);
+      claudeCommands.set(command,generation);
+      try{return await host.run(command);}finally{claudeCommands.delete(command);}
+    },
+    adopt: async generation => {
+      const connection=await connected();
+      if(!connection.hello.capabilities?.includes(CLAUDE_LAUNCH_CAPABILITY))throw new Error(`host ${o.name}: tunnel agent missing capability ${CLAUDE_LAUNCH_CAPABILITY}`);
+      const admission='claude-adopt:'+generation;
+      const forget=async()=>{const key='claude-forget:'+generation;try{await rpc('forget-claude',{generation});unknown.delete(key);unknown.delete(admission);}catch(error){unknown.add(key);throw new Error('Claude forget cleanup incomplete',{cause:error});}};
+      try {
+        const result=await rpc<{process:import('./host.ts').HostProcess;job:string;session:string;closed?:boolean;released?:boolean}>('adopt-claude',{generation});
+        unknown.delete(admission);if(result.process.pid!==null&&result.process.pidIdentity)claudeProcesses.add(key(result.process.pid,result.process.pidIdentity));return {...result,release:async()=>{
+          const release='claude-release:'+generation;
+          try{await rpc('remove-claude',{generation});unknown.delete(release);}catch(error){unknown.add(release);throw new Error('Claude release cleanup incomplete',{cause:error});}
+        },forget};
+      }catch(error){unknown.add(admission);if((error as NodeJS.ErrnoException).code==='CLAND_CLAUDE_GENERATION_MISSING')throw new MissingClaudeGeneration(generation,forget);throw Object.assign(new Error('Claude adoption cleanup incomplete: worker receipt unavailable',{cause:error}),{code:'CLAND_NATIVE_INCOMPLETE'});}
+    },
     run: async command => {
       mutation();
       const args=wire(command),connection=await connected(),token=randomUUID(),recoveryKey=randomUUID();
@@ -137,6 +160,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
         return await result as Awaited<ReturnType<Host['run']>>;
       } catch(error) {
         if((error as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED')throw error;
+        if((error as NodeJS.ErrnoException).code==='CLAND_NATIVE_INCOMPLETE'){unknown.add(token);throw error;}
         await lostConnection(connection,token);return settle<Awaited<ReturnType<Host['run']>>>(token,recoveryKey);
       }
       finally {command.signal?.removeEventListener('abort',abort);}
@@ -150,9 +174,16 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     stop: async (row,options) => {
       check(); if (row.pid === null) return true;
       if (!row.pidIdentity) return false;
-      const result = await prepared<boolean>('stop',{pid:row.pid,identity:row.pidIdentity}, async tree => { options?.authorize?.(tree); await options?.beforeSignal?.(tree); });
-      if (result) options?.log?.({event:'harness-ended',pid:row.pid});
-      return result;
+      const deadline=Date.now()+1000;
+      for(;;){
+        let admitted=false;
+        const result = await prepared<boolean>('stop',{pid:row.pid,identity:row.pidIdentity}, async tree => { admitted=true;options?.authorize?.(tree); await options?.beforeSignal?.(tree); });
+        if (result) options?.log?.({event:'harness-ended',pid:row.pid});
+        // A tokenless refusal made no native stop attempt. Reconcile capture only;
+        // never replay a committed stop whose signal outcome is unknown.
+        if(result||admitted||!claudeProcesses.has(key(row.pid,row.pidIdentity))||Date.now()>=deadline)return result;
+        await pause();
+      }
     },
     statDirectory: path => rpc('statDirectory',{path}),
     realpath: path => rpc('realpath',{path}),

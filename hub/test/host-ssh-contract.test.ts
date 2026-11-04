@@ -91,12 +91,13 @@ for(const [name,Adapter] of Object.entries({claude:ClaudeCodeAdapter,codex:Codex
  assert.equal(env.HUB_ONLY,'synthetic-hub-only','pre-change source map positive control');
  const execute=async(command:HostCommand):Promise<never>=>{
   const child=await f.host.spawn({...command,command:process.execPath,args:['-e',`require('fs').writeFileSync(process.argv[1],JSON.stringify(process.env))`,output]});
-  assert.deepEqual(await child.exited,{code:0,signal:null});throw new Error('observed fake harness boundary');
+  assert.deepEqual(await child.exited,{code:0,signal:null});throw Object.assign(new Error('observed fake harness boundary'),name==='claude'?{code:'CLAND_AGENT_ADMISSION_REFUSED'}:{});
  };
- const machine={...f.host,layout:()=>({...f.layout,modDir:join(f.fake.home,'mod')}),run:async(command:HostCommand)=>command.args[0]==='--version'?{code:0,stdout:'codex 0.160.0',stderr:''}:execute(command),spawn:execute};
- const host:AdapterHost={root:f.root,discoveryFile:join(f.root,'hub.json'),node:process.execPath,cli:'/hub/cli',spoke:'/hub/spoke',hostForLaunch:()=>machine,log:()=>{},signal:()=>{},exited:()=>{},recordPid:()=>{}};
+ const machine={...f.host,layout:()=>({...f.layout,modDir:join(f.fake.home,'mod')}),launchClaude:execute,run:async(command:HostCommand)=>command.args[0]==='--version'?{code:0,stdout:'codex 0.160.0',stderr:''}:execute(command),spawn:execute};
+ const host:AdapterHost={root:f.root,discoveryFile:join(f.root,'hub.json'),node:process.execPath,cli:'/hub/cli',spoke:'/hub/spoke',hostForLaunch:()=>machine,...(name==='claude'?{hostForProcess:()=>machine}:{}),log:()=>{},signal:()=>{},exited:()=>{},recordPid:()=>{}};
  const adapter=new Adapter(host,{env,bin:'/fake/harness',pollMs:600000});f.addCleanup(async()=>{await adapter.close();});
  await assert.rejects(adapter.spawn({name:'worker',host:'f1',sessionId:'synthetic-session',role:null,model:null,cwd:f.fake.home}),/observed fake harness boundary/);
+ if(name==='claude'){const refused=await f.host.launchClaude!({command:'/never-run',args:['--bg'],cwd:f.fake.home,env:{CLAUDE_CONFIG_DIR:join(f.root,'missing-private-config')}},'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');assert.match(refused.error!,/Claude launch refused/);}
  const received=JSON.parse(await readFile(output,'utf8'));assert.equal(received.HUB_ONLY,undefined);
 });
 

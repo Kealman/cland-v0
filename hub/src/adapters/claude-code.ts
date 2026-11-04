@@ -1,3 +1,5 @@
+import { MissingClaudeGeneration } from '../host/host.ts';
+import { claudeBackgroundId } from '../host/agent/claude.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { LOCAL_MOD_DIR as MOD_DIR } from '../host/launch-layout.ts';
 import { isLinuxIdentity } from '../host/process-host.ts';
@@ -35,13 +37,14 @@ import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 // Not used: the session's inbox socket (its message format is undocumented) and channels (a research preview).
 import { createHash } from 'node:crypto';
 import { continueWith, wait, untimed } from './continuations.ts';
-import { LaunchFiles } from './launch-files.ts';
+import { LaunchFiles, FailedLaunches } from './launch-files.ts';
+import { boundedSettlement, type LaunchSettled } from './launch-settlement.ts';
 import type { Host } from '../host/host.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { claudeLocalHost } from './claude-code-local.ts';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { accountPrefix } from '../accounts/registry.ts';
 import { addUsage } from './usage.ts';
@@ -99,6 +102,8 @@ export const HOOK_EVENTS: Readonly<Record<string, string>> = {
   SubagentStop: 'subagent-stop',
 };
 
+type FailedClaudeGeneration={generation:string;process:HarnessProcess;privateDirectory:string;previousGeneration:string|null;previousDirectory?:string;phase:'prepared'|'launching'|'settled';attempts?:number;nativeConfirmed?:boolean};
+type TerminalSettlement={generation:string;attempts:number;cause:string};
 /** One entry of `claude agents --json` (agent view, research preview): only the fields cland reads. */
 type AgentEntry = { pid?: number; id?: string; sessionId?: string; status?: string; state?: string; waitingFor?: string; cwd?: string };
 
@@ -232,11 +237,23 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   #polling = false;
   #pollFlight: Promise<void> | undefined;
   readonly #resumes = new Set<Promise<ResumeResult>>();
+  readonly #recoveries:FailedLaunches;
+  readonly #failedGenerations=new Map<string,FailedClaudeGeneration>();
+  readonly #launchSettlements=new Map<string,LaunchSettled>();
+  readonly #settlementWriters=new Set<Promise<void>>();
   readonly #launchCleanups = new Map<string, { process: HarnessProcess; files: LaunchFiles; error?: unknown }>();
   readonly #resumeWaits = new Map<ClockTimer, () => void>();
   /** Watched processes by session id. */
   readonly #watched = new Map<string, HarnessProcess>();
   /** The mod's bridge of each session: where inject frames go. */
+  readonly #releasedStops = new Set<string>();
+  readonly #forgets = new Map<string, () => Promise<void>>();
+  readonly #confirmedStops = new Set<string>();
+  readonly #releases = new Map<string, () => Promise<void>>();
+  readonly #launches = new Set<Promise<HarnessProcess>>();
+  readonly #terminalSettlements = new Map<string,TerminalSettlement>();
+  readonly #stopFailures = new Map<string,string>();
+  readonly #launchDirectories = new Map<string, string>();
   readonly #bridges = new Map<string, { send: (frame: InjectFrame) => boolean; generation: string | null }>();
   readonly #pending = new Map<string, Pending>();
   readonly #prompts = new Map<string, Map<string, Prompt>>();
@@ -252,6 +269,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   constructor(host: AdapterHost, options: ClaudeCodeOptions = {}) {
     this.#host = host;
+    this.#recoveries=new FailedLaunches(host.log,1000,host.durableLaunchRecovery);
     this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
     this.#syntheticProcesses = !!(options.processStarted || options.processIdentity || options.pidAlive);
@@ -325,8 +343,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     if (p.account) for (const key of AUTH_VARIABLES) delete env[key];
     const controller = new AbortController();
     const machine = this.#machine(p);
-    const commandInput = { command: this.#bin, args, cwd, env: hostCommandEnvironment(machine, env, { ...(machine.name === 'local' ? {} : p.accountEnv), DISABLE_AUTOUPDATER: '1', ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }), timeoutMs, signal: controller.signal };
-    const work = machine.run(commandInput).then(r => resumed(() => {
+    const commandInput = { command: this.#bin, args, cwd, env: hostCommandEnvironment(machine, env, { ...(machine.name === 'local' ? {} : p.accountEnv), DISABLE_AUTOUPDATER: '1', ...(launchToken && machine.name === 'local' ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }), timeoutMs, signal: controller.signal };
+    const generation=this.#launchDirectories.get(p.sessionId);
+    const work = (args[0]==='--bg' && machine.launchClaude && generation ? machine.launchClaude(commandInput,basename(generation)) : machine.run(commandInput)).then(r => resumed(() => {
       if (r.error || r.code === null) throw new Error(`${this.#bin} ${args[0] ?? ''}: ${r.error ?? 'command ended without an exit code'}`);
       return { code: r.code, stdout: r.stdout, stderr: r.stderr };
     }));
@@ -482,13 +501,88 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     // --bg does not retain the launcher's environment. Private settings survive native re-exec;
     // the command line carries only paths, never the session credential.
     const directory = join(layout.runDirectory, 'sessions', createHash('sha256').update(sessionId).digest('hex'), launchId);
-    await files.directory(directory, 0o700);
+    const writer=machine.name==='local'?files:new LaunchFiles(files.resumed,machine);
+    await writer.directory(directory,0o700);
+    if(machine.name!=='local'){this.#launchDirectories.set(sessionId,directory);this.#setGeneration(sessionId,launchId);}
     const mcpFile = join(directory, 'mcp.json');
     const settingsFile = join(directory, 'settings.json');
-    await files.write(mcpFile, Buffer.from(JSON.stringify(mcp)), 0o600);
-    await files.write(settingsFile, Buffer.from(JSON.stringify(settings)), 0o600);
+    await writer.write(mcpFile, Buffer.from(JSON.stringify(mcp)), 0o600);
+    await writer.write(settingsFile, Buffer.from(JSON.stringify(settings)), 0o600);
+    if(machine.name!=='local')writer.commit();
     this.#setGeneration(sessionId, launchId);
     return ['--mcp-config', mcpFile, '--settings', settingsFile, '--plugin-dir', modDir];
+  }
+
+  #cleanupKey(p:HarnessProcess):string {return JSON.stringify([p.sessionId,p.harnessId,p.pidIdentity,p.startedAt,this.#host.adapterState?.read(launchGenerationKey(p.sessionId)),this.#launchDirectories.get(p.sessionId)]);}
+  #rememberAdoption(p:HarnessProcess,receipt:Awaited<ReturnType<NonNullable<Host['adopt']>>>):HarnessProcess {
+    const process={...p,...receipt.process,harnessId:receipt.job,harnessSessionId:receipt.session};
+    if(receipt.release)this.#releases.set(p.sessionId,receipt.release);
+    if(receipt.forget)this.#forgets.set(p.sessionId,receipt.forget);
+    if(receipt.released)this.#releasedStops.add(this.#cleanupKey(process));
+    return process;
+  }
+
+  #saveFailedGeneration(record:FailedClaudeGeneration):void {
+    this.#host.adapterState?.write('claude-failed:'+record.process.sessionId,JSON.stringify(record));
+    this.#failedGenerations.set(record.process.sessionId,record);
+  }
+  #failedGeneration(sessionId:string,metadataOnly=false):FailedClaudeGeneration|undefined {
+    const active=this.#failedGenerations.get(sessionId);if(active)return active;
+    const saved=this.#host.adapterState?.read('claude-failed:'+sessionId);if(!saved)return;
+    try {
+      const record=JSON.parse(saved) as FailedClaudeGeneration;
+      if(record.process.sessionId===sessionId&&record.process.harness===this.harness&&/^[a-f0-9-]{36}$/.test(record.generation)
+        && ['prepared','launching','settled'].includes(record.phase)
+        && (record.phase!=='prepared'||record.process.pid===null&&record.process.harnessId===null)
+        && basename(record.privateDirectory)===record.generation&&basename(dirname(record.privateDirectory))===createHash('sha256').update(sessionId).digest('hex')
+        && (metadataOnly||record.privateDirectory===join(this.#machine(record.process).layout(this.#host).runDirectory,'sessions',createHash('sha256').update(sessionId).digest('hex'),record.generation)))return record;
+    }catch{}
+    throw new Error('Claude cleanup-incomplete: failed generation state unavailable');
+  }
+  settleFailedLaunch(p:HarnessProcess):void|Promise<void> {
+    if((p.host??'local')==='local')return;
+    return this.#failedSettlement(p)();
+  }
+  #failedSettlement(p:HarnessProcess):LaunchSettled {
+    const record=this.#failedGeneration(p.sessionId);
+    if(!record||(record.process.host??'local')!==(p.host??'local'))throw new Error('Claude cleanup-incomplete: failed generation state missing or mismatched');
+    const generation=this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+    if(generation!==undefined&&generation!==null&&generation!==record.generation&&!(record.phase==='settled'&&generation===(record.previousGeneration??'')))throw new Error('Claude cleanup-incomplete: failed generation changed');
+    const key=p.sessionId+':'+record.generation,active=this.#launchSettlements.get(key);if(active)return active;
+    const finish=boundedSettlement(()=>{
+      const work=Promise.resolve().then(async()=>{
+        if(record.phase==='settled')return;
+        this.#saveFailedGeneration(record);
+        const machine=this.#machine(record.process);
+        this.#launchDirectories.set(p.sessionId,record.privateDirectory);
+        if(record.phase==='launching'){
+          if(!machine.adopt)throw new Error('Claude cleanup-incomplete: adoption unavailable');
+          let adopted:Awaited<ReturnType<NonNullable<Host['adopt']>>>;
+          try{adopted=await machine.adopt(record.generation);}catch(error){
+            if(!(error instanceof MissingClaudeGeneration)||error.generation!==record.generation||this.#host.adapterState?.read('claude-cleanup:'+p.sessionId)!==record.generation)throw error;
+            await error.forget();adopted={process:{pid:null},job:'',session:'',released:true};
+          }
+          if(adopted.process.pid!==null){
+            record.process=this.#rememberAdoption(record.process,adopted);this.#saveFailedGeneration(record);
+            if(record.nativeConfirmed)this.#confirmedStops.add(this.#cleanupKey(record.process));
+            if(!record.nativeConfirmed&&!adopted.released){
+              if((record.attempts??0)>=2)throw new Error('Claude cleanup-incomplete: failed-launch native settlement retry exhausted');
+              record.attempts=(record.attempts??0)+1;this.#saveFailedGeneration(record);
+            }
+            await this.#stop(record.process,untimed,()=>{},true,Date.now()+this.#stopGraceMs,true);
+          }
+        }else{
+          for(const file of ['mcp.json','settings.json'])await machine.removePath(join(record.privateDirectory,file)).catch(error=>{if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;});
+          await machine.removePath(record.privateDirectory,{directory:true}).catch(error=>{if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;});
+        }
+        this.#saveFailedGeneration({...record,phase:'settled',process:{...record.process,accountEnv:null}});
+        this.#setGeneration(p.sessionId,record.previousGeneration??'');
+        if(record.previousDirectory)this.#launchDirectories.set(p.sessionId,record.previousDirectory);else this.#launchDirectories.delete(p.sessionId);
+        this.#host.adapterState?.write('claude-cleanup:'+p.sessionId,'');
+      });
+      this.#settlementWriters.add(work);void work.then(()=>this.#settlementWriters.delete(work),()=>this.#settlementWriters.delete(work));return work;
+    });
+    this.#launchSettlements.set(key,finish);return finish;
   }
 
   #setGeneration(sessionId: string, generation: string): void {
@@ -502,7 +596,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   /** The background id `claude --bg` printed (`claude attach <id>`). */
   static parseBackgroundId(stdout: string): string | null {
-    return /claude attach (\S+)/.exec(stdout)?.[1]?.replace(/[`'".,]+$/, '') ?? /\(([0-9a-f]{6,})\)/.exec(stdout)?.[1] ?? /\b([0-9a-f]{8})\b/.exec(stdout)?.[1] ?? null;
+    return claudeBackgroundId(stdout);
   }
 
   async #launch(p: ClaudeLaunch, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, permissions: Permissions | null = null): Promise<HarnessProcess> {
@@ -510,6 +604,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const files = new LaunchFiles(resumed, this.#host.hostForLaunch?.(p));
       let launched: HarnessProcess | undefined;
       let backgroundStarted = false;
+      let attempted=false;
+      const previousDirectory=this.#launchDirectories.get(p.sessionId);
       const previousGeneration = this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
       try {
         const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
@@ -532,21 +628,26 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         const warning = d.signedOut ? `Claude config directory ${d.configDir} is latched signed out; this explicit launch is a recovery attempt.` : undefined;
         const prefix = this.#dirPrefix(p);
         const remedy = p.account ? `\nAccount ${p.account}, directory ${d.configDir}: sign in with ${prefix}claude auth login, or trust the project once with ${prefix}claude in ${p.cwd}.` : '';
+        if(this.#machine(p).name!=='local')this.#saveFailedGeneration({generation:basename(this.#launchDirectories.get(p.sessionId)!),process:{...p,pid:null,harnessId:null,startedAt:new Date().toISOString(),status:'running'},privateDirectory:this.#launchDirectories.get(p.sessionId)!,previousGeneration:previousGeneration??null,...(previousDirectory?{previousDirectory}:{}),phase:'launching'});
+        attempted=true;
         const r = yield* wait(this.#run(args, p.cwd, p, undefined, resumed, launchToken).catch(error => {
-          throw new Error(`${error instanceof Error ? error.message : String(error)}${remedy}`);
+          throw Object.assign(new Error(`${error instanceof Error ? error.message : String(error)}${remedy}`),{code:(error as NodeJS.ErrnoException).code});
         }));
         const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
         backgroundStarted = r.code === 0;
         launched = { ...p, pid: null, harnessId, startedAt: new Date().toISOString(), status: 'running', ...(warning ? { warning } : {}) };
         if (r.code !== 0 && /(?:token|oauth|authentication).*(?:expired|expiry)|(?:expired|expiry).*(?:token|oauth|authentication)/i.test(r.stderr + r.stdout)) this.#markSignedOut(launched);
         if (r.code !== 0) throw new Error(`${warning ? `warning: ${warning}\n` : ''}claude --bg failed (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(0, 500)}${remedy}`);
-        if (this.#closed) throw new Error('the Claude adapter is closed');
+        if (this.#closed && !this.#machine(launched).adopt) throw new Error('the Claude adapter is closed');
         this.#recovered(d);
-        this.watch(launched);
+        if(!this.#closed)this.watch(launched);
         this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, harnessId, resume, out: r.stdout.trim().slice(0, 300) });
         // the session's process: agent view lists it once its supervisor started it
         const previous = d.agentsVersion;
-        const entries = yield* wait((launched.host ?? 'local') === 'local'
+        const machine=this.#machine(launched);
+        const adopted=machine.adopt && machine.launchClaude ? yield* wait(machine.adopt(basename(this.#launchDirectories.get(p.sessionId)!))) : undefined;
+        if(adopted)Object.assign(launched,this.#rememberAdoption(launched,adopted));
+        const entries = adopted ? null : yield* wait((launched.host ?? 'local') === 'local'
           ? this.#agents(launched, resumed)
           : this.#agentsAfterCurrent(launched, resumed, authorize, 'launch'));
         const found = entries && d.agentsVersion > previous ? this.#find(entries, launched) : undefined;
@@ -561,8 +662,23 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
         if (this.#closed) throw new Error('the Claude adapter is closed');
         files.commit();
+        if(this.#machine(p).name!=='local'){this.#host.adapterState?.write('claude-failed:'+p.sessionId,'');this.#failedGenerations.delete(p.sessionId);}
         return launched;
       } catch (err) {
+        const directory=this.#launchDirectories.get(p.sessionId);
+        if(this.#machine(p).name!=='local'&&directory&&directory!==previousDirectory){
+          const previous=this.#failedGeneration(p.sessionId);
+          const record=(previous?.generation===basename(directory)?previous:undefined)??{generation:basename(directory),process:launched??{...p,pid:null,harnessId:null,startedAt:new Date().toISOString(),status:'running'},privateDirectory:directory,previousGeneration:previousGeneration??null,...(previousDirectory?{previousDirectory}:{}),phase:attempted?'launching' as const:'prepared' as const};
+          if(launched)record.process={...launched};
+          if(!launched&&!backgroundStarted&&(err as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED')record.phase='prepared';
+          try{this.#saveFailedGeneration(record);}catch(checkpoint){this.#failedGenerations.set(p.sessionId,record);err=new Error('Claude cleanup-incomplete: failed generation checkpoint unavailable',{cause:checkpoint});}
+          const finish:LaunchSettled=()=>this.#failedSettlement(record.process)();
+          return yield* wait(this.#recoveries.failed(p.sessionId,p.name,files,err,finish));
+        }
+        if((err as NodeJS.ErrnoException).code==='CLAND_NATIVE_INCOMPLETE'){
+          this.#launchCleanups.set(p.sessionId,{process:launched??{...p,pid:null,harnessId:null,startedAt:new Date().toISOString(),status:'running'},files,error:err});
+          throw err;
+        }
         // Retain the accepted native launch and its files until both native stop
         // and rollback complete, including when shutdown interrupted discovery.
         if (launched && (backgroundStarted || launched.harnessId || launched.pid !== null)) {
@@ -573,6 +689,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             this.#setGeneration(p.sessionId, previousGeneration ?? '');
             yield* wait(files.rollback());
             this.#launchCleanups.delete(p.sessionId);
+            if(previousDirectory)this.#launchDirectories.set(p.sessionId,previousDirectory);else this.#launchDirectories.delete(p.sessionId);
           } catch (error) {
             this.#launchCleanups.set(p.sessionId, { ...cleanup, error });
             throw error;
@@ -580,6 +697,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         } else {
           this.#setGeneration(p.sessionId, previousGeneration ?? '');
           yield* wait(files.rollback());
+          if(previousDirectory)this.#launchDirectories.set(p.sessionId,previousDirectory);else this.#launchDirectories.delete(p.sessionId);
         }
         throw err;
       }
@@ -587,7 +705,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...((this.#host.hostForLaunch?.(request)?.name ?? request.host ?? 'local') === 'local' ? this.#inheritedEnv() : {}), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    const work = this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...((this.#host.hostForLaunch?.(request)?.name ?? request.host ?? 'local') === 'local' ? this.#inheritedEnv() : {}), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    this.#launches.add(work);
+    void work.then(()=>this.#launches.delete(work),()=>this.#launches.delete(work));
+    return work;
   }
 
   nativeSessionHint(p: HarnessProcess, result?: import('./contract.ts').NativeJobInspection): void {
@@ -712,7 +833,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return meaning;
   }
 
-  stateReason(p: HarnessProcess): string | null { return this.#directory(p).signedOut ? 'signed-out' : null; }
+  stateReason(p: HarnessProcess): string | null {
+    const terminal=this.#terminal(p);
+    const failure=terminal?.cause??this.#stopFailure(p);
+    return failure ? `cleanup-incomplete: ${failure}` : this.#directory(p).signedOut ? 'signed-out' : null;
+  }
 
   noteUsage(p: HarnessProcess, usage: Record<string, unknown>): void {
     // A restarted hub starts with no in-memory total: the row's last report seeds this launch's sum.
@@ -723,7 +848,16 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return this.#usage.get(p.sessionId) ?? null;
   }
 
-  forget(sessionId: string): void { this.unwatch(sessionId); this.#usage.delete(sessionId); }
+  forget(sessionId: string): void {
+    const record=this.#failedGeneration(sessionId,true);
+    if(record){
+      const current=this.#host.adapterState?.read(launchGenerationKey(sessionId));
+      if(record.phase!=='settled'||current!=null&&current!==record.generation&&current!==(record.previousGeneration??''))return;
+      this.#host.adapterState?.write('claude-failed:'+sessionId,'');
+      this.#failedGenerations.delete(sessionId);this.#launchSettlements.delete(sessionId+':'+record.generation);
+    }
+    this.unwatch(sessionId);this.#usage.delete(sessionId);
+  }
 
   // ---------------------------------------------------------------- watch: the polled fallback and liveness
 
@@ -780,7 +914,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       // A supervisor may replace its process while retaining the native conversation.
       // A short grace permits replacement while genuine deaths still publish promptly.
       for (const p of [...this.#watched.values()]) {
-        if (this.#stopping.has(p.sessionId)) continue;
+        if (this.#stopping.has(p.sessionId)||this.#terminal(p)||this.#stopFailure(p)) continue;
         const pid = p.pid;
         const alive = pid === null || await this.#pidAlive(p, pid);
         if (this.#closed || this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId) || p.pid !== pid) continue;
@@ -890,14 +1024,49 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       for (const p of [...this.#watched.values()]) {
         const since = this.#missingSince.get(p.sessionId);
         const pid = p.pid;
-        if (!this.#closed && !changedIdentity.has(p.sessionId) && !this.#stopping.has(p.sessionId) && since !== undefined && this.#clock.now().getTime() - since >= this.#reexecGraceMs
+        if (!this.#closed && !this.#terminal(p) && !this.#stopFailure(p) && !changedIdentity.has(p.sessionId) && !this.#stopping.has(p.sessionId) && since !== undefined && this.#clock.now().getTime() - since >= this.#reexecGraceMs
           && pid !== null && !await this.#pidAlive(p, pid)) {
           if (this.#closed || this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId) || p.pid !== pid) continue;
-          this.#unwatch(p.sessionId);
-          this.#host.exited(p.sessionId, `pid ${p.pid} is gone after the ${this.#reexecGraceMs}ms re-exec grace`);
+          const detail=`pid ${p.pid} is gone after the ${this.#reexecGraceMs}ms re-exec grace`;
+          if((p.host??'local')!=='local'&&this.#machine(p).adopt)await this.#settleTerminal(p,detail);
+          else {this.#unwatch(p.sessionId);this.#host.exited(p.sessionId,detail);}
         }
       }
     } finally { this.#polling = false; }
+  }
+
+  #stopFailure(p:HarnessProcess):string|null|undefined {return this.#stopFailures.get(this.#cleanupKey(p))??this.#host.adapterState?.read(this.#stopFailureKey(p));}
+  #stopFailureKey(p:HarnessProcess):string {return 'claude-stop-failure:'+p.sessionId+':'+(this.#host.adapterState?.read(launchGenerationKey(p.sessionId))??this.#cleanupKey(p));}
+
+  #terminal(p:HarnessProcess):TerminalSettlement|undefined {
+    const active=this.#terminalSettlements.get(this.#cleanupKey(p));if(active)return active;
+    const generation=this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+    try {
+      const record=JSON.parse(this.#host.adapterState?.read('claude-terminal:'+p.sessionId)??'null') as TerminalSettlement|null;
+      if(record&&record.generation===generation&&Number.isInteger(record.attempts)&&record.attempts>0&&typeof record.cause==='string')return record;
+    }catch{/* A malformed marker grants no native authority. */}
+    return undefined;
+  }
+
+  /** One terminal event owns cleanup; the only automatic retry is re-adopt
+   * on the next hub start. Timers never retry native commands. */
+  async #settleTerminal(p:HarnessProcess,detail:string,recovery=false):Promise<void> {
+    const key=this.#cleanupKey(p),previous=this.#terminal(p);
+    if(previous&&!recovery)return;
+    if(previous&&previous.attempts>=2)throw new Error(`Claude cleanup-incomplete: ${previous.cause}`);
+    const record:TerminalSettlement={generation:this.#host.adapterState?.read(launchGenerationKey(p.sessionId))??basename(this.#launchDirectories.get(p.sessionId)??''),attempts:(previous?.attempts??0)+1,cause:'terminal settlement pending'};
+    const retain=()=>{this.#terminalSettlements.set(key,record);this.#host.adapterState?.write('claude-terminal:'+p.sessionId,JSON.stringify(record));};
+    retain();
+    try {
+      await this.#stop(p,untimed,()=>{},true,Date.now()+this.#stopGraceMs);
+      this.#terminalSettlements.delete(key);
+      if(!recovery)this.#host.exited(p.sessionId,detail);
+    } catch(error) {
+      record.cause=error instanceof Error?error.message:String(error);retain();
+      this.#host.signal(p.sessionId,{state:'unknown',source:'cleanup-incomplete',at:this.#clock.now().getTime()});
+      this.#host.log({event:'harness-cleanup-incomplete',session:p.name,generation:record.generation,error:record.cause});
+      if(recovery)throw error;
+    }
   }
 
   // ---------------------------------------------------------------- stop, resume
@@ -906,19 +1075,22 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return this.#stop(p, resumed, authorize);
   }
 
-  async #stop(p: HarnessProcess, resumed: Resumed = untimed, authorize: () => void = () => {}, cleanup = false): Promise<void> {
+  async #stop(p: HarnessProcess, resumed: Resumed = untimed, authorize: () => void = () => {}, cleanup = false, deadline?:number, retainCheckpoint=false): Promise<void> {
     // watched until the process is known to be gone: a stop that fails leaves it supervised
     this.#stopping.add(p.sessionId);
     let ended = false;
+    const settlement=this.#cleanupKey(p),failureKey=this.#stopFailureKey(p);
     try {
+      if(!this.#confirmedStops.has(settlement)&&!this.#releasedStops.has(settlement)){
       let stopped = false;
       let attempted = false;
+      const remaining=()=>{const ms=deadline===undefined?undefined:deadline-Date.now();if(ms!==undefined&&ms<=0)throw new Error('Claude terminal settlement deadline exceeded');return ms;};
       const cliStop = async () => {
         if (p.harnessId) {
           attempted = true;
           resumed(authorize);
           try {
-            const r = await this.#run(['stop', p.harnessId], p.cwd, p, undefined, resumed, undefined, cleanup);
+            const r = await this.#run(['stop', p.harnessId], p.cwd, p, remaining(), resumed, undefined, cleanup);
             resumed(() => {
               stopped = r.code === 0;
               if (!stopped) this.#host.log({ event: 'harness-stop-failed', session: p.name, out: (r.stderr || r.stdout).trim().slice(0, 300) });
@@ -936,7 +1108,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         const endedProcess = await this.#machine(p).stop(p, { log: (entry) => {
           if (typeof entry.reason === 'string') reason = entry.reason;
           this.#host.log({ ...entry, harness: this.harness, session: p.name });
-        }, graceMs: this.#stopGraceMs, beforeSignal: cliStop, authorize: () => resumed(authorize), allowReused: p.status === 'exited' });
+        }, graceMs: this.#stopGraceMs, ...((p.host ?? 'local') === 'local' || !this.#machine(p).adopt ? { beforeSignal: cliStop } : {}), authorize: () => resumed(authorize), allowReused: p.status === 'exited' });
         if (!attempted && (endedProcess || (p.host ?? 'local') === 'local')) await cliStop();
         if (!endedProcess) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched${reason ? ` (${reason})` : ''}`);
       }
@@ -944,12 +1116,55 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         // OS exit cannot settle a supervised native job: its daemon can respawn it.
         // A failed stop is releasable only after a fresh successful job listing
         // positively confirms the captured job absent.
-        const entries = p.harnessId ? await this.#agentsAfterCurrent(p, resumed, authorize, 'stop', cleanup) : null;
+        const confirmAbsent=async():Promise<AgentEntry[]|null>=>{
+          try {
+            const result=await this.#run(['agents','--json'],p.cwd,p,remaining(),resumed,undefined,cleanup);
+            const parsed:unknown=result.code===0?JSON.parse(result.stdout):null;
+            return Array.isArray(parsed)?parsed as AgentEntry[]:null;
+          }catch{return null;}
+        };
+        const entries=p.harnessId?(deadline===undefined?await this.#agentsAfterCurrent(p,resumed,authorize,'stop',cleanup):await confirmAbsent()):null;
         if (!entries || entries.some(entry => entry.id === p.harnessId)) {
           throw new Error(`could not stop "${p.name}": native job stop is unconfirmed; it is still watched`);
         }
       }
+      this.#confirmedStops.add(settlement);
+      }
+      const failure=this.#failedGeneration(p.sessionId);
+      if(failure&&failure.phase!=='settled'&&!failure.nativeConfirmed){failure.nativeConfirmed=true;this.#saveFailedGeneration(failure);}
+      await this.#releases.get(p.sessionId)?.();
+      this.#releases.delete(p.sessionId);
+      this.#releasedStops.add(settlement);
+      if ((p.host ?? 'local') !== 'local') {
+        const machine = this.#machine(p);
+        const generation = this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+        const directory = this.#launchDirectories.get(p.sessionId) ?? (generation && /^[a-f0-9-]{36}$/.test(generation)
+          ? join(machine.layout(this.#host).runDirectory, 'sessions', createHash('sha256').update(p.sessionId).digest('hex'), generation) : undefined);
+        if (directory) {
+          for (const file of ['mcp.json', 'settings.json']) await machine.removePath(join(directory, file)).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; });
+          await machine.removePath(directory, { directory: true }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; });
+        }
+      }
+      const forget=this.#forgets.get(p.sessionId);
+      if(forget){
+        const generation=this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+        if(generation)this.#host.adapterState?.write('claude-cleanup:'+p.sessionId,generation);
+        await forget();
+        if(generation&&!retainCheckpoint)this.#host.adapterState?.write('claude-cleanup:'+p.sessionId,'');
+      }
+      this.#forgets.delete(p.sessionId);this.#launchDirectories.delete(p.sessionId);this.#releasedStops.delete(settlement);
+      this.#confirmedStops.delete(settlement);
+      this.#terminalSettlements.delete(settlement);
+      this.#stopFailures.delete(settlement);this.#host.adapterState?.write(failureKey,'');
+      this.#host.adapterState?.write('claude-terminal:'+p.sessionId,'');
       ended = true;
+    } catch(error) {
+      if((p.host??'local')!=='local'){
+        const cause=error instanceof Error?error.message:String(error);
+        this.#stopFailures.set(settlement,cause);this.#host.adapterState?.write(failureKey,cause);
+        this.#host.signal(p.sessionId,{state:'unknown',source:'cleanup-incomplete',at:this.#clock.now().getTime()});
+      }
+      throw error;
     } finally {
       resumed(() => {
         if (ended) this.unwatch(p.sessionId);
@@ -979,6 +1194,25 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const d = this.#directory(p);
       this.watch(p);
       const remote = (p.host ?? 'local') !== 'local';
+      const machine=this.#machine(p),generation=this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+      if(remote && machine.adopt && generation){
+        let adopted:Awaited<ReturnType<NonNullable<Host['adopt']>>>;
+        try{adopted=yield* wait(machine.adopt(generation));}catch(error){
+          if(!(error instanceof MissingClaudeGeneration)||error.generation!==generation||this.#host.adapterState?.read('claude-cleanup:'+p.sessionId)!==generation)throw error;
+          yield* wait(error.forget());this.#host.adapterState?.write('claude-cleanup:'+p.sessionId,'');
+          this.#stopFailures.delete(this.#cleanupKey(p));this.#host.adapterState?.write(this.#stopFailureKey(p),'');
+          this.#host.adapterState?.write('claude-terminal:'+p.sessionId,'');this.unwatch(p.sessionId);
+          return {found:false,alive:false,reason:'Claude confirmed private cleanup completed after recovery'};
+        }
+        const recovered=this.#rememberAdoption(p,adopted);
+        if(!options.relaunch&&this.#stopFailure(p)&&!this.#terminal(p)&&!adopted.released){
+          return {found:false,alive:true,reason:'Claude cleanup-incomplete; explicit re-stop required'};
+        }
+        if(adopted.closed && !options.relaunch){
+          yield* wait(this.#terminal(recovered)?this.#settleTerminal(recovered,'',true):this.stop(recovered,resumed,options.authorize));
+          return {found:false,alive:false,reason:'Claude native cleanup completed after recovery'};
+        }
+      }
       const owner = { pid: p.pid, job: p.harnessId, conversation: p.harnessSessionId };
       const checkOwner = () => {
         if (remote && (this.#watched.get(p.sessionId) !== p || this.#stopping.has(p.sessionId) || p.pid !== owner.pid || p.harnessId !== owner.job || p.harnessSessionId !== owner.conversation || this.#activity.get(p.sessionId)?.pendingIdentity)) throw new Error('Claude session changed while resuming');
@@ -1030,6 +1264,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const candidateAlive = entry && this.#ownsCandidate(p, entry) && pid !== null && pid !== undefined && (yield* wait(this.#pidAlive(candidateProcess, pid)));
       checkOwner();
       if (candidateAlive && entry && pid !== null && pid !== undefined && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted) && (!p.pidIdentity || p.pid !== pid || birth === p.pidIdentity)) {
+        const machine=this.#machine(p),generation=this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+        if(remote && machine.adopt && generation){
+          const adopted=yield* wait(machine.adopt(generation));
+          this.#rememberAdoption(p,adopted);
+          if(adopted.process.pid!==pid || adopted.process.pidIdentity!==birth || adopted.job!==p.harnessId || adopted.session!==entry.sessionId)throw new Error('Claude resumed worker does not match its launch receipt');
+        }
         const process: HarnessProcess = { ...p, pid, ...(remote && p.pid !== pid ? { pidStarted: identity } : {}), pidIdentity: p.pid === pid ? p.pidIdentity ?? null : birth, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
         return { found: true, process, state: stateOfAgent(entry) };
       }
@@ -1046,6 +1286,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   close(): void | Promise<void> {
     if (this.#closed) return this.#closing;
     this.#closed = true;
+    this.#recoveries.close();
     this.#bridges.clear();
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
@@ -1066,8 +1307,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     for (const [timer, done] of this.#resumeWaits) { this.#clock.clearTimeout(timer); done(); }
     const commands = [...this.#commands];
     for (const command of commands) command.cancel();
-    const drains = [...commands.map(command => command.settled), ...this.#nativeInspections.values(), ...this.#resumes, ...(this.#pollFlight ? [this.#pollFlight] : [])].map(work => work.then(() => {}, () => {}));
-    if (drains.length || this.#launchCleanups.size) this.#closing = Promise.all(drains).then(() => {
+    const drains = [...commands.map(command => command.settled), ...this.#nativeInspections.values(), ...this.#launches, ...this.#resumes, ...(this.#pollFlight ? [this.#pollFlight] : [])].map(work => work.then(() => {}, () => {}));
+    if (drains.length || this.#launchCleanups.size || this.#settlementWriters.size || !this.#host.durableLaunchRecovery&&[...this.#failedGenerations.values()].some(record=>record.phase!=='settled')) this.#closing = Promise.all(drains).then(async () => {
+      await this.#recoveries.drain();
+      while(this.#settlementWriters.size)await Promise.allSettled([...this.#settlementWriters]);
+      if(!this.#host.durableLaunchRecovery&&[...this.#failedGenerations.values()].some(record=>record.phase!=='settled'))throw new Error('Claude launch cleanup incomplete: failed generation remains supervised');
       if (this.#launchCleanups.size) throw new Error(`Claude launch cleanup incomplete: ${[...this.#launchCleanups.values()].map(({ process: p, error }) => `${p.name} job ${p.harnessId ?? 'unknown'} pid ${p.pid ?? 'unknown'}: ${error instanceof Error ? error.message : 'native cleanup unconfirmed'}`).join('; ')}`);
     });
     return this.#closing;

@@ -59,6 +59,111 @@ even when the PID was reaped between snapshots. An absent birth without positive
 end remains unresolved and grants no ownership. This applies equally to resumed
 native owners and newly captured trees; legacy timestamps grant no signals.
 
+## Claude launch receipts
+
+An agent advertising `claude-launch-adopt-v1` accepts the optional Host
+`launchClaude(command, generation)` and `adopt(generation)` operations. The
+agent runs `--bg` and exactly one `agents --json`, then atomically pins the
+unique matching job, native conversation, PID, Linux birth and agent UID before
+returning success. Adoption reads that receipt and rechecks the native birth and
+UID. A missing capability refuses explicitly. The account config root remains the
+login's existing root and must be an agent-owned directory with mode0700. The
+receipt pins the canonical config/jobs directory identities. Before any Claude command, jobs/ must be a real agent-owned directory; the agent creates it privately when absent and rechecks the pinned identity after launch. While running,
+token bytes may occur in the private generation files and own account-private
+job record; confirmed stop/rollback removes exactly the pinned job file and
+private generation files, preserving sibling jobs. Failed or ambiguous discovery
+retains an incomplete launch fence and its private files when cleanup cannot be
+proved; a caller must not retry or delete them as though launch never happened.
+
+Freshly adopted Claude workers may create SessionEnd descendants after TERM.
+Only observed parent chains to the live pinned root or captured descendants,
+with the agent UID and a PID absent from the initial census, grant new capture.
+Each birth is checkpointed before signals. Natural shutdown has a bounded grace,
+then TERM and KILL target the pinned set. Root exit ends new acquisition;
+reparented, foreign or unknown writers remain incomplete. Serialized adoption
+markers never grant this acquisition authority after restart: a fresh verified
+adopt is required. Other native owners retain capture-once stop.
+
+The opaque adoption receipt supplies a generation-bound release callback. The
+adapter invokes it only after tree closure and native stop or positive native
+absence, then removes the private settings. A failed release stays pending and
+is idempotently retried without repeating an already confirmed native stop.
+Closed adopted rows remain current until release; after a hub restart a fresh
+adopt may recover their positive closure and finish this sequence. These closed
+receipts grant no signal authority over a reused PID.
+
+Release atomically replaces the live receipt with a private0600 terminal receipt
+(`released:true`), containing identity/config metadata only. Re-adopt of that
+receipt grants no signal authority. After private-directory deletion is observed,
+the adapter checkpoints that fact in hub state, then calls the idempotent forget
+closure. The checkpoint also recovers a lost forget reply without requiring a
+missing agent record to grant process authority. Forget verifies directory
+absence before removing the terminal receipt. The normal bound is one receipt
+per active or cleanup-incomplete generation and zero after confirmed cleanup,
+with no time eviction. T-1666 owns revoke/remove settlement before the authority
+cut; this implementation never cleans through a revoked Host. Reads are exact
+generation lookups, outside startup/liveness history scans. Concurrent writers
+for a generation share their producer and serialize release/forget.
+
+A terminal PID observation owns one bounded native settlement before publishing
+exit. It runs at most one stop command and, if needed, one absence query. A
+failed confirmation retains the row, role, generation files and an explicit
+cleanup-incomplete cause. Its exact-generation marker permits one retry through
+re-adopt after hub restart; no liveness timer retries CLI commands. Explicit
+stop remains available for recovery.
+
+For an adopted worker, a newly born descendant between stop preparation and
+commit can change the approved tree before any signal. One bounded recapture
+uses the same ancestry, UID, initial-census and native-birth policy as SessionEnd
+joining. A second change or an unproved process remains incomplete and is never
+replayed. A pinned member's positive exit or changed native birth settles that
+old member and is removed from comparisons; it does not spend the recapture
+allowance or authorize the replacement. An unknown identity gets one native
+re-read before the decision. A persistent unknown still ends incomplete. Only
+new unpinned descendants count as new capture; the one-recapture bound, UID,
+ancestry and birth gates stay in force. Other refusals retain the running row and role with cleanup-incomplete;
+recovery uses an explicit re-stop after the blocking ownership condition resolves.
+The one recapture budget belongs to the admitted stop, shared by the agent's
+outer capture comparison and the final pre-TERM helper. It is a fresh in-memory
+closure for each admission, never a frame field or persisted flag. If the outer
+layer has not spent it, the helper can capture the first late descendant only
+after a fresh matching UID/ancestry/birth observation and durable checkpoint.
+If already spent, or a further descendant appears during that validation, the
+operation remains incomplete with no replay.
+
+An unconfirmed explicit stop is not retried by liveness timers or startup. It
+keeps its generation-scoped cause until explicit re-stop confirms cleanup.
+Recovery may finish an already released receipt or confirmed private-deletion
+checkpoint, which grants no signal authority.
+
+Every adopted ledger capture uses that acquisition policy, including later
+explicit stops: a refused reparented child cannot become approved merely by
+retrying. Its external owner must confirm cleanup before the worker can settle.
+Fresh adoption's process census is memory-only; a recovered adoption flag alone
+grants no new acquisition.
+
+## Failed Claude launch settlement
+
+Pending agent records retain the generation, private-directory/config/jobs
+identities and the printed job handle when valid, plus the native stop receipt.
+They contain no token or settings/MCP bytes and grant no process authority.
+Incomplete discovery never replays --bg or guesses a PID. Leading-option job
+handles are rejected before they can become a stop argument.
+
+Remote private MCP/settings are excluded from generic LaunchFiles rollback.
+Claude's bounded LaunchSettled callback owns re-adopt, native settlement, release,
+private-file deletion and forget. A lost accepted result can therefore be joined
+even when close began before adoption. An unknown result stays under the durable
+pending-stop owner with its original session identity and launch credential.
+After restart the optional settleFailedLaunch fallback reconstructs the same
+callback; missing state/receipt remains cleanup-incomplete.
+
+The agent's receipt bound stays one per active/incomplete generation and zero
+after cleanup. A terminal hub marker remains until durable pending-stop cleanup
+acknowledges it. The outstanding acknowledgement index is normally empty; an
+interrupted post-clear prune is recovered without native work. No time eviction
+or revoked-Host cleanup is introduced.
+
 ## Atomic file RPCs
 
 The additive `publishFile`, `appendFile` and `stat` operations share the local

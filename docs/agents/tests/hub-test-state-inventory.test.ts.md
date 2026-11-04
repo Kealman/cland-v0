@@ -29,6 +29,14 @@ root. `projectHub`'s `userState: true` removes the executor override through the
 shared environment builder and sets XDG state to that sealed worker HOME.
 
 `state-paths.test.ts` (T1) checks precedence and legacy discovery.
+It also checks the host Claude account-root resolver's command config override,
+command HOME and agent HOME precedence; no filesystem or account is opened.
+The host agent's account-root HOME expressions are recorded in the inventory
+with their owner and login/job-record reason. The shared resolver owns these
+reads; the unchanged full-source assertion still rejects ad hoc reads elsewhere.
+The resolver lives inside the Node-only agent module tree and the hub re-exports
+the identical function; the unit case checks that identity. The unedited agent
+boundary guard still rejects imports from the agent into hub-owned modules.
 `executor-spend.test.ts` must pass unchanged for reconciliation and migration.
 `state-paths-lint.test.ts` (T1) scans hub TypeScript and shell source, with planted path and
 platform violations, including shell HOME expansions, launcher aliases and

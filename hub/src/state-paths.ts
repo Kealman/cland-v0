@@ -1,6 +1,8 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+export { hostClaudeConfigDirectory } from './host/agent/state-paths.ts';
+
 /** Shared per-user state; retain the executor override's historical semantics. */
 export const userHome = (env: NodeJS.ProcessEnv = process.env): string => env.HOME ?? homedir();
 export const userStateDirectory = (env: NodeJS.ProcessEnv = process.env): string =>

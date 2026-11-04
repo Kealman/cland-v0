@@ -120,7 +120,7 @@ export class Sessions {
   /** Durable admission lookup, without projecting or scanning retained process history. */
   hostSession(sessionId: string) {
     const row = this.#table.bySessionId(sessionId);
-    return row && !row.archivedAt && row.status === 'running' ? { name: row.name, sessionId: row.sessionId, host: row.host ?? 'local', role: row.role, launch: this.#core.store.meta(launchGenerationKey(row.sessionId)) || row.sessionId } : null;
+    return row && !row.archivedAt && row.status === 'running' ? { name: row.name, sessionId: row.sessionId, host: row.host ?? 'local', role: row.role, nativeSessionId: row.harnessSessionId, launch: this.#core.store.meta(launchGenerationKey(row.sessionId)) || row.sessionId } : null;
   }
 
   /** The validated launch owns host/role authority before its process row can be published. */
@@ -182,6 +182,8 @@ export class Sessions {
   #closed = false;
   #resuming = 0;
   readonly #pendingStops = new Map<string, PendingStop>();
+  readonly #settlementPrunes=new Map<string,string>();
+  readonly #pruneFlights=new Map<string,Promise<void>>();
   readonly #recoveryObservers = new Map<string, () => void | Promise<void>>();
   readonly #stoppingLaunches = new Set<string>();
   #stopRetry: ClockTimer | null = null;
@@ -396,6 +398,8 @@ export class Sessions {
     // Recovery must select the persisted recipient's delivery mode before recording its final event.
     this.#core.eventSteering(id => { const p = this.#table.bySessionId(id); return p?.harness === 'codex' || p?.harness === 'opencode'; });
     for (const entry of this.#table.pendingStops()) this.#pendingStops.set(entry.process.sessionId, entry);
+    const prunes=this.#core.store.meta('launch-settlement-prunes');
+    if(prunes){const records:unknown=JSON.parse(prunes);if(!Array.isArray(records)||records.some(row=>!Array.isArray(row)||row.length!==2||row.some(value=>typeof value!=='string')))throw new Error('failed-launch prune index unavailable');for(const [id,harness] of records)this.#settlementPrunes.set(id,harness);}
     this.#core.launchIdentity((credential, id) => {
       const pending = [...this.#pendingStops.values()].find(entry => entry.ownership?.credential === credential);
       if (pending?.ownership) {
@@ -598,6 +602,13 @@ export class Sessions {
 
   register(adapter: HarnessAdapter): void {
     this.#adapters.set(adapter.harness, adapter);
+    if(adapter.settleFailedLaunch&&this.#settlementPrunes.size){
+      const work=this.#pruneFlights.get(adapter.harness)??Promise.resolve().then(async()=>{
+        let count=0;for(const [id,harness] of this.#settlementPrunes){if(this.#closed)break;if(harness===adapter.harness&&!this.#pendingStops.has(id))this.#pruneSettlement(adapter,id);if(++count%32===0)await new Promise<void>(resolve=>setImmediate(resolve));}
+      });
+      this.#pruneFlights.set(adapter.harness,work);this.#nativeChecks.add(work);
+      void work.then(()=>{this.#pruneFlights.delete(adapter.harness);this.#nativeChecks.delete(work);},()=>{this.#pruneFlights.delete(adapter.harness);this.#nativeChecks.delete(work);});
+    }
     for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.files && !entry.stages.stopped && !entry.stopIntent) {
       if (!this.#hosts.has(entry.process.host ?? 'local')) continue;
       try { adapter.watch(entry.process); }
@@ -906,6 +917,14 @@ export class Sessions {
     this.#stopRetry.unref();
   }
 
+  #pruneSettlement(adapter:HarnessAdapter,sessionId:string):void {
+    try {
+      adapter.forget?.(sessionId);
+      this.#settlementPrunes.delete(sessionId);
+      this.#core.store.setMeta('launch-settlement-prunes',JSON.stringify([...this.#settlementPrunes]));
+    }catch(error){this.#log({event:'launch-settlement-prune-incomplete',sessionId,error:String(error)});}
+  }
+
   async #settleFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
     const { process, rollback } = entry;
     const proven = entry.ownership ? entry.ownership.sessionIds : [process.sessionId];
@@ -914,7 +933,8 @@ export class Sessions {
     // A failed persistence attempt must not erase ownership after stop succeeds. Retry the whole
     // transition and row removal before releasing the role and clearing the recovery receipt.
     this.#table.pendingStop(entry);
-    const settlement = this.#recoveryObservers.get(process.sessionId)?.();
+    const observer=this.#recoveryObservers.get(process.sessionId);
+    const settlement=observer?observer():entry.files?this.adapter(process.harness).settleFailedLaunch?.(process):undefined;
     if (settlement) await settlement;
     resumed(() => {
       if (this.#closed) return;
@@ -942,10 +962,14 @@ export class Sessions {
         const current = this.#table.get(entry.restoreRow.name);
         if (!current || current.sessionId === entry.restoreRow.sessionId) this.#table.put(entry.restoreRow);
       }
+      const adapter=this.adapter(process.harness);
+      const prune=!!adapter.settleFailedLaunch&&!entry.published&&!entry.preserveRow;
+      if(prune){this.#settlementPrunes.set(process.sessionId,process.harness);this.#core.store.setMeta('launch-settlement-prunes',JSON.stringify([...this.#settlementPrunes]));}
       this.#table.clearPendingStop(process.sessionId);
       for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
       this.#pendingStops.delete(process.sessionId);
       this.#recoveryObservers.delete(process.sessionId);
+      if(prune)this.#pruneSettlement(adapter,process.sessionId);
       // Preserved/restored terminal rows were hidden behind the pending-stop fence.
       this.#scheduleArchive();
       if (entry.files) this.#log({ event: 'launch-recovered', session: process.name, sessionId: process.sessionId });

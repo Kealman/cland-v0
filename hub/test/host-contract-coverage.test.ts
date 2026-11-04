@@ -75,3 +75,9 @@ test('Host spawn option inventory detects an uncovered callback addition', async
   assert.deepEqual(missingOperationOptions(api.replace('export type HostSpawnOptions = {', 'export type HostSpawnOptions = { uncovered?: () => void;'), cases, 'HostSpawnOptions', 'spawn'), ['uncovered']);
   assert.deepEqual(missingOperationOptions(api, cases, 'HostSpawnOptions', 'spawn'), []);
 });
+
+test('local Host retains no optional Claude launch or adoption implementation', async () => {
+  const { optionalClaudeHostContract } = await import('./host-contract.ts');
+  const { localHost } = await import('../src/host/local.ts');
+  optionalClaudeHostContract(localHost());
+});

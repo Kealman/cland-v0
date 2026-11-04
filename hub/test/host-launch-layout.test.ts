@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ClaudeCodeAdapter, MOD_DIR } from '../src/adapters/claude-code.ts';
 import { CodexAdapter } from '../src/adapters/codex.ts';
@@ -27,15 +27,21 @@ for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (cons
     };
     let captured: unknown;
     const record = async (command: HostCommand): Promise<never> => {
+      if (mapped && name === 'claude') {
+        const settings = command.args[command.args.indexOf('--settings') + 1]!;
+        assert.equal((await stat(dirname(settings))).mode & 0o777, 0o700);
+        for (const flag of ['--settings', '--mcp-config']) assert.equal((await stat(command.args[command.args.indexOf(flag) + 1]!)).mode & 0o777, 0o600);
+      }
       await walk(mapped ? join(root, 'host') : join(root, '.cland'));
       captured = { command, disk };
-      throw new Error('recorded launch boundary');
+      throw Object.assign(new Error('recorded launch boundary'), mapped && name === 'claude' ? { code: 'CLAND_AGENT_ADMISSION_REFUSED' } : {});
     };
     const machine = { ...localHost(env), name: mapped ? 'recording' : 'local',
       layout: (input: HostLaunchLayoutInput) => mapped ? { discoveryFile: join(root, 'host/hub.json'), node: '/host/node', cli: '/host/cli', spoke: '/host/spoke', modDir: '/host/mod', runDirectory: join(root, 'host/runtime'), logDirectory: join(root, 'host/logs') } : localHost(env).layout(input),
       freePort: async () => 43210,
+      ...(mapped && name === 'claude' ? { launchClaude: record } : {}),
       run: async (command: HostCommand) => command.args[0] === '--version' ? { code: 0, stdout: 'codex 0.160.0', stderr: '' } : record(command), spawn: record };
-    const host: AdapterHost = { root, discoveryFile: join(root, '.cland/hub.json'), node: '/fixture/node', cli: '/fixture/cli', spoke: '/fixture/spoke', hostForLaunch: () => machine, log: () => {}, signal: () => {}, exited: () => {}, recordPid: () => {} };
+    const host: AdapterHost = { root, discoveryFile: join(root, '.cland/hub.json'), node: '/fixture/node', cli: '/fixture/cli', spoke: '/fixture/spoke', hostForLaunch: () => machine, ...(mapped && name === 'claude' ? { hostForProcess: () => machine } : {}), log: () => {}, signal: () => {}, exited: () => {}, recordPid: () => {} };
     const adapter = new Adapter(host, { env, bin: '/fixture/harness', pollMs: 600_000 });
     const previousUmask = process.umask(mask);
     try {

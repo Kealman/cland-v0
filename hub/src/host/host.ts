@@ -52,6 +52,10 @@ export interface Host {
   /** Native exit receipt resolves once; no process handle crosses the Host seam. */
   spawn(command: HostCommand, options?: HostSpawnOptions): Promise<{ pid: number; exited: Promise<{ code: number | null; signal: string | null }> }>;
   run(command: HostCommand): Promise<HostRunResult>;
+  /** Optional agent-owned Claude launch and discovery; older agents refuse explicitly. */
+  launchClaude?(command: HostCommand, generation: string): Promise<HostRunResult>;
+  /** Consume the native worker pinned by the agent, never a caller PID. */
+  adopt?(generation: string): Promise<{ process: HostProcess; job: string; session: string; closed?: boolean; released?: boolean; release?: () => Promise<void>; forget?: () => Promise<void> }>;
   identity(pid: number): Promise<HostProcess | null>;
   /** With neither start nor birth proof, observe PID existence only; this grants no signal authority. */
   alive(process: HostProcess): Promise<boolean>;
@@ -71,4 +75,11 @@ export interface Host {
   /** Whether this Host permits idle account polling. Live-session reads are separate. */
   readonly limitPolls: boolean;
   processes(): Promise<HostProcessUsage[]>;
+}
+
+/** Exact absent-generation receipt; carries only idempotent metadata cleanup, never process authority. */
+export class MissingClaudeGeneration extends Error {
+  readonly generation:string;
+  readonly forget:()=>Promise<void>;
+  constructor(generation:string,forget:()=>Promise<void>){super('Claude generation receipt missing');this.generation=generation;this.forget=forget;}
 }

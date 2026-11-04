@@ -124,7 +124,7 @@ with the watched process.
 | attach | `CLAUDE_CONFIG_DIR=<saved dir> claude attach <background id>` for a named account, `claude attach <background id>` for a default session; several clients can attach at once. |
 | inject | The cland mod keeps `cland hook bridge` running, which receives `inject` frames for its session. It submits each one with `$.prompt.submit`, framed as the plugin's (a turn of its own once the session is idle). Only `turn-start` or `mod-turn-start` carrying that message's envelope confirms stage `injected`. The legacy `cland hook injected` acknowledgement remains accepted for compatibility, but proves submission acceptance only: after re-exec, submission may succeed without a model turn. Without the exact turn-start receipt within the confirmation window (60 seconds by default; the hub's `CLAND_INJECT_TIMEOUT_MS` overrides it), the hub logs `inject-unconfirmed` and retains stage `delivered`; reconnects retry but never confirm a message by themselves. The message reads as `<channel source="cland" from=… msg_id=… topic=…>text</channel>` plus one line naming the `send` tool as the way back. The session's inbox socket is not used, because its message format is undocumented. |
 | state | Hooks, run as `cland hook <event> --session <name> --launch <cland session id> --hub-file <path>`: SessionStart → `idle` (and the model), UserPromptSubmit → `busy`, Stop and StopFailure → `idle`, PermissionRequest → `waiting for approval` (`waiting for human` for AskUserQuestion), PostToolUse → `busy`, Elicitation → `waiting for human`, Notification `idle_prompt` → `idle`. The mod adds `turn.start` → `busy` and `turn.complete` → `idle`, which also fires on an interrupt where Stop does not, with the turn's usage. The fallback is `claude agents --json`, at most once per 30 seconds per effective config directory, with one call in flight and one schedule shared by watch, launch discovery and startup resume. Each directory runs only while at least one of its sessions is watched; a registered idle directory is never queried. `CLAND_ADAPTER_POLL_MS` (5 s) controls the separate pid liveness tick, which runs no CLI. A launch returns with an unknown pid when the shared snapshot does not yet list it; the next scheduled poll records the pid. The last call time and snapshot live in hub.db meta, so a restart keeps the floor. `CLAND_CLAUDE_AGENTS_MS` shortens the interval for fake-harness tests. |
-| signed out | `StopFailure.error == authentication_failed`, or an explicit `--bg` failure naming token expiry, latches the effective directory. One `claude-signed-out` journal record and one Agents notice name the account (when named), directory and `CLAUDE_CONFIG_DIR=<dir> claude auth login`. This replaces the generic human turn-failed notice for authentication failures; agent senders still receive `signed out: <directory>; see the Agents notice`, once per directory and sender while latched. Other turn failures keep their ordinary notices. The latch survives restart in hub.db meta. No polling, retry, `auth status` or `doctor` probes run while latched. Only a pushed successful SessionStart/Stop (never StopFailure) or a successful explicit launch lifts it; an explicit launch is allowed as a recovery attempt, with a warning in its result. A latched resume makes no CLI call: a dead recorded pid exits, a live or unknown pid remains watched, with `state: unknown` and `stateReason: signed-out` in `session.list`. |
+| signed out | `StopFailure.error == authentication_failed`, or an explicit `--bg` failure naming token expiry, latches the effective directory. One `claude-signed-out` journal record and one Agents notice name the account (when named), directory and `CLAUDE_CONFIG_DIR=<dir> claude auth login`. This replaces the generic human turn-failed notice for authentication failures; agent senders still receive `signed out: <directory>; see the Agents notice`, once per directory and sender while latched. Other turn failures keep their ordinary notices. The latch survives restart in hub.db meta. No polling, retry, `auth status` or `doctor` probes run while latched. Only a pushed successful SessionStart/Stop (never StopFailure) or a successful explicit launch lifts it; an explicit launch is allowed as a recovery attempt, with a warning in its result. A latched local resume makes no CLI call: a dead recorded pid exits, a live or unknown pid remains watched, with `state: unknown` and `stateReason: signed-out` in `session.list`. |
 | stop, resume | Every command uses the row’s saved account environment and `CLAUDE_CONFIG_DIR`. `claude stop <id>`, then SIGTERM (only to the pid the table recorded, its start time checked) when the pid outlives it by `CLAND_STOP_GRACE_MS` (5 s); the process stays watched until its pid is gone, and a stop that cannot see it go fails with the row still `running`. Until a late pid arrives, stop uses the background id. Resume shares the scheduled `claude agents --json` snapshot and matches the session id or the background id; an entry that only shares the pid is another session, so the row turns `exited`. A relaunch is `claude --bg --resume <its session id>` with the same flags (the harness does not restore them). |
 
 | Capability | |
@@ -298,6 +298,31 @@ async cleanup before deleting the recovery record or releasing the role; rejecti
 or timeout retains the record and reports its cause for deferred retry. Codex
 settlement closes its native client and cancels its forward. Shutdown joins
 admitted recovery work; a missing receipt remains incomplete.
+
+Remote Claude keeps generation-owned MCP/settings outside generic LaunchFiles
+undo. Its failed-launch LaunchSettled callback re-adopts the exact agent receipt,
+joins the native tree, confirms native job stop/absence, releases the job, then
+removes private files and forgets the agent receipt. A lost accepted result never
+replays --bg. Only the agent client's typed CLAND_AGENT_ADMISSION_REFUSED outcome
+proves non-admission; an untyped error, even with that text, stays supervised.
+
+HarnessAdapter.settleFailedLaunch(process) is optional. For a file-backed pending
+launch, Sessions invokes it only when its captured recovery observer is absent
+after restart; adapters without the member keep their current behavior. Claude
+rebuilds the same bounded single-flight callback from generation-scoped adapter
+state. Missing/mismatched state or an unproved agent receipt holds the row and
+role as cleanup-incomplete. A terminal hub checkpoint covers a restart after
+native cleanup but before the pending-stop transaction finishes.
+
+After clearPendingStop is durable, only opted-in adapters' unpublished and
+unpreserved launches receive forget(sessionId) as acknowledgement. A small
+durable index holds only outstanding acknowledgement intents, normally empty.
+Forget failure is logged without reopening the row. Startup prunes an intent
+only if its pending stop is absent, through a shared tracked computation yielding
+after 32 entries; Claude then removes only its settled generation marker/cache,
+with no Host/native/file operation. Published/preserved rows retain their normal
+archive/prune lifecycle. No retained-history scan or liveness work is added.
+
 
 | Capability | |
 | --- | --- |
@@ -651,7 +676,14 @@ local-only, and unknown hosts fenced. Preserve the unedited local stop-races and
 async-processes files. Remote pending-stop recovery does not require `pid_started`.
 Remote Claude pending/replacement PID discovery also accepts Linux proof without
 a legacy timestamp, bound to its captured native job and conversation; retain
-stale owner, changed birth and close controls.
+stale owner, changed birth and close controls. For adopted remote Claude workers,
+terminal PID observation owns one bounded native settlement before exit
+publication. At most one stop and one absence query run within the stop deadline;
+a generation marker permits one retry through re-adopt on the next hub start.
+Unconfirmed settlement holds the running row and role with `state: unknown` and
+`stateReason: cleanup-incomplete: <cause>`. Recurring liveness/discovery stay
+CLI-free, including after a failed settlement. This is an event-driven cleanup
+exception to subscription-auth polling suppression.
 
 For Codex process routing, use the recording Host and scripted app-server seam in
 `docs/agents/tests/hub-test-codex-host.test.ts.md`. Preserve one version check per
@@ -784,7 +816,9 @@ forward/unforward preserve endpoints. Adapters resolve their launch paths from t
 its private settings and MCP files through LaunchFiles; the layout's optional
 modDir supplies --plugin-dir. The local Host supplies the historical installed
 mod directory; a nonlocal Claude layout without modDir refuses launch. The SSH
-Host fills this field in its stage. Codex uses layout run/log directories and
+Host uses a supplied installed host mod directory. SSH Claude launch/adoption
+requires `claude-launch-adopt-v1`: the agent performs the one discovery and pins
+the worker before granting stop authority. See [SSH Host](ssh-host.md). Codex uses layout run/log directories and
 node/spoke/discovery entries, preserving the local long-socket fallback. Its
 network-local sandbox denies the canonical Host run directory that contains the
 app-server socket, alongside the local temporary socket fallback; discovery-only

@@ -15,3 +15,11 @@ before adapter teardown. Historical default-mode OpenCode files are 0644 and
 0664 respectively; private passwords and Claude files remain 0600. Production
 continues to inherit its process umask. Both outer caller masks must pass the
 same sixteen cases; do not chmod production files to fit a snapshot.
+
+The mapped Claude observer supplies the optional launchClaude command edge and
+hostForProcess routing. It captures the private generation first, checks folder
+0700 and both files 0600, then returns typed CLAND_AGENT_ADMISSION_REFUSED because
+no native command was admitted. The existing local golden and all mapped byte
+transforms remain unchanged. Generic untyped outcomes are still supervised by
+production; claude-code-remote-files keeps that negative control. Local Claude,
+Codex, OpenCode and the missing-mod precondition retain their original paths.

@@ -33,8 +33,21 @@ restart and cleared on successful reconnect or resume:
 `cland session resume <name> --relaunch`. This needs no new hook or role permission.
 
 On a nonlocal Host, launch discovers the worker once; restart resume allows at
-most one further discovery. Timers use only Host liveness with the recorded Linux
-birth identity. Hooks and the mod bridge carry state. When discovery misses the
+most one further discovery. Recurring timers use only Host liveness with the recorded Linux
+birth identity. A terminal PID observation triggers one generation-bound native
+settlement before exit: at most one stop and one absence confirmation under the
+stop deadline. Failed confirmation retains the row, role and private credential
+files as cleanup-incomplete; one retry belongs to re-adopt on the next hub start.
+Further timer intervals never retry native cleanup. Hooks and the mod bridge carry state. When discovery misses the
 PID, the row stays supervised as `running` with an unknown PID and a
 `harness-pid-unknown` diagnostic; it performs no PID probe or timed discovery
 retry. Explicit resume can discover once.
+
+## Hooks on an SSH Host
+
+Host hooks and the mod bridge read the private generation settings and forwarded
+host discovery. CLAND_LAUNCH_TOKEN supplies session authority; the host secret
+alone grants none. Host admission targets the authenticated durable session and
+accepts a signal native id only when it matches that session's recorded native
+conversation. Names and launch generations remain validated. Confirmed stop
+removes the private generation files; incomplete ownership retains them.

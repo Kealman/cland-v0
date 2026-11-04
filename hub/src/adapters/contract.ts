@@ -244,6 +244,8 @@ export interface HarnessAdapter {
   readonly clauseAtSpawn?: boolean;
   /** resume(relaunch) owns the native stop receipt; otherwise Sessions stops a running row first. */
   readonly relaunchStopsProcess?: boolean;
+  /** Rebuild generation-owned failed-launch settlement after loss of its in-memory observer. */
+  settleFailedLaunch?(process: HarnessProcess): void | Promise<void>;
   /** Launch a session; resolves once the harness process runs, with its process-table row.
    * Recheck authorize after preparation, immediately before process creation and native first-turn admission. */
   spawn(request: SpawnRequest, resumed?: Resumed, authorize?: () => void): Promise<HarnessProcess>;
@@ -281,7 +283,7 @@ export interface HarnessAdapter {
   /** Read a live account through its existing harness connection. */
   readAccountLimits?(process: HarnessProcess): Promise<import('../accounts/limits.ts').LimitWindow[]>;
   noteUsage?(process: HarnessProcess, usage: Record<string, unknown>): void;
-  /** Prune adapter-owned totals and supervision for an archived terminal row. */
+  /** Prune archived totals/supervision; opted-in failed-launch owners also acknowledge settled unpublished cleanup. */
   forget?(sessionId: string): void;
   /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
   renamed?(process: HarnessProcess, from: string): void;

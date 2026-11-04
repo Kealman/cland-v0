@@ -1,3 +1,4 @@
+import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY } from './claude.ts';
 import { processUsage } from './process-usage.ts';
 import { remoteCommandEnvironment } from './command-environment.ts';
 import { PreparedOperations } from './prepared.ts';
@@ -35,6 +36,7 @@ export async function serveAgent(options: AgentOptions) {
   const authenticatedConnections = new Set<Socket>();
   const broadcast = (frame: unknown) => { for (const peer of authenticatedConnections) if (!peer.destroyed) peer.write(JSON.stringify(frame) + "\n"); };
   const processes = new AgentProcesses(options.runDir, options.env ?? process.env, broadcast, options.processHooks);
+  const claude = claudeLaunches(options.runDir, options.env ?? process.env);
   const operations = agentOperations(options.env ?? process.env);
   await processes.load();
   const prepared = new PreparedOperations(options.runDir, options.env ?? process.env, processes);
@@ -89,12 +91,19 @@ export async function serveAgent(options: AgentOptions) {
               const valid = typeof secret === 'string' && Buffer.byteLength(secret) === Buffer.byteLength(options.secret) && timingSafeEqual(Buffer.from(secret), Buffer.from(options.secret));
               if (!valid || request.args.protocol !== AGENT_PROTOCOL) throw new Error('hello secret or protocol refused');
               authenticated = true; authenticatedConnections.add(connection);
-              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [PREPARED_HOST_CAPABILITY] } }) + '\n');
+              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY] } }) + '\n');
             } else {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
               if(['spawn','run','run-host','writeFile','publishFile','appendFile','makeDirectory','removePath','worktreeAdd','worktreeRemove'].includes(request.op))prepared.assertMutable();
               switch (request.op) {
+                case 'adopt-claude': {
+                  const worker=await claude.receipt(String(request.args.generation),worker=>processes.confirmedClosed(worker));
+                  const closed=worker.released || await processes.adopt(worker);
+                  result={process:{pid:worker.pid,pidStarted:worker.identity,pidIdentity:worker.identity},job:worker.job,session:worker.session,...(closed?{closed:true}:{}),...(worker.released?{released:true}:{})};break;
+                }
+                case 'forget-claude': await claude.forget(String(request.args.generation));result=null;break;
+                case 'remove-claude': await claude.remove(String(request.args.generation),worker=>processes.releaseAdoption(worker),worker=>processes.confirmedClosed(worker));result=null;break;
                 case 'native-receipts': result = processes.completionReceipts(); break;
                 case 'processUsage': result = await processUsage(options.env ?? process.env); break;
                 case 'cancel-run': cancelled.delete(String(request.args.token)); result = null; break;
@@ -111,6 +120,7 @@ export async function serveAgent(options: AgentOptions) {
                   try {result=await prepared.runCommand(token,recoveryKey,command,async()=>{
                     if(connection.destroyed)prepared.fenceCommand(token);
                     options.runStarted?.(token,connection);
+                    if(typeof command.claudeGeneration==='string')return claude.launch(parsed,command.claudeGeneration,controller.signal);
                     return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd);
                   });} finally {commands.delete(token);}
                   break;

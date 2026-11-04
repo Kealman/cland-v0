@@ -43,6 +43,12 @@ sample upward to milliseconds. Both passing samples replay through the productio
 checker with before-failure and after-pass controls; row/native assertions and
 timeouts are unchanged. The allowance is not a whole-suite passing receipt.
 
+Claude's C2 observer routes process recovery to its recording Host and tags the
+completed replacement probe with CLAND_AGENT_ADMISSION_REFUSED. This represents
+positive non-admission of a Claude worker after the probe's exact exit receipt;
+Codex's branch and every C2 assertion remain unchanged. The unshimmed unsafe
+config-root refusal remains covered. Untyped lookalike errors stay incomplete
+in claude-code-remote-files.test.ts.
 T-1644 adds a production OpenCode adapter launch through the fake SSH Host and
 real agent spawn. A native child checkpoints its environment before readiness;
 the raw monolithic spawn is the planted-secret positive control. OpenCode's

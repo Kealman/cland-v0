@@ -177,3 +177,7 @@ human can revoke the secret with `cland host revoke <id>`; this closes its live
 admitted connections and refuses later hellos. Project-secret admission is
 unchanged. Git authority is separately constrained by the branch leases in
 [ADR 0004](0004-agents-work-on-a-local-git-territory.md).
+
+## Amendment — 2026-11-04: Host Claude terminal settlement (T-1607)
+
+Terminal settlement may run bounded native cleanup commands; liveness and discovery stay CLI-free. A terminal PID observation triggers one generation-pinned settlement: at most one `claude stop <job>` and one `agents --json` absence confirmation within the stop deadline. The row and role remain held with a cleanup-incomplete cause until native settlement, job release and private-file deletion are confirmed. One retry belongs to re-adoption on the next hub start, recorded durably; liveness timers never retry these commands. This exception joins a native supervisor's final work without recurring subscription-auth or discovery CLI polling.

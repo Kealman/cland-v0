@@ -415,3 +415,9 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
   });
 
 }
+
+/** Optional native-launch seam inventory: local Hosts deliberately provide neither member. */
+export function optionalClaudeHostContract(host: Host): void {
+  assert.equal(typeof host.launchClaude, 'undefined');
+  assert.equal(typeof host.adopt, 'undefined');
+}

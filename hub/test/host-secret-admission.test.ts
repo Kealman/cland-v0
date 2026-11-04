@@ -185,3 +185,28 @@ for (const variant of ['own', 'anonymous', 'foreign-host', 'local', 'roleless'])
   assert.equal(settled.ok, true, settled.error);
   assert.equal(table.get('pending')?.sessionId, acceptedId ?? row.sessionId);
 });
+
+test('host Claude native signal identity is payload bound to its authenticated durable owner',async t=>{
+  const f=await fixture(t);await f.spoke();const c=await f.client();
+  f.table.put({...f.table.get('worker')!,harnessSessionId:'native-worker'});
+  const launched=await f.ui.request({type:'session.launch',name:'other',role:'implementer',harness:'claude-code'});assert.equal(launched.ok,true,launched.error);
+  const other=f.table.get('other')!;f.table.put({...other,host:'f1',harnessSessionId:'native-other-session'});
+  for(const sessionId of ['native-worker']) {
+    const accepted=await c.request({type:'session.signal',session:f.row.name,sessionId,event:'idle',as:f.actor});
+    assert.equal(accepted.ok,true,accepted.error);
+  }
+  for(const sessionId of ['native-other-session','native-unknown',f.row.sessionId]) {
+    const refused=await c.request({type:'session.signal',session:f.row.name,sessionId,event:'idle',as:f.actor});
+    assert.match(refused.error!,/host plumbing must target its own session/);
+  }
+  for(const native of ['native-other-session','native-unknown']){
+    const refused=await c.request({type:'session.signal',session:f.row.name,sessionId:'native-worker',event:'idle',payload:{session_id:native},as:f.actor});
+    assert.match(refused.error!,/host plumbing must target its own session/);
+  }
+  f.table.put({...f.table.get('worker')!,harnessSessionId:f.row.sessionId});
+  const legacy=await c.request({type:'session.signal',session:f.row.name,sessionId:f.row.sessionId,event:'idle',as:f.actor});
+  assert.equal(legacy.ok,true,legacy.error);
+  const mismatch=await c.request({type:'session.signal',session:f.row.name,sessionId:'native-worker',event:'idle',as:{...f.actor,sessionId:other.sessionId}});
+  assert.match(mismatch.error!,/forbidden/);
+  assert.equal(f.table.get('other')!.harnessSessionId,'native-other-session');
+});
