@@ -2,8 +2,8 @@
 id: T-1610
 kind: task
 title: Flush before verify and ready, and the clause
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1385
 branch: t/T-1610-flush-before-verify-and-ready-and-the
 created: 2026-11-02T03:33:57.872Z
-updated: 2026-11-04T20:42:20.939Z
+updated: 2026-11-04T22:36:38.471Z
+closed: 2026-11-04T22:36:38.471Z
 ---
 
 ## Summary
@@ -27,15 +28,20 @@ Hot files: `hub/src/hub/dispatch.ts`, `hub/src/cli/suite.ts`, `hub/src/cli/task.
 ## Acceptance criteria
 
 - [x] C1. `cland verify` from a fake host session whose last commit was not yet pushed waits for the flush and runs at the territory head equal to the reported HEAD (test).
-  - done: impl-1610 · 2026-11-04T20:30:17.506Z
+  - done: impl-1610 · 2026-11-04T20:54:59.953Z
+  - verified: rev-35 [reviewer] · run rev-35-1610-final-1 · 2026-11-04T21:20:43.397Z · commit d32f0e63ae4e79747aab844f3e4464a7c1b6a894
 - [x] C2. `cland task edit <id> --status ready` from a host session flushes first, and is refused with both heads named when the territory head still differs after the flush (test).
   - done: impl-1610 · 2026-11-04T20:04:32.799Z
+  - verified: rev-35 [reviewer] · run rev-35-1610-final-1 · 2026-11-04T21:20:43.397Z · commit d32f0e63ae4e79747aab844f3e4464a7c1b6a894
 - [x] C3. A verify from a host session never reads the session's working directory on the hub's machine (test).
   - done: impl-1610 · 2026-11-04T20:27:04.414Z
-- [x] C4. Local sessions' verify and ready behave as today, and the verify-cli and task-cli test files pass with no test edited.
+  - verified: rev-35 [reviewer] · run rev-35-1610-final-1 · 2026-11-04T21:20:43.397Z · commit d32f0e63ae4e79747aab844f3e4464a7c1b6a894
+- [x] C4. Local sessions' verify and ready behave as today, and hub/test/verify-submission.test.ts, hub/test/cli.test.ts and hub/test/tracker-status-component.test.ts pass with no test edited.
   - done: impl-1610 · 2026-11-04T20:04:33.057Z
+  - verified: rev-35 [reviewer] · run rev-35-1610-final-1 · 2026-11-04T21:20:43.397Z · commit d32f0e63ae4e79747aab844f3e4464a7c1b6a894
 - [x] C5. The Implementer's clause has one sentence saying that on a host cland pushes the task branch on every commit, and `roles-clauses.test.ts` passes with its reserve and growth ceilings unchanged.
   - done: impl-1610 · 2026-11-04T20:04:33.313Z
+  - verified: rev-35 [reviewer] · run rev-35-1610-final-1 · 2026-11-04T21:20:43.397Z · commit d32f0e63ae4e79747aab844f3e4464a7c1b6a894
 
 ## Notes
 
@@ -125,3 +131,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear,no findings. Complete delta only two existing allowance values/reasons; full A-16692 source review carries with runtime/tests/assertions/cleanup/roles/docs unchanged. A-16695 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16695-t-1610-allowance-refresh-source-clear-at-be42f36a.md. A-16693 four native named passes read;4.244567042×1.5 rounds up6.367 and5.038113×1.5 rounds up7.558,C216/Nov11 unchanged; whole-case concurrent-T0 observations/projections explicitly qualified. Log lacks separate native/wrapper exit receipt, preserve provenance for final evidence. A-16694 reportedT0exit0 began107b and allowance edit overlapped; development/runtime evidence,not clean exact-be42 T0. No configured same-head/Linux/Web/QA evidence,C1–C5unverified. Exact-head modefree verify may proceed; no rule7 evidence carry exception claimed. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+### rev-35 · 2026-11-04T20:52:10.720Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1610-evidence-1
+commit: be42f36a20066bb9335c5ea3084a714af9f88078
+scope: evidence
+findings: [{"severity":"medium","text":"Host.flushBranch is absent from the reusable contract: unchanged coverage positive control receives ['uncovered','flushBranch'] rather than ['uncovered'] at coverage.test.ts:23. A-16702 configured T1 fails. Add meaningful optional-operation contract coverage and retain full member/omission assertions; fresh source review before rerun.","file":"hub/test/host-contract.ts"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Configured evidence not clear. A-16702 actual assertion and timing independently read; missing reusable Host-contract consumer for new optionalflushBranch. A-16703 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16703-t-1610-configured-evidence-failure-flushbranch-missing-from-reusable-host-contra.md. T0exit0,T1exit1,T2/nativeT3/Web/T4unexecuted,remainingT3batch; differing1595/1594/1 vs1420/1419/1 summaries notcombined. UncachedsameheadLinuxx64Node24.21/Nvim0.12.5 browsernull runner treef2452881,skips[]/reportmissing0;310s/$0.0215resource metrics. Report diagnostics notcause. Priorlocalsupplements notfullrun. C1failed,othersunverified; sourcefix+freshreviewbeforeverify. Earlier source sweep missed this contract consumer. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C1 failed (Required configured T1 fails the added Host.flushBranch contract coverage; native Host-flush admission phase never executes.).
+
+### rev-35 · 2026-11-04T20:55:58.204Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1610-source-6
+commit: d32f0e63ae4e79747aab844f3e4464a7c1b6a894
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full repair source clear,no findings. A-16703 resolved with meaningful shared optionalFlushHostContract covering localabsence/realSSHnamedrefusal,heldexactsuccess,old-capabilityno-flush and actualSSHdrain->matchingstatus. Unchanged every-member/positive-omission guard remains intact. Complete5filediff onlyhelper/tests/3guides;hub/src/role/wire/allowanceunchanged,priorfullsource carries. A-16706 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16706-t-1610-host-optional-flush-contract-repair-source-clear.md. A-16704 actual19 andA-16705actual54 outcomesallpass/zeroother,localMacNode24.21supplements; finalscripted19rerun/helperunchanged54 limitsretained,typesreportedgreen. OldA-16702 remainsfailedpartial. C1–C5awaitfreshsamehead configuredverify;mayproceednow. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+### rev-35 · 2026-11-04T21:20:43.397Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1610-final-1
+commit: d32f0e63ae4e79747aab844f3e4464a7c1b6a894
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear,C1–C5verified,no findings. A-16712 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16712-t-1610-final-clear-exact-head-flush-snapshots-local-compatibility-and-clause-evi.md. A16710/f7ec exit0/5059passzeroothers. Actualnative4/4 flushqueuedrestart3.559/hostadmission.672/confinement.096/abandonment2.884 allpass;13T1flushcontrols+2scopedrecoveryeach5/5loads,inventory6repaired. C4Coordinator1b780186actualpathcorrectionindependentlyread:unchangedverify-submission6/cli9/tracker-statuscomponent6pass; localCLIplanned+APIreadydistinct,noseparateliteralCLI-readyclaim. C5unchangedroles-clauses39reserve/wordingpass,usage1/docs4/closure4. T0/allT1/fallbackallT2/selectedT3twofiles8once/Webcomplete,remainingT3batch/T4none,QAseparate. UncachedLinuxx64Node24.21/Nvim.12.5Headless1248Chrome156.0.8078.4skips[]reportmissing0. Runner2e2ec496exactlyreproducedread-onlyMerklehash fromcheckout52e0d26fexcludingonlytracker/RULES;billingunknownnotzero. Local/predecessorevidencequalified,oldA16702failednotrelabeled. C216capbasisadequate,noheadchange. No Reviewer execution/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-04T22:36:38.471Z
+
+Merged 192619b7236a84e7e4dd1000e93dce2c52548156 onto dev.

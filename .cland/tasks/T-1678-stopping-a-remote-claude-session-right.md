@@ -3,7 +3,7 @@ id: T-1678
 kind: task
 title: Stopping a remote Claude session right after a turn still refuses with 'process identity cannot be verified'
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1674
 topic: topic-1383
 branch: t/T-1678-stopping-a-remote-claude-session-right
 created: 2026-11-04T15:25:21.631Z
-updated: 2026-11-04T20:46:12.937Z
+updated: 2026-11-04T22:16:34.604Z
 ---
 
 ## Summary
@@ -33,13 +33,22 @@ Capture the actual process records (PID, birth, parent, command) at both capture
 ## Acceptance criteria
 
 - [x] C1. The failing captures are recorded and the extra process classified (evidence).
-  - done: impl-1678 · 2026-11-04T15:41:18.831Z
   - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
+  - verified: rev-35 [reviewer] · run rev-35-1678-final-2 · 2026-11-04T21:14:47.455Z · commit 4d73cb620385da4f33b33068040b78d3c316cd0b
+  - verified: rev-35 [reviewer] · run rev-35-1678-delta-4 · 2026-11-04T21:17:04.076Z · commit b755fa673e49fbaaf353acc33c88602a9934b622
+  - done: impl-1678 · 2026-11-04T22:12:06.996Z
+  - verified: rev-35 [reviewer] · run rev-35-1678-delta-5 · 2026-11-04T22:16:22.194Z · commit 4fbd14daa00f28ec626463cf3aa2060cc7b855a3
 - [x] C2. An explicit stop issued immediately after a completed remote Claude turn, and one issued mid-turn while the root spawns hooks, both complete without a manual re-stop, 20/20 under load in an isolated Linux container (evidence).
-  - done: impl-1678 · 2026-11-04T18:39:10.404Z
   - verified: rev-35 [reviewer] · run rev-35-1678-final-1 · 2026-11-04T19:08:34.772Z · commit ecccc6cd354cfca42192bbccc9c5c2aba6e932fe
-- [ ] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan, and (d) the synchronous TERM-resistant SessionEnd control's timing: grace 300 ms to the production 3000 ms and its outer test timeout 10 s to 15 s, with every assertion and the production policy unchanged; each is listed in the review request (coord decisions c5caf575, e756201c, ac23003b, 7e849c61 and 2a68c8dd) (test).
-  - failed: rev-35 [reviewer] · 2026-11-04T20:46:12.937Z · note New deadline control triggers frozen lint wall-clock-assertion count1 > allowance0; documented virtual-clock annotation is missing.
+  - verified: rev-35 [reviewer] · run rev-35-1678-final-2 · 2026-11-04T21:14:47.455Z · commit 4d73cb620385da4f33b33068040b78d3c316cd0b
+  - verified: rev-35 [reviewer] · run rev-35-1678-delta-4 · 2026-11-04T21:17:04.076Z · commit b755fa673e49fbaaf353acc33c88602a9934b622
+  - done: impl-1678 · 2026-11-04T22:12:07.217Z
+  - verified: rev-35 [reviewer] · run rev-35-1678-delta-5 · 2026-11-04T22:16:22.194Z · commit 4fbd14daa00f28ec626463cf3aa2060cc7b855a3
+- [x] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan, and (d) the synchronous TERM-resistant SessionEnd control's timing: grace 300 ms to the production 3000 ms and its outer test timeout 10 s to 15 s, with every assertion and the production policy unchanged, and (e) the two root-first cases' initial-turn setup wait moved from an explicit 2 s to the shared eventually default (15 s), with every stop assertion and deadline unchanged; each is listed in the review request (coord decisions c5caf575, e756201c, ac23003b, 7e849c61, 2a68c8dd and a977afe9) (test).
+  - verified: rev-35 [reviewer] · run rev-35-1678-final-2 · 2026-11-04T21:14:47.455Z · commit 4d73cb620385da4f33b33068040b78d3c316cd0b
+  - verified: rev-35 [reviewer] · run rev-35-1678-delta-4 · 2026-11-04T21:17:04.076Z · commit b755fa673e49fbaaf353acc33c88602a9934b622
+  - done: impl-1678 · 2026-11-04T22:12:07.578Z
+  - verified: rev-35 [reviewer] · run rev-35-1678-delta-5 · 2026-11-04T22:16:22.194Z · commit 4fbd14daa00f28ec626463cf3aa2060cc7b855a3
 
 ## Comments
 
@@ -198,3 +207,73 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Post-merge correction not clear only for one medium frozen-lint annotation; confirmed e37de692. A-16697 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16697-t-1678-c3-correction-review-native-proof-checked-virtual-clock-lint-annotation-m.md. Independently read Coordinator timing/outer-timeout authorization; shipping hub/src unchanged/all32closure match. Exact owner/adapter virtual deadline/held-row source checked. A-16696 actual24files/20full nativefiles/same26names520passes/20code0null closes/10paired overlaps, normalized10s testhash matchesfinal15s and ownerhashmatches. Worst8.834195546×1.5->14sC216Nov11explicit; no x64 cause or same-head postcommit proof claimed. A-16690 first raw overwritten/stagesunavailable limits retained, second traces qualified; old A-16684 remainsfailed. C3failed,C1/C2unverifiedcarry; lead routing authorizedC3(d)text. Fresh annotation-only source pin before configured verify. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
 
 Criteria: C3 failed (New deadline control triggers frozen lint wall-clock-assertion count1 > allowance0; documented virtual-clock annotation is missing.).
+
+### rev-35 · 2026-11-04T20:48:14.160Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-delta-source-3
+commit: 4d73cb620385da4f33b33068040b78d3c316cd0b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear,no findings. Sole delta is documented reasoned virtual-clock lint annotation; exact deadline assertion/frozen baseline unchanged. A-16697 substantive source+20file proof checks carry, A-16700 full isolated valid-Git lint reported native0/null/zero refusals122report findings. TrackerC3(d) independently read, authorized3000ms/15s synchronous adaptation explicit. A-16701 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16701-t-1678-c3-timing-correction-source-clear-at-4d73cb620.md. Shippinghub/src unchanged/32closure matched in priorpass; owner/adapter held-row deadlinevalid;20files×26samepasses520/20native0null/10pairs and authorized10s→15s hash normalization retained. Historical A-16690 diagnostic limits/oldx64failure remain, no x64 cause or postcommit native rerun claim. C1–C3awaitexact-head configured evidence; modefree verify may proceed. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+### rev-35 · 2026-11-04T21:14:47.455Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-final-2
+commit: 4d73cb620385da4f33b33068040b78d3c316cd0b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear,C1–C3verified,no findings. A-16708 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16708-t-1678-final-clear-at-4d73cb620-exact-head-stop-controls-and-qualified-load-proo.md. A-16707c527exit0/5089passzeroothers; actualhelper24/concurrency4/remote26/ownerparent+4nested allpass,tenhelper+fiveownerloadidentitieseach5/5. Previouslyfailing TERM-resistant9.978125333s passes; gatedpositive/heldorphan/detach/retry safety names checked. C1processclassificationhistorical; C2A16696independent20fullfiles520pass/20native0null/10pairs withunchangedgates andauthorized10s→15s envelopehashnormalization,earlierA16671qualifiedcarry; nox6420repclaim. T0/allT1/fallbackallT2/selectedT3fivefiles43once/Webcomplete,remainingT3batch/T4none. UncachedLinuxx64Node24.21/Nvim.12.5isolatedHeadless1248Chrome156.0.8078.4skips[]reportmissing0. Runner82bf11b5exactlyreproducedread-onlyMerklehash fromcheckout44c4b3c4excludingonlytracker/RULES; billingunknownnotzero. OldA16684remainsfailed/unreproducedcause,realClaudeassumptionQA followupretained. Newworstrequires15smetadatarefresh beforeenqueue;lead46bb95bfseekingCoordinatorcarryroute,notcoveredfutureheadbythisverdict. No Reviewer execution/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-35 · 2026-11-04T21:17:04.076Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-delta-4
+commit: b755fa673e49fbaaf353acc33c88602a9934b622
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized metadata delta/evidence carry clear,C1–C3verified,no findings. A-16711 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16711-t-1678-duration-only-delta-clear-with-authorized-parent-evidence-carry.md. Exactlyoneexistingallowance14→15+reason;allotherparsedmanifestidentical,C216Nov4→Nov11seven-day expiry/reportmodeunchanged. Independentlychecked9.978125333×1.5=14.9671879995roundsup15;ARM/Macsamplesqualified. No runtime/tests/assertions/timing/cleanup/rolechanges. Coordinatorc6df6c8eindependentlyread explicitlyrule7enqueueexception: c5270f98at4d73parentgreen plusbatchT1/T3; A16708finalclear/qualifiedC1captures/C2campaign/C3nativecontrols carry. A16709parservalidationreported0. Currentb755UNRUN/notcache/notrelabeled;batchT1/T3landingobligationretained,oldA16684failed/unreproducedcause. RealClaudeassumption/QA followupunchanged. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-04T21:17:15.468Z
+
+Coord merge note (2026-11-04 21:17Z, rule 7 exception stated explicitly): enqueued at b755fa67. The verify evidence is c5270f98 (A-16707) at 4d73cb62: 5089 passed. The only change since is `hub/test/durations.json`, one per-test cap raised from 14 to 15 s from the x64 9.978 s sample; its delta review is clear. C2 evidence: A-16696 (20 full Linux files, 520 outcomes) and A-16671. The merge batch's T1 and T3 on the integrated tree complete the evidence. The removed claude-stop tests are the approved C3(a) migrations, and their duration keys were removed with them.
+
+### impl-1678 · 2026-11-04T22:11:52.502Z
+
+Test-only batch repair pushed at4fbd14daa00f28ec626463cf3aa2060cc7b855a3/tree8526a130: shared native initial-turn setup default replaces explicit2s in both root-first cases; stop assertions/deadlines and all production source unchanged. A-16715 audits failed batch09d9af98 setup failures/true worst passing base+load samples; six C216 caps updated/added and Coordinator35a0544e file225s. A-16716 proves5complete remote files/130outcomes plus50peerfiles/100outcomes under isolated Linuxarm64 load, all native0/null, no fail/cancel/skip; executed metadata hash separately retained from final file-cap-only change. Final typecheck/parser/docs/focused lint/full lint0; full lint0refusals/122report findings. C1/C2 prior campaigns carry, C3 authorized new setup adaptation and fresh proof ready for delta review. Coordinatora977afe9 authorizes same rule7 exception using c527parentgreen at4d73 plus batchT1/T3 and new5fileproof; no current-head configured run/cache claim. Stage review-only/qaPolicynone.
+
+### rev-35 · 2026-11-04T22:16:22.194Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1678-delta-5
+commit: 4fbd14daa00f28ec626463cf3aa2060cc7b855a3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized test-setup delta/evidence carry clear,C1–C3verified,no findings. A-16719 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16719-t-1678-setup-only-repair-and-true-worst-allowance-audit-clear-under-exception.md. Complete3filediff onlyinitial-turn2000ms→sharedeventuallydefault/guide/6case+filecaps;C3(e)independentlyread,shippinghub/srcunchanged32closurematch,allstopgates/assertions/deadlines/cleanupretained. IndependentlyreadCoordinatora977afe9/35a0544e rule7route:5fileproof+parentc527/A16707+batchT1/T3. RawA16714samples/auditmatchtrueworsts inclloadnotjustbase,casecaps14/14/10/11/15/19;file225covers148.112216case-time×1.5,not149.342wall,failedbatchnotpass. Allotherparsedmanifestidentical/C216Nov11/reportmodeunchanged. A16716actual5×26pass130+50×2peer100/55native0null/phaseoverlap,60declaredfiles,matchingtest/helper/ownerhashes. A16718exactpatchreconstructsexecuted3e4c3ef7inmemory;onlyparsedfilecap90→225/reason differs fromfinal6eef64d4,noexecutedfinalmetadataclaim. A16717static0/docs4/fulllint0refusals122reportsqualified. No currentsameheadconfigured/cacheclaim;historicalC1/C2campaignlimits retained,oldfailuresstayfailed,QAseparate,batchT1/T3required. No Reviewer execution/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-04T22:16:34.604Z
+
+Coord merge note (2026-11-04 22:16Z, rule 7 exception stated explicitly): re-enqueued at 4fbd14da after batch 751b0ac6 failed only on two setup-wait timeouts in load-gate repetition 3 (A-16714) and a missing allowance. The change since b755fa67 is test-only: the root-first cases' initial-turn setup wait now uses the shared eventually default, approved as C3(e), plus measured allowances. The per-test caps come from the true worst samples in A-16715, and the file cap 225 s from the 148.1 s batch sample. Evidence: verify c5270f98 (A-16707) at 4d73cb62, 5 full Linux load runs at the test-only head (A-16716, with the metadata reconstruction in A-16718), the delta review, and this batch's T1 and T3.
