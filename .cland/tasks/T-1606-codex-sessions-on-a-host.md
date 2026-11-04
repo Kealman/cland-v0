@@ -2,8 +2,8 @@
 id: T-1606
 kind: task
 title: Codex sessions on a host
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1373
 branch: t/T-1606-codex-sessions-on-a-host
 created: 2026-11-02T03:33:56.906Z
-updated: 2026-11-03T23:57:57.141Z
+updated: 2026-11-04T02:31:03.899Z
+closed: 2026-11-04T02:31:03.899Z
 ---
 
 ## Summary
@@ -28,17 +29,21 @@ Hot files: `hub/src/adapters/codex.ts`, `hub/test/codex-remote.test.ts` (new)
 ## Acceptance criteria
 
 - [x] C1. Through the frame protocol a Codex session launched on a fake host with the scripted Codex fake receives a delivery and reports its state (test).
-  - done: impl-1606 · 2026-11-03T22:35:16.331Z
   - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
+  - done: impl-1606 · 2026-11-04T01:37:25.289Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-2 · 2026-11-04T01:58:33.779Z · commit 78d3d38b7de02fe9a995588334c9503bc5bab767
 - [x] C2. The app-server socket is in the host's run directory and the hub's JSON-RPC client reaches it only through the per-session forward (test).
-  - done: impl-1606 · 2026-11-03T22:43:12.474Z
   - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
+  - done: impl-1606 · 2026-11-04T01:37:25.454Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-2 · 2026-11-04T01:58:33.780Z · commit 78d3d38b7de02fe9a995588334c9503bc5bab767
 - [x] C3. The thread policy's writable roots, `.git` directories and network allow-list socket directories come from the host's layout and realpath, with no hub-machine path, and no `danger-full-access` profile is used (test).
-  - done: impl-1606 · 2026-11-03T23:29:22.846Z
   - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
+  - done: impl-1606 · 2026-11-04T01:37:25.571Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-2 · 2026-11-04T01:58:33.780Z · commit 78d3d38b7de02fe9a995588334c9503bc5bab767
 - [x] C4. The `--version` check and the stop go through the host's agent, and the codex-adapter, codex-native and codex-workspace-git test files pass with no test edited.
-  - done: impl-1606 · 2026-11-03T22:13:25.305Z
   - verified: rev-35 [reviewer] · run rev-35-1606-final-1 · 2026-11-03T23:57:56.934Z · commit 3cf157f75aefcc55a2b490e2b9816f4726680864
+  - done: impl-1606 · 2026-11-04T01:37:25.808Z
+  - verified: rev-35 [reviewer] · run rev-35-1606-final-2 · 2026-11-04T01:58:33.780Z · commit 78d3d38b7de02fe9a995588334c9503bc5bab767
 
 ## Notes
 
@@ -204,3 +209,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, findings []. Same-head 4c0c3399/A-16414 exit0/4942 pass/zero fail,cancel,skip,todo; named frame1/agent1/cleanup10/sandbox5/settlement4/native35 and corrected placement11/admission16/name-reservation75 outcomes independently streamed. Cleanup10/frame1/settlement4 and missing-layout identity each have five passing load repetitions. Exact-head native C4 A-16420 adapter13 and A-16421 workspace1 named passes/native exit0/no signal on macOS arm64 Node24.21; raw before/after HEAD and all seven production/test blobs independently match reviewed head. All three C4 test files unchanged against task base. Synthetic Seatbelt/Git is not real Codex enforcement or Linux parity. Linux queued provenance tree16d2f9aa768efebd1c59b33a10931dc32673cd4d, uncached c-8sfo2/Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, isolated Headless Shell1248/ChromeForTesting156.0.8078.4. T0/allT1/fallbackallT2/changedT3agent once/mappedT4guard once/Web complete; remaining T3 deferred to merge batch, T4 repetitions skipped. Budget/lint/ratchet/skip diagnostics report-only; missing baselines/incomplete projections not counted as passes. Billing1028s/$0.0714 not wall time. Prior failed A-16385/A-16402 retained. C1–C4 verified; affected after-stage QA separate. Detail A-16425 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16425-t-1606-final-evidence-queued-integration-and-exact-head-c4-preservation.md. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1606 · 2026-11-04T01:36:56.234Z
+
+Repair at 78d3d38b7: failed-launch settlement closes its captured native client once, retaining that completed phase across unforward retries. Added direct close counts to held deferred-recovery and settlement-concurrency controls. Whole native-boundary 69/69 and launch-recovery 4/4 pass unedited; remote-cleanup 10/10 and settlement 4/4 pass. macOS arm64 Node 24.21.0; native exits 0, no signals. Full typecheck and test lint exit 0 (report-only known findings remain). Delta review follows before verification; no dev merge.
+
+### rev-35 · 2026-11-04T01:39:29.292Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1606-source-7
+commit: 78d3d38b7de02fe9a995588334c9503bc5bab767
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear for the close-once repair, findings []. Complete six-file change from predecessor reviewed; no dev merge, so full scope with prior design carried forward. Captured native callback alone closes/deletes the launch state; retained nativeClosed phase prevents repeated close after unforward rejection. Connecting is captured before row deletion and joined before cancellation settles; shared bounded settlement and other adapter sources unchanged. Direct close assertions cover attached failure, held deferred retry and completion while preserving row/role ownership; generic concurrent timeout retains exact close count. Coordinator353f7c31/A-16443 actual2!==1 and component red control retained. A-16444 four source-equivalent native targeted files pass69/4/10/4, exits0/signalsnull, macOS arm64 Node24.21/no browser; A-16445 exact repair-head adapter13/workspace1 raw exits0/signalsnull and all seven source/test blobs independently match. Synthetic Seatbelt limitation retained. C1–C4 unverified pending same-head configured verification; predecessor receipts historical, batch A-16443 remains failed. Detail A-16446 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16446-t-1606-source-clear-single-native-close-during-failed-launch-settlement.md. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
+
+### rev-35 · 2026-11-04T01:58:33.780Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1606-final-2
+commit: 78d3d38b7de02fe9a995588334c9503bc5bab767
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Repaired-head final evidence clear, findings []. A-16447 run21b0403e exit0/4942pass/zero fail,cancel,skip,todo at unchanged source-clear head. Independently streamed frame1/agent1/cleanup10/sandbox5/settlement4/native35/admission16/placement11/name75/mappedguard1 base passes. All cleanup10/frame1/settlement4 and missing-layout identity have five passing test repetitions; repaired held-unforward/direct-close assertions pass. A-16445 exact-head macOS arm64 Node24.21 local adapter13/workspace1 raw named passes/native exits0/signalsnull close C4; previously independently checked seven source/test blobs match. Workspace synthetic Seatbelt only, not real Codex/Linux parity. A-16444 source-equivalent local unchanged native-boundary69/recovery4 supplements retain the formerly failing close-count case; not new Linux T3 execution. A-16443 remains failed batch history. Queued treebe37322f0e209a4922cc0d4415ba743799d65072, uncached c-8lon1 Linuxx64 6.8.0-142-generic Node24.21/Nvim0.12.5, isolated HeadlessShell1248/ChromeForTesting156.0.8078.4; skips[]/missing0 report. T0/allT1/fallbackallT2/changedT3agent once/mappedT4base/Web complete; remaining T3 merge-batch deferred, T4 repetitions skipped. Budget/lint/ratchet/skip diagnostics report-only; projections/incomplete baselines not passes. Billing1008s/$0.0700 not wall time. C1–C4 verified, affected after-stage QA separate. Details A-16448 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16448-t-1606-repaired-head-final-evidence-close-once-integration-and-preservation.md. No Reviewer runtime checks/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-04T02:31:03.899Z
+
+Merged a9fc026dc22c0d6e9a3356d2b790c5613501457c onto dev.

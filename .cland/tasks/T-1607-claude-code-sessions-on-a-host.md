@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1375
 branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-04T00:11:27.523Z
+updated: 2026-11-04T00:27:41.521Z
 ---
 
 ## Summary
@@ -79,3 +79,7 @@ A-16407 correction checkpoint underway: jobs preflight/pinning and late-hook no-
 ### impl-1607 · 2026-11-04T00:11:27.523Z
 
 Coordinator 66fe13ce: deterministic native descendant injected between prepare-stop and commit reproduced the prior identity refusal red, then passed after one validated pre-signal recapture. Shared descendant policy serves recapture and dynamic SessionEnd acquisition; foreign UID, reparented/pre-existing PID, vanished root and second-churn controls refuse (second-churn sends zero signals). Other remote stop failures now retain generation-scoped cleanup-incomplete cause and clear only on successful explicit re-stop. Current local correction tree: remote native file14/14; claude-stop11/11; remote-files10/10; typecheck green. A-16426 retains prior exact-head20/20 receipts at88297e2b3. C2 remains incomplete for T-1606 LaunchSettled integration; no review/verify submitted.
+
+### impl-1607 · 2026-11-04T00:27:41.521Z
+
+Correction checkpoint pushed: d51e28ce2f30efa8c6cf211b2f1e2e898aef976e. Evidence A-16431; accepted20/20 source-specific repetition A-16426. Source finding C3/jobs preflight fixed; late-hook, terminal settlement and pre-signal ownership controls green. Native remote15/15 on runtime-equivalent candidate (only Markdown EOF formatting differs), focused T1/T2 files32/32 and unchanged C5 generated cases72/72 at d51; all-package typecheck and test:lint pass (122 report-only findings, zero refusals; known advisory limits retained). C2 is still incomplete for durable failed-launch LaunchSettled integration. Blocker/help needed: T-1606 lands after T-1644, then Coordinator sends the authorized merge instruction. No new dev merge/source review/verification/QA claim. Keeping claim; idle for dependency instruction.

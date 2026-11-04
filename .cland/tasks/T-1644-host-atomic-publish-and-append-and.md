@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1372
 branch: t/T-1644-host-atomic-publish-and-append-and
 created: 2026-11-02T23:42:20.637Z
-updated: 2026-11-03T23:07:15.979Z
+updated: 2026-11-04T01:18:11.887Z
 ---
 
 ## Summary
@@ -31,15 +31,19 @@ Add atomic publish (create-if-absent) and append to the Host contract, implement
 - [x] C1. The Host contract has atomic no-clobber publish and append. The local Host and the agent implement them with the same semantics, including concurrent writers, against the fake hosts (test).
   - done: impl-1644 · 2026-11-03T22:17:39.613Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
 - [x] C2. OpenCode's shared-ignore preparation goes through the launch Host. On `local` the result is byte-identical to today, and T-1601's lint exemption is removed (test).
   - done: impl-1644 · 2026-11-03T22:09:12.864Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
 - [x] C3. An OpenCode launch on a fake nonlocal host prepares the shared ignore on that host (test).
   - done: impl-1644 · 2026-11-03T22:09:12.986Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
 - [x] C4. The Host contract offers a stat with mode and size, so the launch-file rollback restores an overwritten file's mode on a nonlocal Host and T-1601's nonlocal overwrite refusal is removed (test)
   - done: impl-1644 · 2026-11-03T22:38:50.840Z
   - verified: rev-37 [reviewer] · run rev-37-1644-evidence-2 · 2026-11-03T23:07:15.788Z · commit 9b898b31a6a4d550881426100cd3590e61f1f552
+  - verified: rev-37 [reviewer] · run rev-37-1644-evidence-3 · 2026-11-04T01:18:11.694Z · commit bc5dfea1c5cde2afded1ac960342d566adb090b9
 
 ## Comments
 
@@ -246,5 +250,87 @@ Previous0e027541/A-16373 remains failed/incomplete; this new head/run supplies f
 All C1–C4 verified by reviewed source plus same-head named receipts. After-stage QA and deferred merge-batch coverage remain separate. Reviewer ran no tests, typecheck or browser and made no edits.
 
 A-16399: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16399-t-1644-final-evidence-at-9b898b31.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1644 · 2026-11-04T00:50:22.409Z
+
+Forced test edit authorized by Coordinator 366ab9de: adapter-native-boundary.test.ts must migrate six shared-ignore fault injection points from fsp.writeFile to the Host's actual staging FileHandle.writeFile / appendFile boundaries. Batch cbf4407c at 812ee0ec fails with `Missing expected rejection` for ignore/partial/append, plus missing custom-ignore prefix. Local file reproduces the same six failures. Preserve all assertions and lifecycle/cleanup checks unchanged; production code stays unchanged. This missed T3 consumer is added to the Host publication inventory.
+
+### rev-37 · 2026-11-04T00:57:07.940Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-source-3
+commit: bc5dfea1c5cde2afded1ac960342d566adb090b9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1644 source review of forced native-boundary test migration
+Headbc5dfea1c5cde2afded1ac960342d566adb090b9; comparison9b898b31a6a4d550881426100cd3590e61f1f552.
+Runrev-37-1644-source-3; clear; no findings. Scope full for corrected task head; the substantive audit is limited to the three-file correction against the already reviewed source. No dev merge/design rework occurred. Earlier source audits A-16365/A-16381 remain applicable.
+
+Read actual failed batch output A-16433: `AssertionError [ERR_ASSERTION]: Missing expected rejection.` for ignore, ignore-partial, ignore-append and partial-append retry. The old fsp.writeFile mock no longer intercepts the Host-owned FileHandle write or native appendFile. Coordinator366ab9de authorizes forced injection-only migration; f5c47023/2b605f3c require per-case positive injection controls. Batchcbf4407c remains failed; earlier task7c5a4f6d passing at9b898b31 is not a pass for this new head.
+
+Standards:0 findings.
+- Exactly three correction files changed: adapter-native-boundary.test.ts, its per-file guide, and implement CHANGES provenance/inventory entry. No production file, existing preservation source or duration baseline changed.
+- The helper observes fsp.open only at the exact scratch .cland/opencode parent with .stage- basename and instruments that actual handle's writeFile; unrelated handles remain native. It awaits partial/native writes before injecting the failure/editor. Native owner/close/staging cleanup stays in production code, with original lifecycle teardown unchanged.
+- No new timer, process, browser or environment overlay was introduced; the existing sealed fixture remains the owner. Test guidance documents the two seams and counter controls; missed T3 consumer is explicitly recorded.
+
+Spec:0 findings.
+- Forced seam1: ignore creation/partial metadata inject actual Host staging FileHandle.writeFile. The concurrent editor is planted after native staging bytes complete, before publish.
+- Forced seam2: ignore append/partial append inject fsp.appendFile instead of the former append-via-writeFile.
+- Three generated faults each have an independent local injected count incremented only when the selected fault executes, asserted after spawn rejection. The partial-append retry, staging-editor preservation and partial-metadata retry each also have an independent asserted count. Thus all six cases have a positive control; the generic assertion site executes once per generated case.
+- Diff preserves all original assertions and test names/order. A-16435 additionally records implementer's AST audit of124 original assert calls. Existing rejection, original prefix/wildcard, warning, no-live-child/no-session/staging cleanup and successful retry assertions remain present. Counters supplement them rather than replace the final behavior checks.
+- Production SSH/Host/OpenCode/LaunchFiles source is unchanged, as are SSH, Claude and layout preservation test sources.
+
+A-16434/A-16435 report macOS Node24.21 local native-boundary63pass/6fail before migration ->69/69 after migration and again69/69 with counters; SSH38/38, unchanged Claude18/18, layout18/18 on the preceding injection tree with identical production/preservation source; final typecheck/lint reported pass, advisories report-only. These are supplemental targeted reports, not fresh Linux/full-suite receipts. Reviewer ran no tests/typecheck/browser, made no edits.
+
+C1–C4 remain runtime-unverified at the changed head; no verified marks on this source-only pass. Fresh configured verification must namebc5dfea1c5cde2afded1ac960342d566adb090b9. The now-changed native-boundary file is required named preservation evidence; later Linux batch repetitions and after-stage QA remain separate.
+Standards0 findings; Spec0 findings.
+A-16436: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16436-t-1644-source-review-native-fault-injections-and-six-positive-controls.md
+
+### rev-37 · 2026-11-04T01:18:11.694Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1644-evidence-3
+commit: bc5dfea1c5cde2afded1ac960342d566adb090b9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1644 final evidence after native injection repair
+Headbc5dfea1c5cde2afded1ac960342d566adb090b9.
+Runrev-37-1644-evidence-3; scopeevidence; clear; findings[]; verifiedC1–C4.
+Source audits A-16365/A-16381 plus rev-37-1644-source-3/A-16436 apply. Branch ref remains this exact head. Read-only canonical-tree reconstruction yields99f39fb547a04fc229c095d548b490bb67272458, matching provenance.
+
+Configured runb558c8a1-13f5-4887-8804-a7de6dcb5d95 / A-16440 completed exit0,5063pass/0fail/cancel/skip/todo. Uncached Linuxx64 6.8.0-142-generic, droplet executor, Node24.21.0, Neovim0.12.5. Isolated Chrome Headless Shellr1248 binary /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; reported Google Chrome for Testing156.0.8078.4.
+T0/T1/allT2 fallback/Web and five selected T3 files completed. T3 has123top-level identities, one base execution each/no repetitions; remaining T3 is deferred to merge batch, T4unexecuted. T2 changed cases still include five load repetitions.32.549s added-wall check covers selected phases/excludes machine wait; not a whole-run time. Budget/lint/ratchet advisories and skipReasonCheck are report-only (missing0), not enforced failures or invented allowances.
+
+Streamed every finish record in required files, retaining generated names, scope and all outcomes before deduplication. No nonpass outcomes. Unique names / pass-record counts:
+adapter-native-boundary69/69; ClaudeHost18/18; agentFiles8/8; boundary12/17; layout18/38; prepared15/15; launchFiles4/9; placement11/16; SSH38/38; remoteDiscoveryHost7/7; remoteDiscovery2/7; contractCoverage4/4; OpenCodeHost9/9; sessionLaunch2/2; sessionHost8/8. Repetition/nested counts are not additional unique coverage.
+
+The six repaired generated native-boundary identities each have one passing base completion:
+- OpenCodeAdapter: failure at ignore leaves no session files or live child
+- OpenCodeAdapter: failure at ignore-partial leaves no session files or live child
+- OpenCodeAdapter: failure at ignore-append leaves no session files or live child
+- OpenCode retries a partial append without replacing the existing ignore contents
+- OpenCode preserves an ignore created during staging, adds its missing wildcard and warns
+- OpenCode partial shared-metadata write is removed and a retry publishes the complete ignore
+Reviewed source requires each injected counter>0 and retains all original rejection/bytes/prefix/wildcard/warning/cleanup/retry assertions. Passing these records proves relocated injections actually ran; it is not inferred from file exit alone.
+
+Criterion marks:
+C1 verified: exact local and actual-agent concurrent publish/append/stat cases pass; SSH shared byte/mode/stat/rollback contract passes, as do publish/append lost accepted reply, held writer across stream loss, restart no-replay/wrong owner and durable-result-checkpoint failure controls.
+C2 verified: local/mapped layout exact-byte/mode baselines and editor cases pass; boundary rejection/current-source scan pass. Native69/69 now supplies the formerly missing T3 fault/retry preservation, including positive controls.
+C3 verified: production nonlocal OpenCode placement and native agent launch path pass. The native environment capture retains allowed explicit values and rejects planted hub-only provider/remote/project secrets with positive control, while native shared-ignore bytes are asserted.
+C4 verified: nonlocal overwrite mode/bytes restoration and append truncation, legacy undo and testHost exact-capability guard pass; production SSH older-agent stat refusal before mutation/undo preserves original bytes/mode. Unchanged Claude18/18 and sessionHost/sessionLaunch remain green. Standalone host-local-contract/session-stop-races are deferred, not claimed as executed here.
+Coordinator discovery carry-over retains changed-secret atomic replacement/reaches-up and same-stream unknown publication drain controls in7/7 remoteDiscoveryHost.
+
+Old task0e027541/A-16373 and batchcbf4407c/A-16433 remain failed/incomplete. Old passing7c5a4f6d applies to its own prior head only. This new exact-head run supplies current evidence; local supplemental receipts are not summed with Linux totals. Deferred Linux batch repetitions and after-stage QA remain separate. No dev merge occurred; later Coordinator-directed integration requires new source review at the changed head. Reviewer ran no tests/typecheck/browser and made no edits.
+A-16441: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16441-t-1644-final-evidence-after-six-native-injection-repairs.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

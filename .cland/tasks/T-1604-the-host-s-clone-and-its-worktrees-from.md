@@ -3,7 +3,7 @@ id: T-1604
 kind: task
 title: The host's clone and its worktrees from the territory
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1371
 branch: t/T-1604-the-host-s-clone-and-its-worktrees-from
 created: 2026-11-02T03:33:56.426Z
-updated: 2026-11-03T23:56:56.536Z
+updated: 2026-11-04T01:13:11.814Z
 ---
 
 ## Summary
@@ -30,17 +30,22 @@ Hot files: `hub/src/host/ssh-host.ts` (worktreeAdd with territory), `hub/src/hos
 - [x] C1. On a fake host the first clone goes through the git socket with `core.gitProxy` set to `cland host git-proxy`, and no other remote URL or credential is configured (test).
   - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.230Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
   - done: impl-1604 · 2026-11-03T23:51:11.409Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-2 · 2026-11-04T01:13:11.351Z · commit 81dc93ee59003349916cff6592588f9fdf2c3516
 - [x] C2. When the daemon clone fails, the host is cloned from a bundle copied over `scp` on the master, and its `origin` still points at the git socket (test).
   - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.230Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
   - done: impl-1604 · 2026-11-03T23:51:11.550Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-2 · 2026-11-04T01:13:11.351Z · commit 81dc93ee59003349916cff6592588f9fdf2c3516
 - [x] C3. An item launch on a fake host creates the task branch in the territory (as T-1555 does), grants that host its lease, and adds the worktree on the host at the territory's tip (test).
   - done: impl-1604 · 2026-11-03T23:55:37.933Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-2 · 2026-11-04T01:13:11.351Z · commit 81dc93ee59003349916cff6592588f9fdf2c3516
 - [x] C4. A worktree add that fails on the host leaves no lease and no territory branch created by the launch behind (test).
   - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.231Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
   - done: impl-1604 · 2026-11-03T23:51:11.957Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-2 · 2026-11-04T01:13:11.351Z · commit 81dc93ee59003349916cff6592588f9fdf2c3516
 - [x] C5. Worktree prune of a host task worktree removes it through that host's agent, and the task-worktrees and worktree-cli test files pass with no test edited (test).
   - verified: rev-36 [reviewer] · run rev-36-1604-final-1 · 2026-11-03T22:53:36.231Z · commit 6ba0c4889f862a483a2c303b298b43c50140ce4d
   - done: impl-1604 · 2026-11-03T23:51:12.088Z
+  - verified: rev-36 [reviewer] · run rev-36-1604-final-2 · 2026-11-04T01:13:11.351Z · commit 81dc93ee59003349916cff6592588f9fdf2c3516
 
 ## Notes
 
@@ -146,3 +151,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected readiness source clear; both A-16419 findings resolved, no findings. A-16423. Shared quiesce precedes direct close's preparation join; native lost-reply regression retains PID/storage/typed unknown error, then observes durable cancellation completion and PID absence. Earlier guide's pre-native seam wording corrected. A-16422 local6/6/native exit0 read; A-16418 readiness7/contract33 remains preceding-head evidence. C1–C5 runtime criteria unverified at changed head; Reviewer ran no checks. Verification STILL HELD by Coordinator7bc54c4a until T1644 landing, explicit one-dev-merge/doc resolution and refreshed source review at resulting head.
+
+### rev-36 · 2026-11-04T01:13:11.351Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1604-final-2
+commit: 81dc93ee59003349916cff6592588f9fdf2c3516
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final readiness evidence clear; C1–C5 verified, no findings. A-16439 independently streams all six named integration passes in A-16437 exact-head uncached dc885e8d exit0/4933pass, including held-ready/retry and native lost-reply close preserving ownership through durable cleanup. A-16438 exact-head local Darwinarm64 Node24.21 raw/native exit0 preservation: task-worktrees19/worktree-cli4/remote-discovery7/SSH Host33, all unedited. Coordinator4a4de991 lifted hold and explicitly required no dev merge; unchanged81dc93ee confirmed. LocalmacOS T0/Linuxx64 c-8ams3 Node24.21 Nvim0.12.5 T1/allfallbackT2/changedT3once/Web complete. RemainingT3/T4/after-stage affectedQA separate; report-only budgets/lint/ratchet/skip missing0. Isolated HeadlessShell1248/ChromeForTesting156.0.8078.4. Resource1118s/$0.0776 not suite wall. Reviewer ran no runtime checks/probes/browser/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
