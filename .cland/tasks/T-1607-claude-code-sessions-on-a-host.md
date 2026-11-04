@@ -2,8 +2,8 @@
 id: T-1607
 kind: task
 title: Claude Code sessions on a host
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1375
 branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-04T04:37:29.793Z
+updated: 2026-11-04T08:10:42.500Z
+closed: 2026-11-04T08:10:42.500Z
 ---
 
 ## Summary
@@ -30,14 +31,28 @@ Hot files: `hub/src/adapters/claude-code.ts`, `hub/src/host/agent/processes.ts` 
 
 - [x] C1. Through the frame protocol a Claude Code session launched on a fake host with the scripted Claude fake receives a delivery and reports its state from its hooks (test).
   - done: impl-1607 · 2026-11-03T23:33:48.830Z
-- [ ] C2. The worker found by the one `agents --json` is adopted into the host agent's table with its Linux identity, and liveness and stop go through the agent (test).
-  - failed: rev-36 [reviewer] · 2026-11-04T04:37:29.793Z · note Linux T3 native ownership failures: root-exit hook returned captured array instead of null; pre-signal descendant case refused identity instead of successful bounded recapture.
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-1 · 2026-11-04T06:00:00.514Z · commit 3bc5ba0d5383bb31ce85c024101c2c4464e3392f
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-2 · 2026-11-04T06:49:56.378Z · commit 3206a000ff08b68f178614b5ef421fa89292a5b6
+  - verified: rev-36 [reviewer] · run rev-36-1607-delta-source-3 · 2026-11-04T07:29:38.980Z · commit 20780e8d8819b9f3df3fbc27f19cbeb4c04d5026
+- [x] C2. The worker found by the one `agents --json` is adopted into the host agent's table with its Linux identity, and liveness and stop go through the agent (test).
+  - done: impl-1607 · 2026-11-04T06:27:06.649Z
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-2 · 2026-11-04T06:49:56.378Z · commit 3206a000ff08b68f178614b5ef421fa89292a5b6
+  - verified: rev-36 [reviewer] · run rev-36-1607-delta-source-3 · 2026-11-04T07:29:38.980Z · commit 20780e8d8819b9f3df3fbc27f19cbeb4c04d5026
 - [x] C3. The session's hooks and mod bridge connect through the host's `hub.sock` and are dispatched as that session, and their settings carry host paths only (test).
   - done: impl-1607 · 2026-11-04T04:17:24.149Z
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-1 · 2026-11-04T06:00:00.514Z · commit 3bc5ba0d5383bb31ce85c024101c2c4464e3392f
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-2 · 2026-11-04T06:49:56.378Z · commit 3206a000ff08b68f178614b5ef421fa89292a5b6
+  - verified: rev-36 [reviewer] · run rev-36-1607-delta-source-3 · 2026-11-04T07:29:38.980Z · commit 20780e8d8819b9f3df3fbc27f19cbeb4c04d5026
 - [x] C4. Over several poll intervals no short-lived `claude` command runs on the host for the running row (test).
   - done: impl-1607 · 2026-11-03T23:33:49.321Z
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-1 · 2026-11-04T06:00:00.514Z · commit 3bc5ba0d5383bb31ce85c024101c2c4464e3392f
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-2 · 2026-11-04T06:49:56.378Z · commit 3206a000ff08b68f178614b5ef421fa89292a5b6
+  - verified: rev-36 [reviewer] · run rev-36-1607-delta-source-3 · 2026-11-04T07:29:38.980Z · commit 20780e8d8819b9f3df3fbc27f19cbeb4c04d5026
 - [x] C5. The claude-code-adapter, claude-code-sessions and claude-code-schedule test files pass with no test edited.
   - done: impl-1607 · 2026-11-03T23:33:49.436Z
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-1 · 2026-11-04T06:00:00.514Z · commit 3bc5ba0d5383bb31ce85c024101c2c4464e3392f
+  - verified: rev-36 [reviewer] · run rev-36-1607-final-2 · 2026-11-04T06:49:56.378Z · commit 3206a000ff08b68f178614b5ef421fa89292a5b6
+  - verified: rev-36 [reviewer] · run rev-36-1607-delta-source-3 · 2026-11-04T07:29:38.980Z · commit 20780e8d8819b9f3df3fbc27f19cbeb4c04d5026
 
 ## Notes
 
@@ -215,3 +230,126 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Evidence not clear; A-16501. A16500 actual two failures quoted: test146 actual captured Linux target array expectednull; test342 'could not stop worker: its process identity cannot be verified; it is still watched', false!==true. C2failed; no cause classification yet. Same-head run0d1c32ea T0/T1/T2pass,T3fail; T4/Webunexecuted, remainingT3deferred. Preserve process-authority gates and final assertions; diagnose exact native boundary before correction/retry. No overall pass from local supplements/report-only advisories. Reviewer ran no checks.
 
 Criteria: C2 failed (Linux T3 native ownership failures: root-exit hook returned captured array instead of null; pre-signal descendant case refused identity instead of successful bounded recapture.).
+
+### impl-1607 · 2026-11-04T05:35:27.007Z
+
+Pushed3bc5ba0d5383bb31ce85c024101c2c4464e3392f; A-16509 preserves diagnosis, approved pinned-retirement/shared one-admission budget, consumer scope, exact-head macOS31files/435pass/check and isolated Linux arm64 full54/54 plus five boundaries each5/5. A-16506 preserves held-root red and actual native churn facts; previous failed x64 A-16500 remains failed, no current queued pass. All criterion marks done; fresh source review next. Permission/recovery source and forced observer flags retained.
+
+### rev-36 · 2026-11-04T05:39:44.779Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-source-6
+commit: 3bc5ba0d5383bb31ce85c024101c2c4464e3392f
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-16510. No Standards or Spec findings. Coordinator-approved positive pinned retirement/one unknown reread and one in-memory recapture budget shared across AgentProcesses.stop/stopClaude preserve UID/ancestry/birth, root-loss/reparented fences, checkpoint-before-signal and second-churn refusal. Native root-exit fixture now observes actual root absence; separate transient-hook setup joins positive native exits, final assertions retained. Matching docs/skill records and consumer search checked. Prior permission/recovery boundaries unchanged. A-16509 exact-head macOS435 and isolated Linux arm6454+25 receipts are targeted supplements only; no current queued x64/browser pass. A-16500 remains failed. C1–C5 runtime-unverified; fresh mode-free verify may proceed at exact3bc5ba0d5. Reviewer ran no tests/checks/probes/browser, made no edits and used no delegation.
+
+### rev-36 · 2026-11-04T06:00:00.514Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-final-1
+commit: 3bc5ba0d5383bb31ce85c024101c2c4464e3392f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-16512, no findings. Independently streamed A-16511/857bdce6: exact reviewed head/capturetree b7fefe974, uncached Linux x64 droplet c-8 lon1 Node24.21.0/Nvim0.12.5. T0 submitting-host gate; T1/fallback all T2/selected T3 four files45 identities/T4 two base identities/Web exit0, reported5052/5052. All21 native remote Claude cases and19 scripted stop controls pass, including corrected root-exit, retirement, recapture, release-loss and restart-result boundaries. C1 delivery/hook state; C2 adopted Linux birth/one discovery/agent liveness and joined stop; C3 authenticated host paths/credential confinement and corrected guards/observers; C4 four observed liveness polls/no extra command. C5 unchanged base diff: Linux sessions10/schedule46; A16509 exact-head macOS raw six-case adapter/native exit0 supplies deferred adapter preservation. Shell1248 Chrome156.0.8078.4 isolated; remaining T3/broader T4/repetitions/after-stage QA unexecuted here. Advisories report-only; lifetime1052s/$0.0731 not suite wall. Earlier failed runs stay failed. No Reviewer execution/edits/browser/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1607 · 2026-11-04T06:05:08.633Z
+
+Coordinator6b2e0e81 once-only dev merge resolved/pushed60c445704f3e1bdaf342ebd7af2f57b9a93a7b46. All three manual conflicts preserve both sides, including OpenCode freePort route writes/join and Claude release/forget faults. A-16513 records post-typecheck identifier sweep and exact-head requested22file results:363pass/0fail/1 named Linux-only skip on macOS arm64 Node24.21.0, typecheck0. Fresh delta review before mode-free verify; old857bdce6 evidence remains pre-merge only.
+
+### rev-36 · 2026-11-04T06:06:33.556Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-delta-source-1
+commit: 60c445704f3e1bdaf342ebd7af2f57b9a93a7b46
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear; A-16514, no Standards/Spec findings. Direct Coordinator6b2e0e81 checked. Manual fixture resolution preserves serialized OpenCode port-map writes/join plus both Claude release/forget reply-loss controls; independent eight-file consumer search matches inventory. Documentation retains both sides. Shared Host metadata/prepared-file fencing/session-host routing reviewed against retained Claude permission/recovery gates; Claude/Sessions/contract/process implementation and C5 files byte-unchanged from3bc5ba0d5. A16513 current macOS typecheck0 +22files364results/363pass/1explicit Linux-native prerequisite skip/nativeexit0 read; source attribution correction noted. No current queued/Linux/Web receipt. C1–C5 runtime marks stale/unverified at merged head. Fresh mode-free verify at exact60c445704 required; previous A16511/finalA16512 remain prior-head only. No Reviewer execution, edits, browser or delegation.
+
+### rev-36 · 2026-11-04T06:23:42.286Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1607-evidence-5
+commit: 60c445704f3e1bdaf342ebd7af2f57b9a93a7b46
+scope: evidence
+findings: [{"severity":"medium","text":"Required queued verification exceeds its enforced whole-file duration budget: 60.959s >60s. All21 named assertions pass, but T3/overall exit1 and T4/Web are unexecuted. Resolve the duration failure through the authorized project process while preserving ownership/native assertions; any changed head needs source review before verification.","file":"hub/test/claude-code-remote.test.ts","line":1}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-16518. Actual A16517 line28088: 'duration budget: hub/test/claude-code-remote.test.ts 60.959 s > 60 s (add to hub/test/durations.json with a reason)'. Preceding suite test failures[] and all21 remote outcomes pass; no assertion/product-cause diagnosis. Enforced file gate is distinct from report-only ratchet/baseline/lint. Exact-head run3d837aa3 T0/T1/T2pass,T3exit1,T4/Webunexecuted/browsernull; completed5100pass is partial evidence, not overall pass. Uncached Linuxx64 c8lon1 Node24.21/Nvim.12.5, capturetree1512743ab; lifetime899s/$0.0624 not wall. C2failed; other criteria runtime-unverified at merged head. Source A16514 remains clear; preserve native gates and request fresh source review for changed head before rerun. No Reviewer execution.
+
+Criteria: C2 failed (Required native ownership/stop integration file exceeds enforced60s duration budget at60.959s; queued T3/overall exit1, not clear.).
+
+### impl-1607 · 2026-11-04T06:27:18.480Z
+
+Pushed3206a000ff08b68f178614b5ef421fa89292a5b6 for Coordinator8f8a0401 conditional branch2. A-16519 records actual >4s case samples excluding a split; dated90s C-216 file allowance, production replay before/after with explicit report-mode controls,38/38 duration cases/typecheck/closed-item lint green. No runtime/test/assertion changes; prior3d837aa3 remains partial file-gate failure, not green. Fresh delta review requested before verify.
+
+### rev-36 · 2026-11-04T06:27:58.972Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-delta-source-2
+commit: 3206a000ff08b68f178614b5ef421fa89292a5b6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Approved allowance source delta clear; A-16520, no findings. Direct Coordinator8f8a0401 conditional branch2 verified from both actual Linux logs (>4s frame/reparented cases). Three-file-only diff adds file:true90s, open C216 owner,2026-11-04→11-11, both58.659/60.959 samples/reason, guide and skill CHANGES. Runtime/tests/fixtures/assertions/bounds/order unchanged; individual budgets/baselines/checker report mode unchanged. A16519 production replay before-failure/after-clear and91s report regression/new5.1s individual refusal controls read;90s is not a new enforced hard cap. Local duration38/nativeexit0/check evidence supplemental, replay not native coverage. C1–C5 runtime-unverified; fresh mode-free verify at3206a000f may proceed. A16517 stays failed partial and prior green stays prior-head. No Reviewer execution/edits/browser/delegation.
+
+### rev-36 · 2026-11-04T06:49:56.378Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-final-2
+commit: 3206a000ff08b68f178614b5ef421fa89292a5b6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-16522, no findings, C1–C5 verified. Streamed A16521/run127d933a exact reviewed head/capturetree61dc9aa3 uncached Linuxx64 c8lon1 Node24.21/Nvim.12.5. T0 submitting-host gate/T1/fallback allT2/selected T3 ten durationfiles157identities/T4 two base/Web exit0, reported5177/5177. All21 remote native cases and19 stop controls pass, including frame delivery/adoption/one discovery/host credential-path assertions/four completed polls/no extra CLI, root-exit refusal, retirement, recapture and release/failed-launch recovery. Merged observer/native/OpenCode regressions pass. C5 Linux sessions10/schedule46; parent A16513 raw adapter6/macOS/nativeexit0 on byte-identical runtime/test sources supplies deferred preservation, labelled prior-head local execution. File67.114s covered by approved90s allowance, unchanged report semantics; earlier A16517 stays failed. Isolated Shell1248 Chrome156.0.8078.4; remaining T3/broader T4/repetitions/after-stage QA separate. Advisories report-only; lifetime1179s/$0.0818 not wall. No Reviewer execution/edits/browser/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1607 · 2026-11-04T07:28:12.310Z
+
+Pushed20780e8d8819b9f3df3fbc27f19cbeb4c04d5026, durations.json only, per Coordinator5d9f55ec/fbc7a350. Swept all66 new-Claude identities in three Linux logs;17 reached4s, all native remote. Adds17 dated C-216 allowances ceil1.5xworst, no tests/source/fixtures changed. Artifact in topic records exact samples and production replay ten before-failures→zero after; report-mode advisories remain, batch100.058s aggregate not relabelled as pass. Existing task greenA-16521 retained as prior-head exact-runtime evidence, failed batchA-16524 remains failed partial. Delta review then requested ready/re-enqueue; no new verify per Coordinator instruction.
+
+### rev-36 · 2026-11-04T07:29:38.980Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-delta-source-3
+commit: 20780e8d8819b9f3df3fbc27f19cbeb4c04d5026
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Durations-only delta clear; A-16526, no findings. Direct Coordinator5d9f55ec/fbc7a350 authorizes retaining verification evidence and re-enqueue after this delta review. Independent structured log audit:66new-Claude identities,17qualify>=4s, exactly17added/no missing-extra; every ceil1.5xworst7–12s, all available six-decimal samples/reasons, C216 and2026-11-04→11-11 match. All ten actual A16524 per-test gate failures covered; replay before10/after0 with report advisories retained. Removing new entries yields identical prior manifest; runtime/tests/fixtures/bounds/order/globalmode/baselines unchanged. C1–C5 retained from finalA16522/taskgreenA16521 at3206a000f on identical implementation/test bytes per explicit Coordinator keep-evidence instruction; no new-head execution claim. A16524 remains failed partial batch3219pass/5skips, aggregate100.058s advisory versus unchanged90s; next batch/after-stageQA remain separate. No Reviewer native checks/edits/browser/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-04T07:30:16.207Z
+
+Coord merge note (2026-11-04 07:31Z, rule 7 exception stated explicitly): enqueued at 20780e8d. The verify evidence is A-16521 at 3206a000, and the only change since is `hub/test/durations.json`: per-test allowances for 17 measured tests, 119 added lines and no test or source change (A-16525), with a clear delta review. The merge batch runs T1+T3 on the integrated tree and exercises exactly those allowances. Batch 58399da4 failed only on the per-test duration budget, with zero assertion failures.
+
+### coord · 2026-11-04T08:10:42.500Z
+
+Merged 81f87619bed9824df766244d2fb2965363e2c292 onto dev.
