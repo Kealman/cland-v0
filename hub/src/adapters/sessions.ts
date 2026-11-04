@@ -1735,21 +1735,46 @@ export class Sessions {
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }
 
+  readonly #hostResumes = new Map<string, { work: Promise<void>; again: boolean }>();
+
+  /** A restored agent table retries startup recovery; transport loss is never an exit receipt. */
+  resumeHost(host: string): Promise<void> {
+    if (this.#closed) return Promise.resolve();
+    const existing = this.#hostResumes.get(host);
+    if (existing) { existing.again = true; return existing.work; }
+    const flight = { work: Promise.resolve(), again: false };
+    // Install the owner before entering native I/O: a ready receipt can reenter here.
+    flight.work = Promise.resolve().then(async () => {
+      try {
+        do {
+          flight.again = false;
+          await this.#resumeHost(host);
+        } while (flight.again && !this.#closed);
+      } finally {
+        // Retire synchronously with the last pass; a later wake starts a new owner.
+        this.#hostResumes.delete(host);
+      }
+    });
+    this.#hostResumes.set(host, flight);
+    return flight.work;
+  }
+
+  async #resumeHost(host: string): Promise<void> {
+    for (const p of this.#table.running()) {
+      if (this.#closed) return;
+      if ((p.host ?? 'local') !== host || this.#pendingStops.has(p.sessionId)) continue;
+      try { await this.resume(p.name); }
+      catch (err) { this.#log({ event: 'resume-failed', session: p.name, error: err instanceof Error ? err.message : String(err) }); }
+    }
+  }
+
   /** At startup, recover native connections or retain live recorded processes for reconnect/stop. */
   async resumeAll(): Promise<void> {
     for (const entry of [...this.#pendingStops.values()]) {
       try { await this.#stopFailedLaunch(entry); }
       catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
     }
-    for (const p of this.#table.running()) {
-      if (!this.#hosts.has(p.host ?? 'local')) continue;
-      if (this.#pendingStops.has(p.sessionId)) continue;
-      try {
-        await this.resume(p.name);
-      } catch (err) {
-        this.#log({ event: 'resume-failed', session: p.name, error: err instanceof Error ? err.message : String(err) });
-      }
-    }
+    for (const host of this.#hosts.keys()) await this.resumeHost(host);
   }
 
   // ---------------------------------------------------------------- signals from inside the session
@@ -2400,7 +2425,7 @@ export class Sessions {
     for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
-    const drain = [...adapterDrains, ...this.#nativeChecks, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
+    const drain = [...[...this.#hostResumes.values()].map(flight => flight.work), ...adapterDrains, ...this.#nativeChecks, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
     const finish = () => { if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed'); };
     if (drain.length) return Promise.all(drain.map(work => work.catch(() => {}))).then(finish);
     finish();

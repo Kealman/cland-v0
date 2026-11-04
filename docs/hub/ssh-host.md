@@ -220,3 +220,18 @@ no implicit restoration. See [reconnect adoption](../agents/host-agent.md#reconn
 Native identity and file/usage observations use a separate owned agent stream,
 so a held recovery checkpoint cannot block the observation needed to settle it.
 Host shutdown closes and joins both acquisitions; neither stream has a local fallback.
+
+### Session recovery after carrier readiness
+
+Each authenticated agent acquisition restores adopted workers and reads the
+retained process table before notifying Sessions. The ready notification retries
+running rows for that host, including startup attempts made while its tunnel was
+down. Concurrent notifications share one recovery flight per host. A readiness receipt
+during that flight retains a follow-up pass before it settles, so earlier startup
+failures are retried. Shutdown joins
+that flight before storage closes. Adapters re-find the recorded PID and native
+birth through the owning Host, restore session forwards from their recorded
+endpoints, and resume native subscriptions. A failed tunnel observation retains
+the running row and role; only a positive native exit or identity mismatch ends
+it. The carrier restores its Unix forwards and republishes host discovery before
+becoming ready, allowing credentialed spokes to reconnect.

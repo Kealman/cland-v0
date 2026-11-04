@@ -68,13 +68,13 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       if(!quiescing)await o.restoreAdoptedWorkers?.(value);
       check();
       const table = await value.request('processes',{}) as unknown[];
-      o.onTable?.(table);
       const rows=await value.request('native-receipts',{}) as AgentEvent[];
       if(closed){if(client===value)client=undefined;await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
       for(const row of rows)event(row);
       await o.agentReady?.();
       check();
       client = value;
+      o.onTable?.(table);
       return value;
     }).catch(async error => {if(acquired&&acquired!==client)await closeConnection(acquired).catch(()=>{});throw error;}).finally(() => { connecting = undefined; });
     return connecting;

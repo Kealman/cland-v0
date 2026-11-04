@@ -261,6 +261,12 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'), clock);
   let adapters: ProjectSessions | null = null;
+  const pendingHostResumes = new Set<string>();
+  const hostReady = (host: string) => {
+    if (stopping) return;
+    if (starting || !adapters) { pendingHostResumes.add(host); return; }
+    void adapters.sessions.resumeHost(host).catch(error => log({ event: 'session-restore-failed', host, error: String(error) }));
+  };
   let sshHosts: Awaited<ReturnType<typeof projectSshHosts>> | null = null;
   let accountPoller: AccountPoller | null = null;
   let web: WebEdge | null = null;
@@ -667,7 +673,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   try {
     log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
-    sshHosts = await projectSshHosts({root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
+    sshHosts = await projectSshHosts({onReady:hostReady,root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
     adapters = projectSessions({ hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
     await adapters.sessions.sweepArchive();
@@ -693,6 +699,8 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);
   hub.dispatcher.useAccountPoller(accountPoller);
+  for (const host of pendingHostResumes) hostReady(host);
+  pendingHostResumes.clear();
   void adapters.sessions.resumeAll().then(() => {
     if (!stopping) { primeInbox(); accountPoller!.start(); }
   }).catch(error => log({ event: 'session-restore-failed', error: String(error) }));

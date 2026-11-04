@@ -10222,6 +10222,21 @@
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": 10.682408
   },
   "allow": {
+    "hub/test/host-survival-native.test.ts": {
+      "seconds": 90,
+      "file": true,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1612 Coordinator decision 3c96e485 approves a durations-only file allowance before enqueue. Same-head Linux x64 c-8 sfo2 Node24.21.0 verify 245788b2 at 227ee0c8 (A-16616) recorded the single native test at 41.0 s; exclusive local macOS arm64 Node24.21.0 whole-file sample was 38.3 s (A-16604, exact 38.266 s). Batch load has run Linux up to 1.5 times slower, which projects this file beyond the enforced 60 s T3 file budget. The 90 s file cap supplies batch headroom; that projection is not an observed duration. C-216 owns native fixture cost reduction. Per-test value, test title, assertions, wait bounds, ordering, identity gates and cleanup are unchanged."
+    },
+    "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": {
+      "seconds": 58,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1612 native three-harness/two-host scenario includes the acceptance-required real 20-second hub downtime. Exclusive-lock macOS arm64 Node24.21 final passing sample was 37.865 s (whole file 38.266 s); prior development samples were 38.052 s and 37.942 s; those prior samples reached all survival assertions but failed the final explicit-stop assertion (shared product regression T-1678, captured in A-16593), so neither is a passing coverage receipt. Same-head Linux x64 c-8 sfo2 Node24.21.0 verify 245788b2 at 227ee0c8 (A-16616) passed this test in 41.0 s. The 58 s per-test cap, initially about 1.5 times the macOS samples, stays unchanged per Coordinator decision 3c96e485; lifecycle assertions and timeout bounds are unchanged."
+    },
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
       "seconds": 7,
       "owner": "C-216",
