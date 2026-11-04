@@ -9,11 +9,12 @@ import type { SshTransport } from '../transport/ssh.ts';
 import type { AgentEvent } from './agent/protocol.ts';
 import type { PreparedOutcome } from './agent/prepared.ts';
 
-type Options = { log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
+type Options = { expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[]) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
 /** No fallback to native hub operations, including while connecting or disconnected. */
 export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce(): void } {
   let closed = false;
   let quiescing = false;
+  const acquisitionAbort=new AbortController();
   const unknown = new Set<string>();
   const waits = new Map<NodeJS.Timeout, () => void>();
   let completionTimer: NodeJS.Timeout | undefined;
@@ -23,9 +24,10 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     const timer=setTimeout(()=>{waits.delete(timer);resolve();},500);waits.set(timer,resolve);
   });
   const incomplete = (token:string) => Object.assign(new Error(`host ${o.name}: tunnel outcome unknown for ${token}; storage remains fenced`),{code:'CLAND_HOST_OUTCOME_UNKNOWN',operation:token});
-  const cancelPending = () => {quiescing=true;for(const [timer,resolve] of waits){clearTimeout(timer);resolve();}waits.clear();};
+  const cancelPending = () => {quiescing=true;acquisitionAbort.abort();for(const [timer,resolve] of waits){clearTimeout(timer);resolve();}waits.clear();};
 
   let client: AgentClient | undefined, connecting: Promise<AgentClient> | undefined;
+  let observer:AgentClient|undefined,observing:Promise<AgentClient>|undefined;
   const ownedClients=new Set<AgentClient>(),closeErrors=new Map<AgentClient,unknown>();
   const closeConnection=async(value:AgentClient)=>{
     try{await value.close();ownedClients.delete(value);closeErrors.delete(value);}
@@ -45,27 +47,63 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   const connected = async () => {
     check();
     if (client) return client;
+    let acquired:AgentClient|undefined;
     connecting ??= o.connect().then(async value => {
-      ownedClients.add(value);
+      acquired=value;ownedClients.add(value);
+      check();
+      if(o.expectedVersion && value.hello.version!==o.expectedVersion) {
+        acquisitionAbort.signal.throwIfAborted();
+        const previous=value.hello.version;
+        await closeConnection(value);
+        if(!o.updateAgent)throw new Error(`host ${o.name}: version mismatch and code delivery unavailable`);
+        acquisitionAbort.signal.throwIfAborted();
+        check();
+        await o.updateAgent(previous,acquisitionAbort.signal);
+        throw new Error(`host ${o.name}: waiting for updated agent`);
+      }
       value.once('closed',()=>{ownedClients.delete(value);closeErrors.delete(value);if(client===value)client=undefined;scheduleCompletions();});
       if(closed){await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
       if (!value.hello.capabilities?.includes(PREPARED_HOST_CAPABILITY)) { await closeConnection(value); throw new Error(`host ${o.name}: tunnel agent missing capability ${PREPARED_HOST_CAPABILITY}`); }
-      client = value; value.on('event', event);
+      value.on('event', event);
+      if(!quiescing)await o.restoreAdoptedWorkers?.(value);
+      check();
+      const table = await value.request('processes',{}) as unknown[];
+      o.onTable?.(table);
       const rows=await value.request('native-receipts',{}) as AgentEvent[];
       if(closed){if(client===value)client=undefined;await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
       for(const row of rows)event(row);
+      await o.agentReady?.();
+      check();
+      client = value;
       return value;
-    }).finally(() => { connecting = undefined; });
+    }).catch(async error => {if(acquired&&acquired!==client)await closeConnection(acquired).catch(()=>{});throw error;}).finally(() => { connecting = undefined; });
     return connecting;
   };
+  // Observations must not wait for a held process checkpoint on the serial
+  // recovery stream: a stop owner may need identity to release that checkpoint.
+  const observed=async()=>{
+    check();if(observer)return observer;
+    observing??=o.connect().then(async value=>{
+      ownedClients.add(value);
+      value.once('closed',()=>{ownedClients.delete(value);closeErrors.delete(value);if(observer===value)observer=undefined;});
+      try{
+        check();
+        if(!value.hello.capabilities?.includes(PREPARED_HOST_CAPABILITY))throw new Error(`host ${o.name}: tunnel agent missing capability ${PREPARED_HOST_CAPABILITY}`);
+        observer=value;return value;
+      }catch(error){await closeConnection(value);throw error;}
+    }).finally(()=>{observing=undefined;});
+    return observing;
+  };
+  const observations=new Set(['identity','stat','fileType','statDirectory','realpath','readFile','listFolder','occupants','processUsage']);
   function scheduleCompletions() {
-    if(closed||quiescing||completionTimer||completionWork||!completions.size)return;
+    if(closed||quiescing||completionTimer||completionWork)return;
     completionTimer=setTimeout(()=>{
       completionTimer=undefined;
       completionWork=(async()=>{
         try {const connection=await connected();const rows=await connection.request('native-receipts',{}) as AgentEvent[];for(const row of rows)event(row);}catch{/* A missing receipt stays pending through carrier recovery. */}
       })().finally(()=>{completionWork=undefined;scheduleCompletions();});
     },500);
+    completionTimer.unref();
   }
   const mutation = () => {check();if(quiescing)throw new Error(`host ${o.name}: tunnel Host quiescing`);if(unknown.size)throw incomplete(unknown.values().next().value!);};
   const settle = async <T>(token:string,recoveryKey:string):Promise<T> => {
@@ -81,7 +119,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   };
   const rpc = async <T>(op: string, args: Record<string, unknown> = {}, timeoutMs?: number): Promise<T> => {
     check();
-    try { return await (await connected()).request(op, args, timeoutMs) as T; }
+    try { return await (await (observations.has(op)?observed():connected())).request(op, args, timeoutMs) as T; }
     catch (error) { throw Object.assign(new Error(`host ${o.name}: tunnel agent ${op}: ${(error as Error).message}`), {code:(error as NodeJS.ErrnoException).code}); }
   };
   const prepared = async <T>(kind:string,args:Record<string,unknown>,callback?:(targets:HostCapturedProcess[])=>Promise<boolean|void>|boolean|void):Promise<T|false> => {
@@ -200,9 +238,9 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     processes: () => rpc('processUsage'),
     quiesce: cancelPending,
     close: async () => {
-      closed=true;cancelPending();clearTimeout(completionTimer);completionTimer=undefined;client=undefined;
+      closed=true;cancelPending();clearTimeout(completionTimer);completionTimer=undefined;client=undefined;observer=undefined;
       for(const value of [...ownedClients])await closeConnection(value).catch(()=>{});
-      await connecting?.catch(()=>{});await completionWork;
+      await Promise.all([connecting?.catch(()=>{}),observing?.catch(()=>{})]);await completionWork;
       for(const value of [...ownedClients])await closeConnection(value).catch(()=>{});
       const failures=[...closeErrors.values()];
       if(unknown.size)failures.push(incomplete(unknown.values().next().value!));
@@ -210,5 +248,6 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       if(failures.length)throw new AggregateError(failures,`host ${o.name}: tunnel cleanup incomplete`);
     },
   };
+  scheduleCompletions();
   return host;
 }

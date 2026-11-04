@@ -97,3 +97,32 @@ test('an invalid native job handle never becomes a stop option',async t=>{
  const result=await owner.launch(command(root),generation);assert.match(result.error!,/cleanup incomplete/);assert.deepEqual(calls.map(args=>args[0]),['--bg','agents']);
  await assert.rejects(owner.receipt(generation),/cleanup-incomplete/);
 });
+
+test('restart restore consumes live generation receipts and skips pending released and confirmed closed workers',async t=>{
+ const {writeFile}=await import('node:fs/promises');
+ const root=await tempProject(t),observed:number[]=[],restored:string[]=[];
+ const owner=claudeLaunches(root,{}, {run:async input=>({code:0,stdout:input.args[0]==='--bg'?'claude attach abc':'[{"id":"abc","pid":42,"sessionId":"native"}]',stderr:''}),identity:async pid=>{observed.push(pid);return 'linux:boot:1';},uid:async()=>process.getuid!()});
+ assert.equal((await owner.launch(command(root),generation)).code,0);
+ const original=JSON.parse(await readFile(join(root,'claude',generation+'.json'),'utf8'));
+ for(const [gen,extra] of [['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',{pid:43,released:true}],['cccccccc-cccc-cccc-cccc-cccccccccccc',{pid:44}],['dddddddd-dddd-dddd-dddd-dddddddddddd',{pid:45,phase:'launching'}]] as const){
+  await writeFile(join(root,'claude',gen+'.json'),JSON.stringify({...original,...extra,generation:gen}));
+ }
+ observed.length=0;
+ const outcome=await owner.restore(async worker=>worker.pid===44,async worker=>{restored.push(worker.generation);});
+ assert.deepEqual(outcome.incomplete,[{generation:'dddddddd-dddd-dddd-dddd-dddddddddddd',stage:'pending'}]);
+ assert.deepEqual(restored,[generation]);assert.deepEqual(observed,[42]);
+});
+
+
+test('restart restore reports a vanished generation without blocking a healthy receipt',async t=>{
+ const {writeFile}=await import('node:fs/promises');
+ const root=await tempProject(t),restored:string[]=[];
+ const owner=claudeLaunches(root,{}, {run:async input=>({code:0,stdout:input.args[0]==='--bg'?'claude attach abc':'[{"id":"abc","pid":42,"sessionId":"native"}]',stderr:''}),identity:async pid=>pid===42?'linux:boot:1':null,uid:async()=>process.getuid!()});
+ assert.equal((await owner.launch(command(root),generation)).code,0);
+ const record=JSON.parse(await readFile(join(root,'claude',generation+'.json'),'utf8'));
+ const vanished='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+ await writeFile(join(root,'claude',vanished+'.json'),JSON.stringify({...record,generation:vanished,pid:43}));
+ const outcome=await owner.restore(async()=>false,async worker=>{restored.push(worker.generation);});
+ assert.deepEqual(restored,[generation]);assert.deepEqual(outcome.incomplete,[{generation:vanished,stage:'receipt'}]);
+ assert.equal(JSON.parse(await readFile(join(root,'claude',vanished+'.json'),'utf8')).released,undefined);
+});

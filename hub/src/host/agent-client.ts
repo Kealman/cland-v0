@@ -2,6 +2,7 @@ import { createConnection } from 'node:net';
 import type { Socket } from 'node:net';
 import { EventEmitter } from 'node:events';
 import { AGENT_PROTOCOL, LineDecoder } from './agent/protocol.ts';
+import { CLAUDE_RESTORE_CAPABILITY, parseClaudeRestoreOutcome, type ClaudeRestoreOutcome } from './agent/claude.ts';
 import type { AgentHello } from './agent/protocol.ts';
 /** Owns one authenticated stream; callers reconnect explicitly after native close. */
 export class AgentClient extends EventEmitter {
@@ -46,4 +47,11 @@ export class AgentClient extends EventEmitter {
     });
   }
   async close(): Promise<void> { if (this.#socket.closed) return; const closed = new Promise<void>(resolve => this.#socket.once('close', resolve)); this.#socket.destroy(); await closed; }
+}
+
+/** Additive recovery handshake: older agents retain their prior table contract. */
+export async function restoreAdoptedWorkers(client:Pick<AgentClient,'hello'|'request'>,report?:(outcome:ClaudeRestoreOutcome|null)=>void):Promise<void>{
+  if(!client.hello.capabilities?.includes(CLAUDE_RESTORE_CAPABILITY))return;
+  const outcome=parseClaudeRestoreOutcome(await client.request('restore-claude',{report:true}));
+  report?.(outcome);
 }

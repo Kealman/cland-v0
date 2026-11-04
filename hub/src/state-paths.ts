@@ -1,4 +1,4 @@
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export { hostClaudeConfigDirectory } from './host/agent/state-paths.ts';
@@ -10,3 +10,6 @@ export const userStateDirectory = (env: NodeJS.ProcessEnv = process.env): string
 /** Compatibility location only: never create new state under .cland in HOME. */
 export const legacySpendPath = (env: NodeJS.ProcessEnv = process.env): string | null =>
   env.CLAND_EXECUTOR_STATE !== undefined ? null : join(userHome(env), '.cland/executor/spend.json');
+
+/** Transient source-only bundle; mkdtemp owns and removes its private directory. */
+export const agentDeliveryStagingPrefix=():string=>join(tmpdir(),'cland-agent-code-');

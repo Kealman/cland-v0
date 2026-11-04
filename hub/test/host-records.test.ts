@@ -14,6 +14,10 @@ import { beforeDirectories, ownDirectory } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';
 import { HostSecretStore, hostPaths } from '../src/host/records.ts';
 import { tempProject, projectHub, connectUi, flushProjectLogs } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { projectSshHosts } from '../src/host/registry.ts';
+import { remoteHostLayout } from '../src/host/remote-layout.ts';
+import type { SshOptions } from '../src/transport/ssh.ts';
 
 async function hostProject(t: TestContext): Promise<string> {
   const root = await tempProject(t);
@@ -27,6 +31,27 @@ async function hostProject(t: TestContext): Promise<string> {
 }
 
 const input = (id: string) => ({ id, address: id, user: 'agent', clientKeyPath: '/synthetic/client-key', knownHosts: `${id} ssh-ed25519 synthetic-${id}\n` });
+test('registered host transports explicitly carry each layout Node runtime without the generic fallback',async t=>{
+ const root=await hostProject(t),store=new Store();t.after(()=>store.close());
+ const secrets=new HostSecretStore(root,store.hosts);
+ for(const id of ['f1','f2'])secrets.register(input(id));
+ const custom='/fixture/exact runtime/node';
+ const configured={f2:{layout:{node:custom}}};
+ const captured:SshOptions[]=[];
+ const owner=await projectSshHosts({root,records:store.hosts,hubSocket:join(root,'hub.sock'),spokeSocket:join(root,'spoke.sock'),env:fixtureEnvironment(root,process.env),configurations:configured,log:()=>{},gitDaemon:async()=>({close:async()=>{}}),createTransport:options=>{
+  captured.push(options);
+  return {start:async()=>{},stop:async()=>{},status:()=>({name:options.record.id,state:'down',since:null,lastProbe:null,reconnects:0}),forward:async()=>({socket:''}),unforward:async()=>{}};
+ }});
+ t.after(()=>owner.close());
+ assert.equal(owner.hosts.length,2);assert.equal(captured.length,2);
+ for(const options of captured){
+  const expected=remoteHostLayout('/home/agent',options.record.id==='f2'?configured.f2.layout:{});
+  assert.equal(Object.hasOwn(options,'agentNode'),true,'registered carriers never use the generic absent-option fallback');
+  assert.equal(options.agentNode,expected.node);
+  assert.equal(options.agentCommand[0],expected.node);
+ }
+ assert.deepEqual(captured.map(options=>options.agentNode),['node',custom]);
+});
 test('C1 hosts table is additive and survives reopen with existing data', async t => {
   const root = await hostProject(t), path = join(root, 'hub.db');
   const legacy = new DatabaseSync(path);

@@ -40,3 +40,11 @@ Registration-only T2 cases inject inert named Hosts to keep startup free of
 carrier processes. The production daemon now creates carriers for uninjected
 registered records; T3 host-ssh-contract covers that ownership and an agent-backed
 launch. Registration, secret-redaction and connected-path assertions stay here.
+
+The registry-runtime control uses real registered records and inert injected
+carriers/git daemons. It asserts each created transport explicitly supplies
+`agentNode` equal to the resolved `layout.node`, both for the existing `node`
+layout default and a custom absolute runtime containing spaces. Registered hosts
+therefore never use the generic transport's absent-option fallback. No SSH or
+Node subprocess is started. The v0.4 image/provisioning contract owns which Node
+the layout's PATH default resolves to; this control changes no layout default.

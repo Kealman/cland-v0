@@ -1,4 +1,4 @@
-import { readFile, mkdir, lstat, realpath, unlink } from 'node:fs/promises';
+import { readFile, mkdir, lstat, realpath, unlink, opendir } from 'node:fs/promises';
 import { join, resolve, dirname, basename } from 'node:path';
 import { claudeProcessMembers } from './claude-stop.ts';
 import { checkpoint } from './storage.ts';
@@ -14,6 +14,16 @@ export function claudeConfigRefusal(info:{directory:boolean;symlink:boolean;uid:
 }
 export const isClaudeJobId=(value:unknown):value is string=>typeof value==='string'&&/^[a-zA-Z0-9_][a-zA-Z0-9_-]*$/.test(value);
 export const CLAUDE_LAUNCH_CAPABILITY = 'claude-launch-adopt-v1';
+export const CLAUDE_RESTORE_CAPABILITY = 'claude-restart-adopt-v1';
+export type ClaudeRestoreOutcome={incomplete:Array<{generation:string;stage:'pending'|'receipt'|'adoption'}>};
+/** Older restore implementations return null even when report was requested. */
+export function parseClaudeRestoreOutcome(value:unknown):ClaudeRestoreOutcome|null{
+  if(value===null)return null;
+  if(!value||typeof value!=='object'||!Array.isArray((value as ClaudeRestoreOutcome).incomplete))throw new Error('incompatible Claude restore report');
+  const result=value as ClaudeRestoreOutcome;
+  for(const entry of result.incomplete)if(!entry||typeof entry.generation!=='string'||!/^[a-f0-9-]{36}$/.test(entry.generation)||!['pending','receipt','adoption'].includes(entry.stage))throw new Error('incompatible Claude restore report');
+  return result;
+}
 type ConfigRoot={path:string;dev:number;ino:number};
 export type ClaudeReceipt = { privateDirectory:string; released?:true; config:ConfigRoot; jobs?:ConfigRoot;  generation: string; pid: number; identity: string; uid: number; job: string; session: string };
 type Command = { command: string; args: readonly string[]; cwd: string; env: NodeJS.ProcessEnv; timeoutMs?: number | undefined };
@@ -53,6 +63,30 @@ export function claudeLaunches(directory: string, env: NodeJS.ProcessEnv, overri
   }
   return {
     receipt,
+    /** Stream the current generation records only at explicit recovery admission.
+     * Pending launches and released receipts never confer restoration authority. */
+    restore:async(closed:(worker:{pid:number;identity:string})=>Promise<boolean>,adopt:(worker:ClaudeReceipt)=>Promise<void>):Promise<ClaudeRestoreOutcome>=>{
+      const outcome:ClaudeRestoreOutcome={incomplete:[]};
+      let records;try{records=await opendir(join(directory,'claude'));}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return outcome;throw error;}
+      for await(const entry of records){
+        if(!entry.isFile()||!/^[a-f0-9-]{36}\.json$/.test(entry.name))continue;
+        const generation=entry.name.slice(0,-5);let stage:'receipt'|'adoption'='receipt';
+        try{
+          const record=JSON.parse(await readFile(path(generation),'utf8'));
+          if(record.released)continue;
+          if(Object.hasOwn(record,'phase')){outcome.incomplete.push({generation,stage:'pending'});continue;}
+          const worker=await receipt(generation,closed);
+          if(await closed(worker))continue;
+          stage='adoption';await adopt(worker);
+        }catch(error){
+          if(['ENOENT','CLAND_CLAUDE_GENERATION_MISSING'].includes((error as NodeJS.ErrnoException).code??''))continue;
+          // Preserve this generation's receipt/files and no new authority. A
+          // vanished or unproved worker must not fence unrelated generations.
+          outcome.incomplete.push({generation,stage});
+        }
+      }
+      return outcome;
+    },
     remove: (generation:string,settled?:(worker:ClaudeReceipt)=>Promise<void>,confirmed:(worker:ClaudeReceipt)=>boolean|Promise<boolean>=deps.closed)=>operation(generation,'release',async()=>{
       let record:ClaudeReceipt;
       try{record=JSON.parse(await readFile(path(generation),'utf8'));}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return;throw error;}

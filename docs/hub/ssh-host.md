@@ -27,7 +27,7 @@ executable filename rather than shell source: an atomically published 0700
 The setting is clone-local. If daemon cloning fails, a bundle including HEAD
 and branches travels over scp on the same pinned ControlMaster; origin returns
 to the socket URL. SCP disables independent-connection fallback with `ProxyCommand=false`, so loss
-of the admitted mux fails the copy. Copy refuses destinations outside host run/work directories,
+of the admitted mux fails the copy. Copy refuses destinations outside host run/work/code directories,
 has a 10-second native deadline, and returns a path-free failure.
 The clone's `.cland/hub.json` has the canonical discovery bytes and mode 0600;
 unchanged bytes survive reconnect and restart, and walk-up discovery from a
@@ -61,7 +61,7 @@ without an override the home is `/root` for root or `/home/<user>` otherwise.
 Fake-host configuration uses the shared scratch home and the current checkout's
 code. Real images/providers install the version directory (E-1533). Launches
 requiring an absent version directory refuse with its path; a down tunnel also
-names the required code directory. Code installation is outside this Host.
+names the required code directory. Initial installation belongs to host provisioning. On a version-mismatched hello, the registry delivers the standalone agent package over the pinned master and restarts it through the supervisor; see [the package contract](../agents/host-agent.md#agent-package-and-version-replacement).
 
 Claude additionally requires agent capability `claude-launch-adopt-v1` for
 its generation-scoped launch receipt and adoption. Its private host MCP/settings
@@ -211,3 +211,12 @@ private-file deletion and invokes the receipt's forget closure. Lost release or
 forget replies recover without native stop replay. Normal retention is one per
 active/pending generation, zero after confirmed cleanup; no time eviction.
 Revoke/remove integration belongs to T-1666.
+
+The registry's reconnect hook restores adopted Claude workers through validated
+generation receipts before reading the table. The optional restore capability
+keeps old-agent hellos compatible; direct clients, startup and liveness perform
+no implicit restoration. See [reconnect adoption](../agents/host-agent.md#reconnect-adoption).
+
+Native identity and file/usage observations use a separate owned agent stream,
+so a held recovery checkpoint cannot block the observation needed to settle it.
+Host shutdown closes and joins both acquisitions; neither stream has a local fallback.

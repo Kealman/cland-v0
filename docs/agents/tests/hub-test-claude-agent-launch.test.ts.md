@@ -11,3 +11,9 @@ final single-producer assertion.
 Incomplete launch records preserve config/jobs/private-directory metadata, a
 valid printed job and native-stop result for diagnosis; they never authorize a
 PID signal. The leading-option job control rejects --all before any native stop.
+
+Restore classification controls adopt only a live validated generation, report
+a pending launch, skip released/confirmed-closed records without native identity
+reads, and retain a vanished generation while still restoring its healthy peer.
+No native process runs in these controls; native downtime/descendant boundaries
+are exercised by host-agent-restart.test.ts.

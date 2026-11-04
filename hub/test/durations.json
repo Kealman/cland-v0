@@ -10147,6 +10147,41 @@
     "hub/test/state-paths.test.ts::host Claude account root preserves config override and host HOME precedence": 0.000277
   },
   "allow": {
+    "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.181457698 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
+    },
+    "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps unresolved generation isolated from healthy recovery": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.164787825 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
+    },
+    "hub/test/host-agent-restart.test.ts::C1-C3 kill-agent reconnect reads retained table without signalling harness": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.130290939 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Existing allowance retains at least 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
+    },
+    "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
+      "seconds": 24,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 15.641018137 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
+    },
+    "hub/test/host-agent-restart.test.ts::C3 adopted Claude worker survives version replacement with receipt authority and no signal": {
+      "seconds": 12,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 7.878188536 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
+    },
     "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": {
       "seconds": 12,
       "owner": "C-216",

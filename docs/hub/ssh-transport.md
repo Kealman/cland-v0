@@ -24,6 +24,10 @@ proved, bootstrap is streamed on stdin. The script creates the host-owned run di
 A live supervisor makes bootstrap return before writing secrets or starting any
 background process. Otherwise the per-host secret is written at 0600 and exported
 for a `setsid nohup` supervisor. Neither script nor secret appears in SSH argv.
+Bootstrap also exports the supervisor's Node helper runtime as `CLAND_HOST_NODE`:
+the registry supplies the layout's pinned Node path through `SshOptions.agentNode`;
+other callers default to `node` on the host PATH. This is independent of
+`agentCommand`, which may begin with an exec wrapper such as `/usr/bin/env`.
 An incomplete or stale supervisor lock still refuses a duplicate supervisor;
 this transport never removes that lock or signals a PID read from it.
 

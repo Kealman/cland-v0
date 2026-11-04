@@ -33,16 +33,42 @@ test('ssh Host refuses an older hello without prepared capability and never call
 
 import { EventEmitter } from 'node:events';
 import { PREPARED_HOST_CAPABILITY } from '../src/host/agent/protocol.ts';
-for(const boundary of ['connect','initial receipts'] as const)test(`Host.close joins and closes a connection held at ${boundary}`,async()=>{
+// These fakes perform only promise work: bound the receipt by work, not native time.
+async function receipt<T>(promise:Promise<T>,what:string):Promise<T>{
+ let settled=false;
+ void promise.then(()=>{settled=true;},()=>{settled=true;});
+ for(let turn=0;turn<100&&!settled;turn++)await Promise.resolve();
+ assert.ok(settled,`${what}: incomplete after 100 microtask turns`);
+ return promise;
+}
+for(const boundary of ['connect','initial receipts'] as const)test(`Host.close joins and closes a connection held at ${boundary}`,async t=>{
  let release!:()=>void,entered!:()=>void;
  const gate=new Promise<void>(resolve=>{release=resolve;}),arrival=new Promise<void>(resolve=>{entered=resolve;});
  let closed=false,operations=0;
  const value=Object.assign(new EventEmitter(),{
   hello:{protocol:1,version:'test',pid:42,bootId:'test',capabilities:[PREPARED_HOST_CAPABILITY]},
   close:async()=>{if(!closed){closed=true;value.emit('closed');}},
-  request:async(op:string)=>{if(op==='native-receipts'){if(boundary==='initial receipts'){entered();await gate;}return [];}operations++;return null;},
+  request:async(op:string)=>{if(op==='processes')return [];if(op==='native-receipts'){if(boundary==='initial receipts'){entered();await gate;}return [];}operations++;return null;},
  }) as unknown as AgentClient;
  const host=sshHost({name:'f1',transport:{status:()=>({state:'up'})},connect:async()=>{if(boundary==='connect'){entered();await gate;}return value;}} as unknown as Parameters<typeof sshHost>[0]);
- const observation=host.identity(42).then(()=>null,error=>error);await arrival;
- const stopping=host.close();release();await stopping;assert.ok(await observation);assert.equal(closed,true);assert.equal(operations,0);
+ let observation:Promise<unknown>|undefined;
+ t.after(async()=>{release();await receipt(host.close(),'recovery cleanup close');if(observation)await receipt(observation,'recovery cleanup operation');});
+ observation=host.freePort().then(()=>null,error=>error);await receipt(arrival,'held recovery acquisition');
+ const stopping=host.close();release();await receipt(stopping,'recovery close');assert.ok(await receipt(observation,'rejected recovery operation'));assert.equal(closed,true);assert.equal(operations,0);
+});
+
+
+test('Host.close joins a held observation connection independently of recovery receipts',async t=>{
+ const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();let closed=false,operations=0;
+ const value=Object.assign(new EventEmitter(),{
+  hello:{protocol:1,version:'test',pid:42,bootId:'test',capabilities:[PREPARED_HOST_CAPABILITY]},
+  close:async()=>{closed=true;value.emit('closed');},
+  request:async()=>{operations++;return null;},
+ }) as unknown as AgentClient;
+ const host=sshHost({name:'f1',transport:{status:()=>({state:'up'})},connect:async()=>{entered.resolve();await release.promise;return value;}} as unknown as Parameters<typeof sshHost>[0]);
+ let observation:Promise<unknown>|undefined;
+ t.after(async()=>{release.resolve();await receipt(host.close(),'observation cleanup close');if(observation)await receipt(observation,'observation cleanup operation');});
+ observation=host.identity(42).then(()=>null,error=>error);await receipt(entered.promise,'held observation acquisition');
+ const stopping=host.close();release.resolve();await receipt(stopping,'observation close');
+ assert.ok(await receipt(observation,'rejected observation operation'));assert.equal(closed,true);assert.equal(operations,0);
 });

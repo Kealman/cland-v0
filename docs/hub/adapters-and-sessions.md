@@ -842,7 +842,12 @@ Start the POSIX shell loop in its own session on Linux:
 `setsid nohup sh hub/src/host/agent/supervisor.sh "$CLAND_HOST_RUN_DIR" node hub/bin/cland.ts host serve </dev/null >>supervisor.log 2>&1 &`.
 Use absolute code paths and a private run directory; supply `CLAND_HOST_SECRET`
 through the environment. The loop ignores SIGHUP and waits one second after
-agent exit before restarting it. Startup time adds to this delay. The agent also
+agent exit before restarting it. `CLAND_HOST_NODE` selects the Node runtime for
+native-birth and version-selection helpers, defaulting to `node` on PATH; SSH
+bootstrap supplies the layout's pinned runtime. The initial command can use an
+exec wrapper, independently of that helper runtime. Version replacement starts
+the standalone entrypoint through the selected Node runtime. Startup time adds
+to the restart delay. The agent also
 ignores SIGHUP; harnesses stay in their independent sessions and retain the
 existing process-table identities across agent restart. A missed harness exit
 still leaves authority unknown under the protocol's recovery rules.

@@ -42,6 +42,8 @@ export type SshOptions = {
   hubSocket: string; spokeSocket: string; remoteRun: string;
   /** Installed absolute path, not shell source. Code delivery is a separate owner. */
   supervisor: string; agentCommand: string[];
+  /** Node for supervisor helpers/version entrypoints; COMMAND may be an exec wrapper. */
+  agentNode?: string;
   env?: NodeJS.ProcessEnv; clock?: Clock; random?: () => number;
   log?: (message: string) => void;
   /** Native removal seam for testing retained session cleanup failures. */
@@ -54,7 +56,7 @@ export type SshOptions = {
 export function bootstrapScript(o: SshOptions): string {
   if (!o.agentCommand.length) throw new Error('agent command required');
   const secret = o.secrets.readSecret(o.record.id);
-  return `set -eu\numask 077\nrun=${quote(o.remoteRun)}\nmkdir -p "$run"\nchmod 700 "$run"\nif sh ${quote(o.supervisor)} --check "$run"; then exit 0; fi\nprintf '%s' ${quote(secret)} > "$run/secret"\nchmod 600 "$run/secret"\nexport CLAND_HOST_SECRET=$(cat "$run/secret")\nexport CLAND_HOST_RUN_DIR="$run"\nsetsid nohup sh ${quote(o.supervisor)} "$run" ${o.agentCommand.map(quote).join(' ')} </dev/null >>"$run/supervisor.log" 2>&1 &\n`;
+  return `set -eu\numask 077\nrun=${quote(o.remoteRun)}\nmkdir -p "$run"\nchmod 700 "$run"\nif sh ${quote(o.supervisor)} --check "$run"; then exit 0; fi\nprintf '%s' ${quote(secret)} > "$run/secret"\nchmod 600 "$run/secret"\nexport CLAND_HOST_SECRET=$(cat "$run/secret")\nexport CLAND_HOST_RUN_DIR="$run"\nexport CLAND_HOST_NODE=${quote(o.agentNode ?? 'node')}\nsetsid nohup sh ${quote(o.supervisor)} "$run" ${o.agentCommand.map(quote).join(' ')} </dev/null >>"$run/supervisor.log" 2>&1 &\n`;
 }
 export async function sshArguments(o: SshOptions): Promise<string[]> {
   const paths = hostPaths(o.root, o.record.id);
@@ -192,12 +194,21 @@ export class SshTransport implements Transport {
       const o=this.#o;
       if (!this.#running || !this.#masterReady) throw new Error('host copy: tunnel is not up');
       const base=o.remoteRun.replace(/\/run$/, '');
-      if (![o.remoteRun+'/',base+'/work/'].some(prefix=>destination.startsWith(prefix)) || destination.split('/').includes('..')) throw new Error('host copy: destination refused');
+      if (![o.remoteRun+'/',base+'/work/',base+'/code/'].some(prefix=>destination.startsWith(prefix)) || destination.split('/').includes('..')) throw new Error('host copy: destination refused');
       const args=await sshArguments(o);
       // scp accepts -o equivalents for ssh's -a and -x.
       const filtered=args.slice(2);
       const result=await this.#launch([...filtered,'-o',`ControlPath=${hostPaths(o.root,this.host).controlSocket}`,'-o','ControlMaster=no','-o','ProxyCommand=false',source,`${o.record.user}@${o.record.address}:${destination}`],'',sshBinaries(o.env ?? process.env).scp).closed;
       if(result!==0)throw new Error('host copy failed');
+    });
+  }
+  /** Commands require the admitted pinned mux; never fall back to a fresh SSH connection. */
+  execute(script: string): Promise<void> {
+    return this.#serial(async () => {
+      const o=this.#o;
+      if(!this.#running||!this.#masterReady)throw new Error('host execute: tunnel is not up');
+      const ok=await this.#command([...await sshArguments(o),'-S',hostPaths(o.root,this.host).controlSocket,'-o','ControlMaster=no','-o','ProxyCommand=false',`${o.record.user}@${o.record.address}`,'sh','-s'],script);
+      if(!ok)throw new Error('host execute failed');
     });
   }
   async #probe(): Promise<boolean> {

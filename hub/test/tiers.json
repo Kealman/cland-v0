@@ -1,19 +1,45 @@
 {
   "version": 1,
   "loadGuards": {
-    "nvim/lua/cland/init.lua": ["nvim/test/qa-shipped.test.ts"],
-    "nvim/test/launcher-component.test.ts": ["nvim/test/launcher-input-load.test.ts"],
-    "nvim/test/launcher-model-fixture.ts": ["nvim/test/launcher-input-load.test.ts"],
-    "hub/src/adapters/requests.ts": ["hub/test/inbox-verifier-load.test.ts"],
-    "hub/src/adapters/sessions.ts": ["hub/test/inbox-verifier-load.test.ts"],
-    "hub/src/hub/core.ts": ["hub/test/inbox-verifier-load.test.ts"],
-    "hub/test/executor-safety-case.ts": ["hub/test/executor-safety-load.test.ts"],
-    "hub/test/executor-safety-component.test.ts": ["hub/test/executor-safety-load.test.ts"],
-    "hub/test/remote-clock.ts": ["hub/test/executor-safety-load.test.ts"],
-    "hub/test/remote-fixture.ts": ["hub/test/executor-safety-load.test.ts"],
-    "nvim/lua/cland/explorer_card.lua": ["nvim/test/explorer-outline-load.test.ts"],
-    "nvim/test/explorer-component.test.ts": ["nvim/test/explorer-outline-load.test.ts"],
-    "nvim/test/explorer-outline-fixture.ts": ["nvim/test/explorer-outline-load.test.ts"]
+    "nvim/lua/cland/init.lua": [
+      "nvim/test/qa-shipped.test.ts"
+    ],
+    "nvim/test/launcher-component.test.ts": [
+      "nvim/test/launcher-input-load.test.ts"
+    ],
+    "nvim/test/launcher-model-fixture.ts": [
+      "nvim/test/launcher-input-load.test.ts"
+    ],
+    "hub/src/adapters/requests.ts": [
+      "hub/test/inbox-verifier-load.test.ts"
+    ],
+    "hub/src/adapters/sessions.ts": [
+      "hub/test/inbox-verifier-load.test.ts"
+    ],
+    "hub/src/hub/core.ts": [
+      "hub/test/inbox-verifier-load.test.ts"
+    ],
+    "hub/test/executor-safety-case.ts": [
+      "hub/test/executor-safety-load.test.ts"
+    ],
+    "hub/test/executor-safety-component.test.ts": [
+      "hub/test/executor-safety-load.test.ts"
+    ],
+    "hub/test/remote-clock.ts": [
+      "hub/test/executor-safety-load.test.ts"
+    ],
+    "hub/test/remote-fixture.ts": [
+      "hub/test/executor-safety-load.test.ts"
+    ],
+    "nvim/lua/cland/explorer_card.lua": [
+      "nvim/test/explorer-outline-load.test.ts"
+    ],
+    "nvim/test/explorer-component.test.ts": [
+      "nvim/test/explorer-outline-load.test.ts"
+    ],
+    "nvim/test/explorer-outline-fixture.ts": [
+      "nvim/test/explorer-outline-load.test.ts"
+    ]
   },
   "tests": {
     "hub/src/adapters/opencode.test.ts": "T3",
@@ -224,7 +250,10 @@
     "hub/test/homebrew.test.ts": "T1",
     "hub/test/hook-bridge-doctor.test.ts": "T3",
     "hub/test/host-agent-boundary.test.ts": "T1",
+    "hub/test/host-agent-client.test.ts": "T2",
+    "hub/test/host-agent-closure.test.ts": "T1",
     "hub/test/host-agent-files.test.ts": "T3",
+    "hub/test/host-agent-restart.test.ts": "T3",
     "hub/test/host-agent.test.ts": "T3",
     "hub/test/host-allow-list.test.ts": "T3",
     "hub/test/host-boundary.test.ts": "T1",
@@ -236,14 +265,26 @@
     "hub/test/host-launch-layout.test.ts": "T2",
     "hub/test/host-lease-lock.test.ts": "T2",
     "hub/test/host-limit-poller.test.ts": "T1",
-    "hub/test/host-local-contract.test.ts": { "tier": "T3", "scenario": "local-host" },
-    "hub/test/host-local-liveness.test.ts": { "tier": "T3", "scenario": "local-host-liveness" },
+    "hub/test/host-local-contract.test.ts": {
+      "tier": "T3",
+      "scenario": "local-host"
+    },
+    "hub/test/host-local-liveness.test.ts": {
+      "tier": "T3",
+      "scenario": "local-host-liveness"
+    },
     "hub/test/host-orphans.test.ts": "T3",
-    "hub/test/host-prepared.test.ts": { "tier": "T3", "scenario": "host-prepared" },
+    "hub/test/host-prepared.test.ts": {
+      "tier": "T3",
+      "scenario": "host-prepared"
+    },
     "hub/test/host-records.test.ts": "T2",
     "hub/test/host-registry.test.ts": "T2",
     "hub/test/host-secret-admission.test.ts": "T2",
-    "hub/test/host-ssh-contract.test.ts": { "tier": "T3", "scenario": "ssh-host" },
+    "hub/test/host-ssh-contract.test.ts": {
+      "tier": "T3",
+      "scenario": "ssh-host"
+    },
     "hub/test/host-ssh-registry.test.ts": "T2",
     "hub/test/host-stop-observation.test.ts": "T1",
     "hub/test/host-supervisor.test.ts": "T3",
@@ -611,7 +652,10 @@
     "hub/test/suite-load-diagnostics.test.ts": "T1",
     "hub/test/suite-log-backfill.test.ts": "T2",
     "hub/test/suite-persistence.test.ts": "T1",
-    "hub/test/suite-preflight.test.ts": { "tier": "T3", "contract": "Native Git candidate lint before CLI submission" },
+    "hub/test/suite-preflight.test.ts": {
+      "tier": "T3",
+      "contract": "Native Git candidate lint before CLI submission"
+    },
     "hub/test/suite-progress.test.ts": "T1",
     "hub/test/suite-protocol.test.ts": "T2",
     "hub/test/suite-queue-policy.test.ts": "T2",

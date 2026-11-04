@@ -4,8 +4,15 @@ T1: compare the local effective base/addition/filter result and remote explicit
 additions. Synthetic planted credentials provide a positive source-map control.
 The shared builder used by OpenCode is checked on both local and remote branches.
 An older hello without capabilities causes SSH Host refusal before any operation
-or monolithic fallback. No native process, socket, credential or clock is used.
+or monolithic fallback. No native process, socket or real credential is used.
 
-Held connection and initial-receipt acquisitions prove Host.close joins and
-closes late clients without issuing a later native operation. These cases use
+Held recovery connection and initial-receipt acquisitions use freePort to prove
+Host.close joins and closes late clients without issuing the feature operation.
+The fake answers the processes handshake before the native-receipts gate.
+A separate held observation-connection case uses identity and retains the same
+close/join, error, closed-client and zero-operation assertions. These cases use
 EventEmitter clients and explicit promise barriers, with no native I/O.
+Setup, close and rejected-operation receipts have a 100-microtask work bound;
+this measures no wall time. Cleanup is registered before triggering the held
+operation and always releases the gate, joins Host.close and drains the operation,
+including when setup or a final assertion fails.

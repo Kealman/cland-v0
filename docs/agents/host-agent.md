@@ -21,7 +21,7 @@ Birth strings are `linux:<boot UUID>:<start ticks>`. Linux reads the shared boot
 
 The private process table retains active/unresolved ownership and the latest 256 confirmed closed trees; it is a state checkpoint rather than an exit journal. It is atomically replaced before spawn replies and exit events. An agent restart retains liveness and resource observations, but cannot recover the native exit status of a child it did not reap: a root exit it did not observe records null code/signal and authority unknown, keeping its admission and unresolved metadata. It never replaces an exact native code with null. Unreadable birth remains unresolved; processes renders unavailable resource samples as null. Recovery shares one in-flight observation pass. Only confirmed closed trees enter bounded history; unresolved ownership remains current state. Admission receipts under launches/<UUID> are persisted before spawn; the bootstrap writes its own birth before release, so agent death before processes.json can be reconciled. Private launch environments are removed after bootstrap read. While live, the agent checkpoints descendant PID/birth pairs from intact PPID ancestry during reconciliation and stop; native root close retains those earlier captures and samples remaining group members. The row retains those targets through restart and permits a later stop even though the root is gone. Launch receipts remain until the captured tree is positively gone and the closed checkpoint is durable. A per-admission closed receipt permits cleanup recovery if the agent exits between checkpoint and removal. Native process-exited reports the root code with optional authority and ended fields; it does not imply that every descendant exited. Closed-tree and unknown-authority resource samples are null; a dead root with owned live descendants still reports their tree samples. Native exit events are `{event:"process-exited",pid,identity,code,signal}`. Every five seconds authenticated clients receive `{event:"memory",totalBytes,availableBytes}`; Linux available bytes come from MemAvailable, while fake macOS uses OS free memory. RSS and CPU sum current ancestry plus birth-validated retained targets even while the root remains alive; duplicate PIDs count once. A failed, unreadable or changing native observation leaves the sample null. CPU is the ps percentage snapshot, not interval utilization. No memory floor or capacity gate is enforced here.
 
-The hub-side `AgentClient` multiplexes requests and emits `event` and `closed`. Timed-out requests report an unknown outcome; callers must reconcile before retrying a mutating operation. Stream close rejects pending requests. Reconnect and additional operation families belong to their later owners.
+The hub-side `AgentClient` multiplexes requests and emits `event` and `closed`. Timed-out requests report an unknown outcome; callers must reconcile before retrying a mutating operation. Stream close rejects pending requests. The SSH Host owns reconnection and retained-table reconciliation, as described below.
 
 Authority `owned` means every signal target has an admitted root or a durable descendant birth captured while ancestry was intact or by its live native close owner. Each target is independently revalidated before signaling. Authority `closed` and ended=true mean the owned tree was observed gone. Authority `unknown` fences an exit missed during agent downtime or an ownership observation that cannot be completed. Stop refuses with `process authority unknown; stop requires host reboot or recycling` and signals nothing. Observational process listing still works; it does not manufacture descendant authority from a numeric group. A host reboot ends its sessions through the host lifecycle (T-1613), and recycling clears unresolved host state. Reverting a fake boot-id file does not restore revoked authority.
 
@@ -185,3 +185,101 @@ territory attempt no clone. See
 for the clone-local proxy, bundle fallback, immutable discovery copy and hub.db
 records used to list/prune after restart. The proxy wrapper contains paths only;
 per-host authentication remains on the forwarded sockets.
+
+## Agent package and version replacement
+
+`hub/bin/generate-host-agent-closure.ts` derives the runtime from
+`host/agent/entry.ts` through literal import/export, dynamic-import and native
+bootstrap/supervisor URL edges. It writes the committed `host/agent/closure.json`
+projection (paths and SHA-256 hashes). A T1 regeneration test rejects stale
+projections. Runtime delivery reads that projection and verifies its source
+hashes; it loads no compiler. Run `node hub/bin/generate-host-agent-closure.ts`
+after changing the runtime. Initial provisioning uses the same committed graph. Only
+Node built-ins, agent source modules and the credential-filter leaf are admitted.
+There are currently no npm dependencies in this closure; a package import refuses
+delivery until it is explicitly vendored. The standalone runtime requires Node
+24 and does not resolve the project's node_modules. Initial host provisioning
+must use this same package format; host images supply Node only.
+
+The wire bundle contains `version` and `files`, with `path`, `sha256` and base64
+`bytes` per file. The installed `agent-manifest.json` retains version and each
+file's path/hash, omitting bytes. Paths preserve the repository layout within
+`~/.cland-host/code/<VERSION>`. No project files, environment, account data or
+credentials enter the source graph. The version is one safe path component.
+
+On a mismatched hello, the registry copies the bundle over the existing SSH
+ControlMaster with pinned known-hosts and no independent-connection fallback.
+The shared `agentVersionHandoff` owner fences a successful publication while the
+supervisor replaces its child; a matching hello also settles a lost publication
+reply. The host checks paths and hashes, writes a private staging directory under
+`code`, verifies the written package and atomically renames it to VERSION.
+Failed or partial staging directories cannot be selected. Existing version
+directories are immutable: an occupied version is verified against every incoming
+manifest path/hash and reused only when identical. A retry after installation or
+restart-publication interruption can therefore complete without replacing code.
+
+Only after installation does a private `code/restart` request select VERSION.
+The supervisor uses `CLAND_HOST_NODE` for its Node helpers and replacement
+entrypoint, defaulting to `node` on PATH. SSH bootstrap sets it to the layout's
+pinned Node runtime; the initial agent command may independently use an exec
+wrapper. The supervisor validates the manifest, rechecks its directly launched agent's
+native birth and sends SIGTERM to that child alone, waits for it, then starts
+the selected standalone entrypoint. Before launching it, the supervisor advances
+its verifier path to that selected package, so later retention can remove its
+original version. Repeated requests for the same immutable selected version
+return an `already-selected` receipt with that direct child’s PID/birth and do
+not signal it again. The standalone agent checkpoints `code/applied.json` only
+after socket/process-table readiness, with version and its native PID/birth.
+Shutdown joins that readiness checkpoint. Harnesses have independent lifetimes.
+After the new authenticated hello and retained-table read, retention keeps the
+current version and the previous hello's version. Older manifested packages
+are pruned; unknown directories are preserved.
+
+SSH Host owns one reconnect driver, retrying every 500 ms while active. Each recovery
+acquisition reads `processes` and exact native completion receipts before it
+becomes available to mutations; the separately owned observation stream below
+keeps native identity and file/usage reads independent of that checkpoint. Stream loss never changes session identity or
+manufactures an exit receipt. Close/quiesce cancels retries and joins acquisition
+and delivery work. Quiesce aborts delivery between joined copy/install boundaries
+and fences late restart publication. AgentClient continues to accept the original protocol-1 hello
+without optional capabilities; SSH Host separately requires prepared operations.
+
+
+## Reconnect adoption
+
+The registry wires `restoreAdoptedWorkers` before each newly authenticated
+connection reads the retained table. Agents advertise optional
+`claude-restart-adopt-v1`; the additive `restore-claude` operation keeps its null
+result for requests without options. Optional `{report:true}` returns an
+`incomplete` list of generation identifiers and stages (`pending`, `receipt`,
+`adoption`). A new client accepts older null reports as unknown, not zero failures;
+the registry records these facts in its host recovery log.
+An older hello without this capability retains the previous behavior. Standalone
+AgentClient connections do not restore implicitly. Neither agent startup nor
+liveness replies scan or restore generations.
+
+The Claude receipt owner streams the current run/claude generation records on
+this explicit recovery admission, sharing one in-flight restoration. Pending launches are reported without adoption; released receipts are skipped. Ready candidates use
+`claudeLaunches(runDir, env).receipt(generation, confirmedClosed)`; confirmed
+closed workers are skipped. Only that validated generation receipt can authorize
+fresh live adoption. The retained process ledger is reconciled before receipt
+validation, so a positively closed tree can finish release/forget even if its root
+exited while the agent was down. An unresolved generation retains its receipt and
+private files, gains no fresh authority and appears in the incomplete report; it
+does not block the table or mutations for healthy generations. Caller PIDs and serialized adopted flags grant no authority.
+The agent remembers successfully admitted live generations until release or
+forget, sharing the normal explicit-adopt path so reconnects do not reset its native census.
+Stop still creates its own single recapture budget and preserves settled-exit
+rules; recovery never signals a worker or retries an incomplete stop.
+
+After changing the runtime, regenerate closure.json, including claude.ts,
+claude-stop.ts and state-paths.ts, using the committed source projection workflow.
+
+The SSH Host keeps a separately owned authenticated observation stream for
+identity and filesystem/usage reads. Those reads do not wait for the recovery
+stream’s held process checkpoint: stop settlement may need a native identity
+observation to release that checkpoint. Both streams recheck admission and are
+joined on close. The mutation/recovery stream still restores generations and
+reads the retained table before becoming available. Local delivery bundles use
+the central agentDeliveryStagingPrefix temporary path owner and are removed after
+all copy/install writers have joined.

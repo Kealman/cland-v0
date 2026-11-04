@@ -1,3 +1,5 @@
+import { VERSION } from '../version.ts';
+import { agentVersionHandoff } from './code-delivery.ts';
 import { ensureHostClone, hostCloneRoot } from './clone.ts';
 import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
@@ -12,11 +14,11 @@ import { remoteHostLayout, remoteCodeDirectory, remoteSupervisor } from './remot
 import { sshHost } from './ssh-host.ts';
 import { SshTransport, type SshOptions } from '../transport/ssh.ts';
 import { remoteDiscovery, publishRemoteDiscovery } from './discovery.ts';
-import { AgentClient } from './agent-client.ts';
+import { AgentClient, restoreAdoptedWorkers } from './agent-client.ts';
 import { startGitDaemon, type GitDaemonOptions } from './git-daemon.ts';
 import { territoryPath } from '../territory.ts';
 
-type Carrier = Pick<SshTransport,'start'|'stop'|'status'|'forward'|'unforward'> & Partial<Pick<SshTransport,'copyFile'>>;
+type Carrier = Pick<SshTransport,'start'|'stop'|'status'|'forward'|'unforward'> & Partial<Pick<SshTransport,'copyFile'|'execute'>>;
 export type HostConfiguration = { home?: string; layout?: Partial<HostLaunchLayout>; supervisor?: string };
 /** Carrier and Host share one lifecycle owner; sessions close before this owner. */
 export async function projectSshHosts(options: {createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
@@ -38,8 +40,9 @@ export async function projectSshHosts(options: {createTransport?: (options:SshOp
         try {
           await publishRemoteDiscovery(client,layout.discoveryFile,remoteDiscovery(layout.runDirectory,secrets.readSecret(record.id)),signal);
         } finally { await client.close(); }
-      }, root:options.root,record,secrets,hubSocket:options.hubSocket,spokeSocket:options.spokeSocket,remoteRun:layout.runDirectory,supervisor:config?.supervisor ?? remoteSupervisor(layout),agentCommand:[layout.node,layout.cli,'host','serve'],env:options.env,log:message=>options.log({event:'host-tunnel',host:record.id,message}) });
-      const host = sshHost({...(fake ? {} : {codeDirectory:code}),available:()=>options.records.get(record.id)?.state === 'registered',name:record.id,transport:carrier,layout,connect:()=>AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id))});
+      }, root:options.root,record,secrets,hubSocket:options.hubSocket,spokeSocket:options.spokeSocket,remoteRun:layout.runDirectory,supervisor:config?.supervisor ?? remoteSupervisor(layout),agentCommand:[layout.node,layout.cli,'host','serve'],agentNode:layout.node,env:options.env,log:message=>options.log({event:'host-tunnel',host:record.id,message}) });
+      const handoff=agentVersionHandoff({transport:carrier,codeRoot:join(layout.runDirectory,'..','code'),node:layout.node,version:VERSION});
+      const host = sshHost({ ...(fake ? {} : {expectedVersion:VERSION}), agentReady:handoff.ready,updateAgent:handoff.update,restoreAdoptedWorkers:client=>restoreAdoptedWorkers(client,outcome=>{try{options.log({event:'host-claude-restore',host:record.id,state:outcome?(outcome.incomplete.length?'incomplete':'complete'):'unknown',incomplete:outcome?.incomplete??null});}catch{/* Diagnostics do not discard restored ownership. */}}),...(fake ? {} : {codeDirectory:code}),available:()=>options.records.get(record.id)?.state === 'registered',name:record.id,transport:carrier,layout,connect:()=>AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id))});
       // The carrier owns connectivity; task preparation owns the clone separately.
       const cloneAbort=new AbortController();let clone:Promise<void>|undefined;
       const prepareClone=async()=>{
