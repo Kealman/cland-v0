@@ -101,9 +101,10 @@
       "A-16304",
       "A-16314",
       "A-16427",
-      "A-16430"
+      "A-16430",
+      "A-16488"
     ],
-    "commit": "64d7ba0dbccda1067dc9c5951b1ea7f5376ce743"
+    "commit": "eb1c0e7528e395f25750a3c61ed573f9c2294b59"
   },
   "budget": {
     "testSeconds": 5,
@@ -3415,6 +3416,18 @@
     },
     "hub/test/spoke-import-graph.test.ts": {
       "seconds": 0.101395,
+      "tests": 2
+    },
+    "hub/test/codex-remote-agent.test.ts": {
+      "seconds": 1.490641,
+      "tests": 1
+    },
+    "hub/test/host-clone-integration.test.ts": {
+      "seconds": 8.029141,
+      "tests": 6
+    },
+    "hub/test/host-clone.test.ts": {
+      "seconds": 0.002893,
       "tests": 2
     }
   },
@@ -9987,7 +10000,31 @@
     "hub/test/host-ssh-registry.test.ts::registry startup uses default installed supervisor and cleanup drains all owners after carrier failure": 0.043561,
     "hub/test/host-supervisor.test.ts::teardown joins a replacement started while restart-owner shutdown is held": 2.046256,
     "hub/test/spoke-import-graph.test.ts::C1 spoke eager startup graph excludes SQLite, journal, tracker and tool implementations": 0.100687,
-    "hub/test/spoke-import-graph.test.ts::startup graph detects transitive runtime edges and excludes erased or deferred imports": 0.000708
+    "hub/test/spoke-import-graph.test.ts::startup graph detects transitive runtime edges and excludes erased or deferred imports": 0.000708,
+    "hub/test/codex-remote-agent.test.ts::Codex version and stop cross the fake host agent with a joined native exit": 1.490641,
+    "hub/test/host-agent-files.test.ts::atomic publish, append and stat preserve concurrent writers (agent)": 0.016558,
+    "hub/test/host-agent-files.test.ts::atomic publish, append and stat preserve concurrent writers (local)": 0.012934,
+    "hub/test/host-boundary.test.ts::Host boundary rejects former local metadata exemptions": 0.001781,
+    "hub/test/host-clone-integration.test.ts::accepted checkout keeps its durable ownership when ready checkpoint fails": 0.911855,
+    "hub/test/host-clone-integration.test.ts::C1/C3/C4/C5 fake host clone, leased worktree tip, failure rollback, persisted record and agent removal": 1.887355,
+    "hub/test/host-clone-integration.test.ts::C2 bundle fallback copies over the pinned master and retains socket origin": 1.035154,
+    "hub/test/host-clone-integration.test.ts::carrier stays ready while territory clone is held and task add reports clone failure": 1.691714,
+    "hub/test/host-clone-integration.test.ts::copy refuses master loss during native admission without an independent connection": 0.83487,
+    "hub/test/host-clone-integration.test.ts::registry close quiesces disconnected clone settlement and retains incomplete native ownership": 1.668193,
+    "hub/test/host-clone.test.ts::C1 first clone uses only git socket origin and proxy; publishes clone discovery": 0.002261,
+    "hub/test/host-clone.test.ts::C2 daemon failure copies bundle then restores socket origin": 0.000632,
+    "hub/test/host-prepared.test.ts::completed append retains ownership when its durable result cannot be written": 0.012145,
+    "hub/test/host-prepared.test.ts::restart retains interrupted appendFile commit without replay": 0.003713,
+    "hub/test/host-prepared.test.ts::restart retains interrupted publishFile commit without replay": 0.00516,
+    "hub/test/host-ssh-contract.test.ts::Host appendFile retains a held native writer across stream loss": 1.033816,
+    "hub/test/host-ssh-contract.test.ts::Host appendFile settles lost accepted reply without duplicate bytes": 1.338159,
+    "hub/test/host-ssh-contract.test.ts::Host publishFile retains a held native writer across stream loss": 0.95297,
+    "hub/test/host-ssh-contract.test.ts::Host publishFile settles lost accepted reply without duplicate bytes": 1.401875,
+    "hub/test/host-ssh-contract.test.ts::OpenCode nonlocal missing executable fails after Host file preparation and leaves no process": 0.76822,
+    "hub/test/host-ssh-contract.test.ts::SSH LaunchFiles refuses an older agent without stat before any file mutation": 0.665426,
+    "hub/test/remote-discovery-host.test.ts::changed host secret atomically replaces prior discovery and reaches up": 1.341656,
+    "hub/test/remote-discovery.test.ts::different discovery attempts atomic replacement; identical bytes skip the writer": 0.000924,
+    "hub/test/state-paths-lint.test.ts::Codex temp-root registration accepts only the local versus host expression": 0.001032
   },
   "allow": {
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
