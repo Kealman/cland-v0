@@ -221,6 +221,11 @@ Native identity and file/usage observations use a separate owned agent stream,
 so a held recovery checkpoint cannot block the observation needed to settle it.
 Host shutdown closes and joins both acquisitions; neither stream has a local fallback.
 
+Supporting agents automatically publish task ref changes through the clone's Git
+socket proxy. SSH Host registers each non-detached worktree and drains its watch
+before removal. Agents without `ref-watch-v1` retain manual push behavior; see
+[ref watches](../agents/host-agent.md#ref-watches) for operations and restart state.
+
 ### Session recovery after carrier readiness
 
 Each authenticated agent acquisition restores adopted workers and reads the

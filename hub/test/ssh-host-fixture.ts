@@ -16,7 +16,7 @@ import { eventually } from './harness.ts';
 import type { Socket } from 'node:net';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-export async function sshHostFixture(t: TestContext, options: {startTransport?: boolean} = {}) {
+export async function sshHostFixture(t: TestContext, options: {startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
   const root = join(realpathSync('/tmp'), 'cland-suite-' + randomUUID()); await mkdir(root,{mode:0o700});
   const previous = process.cwd(); process.chdir(root);
   const cleanup = ownDirectory(undefined,root);
@@ -46,10 +46,10 @@ export async function sshHostFixture(t: TestContext, options: {startTransport?: 
     if(failures.length)throw new AggregateError(failures,'SSH fixture cleanup incomplete');
   });
   const fake = await createFakeHost(root,'f1');
-  const env = fixtureEnvironment(root,process.env,{ CLAND_FAKE_HOSTS:'f1',CLAND_FAKE_HOST_ROOT:root,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_HOST_BOOT_ID_FILE:fake.bootId });
+  const env = fixtureEnvironment(root,process.env,{ CLAND_FAKE_HOSTS:'f1',CLAND_FAKE_HOST_ROOT:root,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_HOST_BOOT_ID_FILE:fake.bootId,...options.env });
   const records = new HostRecords(db), secrets = new HostSecretStore(root,records);
   const record = secrets.register({id:'f1',address:'f1',user:'agent',clientKeyPath:join(fake.directory,'client-key'),knownHosts:`f1 ${fake.key}\n`});
-  agent = await serveAgent({runDir:fake.run,secret:secrets.readSecret('f1'),version:'test',env,runStarted:(token,connection)=>{runToken=token;runConnection=connection;},beforeRunCancel:async()=>{if(runGate){cancelEntered=true;await runGate;}},cleanupError:error=>cleanupErrors.push(error),afterOperation:(op,connection)=>{if(op==='settle-prepared'&&holdSettlement){settlementAttempts++;connection.destroy();}if(op==='forget-claude'&&dropForgetReply){dropForgetReply=false;connection.destroy();}if(op==='remove-claude'&&dropReleaseReply){dropReleaseReply=false;connection.destroy();}if(op==='run-host'&&dropRunReply){dropRunReply=false;connection.destroy();}if(op==='commit-prepared'&&dropCommitReply){dropCommitReply=false;connection.destroy();}},processHooks:{closeLog:async close=>{await close();if(failLogClose)throw new Error('synthetic descriptor close failure');}}});
+  agent = await serveAgent({runDir:fake.run,secret:secrets.readSecret('f1'),version:'test',env,runStarted:(token,connection)=>{runToken=token;runConnection=connection;},beforeRunCancel:async()=>{if(runGate){cancelEntered=true;await runGate;}},cleanupError:error=>cleanupErrors.push(error),afterOperation:(op,connection)=>{if(op==='settle-prepared'&&holdSettlement){settlementAttempts++;connection.destroy();}if(op==='forget-claude'&&dropForgetReply){dropForgetReply=false;connection.destroy();}if(op==='remove-claude'&&dropReleaseReply){dropReleaseReply=false;connection.destroy();}if(op==='run-host'&&dropRunReply){dropRunReply=false;connection.destroy();}if(op==='commit-prepared'&&dropCommitReply){dropCommitReply=false;connection.destroy();}},processHooks:{...options.processHooks,closeLog:async close=>{await close();if(failLogClose)throw new Error('synthetic descriptor close failure');}}});
   await writeFile(join(fake.directory,'ports.json'),JSON.stringify({'12345':join(fake.home,'session.sock')}));
   const supervisor = join(root,'supervisor'); await writeFile(supervisor,'#!/bin/sh\n[ "$1" = --check ]\n',{mode:0o700});
   transport = new SshTransport({root,record,secrets,hubSocket:fixtureSocketPath(root,'hub'),spokeSocket:fixtureSocketPath(root,'spoke'),remoteRun:fake.run,supervisor,agentCommand:['stub'],env});

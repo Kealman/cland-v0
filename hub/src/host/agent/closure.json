@@ -33,6 +33,10 @@
       "sha256": "b7fe2129bf545b1ce02bfff462aa35d4629cf9c907fd603cf2ce75e0b3e43f5d"
     },
     {
+      "path": "hub/src/host/agent/git-proxy.ts",
+      "sha256": "b1cb17284ab6c490f3419dbc225550e8778ff949a3584fa2998404c24fb5664a"
+    },
+    {
       "path": "hub/src/host/agent/identity.ts",
       "sha256": "faec66ef66193eef85fb3580e3805431bb3a095370b7a1c3af7c147dc06dd430"
     },
@@ -66,11 +70,23 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "a6ea7ebd575f16bb25c3f8f9fe90699ea51108c6ee1240a1c034038f5e535d22"
+      "sha256": "c8f5ea2f180876c4095adca7f5aebf76c4d445853455d6c047e9b0239ecccc22"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",
-      "sha256": "0d1e12e045420de2520459878947d2800694ed40b3d75606703c70f685804ccb"
+      "sha256": "24346363a5fd7b97d0deeee6a2a491d1602dba662454b4f15f15ccd1e7d59a46"
+    },
+    {
+      "path": "hub/src/host/agent/redact.ts",
+      "sha256": "1423069a81888440ae8308d88ad35d154ca626424b3948fe6761d7958ea766e9"
+    },
+    {
+      "path": "hub/src/host/agent/ref-push-worker.ts",
+      "sha256": "bb78868a4c6421da67fc36ad12f8fadfe129c13953cdae1557415bafc000b36c"
+    },
+    {
+      "path": "hub/src/host/agent/ref-push.ts",
+      "sha256": "a3b3ab874484fb2b68657c7789a2375f0da12689f0fe8b8381f58d877d6cfa85"
     },
     {
       "path": "hub/src/host/agent/restart.ts",
@@ -78,7 +94,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "4a9635fb8d61526137b016e155d2432646ca08a10d1c2c6761ceea2cd65b973c"
+      "sha256": "360e12fe9e874a5a636b78f896e342d5059ea18fda82f6fc8d6b081947bc470f"
     },
     {
       "path": "hub/src/host/agent/stat-directory.ts",
@@ -97,12 +113,16 @@
       "sha256": "a831f231eb0b3b5a6e3f4f11cc3595a1a1545a8210505e762236f0fff0c8f20d"
     },
     {
+      "path": "hub/src/host/agent/watch.ts",
+      "sha256": "98a58fe1711e170694c7fc156e87ecd636bb3ead34c2b42bcec7feaf213261f8"
+    },
+    {
       "path": "hub/src/host/agent/worktree-install.ts",
       "sha256": "a28dbae56ed7fb2e00e05efefdaf358bb66a5dcaba75e5d9c2287653c30dde26"
     },
     {
       "path": "hub/src/host/agent/worktrees.ts",
-      "sha256": "913402e8d0b6daa07b947933b35f866efe3fad98566a34d2da72bf88a99d3687"
+      "sha256": "8fc3323c47287c0976a4239c7895cfc254ab20c7f1d194a526764989125a37e1"
     },
     {
       "path": "shared/executor-credentials.ts",

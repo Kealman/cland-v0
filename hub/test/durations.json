@@ -10239,6 +10239,27 @@
     "hub/test/host-contract-coverage.test.ts::optional terminal printer contract covers absence and its exact session command": 0.00213
   },
   "allow": {
+    "hub/test/host-push-on-ref-move.test.ts::killed producer without result stays named and fenced until a later successful leased head": {
+      "seconds": 11.33,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1609 native producer-only fault, retained captured Git cleanup, named missing-result fence and next-head leased publication. Local macOS Node24.21.0 one-case targeted sample 7.552855750 s passed; 11.33 s rounds 1.5x upward. Other file cases were unexecuted in that targeted occasion; this is not a whole-file pass. The stable native fixture gate avoids child-set churn; production capture/stop semantics are unchanged."
+    },
+    "hub/test/host-push-on-ref-move.test.ts::interrupted admitted native push survives agent SIGKILL and recovery publishes only the current head": {
+      "seconds": 15,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1609 supervised native agent SIGKILL while an admitted Git child is held, then current-head leased recovery and durable pending clearance. Local macOS Node 24.21.0 passing native samples 5.214 s and 9.838 s; 15 s rounds 1.5x the worst upward. The latter sample includes the bounded producer receipt and current-head recovery. Sibling controls in those files were still red, so these samples are not whole-file passes."
+    },
+    "hub/test/host-push-on-ref-move.test.ts::C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and downtime without hooks": {
+      "seconds": 32.5,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1609 real Git/socket push and restart lifecycle. Local macOS Node 24.21.0 passing samples 6.418 s, 8.147 s and 20.502 s and 21.609 s (last two samples during shared-machine contention), allowance 32.5 s rounds 1.5x the worst upward. Preserves exact territory-head, refused-event, private-checkpoint and restart assertions."
+    },
     "hub/test/host-attach-routing.test.ts::host session.attach and list return pinned separate SSH command; prior local frame stays compatible": {
       "seconds": 5.3,
       "owner": "C-216",

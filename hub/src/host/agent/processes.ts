@@ -361,6 +361,11 @@ export class AgentProcesses {
   }
   capture(args: Record<string, unknown>) { return this.#capture(args); }
   completionReceipts() {return [...this.#receipts.values()];}
+  /** Exact launch lookup without resource sampling or a wire-table scan. */
+  async operationRecord(launchId:string):Promise<ProcessRow|undefined>{
+    await this.reconcile();const row=this.#rows.find(row=>row.launchId===launchId);
+    return row?{...row,...(row.targets?{targets:row.targets.map(target=>({...target}))}:{})}:undefined;
+  }
   async operationReceipt(launchId: string): Promise<{state:'accepted';result:{pid:number;identity:string}} | {state:'pending';reason:string} | {state:'failed';error:string}> {
     await this.reconcile();
     const row=this.#rows.find(row=>row.launchId===launchId);

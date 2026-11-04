@@ -1,3 +1,4 @@
+import { REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './agent/watch.ts';
 import { createConnection } from 'node:net';
 import type { Socket } from 'node:net';
 import { EventEmitter } from 'node:events';
@@ -54,4 +55,15 @@ export async function restoreAdoptedWorkers(client:Pick<AgentClient,'hello'|'req
   if(!client.hello.capabilities?.includes(CLAUDE_RESTORE_CAPABILITY))return;
   const outcome=parseClaudeRestoreOutcome(await client.request('restore-claude',{report:true}));
   report?.(outcome);
+}
+
+/** Additive watch lifecycle: an older agent receives no new requests. */
+export async function updateRefWatch(client:Pick<AgentClient,'hello'|'request'>,op:'watch'|'unwatch',args:Record<string,unknown>):Promise<void>{
+  if(client.hello.capabilities?.includes(REF_WATCH_CAPABILITY))await client.request(op,args);
+}
+
+/** Status is separately additive to watch-v1; absence remains unavailable, not an invented empty result. */
+export async function readRefWatchStatus(client:Pick<AgentClient,'hello'|'request'>,report?:(rows:Array<{path:string;branch:string;state:string;cause?:string}>)=>void):Promise<void>{
+  if(!client.hello.capabilities?.includes(REF_WATCH_STATUS_CAPABILITY))return;
+  report?.(await client.request('watch-status',{}) as Array<{path:string;branch:string;state:string;cause?:string}>);
 }

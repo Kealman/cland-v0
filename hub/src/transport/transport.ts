@@ -5,6 +5,7 @@ export type { TransportKind } from '../host/transport-kind.ts';
 export type HostTunnelStatus = {
   name: string; state: 'up' | 'connecting' | 'down'; since: string | null;
   reason?: string;
+  watches?: Array<{path:string;branch:string;state:string;cause?:string}>;
   lastProbe: { at: string; ok: boolean } | null; reconnects: number;
 };
 /** One carrier per registered host. start admits its loop; stop joins all owned I/O.
@@ -13,18 +14,22 @@ export interface Transport {
   readonly kind: 'ssh'; readonly host: string;
   start(): Promise<void>; stop(): Promise<void>; wake(): void; status(): HostTunnelStatus;
 }
+const watches=new Map<string,Map<string,NonNullable<HostTunnelStatus['watches']>>>();
+export function updateHostWatches(root:string,host:string,rows:NonNullable<HostTunnelStatus['watches']>){
+  let project=watches.get(root);if(!project){project=new Map();watches.set(root,project);}project.set(host,rows);
+}
 const projects = new Map<string, Map<string, Transport>>();
 export function claimTransport(root: string, transport: Transport): () => void {
   let hosts = projects.get(root);
   if (!hosts) { hosts = new Map(); projects.set(root, hosts); }
   if (hosts.has(transport.host)) throw new Error('host transport already owned');
   hosts.set(transport.host, transport);
-  return () => { hosts.delete(transport.host); if (!hosts.size) projects.delete(root); };
+  return () => { watches.get(root)?.delete(transport.host);if(!watches.get(root)?.size)watches.delete(root);hosts.delete(transport.host); if (!hosts.size) projects.delete(root); };
 }
 export function tunnelStatuses(root: string, hosts: HostRecord[]): HostTunnelStatus[] {
-  return hosts.map(host => projects.get(root)?.get(host.id)?.status() ?? {
+  return hosts.map(host => ({...(projects.get(root)?.get(host.id)?.status() ?? {
     name: host.id, state: 'down', since: null, lastProbe: null, reconnects: 0,
-  });
+  }),...(watches.get(root)?.get(host.id)?{watches:watches.get(root)!.get(host.id)!}:{})}));
 }
 /** Pure backoff policy: +/-20% jitter, hard 30s cap; uptime uses the same clock. */
 export class ReconnectPolicy {

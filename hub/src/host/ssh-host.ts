@@ -1,7 +1,7 @@
 import { MissingClaudeGeneration } from './host.ts';
 import { CLAUDE_LAUNCH_CAPABILITY } from './agent/claude.ts';
 import { randomUUID } from 'node:crypto';
-import { AgentClient } from './agent-client.ts';
+import { AgentClient, updateRefWatch, readRefWatchStatus } from './agent-client.ts';
 import { PREPARED_HOST_CAPABILITY } from './agent/protocol.ts';
 import { remoteCommandEnvironment } from './command-environment.ts';
 import type { Host, HostCommand, HostLaunchLayout, HostCapturedProcess } from './host.ts';
@@ -9,7 +9,7 @@ import type { SshTransport } from '../transport/ssh.ts';
 import type { AgentEvent } from './agent/protocol.ts';
 import type { PreparedOutcome } from './agent/prepared.ts';
 
-type Options = { terminalAttachCommand?: (name: string) => string; expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[]) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
+type Options = { terminalAttachCommand?: (name: string) => string; watchStatus?: (rows:Array<{path:string;branch:string;state:string;cause?:string}>)=>void; expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[]) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
 /** No fallback to native hub operations, including while connecting or disconnected. */
 export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce(): void } {
   let closed = false;
@@ -38,6 +38,8 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   const receipts = new Map<string, AgentEvent & {event:'process-exited'}>();
   const key = (pid: number, identity: string) => `${pid}:${identity}`;
   const event = (frame: AgentEvent) => {
+    if(frame.event==='ref-watch-status'){o.watchStatus?.(frame.watches);return;}
+    if (frame.event === 'ref-moved') { o.log?.(frame); return; }
     if (frame.event !== 'process-exited') return;
     const id = key(frame.pid, frame.identity), resolve = completions.get(id);
     if (resolve) { completions.delete(id); resolve({ code: frame.code, signal: frame.signal }); }
@@ -65,6 +67,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       if(closed){await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
       if (!value.hello.capabilities?.includes(PREPARED_HOST_CAPABILITY)) { await closeConnection(value); throw new Error(`host ${o.name}: tunnel agent missing capability ${PREPARED_HOST_CAPABILITY}`); }
       value.on('event', event);
+      await readRefWatchStatus(value,o.watchStatus);
       if(!quiescing)await o.restoreAdoptedWorkers?.(value);
       check();
       const table = await value.request('processes',{}) as unknown[];
@@ -231,7 +234,10 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     worktreeAdd: async options => {
       const {beforeInstall,...args} = options;
       const result = await prepared<{warning?:string}>('worktree',args,async () => beforeInstall?.());
-      if (!result) throw new Error(`host ${o.name}: tunnel worktree not prepared`); return result;
+      if (!result) throw new Error(`host ${o.name}: tunnel worktree not prepared`);
+      try {const connection=await connected();if(!options.detached&&options.branch.startsWith('t/'))await updateRefWatch(connection,'watch',{path:options.path,branch:options.branch});}
+      catch(error){throw Object.assign(error instanceof Error?error:new Error(String(error)),{code:'CLAND_HOST_OUTCOME_UNKNOWN'});}
+      return result;
     },
     worktreeRemove: async options => {mutation();await rpc('worktreeRemove',options);},
     occupants: (path,sessions) => rpc('occupants',{path,sessions}),

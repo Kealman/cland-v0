@@ -98,3 +98,9 @@ callers must re-register desired endpoints after constructing a new carrier.
 `forwardRetryDelaysMs` supplies the two delays between forward attempts for
 injected tests. Omission keeps the production 1–30s jittered policy and 100/200ms
 forward schedule. These are constructor test seams, not configuration settings.
+
+
+Supporting agent status adds optional named ref-watch facts to
+`hub.status.hosts[].watches` (branch, path, state and cause). Fenced publication
+appears under that host in CLI status; older agent/status shapes omit these facts.
+Unknown native command outcomes are distinct from a positive leased publication.

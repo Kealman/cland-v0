@@ -289,3 +289,68 @@ joined on close. The mutation/recovery stream still restores generations and
 reads the retained table before becoming available. Local delivery bundles use
 the central agentDeliveryStagingPrefix temporary path owner and are removed after
 all copy/install writers have joined.
+
+## Ref watches
+
+Agents advertising `ref-watch-v1` accept `watch {path,branch}`, `unwatch {path}`
+and `flush {}` (all return null). SSH Host registers non-detached `t/` task
+worktrees after accepted checkout; registration/reacquisition failure retains
+accepted checkout ownership as unknown. Agent worktree removal holds the watch
+owner, joins its push, and removes its durable watch only after successful native
+removal. Removal admission pins the directory identity before native effects;
+a checkpoint/reply-loss retry settles only after observing both directory and
+Git-worktree-index absence. A replaced directory is retained. A dirty refusal
+keeps publication active. Older agents omit the
+capability and retain manual push behavior. Host interface members stay unchanged.
+
+The agent polls branch-ref, branch-reflog and packed-ref metadata every 200 ms,
+requiring a stable second sample. Metadata schedules inspection; actual attempted
+heads deduplicate pushes, including refused heads. It reads no reflog history and
+installs no hooks. A normal push pins the captured object ID and uses
+`--force-with-lease=<branch ref>:<last confirmed remote SHA>` to the socket origin
+`git://cland/territory.git`. The clone config must name `run/git-proxy`; native
+Git additionally sets its authoritative `GIT_PROXY_COMMAND` to the agent-owned 0700
+`run/ref-git-proxy`, invoking only the standalone built-in Unix proxy at
+`run/git.sock`. Inherited Git environment/configuration overrides are removed;
+no clone-supplied proxy executable is run by publication. CLI and standalone
+proxy entries share the same implementation.
+
+`run/ref-watches.json` is an atomic private 0600 checkpoint of paths, branches,
+attempted heads, confirmed remote tips, native pending admissions and bounded
+results/decisions. Each pending push has the existing AgentProcesses launch ID,
+captured SHA and native PID/birth; its accepted callback checkpoints that birth
+before bootstrap release. The short-lived bounded agent-code producer owns Git
+and its pipes and atomically writes `run/ref-push/<launch ID>.json` (0600) after
+command close: launch/native birth, pushed SHA, exit status and at most 4096
+characters of shared-redacted stderr. It stores no environment or credential URL.
+A missing result never turns an unknown native ledger into a completed operation.
+`run/ref-push/<launch ID>.log` is the producer's private diagnostic file and is
+removed only after positive native closure and durable result settlement. Native launches retain their existing
+launch/process records; no separate process ledger is created.
+
+Restart loads current watch records without resolving paths or launching Git on
+startup/liveness. Background recovery joins live owned pushes, rechecks captured
+native births and targets, and reports unknown children by watch without holding
+healthy peers. A later head admits a distinct leased generation while keeping
+unresolved earlier native metadata; only a successful leased result or positive
+remote settlement clears its publication fence. Cleanup still joins every retained
+native owner before unwatch/remove/close. After positive closure it re-reads the branch's current head and
+uses the lease; the interrupted captured SHA only identifies its result. A failed
+or unknown push fetches the remote ref once and checkpoints whether it is already
+at/past the captured head or differs. The recovering phase stays durable through its current-head decision, including a
+second restart after settlement. Recovery also checks the current head
+against that fetched remote before republishing, so an advanced remote never
+moves backwards due to recovery. Native unknown exit codes remain null even when
+remote inspection positively settles publication. Refusals retry only at another
+actual head. Inaccessible retained watches remain explicitly incomplete while
+healthy watches and agent admission continue. Agents separately advertising `ref-watch-status-v1` support additive `watch-status {}` and
+`ref-watch-status` frames supply named branch/path/state/cause facts to optional
+`hub.status.hosts[].watches`; the CLI prints fenced watches beneath their host.
+Older agents/status replies omit that field.
+
+`{event:"ref-moved",path,branch,head,result:{code,stdout,stderr,error?}}` follows
+its durable result checkpoint and names the exact captured push head. Unknown
+identity/incomplete notices carry null native code and fence only that watch.
+`flush` scans immediately and joins pending pushes with a bound; unchanged refused
+heads do not retry. Close stops scheduling and joins native push/checkpoint
+writers; unresolved native ownership reports incomplete cleanup and retains state.

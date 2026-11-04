@@ -43,6 +43,13 @@ Register new machine runtime paths with exact expressions and reasons in
 fixture option for default HOME/XDG state tests. File guidance:
 `docs/agents/tests/hub-test-state-inventory.test.ts.md`.
 
+| Host-local retained file | Owner and contents |
+| --- | --- |
+| `<host run directory>/ref-watches.json` | Agent ref-watch owner; atomic 0600 checkpoint of task worktree paths, branches and attempted heads, confirmed remote tips, native launch/birth bindings, result/decision checkpoints and ref/reflog metadata signatures. Restored on agent restart; removed entries after unwatch. No credentials or reflog history. Sibling `.new` is joined atomic-write staging. |
+| `<host run directory>/ref-git-proxy` | Agent-owned atomic 0700 executable invoking the standalone Unix proxy at this run directory's git.sock; publication overrides clone executables with this path. |
+| `<host run directory>/ref-push/<launch ID>.log` | Producer-private diagnostic file, mode 0600; storage remains until positive native closure and durable result checkpoint. The bounded redacted command tail is in the JSON result receipt; existing launches/processes records retain native ownership. |
+| `<host run directory>/ref-push/<launch ID>.json` | Bounded Git producer result, atomic0600; exact launch/native identity, pushed SHA, exit and redacted diagnostic tail after command/pipes close. Missing receipt keeps native uncertainty fenced. No environment or credential URL. |
+
 Host attach records are private host runtime state, resolved by
 `host/attach.ts:attachRecordPath(runDirectory, name)` under the admitted agent
 run folder, never the hub HOME. `attach/<sha256(name)>.json` is mode 0600 with a

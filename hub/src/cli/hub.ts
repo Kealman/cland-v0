@@ -42,7 +42,9 @@ export async function describe(s: HubStatus): Promise<string> {
   const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`];
   if (s.hosts?.length) {
     lines.push(`hosts: ${s.hosts.length}`);
-    for (const host of s.hosts) lines.push(`  ${host.name}  ${host.state} since ${host.since ?? 'unknown'} · probe ${host.lastProbe ? `${host.lastProbe.at} ${host.lastProbe.ok ? 'ok' : 'failed'}` : 'not run'} · reconnects ${host.reconnects}${host.reason ? ` · ${host.reason}` : ''}`);
+    for (const host of s.hosts) { lines.push(`  ${host.name}  ${host.state} since ${host.since ?? 'unknown'} · probe ${host.lastProbe ? `${host.lastProbe.at} ${host.lastProbe.ok ? 'ok' : 'failed'}` : 'not run'} · reconnects ${host.reconnects}${host.reason ? ` · ${host.reason}` : ''}`);
+      for(const watch of host.watches??[])if(watch.state==='fenced')lines.push(`    ${watch.branch}  ${watch.path} · ${watch.cause??'publication fenced'}`);
+    }
   }
   if (s.web) {
     const { addressHost } = await import('../web-address.ts');

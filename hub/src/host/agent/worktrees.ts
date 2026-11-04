@@ -1,5 +1,5 @@
 import { dirname } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, stat } from 'node:fs/promises';
 import { run, nativeCommandFailure as failure } from './command.ts';
 import { worktreeInstall } from './worktree-install.ts';
 export type WorktreeAdd = { root: string; path: string; branch: string; territory?: { path: string; tip: string }; reuseOnly?: boolean; detached?: boolean; beforeInstall?: () => void | false | Promise<void | false> };
@@ -26,6 +26,11 @@ export function worktreeOperations(env: NodeJS.ProcessEnv) { return {
       return warning ? { warning } : {};
     },
     worktreeRemove: async ({ root, path }: {root: string; path: string}) => {
+      const exists=await stat(path).then(()=>true,error=>{if(error.code==='ENOENT')return false;throw error;});
+      if(!exists){
+        const listed=await run('git',['worktree','list','--porcelain'],env,undefined,false,undefined,'utf8',root);
+        if(!listed.error&&listed.code===0&&!listed.stdout.split('\n').includes(`worktree ${path}`))return;
+      }
       const result = await run('git', ['-c', 'gc.auto=0', 'worktree', 'remove', '--', path], env, undefined, false, undefined, 'utf8', root);
       if (result.error || result.code !== 0) throw failure(result, 'git worktree remove failed');
     },

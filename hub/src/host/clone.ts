@@ -2,7 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import type { Host, HostLaunchLayout } from './host.ts';
 const quote = (value:string) => "'"+value.replaceAll("'","'\\''")+"'";
-export const HOST_ORIGIN = 'git://cland/territory.git';
+import { HOST_ORIGIN } from './agent/protocol.ts';
+export { HOST_ORIGIN } from './agent/protocol.ts';
 export function hostCloneRoot(runDirectory:string,project:string):string { return join(dirname(runDirectory),'work',createHash('sha256').update(project).digest('hex').slice(0,12)); }
 /** Called by task preparation after the carrier is up; never invokes an installer. */
 export async function ensureHostClone(o:{host:Host;root:string;layout:HostLaunchLayout;signal?:AbortSignal;bundle:(destination:string)=>Promise<void>}):Promise<void> {

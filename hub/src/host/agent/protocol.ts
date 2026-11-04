@@ -1,3 +1,4 @@
+export const HOST_ORIGIN = 'git://cland/territory.git';
 /** Agent wire version is independent of the shipped cland code version. */
 export const AGENT_PROTOCOL = 1;
 export const PREPARED_HOST_CAPABILITY = 'host-prepared-v1';
@@ -6,6 +7,8 @@ export type AgentRequest = { id: string; op: string; args: Record<string, unknow
 export type AgentReply = { id: string | null; ok: true; result: unknown } | { id: string | null; ok: false; error: string; code?: string };
 export type AgentHello = { protocol: number; version: string; pid: number; bootId: string; capabilities?: string[] };
 export type AgentEvent = { event: 'process-exited'; authority?: 'owned' | 'unknown' | 'closed'; ended?: boolean; pid: number; identity: string; code: number | null; signal: string | null }
+  | { event: 'ref-watch-status'; watches: Array<{path:string;branch:string;state:string;cause?:string}> }
+  | { event: 'ref-moved'; path: string; branch: string; head: string; result: {code:number|null;stdout:string;stderr:string;error?:string} }
   | { event: 'memory'; totalBytes: number; availableBytes: number };
 export function parseRequest(line: string): AgentRequest {
   let value: unknown;
