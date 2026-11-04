@@ -44,6 +44,8 @@ export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
 
 export const HOST_USAGE = `  host revoke <id> human-only local CLI: revoke its secret and close its connections
   host git-proxy <socket> relay Git stdin/stdout through the forwarded Unix socket
+  host attach <session> attach using this agent run folder’s private launch record
+                  checks native identity; disables terminal suspend; exiting leaves the session running
   host serve      run the host agent on agent.sock (no systemd required)
                   CLAND_HOST_SECRET required; CLAND_HOST_RUN_DIR defaults to ~/.cland-host/run
                   ignores SIGHUP; supervisor.sh provides detached restart supervision

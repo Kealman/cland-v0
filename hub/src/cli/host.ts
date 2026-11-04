@@ -1,3 +1,4 @@
+import { hostAttachPlan, terminalEnvironment } from '../host/attach.ts';
 import { gitProxy } from '../host/git-proxy.ts';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
@@ -6,6 +7,14 @@ import { userHome } from '../state-paths.ts';
 import { VERSION } from '../version.ts';
 import { serveAgent } from '../host/agent/server.ts';
 export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.env): Promise<number> {
+  if (args[0] === 'attach' && args.length === 2) {
+    const run = env.CLAND_HOST_RUN_DIR ?? join(userHome(env), '.cland-host', 'run');
+    const plan = await hostAttachPlan(run, args[1]!, env);
+    if (!process.execve) throw new Error('native execve unavailable');
+    process.chdir(plan.cwd);
+    process.execve('/bin/sh', ['/bin/sh', ...plan.args], terminalEnvironment(env));
+    throw new Error('attach exec returned');
+  }
   if (args[0] === 'git-proxy' && args[1]) { await gitProxy(args[1],process.stdin,process.stdout); return 0; }
   if (args[0] === 'revoke' && args.length === 2) {
     const discovery = readDiscovery(hubDiscovery(process.cwd()));
@@ -14,7 +23,7 @@ export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.e
     process.stdout.write(`revoked host ${args[1]}\n`);
     return 0;
   }
-  if (args.length !== 1 || args[0] !== 'serve') throw new Error('usage: cland host <serve | revoke id | git-proxy socket>');
+  if (args.length !== 1 || args[0] !== 'serve') throw new Error('usage: cland host <serve | attach session | revoke id | git-proxy socket>');
   const runDir = env.CLAND_HOST_RUN_DIR ?? join(userHome(env), '.cland-host', 'run');
   const secret = env.CLAND_HOST_SECRET;
   if (!secret) throw new Error('CLAND_HOST_SECRET required');

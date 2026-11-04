@@ -94,16 +94,18 @@ test('spawn and relaunch serialize the captured session Host policy', async t =>
   const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, process.env);
   const commands: HostCommand[] = [];
+  const files = localHost(env);
+  let exit: ReturnType<typeof Promise.withResolvers<{code:number|null;signal:string|null}>> | undefined;
   const machine: Host = {
-    ...localHost(env), name: 'mapped',
+    ...files, name: 'mapped',
     async statDirectory() { return { refusal: null, identity: { dev: 1, ino: 2 } }; },
     async realpath(path) { return path.endsWith('/.git') ? '/host/project/.git' : '/host/project'; },
-    async readFile() { throw new Error('no linked worktree'); },
+    async readFile(path) { if (path.endsWith('/.git')) throw new Error('no linked worktree'); return files.readFile(path); },
     async run() { return { code: 0, stdout: 'codex 0.160.0', stderr: '' }; },
-    async spawn(command) { commands.push(command); return { pid: 987654, exited: new Promise(() => {}) }; },
+    async spawn(command) { commands.push(command); exit = Promise.withResolvers(); return { pid: 987654, exited: exit.promise }; },
     async identity(pid) { return { pid, pidStarted: 'start', pidIdentity: 'birth' }; },
     async alive() { return false; },
-    async stop() { return true; },
+    async stop() { exit?.resolve({code:0,signal:null}); return true; },
   };
   const natives: ScriptedCodex[] = [];
   const adapter = new CodexAdapter({

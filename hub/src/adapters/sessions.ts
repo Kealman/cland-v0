@@ -659,6 +659,14 @@ export class Sessions {
     const stateReason = unknownHost ? 'unknown host' : deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
+    let attach: string | null = null;
+    if (p.status === 'running' && !unknownHost && adapter) {
+      if ((p.host ?? 'local') === 'local') attach = adapter.attachCommand(p);
+      else {
+        try { attach = this.#hostForProcess(p).terminalAttachCommand?.(p.name) ?? null; }
+        catch { /* Optional terminal availability must not break session projections. */ }
+      }
+    }
     return {
       name: p.name,
       harness: p.harness,
@@ -684,7 +692,7 @@ export class Sessions {
       ...(deaf ? { deaf } : {}),
       state: p.status === 'running' && !stateReason ? this.#core.sessionState(p.sessionId) : 'unknown',
       ...(approvalCommand !== undefined ? { approvalCommand } : {}),
-      attach: p.status === 'running' && !unknownHost && adapter ? adapter.attachCommand(p) : null,
+      attach,
       ...(usage ? { usage } : {}),
     };
   }
@@ -1391,6 +1399,11 @@ export class Sessions {
     const p = this.#process(name);
     this.#hostForProcess(p);
     if (p.status !== 'running') throw new Error(`session "${name}" is not running (${p.status})`);
+    if ((p.host ?? 'local') !== 'local') {
+      const command = this.#hostForProcess(p).terminalAttachCommand?.(p.name);
+      if (!command) throw new Error(`host ${p.host} does not support terminal attach`);
+      return command;
+    }
     return this.adapter(p.harness).attachCommand(p);
   }
 

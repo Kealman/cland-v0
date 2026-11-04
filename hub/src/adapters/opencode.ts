@@ -1,3 +1,4 @@
+import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
@@ -338,8 +339,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
         const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
         this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, database: openCodeDatabase(p.accountEnv ?? {}), policy, relaunch });
         const identity = yield* this.#activeWait(transaction.process(pid));
+        const launched: HarnessProcess = { ...p, ...identity, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
+        yield* this.#activeWait(writeAttachRecord(host, host.layout(this.#host).runDirectory, launched, this.attachCommand(launched, true), transaction));
         scope.accepted.push({ files: transaction, name: p.name, sessionId: p.sessionId });
-        return { ...p, ...identity, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
+        return launched;
       } catch (err) {
         // a server whose session could not be made is of no use: it does not outlive the failed launch
         if (err instanceof Error) {
@@ -398,12 +401,12 @@ export class OpenCodeAdapter implements HarnessAdapter {
     if (w) w.process = { ...w.process, name: p.name };
   }
 
-  attachCommand(p: HarnessProcess): string {
+  attachCommand(p: HarnessProcess, terminal = false): string {
     const bin = this.#bin === 'opencode' ? 'opencode' : bare(this.#bin);
     const password = this.#files(p.name, this.#processHost(p)).password;
     // in the session's directory: a TUI elsewhere makes the server open an instance there, whose MCP servers start a
     // second spoke for the session, which replaces the one the session's tool calls go through
-    return accountPrefix(p.accountEnv) + `OPENCODE_PASSWORD="$(cat ${sq(password)})" ${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')} ${sq(p.cwd)}`;
+    return (terminal ? terminalAccountPrefix(p.accountEnv) : accountPrefix(p.accountEnv)) + (terminal ? `OPENCODE_PASSWORD="$(cat ${sq(password)})" || exit; export OPENCODE_PASSWORD; exec ` : `OPENCODE_PASSWORD="$(cat ${sq(password)})" `) + `${bin} --server ${bare(p.harnessId ?? '')} --session ${bare(p.harnessSessionId ?? '')} ${sq(p.cwd)}`;
   }
 
   // ---------------------------------------------------------------- inject

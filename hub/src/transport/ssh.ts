@@ -5,6 +5,7 @@ import { createConnection } from 'node:net';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { readFile, unlink } from 'node:fs/promises';
 import { hostPaths } from '../host/records.ts';
 import type { HostRecord, HostSecretStore } from '../host/records.ts';
@@ -59,8 +60,11 @@ export function bootstrapScript(o: SshOptions): string {
   return `set -eu\numask 077\nrun=${quote(o.remoteRun)}\nmkdir -p "$run"\nchmod 700 "$run"\nif sh ${quote(o.supervisor)} --check "$run"; then exit 0; fi\nprintf '%s' ${quote(secret)} > "$run/secret"\nchmod 600 "$run/secret"\nexport CLAND_HOST_SECRET=$(cat "$run/secret")\nexport CLAND_HOST_RUN_DIR="$run"\nexport CLAND_HOST_NODE=${quote(o.agentNode ?? 'node')}\nsetsid nohup sh ${quote(o.supervisor)} "$run" ${o.agentCommand.map(quote).join(' ')} </dev/null >>"$run/supervisor.log" 2>&1 &\n`;
 }
 export async function sshArguments(o: SshOptions): Promise<string[]> {
-  const paths = hostPaths(o.root, o.record.id);
-  return ['-a', '-x', '-F', '/dev/null', '-i', (await readFile(paths.clientKeyPath, 'utf8')).trim(),
+  return sshConnectionArguments(o.root, o.record);
+}
+export function sshConnectionArguments(root: string, record: HostRecord): string[] {
+  const paths = hostPaths(root, record.id);
+  return ['-a', '-x', '-F', '/dev/null', '-i', readFileSync(paths.clientKeyPath, 'utf8').trim(),
     ...['BatchMode=yes','IdentitiesOnly=yes','ExitOnForwardFailure=yes','ServerAliveInterval=15','ServerAliveCountMax=4','StrictHostKeyChecking=yes','GlobalKnownHostsFile=/dev/null','KnownHostsCommand=none','VerifyHostKeyDNS=no','UpdateHostKeys=no',`UserKnownHostsFile=${configPath(paths.knownHosts)}`].flatMap(v => ['-o',v])];
 }
 type SessionForward = { socket: string; spec: string; cleanup: boolean };

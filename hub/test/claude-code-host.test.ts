@@ -202,9 +202,12 @@ async function remoteFixture(t: import('node:test').TestContext) {
     fileType: fileHost.fileType,
     makeDirectory: fileHost.makeDirectory,
     writeFile: fileHost.writeFile,
+    publishFile: fileHost.publishFile,
+    appendFile: fileHost.appendFile,
+    stat: fileHost.stat,
     removePath: fileHost.removePath,
     statDirectory: fileHost.statDirectory,
-    readFile: async () => Buffer.from('{}'),
+    readFile: path => path.endsWith('/.claude/settings.json') || path.endsWith('/.claude/settings.local.json') ? Promise.resolve(Buffer.from('{}')) : fileHost.readFile(path),
     run: async (command: HostCommand) => {
       commands.push(command);
       if (command.args[0] === '--bg') {

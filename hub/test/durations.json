@@ -10228,6 +10228,13 @@
     "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": 43.305768
   },
   "allow": {
+    "hub/test/host-attach-routing.test.ts::host session.attach and list return pinned separate SSH command; prior local frame stays compatible": {
+      "seconds": 5.3,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1611 macOS arm64 Node24.21 local working-tree sample 3.511349 s including scratch projectHub setup and joined cleanup. Same-head Linux x64 6.8.0-142-generic c-8 sfo2 Node24.21.0 verify 866a0390 at 8d70abb9 (A-16633) passed the base case in 0.347619138 s and five load repetitions in 0.401073988, 0.334588448, 0.394836114, 0.390142669 and 0.403917764 s. Linux worst 0.403917764 s is below the macOS sample, so 5.3 s stays about 1.5 times the worst observed sample. Samples include fixture setup and joined cleanup; none is full-suite wall time. C-216 owns fixture overhead reduction."
+    },
     "hub/test/host-survival-native.test.ts": {
       "seconds": 90,
       "file": true,

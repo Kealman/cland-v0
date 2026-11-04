@@ -20,7 +20,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
 - [SSH transport](../docs/hub/ssh-transport.md)
-- [SSH Host and native launch receipts](../docs/hub/ssh-host.md): atomic publish, append and stat; OpenCode shared ignore and launch rollback; territory clone, socket proxy, branch leases, agent version delivery and restart-safe host worktrees.
+- [SSH Host and native launch receipts](../docs/hub/ssh-host.md): private terminal attach records and separate pinned SSH terminals; atomic publish, append and stat; OpenCode shared ignore and launch rollback; territory clone, socket proxy, branch leases, agent version delivery and restart-safe host worktrees.
 - [Remote discovery](../docs/hub/remote-discovery.md)
 - [The Agents record, the journal and hygiene](../docs/hub/the-agents-record-the-journal-and-hygiene.md)
 - [Per-user state](../docs/hub/per-user-state.md)

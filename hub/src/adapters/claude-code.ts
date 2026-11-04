@@ -1,3 +1,4 @@
+import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { MissingClaudeGeneration } from '../host/host.ts';
 import { claudeBackgroundId } from '../host/agent/claude.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
@@ -661,6 +662,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         }
         if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
         if (this.#closed) throw new Error('the Claude adapter is closed');
+        yield* wait(writeAttachRecord(machine, machine.layout(this.#host).runDirectory, launched, this.attachCommand(launched, true), files));
         files.commit();
         if(this.#machine(p).name!=='local'){this.#host.adapterState?.write('claude-failed:'+p.sessionId,'');this.#failedGenerations.delete(p.sessionId);}
         return launched;
@@ -734,9 +736,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return work;
   }
 
-  attachCommand(p: HarnessProcess): string {
+  attachCommand(p: HarnessProcess, terminal = false): string {
     const bin = this.#bin === 'claude' ? 'claude' : sq(this.#bin);
-    return (p.account ? accountPrefix(p.accountEnv) : '') + `${bin} attach ${sq(p.harnessId ?? p.name).replace(/^'([\w-]+)'$/, '$1')}`;
+    return (terminal ? terminalAccountPrefix(p.accountEnv) : p.account ? accountPrefix(p.accountEnv) : '') + (terminal ? 'exec ' : '') + `${bin} attach ${sq(p.harnessId ?? p.name).replace(/^'([\w-]+)'$/, '$1')}`;
   }
 
   // ---------------------------------------------------------------- inject

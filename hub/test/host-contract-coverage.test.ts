@@ -81,3 +81,17 @@ test('local Host retains no optional Claude launch or adoption implementation', 
   const { localHost } = await import('../src/host/local.ts');
   optionalClaudeHostContract(localHost());
 });
+
+
+test('optional terminal printer contract covers absence and its exact session command', async () => {
+  const { optionalTerminalHostContract } = await import('./host-contract.ts');
+  const { localHost } = await import('../src/host/local.ts');
+  const local = localHost();
+  optionalTerminalHostContract(local);
+  const supplied = { ...local, terminalAttachCommand: (name: string) => {
+    assert.equal(name, 'worker');
+    return 'ssh fixture';
+  } };
+  optionalTerminalHostContract(supplied, 'ssh fixture');
+  assert.throws(() => optionalTerminalHostContract(supplied, 'wrong command'), /ssh fixture/);
+});

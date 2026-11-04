@@ -25,3 +25,10 @@ Remote direct threadPolicy callers must supply runDirectory. The missing-layout
 case refuses before any Host.realpath call; discovery-only local callers retain
 the captured legacy bytes. Recording realpath doubles preserve distinct Git
 directory identities rather than mapping every input to the checkout root.
+
+
+The spawn/relaunch recording Host refuses only linked-worktree `.git` reads;
+other reads delegate to its scratch file Host so relaunch can snapshot its
+existing private attach record. Its synthetic spawn exit settles on stop.
+Policy assertions, fixtures, ordering and timeouts are unchanged by this forced
+T-1611 fixture migration.

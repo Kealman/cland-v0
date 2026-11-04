@@ -326,3 +326,12 @@ export const PATH_EXCEPTIONS = [
     "reason": "Per-host short Unix socket directory fallback for the macOS 104-byte limit, like layout().socket; machine runtime only, retained host state remains project-local."
   }
 ];
+
+/** Non-HOME host runtime ownership, registered alongside home/temp exceptions. */
+export const HOST_ATTACH_STATE = {
+  resolver: 'host/attach.ts:attachRecordPath',
+  path: '<admitted Host layout.runDirectory>/attach/<sha256(session name)>.json',
+  owner: 'remote harness launch transaction; host attach reads only its agent run folder',
+  mode: 0o600,
+  lifecycle: 'launch/relaunch replace; failed launch rolls back; stale native births refuse attach',
+} as const;

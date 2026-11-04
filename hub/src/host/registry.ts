@@ -1,3 +1,4 @@
+import { terminalAttachCommand } from './attach.ts';
 import { VERSION } from '../version.ts';
 import { agentVersionHandoff } from './code-delivery.ts';
 import { ensureHostClone, hostCloneRoot } from './clone.ts';
@@ -42,7 +43,10 @@ export async function projectSshHosts(options: {onReady?: (host: string) => void
         } finally { await client.close(); }
       }, root:options.root,record,secrets,hubSocket:options.hubSocket,spokeSocket:options.spokeSocket,remoteRun:layout.runDirectory,supervisor:config?.supervisor ?? remoteSupervisor(layout),agentCommand:[layout.node,layout.cli,'host','serve'],agentNode:layout.node,env:options.env,log:message=>options.log({event:'host-tunnel',host:record.id,message}) });
       const handoff=agentVersionHandoff({transport:carrier,codeRoot:join(layout.runDirectory,'..','code'),node:layout.node,version:VERSION});
-      const host = sshHost({ onTable:()=>options.onReady?.(record.id), ...(fake ? {} : {expectedVersion:VERSION}), agentReady:handoff.ready,updateAgent:handoff.update,restoreAdoptedWorkers:client=>restoreAdoptedWorkers(client,outcome=>{try{options.log({event:'host-claude-restore',host:record.id,state:outcome?(outcome.incomplete.length?'incomplete':'complete'):'unknown',incomplete:outcome?.incomplete??null});}catch{/* Diagnostics do not discard restored ownership. */}}),...(fake ? {} : {codeDirectory:code}),available:()=>options.records.get(record.id)?.state === 'registered',name:record.id,transport:carrier,layout,connect:()=>AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id))});
+      const host = sshHost({ onTable:()=>options.onReady?.(record.id), ...(fake ? {} : {expectedVersion:VERSION}), agentReady:handoff.ready,updateAgent:handoff.update,restoreAdoptedWorkers:client=>restoreAdoptedWorkers(client,outcome=>{try{options.log({event:'host-claude-restore',host:record.id,state:outcome?(outcome.incomplete.length?'incomplete':'complete'):'unknown',incomplete:outcome?.incomplete??null});}catch{/* Diagnostics do not discard restored ownership. */}}),...(fake ? {} : {codeDirectory:code}),terminalAttachCommand: name => {
+        if (options.records.get(record.id)?.state !== 'registered') throw new Error('host is revoked');
+        return terminalAttachCommand(options.root, record, layout, name);
+      },available:()=>options.records.get(record.id)?.state === 'registered',name:record.id,transport:carrier,layout,connect:()=>AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id))});
       // The carrier owns connectivity; task preparation owns the clone separately.
       const cloneAbort=new AbortController();let clone:Promise<void>|undefined;
       const prepareClone=async()=>{

@@ -1,3 +1,4 @@
+import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
@@ -1009,6 +1010,7 @@ export class CodexAdapter implements HarnessAdapter {
         }
         this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
         Object.assign(p, yield* this.#activeWait(files.process(pid!)));
+        yield* this.#activeWait(writeAttachRecord(machine, machine.layout(this.#host).runDirectory, p, this.attachCommand(p, true), files));
         files.commit();
         return p;
       } catch (err) {
@@ -1033,10 +1035,10 @@ export class CodexAdapter implements HarnessAdapter {
     }).call(this), resumed);
   }
 
-  attachCommand(p: HarnessProcess): string {
+  attachCommand(p: HarnessProcess, terminal = false): string {
     // never a `-c` or a `--profile`: either one puts the TUI in embedded mode, where it has no external surface
     const bin = this.#bin === 'codex' ? 'codex' : sq(this.#bin);
-    return accountPrefix(p.accountEnv) + [bin, 'resume', '--remote', sq(`unix://${p.harnessId ?? this.#socketPath(p.sessionId, this.#machine(p))}`), '--cd', sq(p.cwd), sq(p.harnessSessionId ?? '')].join(' ');
+    return (terminal ? terminalAccountPrefix(p.accountEnv) : accountPrefix(p.accountEnv)) + (terminal ? 'exec ' : '') + [bin, 'resume', '--remote', sq(`unix://${p.harnessId ?? this.#socketPath(p.sessionId, this.#machine(p))}`), '--cd', sq(p.cwd), sq(p.harnessSessionId ?? '')].join(' ');
   }
 
   // ---------------------------------------------------------------- inject
@@ -1480,6 +1482,7 @@ export class CodexAdapter implements HarnessAdapter {
         live.p = relaunched;
         this.#host.log({ event: 'harness-relaunched', harness: this.harness, session: p.name, pid, thread: p.harnessSessionId });
         Object.assign(relaunched, yield* this.#activeWait(files.process(pid!)));
+        yield* this.#activeWait(writeAttachRecord(machine, machine.layout(this.#host).runDirectory, relaunched, this.attachCommand(relaunched, true), files));
         files.commit();
         return { found: true, process: relaunched, state: live.state };
       } catch (err) {

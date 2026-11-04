@@ -421,3 +421,12 @@ export function optionalClaudeHostContract(host: Host): void {
   assert.equal(typeof host.launchClaude, 'undefined');
   assert.equal(typeof host.adopt, 'undefined');
 }
+
+/** A terminal printer is optional; an admitted one must render the requested session. */
+export function optionalTerminalHostContract(host: Host, expected?: string): void {
+  if (expected === undefined) assert.equal(host.terminalAttachCommand, undefined);
+  else {
+    assert.equal(typeof host.terminalAttachCommand, 'function');
+    assert.equal(host.terminalAttachCommand?.('worker'), expected);
+  }
+}

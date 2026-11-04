@@ -125,3 +125,26 @@ test('remote LaunchFiles reads only Host metadata and bytes while the hub mirror
   assert.equal(await nativeRead(mirror, 'utf8'), 'hub-only');
   assert.equal((await nativeStat(mirror)).mode & 0o777, 0o644);
 });
+
+test('rollback bounds a missing native exit receipt and fences undo and repeated stop until it resolves', {timeout:1000}, async t => {
+  const {beforeDirectories}=await import('./process-cleanup.ts');
+  const root=await tempProject(t);const env=fixtureEnvironment(root,process.env);
+  const exit=Promise.withResolvers<{code:number|null;signal:string|null}>();let stops=0;
+  const host={...localHost(env),identity:async(pid:number)=>({pid,pidStarted:'start',pidIdentity:'birth'}),stop:async()=>{stops++;return true;}};
+  const files=new LaunchFiles(undefined,host,10);
+  const owned=join(root,'owned');await files.write(owned,Buffer.from('retained'));
+  files.spawned({pid:987654,exited:exit.promise},()=>{},50);
+  let flight:Promise<void>|undefined;
+  beforeDirectories(t,async()=>{exit.resolve({code:0,signal:null});await flight?.catch(()=>{});await files.rollback();});
+  flight=files.rollback();
+  const concurrent=files.rollback();
+  await Promise.all([assert.rejects(flight,/cleanup-incomplete.*native exit receipt.*10 ms/),assert.rejects(concurrent,/cleanup-incomplete.*native exit receipt.*10 ms/)]);
+  const pending=await files.snapshot();assert.equal(pending.children.length,1);assert.equal(pending.undo.length,1);
+  assert.equal(await readFile(owned,'utf8'),'retained');assert.equal(stops,1);
+  await assert.rejects(files.rollback(),/cleanup-incomplete.*native exit receipt.*10 ms/);
+  assert.equal(stops,1,'missing exit receipt cannot repeat a signal-producing stop');
+  assert.equal(await readFile(owned,'utf8'),'retained');
+  exit.resolve({code:0,signal:null});await files.rollback();
+  assert.deepEqual(await files.snapshot(),{children:[],undo:[]});assert.equal(stops,1);
+  await assert.rejects(readFile(owned),{code:'ENOENT'});
+});

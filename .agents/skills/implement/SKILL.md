@@ -131,6 +131,10 @@ Empty/missing speech commands keep audio and name command setup.
 
 ## Host admission
 
+Failed-launch rollback keeps child/file ownership when the captured native exit
+receipt misses its post-stop deadline. Preserve that receipt fence; retrying
+cleanup must not repeat an acknowledged stop. See the [recovery boundary](../../../docs/hub/adapters-and-sessions.md).
+
 Host file preparation uses `publishFile` for atomic create-only or replacement,
 `appendFile` for shared-ignore repair and `stat` for rollback permissions/offsets.
 OpenCode's shared ignore runs on its launch Host; do not add local filesystem
@@ -209,3 +213,8 @@ changing this path; the remote lifecycle and cleanup guides name its evidence.
 Normal remote exits retain supervision until identity cleanup, client socket and
 watch work drain, and forward cancellation settle; failed cancellation retries
 before the exit notice.
+
+Remote terminal attach uses the launch-written private host record and a separate
+pinned-key SSH connection. Never print session credentials in the attach command.
+Use `cland host attach` on the host; ending its client leaves the session alive.
+See [terminal attach](../../../docs/hub/ssh-host.md#terminal-attach).

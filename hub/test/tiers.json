@@ -257,6 +257,8 @@
     "hub/test/host-agent-restart.test.ts": "T3",
     "hub/test/host-agent.test.ts": "T3",
     "hub/test/host-allow-list.test.ts": "T3",
+    "hub/test/host-attach-routing.test.ts": "T2",
+    "hub/test/host-attach.test.ts": "T3",
     "hub/test/host-boundary.test.ts": "T1",
     "hub/test/host-clone-integration.test.ts": "T3",
     "hub/test/host-clone.test.ts": "T1",

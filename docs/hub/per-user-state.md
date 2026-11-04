@@ -42,3 +42,10 @@ Register new machine runtime paths with exact expressions and reasons in
 `hub/test/state-paths-inventory.ts`. Use the sealed `projectHub` `userState`
 fixture option for default HOME/XDG state tests. File guidance:
 `docs/agents/tests/hub-test-state-inventory.test.ts.md`.
+
+Host attach records are private host runtime state, resolved by
+`host/attach.ts:attachRecordPath(runDirectory, name)` under the admitted agent
+run folder, never the hub HOME. `attach/<sha256(name)>.json` is mode 0600 with a
+0700 parent. The launch transaction owns publication and rollback; a relaunch
+replaces it. Retained stopped-session records are inert because attach rechecks
+the native birth. See [terminal attach](ssh-host.md#terminal-attach).

@@ -28,13 +28,16 @@ export class LaunchRecoveryPending extends Error {
 
 export class LaunchFiles {
   readonly #undo: FileUndo[] = [];
-  readonly #children: Array<{ pid: number; identity: Promise<string | null>; birth: Promise<string | null>; graceMs: number; child?: ChildProcess; exited?: Promise<void> }> = [];
+  readonly #children: Array<{ pid: number; identity: Promise<string | null>; birth: Promise<string | null>; graceMs: number; child?: ChildProcess; exited?: Promise<void>; stopAcknowledged?: boolean; exitObserved?: boolean; exitWait?: Promise<void> }> = [];
 
   get pids(): number[] { return this.#children.map(child => child.pid); }
 
   readonly resumed: Resumed;
   readonly #host: Host;
-  constructor(resumed: Resumed = untimed, host?: Host) {
+  readonly #exitReceiptMs: number;
+  #rollbackFlight: Promise<void> | undefined;
+  constructor(resumed: Resumed = untimed, host?: Host, exitReceiptMs = LAUNCH_SETTLEMENT_MS) {
+    this.#exitReceiptMs = exitReceiptMs;
     this.resumed = resumed;
     this.#host = host ?? localHost(process.env, entry => this.resumed(() => this.#log(entry)));
   }
@@ -122,11 +125,20 @@ export class LaunchFiles {
   commit(): void { this.#undo.length = 0; this.#children.length = 0; }
 
   async rollback(checkpoint?: (state: LaunchFilesState) => void, log = this.#log): Promise<void> {
+    if (this.#rollbackFlight) return this.#rollbackFlight;
+    const flight = this.#rollback(checkpoint, log);
+    this.#rollbackFlight = flight;
+    try { await flight; }
+    finally { if (this.#rollbackFlight === flight) this.#rollbackFlight = undefined; }
+  }
+
+  async #rollback(checkpoint: ((state: LaunchFilesState) => void) | undefined, log: (entry: Record<string, unknown>) => void): Promise<void> {
     this.#log = log;
     return continueWith((function* (this: LaunchFiles): Generator<Promise<unknown>, void, unknown> {
       // Never undo a live child's resources. Failed verification leaves the complete recovery state intact.
       while (this.#children.length) {
-        const { pid, identity, birth, graceMs, child, exited } = this.#children[0]!;
+        const recorded = this.#children[0]!;
+        const { pid, identity, birth, graceMs, child, exited } = recorded;
         const pidStarted = yield* wait(identity);
         let pidIdentity = yield* wait(birth);
         if (!pidIdentity && pidStarted) {
@@ -141,12 +153,22 @@ export class LaunchFiles {
             }
           }
         }
-        if (!child || (child.exitCode === null && child.signalCode === null)) {
+        if (!recorded.stopAcknowledged && (!child || (child.exitCode === null && child.signalCode === null))) {
           if (!(yield* wait(this.#host.stop({ pid, pidStarted, pidIdentity }, { graceMs, allowReused: true })))) { log({ event: 'launch-rollback-pending', pid }); throw new Error(`could not roll back launched process ${pid}`); }
+          recorded.stopAcknowledged = true;
         }
         // OS disappearance can precede libuv's receipt under load. Native children
         // settle that receipt before their resources are undone; restored receipts use OS proof.
-        if (exited) yield* wait(exited);
+        if (exited && !recorded.exitObserved) {
+          // One producer and one deadline per captured receipt. After expiry,
+          // retries retain its error until positive native completion; no stop repeats.
+          recorded.exitWait ??= Promise.resolve(boundedSettlement(async () => {
+            await exited;
+            recorded.exitObserved = true;
+          }, this.#exitReceiptMs)());
+          try { yield* wait(recorded.exitWait); }
+          catch (cause) { throw new Error(`cleanup-incomplete: native exit receipt for ${pid} did not settle within ${this.#exitReceiptMs} ms`, {cause}); }
+        }
         this.#children.shift();
         if (checkpoint) checkpoint(yield* wait(this.snapshot()));
       }

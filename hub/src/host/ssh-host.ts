@@ -9,7 +9,7 @@ import type { SshTransport } from '../transport/ssh.ts';
 import type { AgentEvent } from './agent/protocol.ts';
 import type { PreparedOutcome } from './agent/prepared.ts';
 
-type Options = { expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[]) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
+type Options = { terminalAttachCommand?: (name: string) => string; expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[]) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
 /** No fallback to native hub operations, including while connecting or disconnected. */
 export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce(): void } {
   let closed = false;
@@ -148,7 +148,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
-    name:o.name, limitPolls:false, layout: () => Object.freeze({...o.layout}),
+    name:o.name, ...(o.terminalAttachCommand ? {terminalAttachCommand:o.terminalAttachCommand} : {}), limitPolls:false, layout: () => Object.freeze({...o.layout}),
     writeFile: async (path,bytes,options) => { mutation(); await rpc('writeFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}); },
     publishFile: (path,bytes,options) => prepared<boolean>('publishFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}),
     appendFile: async (path,bytes) => {await prepared<null>('appendFile',{path,bytes:Buffer.from(bytes).toString('base64')});},

@@ -46,6 +46,8 @@ async function fixture(t: TestContext, withRoles = false, durable = true) {
   const host: Host = {...base,name:'f1',
     makeDirectory: (path,mode) => base.makeDirectory(mapped(path),mode),
     writeFile: (path,bytes,options) => base.writeFile(mapped(path),bytes,options),
+    publishFile: (path,bytes,options) => base.publishFile(mapped(path),bytes,options),
+    appendFile: (path,bytes) => base.appendFile(mapped(path),bytes),
     readFile: path => base.readFile(mapped(path)),
     fileType: path => base.fileType(mapped(path)),
     stat: path => base.stat(mapped(path)),

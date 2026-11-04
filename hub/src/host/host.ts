@@ -31,6 +31,8 @@ export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: 
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
   readonly name: string;
+  /** Separate human terminal connection; absent on older/test Hosts. */
+  terminalAttachCommand?(name: string): string;
   readonly layout: (input: HostLaunchLayoutInput) => HostLaunchLayout;
   /** Exact bytes; an explicit mode applies to existing files too. truncate requires empty bytes. */
   writeFile(path: string, bytes: Uint8Array, options?: { mode?: number; truncate?: number }): Promise<void>;

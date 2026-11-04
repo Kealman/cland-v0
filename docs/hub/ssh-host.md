@@ -235,3 +235,28 @@ endpoints, and resume native subscriptions. A failed tunnel observation retains
 the running row and role; only a positive native exit or identity mismatch ends
 it. The carrier restores its Unix forwards and republishes host discovery before
 becoming ready, allowing credentialed spokes to reconnect.
+
+## Terminal attach
+
+`cland session attach <name>` prints a separate `ssh -t` connection for a registered
+SSH host. It uses the registered client key and pinned `known_hosts`,
+`StrictHostKeyChecking=yes`, `ControlPath=none`, `ControlMaster=no`,
+`ClearAllForwardings=yes`, `-a -x` and ignores the user's SSH config. It runs the
+installed Node/CLI's `cland host attach <name>` with the host layout's run directory.
+Unavailable optional terminal printers project `attach: null` without interrupting
+session lists or snapshots; an explicit attach reports the refusal.
+Local sessions keep their existing harness commands. Hosts without the optional
+terminal printer explicitly refuse remote attach.
+
+Each remote harness launch/relaunch publishes `run/attach/<sha256(name)>.json`
+(mode 0600, directory 0700) through its launch transaction. The record holds its
+native birth identity, cwd and harness attach command with account paths; it
+never copies host/project/session admission secrets or the OpenCode password.
+OpenCode reads that password from its existing host file into the attach client's
+environment using shell builtins before direct harness exec, with no intermediate
+native `env` argv containing the password. Rollback restores the preceding record. Records are replaced at
+relaunch; stale terminal records grant no attach because native identity is checked.
+The host command reads only that agent's run folder, refuses missing, unsafe or
+non-live records, sets cwd, runs `stty susp undef`, and execs the harness client.
+Closing the client never invokes the session stop path. A session launched before
+this capability has no attach record and requires a relaunch to use host attach.

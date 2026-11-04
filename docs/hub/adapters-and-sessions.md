@@ -703,7 +703,15 @@ spawn/exit receipts; its test bodies and assertions stay unchanged. Host spawn a
 `logFile` (host-side append of both output streams) and returns required `exited`
 with a native `{ code, signal }` receipt. Register its PID and receipt immediately
 with `LaunchFiles.spawned`; rollback stops through the Host and joins completion
-before file undo. Every Host implementation, including test Hosts, supplies it.
+before file undo. After a positive stop acknowledgement, the captured native exit
+receipt has a separate `LAUNCH_SETTLEMENT_MS` (5000 ms) bound; expiry reports
+`cleanup-incomplete` and retains both the child and every file undo. The current
+owner caches that expired wait and never repeats the acknowledged stop. Retries
+can undo files only after that same captured native receipt resolves. Concurrent
+rollback callers share one producer. The bound is injectable in the internal
+LaunchFiles constructor for tests; restored journals retain the previous shape
+and use their existing Host identity/closure proof instead of an inherited native
+promise. Every Host implementation, including test Hosts, supplies its receipt.
 `HostSpawnOptions.authorize` runs after async log preparation immediately before
 native spawn; refusal closes the log without launching. Post-spawn log-close
 failure is diagnostic and retains PID/exited ownership. Keep held resume/stream,
