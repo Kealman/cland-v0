@@ -3,7 +3,7 @@ id: T-1666
 kind: task
 title: Host revoke and remove settle the host agent's session generations first, or name what they leave
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1382
 branch: t/T-1666-host-revoke-and-remove-settle-the-host
 created: 2026-11-03T22:56:19.713Z
-updated: 2026-11-04T16:06:49.451Z
+updated: 2026-11-04T17:00:37.593Z
 ---
 
 ## Summary
@@ -38,10 +38,10 @@ Found during T-1607 (coord decision 2026-11-03).
 
 ## Acceptance criteria
 
-- [ ] C1. Revoking a host with a live Claude, Codex and OpenCode session stops each one and leaves no launch record, receipt or private config file on the host (test, fake host).
-  - failed: rev-36 [reviewer] · 2026-11-04T15:52:54.669Z · note Normal exited OpenCode generations still lack retained cleanup ownership and are excluded from revoke inventory/reporting.
-- [ ] C2. When the pre-revoke step cannot reach the agent, revoke still cuts authority within its deadline, and its output names each generation it left and what remains (test).
-  - failed: rev-36 [reviewer] · 2026-11-04T15:14:32.742Z · note Already-running failed-launch cleanup can return a no-op and disappear from leftovers before native/private cleanup completes.
+- [x] C1. Revoking a host with a live Claude, Codex and OpenCode session stops each one and leaves no launch record, receipt or private config file on the host (test, fake host).
+  - done: impl-1666 · 2026-11-04T16:57:21.659Z
+- [x] C2. When the pre-revoke step cannot reach the agent, revoke still cuts authority within its deadline, and its output names each generation it left and what remains (test).
+  - done: impl-1666 · 2026-11-04T17:00:37.593Z
 - [x] C3. No Host call reaches the agent after the authority cut (test).
   - done: impl-1666 · 2026-11-04T15:10:32.513Z
 
@@ -119,3 +119,20 @@ Before terminal receipt contract change (A-16611): searched AdapterHost/exited/r
 ### impl-1666 · 2026-11-04T16:06:49.451Z
 
 A-16611 correction: new optional AdapterHost.hostGenerationClosed is emitted only after OpenCode owned-tree/client/forward settlement, before terminal notice; Sessions validates captured durable identity and persists retirement via the same owner helper as explicit stop. Generic exited status never grants cleanup. Retained records now distinguish confirmed/unknown closure; old positive retirement receipts remain compatible, but legacy terminal rows lacking them are named incomplete with private files retained. Prune/name replacement/rename replacement preserve unknown legacy obligations before display-row loss. Production OpenCode recording-Host exit/restart/archive/prune controls reproduced exact red (private files silently left; absent incomplete report), then green; stop/exit × positive/legacy/pruned legacy matrix passes with no recovered signal. Current light run28/28, hub typecheck green. Native fixture now arms a fresh pre-delivery completion count and joins turn-end writers per lead T-1678; no native run or dev merge under the Coordinator block. Full T0 earlier correction tree passed; refreshing final lint before new source review.
+
+### impl-1666 · 2026-11-04T16:14:06.443Z
+
+Additional generation-identity control reproduced red: two native generations sharing one stable session id overwrite one retirement receipt (1 != 2). Extending the same receipt module to key by captured native generation, keep old storage rows readable, and clear only the exact captured owner. Unknown older native generations sharing a private-file location will fence deletion by a later generation and remain named. This is within the requested per-generation settlement, not a native-stop policy change. Consumer sweep: retainedHostGenerations/retainHostGeneration/clearHostGeneration used only by ProcessTable, Sessions and host-revoke tests; nativeClosure optional old record parsed in one module, no public frame/client shape changes. Continuing light/source work only under T-1678 block.
+
+### rev-36 · 2026-11-04T17:00:10.933Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1666-source-4
+commit: 9f7450ed0988e0d5f2f4b9da2d3b71e046df5a02
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source clear; A-16634, no findings. Prior identity/producer/native-test/stopped-and-exited retention gaps resolved. Optional positive OpenCode joined-closure callback persists exact owner before terminal notice; native-generation keys/exact clear/old storage compatibility preserve older unknown workers and fence shared files. Legacy status grants no signal/deletion authority. Indexed/yielded metadata scan, bounded partial inventory, residual file/admission reporting, joined storage lifecycle and post-cut warm-up fences checked; matching docs/consumer inventories/tests retained. T1672 rename scope remains separate per Coordinatorfe8bf627. C1–C3 runtime-unverified; C2 prior source finding resolved, implementation done mark needs restoration. A16632 local check/37focused preliminary only. Current T3/native+12 unchanged preservation unexecuted; older stale-setup samples not coverage. Coordinator11064f7c T1678 block remains: no verify/native diagnosis until shared fix + explicit authorized merge, then fresh changed-head review and required serial evidence. Reviewer no execution/edits/browser/delegation.

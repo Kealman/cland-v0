@@ -3,7 +3,7 @@ id: T-1611
 kind: task
 title: Attach to a host session
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1379
 branch: t/T-1611-attach-to-a-host-session
 created: 2026-11-02T03:33:58.041Z
-updated: 2026-11-04T16:11:24.055Z
+updated: 2026-11-04T17:01:55.992Z
 ---
 
 ## Summary
@@ -30,12 +30,16 @@ Hot files: `hub/src/adapters/sessions.ts`, `hub/src/adapters/claude-code.ts`, `h
 
 - [x] C1. For a session on a fake host, `cland session attach <name>` prints an `ssh -t` command with `ControlPath=none`, `ClearAllForwardings=yes`, `-a`, `-x`, `StrictHostKeyChecking=yes` and the host's `known_hosts`, running `cland host attach <name>`, and no secret appears in it (test).
   - done: impl-1611 · 2026-11-04T15:43:31.263Z
-- [ ] C2. On the host, `cland host attach <name>` execs each harness's attach with the session's environment under `stty susp undef`, and refuses a session that is not on that host (test).
-  - failed: rev-37 [reviewer] · 2026-11-04T16:11:24.055Z · note Remote relaunch record read hits an inconsistent recording Host, and its fake completion receipt never settles; configured preservation is cancelled/incomplete.
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.738Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+- [x] C2. On the host, `cland host attach <name>` execs each harness's attach with the session's environment under `stty susp undef`, and refuses a session that is not on that host (test).
+  - done: impl-1611 · 2026-11-04T16:21:22.986Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.739Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
 - [x] C3. Ending the attach process leaves the session running with the same identity (test).
   - done: impl-1611 · 2026-11-04T15:25:22.853Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.739Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
 - [x] C4. The attach of a local session is unchanged: hub/test/cli.test.ts, hub/test/cli-session-credential.test.ts and the local attach assertions in the claude-code-adapter, codex-adapter and opencode-adapter test files pass with no test edited.
   - done: impl-1611 · 2026-11-04T15:11:22.402Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.739Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
 
 ## Notes
 
@@ -225,3 +229,86 @@ Prior run0878f347/A-16600 remains failed; do not reclassify either run as green 
 A-16614: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16614-t-1611-cancelled-codex-policy-preservation-record-read-and-exit-receipt.md
 
 Criteria: C2 failed (Remote relaunch record read hits an inconsistent recording Host, and its fake completion receipt never settles; configured preservation is cancelled/incomplete.).
+
+### impl-1611 · 2026-11-04T16:19:16.687Z
+
+Run8cdc1471 passed T0/T1 but T2 cancelled ('test timed out after120000ms') in codex-sandbox-host spawn/relaunch policy case; T3/T4/Web unexecuted. Exact failure A-16613, Reviewer evidence A-16614. Coordinator13a30547 approved recovery-boundary fix: LaunchFiles native exit wait was unbounded after stop. Added missing-exit regression first: cancelled at1000ms before production fix; now passes at10ms injected bound with retained child/undo/file bytes, one stop across concurrent calls/retry, and cleanup only after captured exit resolves. Production uses LAUNCH_SETTLEMENT_MS5000; no repeated acknowledged stop; single rollback producer; serialized journal unchanged. Fixture .git-only refusal delegates other reads; synthetic spawn exit settles on stop. Resweep now includes blanket read/metadata stubs: Codex policy fixture was missed by earlier remap-only sweep. Claude remote polling read stub also now scopes to project .claude settings and delegates actual record bytes; local-only settings stubs and nonlaunch policy/password probes unaffected. Consumers searched across all hub tiers, native wrappers, Sessions restore/pending-stop readers, docs/QA/skills: new constructor argument optional, old two-argument callers unchanged, previous serialized journal regression retained. Required recovery/native files running under preservation lock.
+
+### rev-37 · 2026-11-04T16:23:45.258Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1611-source-4
+commit: 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1611 source review of native exit receipt boundary
+Head8d70abb9b00a32e31663bdafc53e67d2c75edf3e; runrev-37-1611-source-4; scopefull; clear; findings[].
+Compared with37c41b7712f26632eabfb18a84e87d303fc461cd. No dev merge. Earlier attach/security/projection/contract/clause audits A-16594/A-16605 remain applicable. This pass specifically reviews the shared T-1606 LaunchFiles recovery-boundary change and forced fixture corrections.
+
+Standards0 findings:
+- Coordinatore82878d4 approves .git-only read refusal plus matching synthetic native exit receipt;13a30547 approves the5000ms post-stop bound, retained ownership, no signal retry and failing missing-exit test first.
+- Codex policy test only changes file/exit seams; original policy args/permission assertions, title and timeout remain. Its .git refusal remains while attach records read from owned scratch Host. Each spawned synthetic receipt now resolves when fake stop succeeds.
+- Claude polling fixture returns synthetic{} only for its intended project .claude settings, delegates real attach-record reads. Earlier blanket stubs were consumers, not production fallback problems. Item records expanded read/metadata/stop/receipt consumer resweep across tiers, wrappers and persisted readers.
+- Per-file guidance/subsystem docs and implement skill+CHANGES describe the new native receipt bound and distinguish current native ownership from restored journals. No serialized field, Host wire shape or mandatory argument changes; constructor's short test bound is optional and old callers retain5000ms.
+Spec0 findings:
+- Shared LaunchFiles bounds only the native exited-receipt phase after existing Host.stop handling. The stop's own grace/identity proof remains unchanged.
+- Each captured child caches a positive stop acknowledgement, one bounded wait and eventual exit observation. Timeout rejects cleanup-incomplete before child removal or file undo. Retrying the same owner while its captured receipt remains unresolved reuses the rejected wait and cannot call Host.stop again. The underlying captured receipt remains observed; when it positively resolves, exitObserved permits later cleanup.
+- Concurrent rollback calls share #rollbackFlight. Timeout clears only the per-call flight, not retained child/undo/stop acknowledgement/receipt fence. Successful completion can shift child then execute existing undo/checkpoint behavior.
+- Snapshot/restore schema remains unchanged: new transient fields are not serialized, legacy children retain recorded birth proof and use existing Host closure verification. No inherited live Promise or fabricated native exit result is introduced.
+- Regression at10ms test seam checks both concurrent rejections, retained file bytes and child/undo state, one stop across retry, then final empty snapshot/removed file only after captured exit resolution. beforeDirectories resolves and joins the pending producer even on assertion failure. The old persisted journal regression remains. No native process is launched merely to prove this timer branch.
+
+Local supplemental reports: macOS arm64 Node24.21 focused33pass, failing regression first cancelled1000ms before the bound, eight sequential files pass under Coordinator lock (launch-recovery, Codex/OpenCode cleanup, native-boundary, Codex sandbox policy, LaunchFiles, settlement, Claude Host), static/typechecks pass with zero refusals/122existing advisory findings. No configured/Linux/full-tier/browser pass at this head yet. Prior8cdc1471/A-16613 remains cancelled/incomplete and0878f347/A-16600 remains failed. A-16609's285cases are ancestor evidence, not current-head receipts.
+
+All C1–C4 remain runtime-unverified by this source-only pass. Fresh configured verification must pin8d70abb9b00a32e31663bdafc53e67d2c75edf3e; named new-boundary/attach/C4 and required preservation receipts remain needed for final verification. Any subsequent fix/head change requires new source review. QA policy none. Reviewer read only; no tests/typecheck/browser/edits/merge.
+Standards0 findings; Spec0 findings.
+A-16622: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16622-t-1611-source-review-bounded-native-exit-receipt-and-retained-rollback.md
+
+### impl-1611 · 2026-11-04T16:32:49.352Z
+
+Source-clear A-16622 at8d70abb9b. Final committed-head exclusive23-file sweep305pass/0fail/cancel/skip; raw native receipts, case names, exact file summaries and provenance A-16629 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16629-t-1611-bounded-rollback-reviewed-head-receipts. Local macOS arm64 Node24.21/no browser; targeted supplements only. Includes all stage/C4 files and Coordinator-required recovery controls plus new missing-exit bound regression. Typechecks/lint0 on identical corrected tree; known122report-only findings59files. Mode-free exact-head configured verification admitted866a0390-3eeb-49a9-96e2-31adc2ca7f69. No source changes/dev merge; waiting hub result and assigned Reviewer final evidence. Prior8cdc and0878 remain failed.
+
+### rev-37 · 2026-11-04T17:01:55.739Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1611-evidence-3
+commit: 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-1611 final evidence review
+Head8d70abb9b00a32e31663bdafc53e67d2c75edf3e; runrev-37-1611-evidence-3; scopeevidence; clear; findings[]; verifiedC1–C4.
+Source review rev-37-1611-source-4/A-16622 (with earlier attach/security/contract audits) remains applicable. Branch ref is unchanged. Read-only reconstruction of canonical verification tree yieldsd72a2e886b1398bdd7615449ec7b14487745c27b, matching provenance.
+
+Configured run866a0390-3eeb-49a9-96e2-31adc2ca7f69 / A-16633 completed exit0,5028pass/0fail/cancel/skip/todo. Linuxx64 6.8.0-142-generic, droplet c-8 sfo2, Node24.21.0, Neovim0.12.5, workers2, uncached execution. Isolated Chrome Headless Shell1248 binary /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, reported Google Chrome for Testing156.0.8078.4.
+T0/allT1/fallback-allT2/Web and selected T3/T4 completed. Selected T3 is2files/9top-level identities once (host attach5 plus mapped roles4); mapped T4 inbox-verifier-load1once, repetitions skipped. Remaining T3 deferred to merge batch. T2 includes new-case load repetitions.17.141s T3 and3.930s T4 added-wall checks cover selected phases excluding machine wait, not whole-run timing. Budget/lint/ratchet findings remain report-only; skipReasonCheck report/missing0. No real SSH/harness/GUI QA claim; item QA policy none.
+
+Independent streaming scan retained all named outcomes/scopes before deduplication:
+hostAttach5unique/5passrecords; routing3/18; contractCoverage6/11; rolesClauses39/39; launchFiles6/11; CodexSandboxHost5/5; CodexCleanup10/10; ClaudeHost18/18; CLI9/9; CLI-sessionCredential9/9; mapped roles4/4; inboxVerifierLoad1/1. No nonpass outcomes in those files.
+
+C1 verified:
+`host session.attach and list return pinned separate SSH command; prior local frame stays compatible` passes once plus5load repeats, retaining frozen{command} response, pinned SSH flags/key-path and planted-secret exclusion. `printed terminal SSH pins host keys, disables sharing and forwards, and contains no secret` passes natively. Both revoked/missing-key printer-unavailability cases pass base+5repeats and preserve launch/list/snapshot/unrelated rows with attach:null while explicit attach keeps refusal. Optional Host contract and clause-size guards now pass.
+
+C2 verified:
+Each generated native `claude-code|codex|opencode host attach uses private environment, refuses foreign records and exit preserves native identity` passes once. Source-reviewed record assertions require0600, filtered admission/executor credentials, no literal OpenCode password, foreign-directory refusal and changed native-birth refusal. Native CLI/stty/account-path/cwd assertions pass; OpenCode receives the password only as environment after builtin export/direct exec. The native env argv trap is positively executed first with a planted password, then must remain absent during actual attach.
+Forced mapped publication/read consumers pass: CodexCleanup10/10, ClaudeHost18/18 and formerly cancelled `spawn and relaunch serialize the captured session Host policy` now pass. No policy assertion/timeout weakening or production local fallback.
+
+C3 verified:
+The three ordinary clients exit0/null and final session identity/liveness remains exact. The separate codex-held native case passes forced failure/identity-owned termination/native-close checks, then retains original session birth/liveness. The shared recovery-boundary regression `rollback bounds a missing native exit receipt and fences undo and repeated stop until it resolves` passes base+5load repeats: concurrent callers fail bounded, child/undo/bytes remain, acknowledged stop stays single and only captured exit completion permits undo. It is not launch acknowledgement/timing-sleep proof.
+
+C4 verified:
+A-16629 contains current committed-head local macOS arm64 Node24.21 targeted23files/305pass, nofail/cancel/skip/todo, no browser. Reviewed README/receipt head provenance and all23native log summaries; recorded native exits0, signals unreported. These are supplemental targeted receipts, not Linux/full-tier evidence and not added to5028.
+The required unedited C4 files pass in raw logs: cli9, cli-session-credential9, claude-code-adapter6, codex-adapter13, opencode-adapter21. Exact existing Claude binary attach contract and Codex resume--remote/no-c/no-profile case pass; OpenCode whole file21/21 retains its local attach assertions. Git comparison from task base to current head shows no edits to any of those five files. CLI pair also pass in Linux queue; three native adapter files are not claimed executed there.
+
+Same-head supplemental preservation also includes nativeBoundary69, local/SSHcontracts14/38, layout18, discovery7, transportForwards6/SSH6, supervisor4, remoteClaude21/OpenCode2, restart10 and Coordinator-required launchRecovery4/CodexCleanup10/OpenCodeCleanup5/settlement4. Forced fixture changes remain explicitly declared. Prior A-16596/A-16609 ancestor receipts are not reused as current execution. Before-fix missing-exit timeout log stays a separate red control outside305 totals.
+
+Earlier configured0878f347/A-16600 remains T1failed;8cdc1471/A-16613 remains T2cancelled/incomplete. This exact-head green receipt replaces neither history nor deferred batch coverage. All C1–C4 are now verified; no outstanding findings. Reviewer performed read-only source/log checks, no tests/typecheck/browser, edits or merge.
+A-16636: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16636-t-1611-final-evidence-at-8d70abb9.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

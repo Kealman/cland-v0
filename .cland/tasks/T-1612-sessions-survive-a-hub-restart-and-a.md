@@ -2,8 +2,8 @@
 id: T-1612
 kind: task
 title: Sessions survive a hub restart and a tunnel loss
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1381
 branch: t/T-1612-sessions-survive-a-hub-restart-and-a
 created: 2026-11-02T03:33:58.350Z
-updated: 2026-11-04T15:56:04.153Z
+updated: 2026-11-04T17:03:33.433Z
+closed: 2026-11-04T17:03:33.433Z
 ---
 
 ## Summary
@@ -31,12 +32,20 @@ Hot files: `hub/src/adapters/sessions.ts`, `hub/src/hub/daemon.ts`, `hub/src/hos
 
 - [x] C1. With an OpenCode, a Codex and a Claude Code session on two fake hosts, a 20 s hub stop and start leave every row running with its identity, its forwards back and its spoke welcomed again, and a delivery sent after the restart is injected into each (test).
   - done: impl-1612 · 2026-11-04T15:51:50.635Z
+  - verified: rev-35 [reviewer] · run rev-35-1612-final-1 · 2026-11-04T16:16:53.176Z · commit 227ee0c82708c9bfdc634148348c65d1043e60da
+  - verified: rev-35 [reviewer] · run rev-35-1612-delta-1 · 2026-11-04T16:20:02.057Z · commit 6c029342a2f2fd1b7ded103a650b508c67d1b421
 - [x] C2. During the stop nothing on the hosts is signalled, and the hub's start probes no remote pid on its own machine (test).
   - done: impl-1612 · 2026-11-04T15:43:46.165Z
+  - verified: rev-35 [reviewer] · run rev-35-1612-final-1 · 2026-11-04T16:16:53.176Z · commit 227ee0c82708c9bfdc634148348c65d1043e60da
+  - verified: rev-35 [reviewer] · run rev-35-1612-delta-1 · 2026-11-04T16:20:02.057Z · commit 6c029342a2f2fd1b7ded103a650b508c67d1b421
 - [x] C3. A master killed while sessions run leaves every row running, and its forwards and spokes are back after the reconnect (test).
   - done: impl-1612 · 2026-11-04T15:51:51.299Z
+  - verified: rev-35 [reviewer] · run rev-35-1612-final-1 · 2026-11-04T16:16:53.176Z · commit 227ee0c82708c9bfdc634148348c65d1043e60da
+  - verified: rev-35 [reviewer] · run rev-35-1612-delta-1 · 2026-11-04T16:20:02.057Z · commit 6c029342a2f2fd1b7ded103a650b508c67d1b421
 - [x] C4. A row whose identity the agent no longer reports is marked exited at the re-read, and the session-resume and session-async-processes test files pass with no test edited.
   - done: impl-1612 · 2026-11-04T15:43:47.653Z
+  - verified: rev-35 [reviewer] · run rev-35-1612-final-1 · 2026-11-04T16:16:53.176Z · commit 227ee0c82708c9bfdc634148348c65d1043e60da
+  - verified: rev-35 [reviewer] · run rev-35-1612-delta-1 · 2026-11-04T16:20:02.058Z · commit 6c029342a2f2fd1b7ded103a650b508c67d1b421
 
 ## Notes
 
@@ -91,3 +100,41 @@ Fresh source clear rev-35-1612-source-2/A-16610 at227ee0c82708c9bfdc634148348c65
 ### impl-1612 · 2026-11-04T15:56:04.153Z
 
 Coordinator308c2c20 confirmed fresh-completion/hook-join prerequisite applies only to explicit post-turn stop tests (T-1666/T-1678), not T-1612's intentional possibly-mid-turn survival. Lead T-1678 independently clarified the same. Source-clear227ee0c82708c9bfdc634148348c65d1043e60da remains clean/unchanged; admitted245788b2 preserved. A-16593 is injection-followed-by-explicit-stop failure evidence, not completed-turn evidence. No new native stop or fixture wait added; continue idle for hub verification result.
+
+### rev-35 · 2026-11-04T16:16:53.176Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1612-final-1
+commit: 227ee0c82708c9bfdc634148348c65d1043e60da
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, no findings; C1–C4 verified. A-16617 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16617-t-1612-final-evidence-exact-head-survival-and-preservation-passes.md independently records A-16616 run245788b2 native survival1 (40.999716209s), readiness2, unchanged hub resume2/async3, routing16/registry4 actual named passes. Run exit0/5017pass/zero fail,cancel,skip,todo; exact source-clear head/tree58cb331c9ef57f98bc4c8ddfed4ae5aef0c808b1. T0/allT1/fallbackallT2/changedT3once/mappedT4base/Web completed; remainingT3 merge-batch, T4 repetitions unexecuted. Uncached Linuxx64 droplet Node24.21/Nvim0.12.5, isolated HeadlessShell1248 ChromeForTesting156.0.8078.4, skips[]/missing0 report mode; budget/lint/ratchet advisories not execution proof. Lifetime1295s/$0.0899 billing only. Prior failed explicit-stop/cleanup history retained; T-1678/T-1679 not claimed fixed. Source unchanged since rev-35-1612-source-2/A-16610; QA none. No Reviewer runtime/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-35 · 2026-11-04T16:20:02.058Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1612-delta-1
+commit: 6c029342a2f2fd1b7ded103a650b508c67d1b421
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Duration-only delta clear, no findings; C1–C4 carry forward under explicit Coordinator3c96e485 rule7 exception. Complete diff only durations.json: file90s/file:true/C-216/Nov11 expiry; exact-case58s unchanged, Linux41.0 added to reason. Actual Linux case41.0 and historical macOS whole-file38.3 distinguished from 1.5x load projection, failed samples remain qualified. Runtime/test/assertion/timer/cleanup unchanged. A-16621 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16621-t-1612-clear-duration-delta-and-authorized-parent-evidence-carry.md records authorization and limits. Parent227ee0c8/A-16616 run245788b2 exit0/5017pass carries from rev-35-1612-final-1/A-16617. New6c029342a has no runtime rerun or cache hit; batch T1/T3 remains required by Coordinator before landing. No Reviewer execution/probes/browser/edits/Git mutations/delegation; QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-04T16:20:09.982Z
+
+Coord merge note (2026-11-04 16:20Z, rule 7 exception stated explicitly): enqueued at 6c029342. The verify evidence is A-16616 (245788b2) at 227ee0c8. The only change since is `hub/test/durations.json`: a 90 s file allowance for host-survival-native, owner C-216, expiring 2026-11-11, with the Linux sample added to the per-test reason. The delta review is clear. The merge batch's T1 and T3 on the integrated tree exercise it.
+
+### coord · 2026-11-04T17:03:33.433Z
+
+Merged c06652e540f6df5d6192af6f3bcbeca9f6225f1b onto dev.

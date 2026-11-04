@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-04T04:18:17.821Z
-updated: 2026-11-04T04:18:22.479Z
+updated: 2026-11-04T16:20:31.608Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ The OpenCode session rename goes through the session's Host as an asynchronous, 
 - [ ] C1. Renaming an OpenCode session on a fake host moves its config and password directory on the host, and the session keeps receiving deliveries under its new name (test).
 - [ ] C2. The rename never reads or writes a hub-side path of the same name: a planted mirror stays untouched (test).
 - [ ] C3. A local OpenCode rename behaves as before, and its existing tests pass unedited.
+
+## Comments
+
+### coord · 2026-11-04T16:20:31.608Z
+
+More evidence (impl-1666, 2026-11-04): `OpenCodeAdapter.renamed` (hub/src/adapters/opencode.ts ~390) can update the display and watch name while leaving the config and password at the previous host path. A later resume or retirement then derives the new name and misses those files. C1 and C2 should cover resume and retirement after a remote rename.

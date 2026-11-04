@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1380
 branch: t/T-1609-push-on-every-ref-move
 created: 2026-11-02T03:33:57.560Z
-updated: 2026-11-04T16:06:02.248Z
+updated: 2026-11-04T16:56:37.612Z
 ---
 
 ## Summary
@@ -34,7 +34,7 @@ Hot files: `hub/src/host/agent/watch.ts` (new), `hub/src/host/agent/server.ts` (
 - [x] C3. A push the allow list refuses is reported in `ref-moved` with the refusal, retried at the next move, and never loops (test).
   - done: impl-1609 · 2026-11-04T15:31:37.812Z
 - [x] C4. Watches survive an agent restart, and a commit made while the agent was down is pushed after it is back (test).
-  - done: impl-1609 · 2026-11-04T16:04:10.133Z
+  - done: impl-1609 · 2026-11-04T16:30:36.168Z
 
 ## Notes
 
@@ -87,3 +87,63 @@ Criteria: C1 failed (Post-success removal checkpoint/reply loss lacks positive s
 ### impl-1609 · 2026-11-04T15:40:08.275Z
 
 Expanded rule20 sweep for Coordinator f8e7b97d host-status requirement: HostTunnelStatus/tunnelStatuses/hub.status.hosts consumers in transport.ts, sshHost registry, hub dispatch, shared/wire/index.ts, CLI hub status, transport-status/remote-discovery-host/host-ssh-contract/host-clone-integration tests, nvim status readers, QA E-1532 stages2-4 and docs/hub/ssh-transport. Additive optional watches rows (path/branch/state/cause) preserve old host status/old agent shape; no existing field removed. New ref-watch-status event/watch-status op capability gated. Producer result uses existing native launchId/birth and shared redactor implementation moved into agent closure; remote/redact.ts keeps its public exports/frames and all existing remote callers/tests unchanged. No second process ledger.
+
+### rev-35 · 2026-11-04T16:14:19.176Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1609-source-3
+commit: 8dd2d49d20425228a16a517332e9df46ae62c28d
+scope: full
+findings: [{"severity":"medium","text":"Use one live-row status projection for checkpoint events and status(): #save omits row.notice, so a healthy peer checkpoint falsely publishes a still-failed watch as watching; unchanged repeated errors then suppress repair of that status.","file":"hub/src/host/agent/watch.ts","line":33}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source not clear: one medium status projection drift, confirmed by Implementer d982fa27. A-16615 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16615-t-1609-source-pass-3-live-watch-status-projection-drift.md records the exact failing-watch/healthy-peer trace and regression requirement. Earlier four ownership/settlement findings are addressed in source; all32 runtime closure hashes match. Shared redactor extraction, additive status capability/old-agent route and CLI consumers inspected. Current exact-head preservation run remains active; partial native candidates/static/component receipts are supplemental, prior195 preservation cases belong to dd3e93db7. C4 failed; C1–C3 unverified pending run evidence. No Reviewer runtime/probes/browser/edits/Git mutations/delegation. Finish the bounded pinned run, correct projection and request fresh source review before verify.
+
+Criteria: C4 failed (Named per-watch recovery status can lose an unresolved failure when a healthy peer checkpoints.).
+
+### rev-35 · 2026-11-04T16:18:51.473Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1609-source-4
+commit: b70896c5275f7566e4f5337beb4ac5533a937784
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, no findings. A-16615 resolved: refWatchStatuses shares direct/checkpoint projection over one live-row collection; failing-peer/healthy-checkpoint and positive same-signature observation/no-replay regressions retain the missing boundaries. Compatibility callback evidence typed without weakened old-agent/new-capability assertions; guide13 and all32 closure hashes checked. Native/process/removal owners unchanged from prior inspection. A-16619 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16619-t-1609-source-clear-shared-live-status-projection-and-recovery-controls.md records source and provenance limits. C1–C4 remain unverified. Reported current-head root typecheck0/component13/static supplements; predecessor8dd native4+preservation195+proxy14=213 runtime passes is not final-head rerun, and its typed-test T0 failure/prior inaccurate root-check statement remain corrected history. Exact-head mode-free configured verification may proceed; inspect required named/native preservation outcomes at final evidence pass. No Reviewer tests/probes/browser/edits/Git mutations/delegation.
+
+### rev-35 · 2026-11-04T16:29:46.394Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1609-evidence-1
+commit: b70896c5275f7566e4f5337beb4ac5533a937784
+scope: evidence
+findings: [{"severity":"medium","text":"Migrate frozen HUB_USAGE for the intended named ref-watch fence help addition: full usage deep-equality fails because actual hub status includes the new phrase and expected omits it; keep all full assertions.","file":"hub/test/fixtures/cli-usage/commands.json","line":23}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear at source-reviewed b70896c52. A-16623 run903c50a1 T0exit0/T1exit1; actual AssertionError deepStrictEqual at cli-usage-compatibility.test.ts:9, lines8878–79 isolate HUB_USAGE named host ref-watch fences addition versus old expected. My source pass missed this aggregate frozen consumer. A-16624 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16624-t-1609-evidence-not-clear-frozen-hub-usage-consumer-mismatch.md records exact mismatch/provenance. Hub aggregate1409/1408pass/1fail, separate interruption1549/1548pass/1fail; neither full pass. T2/nativeT3/Web unexecuted, browser null; uncached Linuxx64 Node24.21/Nvim0.12.5 treecfaa86b36bdacdc9ffc43d4c7580778eb8b1a3d9,423s/$0.0293 billing. Report advisories/projections not passes. C4 failed,C1–C3unverified. Fresh source review after fixture migration before rerun; no Reviewer runtime/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C4 failed (Exact-head verification fails the frozen help consumer of the required named-watch status change; T2/native/Web did not execute.).
+
+### impl-1609 · 2026-11-04T16:30:35.949Z
+
+Rule20 consumer addendum from red903c50a1/A-16623: HUB_USAGE is consumed through cli/usage.ts aggregate → frozenUsage() in hub/test/cli-usage-fixture.ts → independent hub/test/fixtures/cli-usage/commands.json → cli-usage-compatibility.test.ts. The help addition was omitted from that frozen expected block. Migrated only its approved 'and named host ref-watch fences' phrase, retaining full object/byte equality and all other command bytes. Local focused compatibility + help19 cases now pass; T2/native/Web did not execute in the old red run, which remains red.
+
+### rev-35 · 2026-11-04T16:31:39.327Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1609-source-5
+commit: fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, no findings. Exact sole changed file commands.json independently parsed: only HUB_USAGE changes, exactly inserting ' and named host ref-watch fences'; every other command byte and full deep-equality assertion unchanged. A-16624 resolved; consumer chain now listed in item. Production/native owners/runtime closure/test source unchanged from b70896c52 source clear. A-16627 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16627-t-1609-source-clear-frozen-hub-usage-consumer-migrated.md records limits. C1–C4 unverified. Reported local macOSNode24.21 compatibility/help19 supplemental; prior903c50a1/A-16623 remains failed parent evidence with T2/native/Web unexecuted. Exact-head configured mode-free verify may proceed, no new-head runtime pass yet. No Reviewer tests/probes/browser/edits/Git mutation/delegation.
