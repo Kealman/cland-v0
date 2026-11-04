@@ -108,9 +108,10 @@
       "A-16530",
       "A-16557",
       "A-16573",
-      "A-16574"
+      "A-16574",
+      "A-16639"
     ],
-    "commit": "eb1fe370f93f193b8d96b1b0e97d5d346a3f6b78"
+    "commit": "2dbd79bdc997d99c0b5ba22fec645e941cdc9b3d"
   },
   "budget": {
     "testSeconds": 5,
@@ -3498,6 +3499,10 @@
     },
     "hub/test/spoke-footprint.test.ts": {
       "seconds": 10.682408,
+      "tests": 1
+    },
+    "hub/test/host-survival-native.test.ts": {
+      "seconds": 43.305768,
       "tests": 1
     }
   },
@@ -10219,7 +10224,8 @@
     "hub/test/opencode-remote-cleanup.test.ts::OpenCode remote shutdown drains snapshots and subscription before cancelling its forward": 0.166639,
     "hub/test/opencode-remote-cleanup.test.ts::OpenCode remote stop drains snapshots and subscription before cancelling its forward": 0.169191,
     "hub/test/opencode-remote-cleanup.test.ts::OpenCode Unix client close aborts active HTTP and SSE and joins native close receipts": 0.1035,
-    "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": 10.682408
+    "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": 10.682408,
+    "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": 43.305768
   },
   "allow": {
     "hub/test/host-survival-native.test.ts": {
