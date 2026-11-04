@@ -106,9 +106,10 @@
       "A-16508",
       "A-16515",
       "A-16530",
-      "A-16557"
+      "A-16557",
+      "A-16573"
     ],
-    "commit": "8f4a4ba2a57cb505deedc7ee58ae30eccbed8d67"
+    "commit": "ddf888a2bcf4362c42f32576b5061e4c83710db4"
   },
   "budget": {
     "testSeconds": 5,
@@ -3477,6 +3478,10 @@
     "hub/test/host-agent-restart.test.ts": {
       "seconds": 43.156362,
       "tests": 10
+    },
+    "hub/test/claude-capture-concurrency.test.ts": {
+      "seconds": 3.341354,
+      "tests": 3
     }
   },
   "tests": {
@@ -10170,7 +10175,10 @@
     "hub/test/host-agent-restart.test.ts::held mismatched acquisition after quiesce closes its client without delivery": 1.466836,
     "hub/test/host-agent-restart.test.ts::Host close joins installation and fences a late restart publication": 1.935442,
     "hub/test/host-agent-restart.test.ts::registry loads in scratch runtime with development packages unavailable": 1.14348,
-    "hub/test/host-command-environment.test.ts::Host.close joins a held observation connection independently of recovery receipts": 0.001851
+    "hub/test/host-command-environment.test.ts::Host.close joins a held observation connection independently of recovery receipts": 0.001851,
+    "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: different capture": 1.273415,
+    "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: same birth": 0.887181,
+    "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: second descendant": 1.180758
   },
   "allow": {
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
