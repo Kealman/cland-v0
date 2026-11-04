@@ -1,7 +1,7 @@
 ---
 id: T-1671
 kind: task
-title: "Codex failed-launch settlement is lost across a hub restart: the async unforward callback lives only in memory"
+title: "Codex and OpenCode failed-launch settlement is lost across a hub restart: the async unforward callback lives only in memory"
 state: open
 status: backlog
 size: S
@@ -15,7 +15,7 @@ regression_of: T-1606
 topic: null
 branch: null
 created: 2026-11-04T02:35:52.074Z
-updated: 2026-11-04T02:35:54.675Z
+updated: 2026-11-04T04:11:42.128Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ Codex implements `settleFailedLaunch`. It rebuilds its bounded settlement (close
 
 - [ ] C1. A hub restart between a failed remote Codex launch and its settlement still unforwards on the host before the role is released (test).
 - [ ] C2. When the generation state is missing after the restart, the row stays held with `cleanup-incomplete` and its cause (test).
+
+## Comments
+
+### coord · 2026-11-04T04:11:42.128Z
+
+Scope extended (coord, 2026-11-04 04:12Z): T-1603's remote OpenCode failed-launch settlement (async unforward through LaunchSettled) has the same restart gap. T-1603 ships the in-memory path only. This item implements `settleFailedLaunch` for both Codex and OpenCode once T-1607 lands, with C1 and C2 applying to each adapter.

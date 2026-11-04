@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1375
 branch: t/T-1607-claude-code-sessions-on-a-host
 created: 2026-11-02T03:33:57.061Z
-updated: 2026-11-04T04:09:59.913Z
+updated: 2026-11-04T04:37:29.793Z
 ---
 
 ## Summary
@@ -30,10 +30,10 @@ Hot files: `hub/src/adapters/claude-code.ts`, `hub/src/host/agent/processes.ts` 
 
 - [x] C1. Through the frame protocol a Claude Code session launched on a fake host with the scripted Claude fake receives a delivery and reports its state from its hooks (test).
   - done: impl-1607 · 2026-11-03T23:33:48.830Z
-- [x] C2. The worker found by the one `agents --json` is adopted into the host agent's table with its Linux identity, and liveness and stop go through the agent (test).
-  - done: impl-1607 · 2026-11-04T03:28:25.610Z
-- [ ] C3. The session's hooks and mod bridge connect through the host's `hub.sock` and are dispatched as that session, and their settings carry host paths only (test).
-  - failed: rev-36 [reviewer] · 2026-11-04T04:09:59.913Z · note Required mapped Claude launch preservation cases fail close with supervised failed generation; recording observer not migrated to typed non-admission/settlement contract.
+- [ ] C2. The worker found by the one `agents --json` is adopted into the host agent's table with its Linux identity, and liveness and stop go through the agent (test).
+  - failed: rev-36 [reviewer] · 2026-11-04T04:37:29.793Z · note Linux T3 native ownership failures: root-exit hook returned captured array instead of null; pre-signal descendant case refused identity instead of successful bounded recapture.
+- [x] C3. The session's hooks and mod bridge connect through the host's `hub.sock` and are dispatched as that session, and their settings carry host paths only (test).
+  - done: impl-1607 · 2026-11-04T04:17:24.149Z
 - [x] C4. Over several poll intervals no short-lived `claude` command runs on the host for the running row (test).
   - done: impl-1607 · 2026-11-03T23:33:49.321Z
 - [x] C5. The claude-code-adapter, claude-code-sessions and claude-code-schedule test files pass with no test edited.
@@ -183,3 +183,35 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; A-16489. Actual A16486 failure is 'Claude launch cleanup incomplete: failed generation remains supervised' at adapter1314 for both mapped Claude umasks, not baseline byte mismatch. T0/T1 passed; T2failed, T3/T4/Web unexecuted. C3failed; others unverified. Preserve production generic-error supervision; migrate synthetic no-native observer honestly, retain all exact baseline assertions/Codex/OpenCode cases, request fresh source review before rerun. No Reviewer execution.
 
 Criteria: C3 failed (Required mapped Claude launch preservation cases fail close with supervised failed generation; recording observer not migrated to typed non-admission/settlement contract.).
+
+### impl-1607 · 2026-11-04T04:17:24.286Z
+
+Pushed71baff0a9d2a805d98fbe2800e7c62f2da05d263 fixes forced mapped-Claude observer migration, no production edits. A-16493 includes all-hub/test consumer sweep and unaffected reasons,24file/373pass exact-head receipts and check. All marks done; fresh source review requested before verify.
+
+### rev-36 · 2026-11-04T04:18:10.736Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1607-source-5
+commit: 71baff0a9d2a805d98fbe2800e7c62f2da05d263
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Mapped recorder source correction clear; no findings. A-16494. Coordinatorb5ae44b1-approved mapped-Claude-only typed non-admission/launchClaude/hostForProcess observer, added private folder0700/files0600 assertions; all original golden bytes/transforms/deep equality and other branches unchanged. Complete observer consumer sweep and per-consumer unaffected reasons read/cross-checked; no production edit. A16493 exact-head local24files/373pass/current C5/native-boundary/recovery supplements inspected, no queued Linux claim. C1–C5 runtime-unverified; mode-free verify may proceed without redundant supplement runs absent changes. Prior failed runs remain failed. No Reviewer execution.
+
+### rev-36 · 2026-11-04T04:37:29.793Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1607-evidence-4
+commit: 71baff0a9d2a805d98fbe2800e7c62f2da05d263
+scope: evidence
+findings: [{"severity":"medium","text":"Linux 'hook born across root exit remains unacquired' fails: stopClaude returns a captured-target array where the retained assertion requires null. Native root/hook acquisition ordering needs diagnosis and an exact observed boundary; do not relabel the run or relax unacquired-writer assertions.","file":"hub/test/claude-code-remote.test.ts","line":146},{"severity":"medium","text":"Linux pre-signal descendant recapture case returns ok:false with 'could not stop worker: its process identity cannot be verified; it is still watched' where success is required. Diagnose the actual admission/birth/capture refusal before any retry or ownership-policy change.","file":"hub/test/claude-code-remote.test.ts","line":342}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence not clear; A-16501. A16500 actual two failures quoted: test146 actual captured Linux target array expectednull; test342 'could not stop worker: its process identity cannot be verified; it is still watched', false!==true. C2failed; no cause classification yet. Same-head run0d1c32ea T0/T1/T2pass,T3fail; T4/Webunexecuted, remainingT3deferred. Preserve process-authority gates and final assertions; diagnose exact native boundary before correction/retry. No overall pass from local supplements/report-only advisories. Reviewer ran no checks.
+
+Criteria: C2 failed (Linux T3 native ownership failures: root-exit hook returned captured array instead of null; pre-signal descendant case refused identity instead of successful bounded recapture.).
