@@ -15,7 +15,7 @@ regression_of: T-1674
 topic: topic-1383
 branch: t/T-1678-stopping-a-remote-claude-session-right
 created: 2026-11-04T15:25:21.631Z
-updated: 2026-11-04T16:12:02.115Z
+updated: 2026-11-04T18:14:34.652Z
 ---
 
 ## Summary
@@ -35,7 +35,9 @@ Capture the actual process records (PID, birth, parent, command) at both capture
 - [x] C1. The failing captures are recorded and the extra process classified (evidence).
   - done: impl-1678 · 2026-11-04T15:41:18.831Z
 - [ ] C2. An explicit stop issued immediately after a completed remote Claude turn, and one issued mid-turn while the root spawns hooks, both complete without a manual re-stop, 20/20 under load in an isolated Linux container (evidence).
+  - failed: rev-35 [reviewer] · 2026-11-04T17:57:11.492Z · note Current20/20 mid-turn campaign proves fresh-busy-followed-by-stop, without a deterministic active-turn/hook boundary.
 - [ ] C3. The existing claude-stop, claude-capture-concurrency and claude-code-remote controls pass unedited, except (a) controls asserting the superseded single-recapture budget or second-descendant-churn refusal, migrated to the convergence rule, (b) the three capture-concurrency controls whose fault seam now calls owner.capture explicitly, and (c) the unowned-orphan control, whose orphan is kept alive independently of SessionEnd and whose root-alive assertion becomes root TERM allowed with no signal to the orphan; each is listed in the review request (coord decisions c5caf575, e756201c and this one) (test).
+  - failed: rev-35 [reviewer] · 2026-11-04T18:14:34.652Z · note Retained pinned-hook retry still fails for a positively replaced root in the owner/reconciliation path; helper-only unit omits that replacement row.
 
 ## Comments
 
@@ -62,3 +64,41 @@ ac23003b root-first orphan adaptation implemented: SessionEnd no longer controls
 ### impl-1678 · 2026-11-04T16:12:02.115Z
 
 Complete consumer inventory supplement: runtime AgentProcesses and prepared.ts; stop policy callers claude-stop.test.ts and claude-code-remote.test.ts. sshHostFixture callers: claude-code-remote, host-ssh-contract, host-prepared, host-agent-restart, host-clone-integration, opencode-remote, codex-remote-agent, remote-discovery-host (all hub/test/*.test.ts); optional beforeSignals hook defaults absent, their old setup unchanged. captureForStop consumer prepared.ts, native concurrency test. Current docs host-agent.md, ssh-host.md table, test guides, implement skill/CHANGES and hub README pointer migrated. Stage4 QA brief keeps its pinned historical case-name/source assertions with explicit stage5 supersession note; no current stage5 QA requested (review-only). No wire or ProcessRow shape change; client parsers, snapshots, startup probes and persisted-record readers unaffected; existing prior-hello closure regression retained. New unresolved callback/fence is current-lifetime-only and grants absence settlement, never signals.
+
+### impl-1678 · 2026-11-04T17:51:44.832Z
+
+Source ready at58bce302794682b46e536fcfdd53d32d9891f9cf, pushed territory, clean tree, dev54ebacbe0 integrated before first review. C1 A-16603/A-16630; C2/C3 A-16653 final runtime+fixture hashes matched: Linuxarm64 Node24.21 core/expanded survival87 outcomes in12 selected files, native exits0; generated mid-turn20/20/completed20/20 production load finishes, peer7pairs perround and phase0, no cancellations/skips. Macarm64 Node24.21 selected8/8 exits0. Hub types,4 static lints and valid-Git-baseline full lint zero refusals; report diagnostics not gates. A-16651 consumer inventory. Three C3 migrations and real-Claude unverified graceful-shutdown assumption explicit in evidence; no wire/persisted shape/permissions/dependencies changed. Global durationreport unchanged, C216 allowances9/9/6 expires11-11. Earlier failed drafts excluded; configured x64 verification follows clear source verdict; stage5 review-only.
+
+### rev-35 · 2026-11-04T17:57:11.492Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1678-source-1
+commit: 58bce302794682b46e536fcfdd53d32d9891f9cf
+scope: full
+findings: [{"severity":"medium","text":"Do not mark unknown orphan ownership closed from root/known-birth and old-group absence: an unowned orphan can fork a detached unseen writer then exit. No native closure owner proves that writer gone; retain the fence until sufficient closure evidence.","file":"hub/src/host/agent/processes.ts","line":317},{"severity":"medium","text":"Permit retained owned-child retry after positive root exit/replacement: root-first can leave a pinned hook on incomplete stop, but every retry currently requires live root and returns before stopping that child. Preserve unknown-root refusal and no acquisition from vanished root.","file":"hub/src/host/agent/claude-stop.ts","line":62},{"severity":"medium","text":"Prove C2 mid-turn at native stop admission with a held fresh turn/hook gate: a fresh busy frame followed by stop can become post-turn under load, so current20/20 does not establish active-turn hook churn at the stop boundary.","file":"hub/test/claude-code-remote.test.ts","line":430}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Full source not clear:three medium findings, all confirmed by Implementer c46db60e/d0e4bd06/9354753c. A-16654 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16654-t-1678-source-not-clear-orphan-closure-retained-hook-retry-and-mid-turn-proof.md has traces/control requirements and Coordinator decisions. Root-first/convergence, explicit capture-seam/orphan fixture adaptations and graceful fake assumption are authorized; UID/initial-census/live-parent/birth/checkpoint safeguards otherwise inspected. Consumer/docs/skill/historicalQA migration checked; all27 closure hashes match. C1 failing process trace classification supports genuine hook churn; mark remains unverified. A-16653 independently matched15source hashes and structured20pass/case counts, but mid-turn semantics insufficient; selected Linuxarm64/macOS evidence supplemental, no configured x64/fullsuite/Web/browser/QA claim. C2/C3 failed. Escalate orphan closure semantics to Coordinator; fresh corrected-head source review before verification. No Reviewer execution/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C2 failed (Current20/20 mid-turn campaign proves fresh-busy-followed-by-stop, without a deterministic active-turn/hook boundary.), C3 failed (New absence-only settlement can release unseen orphan writers, and live-root guard strands retained owned hooks on retry.).
+
+### impl-1678 · 2026-11-04T18:04:33.372Z
+
+Review A-16654 supersedes C2/C3 claims in A-16653: previous 20 mid-turn-labelled executions prove busy-frame-followed-by-stop only. Implementing decision2e340de1: delete absence-only WeakMap closure; unknown authority stays held even after independent cleanup or detached child escape. Positive exited/replaced root permits only retained pinned-hook retry, with unknown-root refusal. Fresh native gate holds exact turn/hook, verifies native producer and unchanged completion count at root-signal seam, then observes a spawned child's birth+parent before TERM. Wire/ProcessRow shapes unchanged. Root/helper consumer/error searches cover all prior inventory consumers; named error preserves existing 'could not stop' substring plus authority-unknown cause. Fresh source review precedes new20/20 campaign and verify.
+
+### rev-35 · 2026-11-04T18:14:34.652Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1678-source-2
+commit: 6468d516ad7a951c96f79a6e73041f5a51e6803d
+scope: full
+findings: [{"severity":"medium","text":"Complete positive root-replacement retry in the owner: reconciliation still treats the retired root pin as unresolved, and #capture counts the replacement numeric root as an unowned member before helper retry. Retire/exclude only the positively replaced birth; never signal/acquire its replacement. Add owner-level observations containing the live replacement row.","file":"hub/src/host/agent/processes.ts","line":342}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full repair source not clear:one medium, confirmed7d4924ef. A-16656 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16656-t-1678-repair-not-clear-root-replacement-still-blocks-retained-hook-owner.md records real-owner/reconciliation/helper refusal trace. A-16654 unknown absence closure removed under Coordinator2e340de1; detached-escape/independent-cleanup rows remain held with named cause. Ordinary root-exit retained-hook retry and deterministic live turn/producer/new-child gate now covered in source; root-replacement owner path incomplete. Docs/guides/skill and all27 closure hashes checked. C3 failed,C1/C2unverified; C2 correctly pending new gated20/20. A-16655 macOSNode24.21 selected68/five exits0/static supplements, no fresh Linux/configured/fullsuite/Web/QA claim; old A-16653 campaign remains qualified busy-followed-by-stop. Fresh source review after correction before20/20/verify. No Reviewer runtime/probes/browser/edits/Git mutation/delegation.
+
+Criteria: C3 failed (Retained pinned-hook retry still fails for a positively replaced root in the owner/reconciliation path; helper-only unit omits that replacement row.).

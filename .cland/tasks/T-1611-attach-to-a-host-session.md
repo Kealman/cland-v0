@@ -2,8 +2,8 @@
 id: T-1611
 kind: task
 title: Attach to a host session
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1379
 branch: t/T-1611-attach-to-a-host-session
 created: 2026-11-02T03:33:58.041Z
-updated: 2026-11-04T17:01:55.992Z
+updated: 2026-11-04T18:20:41.917Z
+closed: 2026-11-04T18:20:41.917Z
 ---
 
 ## Summary
@@ -29,17 +30,21 @@ Hot files: `hub/src/adapters/sessions.ts`, `hub/src/adapters/claude-code.ts`, `h
 ## Acceptance criteria
 
 - [x] C1. For a session on a fake host, `cland session attach <name>` prints an `ssh -t` command with `ControlPath=none`, `ClearAllForwardings=yes`, `-a`, `-x`, `StrictHostKeyChecking=yes` and the host's `known_hosts`, running `cland host attach <name>`, and no secret appears in it (test).
-  - done: impl-1611 · 2026-11-04T15:43:31.263Z
   - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.738Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+  - done: impl-1611 · 2026-11-04T17:09:33.797Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-4 · 2026-11-04T17:37:36.395Z · commit 7aeb0416ff8b7a3286059f736985bd36df132ebc
 - [x] C2. On the host, `cland host attach <name>` execs each harness's attach with the session's environment under `stty susp undef`, and refuses a session that is not on that host (test).
-  - done: impl-1611 · 2026-11-04T16:21:22.986Z
   - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.739Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+  - done: impl-1611 · 2026-11-04T17:09:33.963Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-4 · 2026-11-04T17:37:36.395Z · commit 7aeb0416ff8b7a3286059f736985bd36df132ebc
 - [x] C3. Ending the attach process leaves the session running with the same identity (test).
-  - done: impl-1611 · 2026-11-04T15:25:22.853Z
   - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.739Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+  - done: impl-1611 · 2026-11-04T17:09:34.099Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-4 · 2026-11-04T17:37:36.395Z · commit 7aeb0416ff8b7a3286059f736985bd36df132ebc
 - [x] C4. The attach of a local session is unchanged: hub/test/cli.test.ts, hub/test/cli-session-credential.test.ts and the local attach assertions in the claude-code-adapter, codex-adapter and opencode-adapter test files pass with no test edited.
-  - done: impl-1611 · 2026-11-04T15:11:22.402Z
   - verified: rev-37 [reviewer] · run rev-37-1611-evidence-3 · 2026-11-04T17:01:55.739Z · commit 8d70abb9b00a32e31663bdafc53e67d2c75edf3e
+  - done: impl-1611 · 2026-11-04T17:09:34.354Z
+  - verified: rev-37 [reviewer] · run rev-37-1611-evidence-4 · 2026-11-04T17:37:36.395Z · commit 7aeb0416ff8b7a3286059f736985bd36df132ebc
 
 ## Notes
 
@@ -312,3 +317,72 @@ Earlier configured0878f347/A-16600 remains T1failed;8cdc1471/A-16613 remains T2c
 A-16636: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16636-t-1611-final-evidence-at-8d70abb9.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-37 · 2026-11-04T17:11:59.556Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1611-delta-1
+commit: 7aeb0416ff8b7a3286059f736985bd36df132ebc
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; no findings. A-16644 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16644-t-1611-survival-merge-delta-source-review-at-7aeb0416.md). Reviewed the authorized single dev merge against both parents: registry retains readiness plus terminal printer, Sessions retains guarded attach projection alongside coalesced recovery/shutdown joining, both docs sections and allowance sets survive. Attach cap/owner/expiry unchanged; Linux parent-head measurements now recorded accurately. A-16643 is supplemental local macOS arm64 Node24.21 exact-merge evidence (six files/53 pass), not configured verification. No C1-C4 newly verified: all require current-head run evidence. Prior A-16633 green applies only to parent 8d70abb9; fresh configured mode-free verification required at this merge head.
+
+### impl-1611 · 2026-11-04T17:12:39.605Z
+
+Coordinator-requested single dev merge resolved at7aeb0416ff8b7a3286059f736985bd36df132ebc, delta-clear rev-37-1611-delta-1/A-16644. Combined registry retains readiness/recovery+attach; docs and duration entries both sides; allowance reason now records actual A-16633 Linux samples (5.3s retained). Root typecheck and requested6 locked files pass53cases at merged head; A-16643 raw provenance. Mode-free exact-head verify admitted024ae009-aa75-4e04-97a1-221e03516f68. Parent866a0390/A-16633 remains parent-only5028green, not merged-head proof. No further source/dev changes; waiting result/final evidence.
+
+### rev-37 · 2026-11-04T17:37:36.395Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1611-evidence-4
+commit: 7aeb0416ff8b7a3286059f736985bd36df132ebc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1611 final evidence review at merged head
+
+Head: 7aeb0416ff8b7a3286059f736985bd36df132ebc.
+Run: rev-37-1611-evidence-4. Scope: evidence. Result: clear. Findings: [].
+Source verdict rev-37-1611-delta-1/A-16644 remains current. Branch ref is unchanged. Read-only canonical-tree reconstruction yields 5f51405feecb7f405ac7f56e96b88cadc6a66639, matching configured provenance (only the standard tracker/rules exclusions).
+
+Configured run 024ae009-aa75-4e04-97a1-221e03516f68 / A-16649: exit 0, aggregate 5031 pass, zero fail/cancel/skip/todo. Linux x64 6.8.0-142-generic, droplet c-8 sfo2, Node24.21.0, Neovim0.12.5, workers2, uncached execution. Isolated Chrome Headless Shell1248 at /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; reported Google Chrome for Testing156.0.8078.4.
+
+T0/allT1/fallback-allT2/Web and selected T3/T4 completed. T3 summary:3 files/10 identities once (host-attach5, native survival1, roles4); no T3 load repetitions. T4 inbox-verifier-load1 base execution, load repetitions skipped; remaining T3 deferred to merge batch. T2 includes new-case load repetitions. Selected-phase duration checks 41.977s and2.864s exclude machine wait and are not whole-run wall times. Budget/lint/ratchet notices remain report-only, including projected growth; no enforcement pass inferred from advisory output. Provenance skips[]; skipReasonCheck report/missing0. No GUI, real SSH service QA or real harness account claim.
+
+Independent streaming completion scan retained all outcomes before counting unique names:
+- host-attach5 unique/5 passing records
+- host-attach-routing3/18 (base3, load15)
+- host-survival2/12 (base2, load10)
+- host-survival-native1/1
+- host-contract-coverage6/11; roles-clauses39/39
+- launch-files6/11; codex-sandbox-host5/5; codex-remote-cleanup10/10; claude-code-host18/18
+- CLI9/9; CLI-session-credential9/9; roles4/4; inbox-verifier-load1/1
+No nonpass outcomes in these receipts.
+
+C1 verified: pinned separate SSH command/frozen local response control and native SSH-printer control pass. Both revoked/missing-key projection controls pass base+five repeats each, preserving launch/list/snapshot/unrelated rows while optional attach is null and explicit attach still refuses. Optional Host and clause guards pass.
+
+C2 verified: generated Claude, Codex and OpenCode native host-attach cases pass with private environment/stty/foreign-record and native-identity refusal assertions. Source-reviewed builtin export/direct exec and planted env-argv positive control remain intact. Forced publication/read fixtures and captured Host policy relaunch case pass.
+
+C3 verified: all three ordinary native attach clients exit with their separately owned session identity/liveness preserved; held Codex client failure joins termination and native close while retaining its session birth. Missing-exit rollback regression passes base+five load repeats, retaining child/undo/bytes and one acknowledged stop until the same captured exit resolves. Merged readiness retry/held-follow-up controls and the 20-second native three-harness survival case also pass at this head.
+
+C4 verified: the unchanged CLI pair each pass9/9 in configured Linux evidence. The three native adapter files were unexecuted in that run and were therefore obtained separately at the exact merge head, not inherited from A-16629.
+A-16650 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16650-t-1611-merged-head-native-c4-receipts) records sequential Coordinator-lock macOS arm64 Node24.21.0/no-browser execution: Claude adapter6, Codex adapter13, OpenCode adapter21; total40 pass/0fail/cancel/skip/todo, native exits0, signals unreported. Parsed all raw log summaries; independently matched all three recorded SHA256 source hashes to git show at reviewed commit. Claude binary launch/attach and Codex resume --remote/no-c/no-profile cases pass; complete OpenCode file preserves its local attach checks. Parent review established the five preservation files unedited from task base; read-only parent-to-merge comparison is also empty. This40-case supplement is not included in5031 and is not a Linux/full-tier claim.
+
+A-16643 supplemental exact-head local macOS attach/survival/SSH/recovery6files/53pass was checked against raw native summaries. A-16629's305cases and A-16633's5028pass remain ancestor-labelled; neither supplies current-head execution. Earlier failed0878f347 and cancelled8cdc1471 remain failed/incomplete history. Deferred batch coverage remains deferred.
+
+All C1-C4 verified at current head. No findings. Reviewer performed source/log reads only; no tests/typecheck/browser, edits or merge. Item QA policy none.
+
+A-16652: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16652-t-1611-merged-head-final-evidence-at-7aeb0416.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-04T18:20:41.917Z
+
+Merged f074cab362a520532a44a48440de6a5aa4924603 onto dev.

@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1382
 branch: t/T-1666-host-revoke-and-remove-settle-the-host
 created: 2026-11-03T22:56:19.713Z
-updated: 2026-11-04T17:00:37.593Z
+updated: 2026-11-04T17:24:23.891Z
 ---
 
 ## Summary
@@ -39,7 +39,7 @@ Found during T-1607 (coord decision 2026-11-03).
 ## Acceptance criteria
 
 - [x] C1. Revoking a host with a live Claude, Codex and OpenCode session stops each one and leaves no launch record, receipt or private config file on the host (test, fake host).
-  - done: impl-1666 · 2026-11-04T16:57:21.659Z
+  - done: impl-1666 · 2026-11-04T17:22:52.323Z
 - [x] C2. When the pre-revoke step cannot reach the agent, revoke still cuts authority within its deadline, and its output names each generation it left and what remains (test).
   - done: impl-1666 · 2026-11-04T17:00:37.593Z
 - [x] C3. No Host call reaches the agent after the authority cut (test).
@@ -136,3 +136,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear; A-16634, no findings. Prior identity/producer/native-test/stopped-and-exited retention gaps resolved. Optional positive OpenCode joined-closure callback persists exact owner before terminal notice; native-generation keys/exact clear/old storage compatibility preserve older unknown workers and fence shared files. Legacy status grants no signal/deletion authority. Indexed/yielded metadata scan, bounded partial inventory, residual file/admission reporting, joined storage lifecycle and post-cut warm-up fences checked; matching docs/consumer inventories/tests retained. T1672 rename scope remains separate per Coordinatorfe8bf627. C1–C3 runtime-unverified; C2 prior source finding resolved, implementation done mark needs restoration. A16632 local check/37focused preliminary only. Current T3/native+12 unchanged preservation unexecuted; older stale-setup samples not coverage. Coordinator11064f7c T1678 block remains: no verify/native diagnosis until shared fix + explicit authorized merge, then fresh changed-head review and required serial evidence. Reviewer no execution/edits/browser/delegation.
+
+### impl-1666 · 2026-11-04T17:11:05.584Z
+
+Rule 20 reboot seam sweep: searched retainHostGeneration, retainedHostGenerations, harness_host_retirements, nativeClosure, pendingStops, stages.stopped, stopIntent, hostGenerationClosed through hub/src, hub/test, nvim/test, docs and shipped skills (117 matches). Consumers: Sessions registration, failed-stop timer/restart/lifecycle, explicit revoke and retained metadata scan; ProcessTable persistence/prune/rename; OpenCode positive closure producer; dispatch/requests pending-stop projections; host-revoke/settlement, session-host/routing, name-reservation, process-identity/system-processes, Claude/Codex cleanup tests. Additive marker stays private in durable PendingStop, existing session.list projection unchanged. Existing Host/agent frames, recording Hosts, held-receipt helpers, T3/T4 raw readers and startup probes are unchanged. hostBootChanged is shared with T-1613 (identical canonical predicate from ad51d375a), no parallel parser. Reboot entry records closure only and fences native/file retries while preserving pending undo and all harness retirement obligations.
+
+### rev-36 · 2026-11-04T17:19:37.924Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1666-source-5
+commit: 94ff42843ff83eb060701e729075fcfc95e0e5fe
+scope: full
+findings: [{"severity":"medium","text":"Captured-Host native fencing reads only the retirement row's reboot marker. Successful metadata cleanup calls clearHostGeneration at193 and deletes that row before the final authority cut/later inventories; old captured run/spawn/stop/launchClaude/adopt calls become allowed again. Keep an independent exact-generation native fence and test receipt-clear→held inventory→pre/post-cut zero underlying native calls.","file":"hub/src/adapters/sessions.ts","line":225}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Changed-boot source not clear; A-16646. Coordinator9c5bf89e scope checked; requested public exact-owner closure/pending undo/shared canonical boot policy present. One medium authority-lifetime issue: guard at225 depends on retirement record erased after metadata hook at193; before cut, later awaited inventory permits old captured Host native calls again (run/spawn lack old-PID downstream fence). Preserve independent generation fence through resource completion and add exact boundary regression. Prior source A16634 unaffected otherwise; C1failed,C2/C3runtime-unverified. Local50+99/check evidence preliminary only. T1678 block remains, no native diagnosis/verify/dev merge requested. Reviewer no execution/edits/browser/delegation.
+
+Criteria: C1 failed (Changed-boot metadata retirement deletes its only native-operation fence before authority cut, reauthorizing captured old-generation Hosts.).
+
+### impl-1666 · 2026-11-04T17:20:58.327Z
+
+Review A-16646: confirmed red with new T2 completed-metadata/held-inventory boundary: captured old-boot native call reaches underlying Host after resource row deletion. Sweep hostGenerationRebooted/retainHostGeneration/persistence names through hub/src, hub/test, nvim/test, docs and skills: only Sessions captured-host/revoke guards and ProcessTable marker persistence consume the fence; projections and agent frames unchanged. Will store exact-generation boot fences independently of resource receipts with indexed lookup, no startup/history scan, retain old receipt compatibility through lazy preserve-before-clear, and add storage-reopen evidence. No native/verify/dev merge while T-1678 blocked.
+
+### rev-36 · 2026-11-04T17:24:23.891Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1666-source-6
+commit: fe72f1d7f30a804f59546c699b10c1e29c6d0768
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Changed-boot correction source clear; A-16648, no findings. Independent indexed exact-generation reboot fence now survives resource deletion/reopen/replacement; old resource markers preserve fence before clear. Captured Host copies native identity; all5 native methods check fence while reads/metadata remain available. Exact held-post-retirement two-storage-shape regression and new-birth positive control address A16646. Public signature unchanged, shared canonical policy/exact current-or-pending owner/preserved undo/all-harness resources and earlier settlement source reviewed. C1–C3 runtime-unverified. A16647 local52focused/99recovery/check evidence preliminary only; no current native12-file preservation/Linux/browser/verify. Source clear does not release Coordinator11064f7c T1678 block: await shared fix + explicit merge instruction, changed-head review, serial native/preservation and mode-free evidence. Reviewer no execution/edits/browser/delegation.

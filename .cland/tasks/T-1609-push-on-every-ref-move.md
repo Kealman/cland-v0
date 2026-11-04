@@ -3,7 +3,7 @@ id: T-1609
 kind: task
 title: Push on every ref move
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1380
 branch: t/T-1609-push-on-every-ref-move
 created: 2026-11-02T03:33:57.560Z
-updated: 2026-11-04T16:56:37.612Z
+updated: 2026-11-04T17:05:09.938Z
 ---
 
 ## Summary
@@ -29,12 +29,16 @@ Hot files: `hub/src/host/agent/watch.ts` (new), `hub/src/host/agent/server.ts` (
 
 - [x] C1. A commit in a fake host's task worktree reaches the territory's branch within 5 s, with no push by the session (test).
   - done: impl-1609 · 2026-11-04T16:04:05.902Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
 - [x] C2. An amend, a reset and a rebase in the worktree each reach the territory, and no `post-commit` hook is installed (test).
   - done: impl-1609 · 2026-11-04T15:03:35.930Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
 - [x] C3. A push the allow list refuses is reported in `ref-moved` with the refusal, retried at the next move, and never loops (test).
   - done: impl-1609 · 2026-11-04T15:31:37.812Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
 - [x] C4. Watches survive an agent restart, and a commit made while the agent was down is pushed after it is back (test).
   - done: impl-1609 · 2026-11-04T16:30:36.168Z
+  - verified: rev-35 [reviewer] · run rev-35-1609-final-1 · 2026-11-04T17:05:09.399Z · commit fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
 
 ## Notes
 
@@ -147,3 +151,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear, no findings. Exact sole changed file commands.json independently parsed: only HUB_USAGE changes, exactly inserting ' and named host ref-watch fences'; every other command byte and full deep-equality assertion unchanged. A-16624 resolved; consumer chain now listed in item. Production/native owners/runtime closure/test source unchanged from b70896c52 source clear. A-16627 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16627-t-1609-source-clear-frozen-hub-usage-consumer-migrated.md records limits. C1–C4 unverified. Reported local macOSNode24.21 compatibility/help19 supplemental; prior903c50a1/A-16623 remains failed parent evidence with T2/native/Web unexecuted. Exact-head configured mode-free verify may proceed, no new-head runtime pass yet. No Reviewer tests/probes/browser/edits/Git mutation/delegation.
+
+### rev-35 · 2026-11-04T17:05:09.399Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1609-final-1
+commit: fdd40ef64c05df3bfbbc40a677acf17f7d2bd06f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, no findings; C1–C4 verified at unchanged source-clear head. A-16640 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16640-t-1609-final-clear-exact-head-native-recovery-and-qualified-preservation-evidenc.md independently records A-16631 runfe6d10eb exit0/5033pass/zero fail,cancel,skip,todo. Actual native4 pass (9.766/5.057/1.532/5.249s), recovery13/compat3 each base+5load passes, status1/frozen usage1/help7; prior failure A-16623 stays failed. Linux layout18/Codex cleanup10/redactor4/closure4/stateguards8 pass. T0/allT1/fallbackallT2/changedT3once/Web completed; remainingT3 batch,T4 unexecuted. Uncached Linuxx64 Node24.21/Nvim0.12.5 HeadlessShell1248 ChromeForTesting156.0.8078.4 treed08ffc981c1a8a0a10b0faa94378b194d2acbb58;1297s/$0.0900 billing. Reports/projections not passes. A-16637 corrects A-16635 extraction: actual stop-on-failure15file loop/nativeexit0 retained at predecessor8dd, reported mandatory195+proxy14+native4=213; first stdout fragment truncated, source anchor contemporaneous not in-loop hash, no reconstructed output/current-head195 claim. All14 preservation/proxy test files unchanged; status production changed afterward, limits explicit. QA none. No Reviewer tests/probes/browser/edits/Git mutations/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
