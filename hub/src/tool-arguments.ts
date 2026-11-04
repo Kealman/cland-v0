@@ -17,6 +17,7 @@ const schemas = new Map<string, Schema>(TOOLS.map(tool => [tool.name, JSON.parse
 // Keep these wire-only inputs without advertising them as new MCP arguments.
 const wireSchemas = new Map([...schemas].map(([name, schema]) => [name, structuredClone(schema)]));
 // The spoke supplies the MCP default; direct wire callers still send an array.
+for(const tool of ['verify','task.edit'])wireSchemas.get(tool)!.properties.worktreeHead={type:'string'};
 wireSchemas.get('ask')!.required = ['topic', 'question', 'options'];
 Object.assign(wireSchemas.get('task.list')!.properties, {
   ids: { type: 'array', items: { type: 'string' } }, projection: { enum: ['summary'] },

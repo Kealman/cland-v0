@@ -1,6 +1,7 @@
 /** Existing exceptions are exact expressions plus their immediate context, never whole files.
  * Each new runtime path must register its reason here (T-1621 / E-1532 shared seam). */
 export const PATH_EXCEPTIONS = [
+  {file:'hub/suites.ts',expression:"hostVerifyDirectory(this.#root)",context:'',reason:'T-1610: scheduler owns detached per-run territory sources; retains private sibling identity receipts and queued/running/unreported sources through restart and removes after writer settlement/reporting. Startup sweeps sources without a pending run.'},
   {
     "file": "host/agent/state-paths.ts",
     "expression": "commandEnv.HOME",

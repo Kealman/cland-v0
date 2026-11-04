@@ -840,7 +840,7 @@ export type ClientHello = {
 };
 
 // hub/src/protocol.ts
-export type SuiteStart = { type: 'suite.start'; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: ExecutorKind };
+export type SuiteStart = { type: 'suite.start'; worktreeHead?: string; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: ExecutorKind };
 
 // hub/src/protocol.ts
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
@@ -1098,6 +1098,7 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  hostSnapshotLeftovers?: Array<{path:string;cause:string}> | null;
   hosts?: Array<{ watches?: Array<{path:string;branch:string;state:string;cause?:string}>; name: string; state: 'up' | 'connecting' | 'down'; since: string | null; reason?: string; lastProbe: { at: string; ok: boolean } | null; reconnects: number }>;
   /** Actual spoke listener address; absent on older or stdio-only hubs. */
   spokeBind?: string;
@@ -1196,7 +1197,7 @@ export type TaskRequest =
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
-      type: 'task.edit';
+      type: 'task.edit'; worktreeHead?: string;
       found_by?: FoundBy | null;
       status?: Status;
       version?: string | null;

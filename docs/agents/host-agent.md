@@ -354,3 +354,37 @@ identity/incomplete notices carry null native code and fence only that watch.
 `flush` scans immediately and joins pending pushes with a bound; unchanged refused
 heads do not retry. Close stops scheduling and joins native push/checkpoint
 writers; unresolved native ownership reports incomplete cleanup and retains state.
+
+### Publication admission
+
+On hosts cland pushes the task branch on every commit and other ref moves through
+the agent's leased ref-push owner. `cland verify` and `cland task edit --status ready`
+flush that same owner first. Automatic verdict-driven ready uses the same check.
+The remote CLI reports its HEAD; the hub reads the recorded worktree on its owning
+Host and compares the confirmed HEAD with the territory branch. An absent agent
+`ref-flush-v1` capability, fenced watch, unknown push, lease failure or differing HEAD refuses
+admission with a reason and both heads (unavailable facts say `unknown`). Local
+sessions retain their existing admission flow. Report the named cause to the item
+lead; a session directory is never a fallback source on the hub machine.
+
+Host verification runs from a hub-local detached territory checkout at the pinned
+SHA and branch. The scheduler owns `.cland/run/host-verify/<id>` from admission
+through queued/running execution and removes it after writer settlement and
+reporting. Startup sweeps snapshots without a surviving pending run. No Git
+maintenance is performed by this lifecycle.
+
+Each host verification source has a sibling private `<UUID>.json` ownership
+receipt capturing its parent and directory identities and preparation completion.
+The job keeps that admitted receipt across restart. Admission/reuse, execution
+and cleanup reject symlinked parents or replaced directories. A preparation
+interrupted before its ready checkpoint is abandoned and never completed or
+trusted. Re-admission creates a fresh unique path at the pinned SHA; each source
+UUID is its run identity, bounding abandoned sources to one per run. Cleanup checks
+the owning Git admin directory and common Git locks for at most 250 ms per sweep;
+`index.lock`, other `*.lock` files and `locked` keep it named in hub status. The next
+sweep removes it after those locks clear. No PID, signal, replay or Git maintenance
+authority is inferred from an abandoned receipt. Startup cleanup shares one attempt, isolates retained
+orphans and retries on later host admission after transient territory contention.
+An authenticated host launch or recorded host worktree keeps verify on this
+receipt path before the session's process row is published; unavailable placement
+refuses rather than using a hub-local task directory.

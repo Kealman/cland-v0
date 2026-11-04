@@ -1,3 +1,5 @@
+import { flushHostBranch } from '../host/flush.ts';
+import { territoryPath, territoryGitAsync } from '../territory.ts';
 import { tunnelStatuses } from '../transport/transport.ts';
 import { hostAuthorityRefusal } from '../host/host-authority.ts';
 import { HUMAN_USER_WRITES, localUserName } from './cli-user.ts';
@@ -45,7 +47,7 @@ import { DropletExecutor } from '../executor/droplet/droplet.ts';
 // in the Agents topic. Client calls carry human authority; the web edge checks its own explicit policy first.
 // Every call, a spoke's or a client's, is audited (`audit.ts`).
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
 import { Suites, releaseT3Cover, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type TestSlotWaiter, type SuiteSchedulerOptions } from './suites.ts';
 import { machineHealthSummary } from '../executor/droplet/health.ts';
@@ -386,6 +388,16 @@ export class Dispatcher {
       },
     }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
     void this.#mergeQueueReady.then(() => { if (!this.#closed) { landingReports?.reconcile(); this.#batches?.start(); } });
+    options.tracker?.useReadyAdmission(async view=>{
+      try{
+        if(view.claim)await this.#flushHostItem(view.id,view.claim.sessionId);
+        else if(options.core.store.hostWorktrees().some(row=>row.item===view.id))throw new Error('host-flush-refused: claimant unavailable; worktree HEAD unknown; territory HEAD unknown');
+      }catch(error){
+        const reason=error instanceof Error?error.message:String(error);
+        options.core.noticeTo(view.topic??AGENTS.id,{id:`host-ready-refused:${view.id}:${createHash('sha256').update(reason).digest('hex')}`,kind:'report',to:[`lead ${view.id}`],text:`${view.id} ready refused: ${reason}`});
+        throw error;
+      }
+    });
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     options.core.inbox.pairingCodes.onChange(() => this.#guard.changed());
     // what a read shows changed: no earlier answer is replayed
@@ -1097,6 +1109,19 @@ export class Dispatcher {
     });
   }
 
+  async #flushHostItem(item:string, sessionId:string, reported?:string):Promise<{head:string;branch:string}|undefined>{
+    const id=this.#options.tracker?.summary(item)?.id??item;
+    const host=this.#sessions?.hostForSession(sessionId);
+    const row=this.#options.core.store.hostWorktrees().find(row=>row.item===id);
+    if((!host||host.name==='local')&&!row)return;
+    if(!host||host.name==='local'||!row||row.host!==host.name)throw new Error('host-flush-refused: worktree owner unavailable; worktree HEAD unknown; territory HEAD unknown');
+    const root=this.#options.tracker!.root;
+    const head=await flushHostBranch(host,row,()=>territoryGitAsync(territoryPath(root),['rev-parse','--verify',`refs/heads/${row.branch}`],false,undefined,this.#options.env),reported);
+    const current=this.#options.core.store.hostWorktrees().find(current=>current.item===id);
+    if(!current||current.host!==row.host||current.path!==row.path||current.branch!==row.branch||this.#sessions?.hostForSession(sessionId).name!==host.name||this.#options.tracker?.summary(id)?.branch!==row.branch)throw new Error(`host-flush-refused: worktree ownership or item branch changed; worktree HEAD ${head}; territory HEAD ${head}`);
+    return {head,branch:row.branch};
+  }
+
   open(wire: Peer, transport: { authenticated: boolean; edge: string; hostId?: string; authorizeUpload?: () => void; ownsUploadBytes?: boolean; user?: () => import('./users.ts').User | null; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
     const uploads = new Set<Promise<unknown>>();
     const core = this.#options.core;
@@ -1379,7 +1404,15 @@ export class Dispatcher {
         }
         return sessionActor(caller, UNKNOWN_SESSION);
       } : undefined;
-      void answerTask(this.#options.tracker, frame, actor, resumed, currentActor)
+      const admission=async()=>{
+        if(frame.type==='task.edit'&&frame.status==='ready'&&callerNow){
+          const caller=callerNow();currentActor?.();
+          if(caller)await this.#flushHostItem(frame.item,caller.sessionId,frame.worktreeHead);
+          currentActor?.();
+        }
+        return answerTask(this.#options.tracker, frame, actor, resumed, currentActor);
+      };
+      void admission()
         .then(async (result) => {
           if (frame.type === 'task.view' && result.type === 'result' && result.ok && this.#options.journal) {
             const value = result.value as { item: ItemView };
@@ -2178,7 +2211,7 @@ export class Dispatcher {
               const { harnesses: _harnesses, ...compact } = full;
               const base = frame.history === true ? full : compact;
               const tracker = this.#options.tracker;
-              return { type: 'result', id: frame.id, ok: true, value: { ...base, hosts: tunnelStatuses(full.root, core.store.hosts.list()), mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(transport.edge !== 'gateway'), requests: { ...this.#guard.counters } } satisfies HubStatus };
+              return { type: 'result', id: frame.id, ok: true, value: { ...base, hostSnapshotLeftovers:this.#suites?this.#suites.hostSnapshotLeftovers():[], hosts: tunnelStatuses(full.root, core.store.hosts.list()), mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(transport.edge !== 'gateway'), requests: { ...this.#guard.counters } } satisfies HubStatus };
             };
             if (frame.flushLogs === true && control.flushLogs) {
               const resumed = this.#guard.resumer(frame.type, client);
@@ -2213,7 +2246,8 @@ export class Dispatcher {
       const claimed = caller ? this.#options.tracker?.list().find(item => item.kind === 'task' && item.state === 'open' && item.claim?.sessionId === caller.sessionId) : undefined;
       const input = { ...frame, ...(frame.cwd === undefined && claimed ? { cwd: taskWorktreePath(this.#options.tracker!.root, claimed.id) } : {}) };
       if (!isClientRequest(input) || input.type !== 'suite.start') return peer.send(Dispatcher.#failure(String(frame.id), new Error(`invalid verify request: ${suiteStartIssues(input).join('; ')}`)));
-      const request = input;
+      const remote=!!caller&&(!!hostId||(this.#sessions?.hostForSession(caller.sessionId).name??'local')!=='local'||!!claimed&&core.store.hostWorktrees().some(row=>row.item===claimed.id));
+      const request = remote ? {...input,cwd:this.#options.tracker!.root} : input;
       if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(request.id, new Error('suite cwd must be absolute')));
       const topic = request.report === undefined ? AGENTS.id : core.store.topic(request.report)?.id
         ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic ?? (request.dryRun ? AGENTS.id : undefined) : AGENTS.id);
@@ -2231,7 +2265,7 @@ export class Dispatcher {
           const own = tracker?.list().find(item => item.kind === 'task' && item.state === 'open'
             && item.claim && tracker.sameSession(item.claim.sessionId, current.sessionId)
             && item.id === core.store.topic(topic)?.item
-            && resolve(request.cwd) === taskWorktreePath(tracker.root, item.id));
+            && (remote ? claimed?.id===item.id : resolve(request.cwd) === taskWorktreePath(tracker.root, item.id)));
           const decision = decide(current.role, core.roles?.get().get(current.role!)?.permissions.tools,
             { tool: 'verify', claimed: () => !!own, verifyMode: request.mode, ...(request.occasion ? { verifyOccasion: request.occasion } : {}) });
           if (!decision.ok) throw new ToolForbidden(current.role, decision.permission, decision.reason);
@@ -2267,7 +2301,13 @@ export class Dispatcher {
         return frame;
       };
       try { authorize(); } catch (error) { return later('suite.start', failure(error).then(record)); }
-      later('suite.start', this.#suites.start({ mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result' as const, id: request.id, ok: true as const, value }), failure).then(record));
+      const submit=async()=>{
+        const source=remote&&caller&&claimed?await this.#flushHostItem(claimed.id,caller.sessionId,request.worktreeHead):undefined;
+        if(remote&&!source)throw new Error('host-flush-refused: claimed host task unavailable; worktree HEAD unknown; territory HEAD unknown');
+        authorize();
+        return this.#suites!.start({ ...(source?{source}:{}), mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: !source && (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize);
+      };
+      later('suite.start', submit().then(value => ({ type: 'result' as const, id: request.id, ok: true as const, value }), failure).then(record));
     };
 
     /** A read repeated too fast reuses its last answer without another audit. */

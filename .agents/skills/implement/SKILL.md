@@ -218,3 +218,10 @@ Remote terminal attach uses the launch-written private host record and a separat
 pinned-key SSH connection. Never print session credentials in the attach command.
 Use `cland host attach` on the host; ending its client leaves the session alive.
 See [terminal attach](../../../docs/hub/ssh-host.md#terminal-attach).
+
+Host task branches are published by cland on every commit/ref move. Verify and
+ready flush the existing leased agent publisher and require matching worktree
+and territory HEADs. A fenced watch, unknown push or mismatch refuses admission;
+resolve the named cause through the item lead. Verification uses a pinned,
+hub-local detached territory snapshot, never the host session directory. See
+[host publication admission](../../../docs/agents/host-agent.md#publication-admission).

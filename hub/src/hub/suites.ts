@@ -1,3 +1,4 @@
+import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktree, hostVerifyDirectory, type HostVerifySnapshot } from '../territory.ts';
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
 
@@ -16,7 +17,7 @@ import { realClock, type Clock, type ClockTimer } from './clock.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { aggregateSuiteLogs, readSuiteEvidence, retainedLoadProofs, suiteEvidence, suiteLogLines } from '../suite-log.ts';
-import { appendFile, copyFile, mkdir, readFile, writeFile, rename, rm, stat, open } from 'node:fs/promises';
+import { appendFile, copyFile, readdir, mkdir, readFile, writeFile, rename, rm, stat, open } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
@@ -73,6 +74,8 @@ export type SuiteJob = {
   remoteOutputAt?: number;
   remoteOutputOffset?: number;
   submissionKey?: string;
+  hostSource?: {head:string;branch:string};
+  hostSnapshot?: HostVerifySnapshot;
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string; notRun?: 'infrastructure' | 'provider-capacity' } | null;
@@ -371,6 +374,7 @@ export class Suites {
       .catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
     // Seed durable slots for a queue read that precedes the first tick. This never
     // gates a tick: an extra await here would delay inspection on a fake clock.
+    void this.#recoverHostSnapshots().catch(error=>this.#options.log?.({event:'host-verify-sweep-incomplete',error:String(error)}));
     this.#refreshLeases();
     // Scheduling and metrics share hub time; local workers retain OS deadlines.
     this.#waitTimer = (options.waitClock ?? this.#clock).setInterval(() => this.#waitMetrics.record(), 1000);
@@ -509,15 +513,51 @@ export class Suites {
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  #hostSnapshotSweepComplete=false;
+  #hostSnapshotLeftovers=new Map<string,string>();
+  hostSnapshotLeftovers(){return this.#hostSnapshotSweepComplete?[...this.#hostSnapshotLeftovers].map(([path,cause])=>({path,cause})):null;}
+  #hostSourceTail:Promise<unknown>=Promise.resolve();
+  #hostSnapshotRecovery: Promise<void> | undefined;
+  #recoverHostSnapshots():Promise<void>{
+    if(this.#hostSnapshotRecovery)return this.#hostSnapshotRecovery;
+    const work=this.#reaping.then(()=>this.#sweepHostSnapshots());this.#hostSnapshotRecovery=work;
+    void work.finally(()=>{if(this.#hostSnapshotRecovery===work)this.#hostSnapshotRecovery=undefined;}).catch(()=>{});
+    return work;
+  }
+  async #sweepHostSnapshots():Promise<void>{
+    const base=hostVerifyDirectory(this.#root);
+    const names=await readdir(base).catch(error=>{if(error.code==='ENOENT')return [];throw error;});
+    for(const name of new Set(names.map(name=>name.replace(/\.json$/,'')))){
+      if(!/^[a-f0-9-]{36}$/.test(name))continue;
+      const path=join(base,name);
+      if(this.#jobs.some(job=>job.cwd===path&&(!job.cleaned||!job.reported||job.state==='queued'||job.state==='running')))continue;
+      try{await removeHostVerifyWorktree(this.#root,path,this.#env);this.#hostSnapshotLeftovers.delete(path);}catch(error){this.#hostSnapshotLeftovers.set(path,String(error));this.#options.log?.({event:'host-verify-source-retained',path,error:String(error)});}
+    }
+    this.#hostSnapshotSweepComplete=true;
+  }
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}:${input.batch.diagnostic?.key ?? 'batch'}`, shell: true }, fresh: true };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
-    const work = this.#start(input, authorize);
+    const prepare = async()=>{
+      if(!input.source)return this.#start(input,authorize);
+      await this.#recoverHostSnapshots();
+      authorize();
+      const prior=this.#jobs.find(job=>job.hostSource&&this.#active(job)&&suiteOwner(job)===suiteOwner(input)&&job.head===input.source!.head&&job.branch===input.source!.branch);
+      if(prior){if(!prior.hostSnapshot)throw new Error('host snapshot ownership receipt unavailable');await validateHostVerifyWorktree(this.#root,prior.cwd,prior.hostSnapshot,this.#env);const reused=this.#existingSubmission({...input,cwd:prior.cwd},input.source.head,authorize);if(reused)return reused;}
+      const cwd=join(hostVerifyDirectory(this.#root),randomUUID());
+      let hostSnapshot:HostVerifySnapshot;
+      try{hostSnapshot=await hostVerifyWorktree(this.#root,cwd,input.source.head,this.#env);}
+      catch(error){await this.#recoverHostSnapshots();throw error;}
+      try{return await this.#start({...input,cwd,hostSnapshot},authorize);}
+      finally{if(!this.#jobs.some(job=>job.cwd===cwd))await removeHostVerifyWorktree(this.#root,cwd,this.#env,hostSnapshot);}
+    };
+    const work=input.source?this.#hostSourceTail.then(prepare):prepare();
+    if(input.source)this.#hostSourceTail=work.catch(()=>{});
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     if (input.batchPlanFrom && (!input.batch || input.batch.diagnostic || input.occasion !== 'batch')) throw new Error('pinned batch plan requires a full batch confirmation');
     const pinned = input.batchPlanFrom ? (await this.receipt(input.batchPlanFrom)).job : undefined;
     const config = this.#options.projectConfig?.();
@@ -548,11 +588,13 @@ export class Suites {
       const existing = this.#existingSubmission(input, await this.#candidate.head(input.cwd), authorize);
       if (existing) return existing;
     }
-    const id = randomUUID();
+    const id = input.hostSnapshot?input.hostSnapshot.path.split('/').at(-1)!:randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     const projectTest: SuiteSelection | undefined = runner ? undefined : { mode: 'full', files: [], reason: 'project test runs in full' };
     const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers, projectTest, !runner && Boolean(input.occasion && input.occasion !== 'batch'), Boolean(input.devT3Probe));
-    const { head, branch, tree, budgetBase } = candidate;
+    const { head, tree, budgetBase } = candidate;
+    const branch=input.source?.branch??candidate.branch;
+    if(input.source&&head!==input.source.head)throw new Error(`host-flush-refused: snapshot HEAD ${head}; pinned HEAD ${input.source.head}`);
     let admitted = projectTest ? { ...projectTest, ...(candidate.selection.fetchedDev ? { fetchedDev: candidate.selection.fetchedDev } : {}) } : candidate.selection;
     // The hosting hub owns landing. A candidate-local opt-in cannot promise
     // batch coverage while this hub can still land code directly.
@@ -633,7 +675,8 @@ export class Suites {
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
     const previousGreen = input.occasion === 'dev-t3' ? this.#jobs.findLast(job => job.occasion === 'dev-t3' && job.reported && job.outcome?.code === 0 && !job.cached && !job.cancelled && !job.requesterDied) : undefined;
-    const job: SuiteJob = { ...input, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const {source: hostSource, ...jobInput}=input;
+    const job: SuiteJob = { ...(hostSource?{hostSource}:{}), ...jobInput, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -852,6 +895,7 @@ export class Suites {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
     let remotePreExecution = false;
     try {
+      if(job.hostSource){if(!job.hostSnapshot)throw new Error('host snapshot ownership receipt unavailable');await validateHostVerifyWorktree(this.#root,job.cwd,job.hostSnapshot,this.#env);}
       // Share admission cleanup across concurrent shard launches; never scan on startup.
       await this.#rawCoverage.sweep(async line => { await appendFile(job.log, line); });
       if (job.shards) { await this.#launchShards(job); return; }
@@ -1571,6 +1615,7 @@ export class Suites {
           if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
           job.artifact = id; this.#save(job);
         });
+        if(job.hostSource&&job.cwd.startsWith(hostVerifyDirectory(this.#root)+'/')) await removeHostVerifyWorktree(this.#root,job.cwd,this.#env,job.hostSnapshot);
         job.reported = true; job.error = null; this.#save(job);
       });
     } catch (error) {
@@ -1797,5 +1842,5 @@ export class Suites {
     this.#waitTimer = null;
     if (timer) (this.#options.waitClock ?? this.#clock).clearInterval(timer);
   }
-  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
+  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#hostSnapshotRecovery; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
 }

@@ -10255,6 +10255,20 @@
     "hub/test/host-ref-watch-compat.test.ts::push environment removes inherited Git routes and installs only the owned Unix proxy override": 0.0006
   },
   "allow": {
+    "hub/test/host-flush-native.test.ts::interrupted ready publication is abandoned under its Git lock and fresh admission runs at a new path": {
+      "seconds": 7.558,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1610 approved abandonment control: local macOS Node24.21.0 assertion-passing four-case sample at 107b3bb65 was 5.038113 s, with T0 checks concurrently active. 7.558 s rounds 1.5x the worst observed sample upward. Includes initial-publication/native Git failures, post-Git checkpoint fault, ambiguous admin ownership, 250 ms lock censuses, restart, fresh admission, worker completion and abandoned cleanup; not isolated publication latency. No Linux/configured verification evidence claimed. C-216 owns fixture cost reduction; assertions and bounds retained."
+    },
+    "hub/test/host-flush-native.test.ts::queued host verification retains pinned territory snapshot through restart and removes it after completion": {
+      "seconds": 6.367,
+      "owner": "C-216",
+      "added": "2026-11-04",
+      "expires": "2026-11-11",
+      "reason": "T-1610 stage allowance: local macOS Node24.21.0 assertion-passing four-case sample at 107b3bb65 was 4.244567042 s, with T0 checks concurrently active. 6.367 s rounds 1.5x the worst observed sample upward. Includes native source preparation, replacement/reuse refusal, scheduler/store restarts, worker completion, cleanup and transient startup lock recovery; not isolated publication latency. C-216 owns fixture cost reduction; assertions and bounds retained."
+    },
     "hub/test/host-push-on-ref-move.test.ts::killed producer without result stays named and fenced until a later successful leased head": {
       "seconds": 11.33,
       "owner": "C-216",

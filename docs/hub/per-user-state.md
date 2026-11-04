@@ -56,3 +56,16 @@ run folder, never the hub HOME. `attach/<sha256(name)>.json` is mode 0600 with a
 0700 parent. The launch transaction owns publication and rollback; a relaunch
 replaces it. Retained stopped-session records are inert because attach rechecks
 the native birth. See [terminal attach](ssh-host.md#terminal-attach).
+
+| Project-local runtime path | Owner and lifetime |
+| --- | --- |
+| `.cland/run/host-verify/<UUID>` | Verification scheduler's detached territory source at the admitted SHA/branch. One source per pending run; retained while queued/running/unreported, including across hub restart. Removed after executor writers settle and evidence reports; startup sweeps sources with no surviving pending run. This is a hub-local source, never a host session directory. |
+
+Host verification sources also retain private sibling `<UUID>.json` receipts
+with captured root/parent/directory identities and completed-preparation state.
+The scheduler checkpoints the admitted receipt on its job and revalidates it
+before execution/removal. Replacement directories stay retained with a named cause. Preparing receipts
+are abandoned, never completed; a new admission gets a fresh source/run UUID.
+A bounded 250 ms Git-lock census gates abandoned cleanup; locked sources remain
+listed in `hub.status.hostSnapshotLeftovers` (null before the initial census). Transient startup cleanup failures are isolated and
+retried on later admission; they do not poison the scheduler's lifetime.

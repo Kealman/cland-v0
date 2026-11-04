@@ -8,6 +8,7 @@ import { fileOperations } from './files.ts';
 import { refPushEnvironment } from './ref-push.ts';
 import { HOST_ORIGIN } from './protocol.ts';
 import type { RefPushOwner, PushAdmission } from './ref-push.ts';
+export const REF_FLUSH_CAPABILITY = 'ref-flush-v1';
 export const REF_WATCH_CAPABILITY = 'ref-watch-v1';
 export const REF_WATCH_STATUS_CAPABILITY = 'ref-watch-status-v1';
 type Watch = { path:string; branch:string; signature?:string; head?:string; remote?:string; pending?:PushAdmission; result?:RunResult; decision?:string; recovering?:boolean; fences?:PushAdmission[]; fencedCause?:string; removal?:{root:string;dev:number;ino:number} };
@@ -87,7 +88,7 @@ export class RefWatches {
     const candidate=new Map(this.#rows);candidate.delete(path);await this.#save(candidate.values());this.#rows=candidate;return null;
   });}
   scan(){return this.#serial(()=>this.#scan(true));}
-  flush(){return this.#serial(async()=>{await this.#scan(true);await this.#drain();});}
+  flush(path?:string){return this.#serial(async()=>{await this.#scan(true);await this.#drain(path);if(path!==undefined){const row=this.#rows.get(path);if(!row||row.notice||row.fencedCause||row.pending||!row.result||row.result.code!==0||row.result.error)throw new Error(`watch ${path}: ${row?.notice??row?.fencedCause??row?.result?.error??(row?.result?.stderr||`push unconfirmed (exit ${row?.result?.code??'unknown'})`)}`);}});}
   async #drain(path?:string){
     for(const row of this.#rows.values())if(path===undefined||row.path===path){
       for(const fence of row.fences??[]){

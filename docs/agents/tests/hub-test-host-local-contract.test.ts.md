@@ -65,3 +65,6 @@ server to the returned freePort and observe listening before asserting its port;
 close it before root removal. Local forward/unforward preserve Unix-socket and
 loopback-port endpoints. The frozen layout keeps all supplied entries and derives
 run/log directories from the discovery file's parent.
+
+The reusable optional flush case asserts the local Host deliberately has no
+flushBranch implementation; local verification keeps its existing admission path.

@@ -123,3 +123,14 @@ test('a recovered peer is positively reobserved before clearing its cached same-
  const f=await fixture(t);await f.watches.scan();f.finish(0);await f.watches.scan();f.failMetadata(f.path);await f.watches.scan();assert.equal(f.watches.status()[0]?.state,'fenced');
  f.failMetadata('');await f.watches.scan();assert.equal(f.watches.status()[0]?.state,'watching');assert.equal(f.attempts.length,1,'same head reobservation does not replay push');await f.watches.close();
 });
+
+test('scoped flush refuses a confirmed failed lease without retrying the unchanged head',async t=>{
+ const f=await fixture(t);await f.watches.scan();f.finish(0,1);await f.watches.scan();
+ await assert.rejects(f.watches.flush(f.path),/push unconfirmed \(exit 1\)/);
+ assert.equal(f.attempts.length,1);await f.watches.close();
+});
+test('scoped flush confirms a settled publication and names a missing watch',async t=>{
+ const f=await fixture(t);await f.watches.scan();f.finish(0);await f.watches.scan();
+ await f.watches.flush(f.path);assert.equal(f.attempts.length,1);
+ await assert.rejects(f.watches.flush(join(f.root,'absent')),/watch .*absent.*push unconfirmed/);await f.watches.close();
+});

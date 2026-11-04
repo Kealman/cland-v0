@@ -66,3 +66,8 @@ The older-agent stat control replays an unknown-operation reply on the actual
 authenticated agent wire. Production SSH Host and LaunchFiles must reject before
 any mutation or undo entry, preserving the original file bytes/mode. Handshake
 and native-receipt queries are the only other requests; no local fallback runs.
+
+The reusable optional flush case calls the real SSH Host/agent on a disposable
+unregistered task path and requires its named watch refusal. Local absence and
+scripted successful drain/capability-absent refusal use the same exported
+optionalFlushHostContract in host-flush.test.ts; the inventory guard stays unedited.

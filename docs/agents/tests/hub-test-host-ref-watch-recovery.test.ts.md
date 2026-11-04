@@ -21,3 +21,7 @@ The direct status and checkpoint-event projection share one implementation. An
 inaccessible peer remains fenced when a healthy watch admits and settles a push.
 A recovered peer is reobserved before its cached same-signature notice clears;
 that observation does not replay its already-attempted head.
+
+Scoped publication flush requires a positive successful native result. A settled
+failed lease refuses without retrying its unchanged head; a successful publication
+and a missing-watch refusal keep the previous global flush contract intact.

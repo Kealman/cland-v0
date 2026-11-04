@@ -1,5 +1,5 @@
 import { refPushOwner } from './ref-push.ts';
-import { RefWatches, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './watch.ts';
+import { RefWatches, REF_FLUSH_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './watch.ts';
 import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY } from './claude.ts';
 import { processUsage } from './process-usage.ts';
 import { remoteCommandEnvironment } from './command-environment.ts';
@@ -109,7 +109,7 @@ export async function serveAgent(options: AgentOptions) {
               const valid = typeof secret === 'string' && Buffer.byteLength(secret) === Buffer.byteLength(options.secret) && timingSafeEqual(Buffer.from(secret), Buffer.from(options.secret));
               if (!valid || request.args.protocol !== AGENT_PROTOCOL) throw new Error('hello secret or protocol refused');
               authenticated = true; authenticatedConnections.add(connection);
-              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY] } }) + '\n');
+              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY, REF_FLUSH_CAPABILITY] } }) + '\n');
             } else {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
@@ -119,7 +119,7 @@ export async function serveAgent(options: AgentOptions) {
                 case 'watch': await watches.watch(String(request.args.path),String(request.args.branch));result=null;break;
                 case 'worktreeRemove': result=await watches.remove(String(request.args.path),String(request.args.root),async()=>{await operations.worktreeRemove!(request.args);return null;});break;
                 case 'unwatch': await watches.unwatch(String(request.args.path));result=null;break;
-                case 'flush': await watches.flush();result=null;break;
+                case 'flush': await watches.flush(typeof request.args.path==='string'?request.args.path:undefined);result=null;break;
                 case 'restore-claude': {const outcome=await restoreClaude();result=request.args.report===true?outcome:null;break;}
                 case 'adopt-claude': {
                   const worker=await claude.receipt(String(request.args.generation),worker=>processes.confirmedClosed(worker));

@@ -18,6 +18,14 @@ async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
 }
 
 export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean; endpoints?: Parameters<Host['forward']>[1][]; forward?: (endpoint: Awaited<ReturnType<Host['forward']>>) => void; layout?: ReturnType<Host['layout']> }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
+  register('Host optional branch flush preserves local absence and names unregistered worktrees', async () => {
+    const root=await mkdtemp(join(tmpdir(),'host-flush-contract-'));
+    try{
+      const host=factory(fixtureEnvironment(root,process.env));
+      await optionalFlushHostContract(host,host.name==='local'?undefined:{path:join(root,'absent'),branch:'t/contract',refusal:/watch .*push unconfirmed/});
+    }finally{await rm(root,{recursive:true,force:true});}
+  });
+
   register('Host writes exact bytes and mode, truncates, makes and removes only owned paths', async () => {
     const root = await mkdtemp(join(tmpdir(), 'host-writes-'));
     try {
@@ -429,4 +437,12 @@ export function optionalTerminalHostContract(host: Host, expected?: string): voi
     assert.equal(typeof host.terminalAttachCommand, 'function');
     assert.equal(host.terminalAttachCommand?.('worker'), expected);
   }
+}
+
+/** Optional locally; an admitted remote operation must settle or provide its explicit refusal. */
+export async function optionalFlushHostContract(host:Pick<Host,'flushBranch'>,expected?:{path:string;branch:string;refusal?:RegExp}):Promise<void>{
+  if(!expected){assert.equal(host.flushBranch,undefined);return;}
+  assert.equal(typeof host.flushBranch,'function');
+  if(expected.refusal)await assert.rejects(host.flushBranch!(expected.path,expected.branch),expected.refusal);
+  else await host.flushBranch!(expected.path,expected.branch);
 }

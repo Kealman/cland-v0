@@ -264,6 +264,8 @@
     "hub/test/host-clone.test.ts": "T1",
     "hub/test/host-command-environment.test.ts": "T1",
     "hub/test/host-contract-coverage.test.ts": "T1",
+    "hub/test/host-flush-native.test.ts": "T3",
+    "hub/test/host-flush.test.ts": "T1",
     "hub/test/host-git-daemon.test.ts": "T3",
     "hub/test/host-launch-layout.test.ts": "T2",
     "hub/test/host-lease-lock.test.ts": "T2",

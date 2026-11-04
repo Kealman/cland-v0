@@ -35,7 +35,7 @@ export type TaskRequest =
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
-      type: 'task.edit';
+      type: 'task.edit'; worktreeHead?: string;
       found_by?: FoundBy | null;
       status?: Status;
       version?: string | null;

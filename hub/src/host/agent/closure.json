@@ -94,7 +94,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "360e12fe9e874a5a636b78f896e342d5059ea18fda82f6fc8d6b081947bc470f"
+      "sha256": "f51830e1a61d60ef9322fda3f82631e4e23e3db3bbcee70cb02b41d22085cfa3"
     },
     {
       "path": "hub/src/host/agent/stat-directory.ts",
@@ -114,7 +114,7 @@
     },
     {
       "path": "hub/src/host/agent/watch.ts",
-      "sha256": "98a58fe1711e170694c7fc156e87ecd636bb3ead34c2b42bcec7feaf213261f8"
+      "sha256": "20171592fbf7779d139ffb5720c7ed97c9150702a52e374c13f8609669c09e96"
     },
     {
       "path": "hub/src/host/agent/worktree-install.ts",

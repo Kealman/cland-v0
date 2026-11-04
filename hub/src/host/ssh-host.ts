@@ -1,3 +1,4 @@
+import { REF_FLUSH_CAPABILITY } from './agent/watch.ts';
 import { MissingClaudeGeneration } from './host.ts';
 import { CLAUDE_LAUNCH_CAPABILITY } from './agent/claude.ts';
 import { randomUUID } from 'node:crypto';
@@ -152,6 +153,16 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
     name:o.name, ...(o.terminalAttachCommand ? {terminalAttachCommand:o.terminalAttachCommand} : {}), limitPolls:false, layout: () => Object.freeze({...o.layout}),
+    flushBranch: async (path,branch) => {
+      mutation();
+      const connection=await connected();
+      if(!connection.hello.capabilities?.includes(REF_FLUSH_CAPABILITY)) throw new Error('agent ref-flush-v1 capability unavailable');
+      await connection.request('flush',{path},75000);
+      let rows:Array<{path:string;branch:string;state:string;cause?:string}>=[];
+      await readRefWatchStatus(connection,value=>{rows=value;});
+      const row=rows?.find(row=>row.path===path&&row.branch===branch);
+      if(!row||row.state!=='watching') throw new Error(`watch ${path}: ${row?.cause??'watch unavailable'}`);
+    },
     writeFile: async (path,bytes,options) => { mutation(); await rpc('writeFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}); },
     publishFile: (path,bytes,options) => prepared<boolean>('publishFile',{path,bytes:Buffer.from(bytes).toString('base64'),options}),
     appendFile: async (path,bytes) => {await prepared<null>('appendFile',{path,bytes:Buffer.from(bytes).toString('base64')});},

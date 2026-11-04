@@ -1,3 +1,4 @@
+import { gitIn } from '../tracker/verdict-git.ts';
 // `cland task <create|view|plan|list|comment|edit|close|link|claim>`: the tracker through the project's hub, over
 // its Unix socket. Every write goes through the hub; this side only parses arguments and prints.
 import { readFileSync } from 'node:fs';
@@ -361,7 +362,8 @@ export async function runTask(args: string[], cwd: string = process.cwd(), io: I
   }
   let value: Record<string, unknown>;
   try {
-    value = (await askHubFrame(d, frame, 10_000, env)) as Record<string, unknown>;
+    if(d.remote&&frame.type==='task.edit'&&frame.status==='ready')frame.worktreeHead=await gitIn(cwd,env)(['rev-parse','--verify','HEAD'])??'unknown';
+    value = (await askHubFrame(d, frame, d.remote?90_000:10_000, env)) as Record<string, unknown>;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const unreachable = (err as NodeJS.ErrnoException).code !== undefined;

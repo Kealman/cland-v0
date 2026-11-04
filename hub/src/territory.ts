@@ -1,3 +1,4 @@
+import { fileOperations } from './host/agent/files.ts';
 import { TerritoryBusy, territoryLockContext } from './territory-lock-context.ts';
 import type { Host } from './host/host.ts';
 import { removeWorktreeWithFixtures } from './fixture-processes.ts';
@@ -6,8 +7,8 @@ import { parseItemReference } from './tracker/prefixes.ts';
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
 import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
-import { access, lstat, mkdir, realpath, stat } from 'node:fs/promises';
-import { join, resolve, relative, isAbsolute, sep } from 'node:path';
+import { access, lstat, mkdir, realpath, stat, readFile, unlink, readdir, rmdir } from 'node:fs/promises';
+import { dirname, join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MergeError } from './merge.ts';
 import { lintHubShardTree, ShardManifestError } from './suite-shards.ts';
 import { durationBudgetContext, DurationInspectionError } from './suite-duration-context.ts';
@@ -995,4 +996,128 @@ export async function reconcileTaskCheckout(root: string, receipt: { commit: str
   resumed(() => {
     if (finalTip !== target || finalCheckout !== receipt.base) throw new Error('the root checkout or base changed during landing reconciliation; try again');
   });
+}
+
+/** Durable directory authority, captured before Git is admitted. */
+export type HostVerifySnapshot={version:1;path:string;head:string;realRoot:string;parents:Array<{dev:number;ino:number}>;directory:{dev:number;ino:number};ready:boolean};
+export const hostVerifyDirectory=(root:string)=>join(root,'.cland','run','host-verify');
+async function snapshotParents(root:string,path:string,expected?:HostVerifySnapshot){
+  const base=hostVerifyDirectory(root);
+  if(dirname(path)!==base||! /^[a-f0-9-]{36}$/.test(path.slice(base.length+1)))throw new Error('host snapshot outside owned namespace');
+  const unsafe=await symlinkOnPathAsync(root,path,work=>work());
+  if(unsafe!==null)throw new Error(`host snapshot refusing symlink ${unsafe}`);
+  const realRoot=await realpath(root);
+  const parents=[];
+  for(const parent of [root,join(root,'.cland'),join(root,'.cland','run'),base]){
+    const info=await stat(parent);if(!info.isDirectory())throw new Error('host snapshot parent is not a directory');
+    parents.push({dev:info.dev,ino:info.ino});
+  }
+  if(await realpath(base)!==join(realRoot,'.cland','run','host-verify'))throw new Error('host snapshot confinement changed');
+  if(expected&&(realRoot!==expected.realRoot||JSON.stringify(parents)!==JSON.stringify(expected.parents)))throw new Error('host snapshot parent identity changed; kept');
+  return {realRoot,parents};
+}
+async function hostVerifyReceipt(root:string,path:string,expected?:HostVerifySnapshot,allowPreparing=false):Promise<HostVerifySnapshot>{
+  await snapshotParents(root,path,expected);
+  const marker=await lstat(path+'.json');if(!marker.isFile()||marker.isSymbolicLink())throw new Error('host snapshot receipt unavailable');
+  const saved=JSON.parse(await readFile(path+'.json','utf8')) as HostVerifySnapshot;
+  if(saved.version!==1||saved.path!==path||(!saved.ready&&!allowPreparing)||! /^[a-f0-9]{40,64}$/.test(saved.head)||expected&&JSON.stringify(saved)!==JSON.stringify(expected))throw new Error('host snapshot receipt differs; kept');
+  await snapshotParents(root,path,saved);
+  return saved;
+}
+export async function validateHostVerifyWorktree(root:string,path:string,expected?:HostVerifySnapshot,env:NodeJS.ProcessEnv=process.env):Promise<HostVerifySnapshot>{
+  const saved=await hostVerifyReceipt(root,path,expected);
+  const info=await lstat(path);
+  if(!info.isDirectory()||info.isSymbolicLink()||info.dev!==saved.directory.dev||info.ino!==saved.directory.ino)throw new Error('host snapshot directory identity changed; kept');
+  const head=await territoryGitAsync(path,['rev-parse','--verify','HEAD'],false,undefined,env);
+  if(head!==saved.head)throw new Error('host snapshot HEAD changed; kept');
+  await snapshotParents(root,path,saved);
+  const after=await lstat(path);if(after.dev!==saved.directory.dev||after.ino!==saved.directory.ino||after.isSymbolicLink())throw new Error('host snapshot directory identity changed; kept');
+  return saved;
+}
+/** Scheduler-owned detached source. Keep through queued/running receipts, remove after writer settlement. */
+export async function hostVerifyWorktree(root:string,path:string,head:string,env:NodeJS.ProcessEnv=process.env):Promise<HostVerifySnapshot>{
+  if(! /^[a-f0-9]{40,64}$/.test(head))throw new Error('invalid host verification head');
+  return withTerritoryLockAsync(root,async()=>{
+    const unsafe=await symlinkOnPathAsync(root,path,work=>work());if(unsafe!==null)throw new Error(`host snapshot refusing symlink ${unsafe}`);
+    await mkdir(dirname(path),{recursive:true});
+    const parents=await snapshotParents(root,path);
+    await mkdir(path);const info=await lstat(path);
+    const record:HostVerifySnapshot={version:1,path,head,...parents,directory:{dev:info.dev,ino:info.ino},ready:false};
+    let gitAdmitted=false,receiptPublished=false;
+    try{
+    if(!await fileOperations.publishFile(path+'.json',Buffer.from(JSON.stringify(record)),{mode:0o600}))throw new Error('host snapshot receipt already exists; kept');
+    receiptPublished=true;
+    await snapshotParents(root,path,record);
+    gitAdmitted=true;
+    await territoryGitAsync(territoryPath(root),['worktree','add','--detach',path,head],false,undefined,env);
+    await snapshotParents(root,path,record);
+    const after=await lstat(path);if(after.dev!==info.dev||after.ino!==info.ino)throw new Error('host snapshot replaced during preparation; kept');
+    record.ready=true;await fileOperations.publishFile(path+'.json',Buffer.from(JSON.stringify(record)),{mode:0o600,replace:true});
+    return await validateHostVerifyWorktree(root,path,record,env);
+    }catch(error){
+      if(!gitAdmitted){
+        await snapshotParents(root,path,record);
+        const current=await lstat(path);
+        if(current.dev!==record.directory.dev||current.ino!==record.directory.ino||current.isSymbolicLink())throw new Error('host snapshot directory identity changed; kept');
+        await rmdir(path);
+        if(receiptPublished)await unlink(path+'.json').catch(failure=>{if(failure.code!=='ENOENT')throw failure;});
+      }
+      // This run is abandoned. A subsequent admission owns a fresh UUID, never this path.
+      throw error;
+    }
+  });
+}
+export async function removeHostVerifyWorktree(root:string,path:string,env:NodeJS.ProcessEnv=process.env,expected?:HostVerifySnapshot):Promise<void>{
+  await withTerritoryLockAsync(root,async()=>{
+    await snapshotParents(root,path,expected);
+    const entries=await territoryGitAsync(territoryPath(root),['worktree','list','--porcelain'],false,undefined,env);
+    const registered=entries.split('\n').includes(`worktree ${path}`);
+    const present=await lstat(path).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+    if(registered||present){
+      const saved=await hostVerifyReceipt(root,path,expected,true);
+      if(saved.ready)await validateHostVerifyWorktree(root,path,expected,env);
+      await snapshotGitLocksClear(root,path,registered);
+
+      await snapshotParents(root,path,saved);
+      const current=await lstat(path);if(current.dev!==saved.directory.dev||current.ino!==saved.directory.ino||current.isSymbolicLink())throw new Error('host snapshot directory identity changed; kept');
+      if(registered)await territoryGitAsync(territoryPath(root),['worktree','remove','--force',path],false,undefined,env);
+      else await rmdir(path);
+    }
+    await snapshotParents(root,path,expected);
+    const marker=await lstat(path+'.json').catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+    if(marker)await hostVerifyReceipt(root,path,expected,true);
+    await unlink(path+'.json').catch(error=>{if(error.code!=='ENOENT')throw error;});
+  });
+}
+
+/** Approved abandonment policy: bounded census only, never PID/signal recovery or native replay. */
+async function snapshotGitLocksClear(root:string,path:string,registered:boolean):Promise<void>{
+  const territory=territoryPath(root),admin=join(territory,'worktrees');
+  const gitdirs:string[]=[];
+  for(const name of await readdir(admin).catch(error=>{if(error.code==='ENOENT')return [];throw error;})){
+    const directory=join(admin,name);
+    const unsafe=await symlinkOnPathAsync(root,directory,work=>work());if(unsafe!==null)throw new Error('host snapshot Git admin symlink; kept');
+    const owner=await readFile(join(directory,'gitdir'),'utf8').catch(error=>{throw new Error(`host snapshot Git owner unavailable: ${directory}: ${String(error)}; kept`);});
+    if(owner.trim()===join(path,'.git'))gitdirs.push(directory);
+  }
+  if(registered&&gitdirs.length!==1)throw new Error('host snapshot Git owner unavailable: registered source needs one matching admin directory; kept');
+  const deadline=Date.now()+250;
+  for(;;){
+    let lock:string|undefined,work=0;
+    const pending=[...gitdirs];
+    for(const name of await readdir(territory))if(name.endsWith('.lock'))lock=join(territory,name);
+    while(pending.length){
+      const directory=pending.pop()!;
+      for(const entry of await readdir(directory,{withFileTypes:true})){
+        if(++work>256)throw new Error('host snapshot Git lock census budget exceeded; kept');
+        const file=join(directory,entry.name);
+        if(entry.isSymbolicLink())throw new Error('host snapshot Git admin symlink; kept');
+        if(entry.name.endsWith('.lock')||entry.name==='locked')lock=file;
+        if(entry.isDirectory())pending.push(file);
+      }
+    }
+    if(!lock)return;
+    if(Date.now()>=deadline)throw new Error(`host snapshot cleanup pending: Git lock ${lock}`);
+    await new Promise(resolve=>setTimeout(resolve,20));
+  }
 }

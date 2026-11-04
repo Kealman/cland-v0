@@ -623,6 +623,7 @@ export function suiteStartIssues(f: Record<string, unknown>): string[] {
   if (typeof f.cwd !== 'string') issues.push('cwd must be an absolute directory; supply cwd when no item is claimed');
   if (!['auto', 'all', 'hub', 'nvim'].some(mode => mode === f.mode)) issues.push('mode must be auto, all, hub or nvim');
   if (f.executor !== undefined && !['local', 'droplet'].some(executor => executor === f.executor)) issues.push('executor must be local or droplet');
+  if (f.worktreeHead !== undefined && typeof f.worktreeHead !== 'string') issues.push('worktreeHead must be a string');
   if (f.report !== undefined && typeof f.report !== 'string') issues.push('report must be a string');
   if (f.to !== undefined && !(Array.isArray(f.to) && f.to.every(value => typeof value === 'string'))) issues.push('to must be an array of strings');
   if (f.occasion !== undefined && !isVerifyOccasion(f.occasion)) issues.push(`occasion must be ${Object.values(VERIFY_OCCASIONS).join(', ')}`);
@@ -635,7 +636,7 @@ export function suiteStartIssues(f: Record<string, unknown>): string[] {
   return issues;
 }
 
-export type SuiteStart = { type: 'suite.start'; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
+export type SuiteStart = { type: 'suite.start'; worktreeHead?: string; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 /** Targeted-test admission; no reservation, but a refused session arms one wake-up. */
 export type SuiteSlotCheck = { type: 'suite.slot'; id: string; check: true; lease?: { pid: number; started: string; token: string } };
@@ -891,6 +892,7 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  hostSnapshotLeftovers?: Array<{path:string;cause:string}> | null;
   /** Optional for compatibility with earlier hubs. No probe is performed by status. */
   hosts?: import('./transport/transport.ts').HostTunnelStatus[];
   /** Actual spoke listener address; absent on older or stdio-only hubs. */

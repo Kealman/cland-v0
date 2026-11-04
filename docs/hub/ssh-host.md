@@ -265,3 +265,20 @@ The host command reads only that agent's run folder, refuses missing, unsafe or
 non-live records, sets cwd, runs `stty susp undef`, and execs the harness client.
 Closing the client never invokes the session stop path. A session launched before
 this capability has no attach record and requires a relaunch to use host attach.
+
+### Verification publication boundary
+
+Host verify and both explicit and automatic ready flush the agent's existing
+leased ref-push owner. The hub compares the owning worktree HEAD with the territory
+branch; unknown/fenced pushes and mismatches refuse with both heads named. The
+CLI's optional `worktreeHead` is corroborated through the owning Host, never used
+as authorization. Old local request shapes remain valid. Old agents without `ref-flush-v1`
+cannot establish this receipt and explicitly refuse host admission.
+Verification records the pinned territory SHA and branch and uses the scheduler's
+hub-local detached source; see [publication admission](../agents/host-agent.md#publication-admission).
+
+Interrupted snapshot preparations are abandoned, never resumed or completed.
+Re-admission derives a fresh source/run UUID from its pinned SHA. Abandoned cleanup
+checks Git admin/common lock files for at most 250 ms per sweep; locked paths stay
+listed in hub status and a later sweep removes them once locks clear. The status
+field is optional for older hubs and null while its initial census is pending.

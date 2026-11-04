@@ -1,3 +1,4 @@
+import { gitIn } from '../tracker/verdict-git.ts';
 // Full suites are hub-owned jobs: the CLI only submits the run and exits.
 import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
@@ -76,7 +77,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
   // Materialize the default for running hubs whose prior validator requires report.
   const defaultReport = values.report === undefined && !values['dry-run'];
-  const result = await ask(d, { type: 'suite.start', mode, cwd, dryRun: values['dry-run'] ?? false, ...(values.diagnostics ? { diagnostics: true } : {}), ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: defaultReport ? 'agents' : values.report, ...(values.to ? { to: values.to } : defaultReport ? { to: ['coordinator'] } : {}) }, values.diagnostics ? 120_000 : 15_000).catch(error => {
+  const result = await ask(d, { type: 'suite.start', ...(d.remote?{worktreeHead:await gitIn(cwd,options.env??process.env)(['rev-parse','--verify','HEAD'])??'unknown'}:{}), mode, cwd, dryRun: values['dry-run'] ?? false, ...(values.diagnostics ? { diagnostics: true } : {}), ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: defaultReport ? 'agents' : values.report, ...(values.to ? { to: values.to } : defaultReport ? { to: ['coordinator'] } : {}) }, values.diagnostics ? 120_000 : d.remote ? 90_000 : 15_000).catch(error => {
     if (!(error instanceof HubTimeout) || !error.requestSent || values['dry-run']) throw error;
     const err = options.err ?? ((text: string) => { process.stderr.write(text); });
     err(`cland: submission sent; no reply within ${error.timeoutMs / 1000} s; check \`cland verify queue\` before resubmitting\n`);

@@ -361,6 +361,8 @@ export class Tracker {
   #explorer: ExplorerFieldsIndex | undefined;
   readonly #announced = new Map<string, ItemSummary>();
   readonly #announcedVerdicts = new Map<string, IndexedVerdict[]>();
+  #readyAdmission: ((view:ItemView)=>Promise<void>) | undefined;
+  useReadyAdmission(check:(view:ItemView)=>Promise<void>):void {this.#readyAdmission=check;}
   #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
   #stageCovers: () => StageCover[] = () => [];
   #stageCoverKey = '[]';
@@ -691,6 +693,7 @@ export class Tracker {
         }, resumed, undefined, undefined, undefined, async () => {
           // Native writes may yield for seconds. Re-read Git and file evidence just before rename;
           // a verdict, hand edit or commit observed after preparation invalidates that preparation.
+          if(desired==='ready')await this.#readyAdmission?.(this.#viewOf(id,file,parsed));
           const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
           await this.#fresh.refresh(resumed);
           const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');

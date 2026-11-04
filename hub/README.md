@@ -51,3 +51,10 @@ Add subsystem text to its file; keep this index as pointers.
 - [Standing duration allowance owners](../docs/hub/standing-duration-allowance-owners.md)
 - [Setup and doctor remote readiness](../docs/hub/setup-and-doctor-remote-readiness.md)
 - [Declining an accepted verifier request (T-1494)](../docs/hub/declining-an-accepted-verifier-request-t-1494.md)
+
+Host verify and ready admission flush the leased agent publisher and require
+matching worktree/territory HEADs. The scheduler owns a detached territory source
+through queued execution and restart; see [publication admission](../docs/agents/host-agent.md#publication-admission).
+Abandoned source preparations use a fresh run UUID on re-admission; bounded Git-lock
+cleanup retains named leftovers in hub status until locks clear. This path uses
+no PID/signal authority or Git maintenance.

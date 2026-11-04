@@ -31,6 +31,8 @@ export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: 
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
   readonly name: string;
+  /** Drain the existing leased agent ref-push owner; absent agents refuse admission. */
+  flushBranch?(path: string, branch: string): Promise<void>;
   /** Separate human terminal connection; absent on older/test Hosts. */
   terminalAttachCommand?(name: string): string;
   readonly layout: (input: HostLaunchLayoutInput) => HostLaunchLayout;
