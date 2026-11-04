@@ -3,7 +3,7 @@ id: T-1609
 kind: task
 title: Push on every ref move
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:57.560Z
-updated: 2026-11-02T03:33:57.560Z
+updated: 2026-11-04T14:51:39.825Z
 ---
 
 ## Summary

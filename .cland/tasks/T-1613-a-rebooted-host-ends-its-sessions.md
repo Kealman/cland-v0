@@ -3,7 +3,7 @@ id: T-1613
 kind: task
 title: A rebooted host ends its sessions
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:58.539Z
-updated: 2026-11-02T03:33:58.539Z
+updated: 2026-11-04T14:51:41.156Z
 ---
 
 ## Summary

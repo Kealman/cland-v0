@@ -16,7 +16,7 @@ follows:
 topic: topic-1362
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-04T11:50:36.683Z
+updated: 2026-11-04T14:51:39.037Z
 ---
 
 ## Goal
@@ -293,3 +293,88 @@ Secret scans detected their planted positive controls before checking output. Al
 
 
 Evidence: A-16347, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16347-e-1532-stage-3-qa-at-8c9f569c/report.md.
+
+### qa-678 · 2026-11-04T14:51:39.037Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-s4-2026-11-04-qa678-1
+commit: eb1fe370f93f193b8d96b1b0e97d5d346a3f6b78
+stage: harnesses and git on hosts
+stage_hash: 89c79b3eb78c91ee0bebeba807d7cf5346677ea41ea1547ffa3a5fe7343f95b8
+findings: [{"severity":"low","text":"Found aside, Bugs/S, T-1676: E1532S4-16 original census15 entries; isolated current/stage3 runs reproduce fallback endpoints, regular Codex placeholders and receipts after owned roots are removed, with no live listeners or owners. Coordinator classified this as pre-existing; authorised literal cleanup and corrected census pass.","file":"hub/test/harness.ts","line":956},{"severity":"low","text":"Found aside, Bugs/S, T-1677: supplemental current/stage3 runs with70-byte TMPDIR both failed literal hub.sock expectation (actual hashed fallback); original61-byte length gives6/6 on both. Original scoped row08 passed. Both failing diagnostic captures retained.","file":"hub/test/scenarios/hub-lifecycle.test.ts","line":21}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Surface | Result | Observation / evidence |
+| --- | --- | --- | --- |
+| S0 | hub-api | PASS | Sealed environment and exact pinned Neovim PATH; [S0-env-corrected.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/S0-env-corrected.txt) |
+| E1532S4-00 | hub-api | PASS | Build, dev, stage eligibility and landed heads; [E1532S4-00.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-00.txt) |
+| E1532S4-01 | hub-api | PASS | Source boundaries and allowed landing deltas; [E1532S4-01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-01.txt) |
+| E1532S4-02 | hub-api | PASS | Workspace typecheck; [E1532S4-02.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-02.txt) |
+| E1532S4-03 | hub-api | PASS | OpenCode: 69 tests / 5 files; [E1532S4-03.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-03.txt) |
+| E1532S4-04 | hub-api | PASS | Codex: 106 tests / 11 files; [E1532S4-04.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-04.txt) |
+| E1532S4-05 | hub-api | PASS | Claude: 185 tests / 12 files; [E1532S4-05.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-05.txt) |
+| E1532S4-06 | hub-api | PASS | Clone, worktrees and CLI: 41 tests / 7 files; [E1532S4-06.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-06.txt) |
+| E1532S4-07 | hub-api | PASS | Agent restart/version/closure: 65 tests / 10 files; [E1532S4-07.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-07.txt) |
+| E1532S4-08 | hub-api | PASS | Spoke regressions: 41 tests / 11 files; [E1532S4-08.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-08.txt) |
+| E1532S4-09 | hub-api | PASS | Atomic files/rollback/contracts: 204 tests / 12 files; [E1532S4-09.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-09.txt) |
+| E1532S4-10 | hub-api | PASS | Repetitions: 212 tests / 23 invocations; [E1532S4-10.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-10.txt) |
+| E1532S4-11 | hub-api | PASS | Two fake hosts: startup, restore and discovery; [E1532S4-11.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-11.txt) |
+| E1532S4-12 | hub-api | PASS | Agent kill/restart and discovery stability; [E1532S4-12.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-12.txt) |
+| E1532S4-13 | hub-api | PASS | Hub restart and host restore; [E1532S4-13.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-13.txt) |
+| E1532S4-14 | hub-api | PASS | Secret and publication scans with positive controls; [E1532S4-14.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-14.txt) |
+| E1532S4-15 | hub-api | PASS | Owned fixture processes and alias cleanup; [E1532S4-15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-15.txt) |
+| E1532S4-16 | hub-api | PASS | Final head/tree and scratch residue; [E1532S4-16.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/E1532S4-16.txt) |
+
+**QA clear**: all18 final scoped cases/checks PASS, including the labelled row16 precondition correction. No stage findings.
+
+Build `eb1fe370f93f193b8d96b1b0e97d5d346a3f6b78`; run `qa-s4-2026-11-04-qa678-1`; stage `harnesses and git on hosts`. The committed brief is `qa/briefs/E-1532-stage-4.md`. Request `8f676bae-020b-45e2-b2ae-c16f8e965ca2` from the Coordinator; 8/8 stage items landed, three previous stages closed. No epic criterion marks are made for this stage run.
+
+Executed locally on macOS 27.0.1 arm64, Node v24.21.0, pinned Neovim v0.12.5. No browser binary was used. No full suite, droplet, real SSH, real harness account or provider was launched by this QA run. Local droplet cost/lifetime: not applicable.
+
+Scoped named execution: 923 passing tests across 91 serial invocations of 66 distinct files: 711 in the initial 68 invocations and 212 across 23 repetitions. Exact generated case names, plan/counter facts and exit status were checked independently. All scoped files have zero failures, skipped, cancelled and TODO results. The supplemental cleanup diagnosis is recorded separately and does not inflate these totals. Typecheck passed. See per-row `.validation.json`, TAP/check captures, `nested-contract-validation.json` and `replay-names-validation.json`.
+
+The load gate enforced one-minute load ≤10 before each targeted file; quiet admission required no verify holder. No deliberate load or suite ran. TAP durations are captured diagnostics, not a suite wall-time measurement. The brief’s per-file allowances were not Node runner timeout enforcement; explicit bounded assertions inside the tests remained enforced.
+
+Coordinator cover evidence (not executed by this QA run): tree `3dc33087e571d306384d0c9b1d2e8c00e61168fd`, Linux run `b60e169b-b1ee-4f10-9239-9963a442b237` / A-16574 and macOS run `a113176f-6fb0-46b0-9f3b-acb527261f17` / A-16578. Task-view cover facts were checked before the run. Coordinator reported 6987 and 6995 passing tests respectively. Droplet lifetime/cost was not measured here; these cover counts are not added to QA’s 923.
+
+Scratch observations: both fake hosts reached up with private canonical discovery and three expected capabilities. Changed f2 discovery was atomically replaced at mode0600. Agent kill/restart replaced only f1’s agent (1219ms observed), retained its supervisor and discovery, and delivered a complete restored host state. Hub restart preserved discovery bytes/mtime/inode and restored both hosts. No task sessions were created in this scratch exercise; host harness launch, clone presence, lease retention/prune and versions were proven by the named tests. Scratch managed-territory absence of a task worktree produced no host clone; unmanaged-territory exclusion was source-checked only. TCP checks retained a positive control and observed zero TCP sockets for the checked host-side processes; hub listener counts were descriptive.
+
+Spoke RSS was one macOS diagnostic sample: 122699776 bytes after 10000ms idle, excluding hub/test runner and with no tools/list or tools/call before sampling. No RSS threshold or Linux parity claim is made. No later-stage attach/push/survival work is covered.
+
+Corrections and record integrity:
+
+Coord-authorised brief corrections, execution copy only; assertions unchanged except the exact pinned-path exemption:
+
+1. 2181f1a9: move every overlay inside fixtureEnvironment(Q, base, overlays), then scratchGitEnvironment; remove the post-builder Object.assign and copied credential filter. Original seal and corrected seal retained.
+2. becd55d8: GH_PAGER is a harmless inherited pager variable counted by the prefix assertion. Pass GH_PAGER: undefined through the shared builder overlay, retaining the zero-count assertion. Original name-only capture retained.
+3. becd55d8: the PATH assertion accidentally counted the required pinned Neovim directory under real HOME. Compare paths by realpath and exempt exactly the build-resolved pinned NV directory alongside Node; no other real-HOME path allowed. Original count1 and corrected count0 retained.
+
+4. Brief-authorised T-1665 presentation-only omissions: original row05 and row08 TAP logs are preserved privately. The unchanged scanner refused only three known English test titles. Export replaces two occurrences in row05 and four in row08 with labelled omissions; exact names were validated before replacement. Check files did not require omissions. Assertions, execution and the scanner are unchanged. Original refusal and per-title counts are in presentation-omissions.json; this handling occurs before publication/recorder references, so the later export scan sees the labelled copies.
+
+5. QA supplemental parser/recorder correction (reported to Coordinator): local Host contract registrations are top-level TAP points; SSH registrations are nested. The first supplemental parser required indentation. A shell chain then wrongly recorded row09 PASS at 14:24:55Z despite the parser error and a missing supplemental capture. An explicit INCONCLUSIVE correction and a replacement PASS were both recorded at 14:25:41Z after the read-only parser accepted either depth and required all14 exact names independently per entry. All original test outcomes were already CLEAN; no tests reran. See row09-recorder-correction.md, row09-original-parser-output.txt, nested-contract-validation.json and the complete recorder lines. This is a QA record correction, not a product finding or changed expectation.
+
+6. Row16 precondition correction, coord-authorised by 26cef074-12d4-403f-9a8c-dd6a6aa1a0b1. Original `T leftovers other than node-compile-cache 15` is retained. A-16582's isolated comparisons reproduce every residue class on stage3 and current builds with no live owner or listener. T-1676 tracks the pre-existing cleanup bug; T-1677 tracks lifecycle's literal hub.sock expectation under a9-byte-longer TMPDIR. The15 original entries were removed only by the literal paths in S4-16-removal-list.sh. Repeated read-only census is zero; exact head/dev and both clean-tree counts remain unchanged. This is a labelled brief precondition correction, not a rewritten original pass. Supplemental comparisons are16 invocations:256pass2fail (the two longer-path lifecycle failures); corrected61-byte path runs pass6/6 on both heads. Original scoped tests did not rerun.
+
+
+The complete [recorder history](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/recorder-lines.jsonl) retains row09’s three lines: 14:24:55Z premature PASS; 14:25:41Z explicit INCONCLUSIVE correction; 14:25:41Z replacement PASS after the read-only parser check. Latest row09 is PASS; the earlier record error is not suppressed.
+
+Cleanup and classification: see `S4-16-leftovers.json`, `S4-16-child-mtimes.json`, `S4-16-root-mapping.json`, `S4-16-owner-records.json`, `S4-16-open-sockets.txt`, and supplemental comparison captures. Original row16 reads `T leftovers other than node-compile-cache 15`; it was retained, attributed, and followed by an authorised literal-path removal and repeated zero census; see `E1532S4-16-corrected.txt`.
+
+Rule proposal sent in the item topic: extend brief lint to reject ordinary environment overlays after the shared fixture builder, preventing the repeated rule15 regression. See `rule-proposal.md`.
+
+Found aside (low severity, Bugs; classified separately by Coordinator):
+
+- **T-1676, size S — test cleanup residue.** E1532S4-16 / `s16` originally printed `T leftovers other than node-compile-cache 15`. The13 root Unix endpoints,15 Codex Unix endpoints,4 regular Codex placeholder files and13 fixture receipts survive removal of the owned test roots; all receipt PIDs are gone and no endpoint has a live listener. Six serial per-file comparisons reproduce the same residue classes on stage3 and the candidate; five files are byte-identical and the changed boundary file has the same Codex placeholder behavior. See A-16582, inventories, source observations and both comparison JSONs. No claimed runtime parent-stack trace; attribution uses isolated file execution plus source.
+- **T-1677, size S — lifecycle test assumes a short TMPDIR.** Supplemental `node --test hub/test/scenarios/hub-lifecycle.test.ts` with70-byte TMPDIR failed on both heads: actual `<TMPDIR>/cland-<hash>.sock`, expected `<TMPDIR>/cland-proj-<suffix>/.cland/hub.sock`, at line21. Restoring the original61-byte TMPDIR length yielded6pass0fail on both heads. Both original failed TAP captures remain; this was not a failure in the original scoped run.
+
+Supplemental diagnosis:16 serial file invocations,256pass2fail, no skip/cancel. These are **separate** from the923 scoped passes. Build comparison used the fresh detached stage3 head `8c9f569cf77719706bd02fb43b829b55c66b77f1` and the exact candidate head. The first comparison setup failed before launching any test because scratchGitEnvironment lacked its required config argument; this was corrected in the diagnosis driver, with no product or assertion change. The longer-path first setup and its two observed failures are retained. Exact61-byte comparisons establish the relevant path-precondition result.
+
+The original nt helper did not record per-invocation wall timestamps. `S4-16-estimated-invocation-windows.json` is an approximate reconstruction from TAP durations and log mtimes, excluding gaps and vulnerable to the mtimes of presentation copies. It is not measured start/end evidence and is not the basis of exact creator attribution; fresh per-file inventories establish that. Original child mtimes and receipt/socket hashes are preserved separately.
+
+All scoped cleanup passed after the approved correction. The machine-wide1238 external host-socket directory count was descriptive only; other sessions' files were untouched. No epic criteria were marked. Stage closure is the only closure this verdict requests.
+
+Diagnostic disposal is complete. The first supplemental removal script stopped on an already-absent HOME root (the exact-length setup had not needed to create it). Its error is retained; the eight remaining literal roots and the baseline worktree were then removed successfully. Final existence checks confirm every listed diagnostic root and the baseline worktree are gone. The original15-entry cleanup and repeated row16 census were unaffected.
+
+Durable evidence: A-16583, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16583-e-1532-stage-4-qa-eb1fe370-clear/report.md. Residue attribution: A-16582. Final publication scan: positive controls passed, three known scratch secrets checked, zero findings across115 files.

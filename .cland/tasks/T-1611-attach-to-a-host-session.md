@@ -3,7 +3,7 @@ id: T-1611
 kind: task
 title: Attach to a host session
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:58.041Z
-updated: 2026-11-02T03:33:58.041Z
+updated: 2026-11-04T14:51:40.483Z
 ---
 
 ## Summary

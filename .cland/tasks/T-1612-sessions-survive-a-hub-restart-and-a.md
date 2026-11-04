@@ -3,7 +3,7 @@ id: T-1612
 kind: task
 title: Sessions survive a hub restart and a tunnel loss
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:58.350Z
-updated: 2026-11-02T03:33:58.350Z
+updated: 2026-11-04T14:51:40.894Z
 ---
 
 ## Summary

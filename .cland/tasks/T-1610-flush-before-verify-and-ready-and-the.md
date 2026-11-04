@@ -3,7 +3,7 @@ id: T-1610
 kind: task
 title: Flush before verify and ready, and the clause
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:57.872Z
-updated: 2026-11-02T03:33:57.872Z
+updated: 2026-11-04T14:51:40.216Z
 ---
 
 ## Summary

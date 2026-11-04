@@ -3,7 +3,7 @@ id: T-1666
 kind: task
 title: Host revoke and remove settle the host agent's session generations first, or name what they leave
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-03T22:56:19.713Z
-updated: 2026-11-03T22:56:22.608Z
+updated: 2026-11-04T14:51:41.548Z
 ---
 
 ## Summary
