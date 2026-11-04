@@ -4,9 +4,16 @@ Everything the run needs is in this file or in the files it names: whoever runs 
 
 ## Corrections folded in from earlier E-1532 runs
 
-This brief is new. It carries the corrections QA and review found in the E-1532 stage-2 and stage-3 runs and the E-1536 and E-1538 runs:
+Corrections from the stage-4 run (qa-678, A-16583), folded here after the clear verdict:
+- The seal's overlays go into `fixtureEnvironment` (see "The seal" below); the earlier copy applied them after the builder and then a copied prefix filter.
+- `GH_PAGER: undefined` is part of the overlay, so the S0 credential-prefix count stays 0 (the shared builder keeps that non-credential preference otherwise).
+- The S0 real-HOME `PATH` assertion exempts exactly the pinned Neovim directory that `node nvim/bin/nvim-path.ts` resolves (compared as a realpath) and the running Node's bin; nothing else.
+- E1532S4-16: known pre-existing TMPDIR residue from unchanged test files (hub/spoke fallback endpoints, `cland-run` Codex sockets, `cland-fixture-owners-<uid>` receipts, `adapter-native-boundary`'s four regular `cx-*.sock` placeholders; T-1676) is inventoried, checked dead (no listener, owner PIDs gone) and attributed per file; only then removed by literal path before the final census. Any live or stage-attributed residue stays a finding.
+- Supplemental diagnostics keep TMPDIR at the original byte length: `hub-lifecycle` expects a literal `hub.sock` and fails when a longer TMPDIR forces the fallback socket (T-1677).
 
-- **The seal.** Every scratch launch is built by `seal.mjs`: first the sealed builder, `scratchGitEnvironment(Q, fixtureEnvironment(Q, base), {excludesFile})` (`test-support/fixture-environment.ts:13` and `:82`); then this run's overlays (`PATH`, `TMPDIR`, the `QA_*` roots and the launch's own `CLAND_*`/`FAKE_*` inputs) applied **after** that builder, so the builder's filters can neither drop nor rewrite them; then the credential prefixes removed. Nothing is added after `seal()` returns: no `env` prefix, no `export`, no spread of `process.env`. Overlay names outside `CLAND_`, `FAKE_` and `QA_` are refused by the seal.
+This brief also carries the corrections QA and review found in the E-1532 stage-2 and stage-3 runs and the E-1536 and E-1538 runs:
+
+- **The seal.** Every scratch launch is built by `seal.mjs` as `scratchGitEnvironment(Q, fixtureEnvironment(Q, base, overlays), {excludesFile})` (`test-support/fixture-environment.ts:13` and `:82`): this run's overlays (`PATH`, `TMPDIR`, the `QA_*` roots, `GH_PAGER: undefined` and the launch's own `CLAND_*`/`FAKE_*` inputs) are passed **into** the builder, which applies its credential filter after them; no `Object.assign` or copied prefix filter follows the builder (rule 15; corrected in the stage-4 run, qa-678 2181f1a9).
 - **The sealed `PATH`** drops every entry under the real HOME (read from the OS user record, not from `HOME`) and every `~`-relative entry, except the running Node's own `bin` directory: `~/.opencode/bin`, `~/.local/bin` and the like never reach a scratch process. S0 proves `claude`, `codex` and `opencode` resolve to nothing on the sealed `PATH`. Host-side CLI runs (`launch.mjs hostcli`) carry the `CLAND_CLAUDE_BIN`, `CLAND_CODEX_BIN` and `CLAND_OPENCODE_BIN` fake overrides through the seal, and the scratch hub also carries `CLAND_SSH_BIN` and `CLAND_SCP_BIN`.
 - **Neovim**, where any process looks for it, is the build's pinned release (`node nvim/bin/nvim-path.ts`, v0.12.5), first on the sealed `PATH`, never a Homebrew `nvim`. No row here needs Neovim.
 - **The publication scanner** (`assertPublishable`, `.claude/skills/qa/qa-demo-policy.ts:25`) refuses the bare word that names the HTTP Authorization scheme when a word follows it (T-1665, open). This brief avoids that word; two named files print test titles that contain it (`hub/test/spoke-unix-edge.test.ts`, `hub/test/host-secret-admission.test.ts`), so their TAP logs are refused by design: see "Probes that mislead".
@@ -131,7 +138,7 @@ The seal. `seal.mjs` prints the core of `env.sh` and exports `seal(extra, front)
 cat > "$Q/seal.mjs" <<'JS'
 // node "$Q/seal.mjs" env <W> <Q> <EV> <T> <nvim dir> <R>   QA's own shell: the sealed env.sh core (unset and export lines)
 // const { seal } = await import(`${QA_Q}/seal.mjs`)         sealed: seal(extra, front) for one launch
-// Order: the sealed builder scratchGitEnvironment(Q, fixtureEnvironment(Q, base)) first; this run's overlays after it; then the credential prefixes removed. Nothing is added after seal() returns.
+// Order: this run's overlays are passed INTO fixtureEnvironment(Q, base, overlays), which filters credentials after them; scratchGitEnvironment wraps it. Nothing is added after seal() returns.
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { userInfo } from 'node:os';
@@ -149,10 +156,8 @@ const drop = p => !p || p === NV || p === nodeBin || p.startsWith('~') || p === 
 const rest = String(base.PATH ?? '').split(':').filter(p => !drop(p));
 export function seal(extra = {}, front = []) {
   for (const k of Object.keys(extra)) if (!/^(CLAND_|FAKE_|QA_)/.test(k)) throw new Error(`seal: overlay ${k} refused`);
-  const env = scratchGitEnvironment(Q, fixtureEnvironment(Q, base), { excludesFile: `${Q}/home/.gitignore-global` });
-  Object.assign(env, { PATH: [...new Set([...front, NV, nodeBin, ...rest])].join(':'), TMPDIR: T, QA_W: W, QA_Q: Q, QA_EV: EV, QA_T: T, QA_NVIM: NV, QA_R: R }, extra);
-  for (const k of Object.keys(env)) if (/^(DIGITALOCEAN_|DO_|ANTHROPIC_|OPENAI_|GH_|GITHUB_|AWS_|GOOGLE_|GEMINI_|SSH_)/.test(k)) delete env[k];
-  return env;
+  // Overlays go INTO the shared builder, which filters credentials after them (rule 15); nothing is added after it returns.
+  return scratchGitEnvironment(Q, fixtureEnvironment(Q, base, { PATH: [...new Set([...front, NV, nodeBin, ...rest])].join(':'), TMPDIR: T, QA_W: W, QA_Q: Q, QA_EV: EV, QA_T: T, QA_NVIM: NV, QA_R: R, GH_PAGER: undefined, ...extra }), { excludesFile: `${Q}/home/.gitignore-global` });
 }
 if (cli) {
   const env = seal(), named = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -923,7 +928,7 @@ Run in this order. Rows E1532S4-03 to E1532S4-10 run their files serially from `
 | E1532S4-13 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m13 ) > "$EV/E1532S4-13.txt" 2>&1` (command timeout of at least 600000 ms) | PRE: hub `up`, both `wait` lines `reached` true. `hub after stop: down`; `hub restart exit 0`; `wait` f1 and f2 `reached` true. `same` f1 and `same` f2: `sha12`, `mtimeMs` and `ino` all true (T-1644: the identical file is read, not rewritten, across a hub restart; f2 keeps the bytes its replacement wrote). `events` `after-restart`: `f1RestoreGrew` true (the restarted hub's SSH Host acquired the surviving agent), `f2RestoreDelta` recorded. `clone` as in E1532S4-11 (`cloneEvents` 0, `hostWorktreesRows` 0, no `work` and no `git-proxy` on either host). `svpids` f1 and f2 as before (the agents outlived the hub) |
 | E1532S4-14 | hub-api | Human | `( . "$Q/env.sh"; m14 ) > "$EV/E1532S4-14.txt" 2>&1` | PRE: kinds `project host-f1 host-f2`. The positive control first (rule 17): `control` is exactly `["p1/.cland/log/qa-scan-control.txt"]`, then `controlRemoved` true; no control hit makes the row INCONCLUSIVE, never PASS. Then each `scan` line (`project`, `host-f1`, `host-f2`) has `sentinels` 1 and `hits` `[]`: no secret in any file under `$Q` (hub log, journal, `hub.db`, territory, the fake hosts' logs and run files, the supervisor logs, captures, probe outputs) or `$EV`, apart from the files that hold them by design. Then `publishRefused` names `"control"` once and, besides it, only the TAP logs and check files of E1532S4-05 and E1532S4-08 whose refusal is T-1665's test titles (confirm by reading each without printing it: the only match is a title from `spoke-unix-edge.test.ts` or `host-secret-admission.test.ts`); `publishControlRemoved` true. Any other refusal under `<EV>` is a QA fault to fix before publication (never print the value); any secret hit is a FAIL naming the kind and file only |
 | E1532S4-15 | hub-api | Human | `( . "$Q/env.sh"; cd "$Q/p1" && m15 ) > "$EV/E1532S4-15.txt" 2>&1` | `hub stop exit 0; hub down`; every supervisor and agent pid `after TERM: no`; no `alive` line names a fixture process (an `alive` line whose command is unrelated is pid reuse, recorded, not a failure); `processes naming the scratch root, the alias or this build's fake ssh: 0`; `host socket directories outside p1` recorded; `alias` `gone` true |
-| E1532S4-16 | hub-api | QA | `s16 > "$EV/E1532S4-16.txt" 2>&1` (QA's own shell) | HEAD, dev and the request's SHA still the same 40 hex; `dirty entries 0`; the root's non-tracker count equals E1532S4-00's; `T leftovers other than node-compile-cache 0`. A moved dev keeps the evidence and makes the run BLOCKED |
+| E1532S4-16 | hub-api | QA | `s16 > "$EV/E1532S4-16.txt" 2>&1` (QA's own shell) | HEAD, dev and the request's SHA still the same 40 hex; `dirty entries 0`; the root's non-tracker count equals E1532S4-00's; `T leftovers other than node-compile-cache 0`, after the T-1676 residue precondition above (inventory, liveness, per-file attribution, literal-path removal). A moved dev keeps the evidence and makes the run BLOCKED |
 
 Before requesting QA, run `cland qa lint` with this filled brief at the build under test: from the root, `node hub/bin/cland.ts qa lint qa/briefs/E-1532-stage-4.md --commit <dev SHA>`, with a dev SHA that includes the T-1605 landing. At writing it passed with no findings at dev `441b129ce`. The brief is complete only when qa lint passes at the build.
 

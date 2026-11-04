@@ -107,9 +107,10 @@
       "A-16515",
       "A-16530",
       "A-16557",
-      "A-16573"
+      "A-16573",
+      "A-16574"
     ],
-    "commit": "ddf888a2bcf4362c42f32576b5061e4c83710db4"
+    "commit": "eb1fe370f93f193b8d96b1b0e97d5d346a3f6b78"
   },
   "budget": {
     "testSeconds": 5,
@@ -3482,6 +3483,22 @@
     "hub/test/claude-capture-concurrency.test.ts": {
       "seconds": 3.341354,
       "tests": 3
+    },
+    "hub/test/claude-code-remote-files.test.ts": {
+      "seconds": 0.155253,
+      "tests": 15
+    },
+    "hub/test/host-agent-client.test.ts": {
+      "seconds": 0.01114,
+      "tests": 1
+    },
+    "hub/test/opencode-remote-cleanup.test.ts": {
+      "seconds": 0.689941,
+      "tests": 5
+    },
+    "hub/test/spoke-footprint.test.ts": {
+      "seconds": 10.682408,
+      "tests": 1
     }
   },
   "tests": {
@@ -10178,7 +10195,31 @@
     "hub/test/host-command-environment.test.ts::Host.close joins a held observation connection independently of recovery receipts": 0.001851,
     "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: different capture": 1.273415,
     "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: same birth": 0.887181,
-    "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: second descendant": 1.180758
+    "hub/test/claude-capture-concurrency.test.ts::Claude concurrent reconciliation: second descendant": 1.180758,
+    "hub/test/claude-code-remote-files.test.ts::an unconfirmed explicit stop stays held on restart without replaying native cleanup": 0.003232,
+    "hub/test/claude-code-remote-files.test.ts::captured and reconstructed failed-launch callbacks share one native settlement producer": 0.011739,
+    "hub/test/claude-code-remote-files.test.ts::Claude native-refused retains generation files until confirmed release": 0.011657,
+    "hub/test/claude-code-remote-files.test.ts::Claude native-unknown retains generation files until confirmed release": 0.006902,
+    "hub/test/claude-code-remote-files.test.ts::Claude release-reply-lost retains generation files until confirmed release": 0.006868,
+    "hub/test/claude-code-remote-files.test.ts::Claude typed non-admission rolls back without adoption": 0.013571,
+    "hub/test/claude-code-remote-files.test.ts::Claude untyped lookalike error stays supervised": 0.007782,
+    "hub/test/claude-code-remote-files.test.ts::close after accepted Claude launch result re-adopts before rollback and joins settlement": 0.019164,
+    "hub/test/claude-code-remote-files.test.ts::missing Claude generation missing-marker grants no cleanup authority": 0.005045,
+    "hub/test/claude-code-remote-files.test.ts::missing Claude generation old-error-shape grants no cleanup authority": 0.002984,
+    "hub/test/claude-code-remote-files.test.ts::missing Claude generation other-generation grants no cleanup authority": 0.00293,
+    "hub/test/claude-code-remote-files.test.ts::remote Claude private credential files are removed only after confirmed stop": 0.04286,
+    "hub/test/claude-code-remote-files.test.ts::remote Claude shutdown during adoption joins rollback before removing private files": 0.00976,
+    "hub/test/claude-code-remote-files.test.ts::terminal generation restart retry is durably bounded after failure": 0.004157,
+    "hub/test/claude-code-remote-files.test.ts::terminal generation restart retry settles and clears its marker": 0.006602,
+    "hub/test/host-agent-client.test.ts::new client accepts original protocol-1 hello without capabilities": 0.01114,
+    "hub/test/host-records.test.ts::registered host transports explicitly carry each layout Node runtime without the generic fallback": 0.072986,
+    "hub/test/host-secret-admission.test.ts::host Claude native signal identity is payload bound to its authenticated durable owner": 0.21024,
+    "hub/test/opencode-remote-cleanup.test.ts::OpenCode failed launch retains a single-flight unforward until its positive receipt": 0.085472,
+    "hub/test/opencode-remote-cleanup.test.ts::OpenCode remote poll drains snapshots and subscription before cancelling its forward": 0.165139,
+    "hub/test/opencode-remote-cleanup.test.ts::OpenCode remote shutdown drains snapshots and subscription before cancelling its forward": 0.166639,
+    "hub/test/opencode-remote-cleanup.test.ts::OpenCode remote stop drains snapshots and subscription before cancelling its forward": 0.169191,
+    "hub/test/opencode-remote-cleanup.test.ts::OpenCode Unix client close aborts active HTTP and SSE and joins native close receipts": 0.1035,
+    "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": 10.682408
   },
   "allow": {
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
