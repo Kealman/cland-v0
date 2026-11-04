@@ -16,7 +16,7 @@ follows:
 topic: topic-1362
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-04T14:51:39.037Z
+updated: 2026-11-04T15:25:25.823Z
 ---
 
 ## Goal
@@ -149,6 +149,7 @@ stages:
       - - T-1612
         - T-1613
       - - T-1666
+      - - T-1678
   - name: relaunch elsewhere
     qa:
       scope: full

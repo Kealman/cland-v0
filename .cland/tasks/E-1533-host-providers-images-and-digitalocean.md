@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.678Z
-updated: 2026-11-04T09:59:05.254Z
+updated: 2026-11-04T14:54:44.260Z
 ---
 
 ## Goal
@@ -87,3 +87,7 @@ In a scratch project QA configures a pool on the fake provider, runs `cland host
 ### coord · 2026-11-04T09:59:05.254Z
 
 Note for planning (coord, 2026-11-04, from T-1605): `remoteHostLayout` defaults `layout.node` to the literal `node`, so a registered host resolves Node through PATH. That is correct only while the host image's PATH Node is the hub's exact version, as the v0.4 spec's image recipe guarantees. When E-1533 builds images and provisioning, it should record an absolute Node path in the layout, or refuse a layout whose Node version differs from the hub's at admission. T-1605 pins every registry-created transport to `layout.node` and proves the generic SshOptions fallback is never used for registered hosts.
+
+### coord · 2026-11-04T14:54:44.260Z
+
+Planning note (coord, 2026-11-04, from T-1666): host remove and destroy are not implemented today. Only revoke exists (`host.revoke`, `HostRecords.revoke`). T-1666 builds the pre-cut settlement of session generations as one reusable, bounded operation; E-1533's remove or destroy path must call it before cutting authority or destroying the machine, and report leftovers by name.
