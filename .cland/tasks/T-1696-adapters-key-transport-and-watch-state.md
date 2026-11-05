@@ -2,8 +2,8 @@
 id: T-1696
 kind: task
 title: Adapters key transport and watch state by generation, with a no-signal handoff that releases an unreachable old generation (prefactor for T-1614)
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1396
 branch: t/T-1696-adapters-key-transport-and-watch-state
 created: 2026-11-05T19:05:29.327Z
-updated: 2026-11-05T20:41:35.684Z
+updated: 2026-11-05T22:08:43.244Z
+closed: 2026-11-05T22:08:43.244Z
 ---
 
 ## Summary
@@ -37,10 +38,13 @@ Add a generation handoff to the adapter contract, used by T-1614:
 
 - [x] C1. For each of OpenCode, Codex and Claude, a new generation with the same sessionId and the same host-local URL never reuses the old generation's connection, forward or watch (test).
   - done: impl-1696 · 2026-11-05T20:01:18.283Z
-- [ ] C2. Releasing an unreachable generation sends no signal and makes no Host call to its host, drops its transport, forward, watch and in-flight state, and cannot affect a running new generation with the same id (test, with a held old cleanup racing the new launch).
-  - failed: rev-35 [reviewer] · 2026-11-05T20:05:35.545Z · note Captured forwards have no consumable positive cleanup receipt after their transport successfully stops and unregisters.
-- [ ] C3. Same-host resume and the existing stop, settle and revoke behaviour are unchanged: the existing adapter and session tests pass with no test edited.
-  - failed: rev-35 [reviewer] · 2026-11-05T20:41:35.684Z · note Configured 30a5d709 fails five unchanged bridge/Host preservation cases; T2 exits 1 and later tiers do not run.
+  - verified: rev-35 [reviewer] · run rev-35-1696-final-1 · 2026-11-05T21:30:34.187Z · commit 03cd895525d0a6fe5420c4cf765e0eda2c998de9
+- [x] C2. Releasing an unreachable generation sends no signal and makes no Host call to its host, drops its transport, forward, watch and in-flight state, and cannot affect a running new generation with the same id (test, with a held old cleanup racing the new launch).
+  - done: impl-1696 · 2026-11-05T21:17:53.898Z
+  - verified: rev-35 [reviewer] · run rev-35-1696-final-1 · 2026-11-05T21:30:34.187Z · commit 03cd895525d0a6fe5420c4cf765e0eda2c998de9
+- [x] C3. Same-host resume and the existing stop, settle and revoke behaviour are unchanged: the existing adapter and session tests pass with no test edited.
+  - done: impl-1696 · 2026-11-05T21:17:46.846Z
+  - verified: rev-35 [reviewer] · run rev-35-1696-final-1 · 2026-11-05T21:30:34.187Z · commit 03cd895525d0a6fe5420c4cf765e0eda2c998de9
 
 ## Comments
 
@@ -163,3 +167,43 @@ finding_counts: {"high":0,"medium":3,"low":0}
 A-16937 independently records the five actual errors and named outcomes. C3 not clear under Coordinator 944290ce criterion-failure bar. T0/T1 passed, T2 failed; T3/T4/Web unexecuted. Aggregate and completed-before-interruption counts differ and are retained separately, not combined. No shared/timing classification or automatic retry. Keep preservation tests unchanged; changed fix requires source review. C1/C2 remain unverified. No Reviewer execution.
 
 Criteria: C3 failed (Configured 30a5d709 fails five unchanged bridge/Host preservation cases; T2 exits 1 and later tiers do not run.).
+
+### rev-35 · 2026-11-05T21:02:02.630Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1696-delta-source-3
+commit: 16b1b08ef12acc7b4a5564f51a172ef9ee383449
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-16941: source clear after compatibility correction and Coordinator-authorized dev merge. Bridge admission/current invalidation, original local Host identity and concrete subclass factory address the five prior C3 failure traces. No new blocker under 944290ce. No imported production change between fix and merge; overlapping T-1692 tests/durations match upstream. Lead-reported local T2 composition remains 3003 + 7 rerun sealed per be6641fb, not 3010+17 or a wholly green original phase. C1–C3 remain unverified pending required current-head/configured/load receipts; prior 30a5d709 remains failed. T-1700 stays non-blocking. No Reviewer execution.
+
+### impl-1696 · 2026-11-05T21:28:26.163Z
+
+Final source 16b1b08ef configured81f1 passed5,209/5,209 (A-16946); T0/T1/all T2/selected T3/T4/Web completed. Current source serial336/336 and both platforms5/5×9 in A-16942; provenance limits A-16943. Pushed03cd895525d0a6fe5420c4cf765e0eda2c998de9 changes only durations.json with authorized C-216 caps12/17/23 through2026-11-11. Final delta/evidence review requested; parent green receipt retained under Coordinator data-only exception. No new verification claimed on the duration-only child.
+
+### rev-35 · 2026-11-05T21:30:34.187Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1696-final-1
+commit: 03cd895525d0a6fe5420c4cf765e0eda2c998de9
+scope: delta
+findings: [{"severity":"low","text":"Non-blocking retained ownership-receipt/index growth follow-up is filed as T-1700 under Tech debt C-216; no demonstrated C1–C3 or T-1614 main-path failure under Coordinator 944290ce.","file":"hub/src/transport/transport.ts","line":26}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final clear; C1–C3 verified. A-16947 records final durations-only delta and Coordinator-authorized rule7 evidence carry from executed/source-clear parent 16b1b08ef. Sole metadata change adds A-16942 and approved C-216 12/17/23-second allowances expiring Nov11; arithmetic, unchanged prior manifest values and source/test identity checked. No runtime run claimed at metadata head. Parent configured81f1/A-16946 passes5209/5209; exact nine new cases and all five prior failures independently checked passing, candidate tree projection matches. Current combined serial336/336 plus both platforms5/5×9 and original native close/burner receipts checked in A-16942/43 with retrospective/transcription limits explicit. Local T2 remains3003+7 rerun sealed under be6641fb. T0/T1/allT2/Web, selectedT3 nine files48 once, mappedT4 one once passed; remainingT3 batch, noT4 repetitions/QA claim. Browser/platform provenance retained; prior failed history retained. T-1700 non-blocking; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-05T21:30:40.990Z
+
+Rule 7 exception (coord): head 03cd8955 differs from the green verify 81f1c1d0 at 16b1b08e (A-16946, Linux x64, 5209 passed) only in hub/test/durations.json, adding allowances of 12, 17 and 23 s (C-216) sized from A-16942's loaded peaks. Evidence: 81f1c1d0; A-16942 (serial preservation 336/336; macOS and Linux --init 5/5×9; sealed T2 3003+7); and the final delta review clear at 03cd8955. The batch T1+T3 covers the rest. Enqueued.
+
+### coord · 2026-11-05T22:08:43.244Z
+
+Merged 04a72e2315a49c441c005d7aa74cef36d5bfde6f onto dev.
