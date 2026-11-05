@@ -466,10 +466,11 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */
-  async #startServer(machine: Host, p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd' | 'accountEnv'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerConnection }> {
+  async #startServer(machine: Host, p: Pick<HarnessProcess, 'name' | 'role' | 'sessionId' | 'cwd' | 'accountEnv'>, socket: string, overrides: string[], files: LaunchFiles, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}): Promise<{ pid: number; client: AppServerConnection; exited: Promise<{ code: number | null; signal: string | null }> }> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, {
       pid: number;
       client: AppServerConnection;
+      exited: Promise<{ code: number | null; signal: string | null }>;
     }, unknown> {
       this.#assertOpen();
       yield* this.#activeWait(files.directory(dirname(socket), 0o700));
@@ -483,6 +484,7 @@ export class CodexAdapter implements HarnessAdapter {
       const args = ['app-server', '--listen', `unix://${socket}`, ...mcpOverrides(layout, p.name, p.role, p.sessionId), ...overrides.flatMap((o) => ['-c', o])];
       let exited: string | null = null;
       let pid: number | undefined;
+      let nativeExit!: Promise<{ code: number | null; signal: string | null }>;
       {
         // detached, in its own process group: it outlives the hub, and its MCP children (the spoke) go with it
         // the session's shell inherits the app-server's environment: `cland` run there acts as the session, not as the
@@ -497,6 +499,7 @@ export class CodexAdapter implements HarnessAdapter {
         });
         authorize();
         const child = yield* wait(machine.spawn({ command: this.#bin, args, cwd: p.cwd, env: withoutExecutorCredentials(env), logFile }, { authorize: () => resumed(() => { this.#assertOpen(); authorize(); }) }));
+        nativeExit = child.exited;
         child.exited.then(result => { exited = `exited (${result.code ?? result.signal})`; });
         files.spawned(child, this.#host.log, this.#stopGraceMs);
         pid = child.pid;
@@ -510,7 +513,7 @@ export class CodexAdapter implements HarnessAdapter {
         try {
           const client = yield* wait(this.#connectTo(machine, p.sessionId, socket));
           if (this.#closed) { client.close(); this.#assertOpen(); }
-          return { pid, client };
+          return { pid, client, exited: nativeExit };
         } catch (err) {
           this.#assertOpen();
           if (Date.now() > deadline) {
@@ -520,6 +523,17 @@ export class CodexAdapter implements HarnessAdapter {
         }
       }
     }).call(this), resumed);
+  }
+
+  readonly #localExits = new Map<string, { pid: number; settle: () => void | Promise<void> }>();
+
+  #retainLocalExit(machine: Host, sessionId: string, pid: number, exited: Promise<unknown>): void {
+    if (machine.name !== 'local') return;
+    const receipt = { pid, settle: boundedSettlement(async () => { await exited; }) };
+    this.#localExits.set(sessionId, receipt);
+    void exited.then(() => {
+      if (this.#localExits.get(sessionId) === receipt) this.#localExits.delete(sessionId);
+    });
   }
 
   readonly #forwards = new Map<string, Host>();
@@ -931,6 +945,8 @@ export class CodexAdapter implements HarnessAdapter {
     const pending = this.#terminalWork.get(id);
     if (pending) return pending;
     const work = this.#track(Promise.resolve().then(async () => {
+      const receipt = this.#localExits.get(id);
+      if (receipt?.pid === live.p.pid) await receipt.settle();
       live.client?.close();
       if (live.connecting) await live.connecting;
       await this.#unforward(id);
@@ -970,9 +986,10 @@ export class CodexAdapter implements HarnessAdapter {
       const base = { host: machine.name, account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, sessionId, cwd: request.cwd };
       let pid: number | undefined;
       let client: AppServerConnection | undefined;
+      let exited!: Promise<{ code: number | null; signal: string | null }>;
       try {
         const policy = yield* this.#activeWait(this.#threadPolicy(machine, request.cwd, request, files, resumed));
-        ({ pid, client } = yield* wait(this.#startServer(machine, base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));
+        ({ pid, client, exited } = yield* wait(this.#startServer(machine, base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));
         this.#assertOpen();
         authorize();
         const started = yield* this.#activeWait(client.request<ThreadResult>(request.resumeConversation ? 'thread/resume' : 'thread/start', { ...(request.resumeConversation ? { threadId: request.resumeConversation } : {}), cwd: request.cwd, ...(request.model ? { model: request.model } : {}), ...policy.thread }));
@@ -1011,6 +1028,7 @@ export class CodexAdapter implements HarnessAdapter {
         this.#host.log({ event: 'harness-thread-started', harness: this.harness, session: request.name, thread: threadId, model: p.model });
         Object.assign(p, yield* this.#activeWait(files.process(pid!)));
         yield* this.#activeWait(writeAttachRecord(machine, machine.layout(this.#host).runDirectory, p, this.attachCommand(p, true), files));
+        this.#retainLocalExit(machine, sessionId, pid!, exited);
         files.commit();
         return p;
       } catch (err) {
@@ -1399,6 +1417,8 @@ export class CodexAdapter implements HarnessAdapter {
     try {
       authorize();
       if (!await this.#machine(p).stop(p, { graceMs: this.#stopGraceMs, allowReused: p.status === 'exited', authorize: () => resumed(authorize), log: entry => resumed(() => this.#host.log({ ...entry, harness: this.harness, session: p.name })) })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      const receipt = this.#localExits.get(p.sessionId);
+      if (receipt?.pid === p.pid) await receipt.settle();
       liveAtStop?.client?.close();
       if (connecting) await connecting;
       if (probe) await probe;
@@ -1470,10 +1490,11 @@ export class CodexAdapter implements HarnessAdapter {
       const files = new LaunchFiles(resumed, machine);
       let pid: number | undefined;
       let client: AppServerConnection | undefined;
+      let exited!: Promise<{ code: number | null; signal: string | null }>;
       try {
         yield* this.#activeWait(this.#checkVersion(machine, p.cwd, p.accountEnv, resumed));
         const policy = yield* this.#activeWait(this.#threadPolicy(machine, p.cwd, options.policy ?? {}, files, resumed));
-        ({ pid, client } = yield* wait(this.#startServer(machine, p, socket, policy.overrides, files, resumed, options.launchToken, options.authorize)));
+        ({ pid, client, exited } = yield* wait(this.#startServer(machine, p, socket, policy.overrides, files, resumed, options.launchToken, options.authorize)));
         this.#assertOpen();
         this.#attach(live, client);
         const r = yield* this.#activeWait(this.#subscribe(live, client, { cwd: p.cwd, ...(p.model ? { model: p.model } : {}), ...policy.thread }, resumed));
@@ -1483,6 +1504,7 @@ export class CodexAdapter implements HarnessAdapter {
         this.#host.log({ event: 'harness-relaunched', harness: this.harness, session: p.name, pid, thread: p.harnessSessionId });
         Object.assign(relaunched, yield* this.#activeWait(files.process(pid!)));
         yield* this.#activeWait(writeAttachRecord(machine, machine.layout(this.#host).runDirectory, relaunched, this.attachCommand(relaunched, true), files));
+        this.#retainLocalExit(machine, p.sessionId, pid!, exited);
         files.commit();
         return { found: true, process: relaunched, state: live.state };
       } catch (err) {

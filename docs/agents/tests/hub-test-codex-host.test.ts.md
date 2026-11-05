@@ -46,3 +46,15 @@ Setup and completion have separate real-clock bounds through `until`/`testWaitMs
 the promise-receipt wrapper records fulfillment or rejection before polling that
 exact receipt. Teardown releases every gate before bounded drainage. Keep the
 post-join assertions as well as assertions at the close receipt.
+
+Successful local launch and relaunch retain the captured child-exit receipt after
+LaunchFiles commits. The held-receipt stop controls use a recording Host with
+immediate socket removal so asynchronous filesystem cleanup cannot mask early
+settlement. Host stop reports the synthetic server dead while native reap stays
+held. Stop must remain pending; fake native timers advance the five-second
+settlement deadline and require cleanup-incomplete. Negative liveness cannot
+publish exit until the held receipt arrives; a late receipt permits stop retry.
+Recovered local rows have no captured receipt and retain Host stop confirmation.
+No native process is launched by these T2 controls.
+Register release plus adapter drain with beforeDirectories before spawning, so
+setup or assertion failure cannot remove the fixture while work is held.

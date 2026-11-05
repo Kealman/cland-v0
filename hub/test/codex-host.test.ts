@@ -13,6 +13,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ScriptedCodex, deferred } from './fakes/scripted-codex.ts';
 import { FakeClock } from './fake-clock.ts';
 import { until, testWaitMs } from './until.ts';
+import { beforeDirectories } from './process-cleanup.ts';
 
 // The real-clock bound watches the exact promise receipt; fixture setup and
 // completion use separate invocations, independent of the behavior's FakeClock.
@@ -359,4 +360,65 @@ test('Codex keeps Host liveness polling while reconnect connection acquisition i
     assert.equal(native.closed, true, 'late connection released at close receipt');
   }));
   assert.equal(native.closed, true);
+});
+
+for (const outcome of ['receipt', 'deadline'] as const) test(`Codex local stop joins native exit ${outcome}`, { timeout: 2000 }, async t => {
+  const root = await tempProject(t, 'cx-', '/tmp');
+  const env = fixtureEnvironment(root, process.env);
+  const exit = deferred<{ code: number | null; signal: string | null }>();
+  const stopped = deferred<void>();
+  const published = deferred<void>();
+  const clock = new FakeClock();
+  let living = true, completed = false, exits = 0;
+  const native = new ScriptedCodex();
+  native.thread = 'receipt-thread';
+  native.handlers.set('thread/start', () => ({ thread: { id: native.thread, status: { type: 'idle' } } }));
+  const host: Host = { ...localHost(env),
+    run: async () => ({ code: 0, stdout: 'codex 0.160.0', stderr: '' }),
+    spawn: async () => ({ pid: 987654, exited: exit.promise }),
+    identity: async pid => ({ pid, pidStarted: 'start', pidIdentity: 'birth' }),
+    alive: async () => living,
+    stop: async () => { living = false; stopped.resolve(); return true; },
+    removePath: async () => {},
+  };
+  const boundary = adapterHost(root, host);
+  boundary.exited = () => { exits++; published.resolve(); };
+  const adapter = new CodexAdapter(boundary, { env, clock, pollMs: 100, connect: async () => native });
+  beforeDirectories(t, async () => { exit.resolve({ code: null, signal: 'SIGTERM' }); await adapter.close(); });
+  const row = await adapter.spawn({ name: 'worker', role: null, model: null, cwd: root });
+  adapter.watch(row);
+  if (outcome === 'deadline') t.mock.timers.enable({ apis: ['setTimeout'] });
+  const stopping = adapter.stop(row).then(() => { completed = true; });
+  void stopping.catch(() => {});
+  try {
+    await stopped.promise;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(completed, false, 'Host stop acknowledgment does not prove native reap');
+    if (outcome === 'deadline') {
+      const refused = assert.rejects(stopping, /cleanup-incomplete: launch settlement exceeded 5000 ms/);
+      t.mock.timers.tick(5000);
+      await refused;
+      assert.equal(completed, false);
+      await clock.advance(100);
+      await new Promise<void>(resolve => setImmediate(resolve));
+      assert.equal(exits, 0, 'negative liveness cannot publish an unreaped launch exit');
+    }
+  } finally { exit.resolve({ code: null, signal: 'SIGTERM' }); await stopping.catch(() => {}); }
+  if (outcome === 'deadline') {
+    await published.promise;
+    await adapter.stop(row).then(() => { completed = true; });
+  }
+  assert.equal(completed, true);
+  assert.equal(await host.alive(row), false, 'server is dead at completed stop');
+});
+
+test('Codex recovered local stop without a child receipt uses Host confirmation', async t => {
+  const root = await tempProject(t, 'cx-', '/tmp');
+  const stops: HostProcess[] = [];
+  const host: Host = { ...localHost(fixtureEnvironment(root, process.env)), stop: async row => { stops.push(row); return true; } };
+  const adapter = new CodexAdapter(adapterHost(root, host), { env: fixtureEnvironment(root, process.env) });
+  t.after(() => adapter.close());
+  const row: HarnessProcess = { name: 'recovered', harness: 'codex', role: null, model: null, cwd: root, pid: 987654, pidIdentity: 'birth', harnessId: null, harnessSessionId: null, sessionId: 'recovered', startedAt: new Date().toISOString(), status: 'running' };
+  await adapter.stop(row);
+  assert.deepEqual(stops, [row]);
 });

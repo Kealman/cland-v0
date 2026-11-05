@@ -258,6 +258,14 @@ See [Accounts and limits](accounts-and-limits.md#accounts-and-limits) for the re
 
 `src/adapters/codex.ts`, with `codex/app-server.ts` (the JSON-RPC client on the app-server's Unix socket). Launched with `"harness": "codex"`; `CLAND_CODEX_BIN` names the `codex` executable.
 
+Successful local Codex app-server launches and relaunches retain their native
+child-exit receipt after LaunchFiles commits. Stop joins it after Host.stop with
+the shared five-second bounded settlement helper. An overdue receipt reports
+cleanup-incomplete; liveness cannot publish terminal exit before reap. A late
+receipt permits retry. Recovered or adopted servers without a captured receipt
+continue to use Host confirmation.
+
+
 | | Surface (Codex 0.160.0) |
 | --- | --- |
 | spawn | `codex app-server --listen unix://<socket>` in the session's cwd, detached in its own process group (it outlives the hub; its output goes to `.cland/log/codex-<name>.log`). The socket is `.cland/run/cx-<id>.sock`, or `$TMPDIR/cland-run/cx-<id>.sock` when that path is too long for a Unix socket. Its environment is the hub's without its `CLAND_*` variables (`CLAND_CODEX_BIN` stays), plus `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE`, with the directory of the hub's own `node` first on `PATH`: the session's shell inherits them, so `cland task` run there acts as the session and `node` and `npm` are the hub's (Codex runs commands in a login shell, `zsh -lc`; a profile that puts another Node ahead of the inherited `PATH` would still win). The spoke is passed to the app-server only, as `-c mcp_servers.cland.*` overrides (`command`, `args`, `env.CLAND_HUB_FILE`, `env.CLAND_SESSION_ID`, `env.CLAND_SESSION_NAME`, `env.CLAND_ROLE`, `env.CLAND_DELIVERY=adapter`, `enabled`, `required`, `default_tools_approval_mode="approve"`); nothing is written to `~/.codex/config.toml`. Then `thread/start {cwd, model, approvalPolicy, permissions?}` (policy, below) and a first turn (`turn/start`, with the launch's `effort` when there is one: the app-server's schema takes it there, for this turn and the next ones) carrying the role's clause from `roles.toml` (with a line on how hub events arrive; a launch with no role carries that line alone): a thread without a turn has no rollout, and `thread/resume` (attach, a restarted hub) refuses it. Codex 0.153.4 or newer is required. |
