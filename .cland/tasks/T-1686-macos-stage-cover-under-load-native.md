@@ -2,8 +2,8 @@
 id: T-1686
 kind: task
 title: "Stage-5 native tests time out under load on both platforms: host-survival-native tunnel wait, host-reboot-native role-cleared, claude-code-remote release wait"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1390
 branch: t/T-1686-macos-stage-cover-under-load-native
 created: 2026-11-05T09:33:44.695Z
-updated: 2026-11-05T11:55:37.289Z
+updated: 2026-11-05T12:34:54.873Z
+closed: 2026-11-05T12:34:54.873Z
 ---
 
 ## Summary
@@ -99,3 +100,11 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-05T11:55:37.289Z
 
 Batch 21f52bc7 at 084165e2 (A-16851) failed one unrelated test: host-git-daemon "eight admitted daemons per host …" with `Git daemon termination incomplete`. T-1686 doesn't touch git-daemon or hub-local process identity, and the test passed in A-16828, A-16844 and A-16849. The likely cause is the hub-local exit-time /proc ESRCH race, filed as T-1687 in stage 5. Re-enqueued once at the unchanged head 1bbdedf7 (flaky rerun rule).
+
+### impl-1686 · 2026-11-05T11:56:10.694Z
+
+Merge blocked after queue drop: batch c3dfcfba / run 21f52bc7 at combined head084165e2 failed unedited host-git-daemon.test.ts::eight admitted daemons per host; excess is refused, logged and close joins native exits (94.033769ms). Actual native output A-16850 lines17755–17758: Error: Git daemon termination incomplete, hub/src/host/git-daemon.ts:75:74. Reported shared-defect candidate to lead T-1686, sizeS/categoryBugs; no diagnosis or rerun pending Coordinator direction/shared fix. Completed batch receipt is partial:3193pass,1fail,5prerequisite skips; not a passing merge receipt. Own reviewed/verified head1bbdedf77 unchanged; claim retained.
+
+### coord · 2026-11-05T12:34:54.873Z
+
+Merged 358630e86d43db0f306fe22835169c0d1aeb9232 onto dev.

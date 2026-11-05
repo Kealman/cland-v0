@@ -3,18 +3,19 @@ id: T-1687
 kind: task
 title: Hub-local process identity keeps the exit-time /proc ESRCH race that T-1684 fixed for the agent (git daemon stop incomplete)
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
 parent: E-1532
 blocked_by: []
 regression_of: T-1684
-topic: null
-branch: null
+topic: topic-1391
+branch: t/T-1687-hub-local-process-identity-keeps-the
 created: 2026-11-05T11:55:24.090Z
-updated: 2026-11-05T11:55:31.235Z
+updated: 2026-11-05T12:15:21.139Z
 ---
 
 ## Summary
@@ -31,6 +32,40 @@ Apply T-1684's bounded exit-time retry, with the same semantics, to `process-ide
 
 ## Acceptance criteria
 
-- [ ] C1. Injected ESRCH on a `/proc/<pid>/stat` read of an exiting process makes hub-local identity report unknown before the fix and resolve to exited after it (test, red before the fix).
-- [ ] C2. Hub-local and agent identity share one exit-race helper, and a persistent ESRCH still yields unknown (test).
-- [ ] C3. host-git-daemon and host-ssh-contract pass 20/20 locally under CPU load in a Linux container (evidence).
+- [x] C1. Injected ESRCH on a `/proc/<pid>/stat` read of an exiting process makes hub-local identity report unknown before the fix and resolve to exited after it (test, red before the fix).
+  - done: impl-1687 · 2026-11-05T12:07:07.976Z
+- [x] C2. Hub-local and agent identity share one exit-race helper, and a persistent ESRCH still yields unknown (test).
+  - done: impl-1687 · 2026-11-05T12:07:08.485Z
+- [x] C3. host-git-daemon and host-ssh-contract pass 20/20 locally under CPU load in a Linux container (evidence).
+  - done: impl-1687 · 2026-11-05T12:14:44.840Z
+
+## Comments
+
+### impl-1687 · 2026-11-05T11:56:39.630Z
+
+Rule 20 sweep before edits: searched hub/src, hub/test, nvim/test, docs, .agents, qa for process-identity, observeLinuxProcess/observeProcesses, isCapturedOrExited, IdentityExited/reportExited. Hub production consumers: adapters/processes, claude-code-local, host/local, hub/lock-identity, stdio-writers, suite-command, process-cleanup (native births). Agent consumers: bootstrap, entry, restart, supervisor.sh, claude, claude-stop, processes, ref-push. All retain APIs, nullable birth/ended distinction and signal fences; boot readers unchanged. Existing test consumers include process-identity, process-cleanup, system-processes/probe, claude-code-sessions-lifecycle, executor-droplet, memory-producer, host-agent/restart/supervisor/revoke-native/stop-observation/ref-watch-recovery, fakes/fake-host; harness/session-resume's unrelated observeProcesses is unaffected. QA E-1531 stages 2/3, E-1532 stage 3, E-1538 stages 1/2, E-1284 reference same unchanged APIs or historical receipts. No wire/persisted shape migration. Full search saved for evidence; preservation set will run unchanged.
+
+### impl-1687 · 2026-11-05T11:57:39.621Z
+
+Sweep addendum: also hub/system-processes, hub/suite-isolation, executor/local and executor/droplet/watchdog consume unchanged nullable/Map APIs. No changes needed: unknown stays unknown, only positive ENOENT or validated terminal stat gains exited. New T1 tests run both actual hub-local read paths with mocked physical procfs and restored builtin exports, no process launch. Baseline red: 6 pass/12 fail, ESRCH->ENOENT actual exit [] vs expected [123]; fixed green: process-identity + host-ref-watch-recovery 39/39 on macOS arm64 Node v24.21.0 (Linux readers injected). Shared helper in agent/identity keeps sync/async retry policy single-defined; agent boot namespace unchanged.
+
+### impl-1687 · 2026-11-05T12:00:27.233Z
+
+Correction/supersession to earlier comment: Coordinator decision bc7640f8 requires hub-local ENOENT to remain unknown and fall through to native kill(0), unlike the agent. Shared helper now shares only bounded ESRCH retry. C1 proves ESRCH -> validated Z -> exit; original red log contains that failure in both readers too. Only the two generated ESRCH refuses-present/surviving-branch tests now sustain ESRCH after snapshot; all their assertions unchanged. Existing ENOENT/kill(0) tests are unedited. Current head 5decccd1e.
+
+### rev-35 · 2026-11-05T12:02:19.118Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1687-source-1
+commit: 5decccd1e89ab499f92a2aff31c67616fd9b57da
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Interim source clear, no findings. A-16854 records shared bounded ESRCH-only retry review: sync/async hub-local and agent paths share one read helper while retaining caller-owned absence policies, physical hub boot reads, unknown diagnostics and native signal fences. Hub-local ENOENT remains unknown and reaches unchanged kill(0) branch checks; agent positive-ENOENT unchanged per Coordinator. Two authorized persistent-ESRCH fixture migrations preserve every refusal/no-signal assertion. All32 closure hashes match pinned Git objects. C1–C3 remain unverified pending retained red/current green, preservation/load evidence and same-head configured result. Source clear permits mode-free verification here after required local evidence/preflight; any changed head needs fresh review first. Existing agent ENOENT follow-up is T-1688, out of scope. No reviewer tests/edits; QA none.
+
+### impl-1687 · 2026-11-05T12:08:26.462Z
+
+Expanded field/function sweep includes processIdentityAsync/processIdentitiesAsync/processIdentities, linuxIdentity, agentBootId, isCapturedOrExited, observeLinuxProcess/observeProcesses, nativeExited and identityError. Additional hits: process-table re-export; agent/server reports unchanged observation shape; host-boundary helper/test and host-boot-source prove same boundary; measure-memory and claude-code-remote consume unchanged facts; QA E-1532 stages 2/4 and test docs describe unchanged ENOENT/kill(0) behavior. No migration needed in these. No nvim/test hits. Current-head macOS 21-file preservation A-16855 passed 368, skipped only native Linux Claude case; new tests <3ms. Only two authorized persistent-ESRCH fixture migrations.
