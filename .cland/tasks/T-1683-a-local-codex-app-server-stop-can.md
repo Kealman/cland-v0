@@ -3,7 +3,7 @@ id: T-1683
 kind: task
 title: A local Codex app-server stop can resolve before its child is reaped (T-1673 pattern)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1532
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1683-a-local-codex-app-server-stop-can
 created: 2026-11-05T02:01:43.900Z
-updated: 2026-11-05T02:01:52.760Z
+updated: 2026-11-05T03:24:07.138Z
 ---
 
 ## Summary
