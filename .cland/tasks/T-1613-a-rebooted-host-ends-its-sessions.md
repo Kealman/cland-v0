@@ -3,7 +3,7 @@ id: T-1613
 kind: task
 title: A rebooted host ends its sessions
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1384
 branch: t/T-1613-a-rebooted-host-ends-its-sessions
 created: 2026-11-02T03:33:58.539Z
-updated: 2026-11-05T04:26:12.341Z
+updated: 2026-11-05T06:27:44.423Z
 ---
 
 ## Summary
@@ -28,11 +28,16 @@ Hot files: `hub/src/adapters/sessions.ts`, `hub/src/host/ssh-host.ts`, `hub/test
 ## Acceptance criteria
 
 - [x] C1. After `fake-host.ts reboot`, every session on that host reads `exited` and its role is vacated with the same notice as a local harness exit, while sessions on the other fake host are untouched (test).
-  - done: impl-1613 · 2026-11-05T02:41:53.262Z
-- [ ] C2. The hub restarts the rebooted host's supervisor and agent and the tunnel is `up` again (test).
-  - failed: rev-36 [reviewer] · 2026-11-05T03:58:40.128Z · note 59a9a571 failed agent-SIGKILL push recovery: current head durable publication after interrupted push not within5000ms (test113).
+  - verified: rev-36 [reviewer] · run rev-36-1613-final-1 · 2026-11-05T04:57:48.473Z · commit 7be0b051f18ebfb10cfeaefc1ac98746309b251a
+  - done: impl-1613 · 2026-11-05T06:26:20.426Z
+  - verified: rev-36 [reviewer] · run rev-36-1613-final-2 · 2026-11-05T06:27:44.216Z · commit 7b4da314beeeb6616183950efb0e4e3eab85d82d
+- [x] C2. The hub restarts the rebooted host's supervisor and agent and the tunnel is `up` again (test).
+  - done: impl-1613 · 2026-11-05T06:26:06.147Z
+  - verified: rev-36 [reviewer] · run rev-36-1613-final-2 · 2026-11-05T06:27:44.216Z · commit 7b4da314beeeb6616183950efb0e4e3eab85d82d
 - [x] C3. No stop or signal is sent for the exited rows to any host or to the hub's machine (test).
-  - done: impl-1613 · 2026-11-05T02:41:53.884Z
+  - verified: rev-36 [reviewer] · run rev-36-1613-final-1 · 2026-11-05T04:57:48.473Z · commit 7be0b051f18ebfb10cfeaefc1ac98746309b251a
+  - done: impl-1613 · 2026-11-05T06:26:20.560Z
+  - verified: rev-36 [reviewer] · run rev-36-1613-final-2 · 2026-11-05T06:27:44.216Z · commit 7b4da314beeeb6616183950efb0e4e3eab85d82d
 
 ## Notes
 
@@ -175,3 +180,95 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Tiny observer-boot diagnostic source clear; A16783, no findings. Current authenticated agent PID prioritized first inside unchanged8-PID cap; captured native second. Read-only1s RPC caller unchanged. Existing parser derives capturedNativeBootId and live-reply recoveredObserverBootId independently of cached hello; T2 deliberate hello mismatch/nullunknown controls retained. Previous redaction/bounds/whitelist/immutable facts checks apply. Only helper/test/guide changed; no production/closure/duration/nativewait/assertions. Olde5Mac5/5 not currenthead evidence; targeted/static pending and no queuedrun yet. Complete required checks/receipts then exact7be diagnostic verify. Priorfailed6380/59a9 rootunclassified,C2failed evidenceopen,C1–C3unverified. Changedhead rereview; Reviewer read-only/no execution/edits/delegation.
+
+### rev-36 · 2026-11-05T04:57:48.473Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-final-1
+commit: 7be0b051f18ebfb10cfeaefc1ac98746309b251a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1–C3; A16792. Exact source-reviewed7be run3b59b7d5/A16790 green5177/5177: T0/T1/allfallbackT2/9selectedT3files51identities/T4guardonce/Webexit0. Named native reboot7.0038017s proves two-host exits/ordinary role release/replacement hello+PID+supervisor/tunnels/no hub stop; running/pending/stopped+archived/held-resume and4controller controls pass, 11component names base+5load each. All4push cases pass incl previously failed SIGKILL/current-head and killed-producer. Read retained full203 named localMac outcomes/14 nativeexit0 receiptsA16791+A16787 and5push invocations20executionsA16784;13preservation files unedited. Uncached Linuxx64c8sfo2 Node24.21/Nvim.12.5 capturec3fe0d7d, isolatedHeadlessShell1248 Chrome156.0.8078.4; T0hostgate not repeatedremote. Report-onlyadvisories retained; remainingT3/otherT4/repsunexecuted. Prior6380/59a9 remain failed/rootunclassified, no fix/intermittency claim. DirectCoordinatorc19d4efd uses separate loaded merge batch, no second task run requested. QA none per item; no Reviewer execution/edits/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-05T04:57:56.934Z
+
+Enqueued at 7be0b051 (coord). Linux x64 record for hub/test/host-push-on-ref-move on T-1613 heads so far: red at 42286ab7 (6380ee28, 'native push identity unknown'), red at d6d8c791 (59a9a571, line 113 durable publication timeout), green at 7be0b051 (3b59b7d5). dev passed the file in every run (A-16739, A-16747, A-16773, A-16788). The cause is unclassified; failure-only diagnostics at 7be0b051 record hello and observer boot ids and the pending, producer and native receipts. The batch's T3 is the next Linux sample. If it reds, we fix the named cause before landing.
+
+### impl-1613 · 2026-11-05T05:34:46.404Z
+
+Post-batch Rule20 boot-source sweep (before next verify): native.ts agentBootId is the sole agent/fake-host source. observeProcesses consumes it; AgentProcesses identity/reconcile/captured-target/stop paths, Claude/claude-stop, bootstrap plan.fakeEnv -> birth.json, entry readiness, supervisor.sh agent_birth and restart.ts all use observeProcesses. Ref-push observes via the original agent env; ref-push-worker only copies the pinned birth.json, and intentionally filtered worker/Git env mints no identity. processes.bootId had only server consumer, now server calls helper before any recovery/resource acquisition. process-identity.ts sync/async linuxIdentity callers and lock-identity.ts kernel readers are hub-local: local Host, local adapters/process table, stdio/system processes, local executor/droplet watchdog, suite command/isolation, tracker migration and orphan lock paths; fixture process-cleanup owns physical native births, not fake-host births. These remain physical-kernel readers. Deep scan includes raw boot_id strings, builders, birth.json, helper importers, all tests/tiers, QA briefs and shipped skills. host-agent Linux hello/birth expectations were missed: now explicit fixture file plus distinct-kernel and exact /proc start-tick controls; boot reversal authority fence runs on Linux too. Diagnostic host-push-facts kernel read is labelled comparison-only. system-process-probe, lifecycle/cleanup and Claude scripted probes simulate hub-local observations, unaffected. QA E-1538-stage-1 checks hub lock reader import, unaffected. Previous agent wire shapes unchanged; existing host-ref-watch-compat/host-agent-closure regressions retained. New T2 missing-boot refusal observed red on macOS: invalid source had already created run dir; fix validates before recovery and never kernel-falls-back in fake Linux mode. Current batch remains failed, prior push failures unclassified.
+
+### rev-36 · 2026-11-05T05:48:21.362Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-delta-source-4
+commit: 0606681e6be0464caccd7b51e2b3afd111818a56
+scope: delta
+findings: [{"severity":"low","text":"fixtureEnvironment strips inherited CLAND_* from base, so real lacks the boot-file variable and claimed stray-file control is not exercised. Explicitly overlay scratch boot file and assert condition before the kernel comparison; keep builder filtering.","file":"hub/test/host-boot-source.test.ts","line":28}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Boot-source delta source clear with1low; A16797. Read actual batch1cc38199 stale fake-vs-kernel expected boots/same63924ticks; batch remainsfailed. Sole agentBootId now fake-file-required allplatforms, validated before resources/recovery; sole wrapperconsumer migrated. Shared observers/bootstrap/worker-copy/local physical-reader boundaries,32closure hashes, Rule20/help/docs/skillCHANGES checked. Native Linux expectations preserve exact ticks/distinct-kernel and add irreversible reversal coverage. Low unit control loses strayfile via builder, do not claim it proved. No high/medium source findings; C1–C3runtime-unverified/stale atnewhead. Local404pass/1skip heavy+26light preliminary, not Linux; Coordinatorc1833c8c requires Linux host-agent receipts before ready. Complete checks then exact-head verify; anylowfix/newhead needs source refresh. Earlier push rootsunclassified; no Reviewer execution/edits/delegation.
+
+### rev-36 · 2026-11-05T05:51:58.231Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-delta-source-5
+commit: 83820a80a56fb09ac324f5f3291de145e8b3d6b6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards and Spec: no findings in the sole test-control delta from 0606681e. The final fixtureEnvironment overlay explicitly retains the scratch boot-file variable, and presence plus fake-mode-absence assertions now precede the Linux kernel comparison. Prior low in A-16797 resolved. Production/native source, fences, bounds and docs unchanged. A-16799: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16799-t-1613-stray-boot-file-control-source-refresh.md . C1–C3 remain run-dependent and unverified at this head; current-head configured verification and required Linux host-agent evidence pending. Prior-head local receipts remain supplemental. Reviewer ran no tests.
+
+### rev-36 · 2026-11-05T05:59:25.771Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1613-evidence-3
+commit: 83820a80a56fb09ac324f5f3291de145e8b3d6b6
+scope: evidence
+findings: [{"severity":"medium","text":"Configured T1 fails complete-byte usage compatibility: HOST_USAGE adds the fake-host boot-file/kernel-boot line, but frozenUsage's fixture lacks it. Explicitly migrate the intended help expectation while retaining the full assertion.","file":"hub/test/cli-usage-compatibility.test.ts","line":9}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Actual failure: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal; actual HOST_USAGE adds 'fake-host mode requires CLAND_HOST_BOOT_ID_FILE; ordinary Linux uses kernel boot', expected lacks it (A-16801). A-16802 records diagnosis/provenance. T0 exit0, T1/overall exit1; T2/T3/T4/Web unexecuted. Interruption aggregate 1446 completed/1445 pass/1 fail, not full suite coverage. Uncached Linux x64 droplet c-8 sfo2 Node24.21.0/Nvim0.12.5; browser null. Report-only advisories separate. C2 failed for blocked configured verification, not an established runtime recovery defect; C1/C3 remain unverified. Source assessment A-16799 remains applicable until head changes. Fresh source review required after a fix. Reviewer ran no tests.
+
+Criteria: C2 failed (Configured f3254eaa fails T1 usage compatibility; Linux recovery/native host-agent and boot-source phases did not execute.).
+
+### rev-36 · 2026-11-05T06:01:02.702Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-delta-source-6
+commit: 7b4da314beeeb6616183950efb0e4e3eab85d82d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, Standards and Spec no findings. Sole delta from83820 adds exactly the intended boot-file/kernel-boot help line to owning frozen HOST_USAGE row, following cli-usage-merge guide. Every other fixture byte, exports/template and full-byte assertion unchanged. Resolves A-16802's fixture mismatch at source; production/native/closure/fences/bounds unchanged. A-16804: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16804-t-1613-intentional-frozen-host-help-row-source-review.md . No runtime criteria verified: f3254eaa remains failed with later tiers unexecuted. Current-head configured verification and required Linux host-agent/boot-source/recovery receipts pending. Prior-head Mac preservation remains supplemental. Reviewer ran no tests.
+
+### rev-36 · 2026-11-05T06:27:44.216Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-final-2
+commit: 7b4da314beeeb6616183950efb0e4e3eab85d82d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, Standards and Spec no findings. A-16805 configured682f7d2e at exact source-clear head passes hub aggregate5196/5196: T0/T1/fallback-allT2/selectedT3/T4base/Web exit0. Independently checked named outcomes and assertion facts: all18 Linux host-agent cases, corrected boot-source/kernel-stray-file control, native reboot6.606739413s, all4 native push cases, reboot/controller/boot components and recorded load repetitions. C1 durable exits/ordinary role vacancy/other-host preservation; C2 changed authenticated agent+supervisor+boot and hosts up; C3 empty stop-operation list and wrong-owner safety verified. A-16806 full criterion map and scope: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16806-t-1613-final-linux-boot-and-reboot-evidence-at-7b4da314.md . Uncached Linuxx64 droplet c8sfo2 Node24.21/Nvim0.12.5, isolated HeadlessShell1248/Chrome156.0.8078.4; capturetree a395e962b0851c5cb3653d70bcbbc3648a214149. SelectedT3 10files69 identities once; T4guard once/no repetitions. RemainingT3/otherT4/repetitions and stageQA separate; report-only advisories retained. A-16800 Mac404pass/1Linux-onlyskip remains explicitly at83820 with identical production/native bytes, full203 preservation names checked; A-16803 current-head29help controls supplemental. Prior failed runs remain failed, older push causes unclassified. Reviewer ran no tests.
+
+Criteria: C1 verified, C2 verified, C3 verified.
