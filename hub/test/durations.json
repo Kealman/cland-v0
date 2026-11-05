@@ -116,9 +116,10 @@
       "A-16747",
       "A-16811",
       "A-16899",
-      "A-16942"
+      "A-16942",
+      "A-16971"
     ],
-    "commit": "45cf8725d054dd937f5da513792f03765b5b7bd7"
+    "commit": "57d108144597b2d9743a72efa14bb88a43b59cc0"
   },
   "budget": {
     "testSeconds": 5,
@@ -3583,6 +3584,14 @@
     "hub/test/host-survival.test.ts": {
       "seconds": 0.249299,
       "tests": 2
+    },
+    "hub/test/adapter-generation-forward.test.ts": {
+      "seconds": 6.065809,
+      "tests": 2
+    },
+    "hub/test/adapter-generation.test.ts": {
+      "seconds": 0.119534,
+      "tests": 7
     }
   },
   "tests": {
@@ -10462,7 +10471,16 @@
     "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then malformed": 0.000852,
     "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then S": 0.000875,
     "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then Z": 0.000956,
-    "hub/test/suite-load-diagnostics.test.ts::reboot CLI diagnostics redact a credential crossing the tail boundary before truncation": 0.00421
+    "hub/test/suite-load-diagnostics.test.ts::reboot CLI diagnostics redact a credential crossing the tail boundary before truncation": 0.00421,
+    "hub/test/adapter-generation-forward.test.ts::legacy session forward remains removable beside a generation-scoped forward": 2.49851,
+    "hub/test/adapter-generation-forward.test.ts::Sessions drops unreachable forward inventory locally and reconnect restores only the replacement": 3.567299,
+    "hub/test/adapter-generation.test.ts::a fully stopped same-host fresh resume retires old aliases before its late release hook": 0.003733,
+    "hub/test/adapter-generation.test.ts::claude-code isolates the same id and endpoint while unreachable old cleanup drains": 0.005353,
+    "hub/test/adapter-generation.test.ts::codex isolates the same id and endpoint while unreachable old cleanup drains": 0.008471,
+    "hub/test/adapter-generation.test.ts::generation release joins admitted stop and permanently fences metadata and Host callbacks": 0.004835,
+    "hub/test/adapter-generation.test.ts::missing stopped-owner proof refuses release without touching a replacement carrier": 0.057076,
+    "hub/test/adapter-generation.test.ts::opencode isolates the same id and endpoint while unreachable old cleanup drains": 0.03707,
+    "hub/test/adapter-generation.test.ts::public wrappers surround routed operations and baseline fallback without recursion": 0.002996
   },
   "allow": {
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
