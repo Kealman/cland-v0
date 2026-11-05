@@ -239,8 +239,19 @@ export type ResumeOptions = {
   stopped?: () => HarnessProcess | void;
 };
 
+export type GenerationReleaseReceipt = {
+  generation: string;
+  released: true;
+  dropped: Array<'transport' | 'forward' | 'watch' | 'in-flight'>;
+  /** Opaque local carrier ids; Sessions drops their reconnect/socket inventory. */
+  forwardIds: string[];
+};
+
 export interface HarnessAdapter {
   readonly harness: string;
+  /** Drop only unreachable generation transport/supervision, without native or Host operations.
+   * Does not settle native closure or delete retained files. Repeated calls join the drain. */
+  releaseUnreachableGeneration?(process: HarnessProcess): Promise<GenerationReleaseReceipt>;
   readonly capabilities: Capabilities;
   /** The launch's first turn carries the role's clause (`SpawnRequest.clause`). */
   readonly clauseAtSpawn?: boolean;

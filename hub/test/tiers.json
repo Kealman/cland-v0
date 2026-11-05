@@ -64,6 +64,8 @@
     "hub/test/accounts-registry.test.ts": "T1",
     "hub/test/accounts.test.ts": "T3",
     "hub/test/adapter-composition.test.ts": "T2",
+    "hub/test/adapter-generation-forward.test.ts": "T3",
+    "hub/test/adapter-generation.test.ts": "T2",
     "hub/test/adapter-native-boundary.test.ts": "T3",
     "hub/test/agents-checkpoint.test.ts": "T1",
     "hub/test/agents-filters.test.ts": "T2",

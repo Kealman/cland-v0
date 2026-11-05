@@ -104,3 +104,21 @@ Supporting agent status adds optional named ref-watch facts to
 `hub.status.hosts[].watches` (branch, path, state and cause). Fenced publication
 appears under that host in CLI status; older agent/status shapes omit these facts.
 Unknown native command outcomes are distinct from a positive leased publication.
+
+### Unreachable generation local forward release
+
+Sessions validates the captured adapter generation receipt, then dispatches its
+opaque forward ids through the project transport registry. SshTransport.dropForwardLocal
+joins the existing forward/reconnect serial owner, marks each retained entry as
+cleanup before unlinking its local socket, and removes the entry after that receipt.
+Repeated drops are harmless. Failed unlink leaves cleanup set so reconnect cannot
+reinstall the entry; a retry completes local removal. This path invokes no SSH, mux
+or agent operation. Forward inventory remains in-memory, with no persisted record
+to resurrect after hub restart; ordinary transport shutdown joins its owner.
+
+Sessions captures the carrier registration identity when it admits each forward.
+A successful carrier stop publishes an owner-bound receipt for ids whose local
+sockets were positively removed before unregistering. Later release can consume
+that receipt without an active carrier. Registry absence, a different owner, or
+an unknown id supplies no proof and refuses cleanup. Receipts are in-memory; no
+forward inventory or cleanup authority is reconstructed from persisted flags.

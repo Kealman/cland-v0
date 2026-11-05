@@ -920,3 +920,25 @@ host-local files outside the run directory. Lifecycle exit and role publication
 belong to the reboot caller. Its indexed native-operation fence survives resource
 receipt deletion and storage reopen; cleanup completion never restores authority
 for a captured old birth. See [host settlement](../agents/host-agent.md#settlement-before-host-revocation).
+
+### Unreachable generation transport handoff
+
+Native adapters partition transient connections, forwards, watches and in-flight
+work into generation scopes. A captured process selects its scope; the stable
+session id selects only the current scope for legacy id-only operations. The first generation keeps its legacy Host forward id. Later generations use a
+scope-specific id, so identical host-local URLs and sockets cannot share a
+forward across generations. Local Claude discovery retains one shared config-directory
+schedule, cache, query flight and signed-out state across generation scopes.
+
+The optional `HarnessAdapter.releaseUnreachableGeneration(process)` fences the
+captured scope's callbacks and Host operations, drains its transient work, and
+returns `{generation, released: true, dropped, forwardIds}`. `generation` is the captured
+`hostGenerationKey`; `dropped` lists resource kinds and `forwardIds` lists opaque
+hub-local carrier ids. Sessions.releaseUnreachableGeneration validates that captured
+identity and joins local carrier inventory/socket removal before returning. Local
+removal is serial with acquisition/reconnect and makes no mux, network or agent call. Repeated calls join the same
+drain. This hook sends no native signal, makes no Host operation and establishes
+no native closure or private-file deletion receipt. Retained native and file
+obligations continue through host generation settlement. A relaunch caller must
+retain the old generation durably, await the Sessions method and recheck lifecycle
+ownership before admitting a destination launch; rejection holds admission.

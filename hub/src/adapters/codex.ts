@@ -1,3 +1,4 @@
+import { generationAdapter } from './generation-adapter.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
@@ -329,6 +330,7 @@ type ThreadResult = { thread: { id: string; status?: unknown; model?: string }; 
 type SubscriptionSnapshot = { state: SessionState; model: string | null; sequence: number };
 
 export class CodexAdapter implements HarnessAdapter {
+  declare releaseUnreachableGeneration: NonNullable<HarnessAdapter['releaseUnreachableGeneration']>;
   readonly harness = CODEX;
   readonly capabilities = CODEX_CAPABILITIES;
   readonly clauseAtSpawn = CODEX_CLAUSE_AT_SPAWN;
@@ -371,7 +373,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #cleanupFailures = new Map<string, unknown>();
   readonly #stopping = new Set<string>();
 
-  constructor(host: AdapterHost, options: CodexOptions = {}) {
+  constructor(host: AdapterHost, options: CodexOptions = {}, generationScope = false) {
     this.#host = host;
     this.#clock = options.clock ?? realClock;
     this.#connect = options.connect ?? (socket => AppServerClient.connect(socket, { client: { name: 'cland_hub', title: 'cland hub', version: VERSION }, timeoutMs: this.#spawnDeadlineMs, connectTimeoutMs: 3000 }));
@@ -386,6 +388,8 @@ export class CodexAdapter implements HarnessAdapter {
     const env: NodeJS.ProcessEnv = {};
     for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') || k === 'CLAND_CODEX_BIN') env[k] = v;
     this.#env = env;
+    const Adapter = new.target;
+    if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true));
   }
 
   #assertOpen(): void { if (this.#closed) throw new Error('the Codex adapter is closed'); }
@@ -1518,6 +1522,36 @@ export class CodexAdapter implements HarnessAdapter {
         }));
       }
     }).call(this), options.resumed ?? untimed);
+  }
+
+  assertLaunchAvailable(name: string): void { this.#recoveries.assertAvailable(name); }
+
+  async detachUnreachable(): Promise<Array<'transport' | 'forward' | 'watch' | 'in-flight'>> {
+    const dropped: Array<'transport' | 'forward' | 'watch' | 'in-flight'> = [];
+    if (this.#live.size) dropped.push('transport');
+    if (this.#forwards.size) dropped.push('forward');
+    if (this.#watched.size) dropped.push('watch');
+    if (this.#flights.size) dropped.push('in-flight');
+    this.#closed = true;
+    this.#recoveries.close();
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
+    if (this.#terminalTimer) this.#clock.clearInterval(this.#terminalTimer);
+    this.#timer = this.#terminalTimer = null;
+    this.#watched.clear();
+    for (const live of this.#live.values()) live.client?.close();
+    while (this.#flights.size) await Promise.allSettled([...this.#flights]);
+    await this.#recoveries.drain();
+    await Promise.allSettled([...this.#forwardCleanup.values()]);
+    this.#live.clear();
+    this.#forwards.clear();
+    this.#forwardCleanup.clear();
+    this.#admissions.clear();
+    this.#pendingInputs.clear();
+    this.#completedTurns.clear();
+    this.#turnInputs.clear();
+    this.#steers.clear();
+    this.#earlyFailures.clear();
+    return dropped;
   }
 
   close(): Promise<void> {

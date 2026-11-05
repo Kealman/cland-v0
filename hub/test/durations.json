@@ -115,7 +115,8 @@
       "A-16725",
       "A-16747",
       "A-16811",
-      "A-16899"
+      "A-16899",
+      "A-16942"
     ],
     "commit": "45cf8725d054dd937f5da513792f03765b5b7bd7"
   },
@@ -13301,6 +13302,27 @@
       "added": "2026-11-05",
       "expires": "2026-11-11",
       "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [3.097643125, 3.844505, 3.298704791, 3.085290542, 2.8661705], \"linux\": [0.514593709, 0.507910375, 0.545639, 0.533545125, 0.529485959]}. ceil(1.5 x worst 3.8445050000000003) = 6s; selected cap 6s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/adapter-generation-forward.test.ts::legacy session forward remains removable beside a generation-scoped forward": {
+      "seconds": 12,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[2.198672625,2.046081084,2.406128875,2.3725449579999998,2.51678625],\"linux\":[1.7439216670000002,2.040074209,2.15821121,2.098695292,2.239477835]}. Current worst 2.51678625s. Conservatively retain earlier observed macOS calibration cost 7.369023833s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 7.369023833)=12s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes."
+    },
+    "hub/test/adapter-generation-forward.test.ts::Sessions drops unreachable forward inventory locally and reconnect restores only the replacement": {
+      "seconds": 17,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[4.145153541,3.910825167,3.555070583,4.039409375,3.817201209],\"linux\":[3.930941544,3.674814001,4.019917502,4.168172168,4.018577585]}. Current worst 4.168172168s. Conservatively retain earlier observed macOS calibration cost 11.204366625s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 11.204366625)=17s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes."
+    },
+    "hub/test/adapter-generation.test.ts::opencode isolates the same id and endpoint while unreachable old cleanup drains": {
+      "seconds": 23,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[0.036887333,0.030912208,0.02624425,0.041558541,1.6360876249999998],\"linux\":[0.037984958,0.054179000000000005,0.045645958,0.034500125,0.036164417]}. Current worst 1.6360876249999998s. Conservatively retain earlier observed macOS calibration cost 15.135638709s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 15.135638709)=23s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes."
     }
   }
 }

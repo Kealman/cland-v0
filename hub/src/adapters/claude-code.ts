@@ -1,3 +1,4 @@
+import { generationAdapter } from './generation-adapter.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { MissingClaudeGeneration } from '../host/host.ts';
 import { claudeBackgroundId } from '../host/agent/claude.ts';
@@ -210,7 +211,15 @@ const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_COD
 
 type ClaudeLaunch = Omit<HarnessProcess, 'pid' | 'harnessId' | 'startedAt' | 'status'>;
 
+type SharedDirectoryState = {
+  schedules: Map<string, DirectorySchedule>;
+  watched: Set<HarnessProcess>;
+  revision: number;
+  signal: AdapterHost['signal'];
+};
+
 export class ClaudeCodeAdapter implements HarnessAdapter {
+  declare releaseUnreachableGeneration: NonNullable<HarnessAdapter['releaseUnreachableGeneration']>;
   readonly harness = CLAUDE_CODE;
   readonly relaunchStopsProcess = true;
   readonly capabilities = CLAUDE_CODE_CAPABILITIES;
@@ -264,12 +273,13 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #stopping = new Set<string>();
   /** Directory-confirmed launches; an initial discovery miss is not retirement. */
   readonly #listed = new Set<string>();
-  #hookRevision = 0;
+  readonly #directoryState: SharedDirectoryState;
   readonly #activity = new Map<string, { revision: number; pendingIdentity?: true }>();
   #timer: ClockTimer | null = null;
 
-  constructor(host: AdapterHost, options: ClaudeCodeOptions = {}) {
+  constructor(host: AdapterHost, options: ClaudeCodeOptions = {}, generationScope = false, directoryState?: SharedDirectoryState) {
     this.#host = host;
+    this.#directoryState = directoryState ?? { schedules: new Map(), watched: new Set(), revision: 0, signal: host.signal };
     this.#recoveries=new FailedLaunches(host.log,1000,host.durableLaunchRecovery);
     this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
@@ -287,6 +297,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#env = env;
     this.#configDir = resolve(env.CLAUDE_CONFIG_DIR || join(env.HOME || homedir(), '.claude'));
     if (env.CLAUDE_CONFIG_DIR) this.#env.CLAUDE_CONFIG_DIR = this.#configDir;
+    const Adapter = new.target;
+    if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true, this.#directoryState));
   }
 
   /**
@@ -309,7 +321,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   #directory(p: Pick<HarnessProcess, 'accountEnv' | 'host' | 'sessionId'>): DirectorySchedule {
     const configDir = resolve(p.accountEnv?.CLAUDE_CONFIG_DIR || this.#configDir);
     const key = (p.host ?? 'local') === 'local' ? configDir : JSON.stringify([p.host, p.sessionId, configDir]);
-    let schedule = this.#directories.get(key);
+    const schedules = (p.host ?? 'local') === 'local' ? this.#directoryState.schedules : this.#directories;
+    let schedule = schedules.get(key);
     if (schedule) return schedule;
     schedule = { local: (p.host ?? 'local') === 'local', configDir, lastAgentsAt: 0, signedOut: false, signedOutAt: 0, signedOutId: '', observedLaunches: new Map(), observationRevision: 0, entries: null, agentsVersion: 0, agentsFlight: null };
     const saved = (p.host ?? 'local') === 'local' ? this.#host.adapterState?.read(`claude-poll:${configDir}`) : null;
@@ -323,7 +336,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         schedule.entries = Array.isArray(state.entries) ? state.entries : null;
       } catch { /* Old or invalid state gives the default schedule. */ }
     }
-    this.#directories.set(key, schedule);
+    schedules.set(key, schedule);
     return schedule;
   }
 
@@ -362,6 +375,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   #markSignedOut(p: HarnessProcess, at = this.#clock.now().getTime()): void {
+    if (this.#closed) return;
     const d = this.#directory(p);
     d.signedOutAt = Math.max(d.signedOutAt, at);
     if (d.signedOut) { this.#saveSchedule(d); return; }
@@ -369,11 +383,12 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     d.signedOutId = randomUUID();
     d.entries = null;
     this.#saveSchedule(d);
-    for (const watched of this.#watched.values()) if (this.#directory(watched) === d) this.#host.signal(watched.sessionId, { state: 'unknown', source: 'signed-out', at });
+    for (const watched of (d.local ? this.#directoryState.watched : this.#watched.values())) if (this.#directory(watched) === d) this.#directoryState.signal(watched.sessionId, { state: 'unknown', source: 'signed-out', at });
     this.#host.log({ event: 'claude-signed-out', configDir: d.configDir, account: p.account ?? null, login: `${this.#dirPrefix(p)}claude auth login` });
   }
 
   #recovered(d: DirectorySchedule, at = this.#clock.now().getTime()): void {
+    if (this.#closed) return;
     if (!d.signedOut || at < d.signedOutAt) return;
     d.signedOut = false;
     this.#saveSchedule(d);
@@ -381,15 +396,15 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   #agents(p: HarnessProcess, resumed: Resumed = untimed, refresh = false): Promise<AgentEntry[] | null> {
     const d = this.#directory(p);
-    if (this.#closed || d.signedOut || ![...this.#watched.values()].some(watched => this.#directory(watched) === d)) return Promise.resolve(null);
+    if (this.#closed || d.signedOut || ![...(d.local ? this.#directoryState.watched : this.#watched.values())].some(watched => this.#directory(watched) === d)) return Promise.resolve(null);
     if (d.agentsFlight) return d.agentsFlight;
     if (!refresh && this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) return Promise.resolve(d.entries);
     d.lastAgentsAt = this.#clock.now().getTime();
     this.#saveSchedule(d);
     d.agentsFlight = continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
       try {
-        d.observationRevision = this.#hookRevision;
-        d.observedLaunches = new Map([...this.#watched.values()].filter(w => this.#directory(w) === d).map(w => [w.sessionId, { process: w, job: w.harnessId }]));
+        d.observationRevision = this.#directoryState.revision;
+        d.observedLaunches = new Map([...(d.local ? this.#directoryState.watched : this.#watched.values())].filter(w => this.#directory(w) === d).map(w => [w.sessionId, { process: w, job: w.harnessId }]));
         const r = yield* wait(this.#run(['agents', '--json'], this.#host.root, p, 15000, resumed));
         if (this.#closed || d.signedOut) return null;
         const parsed: unknown = r.code === 0 ? JSON.parse(r.stdout) : null;
@@ -397,7 +412,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         d.agentsVersion++;
         this.#saveSchedule(d);
         return d.entries;
-      } catch { d.entries = null; return null; }
+      } catch { if (!this.#closed) d.entries = null; return null; }
       finally {
         d.agentsFlight = null;
         if (!this.#closed) {
@@ -719,7 +734,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   }
 
   #noteActivity(sessionId: string, pendingIdentity = false): void {
-    this.#activity.set(sessionId, { revision: ++this.#hookRevision, ...(pendingIdentity ? { pendingIdentity: true as const } : {}) });
+    this.#activity.set(sessionId, { revision: ++this.#directoryState.revision, ...(pendingIdentity ? { pendingIdentity: true as const } : {}) });
   }
 
   duplicateHarness(p: HarnessProcess, nativeId: string): Promise<import('./contract.ts').NativeJobInspection> {
@@ -864,7 +879,10 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- watch: the polled fallback and liveness
 
   watch(p: HarnessProcess): void {
+    const previous = this.#watched.get(p.sessionId);
+    if (previous) this.#directoryState.watched.delete(previous);
     this.#watched.set(p.sessionId, p);
+    if ((p.host ?? 'local') === 'local') this.#directoryState.watched.add(p);
     if (!this.#timer) {
       this.#timer = this.#clock.setInterval(() => void this.#poll(), this.#pollMs);
       this.#timer.unref();
@@ -875,6 +893,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#clearMissing(sessionId);
     for (const prompt of this.#prompts.get(sessionId)?.values() ?? []) prompt.resolve?.([]);
     this.#prompts.delete(sessionId);
+    const watched = this.#watched.get(sessionId);
+    if (watched) this.#directoryState.watched.delete(watched);
     this.#watched.delete(sessionId);
     this.#listed.delete(sessionId);
     this.#activity.delete(sessionId);
@@ -1285,6 +1305,40 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return completion.promise;
   }
 
+  assertLaunchAvailable(name: string): void { this.#recoveries.assertAvailable(name); }
+
+  async detachUnreachable(): Promise<Array<'transport' | 'forward' | 'watch' | 'in-flight'>> {
+    const dropped: Array<'transport' | 'forward' | 'watch' | 'in-flight'> = [];
+    if (this.#bridges.size) dropped.push('transport');
+    if (this.#watched.size) dropped.push('watch');
+    if (this.#pending.size || this.#commands.size || this.#pollFlight) dropped.push('in-flight');
+    this.#closed = true;
+    this.#recoveries.close();
+    this.#bridges.clear();
+    for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
+    this.#prompts.clear();
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
+    this.#timer = null;
+    for (const timer of this.#reexecTimers.values()) this.#clock.clearTimeout(timer);
+    this.#reexecTimers.clear();
+    this.#missingSince.clear();
+    for (const watched of this.#watched.values()) this.#directoryState.watched.delete(watched);
+    this.#watched.clear();
+    this.#listed.clear();
+    this.#activity.clear();
+    for (const pending of this.#pending.values()) {
+      this.#clock.clearTimeout(pending.timer);
+      pending.reject(new Error('native generation is unreachable'));
+    }
+    this.#pending.clear();
+    for (const [timer, done] of this.#resumeWaits) { this.#clock.clearTimeout(timer); done(); }
+    await Promise.allSettled([...this.#commands].map(command => command.settled));
+    await Promise.allSettled([...this.#nativeInspections.values(), ...this.#launches, ...this.#resumes, ...(this.#pollFlight ? [this.#pollFlight] : [])]);
+    await this.#recoveries.drain();
+    while (this.#settlementWriters.size) await Promise.allSettled([...this.#settlementWriters]);
+    return dropped;
+  }
+
   close(): void | Promise<void> {
     if (this.#closed) return this.#closing;
     this.#closed = true;
@@ -1297,6 +1351,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     for (const timer of this.#reexecTimers.values()) this.#clock.clearTimeout(timer);
     this.#reexecTimers.clear();
     this.#missingSince.clear();
+    for (const watched of this.#watched.values()) this.#directoryState.watched.delete(watched);
     this.#watched.clear();
     this.#listed.clear();
     this.#activity.clear();

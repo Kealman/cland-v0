@@ -1,3 +1,4 @@
+import { dropHostForwardsLocal, localForwardOwner } from '../transport/transport.ts';
 import { AGENT_LAUNCH_DIRECTORY } from '../host/agent/processes.ts';
 import { serverFiles, retainedPrivateServerFiles } from './opencode/server.ts';
 import { settleHostBeforeCut, HostSettlementIncomplete, type HostSettlement } from '../host/settle.ts';
@@ -106,6 +107,23 @@ export class Sessions {
 
   /** Called with an authenticated returning agent's boot id before lifecycle exit publication.
    * Captures closure for every harness without adapter stop or any Host operation. */
+  /** No native authority: drain captured adapter work, then forget hub-local forwards. */
+  async releaseUnreachableGeneration(p: HarnessProcess): Promise<import('./contract.ts').GenerationReleaseReceipt> {
+    const generation = hostGenerationKey(p);
+    const adapter = this.adapter(p.harness);
+    if (!adapter.releaseUnreachableGeneration) throw new Error(`${p.harness}: unreachable generation release unavailable`);
+    const receipt = await adapter.releaseUnreachableGeneration(p);
+    if (receipt.generation !== generation || receipt.released !== true) throw new Error('adapter generation release receipt does not match captured process');
+    const host = p.host ?? 'local';
+    const forwards = receipt.forwardIds.map(id => {
+      const owner = this.#localForwardOwners.get(JSON.stringify([host, id]));
+      if (!owner) throw new Error(`host ${host}: captured local forward owner unavailable`);
+      return { id, owner };
+    });
+    await dropHostForwardsLocal(this.#root, host, forwards);
+    return receipt;
+  }
+
   retainHostGeneration(p: HarnessProcess, proof: {cause: 'host-rebooted'; bootId: string}): void {
     if(proof.cause!=='host-rebooted'||(p.host??'local')==='local'||!this.#hosts.has(p.host!)||this.#cutHosts.has(p.host!))throw new Error('host reboot closure unavailable');
     const current=this.#table.bySessionId(p.sessionId), pending=this.#pendingStops.get(p.sessionId);
@@ -211,15 +229,30 @@ export class Sessions {
     this.#settlingHosts.set(name, work); return work;
   }
 
+  readonly #localForwardOwners = new Map<string, string>();
+  #captureForwardOwner(host: Host): Host {
+    if (host.name === 'local') return host;
+    return new Proxy(host, { get: (target, key) => {
+      const value: unknown = Reflect.get(target, key, target);
+      if (typeof value !== 'function') return value;
+      if (key !== 'forward') return value.bind(target);
+      return (id: string, ...args: unknown[]) => {
+        const owner = localForwardOwner(this.#root, host.name);
+        if (owner) this.#localForwardOwners.set(JSON.stringify([host.name, id]), owner);
+        return value.apply(target, [id, ...args]);
+      };
+    } });
+  }
   #hostForProcess(process: HarnessProcess): Host {
     const name = process.host ?? 'local';
     const host = this.#hosts.get(name);
     if (!host) throw new Error(`unknown host ${name}`);
-    if(name==='local')return host;
+    const ownedHost = this.#captureForwardOwner(host);
+    if(name==='local')return ownedHost;
     // A previously captured adapter Host must observe the later reboot receipt too.
     // Read/file retirement remains available; old-boot native operations never do.
     const captured={...process};
-    return new Proxy(host,{get:(target,key)=>{
+    return new Proxy(ownedHost,{get:(target,key)=>{
       const value:unknown=Reflect.get(target,key,target);
       if(typeof value!=='function')return value;
       return (...args:unknown[])=>{
@@ -233,7 +266,7 @@ export class Sessions {
     if (this.#settlingHosts.has(name)) throw new Error(`host ${name}: revocation in progress`);
     const host = this.#hosts.get(name);
     if (!host) throw new Error(`unknown host ${name}`);
-    return host;
+    return this.#captureForwardOwner(host);
   }
 
   validateLaunchHost(request: LaunchRequest): Host {

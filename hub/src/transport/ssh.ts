@@ -13,7 +13,7 @@ import { sshBinaries } from '../host/ssh-binaries.ts';
 import { AgentClient } from '../host/agent-client.ts';
 import { realClock } from '../hub/clock.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
-import { claimTransport, ReconnectPolicy } from './transport.ts';
+import { claimTransport, noteTransportStopped, ReconnectPolicy } from './transport.ts';
 import type { Transport, HostTunnelStatus } from './transport.ts';
 const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
 // This is OpenSSH configuration quoting, independent of the remote shell.
@@ -74,6 +74,7 @@ export class SshTransport implements Transport {
   #state: HostTunnelStatus; #running = false; #loop?: Promise<void>; #release: (() => void) | undefined;
   #children = new Map<ChildProcess, () => Promise<void>>(); #retry: (() => void) | undefined; #watch?: ClockTimer;
   #forwards = new Map<string, SessionForward>();
+  readonly #releasedForwards = new Set<string>();
   #forwardWork: Promise<unknown> = Promise.resolve();
   #beforeReady: Promise<void> | undefined;
   #readinessAbort: AbortController | undefined;
@@ -92,6 +93,7 @@ export class SshTransport implements Transport {
   async #removeForward(session: string, entry: SessionForward): Promise<void> {
     await (this.#o.unlinkSessionSocket ?? unlink)(entry.socket).catch(error => { if (error.code !== 'ENOENT') throw error; });
     this.#forwards.delete(session);
+    this.#releasedForwards.add(session);
   }
   /** Returns only after the master acknowledges installation. One endpoint per session. */
   forward(session: string, endpoint: HostEndpoint): Promise<{ socket: string }> {
@@ -113,6 +115,7 @@ export class SshTransport implements Transport {
         return { socket };
       }
       const entry: SessionForward = { socket, spec, cleanup: false };
+      this.#releasedForwards.delete(session);
       this.#forwards.set(session, entry);
       try {
         if (!await this.#forwardCommand('forward', spec)) throw new Error('session forward refused');
@@ -127,6 +130,19 @@ export class SshTransport implements Transport {
       return { socket };
     });
   }
+  /** Forget local listener ownership without contacting the lost host or mux. */
+  dropForwardLocal(ids: readonly string[]): Promise<void> {
+    return this.#serial(async () => {
+      for (const id of ids) {
+        const entry = this.#forwards.get(id);
+        if (!entry) continue;
+        // A failed unlink must never restore this generation on reconnect.
+        entry.cleanup = true;
+        await this.#removeForward(id, entry);
+      }
+    });
+  }
+
   unforward(session: string): Promise<void> {
     return this.#serial(async () => {
       const entry = this.#forwards.get(session);
@@ -152,7 +168,7 @@ export class SshTransport implements Transport {
   async start(): Promise<void> {
     if (this.#running) return;
     this.#forwardAbort = new AbortController();
-    this.#release = claimTransport(this.#o.root, this); this.#running = true;
+    this.#release = claimTransport(this.#o.root, this); this.#releasedForwards.clear(); this.#running = true;
     this.#policy.observe();
     this.#watch = this.#clock.setInterval(() => { if (this.#policy.observe()) this.wake(); },1000);
     this.#loop = this.#run();
@@ -170,6 +186,7 @@ export class SshTransport implements Transport {
     await this.#serial(async () => {
       for (const entry of this.#forwards.values()) entry.cleanup = true;
       for (const [session, entry] of this.#forwards) await this.#removeForward(session, entry);
+      if (this.#release) noteTransportStopped(this.#o.root, this, [...this.#releasedForwards]);
       this.#release?.(); this.#release = undefined; this.#stateTo('down');
     });
   }

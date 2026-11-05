@@ -1,3 +1,4 @@
+import { generationAdapter } from './generation-adapter.ts';
 import { hostGenerationKey } from './processes.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement } from './launch-settlement.ts';
@@ -100,7 +101,10 @@ type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: Session
 /** PID supervision survives missing native connection material. One attempt per session may read it. */
 type WatchTicket = { process: HarnessProcess; pending: boolean; warned: boolean };
 
+type PrivateDirectoryOwner = { path: string; canonical: string; identity: { dev: number; ino: number } };
+
 export class OpenCodeAdapter implements HarnessAdapter {
+  declare releaseUnreachableGeneration: NonNullable<HarnessAdapter['releaseUnreachableGeneration']>;
   readonly harness = OPENCODE;
   readonly capabilities = OPENCODE_CAPABILITIES;
   readonly clauseAtSpawn = OPENCODE_CLAUSE_AT_SPAWN;
@@ -122,7 +126,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #watched = new Map<string, Watch>();
   readonly #watching = new Map<string, WatchTicket>();
   readonly #usage = new Map<string, SessionUsage>();
-  readonly #privateDirectories = new Map<string,{path:string;canonical:string;identity:{dev:number;ino:number}}>();
+  readonly #privateDirectories: Map<string, PrivateDirectoryOwner>;
   #timer: ClockTimer | null = null;
   #closed = false;
   #pidCheck: Promise<void> | null = null;
@@ -133,8 +137,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
   // Successful local launches retain libuv's reap receipt beyond LaunchFiles.commit.
   readonly #localExits = new Map<string, { pid: number; settle: () => void | Promise<void> }>();
 
-  constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
+  constructor(host: AdapterHost, options: OpenCodeOptions = {}, generationScope = false, privateDirectories?: Map<string, PrivateDirectoryOwner>) {
     this.#host = host;
+    this.#privateDirectories = privateDirectories ?? new Map();
     this.#clock = options.clock ?? realClock;
     this.#roleInstructions = options.roleInstructions ?? true;
     this.#processEnv = options.env ?? process.env;
@@ -148,6 +153,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
     // cland's own variables stay out, and so does a password or config meant for another OpenCode server
     for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') && !['OPENCODE_CONFIG', 'OPENCODE_CONFIG_CONTENT', 'OPENCODE_PASSWORD', 'OPENCODE_DB', 'XDG_DATA_HOME'].includes(k)) env[k] = v;
     this.#env = env;
+    const Adapter = new.target;
+    if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true, this.#privateDirectories));
   }
 
   #assertOpen(): void { if (this.#closed) throw new Error('the OpenCode adapter is closed'); }
@@ -983,6 +990,34 @@ export class OpenCodeAdapter implements HarnessAdapter {
       const process_ = yield* this.#activeWait(this.#launch({ ...(p.host !== undefined ? { host: p.host } : {}), account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, scope, true, resumed, options.launchToken, options.authorize));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
+  }
+
+  assertLaunchAvailable(name: string): void { this.#recoveries.assertAvailable(name); }
+
+  async detachUnreachable(): Promise<Array<'transport' | 'forward' | 'watch' | 'in-flight'>> {
+    const dropped: Array<'transport' | 'forward' | 'watch' | 'in-flight'> = [];
+    if (this.#connections.size || this.#watched.size) dropped.push('transport');
+    if (this.#forwards.size) dropped.push('forward');
+    if (this.#watching.size || this.#watched.size) dropped.push('watch');
+    if (this.#flights.size || this.#pidCheck) dropped.push('in-flight');
+    this.#closed = true;
+    this.#recoveries.close();
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
+    this.#timer = null;
+    this.#watching.clear();
+    const watches = [...this.#watched.values()];
+    for (const w of watches) w.abort.abort();
+    this.#watched.clear();
+    for (const c of this.#connections.values()) await (await c.work.catch(() => undefined))?.close();
+    await Promise.allSettled(watches.flatMap(w => [...w.snapshots, ...(w.subscription ? [w.subscription] : [])]));
+    while (this.#flights.size) await Promise.allSettled([...this.#flights]);
+    await this.#pidCheck;
+    await this.#recoveries.drain();
+    await Promise.allSettled([...this.#forwardCleanup.values()]);
+    this.#connections.clear();
+    this.#forwards.clear();
+    this.#forwardCleanup.clear();
+    return dropped;
   }
 
   async close(): Promise<void> {
