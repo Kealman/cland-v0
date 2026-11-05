@@ -3,7 +3,7 @@ id: T-1687
 kind: task
 title: Hub-local process identity keeps the exit-time /proc ESRCH race that T-1684 fixed for the agent (git daemon stop incomplete)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1684
 topic: topic-1391
 branch: t/T-1687-hub-local-process-identity-keeps-the
 created: 2026-11-05T11:55:24.090Z
-updated: 2026-11-05T12:15:21.139Z
+updated: 2026-11-05T13:32:21.937Z
 ---
 
 ## Summary
@@ -34,10 +34,13 @@ Apply T-1684's bounded exit-time retry, with the same semantics, to `process-ide
 
 - [x] C1. Injected ESRCH on a `/proc/<pid>/stat` read of an exiting process makes hub-local identity report unknown before the fix and resolve to exited after it (test, red before the fix).
   - done: impl-1687 · 2026-11-05T12:07:07.976Z
+  - verified: rev-35 [reviewer] · run rev-35-1687-final-1 · 2026-11-05T12:43:59.544Z · commit 5decccd1e89ab499f92a2aff31c67616fd9b57da
 - [x] C2. Hub-local and agent identity share one exit-race helper, and a persistent ESRCH still yields unknown (test).
   - done: impl-1687 · 2026-11-05T12:07:08.485Z
+  - verified: rev-35 [reviewer] · run rev-35-1687-final-1 · 2026-11-05T12:43:59.544Z · commit 5decccd1e89ab499f92a2aff31c67616fd9b57da
 - [x] C3. host-git-daemon and host-ssh-contract pass 20/20 locally under CPU load in a Linux container (evidence).
   - done: impl-1687 · 2026-11-05T12:14:44.840Z
+  - verified: rev-35 [reviewer] · run rev-35-1687-final-1 · 2026-11-05T12:43:59.545Z · commit 5decccd1e89ab499f92a2aff31c67616fd9b57da
 
 ## Comments
 
@@ -69,3 +72,22 @@ Interim source clear, no findings. A-16854 records shared bounded ESRCH-only ret
 ### impl-1687 · 2026-11-05T12:08:26.462Z
 
 Expanded field/function sweep includes processIdentityAsync/processIdentitiesAsync/processIdentities, linuxIdentity, agentBootId, isCapturedOrExited, observeLinuxProcess/observeProcesses, nativeExited and identityError. Additional hits: process-table re-export; agent/server reports unchanged observation shape; host-boundary helper/test and host-boot-source prove same boundary; measure-memory and claude-code-remote consume unchanged facts; QA E-1532 stages 2/4 and test docs describe unchanged ENOENT/kill(0) behavior. No migration needed in these. No nvim/test hits. Current-head macOS 21-file preservation A-16855 passed 368, skipped only native Linux Claude case; new tests <3ms. Only two authorized persistent-ESRCH fixture migrations.
+
+### rev-35 · 2026-11-05T12:43:59.545Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1687-final-1
+commit: 5decccd1e89ab499f92a2aff31c67616fd9b57da
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; C1–C3 verified. A-16861 records original sync/async ESRCH→Z red and independently inspected exact-head run3a5b55c8/A-16860: 5170/5170, zero fail/cancel/skip/todo. All12 new reader controls pass base+5/5 load each; process identity18, agent/ref-watch21, closure4 and changed lifecycle19 all pass, including unchanged ENOENT/kill(0) safety and real Linux background birth/stop. A-16856 independently establishes20 native code-0/signal-null combined-file iterations with43 identical passing names each (860total) under Linux arm64 CPU load; all7 source hashes match. Mac preservation368pass/1Linux prerequisite skip remains explicit. T0/allT1/fallback allT2/changedT3 once/Web complete; remaining T3 deferred, T4 unexecuted. Candidate projection matches; caller-owned absence policies preserved, source clear A-16854 stands. No findings or reviewer rerun; QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-05T13:32:21.937Z
+
+Batch c287e638 (A-16865) failed suite-cancel:141 (the worker pid wasn't alive after a refused cancel) on a droplet with degraded disk (fsync 197 ms). impl-1687 then ran suite-cancel 5/5 at head 5decccd1 and 5/5 at dev c6e19ffa, all eight cases each time (80 passes), in a Linux container with --init under CPU load (A-16866). Not reproduced on either head, so it is treated as an unrelated intermittent failure. Re-enqueued once at the unchanged head under the flaky rerun rule. The intermittent failure is filed separately.
