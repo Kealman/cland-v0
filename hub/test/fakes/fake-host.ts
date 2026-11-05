@@ -2,6 +2,10 @@
 import { mkdir, readFile, writeFile, access, realpath, rm, open, rename } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { createServer, type Socket } from 'node:net';
+import { fixtureEnvironment } from '../fixture-environment.ts';
+import { execFileSync } from 'node:child_process';
+import { setTimeout as pause } from 'node:timers/promises';
+import { LAUNCH_SETTLEMENT_MS } from '../../src/adapters/launch-settlement.ts';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { hostDirectory } from '../../../shared/fake-host-directory.ts';
@@ -91,7 +95,7 @@ export async function serveFakeReboots(name: string, env: NodeJS.ProcessEnv, hoo
         const observed = await hostOwner(host.directory);
         if (closing || !sameOwner(admitted, observed) || owner !== admitted) throw new Error('fake reboot owner mismatch');
         socket.setTimeout(15000,()=>socket.destroy());
-        work ??= (hooks.reboot ? hooks.reboot() : rebootOwnedHost(host)).then(async()=>{owner=await hostOwner(host.directory);await publish();}).finally(()=>{work=undefined;});
+        work ??= (hooks.reboot ? hooks.reboot() : rebootOwnedHost(host, env)).then(async()=>{owner=await hostOwner(host.directory);await publish();}).finally(()=>{work=undefined;});
         await work;
       });
       admissions.add(admission);
@@ -119,7 +123,7 @@ export async function serveFakeReboots(name: string, env: NodeJS.ProcessEnv, hoo
   return {close:()=>close(true)};
 }
 
-async function rebootOwnedHost(host: {home:string;directory:string}) {
+async function rebootOwnedHost(host: {home:string;directory:string}, env: NodeJS.ProcessEnv) {
     // The fake owns this disposable machine. Snapshot live cwd/birth owners,
     // exclude its controller, and join them before removing volatile state.
     const owners = fixtureProcessCensus(host.home).filter(p => p.pid !== process.pid);
@@ -130,8 +134,22 @@ async function rebootOwnedHost(host: {home:string;directory:string}) {
     await writeFile(join(host.directory, 'gone'), 'rebooting');
     await controlRequest(master.control, {operation:'kill-master', forwards:[], owner, token:master.token});
     await cleanupOwnedProcesses(owners);
-    const remaining = fixtureProcessCensus(host.home).filter(p => p.pid !== process.pid);
-    if (remaining.length) throw new Error('fake reboot incomplete: host writers remain');
+    // SIGKILL cannot make the supervisor reap a final polling child born after
+    // capture. Admission is closed and captured producers are joined. Observe
+    // their finite trailing children gone; never grant new signal authority.
+    const deadline = Date.now() + LAUNCH_SETTLEMENT_MS;
+    let remaining = fixtureProcessCensus(host.home).filter(p => p.pid !== process.pid);
+    const details = () => {
+      let native = '';
+      try { native = execFileSync('ps', ['-p', remaining.map(p=>p.pid).join(','), '-o', 'pid=,ppid=,comm='], {encoding:'utf8',env:fixtureEnvironment(host.directory,env)}); } catch(error) { if ((error as {status?:number}).status !== 1) throw error; native=String((error as {stdout?:string}).stdout??''); }
+      return JSON.stringify({births:remaining,native:native.slice(-8192)});
+    };
+    if (remaining.length) console.error('fake reboot trailing writers: '+details());
+    while (remaining.length && Date.now() < deadline) {
+      await pause(25);
+      remaining = fixtureProcessCensus(host.home).filter(p => p.pid !== process.pid);
+    }
+    if (remaining.length) throw new Error('fake reboot incomplete: host writers remain '+details());
     await rm(join(host.home, '.cland-host/run'), {recursive:true, force:true});
     await writeFile(join(host.directory, 'boot-id'), randomUUID());
     await rm(join(host.directory, 'gone'));

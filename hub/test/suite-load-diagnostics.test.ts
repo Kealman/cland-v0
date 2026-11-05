@@ -64,3 +64,16 @@ test('the reporter receipt redacts multiline command tails and escaped environme
   assert.equal(record.diagnostic.message, 'assertion "[redacted]"\nCommand failed: [redacted]');
   assert.match(record.diagnostic.stack, /at .*suite-load-diagnostics.test.ts:/);
 });
+
+test('reboot CLI diagnostics redact a credential crossing the tail boundary before truncation', async () => {
+  const { rebootCliFailure } = await import('./reboot-cli-diagnostic.ts');
+  const { remoteRedactor } = await import('../src/remote/redact.ts');
+  const secret = 'planted-private-value';
+  const stderr = 'prefix' + secret + 'x'.repeat(8182);
+  assert.ok(stderr.slice(-8192).includes(secret.slice(-10)), 'positive control: clipping first exposes credential suffix');
+  const error = rebootCliFailure({code: 7, signal: 'SIGTERM', stderr}, remoteRedactor([secret]));
+  assert.equal(error.message, 'fake reboot CLI exit 7 signal SIGTERM; stderr: ' + ('prefix[redacted]' + 'x'.repeat(8182)).slice(-8192));
+  assert.ok(!error.message.includes(secret.slice(-10)));
+  const receipt = redactLoadDiagnostic(loadDiagnostic(error), {});
+  assert.equal(receipt.message, error.message, 'suite preserves native exit and sanitized stderr');
+});

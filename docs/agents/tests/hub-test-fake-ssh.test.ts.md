@@ -76,3 +76,8 @@ Reboot CLI fixtures start `serveFakeReboots(name, env)` in their lifetime owner
 before launching workers and join its close during cleanup. The separate CLI
 authenticates through its private reboot-control record; it never recovers PID
 signal authority itself. Missing or mismatched owner/token refuses before cleanup.
+
+Reboot's post-capture writer census is bounded by `LAUNCH_SETTLEMENT_MS`; it waits
+for trailing children without acquiring new signal authority. Residual diagnostics
+include PID, parent, comm and birth. The reboot control request/receipt shape,
+authentication, kill-agent and kill-master contracts are unchanged (T-1691).

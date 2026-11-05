@@ -4,6 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { rebootCliFailure } from './reboot-cli-diagnostic.ts';
+import { remoteRedactor } from '../src/remote/redact.ts';
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile, symlink } from 'node:fs/promises';
 import { sshHostFixture } from './ssh-host-fixture.ts';
@@ -79,7 +81,8 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
   const direct=await AgentClient.connect(hostPaths(f.root,'f1').agentSocket,f.secrets.readSecret('f1'));
   const boot=direct.hello.bootId, agentPid=direct.hello.pid;await direct.close();
   const supervisorBefore=await readFile(join(f.fake.run,'supervisor.lock/pid'),'utf8');
-  const cliReboot=()=>promisify(execFile)(process.execPath,[new URL('./fakes/fake-host.ts',import.meta.url).pathname,'reboot','f1'],{cwd:f.root,env:fixtureEnvironment(f.root,process.env,env),timeout:20000});
+  const redact=remoteRedactor([f.secrets.readSecret('f1'),f.secrets.readSecret('f2'),(JSON.parse(await readFile(join(f.fake.directory,'reboot-control'),'utf8')) as {token:string}).token]);
+  const cliReboot=async()=>{try{const result=await promisify(execFile)(process.execPath,[new URL('./fakes/fake-host.ts',import.meta.url).pathname,'reboot','f1'],{cwd:f.root,env:fixtureEnvironment(f.root,process.env,env),timeout:20000});if(result.stderr)t.diagnostic(redact.text(result.stderr).slice(-8192));return result;}catch(error){throw rebootCliFailure(error,redact);}};
   const controlFile=join(f.fake.directory,'reboot-control');
   const control=await readFile(controlFile,'utf8');
   await writeFile(controlFile,JSON.stringify({...JSON.parse(control),token:'wrong-owner'}));
