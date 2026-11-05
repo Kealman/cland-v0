@@ -114,9 +114,10 @@
       "A-16675",
       "A-16725",
       "A-16747",
-      "A-16811"
+      "A-16811",
+      "A-16899"
     ],
-    "commit": "b151dfbf0c8a436ccc5d528ae280a71bd3118cbe"
+    "commit": "45cf8725d054dd937f5da513792f03765b5b7bd7"
   },
   "budget": {
     "testSeconds": 5,
@@ -3545,6 +3546,42 @@
     "hub/test/host-reboot-native.test.ts": {
       "seconds": 6.670904,
       "tests": 1
+    },
+    "hub/test/claude-stop-owner-component.test.ts": {
+      "seconds": 0.24685,
+      "tests": 1
+    },
+    "hub/test/host-attach-routing.test.ts": {
+      "seconds": 0.74904,
+      "tests": 3
+    },
+    "hub/test/host-boot-source.test.ts": {
+      "seconds": 0.01355,
+      "tests": 1
+    },
+    "hub/test/host-push-facts.test.ts": {
+      "seconds": 0.05887,
+      "tests": 1
+    },
+    "hub/test/host-reboot-controller.test.ts": {
+      "seconds": 0.340368,
+      "tests": 4
+    },
+    "hub/test/host-reboot.test.ts": {
+      "seconds": 0.67679,
+      "tests": 5
+    },
+    "hub/test/host-ref-watch-recovery.test.ts": {
+      "seconds": 0.258136,
+      "tests": 21
+    },
+    "hub/test/host-revoke.test.ts": {
+      "seconds": 3.295269,
+      "tests": 41
+    },
+    "hub/test/host-survival.test.ts": {
+      "seconds": 0.249299,
+      "tests": 2
     }
   },
   "tests": {
@@ -10323,7 +10360,108 @@
     "hub/test/host-settlement.test.ts::unknown-authority Claude generation remains a named obligation and is never signalled": 0.000755,
     "hub/test/host-settlement.test.ts::unreachable cleanup cuts at deadline and names every generation; late receipt starts no more Host calls": 0.007585,
     "hub/test/host-boot.test.ts::only a changed positive boot id proves a host reboot": 0.001228,
-    "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": 6.670904
+    "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": 6.670904,
+    "hub/test/claude-stop-owner-component.test.ts::Claude owner retries retained pins across a live root replacement": 0.24685,
+    "hub/test/codex-host.test.ts::Codex local stop joins native exit deadline": 0.008232,
+    "hub/test/codex-host.test.ts::Codex local stop joins native exit receipt": 0.012574,
+    "hub/test/codex-host.test.ts::Codex recovered local stop without a child receipt uses Host confirmation": 0.007017,
+    "hub/test/codex-host.test.ts::Codex restored subscription retries refused input only after its held receipt": 0.007454,
+    "hub/test/host-attach-routing.test.ts::host session.attach and list return pinned separate SSH command; prior local frame stays compatible": 0.355201,
+    "hub/test/host-attach-routing.test.ts::unavailable terminal ENOENT: client-key-path missing preserves launch, list, snapshot and unrelated rows": 0.180129,
+    "hub/test/host-attach-routing.test.ts::unavailable terminal host is revoked preserves launch, list, snapshot and unrelated rows": 0.21371,
+    "hub/test/host-boot-source.test.ts::fake host boot source requires its file before agent recovery and never falls back to the kernel": 0.01355,
+    "hub/test/host-push-facts.test.ts::push failure diagnostics retain boot/native facts, redact declared outputs and leave receipts untouched": 0.05887,
+    "hub/test/host-reboot-controller.test.ts::close joins held admission and forbids reboot after owner observation": 0.124577,
+    "hub/test/host-reboot-controller.test.ts::disconnected client does not release held reboot or its publication writer": 0.074751,
+    "hub/test/host-reboot-controller.test.ts::failed held setup destroys accepted partial clients before rejecting": 0.112965,
+    "hub/test/host-reboot-controller.test.ts::initial publication failure closes its acquired listener before rejection": 0.028075,
+    "hub/test/host-reboot.test.ts::boot readiness during suspended resume fences its stale running result": 0.114727,
+    "hub/test/host-reboot.test.ts::changed boot retires mixed rows and preserves obligations; pending=false": 0.128697,
+    "hub/test/host-reboot.test.ts::changed boot retires mixed rows and preserves obligations; pending=stopped": 0.063526,
+    "hub/test/host-reboot.test.ts::changed boot retires mixed rows and preserves obligations; pending=true": 0.071781,
+    "hub/test/host-reboot.test.ts::stopped reboot retirement streams archived rows and yields after 32 candidates": 0.298059,
+    "hub/test/host-ref-watch-recovery.test.ts::a recovered peer is positively reobserved before clearing its cached same-signature failure": 0.010558,
+    "hub/test/host-ref-watch-recovery.test.ts::accepted checkout retains unknown ownership after reacquisition failure": 0.024098,
+    "hub/test/host-ref-watch-recovery.test.ts::accepted checkout retains unknown ownership after registration failure": 0.001029,
+    "hub/test/host-ref-watch-recovery.test.ts::accepted native receipt rebinds the durable watch before timeout stop; unknown ledger needs producer receipt": 0.010425,
+    "hub/test/host-ref-watch-recovery.test.ts::crash checkpoint recovers the native admission then pushes only the current head with the observed lease": 0.011798,
+    "hub/test/host-ref-watch-recovery.test.ts::dirty removal keeps its durable watch and the next head still publishes": 0.01613,
+    "hub/test/host-ref-watch-recovery.test.ts::every unknown native push observation names its boundary without changing authority": 0.009543,
+    "hub/test/host-ref-watch-recovery.test.ts::healthy checkpoint events preserve an inaccessible peer fence through the shared status projection": 0.018042,
+    "hub/test/host-ref-watch-recovery.test.ts::held A push binds its event and the later B attempt to their captured heads and leases": 0.03594,
+    "hub/test/host-ref-watch-recovery.test.ts::legacy unknown observation without a cause retains its generic fence": 0.006484,
+    "hub/test/host-ref-watch-recovery.test.ts::Linux exiting descendant ESRCH is retried before push classification: absent": 0.006747,
+    "hub/test/host-ref-watch-recovery.test.ts::Linux exiting descendant ESRCH is retried before push classification: live": 0.007494,
+    "hub/test/host-ref-watch-recovery.test.ts::Linux exiting descendant ESRCH is retried before push classification: replaced": 0.006345,
+    "hub/test/host-ref-watch-recovery.test.ts::Linux exiting descendant ESRCH is retried before push classification: unobservable": 0.004439,
+    "hub/test/host-ref-watch-recovery.test.ts::next successful leased head clears the named fence while old native cleanup stays owned": 0.009205,
+    "hub/test/host-ref-watch-recovery.test.ts::scoped flush confirms a settled publication and names a missing watch": 0.006681,
+    "hub/test/host-ref-watch-recovery.test.ts::scoped flush refuses a confirmed failed lease without retrying the unchanged head": 0.005916,
+    "hub/test/host-ref-watch-recovery.test.ts::second crash after settlement checkpoint retains recovery ancestry before an advanced remote": 0.021469,
+    "hub/test/host-ref-watch-recovery.test.ts::successful removal checkpoint loss settles from directory and Git-index absence without replay": 0.011295,
+    "hub/test/host-ref-watch-recovery.test.ts::unchanged refused head ignores packed-ref churn and substituted proxy never launches": 0.013445,
+    "hub/test/host-ref-watch-recovery.test.ts::unknown pending child and inaccessible retained watch leave a healthy watch publishing": 0.021053,
+    "hub/test/host-revoke.test.ts::changed boot fences an already-admitted failed-stop continuation before its Host stop": 0.094483,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains claude-code resources without native cleanup (files)": 0.046878,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains claude-code resources without native cleanup (native)": 0.056772,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains claude-code resources without native cleanup (none)": 0.051506,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains codex resources without native cleanup (files)": 0.045708,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains codex resources without native cleanup (native)": 0.045443,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains codex resources without native cleanup (none)": 0.055081,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains opencode resources without native cleanup (files)": 0.040224,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains opencode resources without native cleanup (native)": 0.043619,
+    "hub/test/host-revoke.test.ts::changed-boot closure retains opencode resources without native cleanup (none)": 0.048121,
+    "hub/test/host-revoke.test.ts::changed-boot receipt rejects same boot, malformed proof, foreign and replaced owners": 0.04968,
+    "hub/test/host-revoke.test.ts::completed metadata retirement never reopens a captured old-boot Host before cut or restart (independent-fence)": 0.102434,
+    "hub/test/host-revoke.test.ts::completed metadata retirement never reopens a captured old-boot Host before cut or restart (prior-resource-marker)": 0.125924,
+    "hub/test/host-revoke.test.ts::held host settlement follows captured identity through rename and name reuse": 0.103887,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (legacy-pruned)": 0.123455,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (legacy-row)": 0.119728,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (older-unknown)": 0.144777,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (pruned-row-alias)": 0.119329,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (pruned-row-replaced-alias)": 0.142355,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (pruned-row-replaced-directory)": 0.111872,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (pruned-row-session-symlink)": 0.135734,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (pruned-row)": 0.103198,
+    "hub/test/host-revoke.test.ts::normal OpenCode exit retains private files until host retirement after restart (untracked-files)": 0.11314,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (legacy-pruned)": 0.074576,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (legacy-row)": 0.068732,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (older-unknown)": 0.067646,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (pruned-row-alias)": 0.07373,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (pruned-row-replaced-alias)": 0.085361,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (pruned-row-replaced-directory)": 0.073372,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (pruned-row-session-symlink)": 0.077111,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (pruned-row)": 0.105667,
+    "hub/test/host-revoke.test.ts::normal OpenCode stop retains private files until host retirement after restart (untracked-files)": 0.069603,
+    "hub/test/host-revoke.test.ts::reboot receipts preserve distinct Claude generations of the same stable session": 0.043927,
+    "hub/test/host-revoke.test.ts::retained generation enumeration yields to the deadline and preserves unexecuted obligations": 0.144354,
+    "hub/test/host-revoke.test.ts::retirement keeps distinct native generations of one stable session and clears only its owner": 0.009346,
+    "hub/test/host-revoke.test.ts::retirement reads the prior stable-session storage shape and normalizes only its exact owner": 0.013736,
+    "hub/test/host-revoke.test.ts::revoke joins held failed-launch owner and reports it until durable cleanup is cleared": 0.059066,
+    "hub/test/host-revoke.test.ts::revoke observes OpenCode child-exit receipt at 3000 ms against its stop bound": 0.099555,
+    "hub/test/host-revoke.test.ts::revoke observes OpenCode child-exit receipt at 6000 ms against its stop bound": 0.071566,
+    "hub/test/host-revoke.test.ts::revoke settles every harness through its placed Host and fences later access": 0.088341,
+    "hub/test/host-revoke.test.ts::untracked agent launch records are named without acquiring process authority": 0.046232,
+    "hub/test/host-settlement.test.ts::generation stops share one stop/reap and retirement window before inventory": 0.00132,
+    "hub/test/host-survival.test.ts::host ready retries unavailable mixed-harness startup without vacating or signalling rows": 0.099987,
+    "hub/test/host-survival.test.ts::readiness during a held startup pass retries the earlier failed row before settling": 0.149312,
+    "hub/test/launch-files.test.ts::rollback bounds a missing native exit receipt and fences undo and repeated stop until it resolves": 0.016793,
+    "hub/test/opencode-host.test.ts::OpenCode recovered local server without a child receipt keeps Host stop confirmation": 0.003137,
+    "hub/test/opencode-host.test.ts::OpenCode stop joins the launched local server exit deadline after Host stop": 0.014514,
+    "hub/test/opencode-host.test.ts::OpenCode stop joins the launched local server exit receipt after Host stop": 0.010645,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race async: ESRCH then EACCES": 0.000964,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race async: ESRCH then ENOENT": 0.001146,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race async: ESRCH then ESRCH": 0.000759,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race async: ESRCH then malformed": 0.000488,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race async: ESRCH then S": 0.000488,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race async: ESRCH then Z": 0.001726,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then EACCES": 0.001195,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then ENOENT": 0.002749,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then ESRCH": 0.000957,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then malformed": 0.000852,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then S": 0.000875,
+    "hub/test/process-identity.test.ts::hub-local Linux exit race sync: ESRCH then Z": 0.000956,
+    "hub/test/suite-load-diagnostics.test.ts::reboot CLI diagnostics redact a credential crossing the tail boundary before truncation": 0.00421
   },
   "allow": {
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
