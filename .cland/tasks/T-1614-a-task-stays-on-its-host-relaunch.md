@@ -3,7 +3,7 @@ id: T-1614
 kind: task
 title: A task stays on its host; relaunch elsewhere from the pushed branch
 state: open
-status: in progress
+status: review
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1395
 branch: t/T-1614-a-task-stays-on-its-host-relaunch
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-05T19:05:37.398Z
+updated: 2026-11-05T19:29:32.508Z
 ---
 
 ## Summary
@@ -41,3 +41,11 @@ Shared files: `hub/src/adapters/requests.ts` (`session.resume` gains `host`), `s
 ### impl-1614 · 2026-11-05T18:58:26.481Z
 
 Rule 20 sweep recorded in docs/evidence/T-1614-consumers.md before production edits: resume frames, schema/dispatch, CLI/web/nvim/setup/spoke, permission consumers, lease and persisted worktree readers/writers, fixtures and all test tiers. Existing wire clients remain unchanged; new optional host only. C1 starts at public resume-frame seam; native C2/C3 at fake SSH/git socket seam per launch brief.
+
+### impl-1614 · 2026-11-05T19:09:49.688Z
+
+Progress evidence on uncommitted T-1614 tree (base e786b48fe), local macOS Node v24.21.0, no browser: host-relaunch-component.test.ts plus unedited session-resume.test.ts passed 3/3 generated cases (C1 live-host refusal/same-host placement; in-process Claude resume restores role/item claim/clause; refused in-process Codex resume offers fresh artifact brief). This is targeted T2 evidence only; no verify/full suite/load/container coverage yet. Native scripted-worker case has not passed: setup repaired, latest failure 'f1 carrier down receipt: not within 15000 ms' after gone-only trigger; now triggers authenticated kill-master then gone. T-1696 prerequisite blocks real adapter handoff and final verification per Coordinator.
+
+### impl-1614 · 2026-11-05T19:29:32.508Z
+
+Correction to my earlier progress comment and A-16912: I mislabeled the initial base as e786b48fe. Actual prepared worktree parent is 91202c2636aee931a3579c633b80158ec04d20db, verified from first core commit 68a16a03d63bf65b6bf1c3f879f7339c55aa30d6. Initial head is pushed and source review routed to rev-35. Evidence remains targeted local macOS only; final checks wait for T-1696.
