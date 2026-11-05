@@ -3,7 +3,7 @@ id: T-1613
 kind: task
 title: A rebooted host ends its sessions
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1384
 branch: t/T-1613-a-rebooted-host-ends-its-sessions
 created: 2026-11-02T03:33:58.539Z
-updated: 2026-11-05T03:07:35.755Z
+updated: 2026-11-05T04:26:12.341Z
 ---
 
 ## Summary
@@ -30,7 +30,7 @@ Hot files: `hub/src/adapters/sessions.ts`, `hub/src/host/ssh-host.ts`, `hub/test
 - [x] C1. After `fake-host.ts reboot`, every session on that host reads `exited` and its role is vacated with the same notice as a local harness exit, while sessions on the other fake host are untouched (test).
   - done: impl-1613 · 2026-11-05T02:41:53.262Z
 - [ ] C2. The hub restarts the rebooted host's supervisor and agent and the tunnel is `up` again (test).
-  - failed: rev-36 [reviewer] · 2026-11-05T03:07:35.755Z · note 6380ee28 selected T3 agent-restart/native-producer preservation failed two host-push-on-ref-move cases with native push identity unknown.
+  - failed: rev-36 [reviewer] · 2026-11-05T03:58:40.128Z · note 59a9a571 failed agent-SIGKILL push recovery: current head durable publication after interrupted push not within5000ms (test113).
 - [x] C3. No stop or signal is sent for the exited rows to any host or to the hub's machine (test).
   - done: impl-1613 · 2026-11-05T02:41:53.884Z
 
@@ -113,3 +113,65 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; A-16762 records quoted native errors before classification. A16761 exact42286: T0/T1/T2exit0, selectedT3exit1 (49pass/2fail), T4/Webunexecuted. Uncached Linuxx64c8sfo2 Node24.21/Nvim.12.5 capturetree2b01d79e,browsernull; advisoriesreport-only. Root cause unclassified, not flaky/budget. Own boot/controller/reboot cases pass including native6.977556431s within12s; local203 summary not substitute. C2failed,C1/C3unverified; source-clear3unchanged. Lead diagnoses/retries; changedhead needs source rereview before verify. No Reviewer execution/edits/delegation.
 
 Criteria: C2 failed (6380ee28 selected T3 agent-restart/native-producer preservation failed two host-push-on-ref-move cases with native push identity unknown.).
+
+### impl-1613 · 2026-11-05T03:29:02.042Z
+
+Coordinator9237e21d authorized diagnostic-only delta after Linux failure6380ee28. Rule20 consumers: agent/ref-push and watch; server; AgentClient/SSH Host; protocol ref-moved/ref-watch-status; host-flush, host-settlement, host-ref-watch-recovery, host-push-on-ref-move, host-ref-watch-compat and transport-status tests; docs/agents/host-agent.md and compatibility/recovery guides. Searches covered field/frame/function names plus hub/shared/web/nvim/docs/qa/shipped skills; no additional startup probe/QA/skill parser found. PushObservation cause was already optional; frames/rows and persistence shape unchanged. Existing watchers forward optional cause and retain legacy generic fallback. Tests add every bare-unknown cause plus computed live-without-ledger unknown, PID/identity/boot field labels, unchanged running shape and zero stop calls. Canonical birth boot parsing shared with unchanged reboot admission to avoid duplicate policy; no Linux boot reader or settlement/fence logic change. Original Linux root cause remains unclassified pending diagnostic verification.
+
+### rev-36 · 2026-11-05T03:33:49.810Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-delta-source-1
+commit: d6d8c791d049efebafec170921245c591ab64c10
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Diagnostic-only source delta clear; A-16770, no findings. Direct Coordinator9237e21d checked. Every bare/computed unknown now names its branch; mismatch names pid/identity/boot without raw values. Predicates/order/running+gone outcomes/authority/fences/stop/original native assertions and Linux boot readers unchanged. Shared canonical parser preserves declared reboot policy;32 closure hashes match. Optional-cause relays/persistence/compat consumers checked; explicit previous-shape generic fallback and zero-stop/unchanged-running controls retained. A16766 local30/T0partial only; current-head push5/5/configured receipts pending. Prior6380ee28 remains failed/root unclassified; C2failed evidence unresolved, C1–C3unverified. This clears Coordinator's diagnostic mode-free run, not final readiness/fix claim; if green, obtain explicitly required second fresh verify before intermittent classification. Changedhead needs source rereview. Reviewer read-only/no execution/edits/delegation.
+
+### rev-36 · 2026-11-05T03:58:40.128Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1613-evidence-2
+commit: d6d8c791d049efebafec170921245c591ab64c10
+scope: evidence
+findings: [{"severity":"medium","text":"Required interrupted-push recovery did not observe exact current-head territory publication within5000ms. Failure differs from prior generic identity rejection; root remains unclassified, bound/fences must stay pending producer facts.","file":"hub/test/host-push-on-ref-move.test.ts","line":113}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A16779 quotes actualA16777 failure. Exactd6d8: T0/T1/T2pass; selectedT3exit1 (50pass/1fail), T4/Webunexecuted. Other3pushcases and ownreboot5.447715417s pass, not overall coverage. Uncached Linuxx64c8lon1 Node24.21/Nvim.12.5 capture1a841324,browsernull; report-onlyadvisories notcause. Prior6380ee28 remains failed/unclassified; no new unknown cause reported here, no intermittent/fixed/timeout-bump inference. C2failed,C1/C3unverified. Lead diagnoses watch/pending/producer/native receipts; changedhead needs source review before retry. Reviewer read-only/no execution.
+
+Criteria: C2 failed (59a9a571 failed agent-SIGKILL push recovery: current head durable publication after interrupted push not within5000ms (test113).).
+
+### impl-1613 · 2026-11-05T04:11:32.978Z
+
+After second Linux failure59a9a571 (publication wait timeout, not identity rejection), Coordinator71a8e199 authorized failure-only boot/native receipts. Existing5s wait/final assertions remain; catch captures before/after hello, current agent and supervisor receipt, fake/kernel boot, watch/pending/fences and selected native/producer/birth/closed facts, then rethrows original. Direct-agent test has no hub/Sessions/registry; reboot retirement explicitly not wired. No product minter/observer/fence change. New private test helper consumed only by host-push native test and T2 synthetic snapshot control, matching guides/index/tiers updated. JSON reads64KiB/boot256B, strings512chars, bounded targets/generations with truncation counts, final output16Kchars; declared fields only, redaction before clipping, no plans/HOME/environment reads or native signals. Missing/oversized receipts and null observed head explicit, watcher byte-identical after capture. Root cause remains unclassified; next reviewed-head configured run must supply these facts if red.
+
+### rev-36 · 2026-11-05T04:21:10.365Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-delta-source-2
+commit: e5feb68606d51219762fc2b69cf2e057eff8e04b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Failure-snapshot source delta clear; A16781, no findings. Direct Coordinator71a8e199/bba54e2a checked. Original5s bound/exact-head+pending assertions unchanged; failure-only bounded declared watch/ledger/producer/native/boot facts then original error rethrown. Shared redactor before clipping/printing; positive long-secret/whitelist/immutable-watch controls; capped8readonly identity RPCs/1s, explicit missing/oversized/unknown. Direct fixture reboot retirement labelled notwired honestly. No production/closure/authority/reader/allowance change. A16780 local18/T0partial only; native/configured receipts pending. Prior6380ee28/59a9a571 remainfailed/rootunclassified,C2failed evidenceopen,C1–C3unverified. Exacthead diagnostic verify permitted per Coordinator workflow; changedhead rereview. Directc19d4efd supersedes blanket second-task-run instruction; mergebatch separate. Reviewer read-only/no execution/edits/delegation.
+
+### rev-36 · 2026-11-05T04:26:12.341Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1613-delta-source-3
+commit: 7be0b051f18ebfb10cfeaefc1ac98746309b251a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Tiny observer-boot diagnostic source clear; A16783, no findings. Current authenticated agent PID prioritized first inside unchanged8-PID cap; captured native second. Read-only1s RPC caller unchanged. Existing parser derives capturedNativeBootId and live-reply recoveredObserverBootId independently of cached hello; T2 deliberate hello mismatch/nullunknown controls retained. Previous redaction/bounds/whitelist/immutable facts checks apply. Only helper/test/guide changed; no production/closure/duration/nativewait/assertions. Olde5Mac5/5 not currenthead evidence; targeted/static pending and no queuedrun yet. Complete required checks/receipts then exact7be diagnostic verify. Priorfailed6380/59a9 rootunclassified,C2failed evidenceopen,C1–C3unverified. Changedhead rereview; Reviewer read-only/no execution/edits/delegation.
