@@ -3,17 +3,17 @@ id: T-1673
 kind: task
 title: orphan-servers 'a sweep during a slow launch' found its OpenCode server still alive right after sessions.stop on a Linux dev-t3 run
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1532
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1386
+branch: t/T-1673-orphan-servers-a-sweep-during-a-slow
 created: 2026-11-04T10:12:59.157Z
-updated: 2026-11-05T00:46:15.674Z
+updated: 2026-11-05T01:59:21.592Z
 ---
 
 ## Summary
