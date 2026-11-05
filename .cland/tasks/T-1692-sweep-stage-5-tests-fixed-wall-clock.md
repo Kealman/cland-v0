@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1394
 branch: t/T-1692-sweep-stage-5-tests-fixed-wall-clock
 created: 2026-11-05T17:20:46.506Z
-updated: 2026-11-05T19:16:02.359Z
+updated: 2026-11-05T19:33:19.006Z
 ---
 
 ## Summary
@@ -80,3 +80,7 @@ Coordinator decisionc6b242cd excludes host-survival-native from C2: product-path
 ### impl-1692 · 2026-11-05T19:16:02.359Z
 
 Loaded proof progress: all26 included files now5/5 macOS; Linux docker run --init batch0 all7 files5/5, four yes burners on four Linux arm64 CPUs, Node24.21.0. Other19 Linux files pending. Source remains7f40bc776 and fe31ba24 green. Lock released after native writers/burners joined. Coordinator priority9e962c0b holds new acquisition until T-1696 explicitly reports release; then remaining Linux batches resume. Exclusions T-1693/A-16903 and T-1695/A-16907 retained.
+
+### impl-1692 · 2026-11-05T19:33:19.006Z
+
+Coordinator decisiond81427f4 excludes ONLY remoteClaude case 'lost native release reply settles without replaying native stop' from C2, product cause T-1697. A-16915 preserves Linux fifth25/26 and native exit1; prior4 full files passed. Other25 cases retain5/5 Linux proof; macOS fullfile5/5 remains. Evidence summary now separates raw process passes from case-level C2 eligibility; no source changed for the failure. Remaining3 batch1 fifth files + Linux batches2/3 pending T-1696 priority release. Two whole-file exclusions remain T-1693 and T-1695. Final allowance/import delta review + existing fe31ba24 authorized rule7 exception unchanged.
