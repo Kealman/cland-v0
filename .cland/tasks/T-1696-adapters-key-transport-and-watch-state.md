@@ -3,7 +3,7 @@ id: T-1696
 kind: task
 title: Adapters key transport and watch state by generation, with a no-signal handoff that releases an unreachable old generation (prefactor for T-1614)
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1396
 branch: t/T-1696-adapters-key-transport-and-watch-state
 created: 2026-11-05T19:05:29.327Z
-updated: 2026-11-05T19:50:28.033Z
+updated: 2026-11-05T20:15:10.103Z
 ---
 
 ## Summary
@@ -35,10 +35,10 @@ Add a generation handoff to the adapter contract, used by T-1614:
 
 ## Acceptance criteria
 
-- [ ] C1. For each of OpenCode, Codex and Claude, a new generation with the same sessionId and the same host-local URL never reuses the old generation's connection, forward or watch (test).
-  - failed: rev-35 [reviewer] · 2026-11-05T19:50:28.033Z · note A found resume that actually starts a fresh native worker remains aliased into the old generation scope.
+- [x] C1. For each of OpenCode, Codex and Claude, a new generation with the same sessionId and the same host-local URL never reuses the old generation's connection, forward or watch (test).
+  - done: impl-1696 · 2026-11-05T20:01:18.283Z
 - [ ] C2. Releasing an unreachable generation sends no signal and makes no Host call to its host, drops its transport, forward, watch and in-flight state, and cannot affect a running new generation with the same id (test, with a held old cleanup racing the new launch).
-  - failed: rev-35 [reviewer] · 2026-11-05T19:50:28.033Z · note Old-row release can detach a fresh resumed generation, and released forward entries remain in SSH transport's reconnect inventory.
+  - failed: rev-35 [reviewer] · 2026-11-05T20:05:35.545Z · note Captured forwards have no consumable positive cleanup receipt after their transport successfully stops and unregisters.
 - [ ] C3. Same-host resume and the existing stop, settle and revoke behaviour are unchanged: the existing adapter and session tests pass with no test edited.
   - failed: rev-35 [reviewer] · 2026-11-05T19:23:22.491Z · note Whole-adapter partitioning changes shared Claude scheduling and failed-launch admission, bypasses installed public wrappers and masks close diagnostics.
 
@@ -81,3 +81,18 @@ finding_counts: {"high":1,"medium":1,"low":0}
 Corrected full source not clear; A-16918 separates standards/spec review and checks the ten initial repairs. Two remaining ownership gaps: unconditional found-resume aliasing across a fresh native launch, and missing local SSH transport forward-inventory release. Both confirmed by lead; corrections need fresh review before configured verification. C3 remains unverified while preservation/load evidence is incomplete. Existing tests unedited, ordered teardown/docs fixed, no Reviewer execution.
 
 Criteria: C1 failed (A found resume that actually starts a fresh native worker remains aliased into the old generation scope.), C2 failed (Old-row release can detach a fresh resumed generation, and released forward entries remain in SSH transport's reconnect inventory.).
+
+### rev-35 · 2026-11-05T20:05:35.545Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1696-source-3
+commit: f262006279b49ad21554cb0cde2a79277df08cd6
+scope: full
+findings: [{"severity":"medium","text":"Spec: nonempty captured forward IDs cannot be released after their transport successfully stops and unregisters. SshTransport.stop positively removes local forwards then deletes the registry entry, but no owner-bound completion receipt survives; dropHostForwardsLocal therefore throws cleanup unavailable and strands a removed host's generation handoff. Preserve/consume the exact successful local-cleanup receipt, while unknown IDs or incomplete stop remain refused.","file":"hub/src/transport/transport.ts","line":35}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-16925 records full corrected source review. The prior fresh-resume alias and active transport-inventory findings are addressed within Coordinator 107dde4a/fabe5a96 scope. One remaining medium gap: successful stop drops its registry owner without preserving a receipt for later generation release, which then refuses despite confirmed cleanup. Lead confirms a3049bd4; require exact stopped-owner receipt rather than treating arbitrary absence as closure. C1/C3 remain unverified pending preservation/load/configured evidence. No Reviewer execution.
+
+Criteria: C2 failed (Captured forwards have no consumable positive cleanup receipt after their transport successfully stops and unregisters.).

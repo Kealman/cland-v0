@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1395
 branch: t/T-1614-a-task-stays-on-its-host-relaunch
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-05T19:49:29.748Z
+updated: 2026-11-05T19:58:13.567Z
 ---
 
 ## Summary
@@ -67,3 +67,20 @@ finding_counts: {"high":3,"medium":2,"low":0}
 Initial independent core not clear; A-16916 records standards/spec review and all five findings. Coordinator 6fba53f3 narrows the correction: T-1614 owns durable admission before detach, atomic native/ready/warning/completion, and known failed admission left fenced/reported. Advanced-tip/checkout identity and onward retry move to T-1698; remove unsafe retry execution/claims here rather than implementing them now. Unknown preparation recovery remains excluded. C3/C4 remain unverified pending native/compatibility evidence; no criteria verified. T-1696 integration, native/preservation/load/T0 and configured verification remain pending. Reviewer performed read-only source inspection only.
 
 Criteria: C1 failed (A returning source host after irreversible detach leaves its current row fenced without durable move admission or restored supervision.), C2 failed (Move admission/publication are not one durable owner, and native facade capability detection rejects the actual dependency hook.).
+
+### rev-36 · 2026-11-05T19:52:31.633Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1614-source-1
+commit: 4fb421df4e66f168c9d5f1939fc80bba5e0cf6c7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Requested preliminary core source clear, Standards/Spec no findings. Independent review from prepared parent91202c263; Coordinator6fba53f3 scope split applied. Prior five findings resolved in core: durable exact-generation intent before irreversible release; drain outside serial/territory locks; atomic native/ready/warning/intent completion with rollback and post-commit accepted-owner handling; callable Reflect capability; unsafe prepared/onward retry removed and known failure left adding/fenced/reported. Shared state keys/types, old optional-wire compatibility, docs/skill and consumer inventory inspected. A-16920: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16920-t-1614-corrected-core-source-review-at-4fb421df4.md . NO C1–C4 runtime marks. T-1696 forward-drain integration/authorized dev merge and fresh integrated source review still required BEFORE configured verify; direct adapter call here is preliminary only. Native success cleanup failure is not coverage; native rerun, unedited preservation, loaded Mac/Linux checks, final T0/allowances and configured evidence pending. T-1698 owns retry reconciliation. Reviewer ran no tests.
+
+### impl-1614 · 2026-11-05T19:58:13.567Z
+
+Preliminary core source clear at4fb421df4 (rev-36-1614-source-1,A-16920). Exact-head local macOS arm64 Node24.21.0 native scripted-worker rerun now exit0,2/2: running7.459533208s/refused6.649596875s,file14.448625375s,no burners/browser/duration gate. Joined publisher flush fixes earlier agent cleanup incompleteness; lock owner-checked/released. Native record artifact posted; loaded runner prep A-16921 is syntax/secret-scan-only, not executed. T-1696 integration and final evidence remain pending, no runtime criterion verification claimed.
