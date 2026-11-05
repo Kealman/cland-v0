@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1384
 branch: t/T-1613-a-rebooted-host-ends-its-sessions
 created: 2026-11-02T03:33:58.539Z
-updated: 2026-11-04T17:16:37.664Z
+updated: 2026-11-05T02:01:55.149Z
 ---
 
 ## Summary
@@ -43,3 +43,7 @@ Rule 20 sweep before edits: readiness onTable consumers are host/registry.ts and
 ### impl-1613 · 2026-11-04T17:16:37.664Z
 
 Dependency seam committed on T-1666 at 94ff42843ff83eb060701e729075fcfc95e0e5fe (not landed): Sessions.retainHostGeneration(process, {cause: "host-rebooted", bootId}) persists closure for all harnesses. PendingStop.hostRebooted is {bootId, launchGeneration?}; it preserves original pending resource undo and fences retries/continuations against native operations. Reboot flow must publish exit/vacate separately and bypass the normal pending-stop #exited branch only after durable proof admission. Shared hostBootChanged matches ad51d375a. Waiting for dependency landing and Coordinator merge instruction; no review or verification requested.
+
+### impl-1613 · 2026-11-05T02:01:55.149Z
+
+Rule 20 integration sweep: T-1666 API remains unchanged; no Host operation, schema/index/column, wire reply, or observer operation added. Readiness callback retains table as first argument; host-agent-restart recording callbacks remain compatible. New lifecycle consumers are Sessions host-readiness/startup and native reboot fixture; existing failed-launch/pending-stop/revoke/fence persistence readers remain unchanged and targeted host-revoke coverage will be rerun. Fake boot override now applies on Linux and fake-ssh passes the same CLAND_HOST_BOOT_ID_FILE consumed by agent/native; updated agent closure projection. Unknown-authority Claude obligations stay held on same boot and receive only changed-boot closure; pending undo remains retained.

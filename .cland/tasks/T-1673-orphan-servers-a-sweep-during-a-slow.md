@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1386
 branch: t/T-1673-orphan-servers-a-sweep-during-a-slow
 created: 2026-11-04T10:12:59.157Z
-updated: 2026-11-05T01:59:21.592Z
+updated: 2026-11-05T02:00:32.100Z
 ---
 
 ## Summary
@@ -44,3 +44,7 @@ Recurrence 2 (coord, 2026-11-05 00:41Z): periodic dev T3 run 94141cff at e22d02c
 ### coord · 2026-11-05T00:46:15.674Z
 
 The hub's failing-file rerun 8803a762 at the same head e22d02c7 (log A-16740, Linux droplet c-8 sfo2, peak load 1.8) passed the whole orphan-servers file: 17 passed, 1 skipped. This is the same pattern as recurrence 1: red under full-suite load (peak 6.0), green alone. It stays intermittent under load, with a likely missing wait for death; planned for E-1532 stage 5 once T-1666 lands.
+
+### impl-1673 · 2026-11-05T02:00:32.100Z
+
+Consumer sweep before edits: startServer is called only by OpenCodeAdapter.#launch (Codex has unrelated private #startServer). Host/HostSpawned, Sessions, protocol and persisted records stay unchanged. Searched hub/test and nvim/test for hostControl, hostForLaunch/Process, spread localHost/testHost, spawn/exited and observer patterns: 37 files including opencode-host, opencode-remote-cleanup, recording Host contracts, launch-files, lifecycle-serialization, host-supervisor and remote tests. All unaffected by an additive internal startServer result field; local synthetic OpenCode successful launches in opencode-host already supply an exit promise and resolve it on stop, except rollback-only held tests which retain LaunchFiles ownership. Remote hosts retain existing stop/settlement semantics. No wire shape/schema changes or Sessions edits planned. Named cause: parseProcessTable drops Z/X and endProcess can return true on that snapshot, before libuv reaps a local child; LaunchFiles waits for child.exited on rollback but commit discards that receipt for successful OpenCode launches.
