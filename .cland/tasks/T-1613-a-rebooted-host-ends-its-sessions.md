@@ -2,8 +2,8 @@
 id: T-1613
 kind: task
 title: A rebooted host ends its sessions
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1384
 branch: t/T-1613-a-rebooted-host-ends-its-sessions
 created: 2026-11-02T03:33:58.539Z
-updated: 2026-11-05T06:27:44.423Z
+updated: 2026-11-05T07:10:15.247Z
+closed: 2026-11-05T07:10:15.247Z
 ---
 
 ## Summary
@@ -272,3 +273,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, Standards and Spec no findings. A-16805 configured682f7d2e at exact source-clear head passes hub aggregate5196/5196: T0/T1/fallback-allT2/selectedT3/T4base/Web exit0. Independently checked named outcomes and assertion facts: all18 Linux host-agent cases, corrected boot-source/kernel-stray-file control, native reboot6.606739413s, all4 native push cases, reboot/controller/boot components and recorded load repetitions. C1 durable exits/ordinary role vacancy/other-host preservation; C2 changed authenticated agent+supervisor+boot and hosts up; C3 empty stop-operation list and wrong-owner safety verified. A-16806 full criterion map and scope: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16806-t-1613-final-linux-boot-and-reboot-evidence-at-7b4da314.md . Uncached Linuxx64 droplet c8sfo2 Node24.21/Nvim0.12.5, isolated HeadlessShell1248/Chrome156.0.8078.4; capturetree a395e962b0851c5cb3653d70bcbbc3648a214149. SelectedT3 10files69 identities once; T4guard once/no repetitions. RemainingT3/otherT4/repetitions and stageQA separate; report-only advisories retained. A-16800 Mac404pass/1Linux-onlyskip remains explicitly at83820 with identical production/native bytes, full203 preservation names checked; A-16803 current-head29help controls supplemental. Prior failed runs remain failed, older push causes unclassified. Reviewer ran no tests.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-05T07:10:15.247Z
+
+Merged 2c6d013ea0602e851c923f7c2cfae911318fe149 onto dev.

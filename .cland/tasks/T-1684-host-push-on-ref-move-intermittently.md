@@ -14,7 +14,7 @@ regression_of: T-1609
 topic: null
 branch: null
 created: 2026-11-05T06:46:38.762Z
-updated: 2026-11-05T06:46:45.646Z
+updated: 2026-11-05T06:50:31.049Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ updated: 2026-11-05T06:46:45.646Z
 
 - [ ] C1. The failing branch and its cause are named with a deterministic reproduction (test, red before the fix).
 - [ ] C2. After the fix, both cases pass with assertions and fences unchanged, and host-push-on-ref-move passes 20/20 on Linux under load (evidence).
+
+## Comments
+
+### coord · 2026-11-05T06:50:31.049Z
+
+The hub's failing-file rerun 985870fe at the same head c360484b (A-16808, Linux x64, peak load 1.0) passed host-push-on-ref-move 4/4. That makes it red under full-suite load (dev-t3 peak 6.6) and green alone, the same load-sensitive pattern as T-1673. Fix it at the cause; never stop at "passes alone".
