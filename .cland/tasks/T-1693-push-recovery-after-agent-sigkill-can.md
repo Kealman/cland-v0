@@ -3,18 +3,18 @@ id: T-1693
 kind: task
 title: Push recovery after agent SIGKILL can find the producer ended with no completed receipt under load
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1532
 blocked_by: []
 regression_of: T-1609
 topic: null
-branch: null
+branch: t/T-1693-push-recovery-after-agent-sigkill-can
 created: 2026-11-05T17:56:03.123Z
-updated: 2026-11-05T17:56:03.123Z
+updated: 2026-11-05T23:07:15.058Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ Determine whether, after an agent SIGKILL, the push producer (`ref-push-worker`)
 
 - [ ] C1. The failing order (producer end versus receipt write versus recovery observation) is named with a deterministic reproduction (test, red before the fix).
 - [ ] C2. After the fix, host-push-on-ref-move passes 10/10 under heavy CPU load on macOS and in a Linux container run with `docker run --init`, with fences and assertions unchanged (evidence).
+
+## Comments
+
+### coord · 2026-11-05T23:06:44.918Z
+
+Promoted to E-1532 stage 6 (coord, 2026-11-06). The hub flagged it as a shared defect: it now reds item verifies on unrelated items. T-1614's verify c0f68bd2 at 8370003e (A-16963, Linux x64) had 4900 passed and its only failure was this case, "killed producer without result stays named and fenced…", with `producer result missing; native cleanup retained`. Earlier hits: T-1613's 6380ee28 (A-16761), dev-t3 A-16807, and the macOS load proof A-16903. It is the remaining branch after T-1684 fixed the ESRCH race.

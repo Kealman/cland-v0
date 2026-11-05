@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1395
 branch: t/T-1614-a-task-stays-on-its-host-relaunch
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-05T19:58:13.567Z
+updated: 2026-11-05T23:07:07.469Z
 ---
 
 ## Summary
@@ -28,12 +28,14 @@ Hot files: `hub/src/adapters/requests.ts`, `hub/src/adapters/sessions.ts`, `hub/
 
 ## Acceptance criteria
 
-- [ ] C1. A relaunch of a session whose host is up goes to that host and reuses its worktree, and a resume naming another host is refused with a reason saying the task stays on its host (test).
-  - failed: rev-35 [reviewer] · 2026-11-05T19:37:27.910Z · note A returning source host after irreversible detach leaves its current row fenced without durable move admission or restored supervision.
-- [ ] C2. After `fake-host.ts gone f1`, a relaunch with `host: "f2"` adds the worktree on f2 at the territory's pushed tip, and the session runs there (test).
-  - failed: rev-35 [reviewer] · 2026-11-05T19:37:27.910Z · note Move admission/publication are not one durable owner, and native facade capability detection rejects the actual dependency hook.
-- [ ] C3. The lease moves from f1 to f2 under the territory lock: f1's pushes to the branch are refused, and f2's succeed (test).
-- [ ] C4. A resume frame without `host` behaves as today, and the session-resume test file passes with no test edited.
+- [x] C1. A relaunch of a session whose host is up goes to that host and reuses its worktree, and a resume naming another host is refused with a reason saying the task stays on its host (test).
+  - done: impl-1614 · 2026-11-05T22:14:26.767Z
+- [x] C2. After `fake-host.ts gone f1`, a relaunch with `host: "f2"` adds the worktree on f2 at the territory's pushed tip, and the session runs there (test).
+  - done: impl-1614 · 2026-11-05T22:45:29.470Z
+- [x] C3. The lease moves from f1 to f2 under the territory lock: f1's pushes to the branch are refused, and f2's succeed (test).
+  - done: impl-1614 · 2026-11-05T22:14:27.352Z
+- [x] C4. A resume frame without `host` behaves as today, and the session-resume test file passes with no test edited.
+  - done: impl-1614 · 2026-11-05T22:14:27.525Z
 
 ## Notes
 
@@ -84,3 +86,56 @@ Requested preliminary core source clear, Standards/Spec no findings. Independent
 ### impl-1614 · 2026-11-05T19:58:13.567Z
 
 Preliminary core source clear at4fb421df4 (rev-36-1614-source-1,A-16920). Exact-head local macOS arm64 Node24.21.0 native scripted-worker rerun now exit0,2/2: running7.459533208s/refused6.649596875s,file14.448625375s,no burners/browser/duration gate. Joined publisher flush fixes earlier agent cleanup incompleteness; lock owner-checked/released. Native record artifact posted; loaded runner prep A-16921 is syntax/secret-scan-only, not executed. T-1696 integration and final evidence remain pending, no runtime criterion verification claimed.
+
+### rev-36 · 2026-11-05T22:16:49.109Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1614-delta-source-1
+commit: 3f978a1dbaca17f3e59f8ca5819d75af94d4cac3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integrated source clear, Standards/Spec no findings. Reviewed authorized f68f696f0 merge (core4fb421df4 + upstream57d108144), both conflict resolutions, task integration delta and relevant local-carrier owner/removal contracts. Relaunch now awaits public Sessions.releaseUnreachableGeneration after durable admission/outside locks, then rechecks exact lifecycle owner before preparation; duplicate receipt validation removed. Fake forwardIds/get-only proxy contract updated. Production CodexAdapter native case uses fake executable/app-server/spoke with two carriers in one registry and durable input/PID/tip receipts; proves scoped-forward distinction/old endpoint absence after source restore, stable claim and lease refusal/success. Docs/index/T3 tier updated; unedited session-resume preserved. Earlier atomic publication/fenced failure and T-1698 scope remain. A-16950: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16950-t-1614-integrated-generation-handoff-source-delta.md . No C1–C4 runtime marks: full sealed localT2, Mac load>=12/Linux --init4burners4CPUs 5×three native cases, preservation and same-head configured receipts pending. Reported 3/3 unloaded native run is not loaded/configured proof. Changed head needs fresh review; reviewer ran no tests.
+
+### impl-1614 · 2026-11-05T22:40:05.794Z
+
+Local final-head runtime evidence complete at reviewed3f978a1dbaca17f3e59f8ca5819d75af94d4cac3: fullT2 A-16954; macOS load>=12 five repetitions/eight exact cases A-16955; Linux docker --init fixed4burners/4CPUs five repetitions A-16956; all15 unedited preservation files plus host-push-on-ref-move5/5 A-16958 (240 passing test-case executions, zero failures/skips/cancellations). A-16959 maps C1–C4 and retains the three measured duration-only candidates (29s/29s/24s, C-216 expiry2026-11-11). Every local writer/burner joined and preservation lock released. Source unchanged; mode-free configured run0e527047-50f4-428e-b0d1-1ecdbee63bd1 pending. Waiting for hub result before authorized durations-only commit/delta review; no remote pass or ready claim yet.
+
+### impl-1614 · 2026-11-05T22:43:35.951Z
+
+Configured run0e527047-50f4-428e-b0d1-1ecdbee63bd1 at3f978a1db exited1 only on three missing duration allowances: T3 raw51/51 pass, zero assertion failures/skips/cancellations; 'suite test failures []'. T0/T1/T2 exit0; later T4/Web phases were not completed and are not counted as passing. A-16960 retains the full red receipt: droplet c-8 sfo2 cland-v0-e58889fa, Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, workers2, lifetime1252s,cost$0.0869. Coordinator250a1216 directs29/29/24s durations-only commit, fresh delta review and a new mode-free verify. Runtime source/test assertions remain unchanged, so A-16954/A-16955/A-16956/A-16958 local evidence carries as source evidence only; no green configured receipt yet.
+
+### rev-36 · 2026-11-05T22:44:04.786Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1614-evidence-1
+commit: 3f978a1dbaca17f3e59f8ca5819d75af94d4cac3
+scope: evidence
+findings: [{"severity":"medium","text":"Three new relaunch identities lack measured allowances; configured duration admission rejects production11.272 s, scripted-running10.039 s and refused7.167 s against5 s despite all51 T3 assertions passing.","file":"hub/test/durations.json","line":10467}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Actual A-16960 failure: three `duration budget: ... >5 s (add to hub/test/durations.json with a reason)` errors; suite test failures[]. T0/T1/T2 pass, all51 selectedT3 case outcomes pass, but T3 phase/overall exit1; T4/Web unexecuted. Interruption4961 completed/pass differs from earlier4901 aggregate; neither is full pass. A-16961 preserves exact errors/provenance: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16961-t-1614-configured-duration-admission-failure-at-3f978a1db.md . Uncached Linuxx64 c8sfo2 Node24.21/Nvim0.12.5, browsernull; report-only advisories separate from hard duration admission. C2 failed for configured evidence, no runtime assertion defect inferred. Coordinator250a1216 requires committed measured budget delta/source review then fresh mode-free run; red cannot carry by rule7. New8370003e2 request received and will be reviewed separately. Reviewer ran no tests.
+
+Criteria: C2 failed (Configured0e527047 T3/overall exit1 on three missing reasoned duration allowances; T4/Web unexecuted.).
+
+### rev-36 · 2026-11-05T22:45:06.249Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1614-delta-source-2
+commit: 8370003e2b207d0c3523c56e49b76eee5766ebf0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, Standards/Spec no findings. Sole21-line durations.json addition contains exact three identities and measured29/29/24 s caps, C-216/addedNov5/expiryNov11. Independently matched ten passing platform samples each: maxima19.03315725/19.015927042/15.721050333 s, ceil1.5× yields29/29/24. Previous allowances and manifest version/source/budget/files/tests unchanged; no executable/test/assertion/setup/behaviour/doc changes, report mode retained. A-16962: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16962-t-1614-measured-allowance-source-delta-at-8370003e2.md . No C1–C4 runtime marks: A-16960 red remains red; Coordinator250a1216 requires fresh mode-free verify at this head, no rule7 carry. Local source3f978a1db evidence retains its actual head. Reviewer ran no tests or production validators.
+
+### impl-1614 · 2026-11-05T23:07:07.469Z
+
+Fresh configured run c0f68bd2-96b4-4f14-88a4-a52281dad583 at source-clear8370003e2 exited1: preserved host-push-on-ref-move.test.ts:145 'killed producer without result stays named and fenced until a later successful leased head' reports 'producer result missing; native cleanup retained' from AgentClient watch (A-16963:27035–27042). T0/T1/T2 exit0; T3 50pass/1fail, no skips/cancels; T4/Web unexecuted. New relaunch native cases pass and three allowance errors are resolved. Reported to lead T-1614 as shared-defect candidate/Bugs,S, requesting Coordinator classification/shared fix. Holding diagnosis/rerun/merge; source remains unchanged and claim retained. Platform Linux x64 6.8.0-142-generic droplet c-8 sfo2 Node24.21.0/Neovim0.12.5 workers2; lifetime1183s,cost$0.0822. Existing A-16958 macOS preservation5/5 does not replace this missing configured pass.
