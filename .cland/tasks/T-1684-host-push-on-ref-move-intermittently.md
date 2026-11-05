@@ -3,7 +3,7 @@ id: T-1684
 kind: task
 title: host-push-on-ref-move intermittently reports 'native push identity unknown' after agent SIGKILL on Linux
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1532
 blocked_by: []
 regression_of: T-1609
 topic: null
-branch: null
+branch: t/T-1684-host-push-on-ref-move-intermittently
 created: 2026-11-05T06:46:38.762Z
-updated: 2026-11-05T06:50:31.049Z
+updated: 2026-11-05T07:10:56.400Z
 ---
 
 ## Summary
