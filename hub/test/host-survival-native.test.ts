@@ -108,7 +108,12 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
       const receipt = eventually('persisted spoke response '+spec.name+' '+tag,()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong: '+tag+'-'+spec.name)),15000);
       void receipt.catch(()=>{});
       const sent = await ui.request({type:'topic.send',topic:'general',to:[spec.name],text:tag+'-'+spec.name});
-      assert.equal(sent.ok,true,sent.error); await receipt;
+      assert.equal(sent.ok,true,sent.error);
+      try { await receipt; } catch(error) {
+        await ui.request({type:'hub.status',flushLogs:true});
+        t.diagnostic((await readFile(join(f.root,'.cland/log/hub.log'),'utf8')).split('\n').filter(line=>/reconnect|inject|turn-|host-tunnel|bridge-|harness-request/.test(line)).slice(-50).join('\n'));
+        throw error;
+      }
     }
   };
   await deliver('before');

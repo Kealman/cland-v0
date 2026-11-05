@@ -143,3 +143,8 @@ change before delta review and authorized exception enqueue.
 The aggregate file allowance is 225 s, authorized by Coordinator 35a0544e from
 the failed batch's 148.1 s file sample (1.5 times is 222.15 s). That duration
 is evidence of file cost, not a passing stop result.
+
+The lost-native-release cases also use the shared native setup budget for the
+`session.measure done` receipt before arming reply loss. Their previous two-second
+setup wait was shorter than a single mod hook post's 15-second subprocess
+deadline. The fault injection, stop deadlines and cleanup assertions are unchanged.

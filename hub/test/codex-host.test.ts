@@ -422,3 +422,28 @@ test('Codex recovered local stop without a child receipt uses Host confirmation'
   await adapter.stop(row);
   assert.deepEqual(stops, [row]);
 });
+
+test('Codex restored subscription retries refused input only after its held receipt', async t => {
+  const root = await tempProject(t, 'cx-', '/tmp');
+  const entered = deferred<void>(), release = deferred<void>();
+  const native = new ScriptedCodex(); native.thread = 'restored-thread';
+  native.handlers.set('thread/resume', async () => { entered.resolve(); await release.promise; return {thread:{id:native.thread,status:{type:'idle'}}}; });
+  const host = {...localHost(fixtureEnvironment(root,process.env)),alive:async()=>true};
+  const boundary = adapterHost(root,host);
+  const adapter = new CodexAdapter(boundary,{connect:async()=>native});
+  beforeDirectories(t,async()=>{release.resolve();await receipt('adapter closed',adapter.close());});
+  const row: HarnessProcess = {name:'worker',harness:'codex',role:null,model:null,cwd:root,pid:123,pidStarted:'birth',harnessId:join(root,'native.sock'),harnessSessionId:native.thread,sessionId:'restored',startedAt:new Date().toISOString(),status:'running'};
+  await writeFile(row.harnessId!,'socket fixture');
+  const message: import('../src/protocol.ts').Message = {id:'refused',from:'human',fromKind:'human',via:'hub',text:'after tunnel loss',ts:new Date().toISOString(),to:['worker'],kind:'report'};
+  const retried = deferred<void>(); let reconnects=0;
+  boundary.reconnected=id=>{assert.equal(id,row.sessionId);reconnects++;void adapter.inject(row,message,null).then(()=>retried.resolve(),retried.reject);};
+  await assert.rejects(adapter.inject(row,message,null),/not connected/);
+  const resumed=adapter.resume(row);
+  await receipt('held subscription entered',entered.promise);
+  assert.equal(reconnects,0);assert.equal(native.count('turn/start'),0);
+  release.resolve();assert.equal((await receipt('resume completed',resumed)).found,true);
+  assert.equal(reconnects,1,'a confirmed restored connection announces retry even when idle stays idle');
+  await receipt('refused input retried',retried.promise);
+  assert.equal(native.count('turn/start'),1);
+  assert.match(JSON.stringify(native.calls.find(call=>call.method==='turn/start')!.params),/after tunnel loss/);
+});

@@ -1472,6 +1472,10 @@ export class CodexAdapter implements HarnessAdapter {
           const r = yield* this.#activeWait(this.#subscribe(live, client, {}, resumed));
           if (this.#snapshotIsCurrent(live, r)) this.#updateState(live, r.state);
           void this.#readRateLimits(live);
+          // Host-driven resume can win the polling reconnect race. Its confirmed
+          // subscription must wake input refused while the transport was down,
+          // including when the native snapshot stays idle.
+          this.#host.reconnected?.(p.sessionId);
           return { found: true, process: { ...p, harnessId: socket, model: r.model ?? p.model, status: 'running' }, state: live.state };
         } catch (err) {
           client?.close();

@@ -99,6 +99,9 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
   assert.notEqual(await readFile(f.fake.bootId,'utf8'),boot);
   const rows=((await ui.request({type:'session.list'})).value as {processes:HarnessProcessView[]}).processes;
   assert.equal(rows.find(p=>p.name==='other')?.status,'running');
+  // Row retirement is synchronous; the process journal queues native appends.
+  // Observe its explicit drain receipt before asserting the persisted role events.
+  assert.equal((await ui.request({type:'hub.status',flushLogs:true})).ok,true);
   const log=(await readFile(join(f.root,'.cland/log/hub.log'),'utf8')).trim().split('\n').map(line=>JSON.parse(line) as {event:string;session:string;reason?:string});
   for(const flavour of FAKE_FLAVOURS)assert.ok(log.some(e=>e.event==='role-cleared'&&e.session===flavour&&e.reason==='its harness exited'));
   const roles=(await ui.request({type:'role.list'})).value as {roles:Array<{holders:Array<{name:string}>}>};

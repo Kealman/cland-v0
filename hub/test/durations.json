@@ -10376,19 +10376,19 @@
       "reason": "T-1611 macOS arm64 Node24.21 local working-tree sample 3.511349 s including scratch projectHub setup and joined cleanup. Same-head Linux x64 6.8.0-142-generic c-8 sfo2 Node24.21.0 verify 866a0390 at 8d70abb9 (A-16633) passed the base case in 0.347619138 s and five load repetitions in 0.401073988, 0.334588448, 0.394836114, 0.390142669 and 0.403917764 s. Linux worst 0.403917764 s is below the macOS sample, so 5.3 s stays about 1.5 times the worst observed sample. Samples include fixture setup and joined cleanup; none is full-suite wall time. C-216 owns fixture overhead reduction."
     },
     "hub/test/host-survival-native.test.ts": {
-      "seconds": 90,
-      "file": true,
+      "seconds": 78,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1612 Coordinator decision 3c96e485 approves a durations-only file allowance before enqueue. Same-head Linux x64 c-8 sfo2 Node24.21.0 verify 245788b2 at 227ee0c8 (A-16616) recorded the single native test at 41.0 s; exclusive local macOS arm64 Node24.21.0 whole-file sample was 38.3 s (A-16604, exact 38.266 s). Batch load has run Linux up to 1.5 times slower, which projects this file beyond the enforced 60 s T3 file budget. The 90 s file cap supplies batch headroom; that projection is not an observed duration. C-216 owns native fixture cost reduction. Per-test value, test title, assertions, wait bounds, ordering, identity gates and cleanup are unchanged."
+      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [51.867472958, 51.791722375, 48.866847708, 48.752573208, 48.374715291, 47.873994875, 44.623440584, 45.207911292, 45.245202958, 43.468649209]; linux [39.040447935, 38.947349394, 38.644646976, 38.999016017, 38.783737434, 38.965044143, 38.903448476, 38.883410517, 39.159296351, 38.926501810]. ceil(1.5 x worst 51.867472958) = 78s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.",
+      "file": true
     },
     "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": {
-      "seconds": 58,
+      "seconds": 78,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1612 native three-harness/two-host scenario includes the acceptance-required real 20-second hub downtime. Exclusive-lock macOS arm64 Node24.21 final passing sample was 37.865 s (whole file 38.266 s); prior development samples were 38.052 s and 37.942 s; those prior samples reached all survival assertions but failed the final explicit-stop assertion (shared product regression T-1678, captured in A-16593), so neither is a passing coverage receipt. Same-head Linux x64 c-8 sfo2 Node24.21.0 verify 245788b2 at 227ee0c8 (A-16616) passed this test in 41.0 s. The 58 s per-test cap, initially about 1.5 times the macOS samples, stays unchanged per Coordinator decision 3c96e485; lifecycle assertions and timeout bounds are unchanged."
+      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [51.867472958, 51.791722375, 48.866847708, 48.752573208, 48.374715291, 47.873994875, 44.623440584, 45.207911292, 45.245202958, 43.468649209]; linux [39.040447935, 38.947349394, 38.644646976, 38.999016017, 38.783737434, 38.965044143, 38.903448476, 38.883410517, 39.159296351, 38.926501810]. ceil(1.5 x worst 51.867472958) = 78s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged."
     },
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
       "seconds": 7,
@@ -10475,11 +10475,11 @@
       "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.388094 s; A-16521 3.667987 s; A-16524 5.479246 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
     },
     "hub/test/claude-code-remote.test.ts::lost native release-restart reply settles without replaying native stop": {
-      "seconds": 9,
+      "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.447058 s; A-16521 3.609232 s; A-16524 5.547025 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [9.845850667, 8.567148708, 8.564230833, 9.227979125, 7.607671167, 7.441424792, 6.896027541, 5.685377875, 7.052913875, 6.557208542]; linux [2.355151043, 2.691851085, 2.501584084, 2.499911793, 2.432526418, 2.578907835, 2.508198460, 2.559167626, 2.769961668, 2.607719127]. ceil(1.5 x worst 9.845850667) = 15s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged."
     },
     "hub/test/claude-code-remote.test.ts::lost native forget-restart reply settles without replaying native stop": {
       "seconds": 8,
@@ -13130,11 +13130,11 @@
       "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 6.876509874 s; prior macOS arm64 Node24.21 sample 2.452095791 s. The 11 s C-216 allowance rounds 1.5x worst (10.3147648110 s) upward to whole seconds. Detached-child base sample5.493756007 s is lower than its6.876509874 s load-gate maximum. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
     },
     "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": {
-      "seconds": 12,
+      "seconds": 24,
       "owner": "C-216",
       "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1613 Coordinator c6c3ff54 sizing: clean macOS arm64 Node24.21.0 local early case 4.578853292 s including setup/joined cleanup. T-1666 observed Linux/macOS ratio 14.3/8.9 (about 1.6); projected Linux 7.3261652672 s, times1.5 about10.99 s, rounded with headroom to12 s. This is an explicit platform projection, not an observed Linux pass/time. Early sample excludes final reviewed-head preservation/queued evidence; failed setup, overlapped and teardown-failed runs excluded. Queue/provisioning and Node runner startup excluded. Adjust only if later observed Linux sample times1.5 exceeds12 s; global budget mode report."
+      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [15.472687375, 13.014935459, 12.311403125, 12.017495042, 13.095473875, 10.466531750, 10.227864250, 11.118518584, 10.307232209, 10.632389167]; linux [4.241958877, 3.781416001, 3.719014793, 4.248407418, 3.744861377, 3.730874252, 4.231971085, 4.253560085, 4.272213126, 3.738657710]. ceil(1.5 x worst 15.472687375) = 24s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged."
     }
   }
 }

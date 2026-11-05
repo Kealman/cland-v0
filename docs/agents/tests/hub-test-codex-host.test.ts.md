@@ -5,6 +5,13 @@ No native child, provider, account or remote connection is started. Resume uses
 a fresh scripted connection, matching the real connection ownership boundary. The fixture
 uses a disposable project/environment and closes the adapter before root removal.
 
+The restored-subscription regression first refuses input with no app-server
+connection, holds the actual resume subscription, and requires no reconnection
+callback before that receipt. Releasing the subscription must announce recovery
+even with an idle snapshot, and the callback retries the exact input through
+the production adapter. It failed before the resume callback fix; no native
+process or longer survival-test wait is needed to prove this boundary.
+
 Cwd refusals must reach the caller before any command. Successful launches record
 one Host run and one spawn, preserving cwd, argv, account environment, launch token
 and log destination while stripping executor credentials after overlays. Native

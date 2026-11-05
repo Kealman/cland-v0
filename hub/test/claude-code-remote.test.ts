@@ -230,9 +230,11 @@ test('hub restart after tree closure re-adopts its durable generation and releas
  await scan(d.f.fake.home);await scan(d.fake.home);
 });
 
-for(const mode of ['release','release-restart','forget-restart'] as const)test(`lost native ${mode} reply settles without replaying native stop`,async t=>{
+for(const mode of ['release','release-restart','forget-restart'] as const)test(`lost native ${mode} reply settles without replaying native stop`,{timeout:60000},async t=>{
  const d=await remoteClaudeFixture(t);let treeStops=0;const stop=d.machine.stop.bind(d.machine);d.machine.stop=async(...args)=>{treeStops++;return stop(...args);};
- await eventually('native turn settled before release fault',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ // Setup includes native hook subprocesses (the mod allows 15s per post),
+ // rather than a two-second product turn-latency guarantee.
+ await eventually('native turn settled before release fault',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  if(mode==='forget-restart')d.f.dropNextForgetReply();else d.f.dropNextReleaseReply();
  const first=await d.ui.request({type:'session.stop',session:'worker'},5000);
  assert.equal(first.ok,false);assert.match(first.error!,mode==='forget-restart'?/forget cleanup incomplete/:/release cleanup incomplete/);

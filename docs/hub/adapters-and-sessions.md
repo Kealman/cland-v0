@@ -476,6 +476,13 @@ For approval records, use the sealed frame and recorded-client seams in `docs/ag
 
 For Codex long-thread reattachment, use the scripted native and Unix WebSocket seams in `docs/agents/tests/hub-test-codex-native.test.ts.md`: metadata-only resume, older-server compatibility, frame-limit classification and the CLI payload-limit reason. No harness process is needed.
 
+Codex announces a confirmed app-server subscription through the adapter's
+reconnection callback after host-driven resume as well as polling recovery.
+This retries input positively refused during the outage even when the recovered
+snapshot remains idle. Unknown accepted sends retain their existing replay fence.
+Claude's remote worker adoption alone is not delivery readiness: its authenticated
+mod bridge reconnect owns that retry receipt.
+
 For Codex provider-capacity replay, use the fake-clock/native-readback seam in
 `docs/agents/tests/hub-test-codex-delivery.test.ts.md`: exact input, bounded
 backoff, ownership cancellation and one terminal lead report. Preserve ordinary
