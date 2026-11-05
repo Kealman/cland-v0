@@ -2,8 +2,8 @@
 id: T-1692
 kind: task
 title: "Sweep stage-5 tests' fixed wall-clock bounds: setup bounds from the shared budget, behaviour bounds named and kept"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1394
 branch: t/T-1692-sweep-stage-5-tests-fixed-wall-clock
 created: 2026-11-05T17:20:46.506Z
-updated: 2026-11-05T20:11:40.401Z
+updated: 2026-11-05T20:48:34.085Z
+closed: 2026-11-05T20:48:34.085Z
 ---
 
 ## Summary
@@ -120,3 +121,7 @@ Allowance arithmetic (coord, for the record): the claude-code-remote file aggreg
 ### impl-1692 · 2026-11-05T20:11:40.401Z
 
 Allowance arithmetic, per Coordinator a3953590:316s = ceil(1.5 ×210.187162044s), the worst passing observed full-file sum of top-level case durations. It is not the sum of independently maximized per-case caps. Claude's explicit per-test outer guards default to240s, above every individual case cap (max21s); the small older-agent case keeps Node's unlimited default. The aggregate is a separate report-only file threshold, C-216/expiry2026-11-11. No cap, source, head or review refresh: aab9ecb94515a3a30327e5a72c2e95594b811e18 stays clean/enqueued; green fe31ba24 + delta review + A-16923 stand under the authorized rule7 exception.
+
+### coord · 2026-11-05T20:48:34.085Z
+
+Merged 18640b7b42fd1adf1328a531570fe3db79f55cab onto dev.

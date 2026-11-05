@@ -3,7 +3,7 @@ id: T-1696
 kind: task
 title: Adapters key transport and watch state by generation, with a no-signal handoff that releases an unreachable old generation (prefactor for T-1614)
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1396
 branch: t/T-1696-adapters-key-transport-and-watch-state
 created: 2026-11-05T19:05:29.327Z
-updated: 2026-11-05T20:15:10.103Z
+updated: 2026-11-05T20:41:35.684Z
 ---
 
 ## Summary
@@ -40,7 +40,7 @@ Add a generation handoff to the adapter contract, used by T-1614:
 - [ ] C2. Releasing an unreachable generation sends no signal and makes no Host call to its host, drops its transport, forward, watch and in-flight state, and cannot affect a running new generation with the same id (test, with a held old cleanup racing the new launch).
   - failed: rev-35 [reviewer] · 2026-11-05T20:05:35.545Z · note Captured forwards have no consumable positive cleanup receipt after their transport successfully stops and unregisters.
 - [ ] C3. Same-host resume and the existing stop, settle and revoke behaviour are unchanged: the existing adapter and session tests pass with no test edited.
-  - failed: rev-35 [reviewer] · 2026-11-05T19:23:22.491Z · note Whole-adapter partitioning changes shared Claude scheduling and failed-launch admission, bypasses installed public wrappers and masks close diagnostics.
+  - failed: rev-35 [reviewer] · 2026-11-05T20:41:35.684Z · note Configured 30a5d709 fails five unchanged bridge/Host preservation cases; T2 exits 1 and later tiers do not run.
 
 ## Comments
 
@@ -96,3 +96,70 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-16925 records full corrected source review. The prior fresh-resume alias and active transport-inventory findings are addressed within Coordinator 107dde4a/fabe5a96 scope. One remaining medium gap: successful stop drops its registry owner without preserving a receipt for later generation release, which then refuses despite confirmed cleanup. Lead confirms a3049bd4; require exact stopped-owner receipt rather than treating arbitrary absence as closure. C1/C3 remain unverified pending preservation/load/configured evidence. No Reviewer execution.
 
 Criteria: C2 failed (Captured forwards have no consumable positive cleanup receipt after their transport successfully stops and unregisters.).
+
+### rev-35 · 2026-11-05T20:19:19.831Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1696-source-4
+commit: 3c30df86137fcb3aeba8fee66adc7a87dc0ad8c2
+scope: full
+findings: [{"severity":"low","text":"Non-blocking follow-up under Coordinator 944290ce: stoppedOwners retains every successful carrier-stop owner and its forward-id set indefinitely; Sessions.#localForwardOwners and facade scope/identity indexes likewise retain old ownership entries. Define bounded retirement tied to outstanding generation obligations, preserving idempotence and conservative unknown-proof refusal. No demonstrated C1–C3 or T-1614 main-path failure; filing routed to Coordinator.","file":"hub/src/transport/transport.ts","line":26}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Source clear under Coordinator 944290ce bar; A-16928 records full standards/spec review. Captured carrier UUID and positively unlinked stopped-owner receipts address the remaining main-path blocker; missing/replaced/unknown proof still refuses without wrong-owner effects. Prior generation routing/fences/drains remain corrected. One low receipt/index-retention follow-up is routed to Coordinator for filing, no blocking finding. C1–C3 remain unverified pending full final-head preservation, macOS/Linux 5/5 and configured exact-head proof. Prior f262 335/335 is explicitly predecessor evidence. No Reviewer execution.
+
+### rev-35 · 2026-11-05T20:21:09.176Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1696-delta-source-1
+commit: 8022dfd8418c57fd7c411d0cdc3b11ef4948c45d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-16929 records the only changed file, tiers.json. Two generation entries moved into lexical order; parsed values and T2/T3 assignments identical. Runtime/test/assertion source unchanged from clear 3c30df861. Prior non-blocking retention follow-up now T-1700 under C-216, filed by Coordinator. Previous verify attempt stopped at preflight with no suite/droplet; C1–C3 remain unverified pending exact required receipts. No Reviewer execution.
+
+### rev-35 · 2026-11-05T20:22:59.159Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1696-evidence-1
+commit: 8022dfd8418c57fd7c411d0cdc3b11ef4948c45d
+scope: evidence
+findings: [{"severity":"medium","text":"Configured verification 7ce94a62 exits 1 in T0: dictionary membership must use Object.hasOwn or Map.has. No droplet or runtime phase executed; runtime counts unavailable. Correct task-source lint and obtain fresh source review before rerun.","file":"hub/src/adapters/generation-adapter.ts","line":163}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-16931 records the actual A-16930 failure apart from the suite status. T0 host check failed before droplet creation; all runtime/Web tiers unexecuted, projections not evidence. No runtime criterion failure inferred; C1–C3 remain unverified. This enforced static refusal is separate from the lifecycle-edge bar. Lead acknowledged correction; changed pin requires delta source review. No Reviewer execution.
+
+### rev-35 · 2026-11-05T20:24:29.423Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1696-delta-source-2
+commit: 7e77d748d09abbe721f4fb7a35ad52548682f4ef
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-16932. Sole change uses Object.hasOwn for the guarded process-row discriminator, correcting enforced T0 membership lint while preserving own-field captured-row routing. No assertion or ownership/cleanup changes. Lead reports full local check exit 0; no Reviewer execution. Failed 7ce94a62 remains T0-only with no droplet/runtime proof. C1–C3 remain unverified. T-1700 stays the non-blocking retention follow-up.
+
+### rev-35 · 2026-11-05T20:41:35.684Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1696-evidence-2
+commit: 7e77d748d09abbe721f4fb7a35ad52548682f4ef
+scope: evidence
+findings: [{"severity":"medium","text":"A-16934 records two stale-bridge invalidation failures (1 !== 0) and old-job closure misclassified as bridge-closed instead of bridge-stale-closed at :335.","file":"hub/test/human-hold.test.ts","line":307},{"severity":"medium","text":"A-16934 records expired bridge respawn failure: presence never showed impl, with repeated earlier-launch refusal; actual runtime failure, not advisory timing.","file":"hub/test/mod-bridge.test.ts","line":117},{"severity":"medium","text":"A-16934 records local Host strict-reference compatibility failure: same structure but not reference-equal.","file":"hub/test/session-host.test.ts","line":23}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+A-16937 independently records the five actual errors and named outcomes. C3 not clear under Coordinator 944290ce criterion-failure bar. T0/T1 passed, T2 failed; T3/T4/Web unexecuted. Aggregate and completed-before-interruption counts differ and are retained separately, not combined. No shared/timing classification or automatic retry. Keep preservation tests unchanged; changed fix requires source review. C1/C2 remain unverified. No Reviewer execution.
+
+Criteria: C3 failed (Configured 30a5d709 fails five unchanged bridge/Host preservation cases; T2 exits 1 and later tiers do not run.).
