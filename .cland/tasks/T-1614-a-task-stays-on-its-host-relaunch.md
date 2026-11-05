@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1395
 branch: t/T-1614-a-task-stays-on-its-host-relaunch
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-05T23:07:07.469Z
+updated: 2026-11-05T23:08:07.330Z
 ---
 
 ## Summary
@@ -31,7 +31,7 @@ Hot files: `hub/src/adapters/requests.ts`, `hub/src/adapters/sessions.ts`, `hub/
 - [x] C1. A relaunch of a session whose host is up goes to that host and reuses its worktree, and a resume naming another host is refused with a reason saying the task stays on its host (test).
   - done: impl-1614 · 2026-11-05T22:14:26.767Z
 - [x] C2. After `fake-host.ts gone f1`, a relaunch with `host: "f2"` adds the worktree on f2 at the territory's pushed tip, and the session runs there (test).
-  - done: impl-1614 · 2026-11-05T22:45:29.470Z
+  - done: impl-1614 · 2026-11-05T23:08:07.057Z
 - [x] C3. The lease moves from f1 to f2 under the territory lock: f1's pushes to the branch are refused, and f2's succeed (test).
   - done: impl-1614 · 2026-11-05T22:14:27.352Z
 - [x] C4. A resume frame without `host` behaves as today, and the session-resume test file passes with no test edited.
@@ -139,3 +139,22 @@ Source clear, Standards/Spec no findings. Sole21-line durations.json addition co
 ### impl-1614 · 2026-11-05T23:07:07.469Z
 
 Fresh configured run c0f68bd2-96b4-4f14-88a4-a52281dad583 at source-clear8370003e2 exited1: preserved host-push-on-ref-move.test.ts:145 'killed producer without result stays named and fenced until a later successful leased head' reports 'producer result missing; native cleanup retained' from AgentClient watch (A-16963:27035–27042). T0/T1/T2 exit0; T3 50pass/1fail, no skips/cancels; T4/Web unexecuted. New relaunch native cases pass and three allowance errors are resolved. Reported to lead T-1614 as shared-defect candidate/Bugs,S, requesting Coordinator classification/shared fix. Holding diagnosis/rerun/merge; source remains unchanged and claim retained. Platform Linux x64 6.8.0-142-generic droplet c-8 sfo2 Node24.21.0/Neovim0.12.5 workers2; lifetime1183s,cost$0.0822. Existing A-16958 macOS preservation5/5 does not replace this missing configured pass.
+
+### rev-36 · 2026-11-05T23:07:49.170Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1614-evidence-2
+commit: 8370003e2b207d0c3523c56e49b76eee5766ebf0
+scope: evidence
+findings: [{"severity":"medium","text":"Required mapped case 'killed producer without result...' fails with 'producer result missing; native cleanup retained'; selectedT3 50/51, overall exit1, later T4/Web unexecuted. Coordinator classifies known dev defectT-1693; this failed run remains failed.","file":"hub/test/host-push-on-ref-move.test.ts","line":145}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-16963 actual error at agent-client.ts:25:166 is `watch <scratch worktree>: producer result missing; native cleanup retained`; native case failed3.803384976s. New relaunch cases and three allowances pass; T0/T1/T2 green, T3/overall exit1. Interruption4961/4960/1 versus earlier4901/4900/1 are reported partial aggregates, not full pass. A-16964: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16964-t-1614-retry-push-recovery-evidence-failure-at-8370003e2.md . After independent log assessment, Coordinator7842fde9/4a69fa67 explicitly classifies known dev T-1693 and authorizes exactly one unchanged-head mode-free rerun; diagnosis stays with its owner. Source A-16962 unchanged/clear. C2 failed for configured evidence; C1/C3/C4 final marks pending. If the one retry has same sole failure, report/hold for Coordinator; no automatic further run. Reviewer ran no tests.
+
+Criteria: C2 failed (Configured c0f68bd2 fails sole mapped push-recovery identity (known dev defect T-1693); T4/Web unexecuted, no final green evidence.).
+
+### impl-1614 · 2026-11-05T23:07:49.873Z
+
+Coordinator classified c0f68bd2's only failure as known dev defectT-1693 (7842fde9 /4a69fa67), now stage6 with its own Implementer. T-1614 diagnosis remains held. Coordinator authorized exactly one mode-free flaky rerun at unchanged8370003e2b207d0c3523c56e49b76eee5766ebf0; submission is in flight. All C1–C4 implementation-done marks are present. On a repeated sole killed-producer failure, hold for Coordinator decision; no second automatic retry or merge.

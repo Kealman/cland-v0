@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-02T18:58:40.412Z
+updated: 2026-11-05T23:25:17.051Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -524,3 +524,7 @@ Hub restart #69 (stand-in, coord go, urgent: hub 97875 at ~90% CPU in Inbox.list
 ### coord · 2026-11-02T18:58:40.412Z
 
 2026-11-02 18:58Z, lost batch run (infrastructure). Batch b01fbb34 (T-1617 alone), run 65987c12, log A-15953. The droplet cland-v0-57b05291 (sfo2) never accepted SSH: `delivery upload run.sh: machine copy failed or exceeded its time bound (exit 255): Connection timed out during banner exchange`. Lifetime 139 s, cost $0.0096, no tests ran. The hub held the batch as `inconclusive: no failing-test receipt`. Recovery: coord cancelled T-1617 (the only member, so no re-form race) and re-enqueued it at 18:58:29Z at the same head 8d611f77. Cost: about 6 min plus the batch re-run.
+
+### coord · 2026-11-05T23:25:17.051Z
+
+Incident 2026-11-05 23:23Z (coord). The hub exited on its own guard: "tracker storage stalled: ready check on T-1614; abandoning storage and exiting with code 1". Just before, the machine's one-minute load was 15–17, and impl-1693's macOS loaded-proof batches had reached load 36. A new hub (pid 3668, started outside coord's shell) served again within about 2 minutes. No item file was damaged: T-1614 and T-1693 had normal appended diffs and no conflict files. One verify submission was lost in the gap: T-1693's at 23:15, which got a CLI timeout and was never admitted, and was resubmitted once. The running droplet run 6392fc41 (T-1614) survived. Remedy applied: the macOS loaded-proof rule now has a hard ceiling of load 20 (target 12–15), where earlier there was no upper limit.
