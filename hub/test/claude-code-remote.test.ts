@@ -31,7 +31,7 @@ async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;fa
  let stopGate:{entered:ReturnType<typeof Promise.withResolvers<void>>;release:ReturnType<typeof Promise.withResolvers<void>>}|undefined;
  let failureInjected=false,allowFailedStop=!options.failedAdoption&&!options.failedResult;
  const stop=machine.stop.bind(machine);machine.stop=async(...args)=>{if(!allowFailedStop)return false;const gate=stopGate;if(gate){gate.entered.resolve();await gate.release.promise;stopGate=undefined;}return stop(...args);};
- const adopt=machine.adopt!.bind(machine);machine.adopt=async generation=>{const receipt=await adopt(generation);releaseClaude=receipt.release;if(options.failedAdoption&&!failureInjected){failureInjected=true;throw Object.assign(new Error('planted lost adoption reply'),{code:'CLAND_NATIVE_INCOMPLETE'});}if(options.rollback){await eventually('worker startup joined before rollback trigger',async()=>(await fake.log(receipt.job)).includes('session ready')||undefined,2000);const closing=launchedAdapter.close();if(closing)void closing.catch(()=>{});}return receipt;};
+ const adopt=machine.adopt!.bind(machine);machine.adopt=async generation=>{const receipt=await adopt(generation);releaseClaude=receipt.release;if(options.failedAdoption&&!failureInjected){failureInjected=true;throw Object.assign(new Error('planted lost adoption reply'),{code:'CLAND_NATIVE_INCOMPLETE'});}if(options.rollback){await eventually('worker startup joined before rollback trigger',async()=>(await fake.log(receipt.job)).includes('session ready')||undefined);const closing=launchedAdapter.close();if(closing)void closing.catch(()=>{});}return receipt;};
  let expectedIncompleteOperation:string|undefined;
  f.addCleanup(async()=>{if(expectedIncompleteOperation)await assert.rejects(machine.close(),error=>(error as {code?:string;operation?:string}).code==='CLAND_HOST_OUTCOME_UNKNOWN'&&(error as {operation?:string}).operation===expectedIncompleteOperation);else await machine.close();});
  let aliveReceipts=0;
@@ -52,7 +52,7 @@ async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;fa
  const record=f.records.get('f1')!,secret=f.secrets.readSecret('f1');store.hosts.insert({...record,clientKeyPath:'/fake',knownHosts:'fake'},secret);
  await writeFile(remote.discoveryFile,JSON.stringify({remote:true,version:'test',secret,socket:join(f.fake.run,'hub.sock'),spoke:`ws+unix:${join(f.fake.run,'spoke.sock')}:/`}),{mode:0o600});
  carrier=new SshTransport({root:f.root,record,secrets:f.secrets,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,remoteRun:f.fake.run,supervisor:f.supervisor,agentCommand:['stub'],env:f.env,readinessPollMs:5,reconnectDelayMs:()=>10});
- f.addCleanup(()=>carrier.stop());await carrier.start();await eventually('carrier up',()=>carrier.status().state==='up'||undefined,3000);
+ f.addCleanup(()=>carrier.stop());await carrier.start();await eventually('carrier up',()=>carrier.status().state==='up'||undefined);
  const ui=await connectUi(t,hub.discovery);await ui.request({type:'subscribe'});
  const reply=await ui.request({type:'session.launch',name:'worker',harness:'claude-code',role:'implementer',host:'f1',cwd:f.fake.home},10000);
  assert.equal(reply.ok,!options.rollback&&!options.failedAdoption&&!options.failedResult,reply.error);
@@ -60,19 +60,19 @@ async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;fa
  return {f,fake,machine,remote,clock,ui,hub,startHub,row,launchError:reply.error,expectIncompleteClose:(operation:string)=>{expectedIncompleteOperation=operation;},allowFailedStop:()=>{allowFailedStop=true;},holdFailedStop:()=>{const gate={entered:Promise.withResolvers<void>(),release:Promise.withResolvers<void>()};stopGate=gate;return gate;},nativeAlive,aliveReceipts:()=>aliveReceipts,credential:()=>credential,releaseClaude:()=>releaseClaude?.()};
 }
 
-async function joinInitialHookWriters(d:Awaited<ReturnType<typeof remoteClaudeFixture>>):Promise<void>{
+async function joinInitialHookWriters(d:Awaited<ReturnType<typeof remoteClaudeFixture>>, timeoutMs?:number):Promise<void>{
  const rows=await systemProcesses(undefined,undefined,undefined,false,d.f.env);
  const pids=rows.filter(row=>row.group===d.row.pid&&row.command.includes(d.remote.cli)&&/\bhook\s+(?!bridge(?:\s|$))/.test(row.command.replaceAll("'",'').replaceAll('"',''))).map(row=>row.pid);
  if(!pids.length)return;
- const pins=await eventually('initial hook native birth or exit receipts',async()=>{const proof=await observeProcesses(pids,d.f.env);return pids.every(pid=>proof.get(pid)?.identity||proof.get(pid)?.ended)?proof:undefined;},1000);
+ const pins=await eventually('initial hook native birth or exit receipts',async()=>{const proof=await observeProcesses(pids,d.f.env);return pids.every(pid=>proof.get(pid)?.identity||proof.get(pid)?.ended)?proof:undefined;},timeoutMs);
  const exits=await eventually('initial hook writers positively exited',async()=>{
    const proof=await observeProcesses(pids,d.f.env);
    return pids.every(pid=>proof.get(pid)?.ended||!!pins.get(pid)?.identity&&!!proof.get(pid)?.identity&&proof.get(pid)!.identity!==pins.get(pid)!.identity)?proof:undefined;
- },1000);
+ },timeoutMs);
  assert.ok(pids.every(pid=>exits.get(pid)?.ended||!!pins.get(pid)?.identity&&!!exits.get(pid)?.identity&&exits.get(pid)!.identity!==pins.get(pid)!.identity),'every captured initial hook birth has a positive exit receipt');
 }
 
-test('remote Claude frame launch adopts its worker and delivers through host hooks and bridge', {timeout:15000},async t=>{
+test('remote Claude frame launch adopts its worker and delivers through host hooks and bridge', {timeout:120000},async t=>{
  const {f,fake,machine,remote,clock,ui,hub,row,nativeAlive,aliveReceipts,releaseClaude}=await remoteClaudeFixture(t);
  const rows=JSON.parse(await readFile(join(f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string}>;
  row.pidIdentity=(await machine.identity(row.pid))!.pidIdentity!;
@@ -81,7 +81,7 @@ test('remote Claude frame launch adopts its worker and delivers through host hoo
  const mark=ui.frames.length;
  await ui.request({type:'topic.send',topic:'general',text:'@worker remote hello',to:['worker']});
  await eventually('remote answer',()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong:'))||undefined,5000);
- await eventually('both native turns completed',async()=>((await fake.log(row.harnessId)).match(/session.measure done/g)??[]).length>=2||undefined,2000);
+ await eventually('both native turns completed',async()=>((await fake.log(row.harnessId)).match(/session.measure done/g)??[]).length>=2||undefined);
  const signals=ui.frames.slice(mark).filter(frame=>frame.type==='session.state'&&frame.session==='worker');
  assert.ok(signals.some(frame=>frame.state==='busy'&&frame.source==='hook'));
  assert.ok(signals.some(frame=>frame.state==='idle'&&frame.source==='hook'));
@@ -130,7 +130,7 @@ test('older host agent refuses Claude launch capability before starting a comman
  await assert.rejects(older.launchClaude!({command:'/never-run',args:['--bg'],env:{},cwd:f.fake.home},'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),/missing capability claude-launch-adopt-v1/);
 });
 
-for(const asynchronous of [false,true])test(asynchronous?'Claude hook born across root exit remains unacquired':'Claude TERM-resistant SessionEnd hook is captured and killed by native birth', {timeout:asynchronous?10000:15000},async t=>{
+for(const asynchronous of [false,true])test(asynchronous?'Claude hook born across root exit remains unacquired':'Claude TERM-resistant SessionEnd hook is captured and killed by native birth', {timeout:120000},async t=>{
  const {ownProcess}=await import('./process-cleanup.ts');
  const {stopClaude,claudeProcessMembers,CLAUDE_STOP_GRACE_MS}=await import('../src/host/agent/claude-stop.ts');
  let marker='';let extraHook:unknown;
@@ -140,11 +140,11 @@ for(const asynchronous of [false,true])test(asynchronous?'Claude hook born acros
    const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
    extraHook={type:'command',command:[process.execPath,script,marker].map(quote).join(' '),async:asynchronous};
  }});
- await eventually('worker startup completed',async()=>(await d.fake.log(d.row.harnessId)).includes('session ready')||undefined,2000);
+ await eventually('worker startup completed',async()=>(await d.fake.log(d.row.harnessId)).includes('session ready')||undefined);
  const root=(await d.machine.identity(d.row.pid))!;
- await eventually('initial model turn completed',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await eventually('initial model turn completed',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const connection=await AgentClient.connect(d.f.paths.agentSocket,d.f.secrets.readSecret('f1'));d.f.addCleanup(()=>connection.close());
- const captured=await eventually('durable live worker tree capture',async()=>{const result=await connection.request('prepare-stop',{pid:root.pid,identity:root.pidIdentity}) as {token:string|null;targets?:Array<{pid:number;identity:string}>};return result.token&&result.targets?{token:result.token,targets:result.targets}:undefined;},2000);
+ const captured=await eventually('durable live worker tree capture',async()=>{const result=await connection.request('prepare-stop',{pid:root.pid,identity:root.pidIdentity}) as {token:string|null;targets?:Array<{pid:number;identity:string}>};return result.token&&result.targets?{token:result.token,targets:result.targets}:undefined;});
  if(captured.token)await connection.request('abort-prepared',{token:captured.token});
  assert.ok(captured.targets,'captured running worker');
  const diagnostics:string[]=[],checkpoints:number[][]=[],signals:Array<{pid:number;signal:string}>=[];let termSent=false,rootExitConfirmed=false;
@@ -164,7 +164,7 @@ for(const asynchronous of [false,true])test(asynchronous?'Claude hook born acros
  else {assert.ok(result,diagnostics.join('; '));assert.ok(checkpoints.some(rows=>rows.includes(pid)));assert.ok(signals.some(row=>row.pid===pid&&row.signal==='SIGKILL'));assert.equal(await d.machine.identity(pid),null);}
 });
 
-test('remote Claude failed adoption handshake joins rollback and removes its credential copies only',async t=>{
+test('remote Claude failed adoption handshake joins rollback and removes its credential copies only',{timeout:120000},async t=>{
  const d=await remoteClaudeFixture(t,{rollback:true,setup:async(_f,fake)=>{
    const {mkdir}=await import('node:fs/promises');await mkdir(join(fake.home,'jobs'));
    await writeFile(join(fake.home,'jobs','sibling.json'),'{}');
@@ -180,7 +180,7 @@ test('remote Claude failed adoption handshake joins rollback and removes its cre
  assert.equal(await readFile(join(d.fake.home,'jobs','sibling.json'),'utf8'),'{}');
 });
 
-test('agent restart does not inherit Claude dynamic child acquisition from its serialized marker',async t=>{
+test('agent restart does not inherit Claude dynamic child acquisition from its serialized marker',{timeout:120000},async t=>{
  const {serveAgent}=await import('../src/host/agent/server.ts');
  const {ownProcess}=await import('./process-cleanup.ts');
  let marker='',hook:unknown;
@@ -190,7 +190,7 @@ test('agent restart does not inherit Claude dynamic child acquisition from its s
    const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
    hook={type:'command',command:[process.execPath,script,marker].map(quote).join(' ')};
  }});
- await eventually('initial turn settled before restart',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await eventually('initial turn settled before restart',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const root=(await d.machine.identity(d.row.pid))!;
  const beforeRestart=await AgentClient.connect(d.f.paths.agentSocket,d.f.secrets.readSecret('f1'));
  try {
@@ -208,10 +208,10 @@ test('agent restart does not inherit Claude dynamic child acquisition from its s
  assert.equal(signalled.includes(pid),false);assert.ok(await client.request('identity',{pid}),'unowned hook remains alive for independent cleanup');
 });
 
-test('hub restart after tree closure re-adopts its durable generation and releases the job',async t=>{
+test('hub restart after tree closure re-adopts its durable generation and releases the job',{timeout:120000},async t=>{
  const {ProcessTable}=await import('../src/adapters/processes.ts');
  const d=await remoteClaudeFixture(t);
- await eventually('worker turn settled before closure',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await eventually('worker turn settled before closure',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const table=new ProcessTable(join(d.f.root,'.cland/hub.db'));d.f.addCleanup(async()=>table.close());
  const process=table.get('worker')!;
  const records=(await readdir(join(d.f.fake.run,'claude'))).filter(path=>path.endsWith('.json'));
@@ -230,7 +230,7 @@ test('hub restart after tree closure re-adopts its durable generation and releas
  await scan(d.f.fake.home);await scan(d.fake.home);
 });
 
-for(const mode of ['release','release-restart','forget-restart'] as const)test(`lost native ${mode} reply settles without replaying native stop`,{timeout:60000},async t=>{
+for(const mode of ['release','release-restart','forget-restart'] as const)test(`lost native ${mode} reply settles without replaying native stop`,{timeout:120000},async t=>{
  const d=await remoteClaudeFixture(t);let treeStops=0;const stop=d.machine.stop.bind(d.machine);d.machine.stop=async(...args)=>{treeStops++;return stop(...args);};
  // Setup includes native hook subprocesses (the mod allows 15s per post),
  // rather than a two-second product turn-latency guarantee.
@@ -258,7 +258,7 @@ for(const mode of ['release','release-restart','forget-restart'] as const)test(`
  for(const root of [d.f.fake.home,d.fake.home])for(const path of await files(root))assert.equal((await readFile(path)).includes(d.credential()),false);
 });
 
-test('late SessionEnd after the recovery snapshot never grants an adopted closed receipt',async t=>{
+test('late SessionEnd after the recovery snapshot never grants an adopted closed receipt',{timeout:120000},async t=>{
  const {serveAgent}=await import('../src/host/agent/server.ts');
  const {ownProcess}=await import('./process-cleanup.ts');
  const {within}=await import('../src/executor/droplet/deadline.ts');
@@ -269,7 +269,7 @@ test('late SessionEnd after the recovery snapshot never grants an adopted closed
    const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
    hook={type:'command',command:[process.execPath,script,marker].map(quote).join(' '),async:true};
  }});
- await eventually('initial turn completed before held capture',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await eventually('initial turn completed before held capture',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const root=(await d.machine.identity(d.row.pid))!;
  await d.f.agent.close();
  const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();let armed=false;
@@ -297,9 +297,9 @@ test('late SessionEnd after the recovery snapshot never grants an adopted closed
  }finally{release.resolve();await Promise.allSettled([preparing]);}
 });
 
-for(const failing of [false,true])test(`terminal remote PID settlement ${failing?'holds the row on native failure':'cleans before publishing exit'} without recurring CLI`,{timeout:10000},async t=>{
+for(const failing of [false,true])test(`terminal remote PID settlement ${failing?'holds the row on native failure':'cleans before publishing exit'} without recurring CLI`,{timeout:120000},async t=>{
  const d=await remoteClaudeFixture(t,{stopCrash:failing});
- await eventually('worker ready before terminal event',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await eventually('worker ready before terminal event',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const rolesBefore=await d.ui.request({type:'role.list'});
  if(failing)await writeFile(join(d.fake.home,'logged-out'),'');
  const before=(await d.fake.calls()).length;
@@ -324,7 +324,7 @@ for(const failing of [false,true])test(`terminal remote PID settlement ${failing
  assert.equal((await d.fake.calls()).length,count,'terminal settlement does not become a recurring native poll');
 });
 
-for(const mode of ['descendant','reparented','retirement'] as const)test(mode==='retirement'?'pinned native hook exit between prepare and commit settles without a manual re-stop':mode==='reparented'?'an unowned reparented child stays unacquired across explicit stops':'adopted Claude settles one descendant born between stop capture and commit before any signal',async t=>{
+for(const mode of ['descendant','reparented','retirement'] as const)test(mode==='retirement'?'pinned native hook exit between prepare and commit settles without a manual re-stop':mode==='reparented'?'an unowned reparented child stays unacquired across explicit stops':'adopted Claude settles one descendant born between stop capture and commit before any signal',{timeout:120000},async t=>{
  const reparented=mode==='reparented',retiring=mode==='retirement';
  const signalled:Array<{pid:number;identity:string}>=[];
  const {ownProcess}=await import('./process-cleanup.ts');
@@ -341,8 +341,8 @@ for(const mode of ['descendant','reparented','retirement'] as const)test(mode===
    hook={type:'command',command:[process.execPath,script,trigger,ready,childReady,childExit,builder,f.root].map(quote).join(' '),async:true};
    exitHook={type:'command',command:[process.execPath,'-e',reparented?"void 0":"require('fs').writeFileSync(process.argv[1],'done')",childExit].map(quote).join(' ')};
  }});
- const parent=await eventually('native churn producer armed',async()=>{try{return Number(await readFile(ready,'utf8'))||undefined;}catch{return undefined;}},2000);
- await eventually('initial turn completed before stop capture',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined,2000);
+ const parent=await eventually('native churn producer armed',async()=>{try{return Number(await readFile(ready,'utf8'))||undefined;}catch{return undefined;}});
+ await eventually('initial turn completed before stop capture',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  await joinInitialHookWriters(d);
  const pinnedRoot=reparented?await d.machine.identity(d.row.pid):null;if(reparented)assert.ok(pinnedRoot?.pidIdentity);
  const original=d.machine.stop.bind(d.machine);let child=0,admissions=0,childCleanup:ReturnType<typeof ownProcess>|undefined;
@@ -386,7 +386,7 @@ for(const mode of ['descendant','reparented','retirement'] as const)test(mode===
  assert.equal((await d.fake.calls()).filter(call=>call.args[0]==='stop').length,reparented?0:1);
 });
 
-for(const mode of ['adoption','result','missing-receipt','missing-state','prune-failure'] as const)test(`failed Claude launch restart ${mode}`,async t=>{
+for(const mode of ['adoption','result','missing-receipt','missing-state','prune-failure'] as const)test(`failed Claude launch restart ${mode}`,{timeout:120000},async t=>{
  const missing=mode==='missing-receipt'||mode==='missing-state';
  const {ProcessTable}=await import('../src/adapters/processes.ts');const {unlink}=await import('node:fs/promises');
  const d=await remoteClaudeFixture(t,mode==='result'?{failedResult:true}:{failedAdoption:true,failPrune:mode==='prune-failure'});
@@ -430,7 +430,7 @@ for(const mode of ['adoption','result','missing-receipt','missing-state','prune-
  }
 });
 
-for(const boundary of ['mid-turn','completed turn'] as const)test(`remote Claude root-first stop ${boundary}`,{timeout:15000},async t=>{
+for(const boundary of ['mid-turn','completed turn'] as const)test(`remote Claude root-first stop ${boundary}`,{timeout:120000},async t=>{
  let d:Awaited<ReturnType<typeof remoteClaudeFixture>>,arm='',request='',ready='',childReady='',release='',startHook:unknown,endHook:unknown,admitted=false;
  let completed=0;
  d=await remoteClaudeFixture(t,boundary==='mid-turn'?{setup:async f=>{
@@ -477,7 +477,7 @@ fs.writeFileSync(ready,JSON.stringify({pid:process.pid,turnId:turn.prompt_id,ses
  assert.ok(rows.some(row=>row.pid===d.row.pid&&row.ended&&row.authority==='closed'),'durable tree closure precedes success');
 });
 
-for(const detached of [false,true])test(detached?'remote Claude orphan detached-child escape retains unknown authority':'remote Claude exit-time orphan stays held after independent cleanup',{timeout:15000},async t=>{
+for(const detached of [false,true])test(detached?'remote Claude orphan detached-child escape retains unknown authority':'remote Claude exit-time orphan stays held after independent cleanup',{timeout:120000},async t=>{
  const {ownProcess}=await import('./process-cleanup.ts');
  let d:Awaited<ReturnType<typeof remoteClaudeFixture>>|undefined,marker='',escape='',escaped='',hook:unknown,gated=false;
  const signals:Array<{pid:number;identity:string}>=[];
@@ -494,7 +494,7 @@ for(const detached of [false,true])test(detached?'remote Claude orphan detached-
    await eventually('orphan native PID and birth receipt',async()=>{try{const pid=Number(await readFile(marker,'utf8'));return (await observeProcesses([pid],d!.f.env)).get(pid)?.identity||undefined;}catch{return undefined;}},2000);
    gated=true;
  }}});
- await eventually('startup turn completed',async()=>(await d!.fake.log(d!.row.harnessId)).includes('session.measure done')||undefined,2000);
+ await eventually('startup turn completed',async()=>(await d!.fake.log(d!.row.harnessId)).includes('session.measure done')||undefined);
  await joinInitialHookWriters(d);
  const ready=eventually('independent exit-time writer PID',async()=>{try{return Number(await readFile(marker,'utf8'))||undefined;}catch{return undefined;}},3000);void ready.catch(()=>{});
  const stopping=d.ui.request({type:'session.stop',session:'worker'},10000);
@@ -526,7 +526,7 @@ for(const detached of [false,true])test(detached?'remote Claude orphan detached-
  const heldRoles=(await d.ui.request({type:'role.list'})).value as {roles:Array<{role:string;holders:Array<{name:string}>}>};assert.ok(heldRoles.roles.find(role=>role.role==='implementer')?.holders.some(holder=>holder.name==='worker'));
 });
 
-test('remote Claude retained hook retries after the pinned root exited',{timeout:15000},async t=>{
+test('remote Claude retained hook retries after the pinned root exited',{timeout:120000},async t=>{
  let d:Awaited<ReturnType<typeof remoteClaudeFixture>>|undefined,marker='',hook:unknown,interrupted=false;
  const signals:Array<{pid:number;identity:string}>=[];
  d=await remoteClaudeFixture(t,{awaitSignals:false,signals,setup:async f=>{
@@ -539,11 +539,11 @@ test('remote Claude retained hook retries after the pinned root exited',{timeout
  },stopHooks:{beforeRemainingObservation:async()=>{
    if(interrupted||!d||!signals.some(target=>target.pid===d!.row.pid))return;
    await eventually('first stop positively observes root exit',async()=>(await observeProcesses([d!.row.pid],d!.f.env)).get(d!.row.pid)?.ended||undefined,2000);
-   await joinInitialHookWriters(d);interrupted=true;
+   await joinInitialHookWriters(d,1000);interrupted=true;
    throw new Error('injected interruption after root exit with retained hook');
  }}});
- const pid=await eventually('retained hook native PID',async()=>{try{const pid=Number(await readFile(marker,'utf8'));return pid&&(await observeProcesses([pid],d!.f.env)).get(pid)?.identity?pid:undefined;}catch{return undefined;}},2000);
- await eventually('startup turn done',async()=>(await d!.fake.log(d!.row.harnessId)).includes('session.measure done')||undefined,2000);await joinInitialHookWriters(d);
+ const pid=await eventually('retained hook native PID',async()=>{try{const pid=Number(await readFile(marker,'utf8'));return pid&&(await observeProcesses([pid],d!.f.env)).get(pid)?.identity?pid:undefined;}catch{return undefined;}});
+ await eventually('startup turn done',async()=>(await d!.fake.log(d!.row.harnessId)).includes('session.measure done')||undefined);await joinInitialHookWriters(d);
  const first=await d.ui.request({type:'session.stop',session:'worker'},10000);assert.equal(first.ok,false);assert.match(first.error!,/injected interruption/);assert.equal(interrupted,true);
  assert.equal(await d.nativeAlive(d.row),false);const identity=(await observeProcesses([pid],d.f.env)).get(pid)?.identity;assert.ok(identity,'retained child outlives the root');
  const before=signals.length;

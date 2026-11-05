@@ -118,8 +118,8 @@ TERM-resistant SessionEnd control uses exported production CLAUDE_STOP_GRACE_MS
 (3000 ms), replacing its test-only 300 ms grace/900 ms total. Its purpose stays
 native-birth capture and KILL; every assertion remains unchanged. Coordinator
 2a68c8dd also permits a 15 s outer Node envelope for native setup plus the 9 s
-helper deadline. The asynchronous companion keeps its 300 ms grace and 10 s
-envelope. The 20 full-file load repetitions retained the stricter 10 s outer
+helper deadline. The asynchronous companion keeps its 300 ms grace. T-1690 raises the outer
+Node envelopes to 120 s to accommodate the shared native setup budget. The 20 full-file load repetitions retained the stricter 10 s outer
 envelope, as authorized evidence for the final 15 s envelope.
 
 A-16684's x64 deadline failure was not reproduced by two five-run ARM load
@@ -148,3 +148,8 @@ The lost-native-release cases also use the shared native setup budget for the
 `session.measure done` receipt before arming reply loss. Their previous two-second
 setup wait was shorter than a single mod hook post's 15-second subprocess
 deadline. The fault injection, stop deadlines and cleanup assertions are unchanged.
+
+T-1690 applies that shared setup budget to the remaining carrier readiness,
+worker startup, initial turn, initial live-tree capture and startup-producer
+receipts, plus both startup-hook native birth/exit joins. Outer Node envelopes are 120 s. Stop, settlement, post-signal and
+fresh-turn behaviour deadlines and all assertions remain unchanged.
