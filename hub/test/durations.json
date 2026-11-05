@@ -113,9 +113,10 @@
       "A-16658",
       "A-16675",
       "A-16725",
-      "A-16747"
+      "A-16747",
+      "A-16811"
     ],
-    "commit": "60a1173f934b18db82a8a61bc48719345f3a49a8"
+    "commit": "b151dfbf0c8a436ccc5d528ae280a71bd3118cbe"
   },
   "budget": {
     "testSeconds": 5,
@@ -3536,6 +3537,14 @@
     "hub/test/host-settlement.test.ts": {
       "seconds": 0.049713,
       "tests": 12
+    },
+    "hub/test/host-boot.test.ts": {
+      "seconds": 0.001228,
+      "tests": 1
+    },
+    "hub/test/host-reboot-native.test.ts": {
+      "seconds": 6.670904,
+      "tests": 1
     }
   },
   "tests": {
@@ -10312,7 +10321,9 @@
     "hub/test/host-settlement.test.ts::SSH acquisition crossing revocation sends no agent request": 0.023938,
     "hub/test/host-settlement.test.ts::SSH warm-up receipt crossing the cut never starts readiness cleanup or the caller request": 0.002013,
     "hub/test/host-settlement.test.ts::unknown-authority Claude generation remains a named obligation and is never signalled": 0.000755,
-    "hub/test/host-settlement.test.ts::unreachable cleanup cuts at deadline and names every generation; late receipt starts no more Host calls": 0.007585
+    "hub/test/host-settlement.test.ts::unreachable cleanup cuts at deadline and names every generation; late receipt starts no more Host calls": 0.007585,
+    "hub/test/host-boot.test.ts::only a changed positive boot id proves a host reboot": 0.001228,
+    "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": 6.670904
   },
   "allow": {
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
