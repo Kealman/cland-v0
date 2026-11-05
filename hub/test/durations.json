@@ -112,9 +112,10 @@
       "A-16639",
       "A-16658",
       "A-16675",
-      "A-16725"
+      "A-16725",
+      "A-16747"
     ],
-    "commit": "00fdead03000b8dfa37c836e2b8888d3574cda22"
+    "commit": "60a1173f934b18db82a8a61bc48719345f3a49a8"
   },
   "budget": {
     "testSeconds": 5,
@@ -3527,6 +3528,14 @@
     "hub/test/host-flush.test.ts": {
       "seconds": 0.895446,
       "tests": 13
+    },
+    "hub/test/host-revoke-native.test.ts": {
+      "seconds": 16.532236,
+      "tests": 1
+    },
+    "hub/test/host-settlement.test.ts": {
+      "seconds": 0.049713,
+      "tests": 12
     }
   },
   "tests": {
@@ -10290,7 +10299,20 @@
     "hub/test/host-flush.test.ts::status renders pending and named snapshot leftovers while accepting the previous hub shape": 0.038664,
     "hub/test/host-flush.test.ts::unpublished host HEAD waits for the leased flush before territory admission": 0.001919,
     "hub/test/host-flush.test.ts::wire validation accepts additive CLI HEAD reports and the previous request shape": 0.207493,
-    "hub/test/host-local-contract.test.ts::Host optional branch flush preserves local absence and names unregistered worktrees": 0.011104
+    "hub/test/host-local-contract.test.ts::Host optional branch flush preserves local absence and names unregistered worktrees": 0.011104,
+    "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": 16.532236,
+    "hub/test/host-settlement.test.ts::a pending private-file inventory stays unknown at the cut and drains its late result": 0.002521,
+    "hub/test/host-settlement.test.ts::changed boot requires two different canonical Linux boot identities": 0.000986,
+    "hub/test/host-settlement.test.ts::held adoption crossing the cut never releases or deletes private files": 0.001662,
+    "hub/test/host-settlement.test.ts::merged flush boundary starts no agent request after admission cut": 0.001154,
+    "hub/test/host-settlement.test.ts::merged restore-callback boundary starts no agent request after admission cut": 0.001284,
+    "hub/test/host-settlement.test.ts::merged watch-status boundary starts no agent request after admission cut": 0.001925,
+    "hub/test/host-settlement.test.ts::pre-cut stops Claude, Codex and OpenCode then releases retained generation files and forgets": 0.005472,
+    "hub/test/host-settlement.test.ts::revocation renderer accepts previous hub reply and labels unknown inventory and leftovers": 0.000418,
+    "hub/test/host-settlement.test.ts::SSH acquisition crossing revocation sends no agent request": 0.023938,
+    "hub/test/host-settlement.test.ts::SSH warm-up receipt crossing the cut never starts readiness cleanup or the caller request": 0.002013,
+    "hub/test/host-settlement.test.ts::unknown-authority Claude generation remains a named obligation and is never signalled": 0.000755,
+    "hub/test/host-settlement.test.ts::unreachable cleanup cuts at deadline and names every generation; late receipt starts no more Host calls": 0.007585
   },
   "allow": {
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
