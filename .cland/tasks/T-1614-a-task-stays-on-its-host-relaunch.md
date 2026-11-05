@@ -12,10 +12,11 @@ parent: E-1532
 blocked_by:
   - T-1609
   - T-1613
-topic: null
+  - T-1696
+topic: topic-1395
 branch: t/T-1614-a-task-stays-on-its-host-relaunch
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-05T18:56:32.134Z
+updated: 2026-11-05T19:05:37.398Z
 ---
 
 ## Summary
@@ -34,3 +35,9 @@ Hot files: `hub/src/adapters/requests.ts`, `hub/src/adapters/sessions.ts`, `hub/
 ## Notes
 
 Shared files: `hub/src/adapters/requests.ts` (`session.resume` gains `host`), `sessions.ts`, the lease API
+
+## Comments
+
+### impl-1614 · 2026-11-05T18:58:26.481Z
+
+Rule 20 sweep recorded in docs/evidence/T-1614-consumers.md before production edits: resume frames, schema/dispatch, CLI/web/nvim/setup/spoke, permission consumers, lease and persisted worktree readers/writers, fixtures and all test tiers. Existing wire clients remain unchanged; new optional host only. C1 starts at public resume-frame seam; native C2/C3 at fake SSH/git socket seam per launch brief.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1394
 branch: t/T-1692-sweep-stage-5-tests-fixed-wall-clock
 created: 2026-11-05T17:20:46.506Z
-updated: 2026-11-05T18:18:00.797Z
+updated: 2026-11-05T19:05:24.589Z
 ---
 
 ## Summary
@@ -72,3 +72,7 @@ Coordinator decision042c1fa5 excludes host-push-on-ref-move from C2: 'product-pa
 ### impl-1692 · 2026-11-05T18:18:00.797Z
 
 Configured same-head verification fe31ba24 passed at7f40bc776, A-16904: Linux droplet5199/5199, T0/T1/fallbackT2/8 changedT3/Web, one base execution/no repetitions. Duration findings report-only. This does not complete C2 manual load campaign. Remaining macOS and allLinux --init evidence held until Coordinator posts cover-finished notice; host-push-on-ref-move excluded by Coordinator decision042c1fa5 as product-path cause filed separately, A-16903.
+
+### impl-1692 · 2026-11-05T19:05:24.589Z
+
+Coordinator decisionc6b242cd excludes host-survival-native from C2: product-path cause, filed as T-1695; preserve1/2 macOS and A-16907 with retained15000ms behaviour deadline unchanged. Earlier push exclusion is T-1693/A-16903,4/5. Other26 listed files still require5/5 macOS and docker run --init Linux. Next lock turn handed to lead T-1614; remaining native repetitions wait for its release. Final allowance/import-only delta review and rule7 exception remain authorized; fe31ba24 stands.
