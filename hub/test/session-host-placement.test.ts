@@ -179,7 +179,8 @@ test('production OpenCode launch prepares nonlocal shared ignore and reaches onl
       publishFile: fileHost.publishFile, appendFile: fileHost.appendFile, stat: fileHost.stat, readFile: fileHost.readFile,
       removePath: fileHost.removePath,
       freePort: fileHost.freePort,
-      statDirectory: async () => ({ refusal: null, identity: null }),
+      realpath: fileHost.realpath,
+      statDirectory: fileHost.statDirectory,
       spawn: async (command: import('../src/host/host.ts').HostCommand) => {
         launches.push({ host: name, role: command.env.CLAND_ROLE });
         return machine.spawn(command);

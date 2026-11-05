@@ -1,3 +1,4 @@
+import { HOST_SETTLEMENT_MS, hostRevocationLines, type HostSettlement } from '../host/settle.ts';
 import { hostAttachPlan, terminalEnvironment } from '../host/attach.ts';
 import { gitProxy } from '../host/git-proxy.ts';
 import { hubDiscovery, readDiscovery } from '../project.ts';
@@ -19,8 +20,9 @@ export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.e
   if (args[0] === 'revoke' && args.length === 2) {
     const discovery = readDiscovery(hubDiscovery(process.cwd()));
     if (!discovery) throw new Error('no hub runs for this project — run cland hub start');
-    await askHubFrame(discovery, { type: 'host.revoke', host: args[1] }, 3000, env);
+    const reply = await askHubFrame(discovery, { type: 'host.revoke', host: args[1] }, HOST_SETTLEMENT_MS + 3000, env) as {cleanup?:HostSettlement};
     process.stdout.write(`revoked host ${args[1]}\n`);
+    for (const line of hostRevocationLines(reply)) process.stdout.write(line + '\n');
     return 0;
   }
   if (args.length !== 1 || args[0] !== 'serve') throw new Error('usage: cland host <serve | attach session | revoke id | git-proxy socket>');

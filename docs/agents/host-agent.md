@@ -100,8 +100,8 @@ closure. The checkpoint also recovers a lost forget reply without requiring a
 missing agent record to grant process authority. Forget verifies directory
 absence before removing the terminal receipt. The normal bound is one receipt
 per active or cleanup-incomplete generation and zero after confirmed cleanup,
-with no time eviction. T-1666 owns revoke/remove settlement before the authority
-cut; this implementation never cleans through a revoked Host. Reads are exact
+with no time eviction. Revocation settles generations before the authority
+cut and never cleans through a revoked Host. Reads are exact
 generation lookups, outside startup/liveness history scans. Concurrent writers
 for a generation share their producer and serialize release/forget.
 
@@ -320,6 +320,75 @@ joined on close. The mutation/recovery stream still restores generations and
 reads the retained table before becoming available. Local delivery bundles use
 the central agentDeliveryStagingPrefix temporary path owner and are removed after
 all copy/install writers have joined.
+
+## Settlement before host revocation
+
+`cland host revoke <id>` runs `Sessions.settleHostBeforeCut`, backed by the reusable
+`settleHostBeforeCut` in `hub/src/host/settle.ts`, through the still-authorised
+Host. Its complete operation has a two-second deadline: stop the live sessions,
+join pending failed-launch cleanup, release private generation resources and
+inspect retained state, then cut authority even when cleanup is incomplete.
+Stop authority pins the captured session, host, native birth and generation
+across renames and lifecycle waits. Settler work is joined before storage closes.
+
+Positive normal stops and OpenCode's joined native-exit callback persist indexed
+metadata retirement before reporting terminal state. These receipts keep only native identity and file-owner metadata, without account
+environment, brief or usage data and survive archive/prune/restart. They grant metadata cleanup
+only, never recovered PID signal authority. Outstanding native generations of one stable
+session have distinct keys; clearing one owner preserves older unknown workers,
+which fence shared private files. Explicit retirement streams this host's
+receipts and legacy terminal rows, yielding every 32 records within its deadline.
+Missing legacy closure stays named as incomplete, including after later prune
+or name reuse; display status alone grants no cleanup authority.
+
+The changed-boot lifecycle caller uses the public
+`Sessions.retainHostGeneration(process, {cause: 'host-rebooted', bootId})` before
+publishing exit. The authenticated returning agent supplies `bootId`; the shared
+`hostBootChanged` predicate requires a canonical boot id different from the boot
+in the captured Linux birth. The entry matches the durable native-generation row
+or pending failed-launch owner, accepts every harness, and performs no Host call
+or adapter stop. It does not publish exit or vacate roles itself.
+
+The durable optional `hostRebooted: {bootId, launchGeneration?}` receipt preserves
+Claude generation identity and the pending launch's original file undo. Retry,
+restart and previously captured process Hosts cannot issue native operations for
+that old generation. An indexed exact-generation native fence persists separately
+from resource retirement, including after metadata deletion and storage reopen;
+completing cleanup never restores old native authority. Old resource-row markers
+are preserved into that fence before clearing, without a startup history scan.
+A new native birth does not inherit an older generation's fence.
+File ownership remains retained, including host-local files
+outside the run directory after a reboot clears it. Revoke names remaining
+resource retirement with native closure confirmed; it does not infer cleanup
+from an empty run folder or erase the pending undo. Optional metadata-only
+adapter retirement can still settle known private files while authorised.
+
+After confirmed closure, optional `releaseHostGeneration` removes OpenCode config
+and password files that ordinary stop/exit retains for resume. New launches retain
+the private directory's canonical path and device/inode identity under the exact
+native-generation key. Retirement validates that captured owner after restart,
+then deletes via its canonical path. A stable ancestor alias is supported;
+a retargeted alias, session-directory symlink or replaced inode stays incomplete.
+Older receipts without this file-owner record retain the strict canonical-path
+fallback. OpenCode emits
+`hostGenerationClosed` only after its owned tree, clients and forwards settle.
+Claude stop already releases its private files and receipts. Retained Claude
+agent records use adoption, positive stop, release, private deletion and forget.
+Codex MCP configuration travels in argv and its stopped socket is removed. A
+read-only Host inventory also names orphaned OpenCode private files and agent launch records
+whose owners cannot be recovered, granting no deletion or signal authority.
+
+The additive `cleanup` reply names unresolved generations and remaining workers,
+receipts or private files. Unconfirmed facts and unavailable or pending inventory
+stay explicitly unknown; late replies never upgrade the cut receipt. CLI output
+prints that report and accepts old replies without `cleanup`. A replaced owner
+leaves its generation named rather than deleting another generation's files.
+Never clean through a revoked Host: SSH admission is checked after acquisition
+and immediately before every agent request, including ref-watch registration,
+status/flush helpers and adopted-worker restoration after reacquisition.
+
+Host removal is not implemented yet. E-1533's provider remove/destroy will reuse
+this pre-cut entry point before cutting authority or destroying the host.
 
 ## Ref watches
 

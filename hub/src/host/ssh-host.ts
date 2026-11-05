@@ -47,6 +47,14 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     else {receipts.set(id, frame); if(receipts.size>256) receipts.delete(receipts.keys().next().value!);}
   };
   const check = () => { if(o.available && !o.available()) throw new Error(`host ${o.name}: tunnel admission revoked`); if(closed) throw new Error(`host ${o.name}: tunnel Host closed`); if (o.transport.status().state !== 'up') throw new Error(`host ${o.name}: tunnel is not up${o.codeDirectory ? `; requires code directory ${o.codeDirectory}` : ''}`); };
+  const request = (connection: AgentClient, op: string, args: Record<string, unknown>, timeoutMs?: number) => {
+    check(); return connection.request(op, args, timeoutMs);
+  };
+  // Preserve the client contract while checking authority at every helper request.
+  const admitted = (connection: AgentClient): AgentClient => new Proxy(connection,{get(target,key){
+    if(key==='request')return (op:string,args:Record<string,unknown>,timeoutMs?:number)=>request(connection,op,args,timeoutMs);
+    const value:unknown=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
+  }});
   const connected = async () => {
     check();
     if (client) return client;
@@ -68,13 +76,14 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       if(closed){await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
       if (!value.hello.capabilities?.includes(PREPARED_HOST_CAPABILITY)) { await closeConnection(value); throw new Error(`host ${o.name}: tunnel agent missing capability ${PREPARED_HOST_CAPABILITY}`); }
       value.on('event', event);
-      await readRefWatchStatus(value,o.watchStatus);
-      if(!quiescing)await o.restoreAdoptedWorkers?.(value);
+      await readRefWatchStatus(admitted(value),o.watchStatus);
+      if(!quiescing)await o.restoreAdoptedWorkers?.(admitted(value));
       check();
-      const table = await value.request('processes',{}) as unknown[];
-      const rows=await value.request('native-receipts',{}) as AgentEvent[];
+      const table = await request(value,'processes',{}) as unknown[];
+      const rows=await request(value,'native-receipts',{}) as AgentEvent[];
       if(closed){if(client===value)client=undefined;await closeConnection(value);throw new Error(`host ${o.name}: tunnel Host closed during acquisition`);}
       for(const row of rows)event(row);
+      check();
       await o.agentReady?.();
       check();
       client = value;
@@ -104,7 +113,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     completionTimer=setTimeout(()=>{
       completionTimer=undefined;
       completionWork=(async()=>{
-        try {const connection=await connected();const rows=await connection.request('native-receipts',{}) as AgentEvent[];for(const row of rows)event(row);}catch{/* A missing receipt stays pending through carrier recovery. */}
+        try {const connection=await connected();const rows=await request(connection,'native-receipts',{}) as AgentEvent[];for(const row of rows)event(row);}catch{/* A missing receipt stays pending through carrier recovery. */}
       })().finally(()=>{completionWork=undefined;scheduleCompletions();});
     },500);
     completionTimer.unref();
@@ -113,9 +122,10 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   const settle = async <T>(token:string,recoveryKey:string):Promise<T> => {
     unknown.add(token);
     for(;;) {
+      if(o.available && !o.available())throw new Error(`host ${o.name}: tunnel admission revoked`);
       if(closed||quiescing)throw incomplete(token);
       let outcome:PreparedOutcome|undefined;
-      try{outcome=await (await connected()).request('settle-prepared',{token,recoveryKey}) as PreparedOutcome;}catch{/* No terminal outcome: keep the admitted operation fenced. */}
+      try{outcome=await request(await connected(),'settle-prepared',{token,recoveryKey}) as PreparedOutcome;}catch{/* No terminal outcome: keep the admitted operation fenced. */}
       if(outcome?.state==='accepted'){unknown.delete(token);return outcome.result as T;}
       if(outcome?.state==='failed'){unknown.delete(token);throw new Error(`host ${o.name}: tunnel agent confirmed failure: ${outcome.error}`);}
       await pause();
@@ -123,24 +133,24 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   };
   const rpc = async <T>(op: string, args: Record<string, unknown> = {}, timeoutMs?: number): Promise<T> => {
     check();
-    try { return await (await (observations.has(op)?observed():connected())).request(op, args, timeoutMs) as T; }
+    try { return await request(await (observations.has(op)?observed():connected()),op, args, timeoutMs) as T; }
     catch (error) { throw Object.assign(new Error(`host ${o.name}: tunnel agent ${op}: ${(error as Error).message}`), {code:(error as NodeJS.ErrnoException).code}); }
   };
   const prepared = async <T>(kind:string,args:Record<string,unknown>,callback?:(targets:HostCapturedProcess[])=>Promise<boolean|void>|boolean|void):Promise<T|false> => {
     if(kind!=='stop')mutation();
     const connection=await connected(),token=randomUUID(),recoveryKey=randomUUID();
     let result:{token:string|null;targets?:{pid:number;identity:string}[];settled?:T};
-    try{result=await connection.request(`prepare-${kind}`,{...args,operationId:token,recoveryKey}) as typeof result;}
+    try{result=await request(connection,`prepare-${kind}`,{...args,operationId:token,recoveryKey}) as typeof result;}
     catch(error) {if((error as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED')throw error;await lostConnection(connection,token);return settle<T>(token,recoveryKey);}
     if(!result.token)return result.settled??false;
     try {
       const install=await callback?.((result.targets??[]).map(row=>({pid:row.pid,pidStarted:row.identity,pidIdentity:row.identity})));
       check();if(client!==connection)throw new Error(`host ${o.name}: tunnel changed during preparation`);
-      try{return await connection.request('commit-prepared',{token:result.token,install:install!==false},60000) as T;}
+      try{return await request(connection,'commit-prepared',{token:result.token,install:install!==false},60000) as T;}
       catch{await lostConnection(connection,token);return settle<T>(token,recoveryKey);}
     } catch(error) {
       // Abort is complete only after its cleanup receipt; a lost abort also reconciles.
-      try{await connection.request('abort-prepared',{token:result.token});}
+      try{await request(connection,'abort-prepared',{token:result.token});}
       catch{await lostConnection(connection,token);try{await settle<T>(token,recoveryKey);}catch(settlement){if(unknown.has(token))throw settlement;}}
       throw error;
     }
@@ -157,9 +167,9 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       mutation();
       const connection=await connected();
       if(!connection.hello.capabilities?.includes(REF_FLUSH_CAPABILITY)) throw new Error('agent ref-flush-v1 capability unavailable');
-      await connection.request('flush',{path},75000);
+      await request(connection,'flush',{path},75000);
       let rows:Array<{path:string;branch:string;state:string;cause?:string}>=[];
-      await readRefWatchStatus(connection,value=>{rows=value;});
+      await readRefWatchStatus(admitted(connection),value=>{rows=value;});
       const row=rows?.find(row=>row.path===path&&row.branch===branch);
       if(!row||row.state!=='watching') throw new Error(`watch ${path}: ${row?.cause??'watch unavailable'}`);
     },
@@ -204,10 +214,10 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     run: async command => {
       mutation();
       const args=wire(command),connection=await connected(),token=randomUUID(),recoveryKey=randomUUID();
-      const abort=()=>{void connection.request('cancel-run',{token}).catch(()=>{});};
+      const abort=()=>{try{void request(connection,'cancel-run',{token}).catch(()=>{});}catch{/* Revoked authority cannot cancel through the agent. */}};
       command.signal?.addEventListener('abort',abort,{once:true});
       try {
-        const result=connection.request('run-host',{...args,token,recoveryKey},(command.timeoutMs ?? 20000)+2000);
+        const result=request(connection,'run-host',{...args,token,recoveryKey},(command.timeoutMs ?? 20000)+2000);
         if(command.signal?.aborted) abort();
         return await result as Awaited<ReturnType<Host['run']>>;
       } catch(error) {
@@ -246,7 +256,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       const {beforeInstall,...args} = options;
       const result = await prepared<{warning?:string}>('worktree',args,async () => beforeInstall?.());
       if (!result) throw new Error(`host ${o.name}: tunnel worktree not prepared`);
-      try {const connection=await connected();if(!options.detached&&options.branch.startsWith('t/'))await updateRefWatch(connection,'watch',{path:options.path,branch:options.branch});}
+      try {const connection=await connected();if(!options.detached&&options.branch.startsWith('t/'))await updateRefWatch(admitted(connection),'watch',{path:options.path,branch:options.branch});}
       catch(error){throw Object.assign(error instanceof Error?error:new Error(String(error)),{code:'CLAND_HOST_OUTCOME_UNKNOWN'});}
       return result;
     },

@@ -665,7 +665,9 @@ web or stdio clients.
 `cland host revoke <id>` requires the human CLI or Neovim on a local connection
 (and an active admin in users mode). It persists revocation, fences further
 frames and closes that host's connections. Later host hellos name revocation
-without exposing credentials. Restart never re-mints a revoked secret.
+without exposing credentials. Restart never re-mints a revoked secret. Before cutting authority, revoke runs
+the bounded [host generation settlement](../agents/host-agent.md#settlement-before-host-revocation)
+and returns named leftovers or an explicit unknown inventory.
 
 ## Local Host files and polling (T-1543)
 
@@ -884,3 +886,16 @@ identity cleanup, HTTP/SSE/snapshot drain and forward cancellation are pending.
 Cancellation failure retries through PID supervision; the exit notice follows
 successful settlement. Explicit stop drains the same client and watch work before
 cancelling the forward.
+
+
+A positive changed-boot lifecycle boundary records
+`Sessions.retainHostGeneration(process, {cause: 'host-rebooted', bootId})` before
+exit publication. It accepts every harness and exact pending failed-launch
+owners, calls no adapter stop or Host operation, and retains the native generation
+plus optional Claude launch id. Pending undo keeps its optional
+`hostRebooted: {bootId, launchGeneration?}` fence through restart: native/file
+recovery remains incomplete rather than signalling an old-boot row or discarding
+host-local files outside the run directory. Lifecycle exit and role publication
+belong to the reboot caller. Its indexed native-operation fence survives resource
+receipt deletion and storage reopen; cleanup completion never restores authority
+for a captured old birth. See [host settlement](../agents/host-agent.md#settlement-before-host-revocation).

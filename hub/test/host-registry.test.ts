@@ -1,4 +1,5 @@
 // T2: additive process-row host migration and local wire compatibility through disposable fixtures.
+import { removeProcessHostColumn } from './legacy-process-schema.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -18,7 +19,7 @@ test('legacy process database migrates host in place and persists named hosts', 
   old.put(row);
   old.close();
   const db = new DatabaseSync(path);
-  if (db.prepare('pragma table_info(harness_processes)').all().some(c => c.name === 'host')) db.exec('alter table harness_processes drop column host');
+  removeProcessHostColumn(db);
   db.close();
   const table = new ProcessTable(path);
   t.after(() => table.close());

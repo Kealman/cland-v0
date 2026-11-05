@@ -25,6 +25,9 @@ no-process-row assertions. The fake adapter control still reaches the selected
 Host's spawn refusal. Scratch preparation supplies the file Host's layout.
 
 The three Codex/Implementer placement doubles explicitly delegate realpath to
-owned scratch Host metadata because these launches carry sandbox policy. Default
-testHost remains refusing; Sessions skips realpath for OpenCode's absent sandbox
-policy and reaches the selected Host's spawn refusal after file preparation.
+owned scratch Host metadata because these launches carry sandbox policy.
+The production OpenCode recording double delegates both realpath and statDirectory
+to its file Host so launch-time private-directory ownership is captured from the
+same scratch root as its file operations. Default testHost remains refusing.
+The selected Host's spawn refusal, shared-ignore and no-fallback assertions stay
+unchanged.

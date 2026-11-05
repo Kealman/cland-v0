@@ -218,6 +218,22 @@ Normal remote exits retain supervision until identity cleanup, client socket and
 watch work drain, and forward cancellation settle; failed cancellation retries
 before the exit notice.
 
+Host revocation uses `Sessions.settleHostBeforeCut` / `host/settle.ts` before the
+authority cut. Its two-second bound reports unresolved generations and unknown
+inventory; no later Host cleanup is authorised. Provider removal will reuse this
+entry point; no remove command is shipped. See docs/agents/host-agent.md.
+
+Changed-boot lifecycle owners call `Sessions.retainHostGeneration(process,
+{cause: 'host-rebooted', bootId})` before exit publication, with the authenticated
+returning boot id. It records exact native closure for any harness and fences
+pending failed-launch retries without signals or file deletion. Preserve pending
+undo and host-local files outside the run folder for authorised retirement;
+closure alone never proves those resources removed.
+
+Keep the old-generation native fence independently of resource retirement:
+clearing the final file/receipt obligation must never reopen native operations
+through previously captured Hosts, including before the eventual authority cut.
+
 Remote terminal attach uses the launch-written private host record and a separate
 pinned-key SSH connection. Never print session credentials in the attach command.
 Use `cland host attach` on the host; ending its client leaves the session alive.

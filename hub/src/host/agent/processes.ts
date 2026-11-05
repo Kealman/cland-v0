@@ -23,6 +23,8 @@ export type ProcessHooks = {
   beforeRemainingObservation?: (pids: readonly number[]) => Promise<void>;
   afterCapture?: () => Promise<void>;
 };
+export const AGENT_LAUNCH_DIRECTORY = 'launches';
+
 export class AgentProcesses {
   #rows: ProcessRow[] = [];
   #adoptions = new Map<string,Promise<true|undefined>>();
@@ -45,7 +47,7 @@ export class AgentProcesses {
   #nativeCompletions = new Map<ProcessRow, Promise<void>>();
   #emit: (event: AgentEvent) => void;
   constructor(runDir: string, env: NodeJS.ProcessEnv, emit: (event: AgentEvent) => void, hooks: ProcessHooks = {}) {
-    this.#file = join(runDir, 'processes.json'); this.#launches = join(runDir, 'launches'); this.#env = env; this.#emit = emit; this.#hooks = hooks;
+    this.#file = join(runDir, 'processes.json'); this.#launches = join(runDir, AGENT_LAUNCH_DIRECTORY); this.#env = env; this.#emit = emit; this.#hooks = hooks;
   }
   async load() {
     try { this.#rows = JSON.parse(await readFile(this.#file, 'utf8')); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }

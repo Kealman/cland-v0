@@ -289,7 +289,10 @@
     "hub/test/host-ref-watch-compat.test.ts": "T1",
     "hub/test/host-ref-watch-recovery.test.ts": "T2",
     "hub/test/host-registry.test.ts": "T2",
+    "hub/test/host-revoke-native.test.ts": "T3",
+    "hub/test/host-revoke.test.ts": "T2",
     "hub/test/host-secret-admission.test.ts": "T2",
+    "hub/test/host-settlement.test.ts": "T1",
     "hub/test/host-ssh-contract.test.ts": {
       "tier": "T3",
       "scenario": "ssh-host"

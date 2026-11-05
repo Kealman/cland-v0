@@ -1,3 +1,4 @@
+import { hostGenerationKey } from './processes.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
@@ -29,13 +30,13 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import type { ApprovalChoice, ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
 import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { sessionPolicy } from './opencode/policy.ts';
 import { formatModel, HttpError, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, permissionRequest, pickFreeModel, type ModelRef, type PermissionRequest, type ServerEvent } from './opencode/client.ts';
-import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
+import { prepareFiles, readPassword, serverFiles, privateServerPaths, startServer, type ServerFiles } from './opencode/server.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
 import { localHost } from '../host/local.ts';
@@ -121,6 +122,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #watched = new Map<string, Watch>();
   readonly #watching = new Map<string, WatchTicket>();
   readonly #usage = new Map<string, SessionUsage>();
+  readonly #privateDirectories = new Map<string,{path:string;canonical:string;identity:{dev:number;ino:number}}>();
   #timer: ClockTimer | null = null;
   #closed = false;
   #pidCheck: Promise<void> | null = null;
@@ -286,6 +288,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
       let pid: number | undefined;
       try {
         const password = yield* this.#activeWait(prepareFiles(dirname(host.layout(this.#host).discoveryFile), files, this.#config(p.name, p.role, p.sessionId, launchToken, host), !relaunch, transaction, resumed, entry => this.#host.log(entry), host));
+        const canonicalDirectory=host.name==='local'?undefined:yield* this.#activeWait(host.realpath(files.dir));
+        const directoryIdentity=canonicalDirectory?(yield* this.#activeWait(host.statDirectory(canonicalDirectory))).identity:undefined;
+        if(canonicalDirectory&&!directoryIdentity)throw new Error('OpenCode private directory identity unavailable');
         yield* this.#activeWait(transaction.file(files.log, true));
         const env = hostCommandEnvironment(host, accountEnvironment(this.#env, p.accountEnv), {
           ...(host.name === 'local' ? {} : p.accountEnv),
@@ -341,6 +346,10 @@ export class OpenCodeAdapter implements HarnessAdapter {
         const identity = yield* this.#activeWait(transaction.process(pid));
         const launched: HarnessProcess = { ...p, ...identity, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
         yield* this.#activeWait(writeAttachRecord(host, host.layout(this.#host).runDirectory, launched, this.attachCommand(launched, true), transaction));
+        if(canonicalDirectory){
+          const key='opencode.privateDirectory:'+hostGenerationKey(launched),owner={path:files.dir,canonical:canonicalDirectory,identity:directoryIdentity!};
+          if(this.#host.adapterState)this.#host.adapterState.write(key,JSON.stringify(owner));else this.#privateDirectories.set(key,owner);
+        }
         scope.accepted.push({ files: transaction, name: p.name, sessionId: p.sessionId });
         return launched;
       } catch (err) {
@@ -834,6 +843,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       }
       await this.#drainRemote(p);
       await this.#unforward(p.sessionId);
+      this.#host.hostGenerationClosed?.(captured.process);
       this.#connections.delete(p.sessionId);
       this.#exiting.delete(p.sessionId);
       this.#unwatch(p.sessionId);
@@ -857,6 +867,32 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   unwatch(sessionId: string): void { this.#unwatch(sessionId); }
+
+  /** Revocation owns private config removal only after Sessions observed native stop. */
+  releaseHostGeneration(p: HarnessProcess, authorize: () => void): Promise<void> {
+    return this.#track((async () => {
+      const host = this.#processHost(p), files = this.#files(p.name, host);
+      authorize();
+      const type = await host.fileType(files.dir); authorize();
+      if (type === 'missing') return;
+      const key='opencode.privateDirectory:'+hostGenerationKey(p),saved=this.#host.adapterState?.read(key);
+      const owner=this.#privateDirectories.get(key)??(saved?JSON.parse(saved) as {path:string;canonical:string;identity:{dev:number;ino:number}}:undefined);
+      const canonical=owner?.canonical??files.dir;
+      if(type!=='directory'||owner?.path!==undefined&&owner.path!==files.dir||!isAbsolute(canonical)||basename(canonical)!==p.name)throw new Error('OpenCode private directory changed');
+      if (await host.realpath(files.dir) !== canonical) throw new Error('OpenCode private directory changed');
+      authorize();
+      const checkOwner=async()=>{
+        const info=await host.statDirectory(canonical);authorize();
+        if(owner&&(!owner.identity||info.identity?.dev!==owner.identity.dev||info.identity?.ino!==owner.identity.ino))throw new Error('OpenCode private directory identity changed');
+      };
+      await checkOwner();
+      for (const path of privateServerPaths(files)) {
+        // Delete by the captured canonical owner, never by a retargetable ancestor alias.
+        if(await host.fileType(canonical)!=='directory'||await host.realpath(canonical)!==canonical)throw new Error('OpenCode private directory changed');
+        await checkOwner();authorize(); await host.removePath(resolve(canonical,basename(path))).catch(error => { if (error.code !== 'ENOENT') throw error; });
+      }
+    })());
+  }
 
   // ---------------------------------------------------------------- stop, resume
 

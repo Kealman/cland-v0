@@ -216,10 +216,20 @@ export class Dispatcher {
 
   hostAdmission(secret: string) { return this.core.store.hosts.identify(secret); }
 
-  revokeHost(id: string): void {
+  async revokeHost(id: string) {
     if (!this.core.store.hosts.get(id)) throw new Error('unknown host');
-    this.core.store.hosts.revoke(id);
-    for (const close of this.#hostPeers.get(id) ?? []) close();
+    let cutDone = false;
+    const cut = () => {
+      if (cutDone) return; cutDone = true;
+      this.core.store.hosts.revoke(id);
+      for (const close of this.#hostPeers.get(id) ?? []) close();
+    };
+    if (this.core.store.hosts.get(id)?.state === 'revoked') return;
+    if (this.#sessions) {
+      try { return await this.#sessions.settleHostBeforeCut(id, cut); }
+      finally { cut(); }
+    }
+    cut();
   }
 
   #accountPoller: AccountPoller | undefined;
@@ -2043,8 +2053,7 @@ export class Dispatcher {
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, 'host.revoke', 'host revocation requires the human CLI or Neovim on a local connection');
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
-            this.revokeHost(frame.host);
-            return answer({ revoked: frame.host });
+            return later(frame.type, this.revokeHost(frame.host).then(cleanup => ({ type: 'result', id: frame.id, ok: true, value: { revoked: frame.host, ...(cleanup ? { cleanup } : {}) } } as HubFrame), err => Dispatcher.#failure(frame.id, err)));
           }
           case 'pairing.approve': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')

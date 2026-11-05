@@ -1,4 +1,5 @@
 // T3: real fake-server PID collisions across hosts; await native exit before fixture teardown.
+import { removeProcessHostColumn } from './legacy-process-schema.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -45,7 +46,7 @@ test('remote rows neither protect nor authorize sweeping local matching PIDs', a
   table.close();
   closed = true;
   const db = new DatabaseSync(join(root, '.cland/hub.db'));
-  db.exec('alter table harness_processes drop column host');
+  removeProcessHostColumn(db);
   db.close();
   assert.equal(orphanSessions(root)?.[0]?.name, 'remote');
 });

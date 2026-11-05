@@ -14,13 +14,21 @@ import { randomBytes } from 'node:crypto';
 import { localHost } from '../../host/local.ts';
 import { prepareIgnore } from './ignore.ts';
 import { LaunchFiles } from '../launch-files.ts';
-import { dirname, join } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 
 export type ServerFiles = { dir: string; config: string; password: string; log: string };
 
 export function serverFiles(clandDir: string, name: string): ServerFiles {
   const dir = join(clandDir, 'opencode', name);
   return { dir, config: join(dir, 'opencode.json'), password: join(dir, 'password'), log: join(dir, 'serve.log') };
+}
+
+/** One private-file policy for cleanup and read-only retirement inventory. */
+export const privateServerPaths=(files:ServerFiles):readonly string[]=>[files.config,files.password];
+export function retainedPrivateServerFiles(paths:readonly string[]):Array<{session:string;files:string[]}> {
+  const names=new Set(privateServerPaths(serverFiles('','')).map(path=>basename(path))),found=new Map<string,string[]>();
+  for(const path of paths){const parts=path.split('/');if(parts.length!==2||!parts[0]||!names.has(parts[1]!))continue;const files=found.get(parts[0])??[];files.push(parts[1]!);found.set(parts[0],files);}
+  return [...found].map(([session,files])=>({session,files}));
 }
 
 /** Write the session's config and a fresh password (kept when one exists: a relaunch reuses it). */

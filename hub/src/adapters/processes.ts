@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { realClock, type Clock } from '../hub/clock.ts';
 // The hub's process table (spec 4.3): the harness processes the hub launched, kept in `hub.db` in a table of
 // its own, through a connection of its own, so a restarted hub re-finds the sessions that outlived it.
@@ -6,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import type { HarnessProcess } from './contract.ts';
 import type { SessionUsage } from '../protocol.ts';
+import { hostBootChanged } from '../host/process-host.ts';
 import type { LaunchFilesState } from './launch-files.ts';
 import { processIdentityAsync, type IdentityExited } from '../process-identity.ts';
 import { processStartedAsync as processStarted } from '../hub/lock.ts';
@@ -84,6 +86,9 @@ create table if not exists harness_pending_stops (
 
 type Row = Record<string, string | number | null>;
 
+/** Positive old-boot native closure; never permission to signal or erase retained files. */
+export type HostRebooted = {bootId: string; launchGeneration?: string};
+
 export type PendingStop = {
   process: HarnessProcess;
   /** An adapter failed before returning a process row. Resource undo survives hub restart. */
@@ -94,6 +99,8 @@ export type PendingStop = {
   restoreRow?: HarnessProcess;
   error: string;
   stopIntent?: boolean;
+  /** Preserves all undo while fencing native/file retries after a proven boot change. */
+  hostRebooted?: HostRebooted;
   published?: boolean;
   priorSessionId?: string | null;
   /** Credential provenance survives disagreement between an early hello and the returned adapter identity. */
@@ -130,6 +137,9 @@ const toProcess = (r: Row): HarnessProcess => ({
   usage: r.usage ? JSON.parse(r.usage as string) as SessionUsage : null,
 });
 
+export const hostGenerationKey=(p:Pick<HarnessProcess,'sessionId'|'host'|'harness'|'startedAt'|'pid'|'pidIdentity'>):string=>createHash('sha256').update(JSON.stringify([p.sessionId,p.host??'local',p.harness,p.startedAt,p.pid,p.pidIdentity??null])).digest('hex');
+export type RetainedHostGeneration = {generation:string;process: HarnessProcess; nativeClosure: 'confirmed' | 'unknown'; hostRebooted?: HostRebooted};
+
 export class ProcessTable {
   readonly #clock: Clock;
   readonly #db: DatabaseSync;
@@ -142,6 +152,7 @@ export class ProcessTable {
     this.#db.exec(SCHEMA);
     // additive, as the store's own migrations: a table written before the column existed grows in place
     const columns = new Set((this.#db.prepare('pragma table_info(harness_processes)').all() as Row[]).map((r) => r.name as string));
+    if (!columns.has('host_retired')) this.#db.exec('alter table harness_processes add column host_retired integer not null default 0');
     if (!columns.has('host')) this.#db.exec("alter table harness_processes add column host text not null default 'local'");
     if (!columns.has('harness_session_id')) this.#db.exec('alter table harness_processes add column harness_session_id text');
     if (!columns.has('pid_identity')) this.#db.exec('alter table harness_processes add column pid_identity text');
@@ -151,6 +162,14 @@ export class ProcessTable {
     if (!columns.has('effort')) this.#db.exec('alter table harness_processes add column effort text');
     // Old stopped rows remain undated: no journal backfill on startup.
     for (const column of ['stopped_at', 'archived_at', 'archived_by']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
+    this.#db.exec("create index if not exists harness_processes_host on harness_processes(host, status, archived_at)");
+    this.#db.exec('create table if not exists harness_host_reboot_closures (generation text primary key, closure_json text not null)');
+    this.#db.exec(`create table if not exists harness_host_retirements (
+      session_id text primary key, host text not null, process_json text not null
+    ); create index if not exists harness_host_retirements_host on harness_host_retirements(host);
+    create index if not exists harness_processes_host_harness_status on harness_processes(host,harness,status,host_retired);`);
+    if(!this.#db.prepare('pragma table_info(harness_host_retirements)').all().some(row=>row.name==='owner_session_id'))this.#db.exec('alter table harness_host_retirements add column owner_session_id text');
+    this.#db.exec('create index if not exists harness_host_retirements_owner on harness_host_retirements(owner_session_id);create index if not exists harness_host_retirements_host_owner on harness_host_retirements(host,owner_session_id)');
     if (!columns.has('item')) this.#db.exec('alter table harness_processes add column item text');
     if (!columns.has('cleanup_item')) this.#db.exec('alter table harness_processes add column cleanup_item text');
     if (!columns.has('cleanup_held_at')) this.#db.exec('alter table harness_processes add column cleanup_held_at text');
@@ -176,12 +195,22 @@ export class ProcessTable {
     this.#db.close();
   }
 
+  /** Preserve old terminal ownership before a display row can disappear or be reused. */
+  #preserveTerminalHostGeneration(p: HarnessProcess): void {
+    if(p.harness!=='opencode'||(p.host??'local')==='local'||!['stopped','exited'].includes(p.status))return;
+    const row=this.#db.prepare('select host_retired from harness_processes where name=? and session_id=? and started_at=? and pid is ? and pid_identity is ?').get(p.name,p.sessionId,p.startedAt,p.pid,p.pidIdentity??null);
+    if(!row||row.host_retired||this.#hasRetirement(p))return;
+    this.retainHostGeneration(p,'unknown');
+  }
+
   /** Record a launched process; a name launched again replaces its old row (the old process is gone or stopped). */
   put(p: HarnessProcess): void {
+    const previous=this.get(p.name);
+    if(previous&&hostGenerationKey(previous)!==hostGenerationKey(p))this.#preserveTerminalHostGeneration(previous);
     this.#db
       .prepare(
         `insert into harness_processes (host, name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, pid_identity, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         on conflict (name) do update set host = excluded.host, harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
+         on conflict (name) do update set host_retired = 0, host = excluded.host, harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
            pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
       )
@@ -200,8 +229,14 @@ export class ProcessTable {
     if (other && other.status === 'running') return false;
     this.#db.exec('begin immediate');
     try {
+      if(other)this.#preserveTerminalHostGeneration(other);
       this.#db.prepare('delete from harness_processes where name = ?').run(to);
       this.#db.prepare('update harness_processes set name = ? where session_id = ?').run(to, sessionId);
+      const renamed=this.get(to)!;
+      for(const retained of this.#db.prepare('select * from harness_host_retirements where owner_session_id=? or (owner_session_id is null and session_id=?)').iterate(sessionId,sessionId)) {
+        const receipt=this.#readRetirement(retained);
+        if(receipt.generation===hostGenerationKey(renamed))this.#db.prepare('update harness_host_retirements set process_json=? where session_id=?').run(JSON.stringify({...receipt.process,name:to}),retained.session_id!);
+      }
       this.#db.exec('commit');
     } catch (err) {
       this.#db.exec('rollback');
@@ -242,6 +277,97 @@ export class ProcessTable {
     return row ? toProcess(row) : null;
   }
 
+  /** Indexed placement query; revoke does not materialize other hosts' retained history. */
+  activeOnHost(host: string): HarnessProcess[] {
+    return (this.#db.prepare("select * from harness_processes where host = ? and status = 'running' and archived_at is null").all(host) as Row[]).map(toProcess);
+  }
+
+  #readRetirement(row: Record<string, unknown>): RetainedHostGeneration {
+    const p=JSON.parse(String(row.process_json)) as HarnessProcess&{nativeClosure?:'confirmed'|'unknown';hostRebooted?:HostRebooted};
+    // Old storage keys were stable session ids and old receipts were positive stops only.
+    const nativeClosure=p.nativeClosure??'confirmed', generation=hostGenerationKey(p);
+    if(p.sessionId!==(row.owner_session_id??row.session_id)||p.host!==row.host
+      ||(row.owner_session_id!=null&&row.session_id!==generation)
+      ||!['confirmed','unknown'].includes(nativeClosure)||p.status!==(nativeClosure==='confirmed'?'stopped':'exited'))throw new Error('retained host generation ownership mismatch');
+    if(p.hostRebooted&&!hostBootChanged(p.pidIdentity,p.hostRebooted.bootId))throw new Error('retained reboot closure proof mismatch');
+    return {generation,process:p,nativeClosure,...(p.hostRebooted?{hostRebooted:p.hostRebooted}:{})};
+  }
+
+  #hasRetirement(p: HarnessProcess): boolean {
+    if(this.#db.prepare('select 1 from harness_host_retirements where session_id=?').get(hostGenerationKey(p)))return true;
+    const old=this.#db.prepare('select * from harness_host_retirements where session_id=? and owner_session_id is null').get(p.sessionId);
+    return !!old&&this.#readRetirement(old).generation===hostGenerationKey(p);
+  }
+
+  /** Metadata-only retirement, keyed by captured native generation rather than stable session id. */
+  retainHostGeneration(p: HarnessProcess, nativeClosure: 'confirmed' | 'unknown' = 'confirmed', hostRebooted?: HostRebooted): void {
+    if(hostRebooted&&!hostBootChanged(p.pidIdentity,hostRebooted.bootId))throw new Error('host boot closure proof mismatch');
+    const key=hostGenerationKey(p);
+    const identity={name:p.name,host:p.host??'local',harness:p.harness,sessionId:p.sessionId,
+      startedAt:p.startedAt,pid:p.pid,pidStarted:p.pidStarted??null,pidIdentity:p.pidIdentity??null,
+      harnessId:p.harnessId,harnessSessionId:p.harnessSessionId,cwd:p.cwd,role:p.role,model:p.model};
+    const exact=this.#db.prepare('select * from harness_host_retirements where session_id=?').get(key);
+    const old=this.#db.prepare('select * from harness_host_retirements where session_id=? and owner_session_id is null').get(p.sessionId);
+    hostRebooted ??= (exact&&this.#readRetirement(exact).hostRebooted)||(old&&this.#readRetirement(old).generation===key&&this.#readRetirement(old).hostRebooted)||undefined;
+    hostRebooted ??= this.hostGenerationRebooted(p);
+    if(hostRebooted){nativeClosure='confirmed';this.#retainHostRebootFence(p,hostRebooted);}
+    if((exact&&this.#readRetirement(exact).nativeClosure==='confirmed')||(old&&this.#readRetirement(old).generation===key&&this.#readRetirement(old).nativeClosure==='confirmed'))nativeClosure='confirmed';
+    this.#db.prepare('insert or replace into harness_host_retirements(session_id,host,process_json,owner_session_id) values (?,?,?,?)').run(key,p.host??'local',JSON.stringify({...identity,status:nativeClosure==='confirmed'?'stopped':'exited',nativeClosure,...(hostRebooted?{hostRebooted}:{}),accountEnv:null,launchBrief:null,usage:null}),p.sessionId);
+    if(old&&this.#readRetirement(old).generation===key)this.#db.prepare('delete from harness_host_retirements where session_id=?').run(p.sessionId);
+    if(nativeClosure==='confirmed'&&p.harness==='opencode'&&!hostRebooted) {
+      // Once both native generations are positively closed, the new owner takes
+      // the same private-file location. Unknown older workers are never released.
+      for(const row of this.#db.prepare('select * from harness_host_retirements where owner_session_id=? or (owner_session_id is null and session_id=?)').iterate(p.sessionId,p.sessionId)) {
+        const previous=this.#readRetirement(row);
+        if(previous.generation!==key&&previous.nativeClosure==='confirmed'&&!previous.hostRebooted&&previous.process.host===p.host&&previous.process.name===p.name)this.#db.prepare('delete from harness_host_retirements where session_id=?').run(row.session_id!);
+      }
+    }
+  }
+
+  #retainHostRebootFence(p: HarnessProcess, proof: HostRebooted): void {
+    if(!hostBootChanged(p.pidIdentity,proof.bootId))throw new Error('host boot closure proof mismatch');
+    this.#db.prepare('insert or ignore into harness_host_reboot_closures(generation,closure_json) values (?,?)').run(hostGenerationKey(p),JSON.stringify(proof));
+  }
+
+  /** Indexed native fence, independent of resource completion; old receipt markers remain readable. */
+  hostGenerationRebooted(p: HarnessProcess): HostRebooted | undefined {
+    const key=hostGenerationKey(p);
+    const fence=this.#db.prepare('select closure_json from harness_host_reboot_closures where generation=?').get(key);
+    if(fence){
+      const proof=JSON.parse(String(fence.closure_json)) as HostRebooted;
+      if(!hostBootChanged(p.pidIdentity,proof.bootId))throw new Error('host boot closure proof mismatch');
+      return proof;
+    }
+    const row=this.#db.prepare('select * from harness_host_retirements where session_id=?').get(key);
+    return row?this.#readRetirement(row).hostRebooted:undefined;
+  }
+
+  clearHostGeneration(p: HarnessProcess): void {
+    // Lazy compatibility: preserve an older resource-row marker before clearing it.
+    // A completed resource obligation can never restore native launch/signal authority.
+    const rebooted=this.hostGenerationRebooted(p);if(rebooted)this.#retainHostRebootFence(p,rebooted);
+    const key=hostGenerationKey(p);
+    this.#db.prepare('delete from harness_host_retirements where session_id=?').run(key);
+    const old=this.#db.prepare('select * from harness_host_retirements where session_id=? and owner_session_id is null').get(p.sessionId);
+    if(old&&this.#readRetirement(old).generation===key)this.#db.prepare('delete from harness_host_retirements where session_id=?').run(p.sessionId);
+    const current=this.bySessionId(p.sessionId);
+    if(current?.sessionId===p.sessionId&&hostGenerationKey(current)===key)this.#db.prepare('update harness_processes set host_retired=1 where session_id=?').run(p.sessionId);
+  }
+
+  /** Explicit retirement only: stream outstanding native generations for this host. */
+  *retainedHostGenerations(host: string): Generator<RetainedHostGeneration> {
+    const seen=new Set<string>();
+    // Prefer normalized receipts over any interrupted old-key migration duplicate.
+    for(const migrated of [true,false])for(const row of this.#db.prepare('select * from harness_host_retirements where host=? and owner_session_id is '+(migrated?'not null':'null')).iterate(host)) {
+      const receipt=this.#readRetirement(row);if(seen.has(receipt.generation))continue;
+      seen.add(receipt.generation);yield receipt;
+    }
+    // Display statuses alone grant neither cleanup nor signal authority.
+    for(const row of this.#db.prepare("select name,host,harness,role,model,cwd,pid,harness_id,session_id,harness_session_id,started_at,status,pid_started,pid_identity from harness_processes where host=? and harness='opencode' and status in ('stopped','exited') and host_retired=0").iterate(host)) {
+      const p=toProcess(row as Row),generation=hostGenerationKey(p);if(!seen.has(generation))yield {generation,process:p,nativeClosure:'unknown'};
+    }
+  }
+
   all(): HarnessProcess[] {
     return (this.#db.prepare('select * from harness_processes order by started_at, name').all() as Row[]).map(toProcess);
   }
@@ -270,7 +396,7 @@ export class ProcessTable {
     this.#db.exec('begin immediate');
     try {
       const remove = this.#db.prepare('delete from harness_processes where name = ? and session_id = ?');
-      for (const row of rows) remove.run(row.name, row.sessionId);
+      for (const row of rows) {this.#preserveTerminalHostGeneration(row);remove.run(row.name, row.sessionId);}
       this.#db.exec('commit');
     } catch (error) { this.#db.exec('rollback'); throw error; }
   }

@@ -13,3 +13,10 @@ fixtureEnvironment, then restores explicit contained profile/config inputs with
 scratchAccountEnvironment. A synthetic native program reports only presence flags
 for credential/Git sentinels and its declared scratch paths; its log is the receipt
 that the final child received the expected environment. No secret values are captured.
+
+
+Legacy fixture construction uses removeProcessHostColumn from the shared
+legacy-process-schema helper. It inspects SQLite index metadata and drops only
+indexes that depend on host before removing that column. New placement indexes
+cannot invalidate either pre-column fixture; migration/orphan assertions remain
+unchanged.

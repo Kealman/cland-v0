@@ -205,6 +205,8 @@ export type AdapterHost = {
   /** The adapter's own connection to the session came back (a reconnect): what waits for an inject is retried now,
    *  whether or not the state changed (an idle session reconnected to is still idle). */
   reconnected?: (sessionId: string) => void;
+  /** Positive owned-tree/client/forward closure, before a terminal notice; metadata retirement only. */
+  hostGenerationClosed?: (process: HarnessProcess) => void;
   /** The process is gone without cland stopping it: the hub sets `unknown` and journals it. */
   exited: (sessionId: string, detail: string, reason?: 'retired') => void;
 };
@@ -293,6 +295,8 @@ export interface HarnessAdapter {
   unwatch?(sessionId: string): void;
   /** Stop through the harness; the process table then says `stopped`. */
   stop(process: HarnessProcess, resumed?: Resumed, authorize?: () => void): Promise<void>;
+  /** Host retirement only, after positive native stop; normal stop retains resume files. */
+  releaseHostGeneration?(process: HarnessProcess, authorize: () => void): Promise<void>;
   /**
    * Re-find a process from the table after a hub restart: alive and still the same session → `found`, with
    * what the harness says it is doing. With `relaunch`, a process that is gone is started again on its own

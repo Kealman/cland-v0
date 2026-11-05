@@ -1,4 +1,7 @@
-import { isLinuxIdentity, processHost } from '../host/process-host.ts';
+import { AGENT_LAUNCH_DIRECTORY } from '../host/agent/processes.ts';
+import { serverFiles, retainedPrivateServerFiles } from './opencode/server.ts';
+import { settleHostBeforeCut, HostSettlementIncomplete, type HostSettlement } from '../host/settle.ts';
+import { hostBootChanged, isLinuxIdentity, processHost } from '../host/process-host.ts';
 import { launchGenerationKey, launchOwnerKey, earlierLaunch } from './launch-generation.ts';
 import { COORDINATOR_RETIRED } from '../hub/retirement.ts';
 import { removeSessionRunDirectory, writeSessionCredential } from '../../../shared/session-credential.ts';
@@ -24,13 +27,13 @@ import { checkRoleHost } from '../host/role-placement.ts';
 import { localHost } from '../host/local.ts';
 import type { Host } from '../host/host.ts';
 import { randomUUID } from 'node:crypto';
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, resolve, dirname } from 'node:path';
 import { nameRefusal, withRole } from '../names.ts';
 import { UNKNOWN_SESSION, type HubCore } from '../hub/core.ts';
 import type { HarnessProcessView, Message, SessionState, SessionUsage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal, type TurnReplay } from './contract.ts';
-import { ProcessTable, type PendingStop } from './processes.ts';
+import { ProcessTable, hostGenerationKey, type PendingStop } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText, projectRulesText } from '../roles/clause.ts';
 import { roleLaunchPolicy } from '../roles/config.ts';
@@ -98,14 +101,136 @@ export class Sessions {
   readonly #recoveryClock: Clock;
   readonly #transportClock: Clock;
   readonly #hosts: Map<string, Host>;
+  readonly #cutHosts = new Set<string>();
+  readonly #settlingHosts = new Map<string, Promise<HostSettlement>>();
+
+  /** Called with an authenticated returning agent's boot id before lifecycle exit publication.
+   * Captures closure for every harness without adapter stop or any Host operation. */
+  retainHostGeneration(p: HarnessProcess, proof: {cause: 'host-rebooted'; bootId: string}): void {
+    if(proof.cause!=='host-rebooted'||(p.host??'local')==='local'||!this.#hosts.has(p.host!)||this.#cutHosts.has(p.host!))throw new Error('host reboot closure unavailable');
+    const current=this.#table.bySessionId(p.sessionId), pending=this.#pendingStops.get(p.sessionId);
+    const matches=(owner:HarnessProcess|undefined|null)=>!!owner&&hostGenerationKey(owner)===hostGenerationKey(p);
+    const owner=matches(pending?.process)?pending!.process:matches(current)?current:null;
+    if(!owner)throw new Error('rebooted host generation ownership changed');
+    if(!hostBootChanged(owner.pidIdentity,proof.bootId))throw new Error('host boot change is not proven');
+    const launchGeneration=this.#core.store.meta(launchGenerationKey(owner.sessionId));
+    const hostRebooted={bootId:proof.bootId,...(launchGeneration?{launchGeneration}:{})};
+    // Persist the retry fence before any caller may publish exit or discard ownership.
+    if(pending&&matches(pending.process)){
+      pending.hostRebooted=hostRebooted;
+      this.#table.pendingStop(pending);
+    }
+    this.#table.retainHostGeneration(owner,'confirmed',hostRebooted);
+  }
+
+  settleHostBeforeCut(name: string, cut: () => void, options: {clock?: Clock} = {}): Promise<HostSettlement> {
+    const existing = this.#settlingHosts.get(name); if (existing) return existing;
+    const host = this.#hosts.get(name);
+    const rows = this.#table.activeOnHost(name);
+    const rebootedClaude=new Set<string>();
+    const unknownPrivateNames=new Map<string,Set<string>>(),unknownSessions=new Map<string,Set<string>>();
+    const fencePrivateFiles=(p:HarnessProcess,previousName=p.name)=>{
+      const key=hostGenerationKey(p);
+      const owners=[unknownPrivateNames.get(p.name),unknownPrivateNames.get(previousName),unknownSessions.get(p.sessionId)];
+      if(owners.some(set=>set&&[...set].some(owner=>owner!==key)))throw new HostSettlementIncomplete('older generation native closure is unknown; private files retained',['older worker (unconfirmed)','private files (unconfirmed)']);
+    };
+    const steps = new Map(rows.map(p => {
+      const generation = this.#core.store.meta(launchGenerationKey(p.sessionId)) || p.sessionId;
+      return [p.sessionId, {
+      generation, session: p.name,
+      settle: async () => {
+        if(this.#table.hostGenerationRebooted(p))throw new HostSettlementIncomplete('host reboot confirmed native closure; resource retirement remains pending',['receipt (unconfirmed)','private files (unconfirmed)']);
+        const authorize = () => {
+          if (this.#cutHosts.has(name)) throw new Error('host authority revoked');
+          const current = this.#table.bySessionId(p.sessionId);
+          if (!current || current.sessionId !== p.sessionId || current.host !== p.host
+            || current.startedAt !== p.startedAt || current.pid !== p.pid || current.pidIdentity !== p.pidIdentity
+            || (this.#core.store.meta(launchGenerationKey(p.sessionId)) || p.sessionId) !== generation) throw new Error('captured host generation changed');
+        };
+        await this.#stop(p.name, untimed, authorize, undefined, p.sessionId);
+        authorize();
+        const current = this.#table.bySessionId(p.sessionId)!;
+        if(this.adapter(current.harness).releaseHostGeneration)fencePrivateFiles(current,p.name);
+        await this.adapter(current.harness).releaseHostGeneration?.(current, authorize);
+        this.#table.clearHostGeneration(p);
+      },
+    }] as const; }));
+    for (const entry of this.#pendingStops.values()) if (entry.process.host === name) steps.set(entry.process.sessionId, {
+      generation: this.#core.store.meta(launchGenerationKey(entry.process.sessionId)) || entry.process.sessionId,
+      session: entry.process.name, settle: async () => {
+        await this.#stopFailedLaunch(entry);
+        if (this.#pendingStops.has(entry.process.sessionId)) throw new Error('failed launch cleanup receipt remains pending');
+      },
+    });
+    for (const identity of this.#launchIdentities.values()) if (identity.host === name && !steps.has(identity.returnedId ?? '')) {
+      const session = identity.returnedId ?? identity.anonymousSessionId ?? `unpublished launch ${identity.name}`;
+      steps.set(session, { generation: session, session: identity.name,
+        settle: async () => { throw new Error('launch admission still in flight'); } });
+    }
+    const retainedSteps = (async function* (this: Sessions) {
+      let count=0;
+      for(const {generation,process:p,nativeClosure,hostRebooted} of this.#table.retainedHostGenerations(name)) {
+        if(this.#cutHosts.has(name))return;
+        if(++count%32===0)await new Promise<void>(resolve=>setImmediate(resolve));
+        if(nativeClosure==='unknown')for(const [map,key] of [[unknownPrivateNames,p.name],[unknownSessions,p.sessionId]] as const){const owners=map.get(key)??new Set<string>();owners.add(generation);map.set(key,owners);}
+        if(hostRebooted?.launchGeneration&&p.harness==='claude-code')rebootedClaude.add(hostRebooted.launchGeneration);
+        const current=this.#table.bySessionId(p.sessionId),pending=this.#pendingStops.get(p.sessionId)?.process;
+        if((steps.has(p.sessionId)&&current?.sessionId===p.sessionId&&hostGenerationKey(current)===generation)||(pending&&hostGenerationKey(pending)===generation))continue;
+        yield {generation,session:p.name,settle:async()=>{
+          if(nativeClosure!=='confirmed')throw new HostSettlementIncomplete('retained generation native closure is unknown; private files retained',['worker (unconfirmed)','private files (unconfirmed)']);
+          const resolveOwner=()=>{
+            if(this.#cutHosts.has(name))throw new Error('host authority revoked');
+            const identityOwner=this.#table.bySessionId(p.sessionId);
+            if(identityOwner?.sessionId===p.sessionId&&hostGenerationKey(identityOwner)===generation)return {...p,name:identityOwner.name};
+            const pathOwner=this.#table.get(p.name);
+            if(pathOwner&&hostGenerationKey(pathOwner)!==generation)throw new Error('retained private files have a replacement owner');
+            return p;
+          };
+          const owner=resolveOwner(),authorize=()=>{if(resolveOwner().name!==owner.name)throw new Error('retained private files moved while settling');};
+          const adapter=this.adapter(p.harness);
+          if(!adapter.releaseHostGeneration)throw new HostSettlementIncomplete('native closure confirmed; retained generation resource cleanup unavailable',['receipt (unconfirmed)','private files (unconfirmed)']);
+          fencePrivateFiles(owner,p.name);authorize();await adapter.releaseHostGeneration(owner,authorize);authorize();
+          this.#table.clearHostGeneration(p);
+        }};
+      }
+    }).call(this);
+    const retainedFiles=(async function* (){
+      if(!host)return;
+      const layout=host.layout({discoveryFile:'',node:'',cli:'',spoke:''});
+      const filesAt=async(root:string)=>{try{return await host.listFolder(root);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return [];throw error;}};
+      const files=await filesAt(serverFiles(dirname(layout.discoveryFile),'').dir);
+      for(const {session,files:privateFiles} of retainedPrivateServerFiles(files))yield {generation:'opencode-files:'+session,session,remaining:['worker (unconfirmed)','private files: '+privateFiles.join(', ')],reason:'private files have no settled generation owner'};
+      const launches=await filesAt(join(layout.runDirectory,AGENT_LAUNCH_DIRECTORY));
+      for(const id of new Set(launches.map(path=>path.split('/')[0]!).filter(id=>/^[a-f0-9-]{36}$/.test(id))))yield {generation:'agent-launch:'+id,session:'agent launch '+id,remaining:['worker (unconfirmed)','agent launch records'],reason:'agent launch generation remains unsettled'};
+    })();
+    const work = settleHostBeforeCut({ ...options, retainedSteps, retainedFiles, nativeClosedGenerations:rebootedClaude, ownWork: work => {
+      this.#nativeChecks.add(work);
+      const done=()=>{this.#nativeChecks.delete(work);};void work.then(done,done);
+    }, host, runDirectory: host?.layout({discoveryFile:'',node:'',cli:'',spoke:''}).runDirectory,
+      steps: [...steps.values()], cut: () => { this.#cutHosts.add(name); cut(); } });
+    this.#settlingHosts.set(name, work); return work;
+  }
+
   #hostForProcess(process: HarnessProcess): Host {
     const name = process.host ?? 'local';
     const host = this.#hosts.get(name);
     if (!host) throw new Error(`unknown host ${name}`);
-    return host;
+    if(name==='local')return host;
+    // A previously captured adapter Host must observe the later reboot receipt too.
+    // Read/file retirement remains available; old-boot native operations never do.
+    const captured={...process};
+    return new Proxy(host,{get:(target,key)=>{
+      const value:unknown=Reflect.get(target,key,target);
+      if(typeof value!=='function')return value;
+      return (...args:unknown[])=>{
+        if(['stop','run','spawn','launchClaude','adopt'].includes(String(key))&&this.#table.hostGenerationRebooted(captured))throw new Error('host reboot closure fences old-generation native operations');
+        return value.apply(target,args);
+      };
+    }});
   }
   #hostForLaunch(request: { host?: string }): Host {
     const name = request.host ?? 'local';
+    if (this.#settlingHosts.has(name)) throw new Error(`host ${name}: revocation in progress`);
     const host = this.#hosts.get(name);
     if (!host) throw new Error(`unknown host ${name}`);
     return host;
@@ -185,7 +310,7 @@ export class Sessions {
   readonly #settlementPrunes=new Map<string,string>();
   readonly #pruneFlights=new Map<string,Promise<void>>();
   readonly #recoveryObservers = new Map<string, () => void | Promise<void>>();
-  readonly #stoppingLaunches = new Set<string>();
+  readonly #failedStopFlights = new Map<string, {entry: PendingStop; work: Promise<void>}>();
   #stopRetry: ClockTimer | null = null;
   readonly #lifecycle = new Map<string, Promise<void>>();
   readonly #crewAdmissions = new Map<string, string>();
@@ -355,7 +480,11 @@ export class Sessions {
     this.#transportClock = options.transportClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#log = options.log ?? (() => {});
-    this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, processHost(host)] as const)]);
+    this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, host.name === 'local' ? host : processHost(new Proxy(host, { get: (target, key) => {
+      const value: unknown = Reflect.get(target, key, target);
+      if (typeof value !== 'function') return value;
+      return (...args: unknown[]) => { if (this.#cutHosts.has(host.name)) throw new Error(`host ${host.name}: authority revoked`); return value.apply(target, args); };
+    } }))] as const)]);
     this.#core = options.core;
     this.#table = options.table;
     this.#core.useSessionHost(name => this.#table.get(name)?.host);
@@ -576,6 +705,7 @@ export class Sessions {
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages, replay) => this.#turnFailed(sessionId, error, messages, replay),
       notifyFailureSenders: (sessionId, error, messages) => this.#notifyTurnSenders(sessionId, error, messages),
+      hostGenerationClosed: process => this.#retainHostGeneration(process),
       exited: (sessionId, detail, reason) => this.#exited(sessionId, detail, reason),
       reconnected: (sessionId) => {
         const p = this.#table.bySessionId(sessionId);
@@ -609,7 +739,7 @@ export class Sessions {
       this.#pruneFlights.set(adapter.harness,work);this.#nativeChecks.add(work);
       void work.then(()=>{this.#pruneFlights.delete(adapter.harness);this.#nativeChecks.delete(work);},()=>{this.#pruneFlights.delete(adapter.harness);this.#nativeChecks.delete(work);});
     }
-    for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.files && !entry.stages.stopped && !entry.stopIntent) {
+    for (const entry of this.#pendingStops.values()) if (entry.process.harness === adapter.harness && !entry.hostRebooted && !entry.files && !entry.stages.stopped && !entry.stopIntent) {
       if (!this.#hosts.has(entry.process.host ?? 'local')) continue;
       try { adapter.watch(entry.process); }
       catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
@@ -933,7 +1063,12 @@ export class Sessions {
     }catch(error){this.#log({event:'launch-settlement-prune-incomplete',sessionId,error:String(error)});}
   }
 
+  #requireFailedLaunchCleanup(entry: PendingStop): void {
+    if(entry.hostRebooted)throw new HostSettlementIncomplete('host reboot confirmed native closure; failed launch resource retirement remains pending',['pending resource undo','receipt (unconfirmed)','private files (unconfirmed)']);
+  }
+
   async #settleFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
+    this.#requireFailedLaunchCleanup(entry);
     const { process, rollback } = entry;
     const proven = entry.ownership ? entry.ownership.sessionIds : [process.sessionId];
     const rollbackIds = proven.length ? proven : [null];
@@ -987,16 +1122,22 @@ export class Sessions {
   }
 
   #stopFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
+    try { this.#requireFailedLaunchCleanup(entry); } catch(error) { return Promise.reject(error); }
+    const id = entry.process.sessionId, active = this.#failedStopFlights.get(id);
+    if (active) return active.entry === entry ? active.work : Promise.reject(new Error('failed launch cleanup owner changed'));
     const work = Promise.resolve().then(() => this.#runFailedLaunchStop(entry, resumed));
+    this.#failedStopFlights.set(id, {entry, work});
     this.#nativeChecks.add(work);
-    void work.then(() => this.#nativeChecks.delete(work), () => this.#nativeChecks.delete(work));
+    const done = () => { this.#nativeChecks.delete(work); if (this.#failedStopFlights.get(id)?.work === work) this.#failedStopFlights.delete(id); };
+    void work.then(done, done);
     return work;
   }
 
   async #runFailedLaunchStop(entry: PendingStop, resumed: Resumed): Promise<void> {
+    const parentResumed=resumed;
+    resumed=work=>parentResumed(()=>{this.#requireFailedLaunchCleanup(entry);return work();});
     let p = entry.process;
-    if (this.#stoppingLaunches.has(p.sessionId) || this.#closed) return;
-    this.#stoppingLaunches.add(p.sessionId);
+    if (this.#closed) return;
     try {
       let preparationError: unknown;
       resumed(() => {
@@ -1064,7 +1205,7 @@ export class Sessions {
       this.#table.pendingStop(entry);
       this.#log({ event: 'launch-cleanup-incomplete', sessionId: p.sessionId, host: p.host ?? 'local', error: entry.error });
       throw new Error(entry.error);
-    } finally { resumed(() => this.#stoppingLaunches.delete(p.sessionId)); }
+    }
   }
 
   /** Each adapter's capability table (spec 4.3): what it can do and how far each state signal is trusted. */
@@ -1434,10 +1575,12 @@ export class Sessions {
     });
   }
 
-  async #stop(name: string, resumed: Resumed, authorize: () => void, poolHandoff?: () => void): Promise<HarnessProcessView> {
+  async #stop(name: string, resumed: Resumed, authorize: () => void, poolHandoff?: () => void, pinnedIdentity?: string): Promise<HarnessProcessView> {
     authorize();
-    const identity = this.#process(name).sessionId;
-    this.#hostForProcess(this.#process(name));
+    const captured = pinnedIdentity ? this.#table.bySessionId(pinnedIdentity) : this.#process(name);
+    if (!captured || pinnedIdentity && captured.sessionId !== pinnedIdentity) throw new Error('captured session no longer exists');
+    const identity = captured.sessionId;
+    this.#hostForProcess(captured);
     if (!poolHandoff && this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
     let released = false;
@@ -1462,6 +1605,7 @@ export class Sessions {
       return resumed(() => {
         try {
           const current = this.#table.bySessionId(p.sessionId) ?? p;
+          this.#retainHostGeneration(current);
           this.#table.update(current.name, { status: 'stopped', cleanupItem: this.#stopItem(current) });
           if (this.#env.CLAND_TEST_CRASH_AT === 'stop-recorded') process.kill(process.pid, 'SIGKILL');
           this.#setObservedState(p.sessionId, current.name, 'unknown', 'stopped');
@@ -2077,6 +2221,15 @@ export class Sessions {
     this.#core.inbox.refresh();
   }
 
+  /** Capture metadata retirement only from the owner that positively joined native closure. */
+  #retainHostGeneration(p: HarnessProcess): void {
+    if(!this.adapter(p.harness).releaseHostGeneration||(p.host??'local')==='local'||this.#pendingStops.has(p.sessionId))return;
+    const current=this.#table.bySessionId(p.sessionId);
+    if(!current||current.sessionId!==p.sessionId||current.harness!==p.harness||current.host!==p.host
+      ||current.startedAt!==p.startedAt||current.pid!==p.pid||(current.pidIdentity??null)!==(p.pidIdentity??null))throw new Error('closed host generation ownership changed');
+    this.#table.retainHostGeneration({...p,name:current.name});
+  }
+
   #exited(sessionId: string, detail: string, reason?: 'retired'): void {
     if (this.#pendingStops.has(sessionId)) {
       const entry = this.#pendingStops.get(sessionId)!;
@@ -2438,7 +2591,7 @@ export class Sessions {
     for (const timer of this.#usageTimers.values()) this.#core.clock.clearTimeout(timer);
     this.#usageTimers.clear();
     this.#unrename();
-    const drain = [...[...this.#hostResumes.values()].map(flight => flight.work), ...adapterDrains, ...this.#nativeChecks, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
+    const drain = [...[...this.#hostResumes.values()].map(flight => flight.work), ...adapterDrains, ...this.#settlingHosts.values(), ...this.#nativeChecks, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
     const finish = () => { if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed'); };
     if (drain.length) return Promise.all(drain.map(work => work.catch(() => {}))).then(finish);
     finish();
