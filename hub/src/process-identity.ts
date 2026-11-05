@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { run } from './doctor/report.ts';
 
-import { linuxIdentity, readLinuxBootId, readLinuxBootIdSync, type IdentityFailure, type IdentityExited } from './host/agent/identity.ts';
+import { readLinuxStat, linuxIdentity, readLinuxBootId, readLinuxBootIdSync, type IdentityFailure, type IdentityExited } from './host/agent/identity.ts';
 export { linuxIdentity, readLinuxBootId, readLinuxBootIdSync, type IdentityFailure, type IdentityExited } from './host/agent/identity.ts';
 const errorCode = (error: unknown) => (error as NodeJS.ErrnoException)?.code ?? 'unknown error';
 function exited(report: IdentityExited | undefined, pid: number): null {
@@ -56,7 +56,7 @@ export function processIdentities(pids: number[], report?: IdentityFailure, repo
       catch (error) { for (const pid of pids) failure(report, pid, `Linux boot-id read: ${errorCode(error)}`); return new Map(); }
       const result = new Map<number, string>();
       for (const pid of pids) {
-        try { const identity = linuxIdentity(pid, readFileSync(`/proc/${pid}/stat`, 'utf8'), boot, report, reportExited); if (identity) result.set(pid, identity); }
+        try { const identity = linuxIdentity(pid, readLinuxStat(() => readFileSync(`/proc/${pid}/stat`, 'utf8')), boot, report, reportExited); if (identity) result.set(pid, identity); }
         catch (error) { failure(report, pid, `Linux /proc/${pid}/stat read: ${errorCode(error)}`); }
       }
       return result;
@@ -79,7 +79,7 @@ export async function processIdentitiesAsync(pids: number[], env: NodeJS.Process
       catch (error) { for (const pid of pids) failure(report, pid, `Linux boot-id read: ${errorCode(error)}`); return new Map(); }
       const result = new Map<number, string>();
       await Promise.all(pids.map(async pid => {
-        try { const identity = linuxIdentity(pid, await readFile(`/proc/${pid}/stat`, 'utf8'), boot, report, reportExited); if (identity) result.set(pid, identity); }
+        try { const identity = linuxIdentity(pid, await readLinuxStat(() => readFile(`/proc/${pid}/stat`, 'utf8')), boot, report, reportExited); if (identity) result.set(pid, identity); }
         catch (error) { failure(report, pid, `Linux /proc/${pid}/stat read: ${errorCode(error)}`); }
       }));
       return result;

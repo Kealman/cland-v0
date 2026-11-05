@@ -36,3 +36,20 @@ export function linuxIdentity(pid: number, stat: string, boot: string, report?: 
   return `linux:${boot.trim()}:${ticks}`;
 }
 
+
+/** Bounded procfs exit race: ESRCH alone is never a positive absence receipt. */
+export function readLinuxStat(read: () => string): string;
+export function readLinuxStat(read: () => Promise<string>): Promise<string>;
+export function readLinuxStat(read: () => string | Promise<string>): string | Promise<string> {
+  const retry = (attempt: number): string | Promise<string> => {
+    const recover = (error: unknown): string | Promise<string> => {
+      if (errorCode(error) === 'ESRCH' && attempt < 2) return retry(attempt + 1);
+      throw error;
+    };
+    try {
+      const result = read();
+      return typeof result === 'string' ? result : result.catch(recover);
+    } catch (error) { return recover(error); }
+  };
+  return retry(0);
+}

@@ -78,3 +78,43 @@ test('persisted process birth identity survives writes, updates and pending-stop
     assert.equal(table.pendingStops()[0]?.process.pidIdentity, 'darwin:1791201600:100002');
   } finally { table.close(); }
 });
+
+for (const mode of ['sync', 'async'] as const) {
+  for (const terminal of ['ENOENT', 'ESRCH', 'EACCES', 'Z', 'S', 'malformed'] as const) {
+    test(`hub-local Linux exit race ${mode}: ESRCH then ${terminal}`, async t => {
+      const fs = (await import('node:fs')).default;
+      const promises = (await import('node:fs/promises')).default;
+      const { syncBuiltinESMExports } = await import('node:module');
+      const { processIdentities, processIdentitiesAsync } = await import('../src/process-identity.ts');
+      const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+      let reads = 0;
+      const read = (path: unknown) => {
+        if (path === '/proc/sys/kernel/random/boot_id') return boot;
+        assert.equal(path, '/proc/123/stat');
+        reads++;
+        if (reads === 1 || ['ENOENT', 'ESRCH', 'EACCES'].includes(terminal)) {
+          throw Object.assign(Error('injected proc exit race'), { code: reads === 1 ? 'ESRCH' : terminal });
+        }
+        return terminal === 'malformed' ? 'bad stat' : `123 (exiting) ${terminal} ${Array(18).fill('0').join(' ')} 90001 0`;
+      };
+      const failures: string[] = [], ended: number[] = [];
+      try {
+        Object.defineProperty(process, 'platform', { value: 'linux' });
+        t.mock.method(fs, 'readFileSync', read);
+        t.mock.method(promises, 'readFile', async (path: unknown) => read(path));
+        syncBuiltinESMExports();
+        const report = (_pid: number, error: string) => failures.push(error);
+        const gone = (pid: number) => { ended.push(pid); };
+        const identities = mode === 'sync' ? processIdentities([123], report, gone)
+          : await processIdentitiesAsync([123], {}, 3000, report, gone);
+        assert.deepEqual(ended, terminal === 'Z' ? [123] : []);
+        assert.deepEqual([...identities], terminal === 'S' ? [[123, `linux:${boot}:90001`]] : []);
+        assert.equal(reads, terminal === 'ESRCH' ? 3 : 2);
+        assert.equal(failures.length, ['ENOENT', 'ESRCH', 'EACCES', 'malformed'].includes(terminal) ? 1 : 0);
+      } finally {
+        Object.defineProperty(process, 'platform', platform);
+        t.mock.restoreAll(); syncBuiltinESMExports();
+      }
+    });
+  }
+}

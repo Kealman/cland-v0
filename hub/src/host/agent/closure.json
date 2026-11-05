@@ -38,11 +38,11 @@
     },
     {
       "path": "hub/src/host/agent/identity.ts",
-      "sha256": "265ff36032e419f138d3925456551c0544ee893822c8c8913d2db3d8cd92c599"
+      "sha256": "6d042fbe93d4b1e85fdab3bf32c0694923661de05854767c0f10343a8e4a88c6"
     },
     {
       "path": "hub/src/host/agent/native.ts",
-      "sha256": "00b48f5bfaaa85c07395d14f156cb2bca9c077fea7b5912113dbdfcb23cde49a"
+      "sha256": "388b2802ecdd18204727d9bfe0476081e1111963c3883c23269dccc4556994c2"
     },
     {
       "path": "hub/src/host/agent/occupants.ts",

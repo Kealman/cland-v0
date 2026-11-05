@@ -48,7 +48,7 @@ for (const errno of ['ENOENT', 'ESRCH']) for (const outcome of ['absent', 'prese
 rows = [row(420100, 1, 420100), row(420101, 420100, 420101), row(420102, 420101, 420102), row(420103, 420100, 420103)];
 let reads = 0;
 onStat = async pid => {
- if (pid === 420101 && ++reads === 2) {
+ if (pid === 420101 && (++reads === 2 || ${errno === 'ESRCH' && outcome !== 'absent'} && reads > 2)) {
   ${outcome === 'absent' ? 'rows = rows.filter(r => r.pid !== 420101 && r.pid !== 420102);' : outcome === 'surviving branch' ? 'rows = rows.filter(r => r.pid !== 420101);' : ''}
   return ${JSON.stringify(errno)};
  }

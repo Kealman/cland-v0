@@ -22,3 +22,11 @@ stat Z/X and Darwin extern_proc.p_stat SZOMB (5 at byte36 in the supported
 birth validation. Previous nullable/Map APIs remain compatible. Malformed or
 wrong-PID records produce no exit receipt. Exit means no running writer; a
 parent may still need to reap the PID.
+
+Hub-local Linux readers (sync and async) inject ESRCH through the real builtin
+stat-read boundary, then ENOENT, a validated zombie/live birth, persistent ESRCH,
+EACCES or malformed data. Builtin exports and the platform selector are restored
+after each test. Both readers and agent observation use `readLinuxStat`'s three
+immediate attempts; only ESRCH retries. Hub-local ENOENT remains unknown and falls through to native kill(0) in its
+cleanup consumer; persistent ESRCH reports unknown, and observation grants no signal authority. Hub-local readers
+keep the physical kernel boot id even when agent fake-host settings exist.

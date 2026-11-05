@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
-import { linuxIdentity, readLinuxBootId } from './identity.ts';
+import { linuxIdentity, readLinuxBootId, readLinuxStat } from './identity.ts';
 const exec = promisify(execFile);
 export type Observation = { identity: string | null; ended: boolean };
 /** A ps member can be reaped before its subsequent birth observation. Unknown is never absence. */
@@ -21,20 +21,13 @@ export async function agentBootId(env: NodeJS.ProcessEnv): Promise<string> {
 }
 /** Read one Linux birth; an observation never grants native signal authority. */
 export async function observeLinuxProcess(pid:number, boot:string, readStat:()=>Promise<string>=()=>readFile(`/proc/${pid}/stat`, 'utf8')):Promise<Observation> {
-  // procfs can return ESRCH while the selected task exits. That is not an
-  // absence receipt: retry the read, requiring ENOENT or a parsed native birth.
-  for(let attempt=0;attempt<3;attempt++) {
-    try {
-      let ended=false;
-      const identity=linuxIdentity(pid,await readStat(),boot,undefined,()=>{ended=true;});
-      return {identity,ended};
-    } catch(error) {
-      const code=(error as NodeJS.ErrnoException).code;
-      if(code==='ESRCH'&&attempt<2)continue;
-      return {identity:null,ended:code==='ENOENT'};
-    }
+  try {
+    let ended = false;
+    const identity = linuxIdentity(pid, await readLinuxStat(readStat), boot, undefined, () => { ended = true; });
+    return { identity, ended };
+  } catch (error) {
+    return { identity: null, ended: (error as NodeJS.ErrnoException).code === 'ENOENT' };
   }
-  return {identity:null,ended:false};
 }
 export async function observeProcesses(pids: number[], env: NodeJS.ProcessEnv): Promise<Map<number, Observation>> {
   pids = [...new Set(pids.filter(pid => Number.isSafeInteger(pid) && pid > 1))];
