@@ -1815,6 +1815,7 @@ export class Sessions {
       if (this.#closed) throw new Error('the hub is closing');
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
+      if (!relaunch && this.#table.hostGenerationRebooted(current)) throw new Error('host rebooted while resuming');
       const process: HarnessProcess = {
         ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, pidIdentity: !relaunch && current.pid === found.process.pid ? current.pidIdentity ?? null : found.process.pidIdentity ?? null, stoppedAt: null, archivedAt: null, archivedBy: null,
         // A relaunch resumes the same conversation and cland identity: the adapter's fresh in-memory sum
@@ -1892,11 +1893,19 @@ export class Sessions {
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }
 
+  readonly #hostBootIds = new Map<string, string>();
+
   readonly #hostResumes = new Map<string, { work: Promise<void>; again: boolean }>();
 
   /** A restored agent table retries startup recovery; transport loss is never an exit receipt. */
-  resumeHost(host: string): Promise<void> {
+  resumeHost(host: string, bootId?: string): Promise<void> {
     if (this.#closed) return Promise.resolve();
+    if (bootId) {
+      this.#hostBootIds.set(host, bootId);
+      // Readiness may reenter a suspended resume. Fence its native generation
+      // now, before that continuation can publish a stale running result.
+      this.#retireRebootedHost(host);
+    }
     const existing = this.#hostResumes.get(host);
     if (existing) { existing.again = true; return existing.work; }
     const flight = { work: Promise.resolve(), again: false };
@@ -1916,7 +1925,38 @@ export class Sessions {
     return flight.work;
   }
 
+  #retireRebootedHost(host: string): void {
+    const bootId = this.#hostBootIds.get(host);
+    if (!bootId || host === 'local') return;
+    const pending = [...this.#pendingStops.values()].map(entry => entry.process);
+    const owners = [...this.#table.activeOnHost(host), ...pending.filter(p => p.host === host)];
+    // Install every native fence before publication can reenter lifecycle code.
+    for (const p of owners) if (hostBootChanged(p.pidIdentity, bootId) && !this.#table.hostGenerationRebooted(p)) {
+      this.retainHostGeneration(p, {cause:'host-rebooted', bootId});
+    }
+    for (const p of owners) {
+      const current = this.#table.bySessionId(p.sessionId);
+      if (current && hostGenerationKey(current) === hostGenerationKey(p) && hostBootChanged(p.pidIdentity, bootId)) {
+        this.adapter(p.harness).unwatch?.(p.sessionId);
+        this.#exited(p.sessionId, 'host rebooted', 'host-rebooted');
+      }
+    }
+  }
+
   async #resumeHost(host: string): Promise<void> {
+    this.#retireRebootedHost(host);
+    const bootId = this.#hostBootIds.get(host);
+    if (bootId && host !== 'local') {
+      let count = 0;
+      for (const p of this.#table.stoppedOnHost(host)) {
+        if (this.#closed || this.#hostBootIds.get(host) !== bootId) break;
+        if (hostBootChanged(p.pidIdentity, bootId)) {
+          if (!this.#table.hostGenerationRebooted(p)) this.retainHostGeneration(p, {cause:'host-rebooted', bootId});
+          this.#exited(p.sessionId, 'host rebooted', 'host-rebooted');
+        }
+        if (++count % 32 === 0) await new Promise<void>(resolve=>setImmediate(resolve));
+      }
+    }
     for (const p of this.#table.running()) {
       if (this.#closed) return;
       if ((p.host ?? 'local') !== host || this.#pendingStops.has(p.sessionId)) continue;
@@ -1927,6 +1967,7 @@ export class Sessions {
 
   /** At startup, recover native connections or retain live recorded processes for reconnect/stop. */
   async resumeAll(): Promise<void> {
+    for (const host of this.#hosts.keys()) this.#retireRebootedHost(host);
     for (const entry of [...this.#pendingStops.values()]) {
       try { await this.#stopFailedLaunch(entry); }
       catch (error) { this.#log({ event: 'launch-recovery-pending', session: entry.process.name, sessionId: entry.process.sessionId, error: String(error) }); }
@@ -2230,14 +2271,16 @@ export class Sessions {
     this.#table.retainHostGeneration({...p,name:current.name});
   }
 
-  #exited(sessionId: string, detail: string, reason?: 'retired'): void {
-    if (this.#pendingStops.has(sessionId)) {
+  #exited(sessionId: string, detail: string, reason?: 'retired' | 'host-rebooted'): void {
+    const rebooted = reason === 'host-rebooted';
+    if (this.#pendingStops.has(sessionId) && !rebooted) {
       const entry = this.#pendingStops.get(sessionId)!;
       void this.#stopFailedLaunch(entry).catch(error => this.#log({ event: 'launch-cleanup-incomplete', sessionId, host: entry.process.host ?? 'local', error: String(error) }));
       return;
     }
     const p = this.#table.bySessionId(sessionId);
-    if (!p || p.status !== 'running') return;
+    if (!p || p.status === 'exited' || (!rebooted && p.status !== 'running')) return;
+    if (rebooted && !this.#table.hostGenerationRebooted(p)) throw new Error('host reboot exit lacks durable closure');
     this.#table.update(p.name, { status: 'exited', cleanupItem: this.#stopItem(p) });
     // journalled (`journal.ts`) and recorded in Agents as a death (`agents-topic.ts`)
     this.#log({ event: 'harness-exited', session: p.name, harness: p.harness, pid: p.pid, detail, ...(reason ? { reason } : {}) });

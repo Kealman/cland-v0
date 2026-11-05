@@ -52,10 +52,10 @@ export function sameOwner(a: HostOwner | undefined, b: HostOwner): boolean {
   return a?.directory === b.directory && a.boot === b.boot;
 }
 export type Control = { operation: string; forwards: Forward[]; owner: HostOwner; token?: string };
-export function controlRequest(path: string, request: Control): Promise<void> {
+export function controlRequest(path: string, request: Control, timeoutMs = 3000): Promise<void> {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({ path });
-    socket.setTimeout(3000, () => socket.destroy(new Error('fake ssh control timed out')));
+    socket.setTimeout(timeoutMs, () => socket.destroy(new Error('fake ssh control timed out')));
     let response = '';
     socket.on('error', reject);
     socket.on('connect', () => socket.end(JSON.stringify(request) + '\n'));

@@ -48,6 +48,7 @@ export const HOST_USAGE = `  host revoke <id> human-only local CLI: settle gener
                   checks native identity; disables terminal suspend; exiting leaves the session running
   host serve      run the host agent on agent.sock (no systemd required)
                   CLAND_HOST_SECRET required; CLAND_HOST_RUN_DIR defaults to ~/.cland-host/run
+                  fake-host mode requires CLAND_HOST_BOOT_ID_FILE; ordinary Linux uses kernel boot
                   ignores SIGHUP; supervisor.sh provides detached restart supervision
 
 `;

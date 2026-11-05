@@ -4,6 +4,13 @@ import { readFile } from 'node:fs/promises';
 export const readLinuxBootIdSync = (): string => readFileSync('/proc/sys/kernel/random/boot_id', 'utf8');
 export const readLinuxBootId = (): Promise<string> => readFile('/proc/sys/kernel/random/boot_id', 'utf8');
 
+const canonicalBootPattern = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
+const canonicalBoot = new RegExp('^'+canonicalBootPattern+'$');
+const linuxBirth = new RegExp('^linux:('+canonicalBootPattern+'):\\d+$');
+export const isCanonicalBootId = (value: unknown): value is string => typeof value === 'string' && canonicalBoot.test(value);
+/** Parse the recorded boot without granting authority to malformed/legacy births. */
+export const linuxBirthBootId = (identity: string | null | undefined): string | null => linuxBirth.exec(identity ?? '')?.[1] ?? null;
+
 export type IdentityFailure = (pid: number, error: string) => void;
 /** A native exited state proves absence for liveness, never ownership for a signal. */
 export type IdentityExited = (pid: number) => void;

@@ -13117,6 +13117,13 @@
       "added": "2026-11-04",
       "expires": "2026-11-11",
       "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 6.876509874 s; prior macOS arm64 Node24.21 sample 2.452095791 s. The 11 s C-216 allowance rounds 1.5x worst (10.3147648110 s) upward to whole seconds. Detached-child base sample5.493756007 s is lower than its6.876509874 s load-gate maximum. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+    },
+    "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": {
+      "seconds": 12,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1613 Coordinator c6c3ff54 sizing: clean macOS arm64 Node24.21.0 local early case 4.578853292 s including setup/joined cleanup. T-1666 observed Linux/macOS ratio 14.3/8.9 (about 1.6); projected Linux 7.3261652672 s, times1.5 about10.99 s, rounded with headroom to12 s. This is an explicit platform projection, not an observed Linux pass/time. Early sample excludes final reviewed-head preservation/queued evidence; failed setup, overlapped and teardown-failed runs excluded. Queue/provisioning and Node runner startup excluded. Adjust only if later observed Linux sample times1.5 exceeds12 s; global budget mode report."
     }
   }
 }

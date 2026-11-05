@@ -25,3 +25,10 @@ that observation does not replay its already-attempted head.
 Scoped publication flush requires a positive successful native result. A settled
 failed lease refuses without retrying its unchanged head; a successful publication
 and a missing-watch refusal keep the previous global flush contract intact.
+
+Unknown push observations retain their existing fence and now name admission
+receipt pending, native PID/identity/boot mismatch, receipt read failure,
+unobservable target, or a live target without its ledger. The component control
+checks every cause, unchanged running output and zero stop calls. A previous
+observation without optional cause still produces the original generic fence.
+Boot comparison uses the same canonical birth parser as reboot admission.

@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { join, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { agentBootId, observeProcesses, isCapturedOrExited } from './native.ts';
+import { observeProcesses, isCapturedOrExited } from './native.ts';
 import { checkpoint } from './storage.ts';
 import type { AgentEvent } from './protocol.ts';
 const exec = promisify(execFile);
@@ -55,7 +55,6 @@ export class AgentProcesses {
     await mkdir(this.#launches, { recursive: true, mode: 0o700 });
     for (const name of await readdir(this.#launches)) if (/^[a-f0-9-]{36}$/.test(name)) this.#admissions.add(name);
   }
-  bootId() { return agentBootId(this.#env); }
   async identity(pid: number): Promise<string | null> { return (await observeProcesses([pid], this.#env)).get(pid)?.identity ?? null; }
   #persist(phase: 'spawn' | 'exit' | 'recover'): Promise<void> {
     this.#rows = [...this.#rows.filter(row => !row.ended || row.adopted), ...this.#rows.filter(row => row.ended && !row.adopted).slice(-256)];

@@ -21,7 +21,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Rulebook](../docs/hub/rulebook.md)
 - [SSH transport](../docs/hub/ssh-transport.md)
 - [Host revocation settlement](../docs/agents/host-agent.md#settlement-before-host-revocation): bounded pre-cut cleanup, changed-boot closure receipts and named unresolved generations.
-- [SSH Host and native launch receipts](../docs/hub/ssh-host.md): root-first Claude stop and bounded descendant convergence; private terminal attach records and separate pinned SSH terminals; atomic publish, append and stat; OpenCode shared ignore and launch rollback; territory clone, socket proxy, branch leases, agent version delivery, capability-gated automatic task-ref pushes and restart-safe host worktrees.
+- [SSH Host and native launch receipts](../docs/hub/ssh-host.md): changed-boot session exits with durable retirement and no native signals; fake-host agent admission requires a boot file on every platform, while ordinary Linux uses the kernel boot; root-first Claude stop and bounded descendant convergence; private terminal attach records and separate pinned SSH terminals; atomic publish, append and stat; OpenCode shared ignore and launch rollback; territory clone, socket proxy, branch leases, agent version delivery, named unknown native-push identity boundaries; capability-gated automatic task-ref pushes and restart-safe host worktrees.
 - [Remote discovery](../docs/hub/remote-discovery.md)
 - [The Agents record, the journal and hygiene](../docs/hub/the-agents-record-the-journal-and-hygiene.md)
 - [Per-user state](../docs/hub/per-user-state.md)

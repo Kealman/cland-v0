@@ -1,5 +1,6 @@
 // T3: real Git ref rewrites, socket receive-pack and agent restart are the behavior under test.
 // Lifecycle: sshHostFixture joins all agents, clients and Git writers before removing its disposable root.
+import { pushRecoveryFacts } from './host-push-facts.ts';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { ownProcess, ownDirectory } from './process-cleanup.ts';
@@ -102,7 +103,7 @@ exec /usr/bin/git "$@"
  const supervisor=new URL('../src/host/agent/supervisor.sh',import.meta.url).pathname,cli=new URL('../bin/cland.ts',import.meta.url).pathname;
  const child=spawn('sh',[supervisor,f.fake.run,process.execPath,cli,'host','serve'],{cwd:f.fake.home,env:fixtureEnvironment(f.root,process.env,env),stdio:'ignore'});f.addCleanup(ownProcess(undefined,child.pid));
  client=await eventually('supervised watch agent ready',()=>AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined));f.addCleanup(()=>client.close());
- const oldPid=client.hello.pid;await git(path,['commit','--allow-empty','-m','captured A']);const captured=await git(path,['rev-parse','HEAD']);
+ const helloBefore={...client.hello};const oldPid=client.hello.pid;await git(path,['commit','--allow-empty','-m','captured A']);const captured=await git(path,['rev-parse','HEAD']);
  const pending=await eventually('durable pending native push before crash',async()=>{
   const rows=JSON.parse(await readFile(join(f.fake.run,'ref-watches.json'),'utf8'));return rows.find((row:{pending?:{head:string;native?:unknown}})=>row.pending?.head===captured&&row.pending.native);
  });assert.ok(pending.pending.native.identity);await eventually('native push held at executable receipt',()=>readFile(entered,'utf8').catch(()=>undefined));
@@ -110,7 +111,13 @@ exec /usr/bin/git "$@"
  await git(path,['commit','--allow-empty','-m','current B']);const current=await git(path,['rev-parse','HEAD']);assert.notEqual(current,captured);
  client=await eventually('replacement watch agent ready',async()=>{const next=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);if(next?.hello.pid===oldPid){await next.close();return undefined;}return next;});
  await writeFile(gate,'release');
- await eventually('current head durable publication after interrupted push',async()=>await git(territoryPath(f.root),['rev-parse',branch])===current||undefined,5000);
+ let observedHead:string|null=null;
+ try{await eventually('current head durable publication after interrupted push',async()=>{observedHead=await git(territoryPath(f.root),['rev-parse',branch]);return observedHead===current||undefined;},5000);}
+ catch(error){
+  try{const facts=JSON.stringify(await pushRecoveryFacts({runDir:f.fake.run,path,bootFile:f.fake.bootId,before:helloBefore,after:client.hello,captured:pending.pending,expectedHead:current,observedHead,secrets:[f.secrets.readSecret('f1')],observe:pid=>client.request('identity',{pid},1000) as Promise<string|null>}));t.diagnostic('push recovery receipts '+facts.slice(0,16384)+(facts.length>16384?' [incomplete: diagnostic truncated at16384characters]':''));}
+  catch(diagnostic){t.diagnostic('push recovery diagnostic incomplete: '+(diagnostic as Error).name);}
+  throw error;
+ }
  await client.request('flush',{});assert.equal(await git(territoryPath(f.root),['rev-parse',branch]),current);
  const rows=JSON.parse(await readFile(join(f.fake.run,'ref-watches.json'),'utf8'));assert.equal(rows[0].head,current);assert.equal(rows[0].pending,undefined);
 

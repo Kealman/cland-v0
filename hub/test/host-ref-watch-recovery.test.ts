@@ -134,3 +134,32 @@ test('scoped flush confirms a settled publication and names a missing watch',asy
  await f.watches.flush(f.path);assert.equal(f.attempts.length,1);
  await assert.rejects(f.watches.flush(join(f.root,'absent')),/watch .*absent.*push unconfirmed/);await f.watches.close();
 });
+
+test('every unknown native push observation names its boundary without changing authority', async t=>{
+ const f=await fixture(t);const {refPushOwner}=await import('../src/host/agent/ref-push.ts');
+ const boot='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002';
+ const native={pid:123,identity:`linux:${boot}:1`};
+ let candidate:typeof native|undefined=native,readable=true,pendingReceipt=false,stops=0;
+ const processes={operationReceipt:async()=>pendingReceipt?{state:'pending',reason:'pending'}:{state:'accepted',result:native},operationRecord:async()=>candidate?{...candidate,authority:'owned',targets:[candidate]}:undefined,stop:async()=>{stops++;return true;}} as unknown as import('../src/host/agent/processes.ts').AgentProcesses;
+ const owner=refPushOwner(processes,{},f.run,async()=>new Map([[123,{identity:readable?native.identity:null,ended:false}]]));
+ const pending:PushAdmission={id:'diagnostic',head:'A',signature:'one',started:0,native};
+ pendingReceipt=true;
+ assert.deepEqual(await owner.observe({id:pending.id,head:pending.head,signature:pending.signature,started:pending.started}),{state:'unknown',cause:'native producer admission receipt pending'});
+ pendingReceipt=false;
+ for(const [value,field] of [[{...native,pid:124},'pid'],[{...native,identity:`linux:${boot}:2`},'identity'],[{...native,identity:`linux:${other}:1`},'boot'],[{pid:124,identity:`linux:${other}:1`},'pid, boot']] as const){candidate=value;assert.deepEqual(await owner.observe(pending),{state:'unknown',cause:'native producer admission mismatch: '+field});}
+ candidate=native;
+ await mkdir(join(f.run,'ref-push'));await mkdir(join(f.run,'ref-push/diagnostic.json'));
+ assert.deepEqual(await owner.observe(pending),{state:'unknown',cause:'native producer receipt unreadable'});
+ const {rmdir}=await import('node:fs/promises');await rmdir(join(f.run,'ref-push/diagnostic.json'));
+ readable=false;assert.deepEqual(await owner.observe(pending),{state:'unknown',cause:'native producer target identity unobservable'});
+ readable=true;candidate=undefined;
+ assert.deepEqual(await owner.observe(pending),{state:'unknown',cause:'native producer ledger missing for observed target'});
+ candidate=native;assert.deepEqual(await owner.observe(pending),{state:'running'});
+ assert.equal(stops,0,'diagnostic classification never calls stop or grants authority');
+});
+
+test('legacy unknown observation without a cause retains its generic fence',async t=>{
+ const f=await fixture(t);await f.watches.scan();f.states.set(f.attempts[0]!.pending.id,{state:'unknown'});
+ await assert.rejects(f.watches.flush(),/native push identity unknown/);
+ assert.equal(f.watches.status()[0]?.cause,'native push identity unknown');await f.watches.close().catch(()=>{});
+});

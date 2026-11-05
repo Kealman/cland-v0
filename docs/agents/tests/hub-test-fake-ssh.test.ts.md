@@ -12,8 +12,10 @@ absolute disposable root. Use the directory returned by `createFakeHost` (the sh
 resolves to `<realpath(root)>/.fixture-sockets/<name>`. Each host has
 `home/.cland-host/run` at 0700,
 `boot-id`, synthetic `host-key.pub`, synthetic `client-key` and `known_hosts`.
-`CLAND_FAKE_BOOT_ID_FILE` is supplied to host commands. Only both fake controls
-enable `sshBinaries(env)` overrides via `CLAND_SSH_BIN` / `CLAND_SCP_BIN`.
+`CLAND_HOST_BOOT_ID_FILE` is supplied to host commands. Fake mode requires it;
+missing boot evidence rejects before agent recovery on every platform. Only
+`CLAND_FAKE_HOSTS` plus `CLAND_FAKE_HOST_ROOT` enable `sshBinaries(env)` overrides
+via `CLAND_SSH_BIN` / `CLAND_SCP_BIN`.
 The separate droplet executor (`executor/droplet/machine.ts`) still reads these
 overrides ungated for its own fixtures (migration: T-1626).
 Point these at the executable `.ts` stand-ins on a PATH with Node 24.
@@ -69,3 +71,8 @@ does. FAKE_SSH_GLOBAL_KNOWN_HOSTS opts into one scratch default global file;
 without it the fake never reads system trust. Explicit GlobalKnownHostsFile
 replaces that default. Existing fake-ssh cases remain unchanged; transport-ssh
 owns the matching-global/wrong-private red control and exclusive-pin regression.
+
+Reboot CLI fixtures start `serveFakeReboots(name, env)` in their lifetime owner
+before launching workers and join its close during cleanup. The separate CLI
+authenticates through its private reboot-control record; it never recovers PID
+signal authority itself. Missing or mismatched owner/token refuses before cleanup.

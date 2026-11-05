@@ -261,11 +261,11 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const rules = new RulebookFile(l.rules, () => roles.get().keys(), log, requestGuard.resumer('rules.refresh'));
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'), clock);
   let adapters: ProjectSessions | null = null;
-  const pendingHostResumes = new Set<string>();
-  const hostReady = (host: string) => {
+  const pendingHostResumes = new Map<string, string>();
+  const hostReady = (host: string, bootId: string) => {
     if (stopping) return;
-    if (starting || !adapters) { pendingHostResumes.add(host); return; }
-    void adapters.sessions.resumeHost(host).catch(error => log({ event: 'session-restore-failed', host, error: String(error) }));
+    if (starting || !adapters) { pendingHostResumes.set(host, bootId); return; }
+    void adapters.sessions.resumeHost(host, bootId).catch(error => log({ event: 'session-restore-failed', host, error: String(error) }));
   };
   let sshHosts: Awaited<ReturnType<typeof projectSshHosts>> | null = null;
   let accountPoller: AccountPoller | null = null;
@@ -699,7 +699,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);
   hub.dispatcher.useAccountPoller(accountPoller);
-  for (const host of pendingHostResumes) hostReady(host);
+  for (const [host, bootId] of pendingHostResumes) hostReady(host, bootId);
   pendingHostResumes.clear();
   void adapters.sessions.resumeAll().then(() => {
     if (!stopping) { primeInbox(); accountPoller!.start(); }

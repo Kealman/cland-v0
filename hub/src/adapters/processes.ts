@@ -282,6 +282,11 @@ export class ProcessTable {
     return (this.#db.prepare("select * from harness_processes where host = ? and status = 'running' and archived_at is null").all(host) as Row[]).map(toProcess);
   }
 
+  /** Reboot retirement streams stopped generations; display status alone grants no closure. */
+  *stoppedOnHost(host: string): Generator<HarnessProcess> {
+    for (const row of this.#db.prepare("select * from harness_processes where host = ? and status = 'stopped'").iterate(host)) yield toProcess(row as Row);
+  }
+
   #readRetirement(row: Record<string, unknown>): RetainedHostGeneration {
     const p=JSON.parse(String(row.process_json)) as HarnessProcess&{nativeClosure?:'confirmed'|'unknown';hostRebooted?:HostRebooted};
     // Old storage keys were stable session ids and old receipts were positive stops only.

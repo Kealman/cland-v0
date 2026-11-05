@@ -17,7 +17,9 @@ argument/result table, byte caps and local Host behavior are documented in
 The file-operation regression uses an isolated fake host and scratch Git root;
 no SSH carrier or real host is needed to call these agent operations.
 
-Birth strings are `linux:<boot UUID>:<start ticks>`. Linux reads the shared boot reader and `/proc/<pid>/stat`. Fake macOS hosts use ps start time as milliseconds and a boot-id file; they preserve the same wire format. Unknown births grant no signal authority. Signals require a recorded matching root selector and independently observed native births for each admitted root or captured descendant target. Each captured PID is rechecked immediately before signaling; numeric process groups confer no signal authority. A member arriving after capture is excluded, and stop reports incomplete if a new member remains. Spawn receives an explicit environment; all `CLAND_HOST_*` keys are removed. Logs append both output streams. Processes are detached from the agent's session/group. The pinned Node 24 runtime supplies native execve: a bootstrap checkpoints its own birth and waits for durable release before replacing itself with the requested program at the same PID and birth. A log-descriptor close error after acceptance preserves pid/identity and returns an optional warning.
+Birth strings are `linux:<boot UUID>:<start ticks>`. The single agent boot-source helper, `agentBootId`, uses the boot-id file whenever `CLAND_FAKE_HOSTS` is enabled, on Linux and macOS. Missing or invalid fake boot evidence rejects agent admission before recovery; it never falls back to the kernel. Non-fake Linux reads the kernel boot id and ignores a stray boot-file variable. Linux uses `/proc/<pid>/stat` start ticks; fake macOS uses ps start time in milliseconds with the same wire format. Agent hello, supervisor child observation, admission bootstrap and agent process observers share this source. The push worker copies its admitted birth receipt rather than minting an identity from its filtered command environment. Hub-local native cleanup and local Host identities retain the physical machine boot and do not compare against fake-host births.
+
+Unknown births grant no signal authority. Signals require a recorded matching root selector and independently observed native births for each admitted root or captured descendant target. Each captured PID is rechecked immediately before signaling; numeric process groups confer no signal authority. A member arriving after capture is excluded, and stop reports incomplete if a new member remains. Spawn receives an explicit environment; all `CLAND_HOST_*` keys are removed. Logs append both output streams. Processes are detached from the agent's session/group. The pinned Node 24 runtime supplies native execve: a bootstrap checkpoints its own birth from the private admission plan's fake-host controls and waits for durable release before replacing itself with the requested program at the same PID and birth. A log-descriptor close error after acceptance preserves pid/identity and returns an optional warning.
 
 The private process table retains active/unresolved ownership and the latest 256 confirmed closed trees; it is a state checkpoint rather than an exit journal. It is atomically replaced before spawn replies and exit events. An agent restart retains liveness and resource observations, but cannot recover the native exit status of a child it did not reap: a root exit it did not observe records null code/signal and authority unknown, keeping its admission and unresolved metadata. It never replaces an exact native code with null. Unreadable birth remains unresolved; processes renders unavailable resource samples as null. Recovery shares one in-flight observation pass. Only confirmed closed trees enter bounded history; unresolved ownership remains current state. Admission receipts under launches/<UUID> are persisted before spawn; the bootstrap writes its own birth before release, so agent death before processes.json can be reconciled. Private launch environments are removed after bootstrap read. While live, the agent checkpoints descendant PID/birth pairs from intact PPID ancestry during reconciliation and stop; native root close retains those earlier captures and samples remaining group members. The row retains those targets through restart and permits a later stop even though the root is gone. Launch receipts remain until the captured tree is positively gone and the closed checkpoint is durable. A per-admission closed receipt permits cleanup recovery if the agent exits between checkpoint and removal. Native process-exited reports the root code with optional authority and ended fields; it does not imply that every descendant exited. Closed-tree and unknown-authority resource samples are null; a dead root with owned live descendants still reports their tree samples. Native exit events are `{event:"process-exited",pid,identity,code,signal}`. Every five seconds authenticated clients receive `{event:"memory",totalBytes,availableBytes}`; Linux available bytes come from MemAvailable, while fake macOS uses OS free memory. RSS and CPU sum current ancestry plus birth-validated retained targets even while the root remains alive; duplicate PIDs count once. A failed, unreadable or changing native observation leaves the sample null. CPU is the ps percentage snapshot, not interval utilization. No memory floor or capacity gate is enforced here.
 
@@ -488,3 +490,23 @@ orphans and retries on later host admission after transient territory contention
 An authenticated host launch or recorded host worktree keeps verify on this
 receipt path before the session's process row is published; unavailable placement
 refuses rather than using a hub-local task directory.
+
+## Reboot session retirement
+
+Returning SSH readiness carries the authenticated boot id into Sessions. A changed
+boot, compared with a recorded native birth, admits `retainHostGeneration` before
+exit publication. Sessions release the normal harness-exit role and retain all
+metadata/private-file obligations, including held unknown-authority Claude and
+pending failed-launch undo. Same-boot tunnel loss does not release those owners.
+The old generation remains fenced against native operations after cleanup or
+hub restart; a late resume result cannot restore its running status. See
+[host reboot](../hub/ssh-host.md#host-reboot).
+
+## Push identity diagnostics
+
+Unknown native push outcomes remain fenced. Watch status/flush failures identify
+the boundary: pending native admission receipt, admission PID/identity/boot
+mismatch, unreadable producer receipt, unobservable captured target, or a live
+target without its native ledger. Diagnostics name differing fields without
+printing native admission secrets or account paths. They grant no new cleanup or
+retry authority. Clients still accept older observations without optional cause.

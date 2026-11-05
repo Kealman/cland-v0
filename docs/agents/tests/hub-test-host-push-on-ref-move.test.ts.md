@@ -30,3 +30,19 @@ token and credential-URL output with a positive control, then scans the actual
 atomic0600 receipt for planted bytes, confirms bounded redaction and observes
 native/captured closure. The worktree case keeps a lost successful removal reply
 and retries against positive directory/Git-index absence without replaying deletion.
+
+On a failed five-second interrupted-push publication wait, diagnostics run before
+cleanup and the original error is rethrown. The five-second bound and final exact
+head/pending assertions are unchanged. The snapshot records both authenticated
+hello boot ids, current agent PID/birth and supervisor receipts, fixture fake boot
+and Linux kernel boot, captured/current
+admissions, watch cause/fences, bounded native ledger and producer/birth/closed
+receipts. Native exit/signal/missing facts stay explicit. This fixture has no hub,
+Sessions or registry, so Sessions reboot retirement is reported as not wired.
+The bounded field projection reads no launch plans, HOME or environment files;
+it redacts secrets before logging and caps the final diagnostic at16384characters.
+The T2 host-push-facts control covers snapshot limits, preservation and redaction.
+
+Failure snapshots also request read-only native identity for at most eight captured
+root/target PIDs, each RPC bounded at one second. Null stays unknown-or-absent;
+read errors stay incomplete. They grant no native cleanup or signal authority.

@@ -10,7 +10,7 @@ import type { SshTransport } from '../transport/ssh.ts';
 import type { AgentEvent } from './agent/protocol.ts';
 import type { PreparedOutcome } from './agent/prepared.ts';
 
-type Options = { terminalAttachCommand?: (name: string) => string; watchStatus?: (rows:Array<{path:string;branch:string;state:string;cause?:string}>)=>void; expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[]) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
+type Options = { terminalAttachCommand?: (name: string) => string; watchStatus?: (rows:Array<{path:string;branch:string;state:string;cause?:string}>)=>void; expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[], bootId: string) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
 /** No fallback to native hub operations, including while connecting or disconnected. */
 export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce(): void } {
   let closed = false;
@@ -87,7 +87,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       await o.agentReady?.();
       check();
       client = value;
-      o.onTable?.(table);
+      o.onTable?.(table, value.hello.bootId);
       return value;
     }).catch(async error => {if(acquired&&acquired!==client)await closeConnection(acquired).catch(()=>{});throw error;}).finally(() => { connecting = undefined; });
     return connecting;

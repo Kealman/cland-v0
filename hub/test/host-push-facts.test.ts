@@ -1,0 +1,36 @@
+// T2: bounded diagnostic snapshots of synthetic receipts; no native process or socket.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tempProject } from './harness.ts';
+import { pushRecoveryFacts } from './host-push-facts.ts';
+test('push failure diagnostics retain boot/native facts, redact declared outputs and leave receipts untouched',async t=>{
+ const root=await tempProject(t),run=join(root,'run'),id='00000000-0000-4000-8000-000000000001',boot='00000000-0000-4000-8000-000000000002',path=join(root,'work');
+ await mkdir(join(run,'ref-push'),{recursive:true});await mkdir(join(run,'launches',id),{recursive:true});
+ const identity=`linux:${boot}:1`,secret='synthetic-diagnostic-secret';
+ const watches=JSON.stringify([{path,branch:'t/test',pending:{id,head:'A',native:{pid:123,identity},notice:'native producer target identity unobservable'},accountEnv:{secret}}]);
+ await writeFile(join(run,'ref-watches.json'),watches);await writeFile(join(run,'processes.json'),JSON.stringify([{launchId:id,pid:123,identity,authority:'unknown',code:null,signal:null,env:{secret}}]));
+ await writeFile(join(run,'launches',id,'birth.json'),JSON.stringify({launchId:id,pid:123,identity}));
+ await writeFile(join(run,'ref-push',id+'.json'),JSON.stringify({launchId:id,pid:123,identity,head:'A',complete:true,result:{code:0,stderr:'Bearer '+secret}}));
+ const bootFile=join(root,'boot');await writeFile(bootFile,boot);
+ await writeFile(join(run,'agent.pid'),JSON.stringify({pid:101,identity}));
+ const before={protocol:1,version:'test',pid:100,bootId:boot},after={...before,pid:101,bootId:'different'};
+ assert.ok((await readFile(join(run,'ref-push',id+'.json'),'utf8')).includes(secret),'planted receipt positive control before redaction');
+ const observed:number[]=[];
+ const facts=await pushRecoveryFacts({runDir:run,path,bootFile,before,after,captured:{id,native:{pid:123,identity}},expectedHead:'B',observedHead:'A',secrets:[secret],observe:async pid=>{observed.push(pid);return identity;}});
+ assert.deepEqual(observed,[101,123]);assert.deepEqual(facts.nativeObservation,[{pid:101,status:'present',identity},{pid:123,status:'present',identity}]);
+ assert.equal(facts.capturedNativeBootId,boot);assert.deepEqual(facts.recoveredObserverBootId,{status:'present',value:boot},'observer boot comes from its native reply, independently of cached hello');
+ assert.equal(facts.helloBefore.bootId,boot);assert.equal(facts.helloAfter.bootId,'different');assert.equal(facts.outcome,'incomplete publication');
+ const text=JSON.stringify(facts);assert.equal(text.includes(secret),false);assert.equal(text.includes('accountEnv'),false);assert.equal(text.includes('"env"'),false);assert.ok(text.includes('target identity unobservable'));assert.ok(text.includes(identity));assert.ok(text.includes('currentAgent'));assert.ok(text.includes('\"pid\":101'));assert.ok(text.includes('"code":null'));assert.ok(text.includes('"reason":"ENOENT"'),'missing closed receipt remains explicit');
+ assert.equal(await readFile(join(run,'ref-watches.json'),'utf8'),watches,'diagnostics never alter the pending owner');
+ const longSecret='long-secret-'+ 'x'.repeat(700);await writeFile(join(run,'ref-push',id+'.json'),JSON.stringify({result:{stderr:'Bearer '+longSecret}}));
+ assert.ok((await readFile(join(run,'ref-push',id+'.json'),'utf8')).includes(longSecret),'long planted receipt positive control before clipping');
+ const longFacts=await pushRecoveryFacts({runDir:run,path,bootFile,before,after,captured:{id,native:{pid:123,identity}},expectedHead:'B',observedHead:null,secrets:[longSecret]});
+ assert.equal(JSON.stringify(longFacts).includes('x'.repeat(64)),false,'redaction precedes diagnostic tail clipping');
+ await writeFile(join(run,'processes.json'),'x'.repeat(65537));
+ const incomplete=await pushRecoveryFacts({runDir:run,path,bootFile,before,after,captured:{id,native:{pid:123,identity}},expectedHead:'B',observedHead:null});
+ const unavailable=await pushRecoveryFacts({runDir:run,path,bootFile,before,after,captured:{id,native:{pid:123,identity}},expectedHead:'B',observedHead:null,observe:async()=>null});
+ assert.deepEqual(unavailable.recoveredObserverBootId,{status:'unknown',reason:'agent native identity unavailable'});
+ assert.deepEqual(incomplete.ledger,{status:'incomplete',reason:'over64KiB'});assert.equal(incomplete.observedHead,null,'unknown observation is never zero or a pass');
+});

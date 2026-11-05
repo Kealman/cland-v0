@@ -282,3 +282,23 @@ Re-admission derives a fresh source/run UUID from its pinned SHA. Abandoned clea
 checks Git admin/common lock files for at most 250 ms per sweep; locked paths stay
 listed in hub status and a later sweep removes them once locks clear. The status
 field is optional for older hubs and null while its initial census is pending.
+
+## Host reboot
+
+A returning authenticated agent's boot id accompanies its retained-table readiness
+receipt. Sessions compare it with each remote row's persisted Linux native birth.
+Tunnel loss and same-boot agent or supervisor replacement retain running rows.
+A positively changed boot records T-1666's generation retirement obligation and
+native-operation fence before marking the row exited and releasing its role with
+the ordinary harness-exit notice. No adapter stop or native signal is sent for
+old-boot rows. An in-flight resume cannot republish their old birth as running.
+
+Cleanup-incomplete Claude and failed-launch owners remain live obligations until
+this positive changed-boot receipt. Their pending resource undo and private-file
+retirement remain durable after exit; boot closure does not imply resource cleanup.
+Unavailable or legacy boot evidence grants no reboot authority. Carrier reconnect
+runs the existing supervisor bootstrap, starting a fresh agent when reboot removed
+the old supervisor. Fake-host mode requires its boot-file control on every
+platform and rejects missing evidence before agent recovery. The agent,
+supervisor child observers and admission bootstrap share that source; ordinary
+Linux agents ignore a stray boot-file variable and read the kernel boot id.

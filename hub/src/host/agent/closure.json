@@ -38,11 +38,11 @@
     },
     {
       "path": "hub/src/host/agent/identity.ts",
-      "sha256": "faec66ef66193eef85fb3580e3805431bb3a095370b7a1c3af7c147dc06dd430"
+      "sha256": "265ff36032e419f138d3925456551c0544ee893822c8c8913d2db3d8cd92c599"
     },
     {
       "path": "hub/src/host/agent/native.ts",
-      "sha256": "eef49c7e02fa10316088ca49fd13bb59c4637802da20305cdadb359915cfb85c"
+      "sha256": "6b910c7587a19082de38b6d65f90b6b34fb071b0464fce71ffa63bd1ee23e692"
     },
     {
       "path": "hub/src/host/agent/occupants.ts",
@@ -70,7 +70,7 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "f61361d43deab50a008a0066e902a95596e47e90758aacf54d3a62d90d390a3c"
+      "sha256": "0c974e2c211c64994209cfac3252419d19738a8f933bb7bb535a4f80d6fd3ac6"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",
@@ -86,7 +86,7 @@
     },
     {
       "path": "hub/src/host/agent/ref-push.ts",
-      "sha256": "a3b3ab874484fb2b68657c7789a2375f0da12689f0fe8b8381f58d877d6cfa85"
+      "sha256": "147f0ebade568b0e58699f2ff94aeffd2f523cbf295b8c5c2445af8e86e57bef"
     },
     {
       "path": "hub/src/host/agent/restart.ts",
@@ -94,7 +94,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "f51830e1a61d60ef9322fda3f82631e4e23e3db3bbcee70cb02b41d22085cfa3"
+      "sha256": "784e935070b57c4d8c42650774c42328e2085c444a956229910dc485c4d296d8"
     },
     {
       "path": "hub/src/host/agent/stat-directory.ts",

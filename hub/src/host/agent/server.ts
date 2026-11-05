@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { totalmem, freemem } from 'node:os';
 import type { ProcessHooks } from './processes.ts';
 import { AgentProcesses } from './processes.ts';
+import { agentBootId } from './native.ts';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { checkpoint } from './storage.ts';
@@ -20,6 +21,8 @@ import { AGENT_PROTOCOL, PREPARED_HOST_CAPABILITY, MAX_LINE_BYTES, LineDecoder, 
 export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket) => void };
 export async function serveAgent(options: AgentOptions) {
   if (!options.secret) throw new Error('host secret required');
+  // Invalid fake-host configuration must not begin recovery or acquire resources.
+  const bootId = await agentBootId(options.env ?? process.env);
   await mkdir(options.runDir, { recursive: true, mode: 0o700 });
   await chmod(options.runDir, 0o700);
   const socket = join(options.runDir, 'agent.sock');
@@ -59,7 +62,6 @@ export async function serveAgent(options: AgentOptions) {
   await processes.load();
   const prepared = new PreparedOperations(options.runDir, options.env ?? process.env, processes);
   await prepared.start();
-  const bootId = await processes.bootId();
   let memoryWork = Promise.resolve();
   let memoryTimer: NodeJS.Timeout | undefined;
   let recoveryTimer: NodeJS.Timeout | undefined;

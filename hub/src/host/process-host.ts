@@ -1,3 +1,4 @@
+import { isCanonicalBootId, linuxBirthBootId } from './agent/identity.ts';
 import type { Host, HostProcess } from './host.ts';
 
 export const isLinuxIdentity = (value: string | null | undefined): boolean => typeof value === 'string' && /^linux:[^:\s]+:\d+$/.test(value);
@@ -5,8 +6,8 @@ export const isLinuxIdentity = (value: string | null | undefined): boolean => ty
 /** A returning agent proves reboot only against the boot captured in a native row.
  * Missing/legacy birth metadata and an unavailable hello grant no reboot proof. */
 export function hostBootChanged(identity: string | null | undefined, bootId: string | null | undefined): boolean {
-  const recorded = /^linux:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}):\d+$/.exec(identity ?? '');
-  return !!recorded && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(bootId ?? '') && recorded[1] !== bootId;
+  const recorded = linuxBirthBootId(identity);
+  return recorded !== null && isCanonicalBootId(bootId) && recorded !== bootId;
 }
 
 /** Remote process authority requires Linux boot/start proof, never a legacy timestamp. */

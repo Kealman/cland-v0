@@ -15,7 +15,7 @@ test('agent authenticates hello, negotiates protocol and retains connection afte
   const root = await mkdtemp(join(tmpdir(), 'agent-'));
   const { writeFile } = await import('node:fs/promises');
   await writeFile(join(root, 'boot'), '11111111-1111-1111-1111-111111111111');
-  const server = await serveAgent({ runDir: root, secret: 'synthetic-secret', version: 'test-version', env: { CLAND_FAKE_HOSTS: '1', CLAND_HOST_BOOT_ID_FILE: join(root, 'boot') } });
+  const server = await serveAgent({ runDir: root, secret: 'synthetic-secret', version: 'test-version', env: fixtureEnvironment(root, process.env, { CLAND_FAKE_HOSTS: '1', CLAND_HOST_BOOT_ID_FILE: join(root, 'boot') }) });
   try {
     for (const secret of ['', 'other']) await assert.rejects(AgentClient.connect(server.socket, secret), /hello|secret/);
     const client = await AgentClient.connect(server.socket, 'synthetic-secret');
@@ -23,7 +23,9 @@ test('agent authenticates hello, negotiates protocol and retains connection afte
       assert.equal(client.hello.version, 'test-version');
       assert.equal(client.hello.pid, process.pid);
       assert.equal(client.hello.protocol, 1);
-      assert.equal(client.hello.bootId, process.platform === 'linux' ? (await (await import('node:fs/promises')).readFile('/proc/sys/kernel/random/boot_id', 'utf8')).trim() : '11111111-1111-1111-1111-111111111111');
+      const bootId = (await readFile(join(root, 'boot'), 'utf8')).trim();
+      assert.equal(client.hello.bootId, bootId);
+      if (process.platform === 'linux') assert.notEqual(bootId, (await readFile('/proc/sys/kernel/random/boot_id', 'utf8')).trim(), 'fixture boot is independent of the kernel boot');
       await assert.rejects(client.request('unknown', {}), /unknown/);
       assert.equal((await client.request('hello', { protocol: 1, secret: 'synthetic-secret' }) as { pid: number }).pid, process.pid);
     } finally { await client.close(); }
@@ -60,7 +62,8 @@ test('agent persists detached process identity and usage, fences stale signals a
     if (process.platform === 'linux') {
       const stat = await readFile(`/proc/${child.pid}/stat`, 'utf8');
       const ticks = stat.slice(stat.lastIndexOf(')') + 2).split(/\s+/)[19];
-      const bootId = (await readFile('/proc/sys/kernel/random/boot_id', 'utf8')).trim();
+      const bootId = (await readFile(boot, 'utf8')).trim();
+      assert.notEqual(bootId, (await readFile('/proc/sys/kernel/random/boot_id', 'utf8')).trim(), 'native ticks must be qualified by the fixture boot');
       assert.equal(child.identity, `linux:${bootId}:${ticks}`);
     } assert.equal(row.alive, true); assert.ok(row.rssBytes > 0); assert.ok(row.cpuPercent >= 0);
     const sample = await memory; assert.ok(sample.totalBytes > 0); assert.ok(sample.availableBytes >= 0);
@@ -130,12 +133,10 @@ test('detached child survives native agent death and is recovered by the CLI res
     agent.native.kill('SIGKILL'); await agent.closed; await client.close();
     agent = start(); client = await eventually('restarted agent authenticated readiness', () => AgentClient.connect(join(root, 'agent.sock'), 'synthetic').catch(() => undefined));
     assert.equal(await client.request('alive', child), true);
-    if (process.platform !== 'linux') {
-      await writeFile(boot, '22222222-2222-2222-2222-222222222222');
-      await assert.rejects(client.request('signal', { ...child, signal: 'SIGKILL' }), /authority unknown/);
-      await writeFile(boot, bootId);
-      await assert.rejects(client.request('stop', child), /authority unknown/);
-    } else assert.equal(await client.request('stop', child), true);
+    await writeFile(boot, '22222222-2222-2222-2222-222222222222');
+    await assert.rejects(client.request('signal', { ...child, signal: 'SIGKILL' }), /authority unknown/);
+    await writeFile(boot, bootId);
+    await assert.rejects(client.request('stop', child), /authority unknown/);
   } catch (error) { t.diagnostic(JSON.stringify({ incomplete: 'native agent CLI assertion', ...agent.state })); throw error; } finally {
     if (child && client) await client.request('stop', child).catch(() => {});
     await cleanupChild();

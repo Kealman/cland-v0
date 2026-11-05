@@ -8,9 +8,13 @@ export type Observation = { identity: string | null; ended: boolean };
 export function isCapturedOrExited(proof: Observation | undefined, identity: string | undefined): boolean {
   return proof?.ended === true || typeof identity === 'string' && proof?.identity === identity;
 }
+/** The single boot source for agent, supervisor and admission-bootstrap observations. */
 export async function agentBootId(env: NodeJS.ProcessEnv): Promise<string> {
-  if (process.platform === 'linux') return (await readLinuxBootId()).trim();
-  if (!env.CLAND_FAKE_HOSTS || !env.CLAND_HOST_BOOT_ID_FILE) throw new Error('non-Linux agent requires fake host boot-id file');
+  if (!env.CLAND_FAKE_HOSTS) {
+    if (process.platform === 'linux') return (await readLinuxBootId()).trim();
+    throw new Error('non-Linux agent requires fake host boot-id file');
+  }
+  if (!env.CLAND_HOST_BOOT_ID_FILE) throw new Error('fake host requires boot-id file');
   const boot = (await readFile(env.CLAND_HOST_BOOT_ID_FILE, 'utf8')).trim();
   if (!/^[a-f0-9-]{36}$/.test(boot)) throw new Error('invalid fake boot id');
   return boot;

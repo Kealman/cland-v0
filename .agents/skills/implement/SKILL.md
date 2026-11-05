@@ -230,6 +230,12 @@ pending failed-launch retries without signals or file deletion. Preserve pending
 undo and host-local files outside the run folder for authorised retirement;
 closure alone never proves those resources removed.
 
+Fake-host agent, supervisor and admission-bootstrap identity observations share
+`agentBootId`: fake mode requires `CLAND_HOST_BOOT_ID_FILE` on every platform,
+and missing evidence refuses before agent recovery. Non-fake Linux ignores a
+stray boot-file variable and uses the kernel. Keep fixture birth expectations
+in that host's boot namespace; hub-local cleanup retains physical native births.
+
 Keep the old-generation native fence independently of resource retirement:
 clearing the final file/receipt obligation must never reopen native operations
 through previously captured Hosts, including before the eventual authority cut.

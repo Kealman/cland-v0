@@ -17,7 +17,7 @@ try {
     await controlRequest(parsed.options.controlpath, { operation: parsed.operation, forwards: parsed.forwards, owner });
   } else if (!parsed.master) {
     if (!parsed.command.length) throw new Error('missing command');
-    const env = fixtureEnvironment(host.directory, process.env, { CLAND_FAKE_HOSTS: process.env.CLAND_FAKE_HOSTS, CLAND_FAKE_HOST_ROOT: process.env.CLAND_FAKE_HOST_ROOT, CLAND_FAKE_BOOT_ID_FILE: join(host.directory, 'boot-id') });
+    const env = fixtureEnvironment(host.directory, process.env, { CLAND_FAKE_HOSTS: process.env.CLAND_FAKE_HOSTS, CLAND_FAKE_HOST_ROOT: process.env.CLAND_FAKE_HOST_ROOT, CLAND_HOST_BOOT_ID_FILE: join(host.directory, 'boot-id') });
     const child = spawn('/bin/sh', ['-c', parsed.command.join(' ')], { cwd: host.home, env, stdio: 'inherit' });
     for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => child.kill(signal));
     await new Promise<void>((resolve, reject) => { child.on('error', reject); child.on('close', (code, signal) => { process.exitCode = code ?? (signal ? 255 : 0); resolve(); }); });
