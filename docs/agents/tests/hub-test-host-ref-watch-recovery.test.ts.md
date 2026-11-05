@@ -4,7 +4,7 @@ T2 uses private disposable watch checkpoints and a scripted native ownership
 interface, Git results and metadata observations. No process or socket is started.
 Explicit scans keep the tests independent of polling timers.
 
-Thirteen generated cases prove held A/B captured-head and lease bindings, restart
+The watch cases prove held A/B captured-head and lease bindings, restart
 admission/current-head decisions, unknown child and stale path isolation,
 unchanged refused-head dedup despite metadata churn, substituted-proxy no-launch,
 dirty-removal watch retention, and accepted-checkout ownership after connection
@@ -32,3 +32,11 @@ unobservable target, or a live target without its ledger. The component control
 checks every cause, unchanged running output and zero stop calls. A previous
 observation without optional cause still produces the original generic fence.
 Boot comparison uses the same canonical birth parser as reboot admission.
+
+Four Linux stat-read controls feed the production native observer into
+`refPushOwner` with a completed producer receipt and an exiting captured
+descendant. The first read raises ESRCH. A later ENOENT or replaced birth proves
+closure; the same birth stays running. Persistent ESRCH remains unknown after
+exactly three reads. Every case checks zero stop calls: observation grants no
+signal authority. These injected component cases run on both platforms; the
+native Linux push file exercises actual procfs under CPU load.

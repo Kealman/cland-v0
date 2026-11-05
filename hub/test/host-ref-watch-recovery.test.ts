@@ -163,3 +163,28 @@ test('legacy unknown observation without a cause retains its generic fence',asyn
  await assert.rejects(f.watches.flush(),/native push identity unknown/);
  assert.equal(f.watches.status()[0]?.cause,'native push identity unknown');await f.watches.close().catch(()=>{});
 });
+
+for(const terminal of ['absent','replaced','live','unobservable'] as const)test(`Linux exiting descendant ESRCH is retried before push classification: ${terminal}`,async t=>{
+ const f=await fixture(t);
+ const {refPushOwner}=await import('../src/host/agent/ref-push.ts');
+ const {observeLinuxProcess}=await import('../src/host/agent/native.ts');
+ const boot='00000000-0000-4000-8000-000000000001';
+ const native={pid:123,identity:`linux:${boot}:1`},child={pid:124,identity:`linux:${boot}:2`};
+ let reads=0,stops=0;
+ const processes={operationRecord:async()=>({...native,authority:'owned',targets:[child]}),stop:async()=>{stops++;return true;}} as unknown as import('../src/host/agent/processes.ts').AgentProcesses;
+ const pending:PushAdmission={id:'exit-race',head:'A',signature:'one',started:0,native};
+ await mkdir(join(f.run,'ref-push'));await writeFile(join(f.run,'ref-push/exit-race.json'),JSON.stringify({launchId:pending.id,...native,head:'A',complete:true,result:{code:0,stdout:'',stderr:''}}));
+ const owner=refPushOwner(processes,{},f.run,async()=>new Map([
+  [123,{identity:null,ended:true}],
+  [124,await observeLinuxProcess(124,boot,async()=>{
+   reads++;
+   if(reads===1||terminal==='unobservable')throw Object.assign(Error('proc read raced exit'),{code:'ESRCH'});
+   if(terminal==='absent')throw Object.assign(Error('proc entry gone'),{code:'ENOENT'});
+   return `124 (git) S ${Array.from({length:19},(_,i)=>i===18?(terminal==='live'?'2':'3'):'0').join(' ')}`;
+  })],
+ ]));
+ const state=await owner.observe(pending);
+ assert.equal(state.state,terminal==='live'?'running':terminal==='unobservable'?'unknown':'gone');
+ assert.equal(stops,0,'observation never authorizes a signal');
+ assert.equal(reads,terminal==='unobservable'?3:2,'retry work is bounded');
+});

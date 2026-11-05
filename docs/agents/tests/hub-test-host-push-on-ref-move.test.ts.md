@@ -46,3 +46,10 @@ The T2 host-push-facts control covers snapshot limits, preservation and redactio
 Failure snapshots also request read-only native identity for at most eight captured
 root/target PIDs, each RPC bounded at one second. Null stays unknown-or-absent;
 read errors stay incomplete. They grant no native cleanup or signal authority.
+
+The T2 `host-ref-watch-recovery.test.ts` injects Linux stat reads through the
+production native observer into the push owner. An exiting descendant can yield
+ESRCH before its proc entry disappears: at most three reads resolve only on a
+positive ENOENT or parsed birth. The cases cover absence, replacement, the same
+live birth and persistent ESRCH (still unknown), with no stop calls. These
+scripted cases run on either platform; Linux native runs exercise real procfs.

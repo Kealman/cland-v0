@@ -1,4 +1,5 @@
 // T3: real Git ref rewrites, socket receive-pack and agent restart are the behavior under test.
+// Linux procfs exit-read retry controls live in host-ref-watch-recovery.test.ts.
 // Lifecycle: sshHostFixture joins all agents, clients and Git writers before removing its disposable root.
 import { pushRecoveryFacts } from './host-push-facts.ts';
 import { tmpdir } from 'node:os';

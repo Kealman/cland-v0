@@ -19,6 +19,23 @@ export async function agentBootId(env: NodeJS.ProcessEnv): Promise<string> {
   if (!/^[a-f0-9-]{36}$/.test(boot)) throw new Error('invalid fake boot id');
   return boot;
 }
+/** Read one Linux birth; an observation never grants native signal authority. */
+export async function observeLinuxProcess(pid:number, boot:string, readStat:()=>Promise<string>=()=>readFile(`/proc/${pid}/stat`, 'utf8')):Promise<Observation> {
+  // procfs can return ESRCH while the selected task exits. That is not an
+  // absence receipt: retry the read, requiring ENOENT or a parsed native birth.
+  for(let attempt=0;attempt<3;attempt++) {
+    try {
+      let ended=false;
+      const identity=linuxIdentity(pid,await readStat(),boot,undefined,()=>{ended=true;});
+      return {identity,ended};
+    } catch(error) {
+      const code=(error as NodeJS.ErrnoException).code;
+      if(code==='ESRCH'&&attempt<2)continue;
+      return {identity:null,ended:code==='ENOENT'};
+    }
+  }
+  return {identity:null,ended:false};
+}
 export async function observeProcesses(pids: number[], env: NodeJS.ProcessEnv): Promise<Map<number, Observation>> {
   pids = [...new Set(pids.filter(pid => Number.isSafeInteger(pid) && pid > 1))];
   const result = new Map(pids.map(pid => [pid, { identity: null, ended: false } as Observation]));
@@ -27,11 +44,7 @@ export async function observeProcesses(pids: number[], env: NodeJS.ProcessEnv): 
   try { boot = await agentBootId(env); } catch { return result; }
   if (process.platform === 'linux') {
     for (let i = 0; i < pids.length; i += 32) await Promise.all(pids.slice(i, i + 32).map(async pid => {
-      try {
-        let ended = false;
-        const identity = linuxIdentity(pid, await readFile(`/proc/${pid}/stat`, 'utf8'), boot, undefined, () => { ended = true; });
-        result.set(pid, { identity, ended });
-      } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') result.set(pid, { identity: null, ended: true }); }
+      result.set(pid,await observeLinuxProcess(pid,boot));
     }));
     return result;
   }
