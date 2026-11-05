@@ -15,7 +15,7 @@ regression_of: T-1609
 topic: topic-1397
 branch: t/T-1693-push-recovery-after-agent-sigkill-can
 created: 2026-11-05T17:56:03.123Z
-updated: 2026-11-05T23:15:27.657Z
+updated: 2026-11-05T23:27:11.074Z
 ---
 
 ## Summary
@@ -30,7 +30,8 @@ Determine whether, after an agent SIGKILL, the push producer (`ref-push-worker`)
 
 - [x] C1. The failing order (producer end versus receipt write versus recovery observation) is named with a deterministic reproduction (test, red before the fix).
   - done: impl-1693 · 2026-11-05T23:09:16.006Z
-- [ ] C2. After the fix, host-push-on-ref-move passes 10/10 under heavy CPU load on macOS and in a Linux container run with `docker run --init`, with fences and assertions unchanged (evidence).
+- [x] C2. After the fix, host-push-on-ref-move passes 10/10 under heavy CPU load on macOS and in a Linux container run with `docker run --init`, with fences and assertions unchanged (evidence).
+  - done: impl-1693 · 2026-11-05T23:27:11.074Z
 
 ## Comments
 

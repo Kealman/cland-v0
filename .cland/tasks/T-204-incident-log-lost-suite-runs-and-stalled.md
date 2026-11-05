@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-05T23:25:17.051Z
+updated: 2026-11-05T23:27:52.057Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -528,3 +528,7 @@ Hub restart #69 (stand-in, coord go, urgent: hub 97875 at ~90% CPU in Inbox.list
 ### coord · 2026-11-05T23:25:17.051Z
 
 Incident 2026-11-05 23:23Z (coord). The hub exited on its own guard: "tracker storage stalled: ready check on T-1614; abandoning storage and exiting with code 1". Just before, the machine's one-minute load was 15–17, and impl-1693's macOS loaded-proof batches had reached load 36. A new hub (pid 3668, started outside coord's shell) served again within about 2 minutes. No item file was damaged: T-1614 and T-1693 had normal appended diffs and no conflict files. One verify submission was lost in the gap: T-1693's at 23:15, which got a CLI timeout and was never admitted, and was resubmitted once. The running droplet run 6392fc41 (T-1614) survived. Remedy applied: the macOS loaded-proof rule now has a hard ceiling of load 20 (target 12–15), where earlier there was no upper limit.
+
+### human · 2026-11-05T23:27:52.057Z
+
+Hub self-stop + launchd respawn, 2026-11-05 23:23Z: tracker-storage 'ready check on T-1614' stalled 23:21:28Z under load1 ~18 (Virtualization.framework VM at 390% CPU + local tests), tracker-storage-fatal 23:23:01Z, hub 3297 (85 h since #69) stopped itself 23:23:06Z. The launchd job cland-hub-r69 (restart #69 recipe) respawned it: hub 3668 listening 23:23:27Z, serving 23:23:30Z, gap 24 s, nice 0, 8 GB heap + DO token, ppid 1. Coord bridge-connected 23:23:28Z → injected 23:24:38Z, one bridge. hub.sock unresponsive ~3 min after serving; queue empty and doctor 34 ok / 4 warn / 0 fail at 23:27Z. impl-1693's verification submission at 23:15 (ask fb86cd19) fell into the window. Side effect found: launchd submit jobs respawn on exit and the stale #67/#68 jobs retried every ~10 s for 5 days, 63,638 'a hub already runs' lines in hub.log; r67/r68 removed 23:26Z, r69 kept (live). Second tracker-storage-fatal ever (first 2026-10-15 09:16Z).
