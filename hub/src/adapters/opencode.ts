@@ -130,6 +130,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
   #closing: Promise<void> | null = null;
   readonly #cleanupFailures = new Map<string, unknown>();
   readonly #stopping = new Set<string>();
+  // Successful local launches retain libuv's reap receipt beyond LaunchFiles.commit.
+  readonly #localExits = new Map<string, { pid: number; settle: () => void | Promise<void> }>();
 
   constructor(host: AdapterHost, options: OpenCodeOptions = {}) {
     this.#host = host;
@@ -349,6 +351,13 @@ export class OpenCodeAdapter implements HarnessAdapter {
         if(canonicalDirectory){
           const key='opencode.privateDirectory:'+hostGenerationKey(launched),owner={path:files.dir,canonical:canonicalDirectory,identity:directoryIdentity!};
           if(this.#host.adapterState)this.#host.adapterState.write(key,JSON.stringify(owner));else this.#privateDirectories.set(key,owner);
+        }
+        if (host.name === 'local') {
+          const receipt = { pid, settle: boundedSettlement(async () => { await started.exited; }) };
+          this.#localExits.set(p.sessionId, receipt);
+          void started.exited.then(() => {
+            if (this.#localExits.get(p.sessionId) === receipt) this.#localExits.delete(p.sessionId);
+          });
         }
         scope.accepted.push({ files: transaction, name: p.name, sessionId: p.sessionId });
         return launched;
@@ -797,7 +806,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       const alive = p.pid === null || await this.#processHost(p).alive(p);
       if (this.#closed || this.#watching.get(p.sessionId) !== ticket || this.#stopping.has(p.sessionId)) continue;
       if (!alive) {
-        if (this.#processHost(p).name !== 'local') await this.#settleExit(p, `pid ${p.pid} is gone`);
+        if (this.#processHost(p).name !== 'local' || this.#localExits.has(p.sessionId)) await this.#settleExit(p, `pid ${p.pid} is gone`);
         else { this.#unwatch(p.sessionId); this.#host.exited(p.sessionId, `pid ${p.pid} is gone`); }
       } else if (!this.#watched.has(p.sessionId)) this.#background(() => this.#watch(ticket));
     }
@@ -806,7 +815,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   #gone(w: Watch, detail: string): void {
     if (this.#stopping.has(w.process.sessionId)) return;
     if (this.#watched.get(w.process.sessionId) !== w) return;
-    if (this.#processHost(w.process).name !== 'local') {
+    if (this.#processHost(w.process).name !== 'local' || this.#localExits.has(w.process.sessionId) || this.#exiting.has(w.process.sessionId)) {
       w.abort.abort();
       this.#background(() => this.#settleExit(w.process, detail));
     } else {
@@ -837,13 +846,16 @@ export class OpenCodeAdapter implements HarnessAdapter {
     const captured = owner;
     const work = this.#track(Promise.resolve().then(async () => {
       await this.#connections.get(p.sessionId)?.work.catch(() => {});
-      if (!captured.stopped) {
+      const local = this.#processHost(captured.process).name === 'local';
+      if (local) await this.#localExits.get(p.sessionId)?.settle();
+      else if (!captured.stopped) {
         if (!await this.#processHost(captured.process).stop(captured.process, { graceMs: this.#stopGraceMs, allowReused: true })) throw new Error(`OpenCode exit cleanup incomplete for ${p.name}`);
         captured.stopped = true;
       }
-      await this.#drainRemote(p);
+      if (local) this.#unwatch(p.sessionId);
+      else await this.#drainRemote(p);
       await this.#unforward(p.sessionId);
-      this.#host.hostGenerationClosed?.(captured.process);
+      if (!local) this.#host.hostGenerationClosed?.(captured.process);
       this.#connections.delete(p.sessionId);
       this.#exiting.delete(p.sessionId);
       this.#unwatch(p.sessionId);
@@ -910,6 +922,11 @@ export class OpenCodeAdapter implements HarnessAdapter {
         authorize: () => resumed(authorize),
         log: entry => resumed(() => this.#host.log({ ...entry, harness: this.harness, session: p.name })),
       })) throw new Error(`could not stop "${p.name}": its process identity cannot be verified; it is still watched`);
+      const receipt = this.#localExits.get(p.sessionId);
+      if (receipt?.pid === p.pid) {
+        await receipt.settle();
+        this.#localExits.delete(p.sessionId);
+      }
       ended = true;
       this.#terminal.add(p.sessionId);
       await this.#exiting.get(p.sessionId)?.work?.catch(() => {});

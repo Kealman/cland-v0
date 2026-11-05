@@ -18,3 +18,13 @@ retain password/log files until native exited, then assert rollback removal.
 Hold the native log open and revoke authority before releasing it; native spawn
 must not be reached. Bound setup and completion independently. Poll completion
 uses the exact published exit callback; an attempt count is not the receipt.
+
+Successful local launches retain the child-exit receipt after commit. Hold that
+receipt after Host.stop acknowledges termination: stop must remain pending until
+reap. Advance the fake native timer to the existing five-second settlement bound
+and assert cleanup-incomplete, then trigger a watched-row liveness-negative poll.
+No exit callback may retire the unreaped launch. Release the exact native receipt,
+observe the exit callback, and prove explicit stop retry completes. Recovered
+local rows without a child handle retain Host stop confirmation. Register the
+release and adapter drain with beforeDirectories before launch setup, so even a
+setup failure settles captured work before fixture removal.

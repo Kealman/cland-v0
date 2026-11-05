@@ -886,6 +886,12 @@ identity cleanup, HTTP/SSE/snapshot drain and forward cancellation are pending.
 Cancellation failure retries through PID supervision; the exit notice follows
 successful settlement. Explicit stop drains the same client and watch work before
 cancelling the forward.
+Successful local OpenCode launches retain their child-exit receipt after launch
+commit. Stop joins that receipt after Host termination with the existing five-second
+bounded launch-settlement deadline; expiry reports cleanup-incomplete and retains
+supervision for retry. A zombie-free process snapshot alone does not prove libuv
+has reaped a launched child. Recovered/adopted local servers have no child handle
+and keep the existing identity-verified Host confirmation path.
 
 
 A positive changed-boot lifecycle boundary records

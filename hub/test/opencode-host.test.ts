@@ -8,6 +8,7 @@ import { FakeClock } from './fake-clock.ts';
 import { tempProject, eventually } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { join } from 'node:path';
+import { beforeDirectories } from './process-cleanup.ts';
 
 test('OpenCode poll, resume and stop use the row Host and preserve its birth identity', async t => {
   const root = await tempProject(t);
@@ -71,6 +72,71 @@ test('OpenCode launches once through Host with unchanged serve arguments, enviro
   assert.equal(command.env.OPENCODE_CONFIG, join(root, '.cland/opencode/worker/opencode.json'));
   assert.equal(command.env.OPENCODE_PASSWORD, (await readFile(join(root, '.cland/opencode/worker/password'), 'utf8')).trim());
   assert.equal(row.pidIdentity, 'birth');
+});
+
+test('OpenCode recovered local server without a child receipt keeps Host stop confirmation', async t => {
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  const row = { ...await fakeHarness('opencode').spawn({ name: 'recovered', role: null, model: null, cwd: root }), pid: 987654, pidIdentity: 'birth' };
+  let stops = 0;
+  const host = { ...localHost(env), stop: async () => { stops++; return true; } };
+  const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: '', cli: '', spoke: '',
+    log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, hostForProcess: () => host }, { env });
+  t.after(() => adapter.close());
+  await adapter.stop(row);
+  assert.equal(stops, 1);
+});
+
+for (const outcome of ['receipt', 'deadline'] as const) test(`OpenCode stop joins the launched local server exit ${outcome} after Host stop`, { timeout: 2000 }, async t => {
+  const { OpenCodeClient } = await import('../src/adapters/opencode/client.ts');
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  let finish!: () => void;
+  const exited = new Promise<{ code: number | null; signal: string | null }>(resolve => { finish = () => resolve({ code: null, signal: 'SIGTERM' }); });
+  const clock = new FakeClock();
+  let exits = 0, probes = 0;
+  let publishExit!: () => void;
+  const exitPublished = new Promise<void>(resolve => { publishExit = resolve; });
+  let stopped!: () => void;
+  const stopObserved = new Promise<void>(resolve => { stopped = resolve; });
+  const host = { ...localHost(env), spawn: async () => ({ pid: 987654, exited }),
+    identity: async (pid: number) => ({ pid, pidStarted: 'start', pidIdentity: 'birth' }),
+    alive: async () => { probes++; return false; },
+    stop: async () => { stopped(); return true; } };
+  t.mock.method(OpenCodeClient.prototype, 'request', async (_method: string, path: string) => {
+    if (path === '/api/session/active') return { data: {} };
+    if (path === '/api/session') return { data: { id: 'ses_receipt' } };
+    throw new Error(`unexpected ${path}`);
+  });
+  const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: '', cli: '', spoke: '',
+    log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => { exits++; publishExit(); }, hostForLaunch: () => host, hostForProcess: () => host }, { env, clock, pollMs: 100 });
+  beforeDirectories(t, async () => { finish(); await adapter.close(); });
+  const row = await adapter.spawn({ name: 'worker', role: null, model: 'openai/gpt-5.2', cwd: root });
+  adapter.watch(row);
+  if (outcome === 'deadline') t.mock.timers.enable({ apis: ['setTimeout'] });
+  let completed = false;
+  const stopping = adapter.stop(row).then(() => { completed = true; });
+  try {
+    await stopObserved;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(completed, false, 'Host stop can observe a zombie before the local child exit is reaped');
+    if (outcome === 'deadline') {
+      const refused = assert.rejects(stopping, /cleanup-incomplete: launch settlement exceeded 5000 ms/);
+      t.mock.timers.tick(5000);
+      await refused;
+      assert.equal(completed, false, 'deadline never acknowledges settlement');
+      await clock.advance(100);
+      await new Promise<void>(resolve => setImmediate(resolve));
+      assert.ok(probes > 0, 'watched row liveness was checked after stop timed out');
+      assert.equal(exits, 0, 'negative liveness cannot retire an unreaped local launch');
+    }
+  } finally { finish(); await stopping.catch(() => {}); }
+  if (outcome === 'deadline') {
+    await exitPublished;
+    assert.equal(exits, 1, 'positive native exit receipt publishes the watched row exit');
+  }
+  if (outcome === 'deadline') await adapter.stop(row).then(() => { completed = true; });
+  assert.equal(completed, true);
 });
 
 test('Host launch rollback retains files until its native completion receipt', async t => {

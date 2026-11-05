@@ -56,10 +56,11 @@ export async function readPassword(files: ServerFiles, resumed: Resumed = untime
   })(), resumed);
 }
 
-export async function startServer(options: { host: Host; client?: (url: string, password: string) => Promise<OpenCodeClient>; bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string }> {
+export async function startServer(options: { host: Host; client?: (url: string, password: string) => Promise<OpenCodeClient>; bin: string; cwd: string; env: NodeJS.ProcessEnv; files: ServerFiles; password: string; deadlineMs: number; transaction: LaunchFiles; log: (entry: Record<string, unknown>) => void; stopGraceMs: number; resumed?: Resumed; authorize?: () => void }): Promise<{ pid: number; url: string; exited: Promise<{ code: number | null; signal: string | null }> }> {
   return continueWith((function* (): Generator<Promise<unknown>, {
     pid: number;
     url: string;
+    exited: Promise<{ code: number | null; signal: string | null }>;
   }, unknown> {
     const { files } = options;
     // The shared database outlives a launch transaction and is never rolled back with its session files.
@@ -92,7 +93,7 @@ export async function startServer(options: { host: Host; client?: (url: string, 
       while (Date.now() < deadline && !exited) {
         const ready = yield* wait(client.request('GET', '/api/session/active', undefined, Math.max(1, Math.min(250, deadline - Date.now()))).then(() => true, () => false));
         options.authorize?.();
-        if (ready && !exited && child.pid !== undefined) return { pid: child.pid, url };
+        if (ready && !exited && child.pid !== undefined) return { pid: child.pid, url, exited: child.exited };
         yield* wait(new Promise(r => setTimeout(r, Math.max(0, Math.min(50, deadline - Date.now())))));
       }
       // Output is diagnostic only, never the readiness signal. Ignore earlier launch attempts' output.
