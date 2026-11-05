@@ -1,5 +1,6 @@
 // T3: production adapters stop native fake-host workers and settle generation files before revocation.
 // Detached Claude workers, the Codex child, OpenCode server and SSH forwards require native lifecycle receipts.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { symlink, writeFile, readFile, readdir, stat } from 'node:fs/promises';
@@ -26,7 +27,7 @@ import { FakeClock } from './fake-clock.ts';
 import { remoteRedactor } from '../src/host/agent/redact.ts';
 import { HOST_SETTLEMENT_MS, type HostSettlement } from '../src/host/settle.ts';
 
-const SETUP_BUDGET_MS = 45000;
+const SETUP_BUDGET_MS = testWaitMs(45000);
 const REVOKE_FRAME_MS = HOST_SETTLEMENT_MS + 3000;
 
 test('revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host', {timeout:SETUP_BUDGET_MS + REVOKE_FRAME_MS}, async t=>{
@@ -59,7 +60,7 @@ test('revoke settles live Claude Codex OpenCode and an already released Claude g
   const claudeEnv=fixtureEnvironment(f.root,f.env,{...fake.env,HOME:f.fake.home,CLAUDE_CONFIG_DIR:fake.home});
   const hub=await projectHub(t,f.root,{}, {hosts:[machine],adapters:[
     boundary=>{const adapter=new ClaudeCodeAdapter(boundary,{clock,bin:new URL('./fakes/claude-code/claude',import.meta.url).pathname,stopGraceMs:50});const launch=adapter.spawn.bind(adapter);adapter.spawn=request=>launch({...request,accountEnv:claudeEnv});return adapter;},
-    boundary=>new CodexAdapter(boundary,{clock,bin:codexBin,stopGraceMs:50,env:fixtureEnvironment(f.root,f.env),connect:async()=>{await eventually('Codex native readiness file',async()=>{try{return await readFile(codexReady,'utf8')==='ready'||undefined;}catch{return undefined;}},2000);return native;}}),
+    boundary=>new CodexAdapter(boundary,{clock,bin:codexBin,stopGraceMs:50,env:fixtureEnvironment(f.root,f.env),connect:async()=>{await eventually('Codex native readiness file',async()=>{try{return await readFile(codexReady,'utf8')==='ready'||undefined;}catch{return undefined;}},testWaitMs());return native;}}),
     boundary=>{const adapter=new OpenCodeAdapter(boundary,{clock,bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,stopGraceMs:50,env:fixtureEnvironment(f.root,f.env)});const release=adapter.releaseHostGeneration.bind(adapter);adapter.releaseHostGeneration=async(p,authorize)=>{try{await release(p,authorize);}catch(error){retirementFailures.push({session:p.name,error:redact(String(error))});throw error;}};return adapter;},
   ]});
   f.addCleanup(()=>hub.stop());
@@ -74,23 +75,23 @@ test('revoke settles live Claude Codex OpenCode and an already released Claude g
   const roles=join(f.root,'.cland/roles.toml');await writeFile(roles,setRoleKey(await readFile(roles,'utf8'),'implementer','launch','writable_roots',['.']));
   await writeFile(remote.discoveryFile,JSON.stringify(remoteDiscovery(remote.runDirectory,f.secrets.readSecret('f1'))),{mode:0o600});
   carrier=new SshTransport({root:f.root,record:f.records.get('f1')!,secrets:f.secrets,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,remoteRun:f.fake.run,supervisor:f.supervisor,agentCommand:['stub'],env:f.env});
-  await carrier.start();await eventually('carrier up',()=>carrier.status().state==='up'||undefined,5000);
+  await carrier.start();await eventually('carrier up',()=>carrier.status().state==='up'||undefined,testWaitMs());
   const ui=await connectUi(t,hub.discovery,'cli');
   // T-1678: wait for turn-end hook writers in fixture setup before exercising revocation.
   const joinInitialWriters=async(pid:number)=>{
     const processes=await systemProcesses(undefined,undefined,undefined,false,f.env);
     const pids=processes.filter(row=>row.group===pid&&row.command.includes(remote.cli)&&!/\bhook\s+bridge\b/.test(row.command.replaceAll("'",'').replaceAll('"',''))).map(row=>row.pid);
     if(!pids.length)return;
-    const pins=await eventually('initial writer native birth or exit',async()=>{const proof=await observeProcesses(pids,f.env);return pids.every(id=>proof.get(id)?.identity||proof.get(id)?.ended)?proof:undefined;},1000);
-    const exits=await eventually('initial writers positively exited',async()=>{const proof=await observeProcesses(pids,f.env);return pids.every(id=>proof.get(id)?.ended||!!pins.get(id)?.identity&&!!proof.get(id)?.identity&&proof.get(id)!.identity!==pins.get(id)!.identity)?proof:undefined;},1000);
+    const pins=await eventually('initial writer native birth or exit',async()=>{const proof=await observeProcesses(pids,f.env);return pids.every(id=>proof.get(id)?.identity||proof.get(id)?.ended)?proof:undefined;},testWaitMs());
+    const exits=await eventually('initial writers positively exited',async()=>{const proof=await observeProcesses(pids,f.env);return pids.every(id=>proof.get(id)?.ended||!!pins.get(id)?.identity&&!!proof.get(id)?.identity&&proof.get(id)!.identity!==pins.get(id)!.identity)?proof:undefined;},testWaitMs());
     assert.ok(pids.every(id=>exits.get(id)?.ended||!!pins.get(id)?.identity&&!!exits.get(id)?.identity&&exits.get(id)!.identity!==pins.get(id)!.identity));
   };
 
   // T-1678: pin a fresh completion count before delivery, then join its hook writers.
   const completeNativeTurn=async(row:NonNullable<ReturnType<typeof table.get>>,text:string)=>{
-    await eventually('Claude native readiness receipt',async()=>(await fake.log(row.harnessId!)).includes('session ready')||undefined,2000);
+    await eventually('Claude native readiness receipt',async()=>(await fake.log(row.harnessId!)).includes('session ready')||undefined,testWaitMs());
     const baseline=(await fake.log(row.harnessId!)).match(/session\.measure done/g)?.length??0;
-    const completed=eventually('fresh Claude native turn completion',async()=>((await fake.log(row.harnessId!)).match(/session\.measure done/g)?.length??0)>baseline||undefined,3000);
+    const completed=eventually('fresh Claude native turn completion',async()=>((await fake.log(row.harnessId!)).match(/session\.measure done/g)?.length??0)>baseline||undefined,testWaitMs());
     try {const delivery=await ui.request({type:'topic.send',topic:'general',to:[row.name],text});assert.equal(delivery.ok,true,delivery.error);}
     finally {await completed;}
     await joinInitialWriters(row.pid!);

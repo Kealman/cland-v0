@@ -1,5 +1,6 @@
 // T3: native attach CLI exec and exit must leave an independently owned session alive.
 // Lifecycle: disposable root/HOME, child exit joined before fixture removal.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import { within } from '../src/executor/droplet/deadline.ts';
 import assert from 'node:assert/strict';
@@ -20,7 +21,7 @@ import { CodexAdapter } from '../src/adapters/codex.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
 
-for (const [label, Adapter] of Object.entries({ 'claude-code': ClaudeCodeAdapter, codex: CodexAdapter, opencode: OpenCodeAdapter, 'codex-held':CodexAdapter })) test(`${label} host attach uses private environment, refuses foreign records and exit preserves native identity`, {timeout:10000}, async t => {
+for (const [label, Adapter] of Object.entries({ 'claude-code': ClaudeCodeAdapter, codex: CodexAdapter, opencode: OpenCodeAdapter, 'codex-held':CodexAdapter })) test(`${label} host attach uses private environment, refuses foreign records and exit preserves native identity`, {timeout:8 * testWaitMs() + 10000}, async t => {
   const held = label === 'codex-held';
   const harness = held ? 'codex' : label;
   const root = await tempProject(t, 'ha-', '/tmp');
@@ -34,7 +35,7 @@ for (const [label, Adapter] of Object.entries({ 'claude-code': ClaudeCodeAdapter
   const closed = once(child, 'close');
   const stopSession = ownProcess(t, child.pid);
   beforeDirectories(t,async()=>{await stopSession();await closed;});
-  await once(child.stdout!, 'data', {signal:AbortSignal.timeout(5000)});
+  await once(child.stdout!, 'data', {signal:AbortSignal.timeout(testWaitMs())});
   const machine = {...localHost(env),name:'remote'};
   const proof = await machine.identity(child.pid!); assert.ok(proof?.pidIdentity);
   const layout = remoteHostLayout(root, {runDirectory:env.CLAND_HOST_RUN_DIR!});
@@ -65,7 +66,7 @@ for (const [label, Adapter] of Object.entries({ 'claude-code': ClaudeCodeAdapter
   beforeDirectories(t,async()=>{await stopAttach();await attachClosed;});
   let stderr='';attach.stderr!.on('data',b=>stderr+=b);
   if (held) {
-    await eventually('held attach durable output',async()=>{try{return (await readFile(marker,'utf8')).includes('conversation')||undefined;}catch{return undefined;}},5000);
+    await eventually('held attach durable output',async()=>{try{return (await readFile(marker,'utf8')).includes('conversation')||undefined;}catch{return undefined;}},testWaitMs());
     await assert.rejects(async()=>{try {throw new Error('forced attach failure');} finally {await stopAttach();await attachClosed;}},/forced attach failure/);
   }
   const [code,signal] = await within(attachClosed,5000,undefined,()=>new Error('attach close incomplete; stderr: '+stderr.slice(-1000)));

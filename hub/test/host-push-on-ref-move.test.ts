@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { ownProcess, ownDirectory } from './process-cleanup.ts';
 import { hostControl } from './fakes/fake-host.ts';
 import type { TestContext } from 'node:test';
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join, resolve } from 'node:path';
@@ -38,7 +39,7 @@ async function setup(t:TestContext,options:Parameters<typeof sshHostFixture>[1]=
  return {f,git,root};
 }
 
-test('C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and downtime without hooks',{timeout:30000},async t=>{
+test('C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and downtime without hooks',{timeout:8 * testWaitMs() + 30000},async t=>{
  const {f,git,root}=await setup(t);
  const branch='t/T-1609-watch',path=join(root,'.cland/worktrees/T-1609');
  await grantBranchLease(f.root,'f1',branch);
@@ -46,7 +47,7 @@ test('C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and down
  const events:Extract<AgentEvent,{event:'ref-moved'}>[]=[];
  const observe=(frame:AgentEvent)=>{if(frame.event==='ref-moved')events.push(frame);};client.on('event',observe);
  await f.host.worktreeAdd({root,path,branch,territory:{path:'git://cland/territory.git',tip:await git(f.root,['rev-parse','HEAD'])}});
- const reaches=async()=>{const head=await git(path,['rev-parse','HEAD']);await eventually('territory has exact moved head',async()=>await git(territoryPath(f.root),['rev-parse',branch]).catch(()=>'')===head||undefined,5000);assert.equal(await git(territoryPath(f.root),['rev-parse',branch]),head);return head;};
+ const reaches=async()=>{const head=await git(path,['rev-parse','HEAD']);await eventually('territory has exact moved head',async()=>await git(territoryPath(f.root),['rev-parse',branch]).catch(()=>'')===head||undefined,/* behaviour: publication after ref move */ 5000);assert.equal(await git(territoryPath(f.root),['rev-parse',branch]),head);return head;};
  await reaches();
  await git(path,['commit','--allow-empty','-m','commit']);const committed=await reaches();
  await git(path,['commit','--amend','--allow-empty','-m','amend']);assert.notEqual(await reaches(),committed);
@@ -90,7 +91,7 @@ test('C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and down
 });
 
 
-test('interrupted admitted native push survives agent SIGKILL and recovery publishes only the current head',{timeout:30000},async t=>{
+test('interrupted admitted native push survives agent SIGKILL and recovery publishes only the current head',{timeout:8 * testWaitMs() + 30000},async t=>{
  const {f,git,root}=await setup(t);const branch='t/T-1609-crash',path=join(root,'.cland/worktrees/crash');
  await grantBranchLease(f.root,'f1',branch);await f.host.worktreeAdd({root,path,branch,territory:{path:HOST_ORIGIN,tip:await git(f.root,['rev-parse','HEAD'])}});
  let client=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'));await client.request('flush',{});await client.close();await f.host.close();await f.agent.close();
@@ -113,7 +114,7 @@ exec /usr/bin/git "$@"
  client=await eventually('replacement watch agent ready',async()=>{const next=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);if(next?.hello.pid===oldPid){await next.close();return undefined;}return next;});
  await writeFile(gate,'release');
  let observedHead:string|null=null;
- try{await eventually('current head durable publication after interrupted push',async()=>{observedHead=await git(territoryPath(f.root),['rev-parse',branch]);return observedHead===current||undefined;},5000);}
+ try{await eventually('current head durable publication after interrupted push',async()=>{observedHead=await git(territoryPath(f.root),['rev-parse',branch]);return observedHead===current||undefined;},/* behaviour: post-signal receipt deadline */ 5000);}
  catch(error){
   try{const facts=JSON.stringify(await pushRecoveryFacts({runDir:f.fake.run,path,bootFile:f.fake.bootId,before:helloBefore,after:client.hello,captured:pending.pending,expectedHead:current,observedHead,secrets:[f.secrets.readSecret('f1')],observe:pid=>client.request('identity',{pid},1000) as Promise<string|null>}));t.diagnostic('push recovery receipts '+facts.slice(0,16384)+(facts.length>16384?' [incomplete: diagnostic truncated at16384characters]':''));}
   catch(diagnostic){t.diagnostic('push recovery diagnostic incomplete: '+(diagnostic as Error).name);}
@@ -125,7 +126,7 @@ exec /usr/bin/git "$@"
 });
 
 
-test('native producer receipt is private and contains bounded redacted output without planted credentials',{timeout:15000},async t=>{
+test('native producer receipt is private and contains bounded redacted output without planted credentials',{timeout:8 * testWaitMs() + 15000},async t=>{
  const {f,root}=await setup(t);const { AgentProcesses }=await import('../src/host/agent/processes.ts');const { refPushOwner }=await import('../src/host/agent/ref-push.ts');
  const runDir=join(f.root,'receipt-owner'),bin=join(f.root,'receipt-bin'),control=join(f.root,'planted-control');await mkdir(runDir);await mkdir(bin);await mkdir(join(runDir,'ref-push'));
  const planted='synthetic-native-receipt-secret';await writeFile(join(bin,'git'),`#!/bin/sh\necho '${planted}' > '${control}'\necho 'Bearer ${planted}' >&2\necho 'token=${planted}' >&2\necho 'https://account:${planted}@invalid.example' >&2\nexit 0\n`,{mode:0o700});
@@ -141,7 +142,7 @@ test('native producer receipt is private and contains bounded redacted output wi
 });
 
 
-test('killed producer without result stays named and fenced until a later successful leased head',{timeout:30000},async t=>{
+test('killed producer without result stays named and fenced until a later successful leased head',{timeout:8 * testWaitMs() + 30000},async t=>{
  const outer=await mkdtemp(join(tmpdir(),'push-kill-')),bin=join(outer,'bin'),arm=join(outer,'arm'),gate=join(outer,'gate'),entered=join(outer,'entered');await mkdir(bin);
  await writeFile(join(bin,'git'),`#!/usr/bin/env node\nconst fs=require('node:fs');if(process.argv.includes('push')&&fs.existsSync(${JSON.stringify(arm)})){fs.writeFileSync(${JSON.stringify(entered)},'entered');const wait=new Int32Array(new SharedArrayBuffer(4));while(!fs.existsSync(${JSON.stringify(gate)}))Atomics.wait(wait,0,0,20);}process.execve('/usr/bin/git',['/usr/bin/git',...process.argv.slice(2)],process.env);\n`,{mode:0o700});
  let killRoot=false,killedRoot=false;
@@ -156,10 +157,10 @@ test('killed producer without result stays named and fenced until a later succes
  killRoot=true;await eventually('positive producer-only fault receipt',async()=>{
   try{assert.equal(await client.request('signal',{...interrupted.pending.native,signal:'SIGKILL'}),false,'a declined capture sends no signal');return undefined;}
   catch(error){assert.match(String(error),/producer-only crash/);return killedRoot||undefined;}
- },5000);assert.equal(killedRoot,true);
+ },/* behaviour: post-signal receipt deadline */ 5000);assert.equal(killedRoot,true);
  await eventually('missing result named fence',async()=>{const rows=await client.request('watch-status',{}) as Array<{path:string;state:string;cause?:string}>;return rows.find(row=>row.path===path&&row.state==='fenced'&&row.cause?.includes('producer result missing'));});await assert.rejects(stat(join(f.fake.run,'ref-push',interrupted.pending.id+'.json')),{code:'ENOENT'});
  // The surviving captured Git child is still owned by the existing ledger; join it before fixture cleanup.
  assert.equal(await client.request('stop',interrupted.pending.native),true);await writeFile(gate,'release');await git(path,['commit','--allow-empty','-m','later leased head']);const next=await git(path,['rev-parse','HEAD']);
- await eventually('later leased head clears fenced publication',async()=>await git(territoryPath(f.root),['rev-parse',branch])===next||undefined,5000);await client.request('flush',{});
+ await eventually('later leased head clears fenced publication',async()=>await git(territoryPath(f.root),['rev-parse',branch])===next||undefined,/* behaviour: post-signal receipt deadline */ 5000);await client.request('flush',{});
  assert.equal((await client.request('watch-status',{}) as Array<{state:string}>)[0]?.state,'watching');
 });

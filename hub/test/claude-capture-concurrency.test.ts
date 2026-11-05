@@ -1,5 +1,6 @@
 // T3: native adopted process births exercise capture/reconciliation interleavings.
 // Lifecycle: sealed scratch root; join every owned child and owner writes before removal.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -32,9 +33,9 @@ import {readFileSync as requireRead} from 'node:fs';writeFileSync(root+'/ready',
   const owner = new AgentProcesses(join(root, 'agent'), env, () => {}, { beforeSignals: async () => { signals++; if(mode==='second descendant'&&injected===1)await inject(2); }, afterCapture: async () => {
     const work = interleave; interleave = undefined; await work?.();
   } });
-  t.after(async () => { for (const clean of cleanup.reverse()) await clean(); await eventually('native parent close receipt', () => closed || undefined, 2000); assert.equal(closed, true); await owner.drain(); await rm(root, { recursive: true, force: true }); });
+  t.after(async () => { for (const clean of cleanup.reverse()) await clean(); await eventually('native parent close receipt', () => closed || undefined, /* behaviour: post-signal receipt deadline */ 2000); assert.equal(closed, true); await owner.drain(); await rm(root, { recursive: true, force: true }); });
   await owner.load();
-  await eventually('native parent armed receipt', () => readFile(ready, 'utf8').then(() => true).catch(() => undefined), 2000);
+  await eventually('native parent armed receipt', () => readFile(ready, 'utf8').then(() => true).catch(() => undefined), testWaitMs());
   const identity = await owner.identity(child.pid); assert.ok(identity);
   const worker = { pid: child.pid, identity };
   await owner.adopt(worker);
@@ -42,7 +43,7 @@ import {readFileSync as requireRead} from 'node:fs';writeFileSync(root+'/ready',
   const inject = async (n: number) => {
     const observed = eventually('injected child native birth', async () => {
       try { const pid = Number(await readFile(join(root, 'child-'+n), 'utf8')); return await owner.identity(pid) ? pid : undefined; } catch { return undefined; }
-    }, 2000);
+    }, /* behaviour: post-signal receipt deadline */ 2000);
     await writeFile(trigger, String(n)); const pid = await observed; cleanup.push(ownProcess(undefined, pid)); injected = n; return pid;
   };
   const first = await inject(1);

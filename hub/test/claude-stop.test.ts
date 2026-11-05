@@ -1,5 +1,6 @@
 // T1: scripted Claude shutdown observations prove capture authority and escalation without native timers.
 import test from 'node:test';
+import { testWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { stopClaude, type ClaudeStopMember } from '../src/host/agent/claude-stop.ts';
 const root={pid:100,identity:'linux:boot:1'},hook={pid:101,identity:'linux:boot:2'};
@@ -26,7 +27,7 @@ for(const mode of ['natural','ignores TERM','after root exit','reparented','fore
 
 test('Claude refuses a foreign UID already present in its captured set before any signal',async()=>{
  let signals=0;
- const result=await stopClaude(root,[root,hook],{},async()=>{signals++;return true;},1,async()=>{},{snapshot:async()=>[{pid:100,parent:1,group:100,uid:process.getuid!()},{pid:101,parent:100,group:100,uid:process.getuid!()+1}]});
+ const result=await stopClaude(root,[root,hook],{},async()=>{signals++;return true;},testWaitMs(),async()=>{},{snapshot:async()=>[{pid:100,parent:1,group:100,uid:process.getuid!()},{pid:101,parent:100,group:100,uid:process.getuid!()+1}]});
  assert.equal(result,null);assert.equal(signals,0);
 });
 
@@ -48,7 +49,7 @@ for(const ended of [true,false])test(`pinned Claude member ${ended?'exit':'birth
 for(const persistent of [false,true])test(`Claude ${persistent?'persistent':'transient'} unknown member gets one identity re-read before signals`,async()=>{
  let rootEnded=false;const reads:number[][]=[],signals:number[]=[];
  const uid=process.getuid!();
- const result=await stopClaude(root,[root,hook],{},async targets=>{assert.equal(reads.length,2,'unknown identity is re-read before TERM');signals.push(...targets.map(t=>t.pid));rootEnded=true;return true;},1,async()=>{},{
+ const result=await stopClaude(root,[root,hook],{},async targets=>{assert.equal(reads.length,2,'unknown identity is re-read before TERM');signals.push(...targets.map(t=>t.pid));rootEnded=true;return true;},testWaitMs(),async()=>{},{
    snapshot:async()=>rootEnded?[]:[{pid:100,parent:1,group:100,uid},{pid:101,parent:100,group:100,uid}],
    observe:async pids=>{reads.push([...pids]);return new Map(pids.map(pid=>[pid,pid===100?{identity:rootEnded?null:root.identity,ended:rootEnded}:persistent||reads.length===1?{identity:null,ended:false}:{identity:null,ended:true}]));},
  });

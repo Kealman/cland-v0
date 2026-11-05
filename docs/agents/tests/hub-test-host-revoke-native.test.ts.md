@@ -28,7 +28,8 @@ alias exercises launch-captured canonical private-directory ownership; final
 file-removal assertions remain unchanged.
 
 T-1685 migrates the revoke frame wait to `HOST_SETTLEMENT_MS + 3000`,
-matching the CLI. The whole-test timeout adds a named 45-second setup/teardown
-budget to that frame wait (60 seconds at the 12-second settlement cap). All
+matching the CLI. The whole-test timeout adds a named `testWaitMs(45000)` setup/teardown
+budget to that frame wait (60 seconds at the 12-second settlement cap with the default45 s fallback;
+`CLAND_TEST_WAIT_MS` overrides setup only). All
 native, private-file, receipt and post-cut assertions remain unchanged. The
 sampled duration allowance is separate and must stay below the whole-test timeout.

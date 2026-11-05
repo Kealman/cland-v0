@@ -20,7 +20,7 @@ import { beforeDirectories } from './process-cleanup.ts';
 async function receipt<T>(what: string, work: Promise<T>): Promise<T> {
   let outcome: PromiseSettledResult<T> | undefined;
   void work.then(value => { outcome = { status: 'fulfilled', value }; }, reason => { outcome = { status: 'rejected', reason }; });
-  await until(() => outcome !== undefined, { what, timeoutMs: testWaitMs(5000) });
+  await until(() => outcome !== undefined, { what, timeoutMs: testWaitMs() });
   if (!outcome) throw new Error(`${what}: incomplete receipt`);
   if (outcome.status === 'rejected') throw outcome.reason;
   return outcome.value;
@@ -215,7 +215,7 @@ async function heldLaunchClose(t: TestContext, relaunch: boolean, stage: HeldSta
   const work = relaunch ? adapter.resume(row, { relaunch: true }) : adapter.spawn({ name: 'worker', role: null, model: null, cwd: root });
   let outcome: PromiseSettledResult<unknown> | undefined;
   void work.then(value => { outcome = { status: 'fulfilled', value }; }, reason => { outcome = { status: 'rejected', reason }; });
-  await until(() => entered, { what: 'held Host setup receipt', timeoutMs: testWaitMs(5000) });
+  await until(() => entered, { what: 'held Host setup receipt', timeoutMs: testWaitMs() });
   const threadStarts = native.count('thread/start');
   let closeOutcome: PromiseSettledResult<void> | undefined;
   const actualClose = adapter.close();
@@ -234,7 +234,7 @@ async function heldLaunchClose(t: TestContext, relaunch: boolean, stage: HeldSta
     catch (failure) { closeOutcome = { status: 'rejected', reason: failure }; }
   });
   release.resolve();
-  await until(() => Boolean(outcome && closeOutcome), { what: 'launch and close completion receipts', timeoutMs: testWaitMs(5000) });
+  await until(() => Boolean(outcome && closeOutcome), { what: 'launch and close completion receipts', timeoutMs: testWaitMs() });
   if (closeOutcome?.status === 'rejected') throw closeOutcome.reason;
   assert.equal(producerFinished, true);
   assert.equal(outcome?.status, 'rejected');
@@ -289,7 +289,7 @@ test('Codex close reports incomplete late-launch cleanup and retains its durable
       await pending.settled();
     }
   });
-  await until(() => admitted, { what: 'late launch setup receipt', timeoutMs: testWaitMs(5000) });
+  await until(() => admitted, { what: 'late launch setup receipt', timeoutMs: testWaitMs() });
   const closing = assert.rejects(adapter.close().catch(error => {
     assert.equal(producerFinished, true, 'producer completed at close rejection');
     assert.equal(cleanupAttempted, true, 'cleanup attempted before close rejection');
@@ -328,7 +328,7 @@ for (const stage of ['alive', 'connect'] as const) test(`Codex close joins live 
   await writeFile(socket, 'fixture socket');
   const row: HarnessProcess = { name: 'worker', harness: 'codex', role: null, model: null, cwd: root, pid: 111111, harnessId: socket, harnessSessionId: native.thread, sessionId: 'resume', startedAt: new Date().toISOString(), status: 'running' };
   const resumed = assert.rejects(adapter.resume(row), /closed/);
-  await until(() => entered, { what: 'live resume setup receipt', timeoutMs: testWaitMs(5000) });
+  await until(() => entered, { what: 'live resume setup receipt', timeoutMs: testWaitMs() });
   const closing = adapter.close().then(() => {
     assert.equal(producerFinished, true, 'live resume producer completed at close receipt');
     if (stage === 'connect') assert.equal(native.closed, true, 'late connection released at close receipt');
@@ -362,7 +362,7 @@ test('Codex keeps Host liveness polling while reconnect connection acquisition i
   assert.equal(native.closed, true);
 });
 
-for (const outcome of ['receipt', 'deadline'] as const) test(`Codex local stop joins native exit ${outcome}`, { timeout: 2000 }, async t => {
+for (const outcome of ['receipt', 'deadline'] as const) test(`Codex local stop joins native exit ${outcome}`, { timeout: 8 * testWaitMs() + 2000 }, async t => {
   const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, process.env);
   const exit = deferred<{ code: number | null; signal: string | null }>();

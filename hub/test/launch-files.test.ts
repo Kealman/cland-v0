@@ -1,4 +1,5 @@
 // T2: recording Host file operations and legacy rollback, no native children or hub.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -126,7 +127,7 @@ test('remote LaunchFiles reads only Host metadata and bytes while the hub mirror
   assert.equal((await nativeStat(mirror)).mode & 0o777, 0o644);
 });
 
-test('rollback bounds a missing native exit receipt and fences undo and repeated stop until it resolves', {timeout:1000}, async t => {
+test('rollback bounds a missing native exit receipt and fences undo and repeated stop until it resolves', {timeout:8 * testWaitMs() + 1000}, async t => {
   const {beforeDirectories}=await import('./process-cleanup.ts');
   const root=await tempProject(t);const env=fixtureEnvironment(root,process.env);
   const exit=Promise.withResolvers<{code:number|null;signal:string|null}>();let stops=0;

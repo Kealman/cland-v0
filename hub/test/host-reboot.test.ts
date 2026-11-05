@@ -1,4 +1,5 @@
 // T2: authenticated boot evidence retires persisted native generations without native operations.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Sessions } from '../src/adapters/sessions.ts';
@@ -62,7 +63,7 @@ test('boot readiness during suspended resume fences its stale running result', a
   t.after(async()=>{release.resolve();await sessions.close();table.close();core.close();core.store.close();});
   let inResume=false;void entered.promise.then(()=>{inResume=true;});
   const work=sessions.resumeHost('f1',oldBoot);
-  await eventually('suspended native resume',()=>inResume||undefined,1000);
+  await eventually('suspended native resume',()=>inResume||undefined,testWaitMs());
   const ready=sessions.resumeHost('f1',newBoot);
   assert.equal(ready,work);
   assert.equal(table.get('held')?.status,'exited','reboot proof publishes before held native result');

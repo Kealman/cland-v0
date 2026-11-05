@@ -1,4 +1,5 @@
 // T2: OpenCode lifecycle routes exclusively through the row's recording Host.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
@@ -87,7 +88,7 @@ test('OpenCode recovered local server without a child receipt keeps Host stop co
   assert.equal(stops, 1);
 });
 
-for (const outcome of ['receipt', 'deadline'] as const) test(`OpenCode stop joins the launched local server exit ${outcome} after Host stop`, { timeout: 2000 }, async t => {
+for (const outcome of ['receipt', 'deadline'] as const) test(`OpenCode stop joins the launched local server exit ${outcome} after Host stop`, { timeout: 8 * testWaitMs() + 2000 }, async t => {
   const { OpenCodeClient } = await import('../src/adapters/opencode/client.ts');
   const root = await tempProject(t);
   const env = fixtureEnvironment(root, process.env);

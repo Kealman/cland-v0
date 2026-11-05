@@ -1,4 +1,5 @@
 // T2: Sessions ownership with in-memory remote workers and private-file receipts.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HOST_SETTLEMENT_MS } from '../src/host/settle.ts';
@@ -52,7 +53,7 @@ test('held host settlement follows captured identity through rename and name reu
   sessions.register(fake);
   const run=sessions.settleHostBeforeCut('f1',()=>{});
   let observed=false;void entered.promise.then(()=>{observed=true;});
-  await eventually('first captured stop entered',()=>observed||undefined,1000);
+  await eventually('first captured stop entered',()=>observed||undefined,testWaitMs());
   assert.equal(table.rename(b.sessionId,'renamed'),true);
   const replacement={...await fake.spawn({name:'b',cwd:root,model:null,role:null}),host:'f2'};table.put(replacement);
   release.resolve();const report=await run;
@@ -117,7 +118,7 @@ for(const terminal of ['stop','exit'] as const)for(const retained of ['pruned-ro
   if(terminal==='stop')await sessions.stop(view.name);
   else {
     const {eventually}=await import('./harness.ts');
-    const exited=eventually('normal OpenCode exit durable row',()=>table.get(view.name)?.status==='exited'||undefined,1000);
+    const exited=eventually('normal OpenCode exit durable row',()=>table.get(view.name)?.status==='exited'||undefined,/* behaviour: post-signal receipt deadline */ 1000);
     nativeAlive=false;await timers.advance(10);await exited;
   }
   const config=join(remote,'opencode','worker','opencode.json'),password=join(remote,'opencode','worker','password');
@@ -279,7 +280,7 @@ test('changed boot fences an already-admitted failed-stop continuation before it
   let admitted=false;void entered.promise.then(()=>{admitted=true;});
   await clock.advance(5000);assert.equal(admitted,true,'native cleanup owner entered before reboot proof');
   sessions.retainHostGeneration(p,{cause:'host-rebooted',bootId:newBoot});
-  const fenced=eventually('durable failed cleanup retains the reboot fence',()=>table.pendingStops()[0]?.error.includes('resource retirement remains pending')||undefined,1000);
+  const fenced=eventually('durable failed cleanup retains the reboot fence',()=>table.pendingStops()[0]?.error.includes('resource retirement remains pending')||undefined,/* behaviour: post-signal receipt deadline */ 1000);
   held.resolve();await fenced;await clock.advance(5000);
   assert.equal(nativeStops,0);assert.equal(table.pendingStops().length,1);assert.equal(table.pendingStops()[0]?.hostRebooted?.bootId,newBoot);
 });
@@ -315,7 +316,7 @@ for(const storage of ['independent-fence','prior-resource-marker'] as const)test
   if(storage==='prior-resource-marker'){const {DatabaseSync}=await import('node:sqlite');const old=new DatabaseSync(path);old.exec('delete from harness_host_reboot_closures');old.close();}
   let boundary=false;void entered.promise.then(()=>{boundary=true;});
   const report=sessions.settleHostBeforeCut('f1',()=>{cut=true;});
-  await eventually('post-retirement inventory entered',()=>boundary||undefined,1000);
+  await eventually('post-retirement inventory entered',()=>boundary||undefined,testWaitMs());
   assert.equal((await base.fileType(privateFile)),'missing','metadata deletion completed');
   assert.equal([...table.retainedHostGenerations('f1')].length,0,'resource receipt is durably cleared');assert.equal(cut,false);
   const command={command:'never-execute',args:[],cwd:remote,env:fixtureEnvironment(root,process.env)};

@@ -1,5 +1,6 @@
 // T3: native fake-host reboot kills its fixture writers and restarts supervisor/agent/tunnel.
 // Lifecycle: joined carrier/hub/agent owners and native census before disposable root removal.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -22,7 +23,7 @@ import { AgentClient } from '../src/host/agent-client.ts';
 import { hostPaths } from '../src/host/records.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-test('reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent', {timeout:60000}, async t => {
+test('reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent', {timeout:8 * testWaitMs() + 60000}, async t => {
   const f = await sshHostFixture(t,{startTransport:false});
   await f.host.close(); await f.agent.close();
   const second = await createFakeHost(f.root,'f2');
@@ -34,7 +35,7 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
     await cleanupOwnedProcesses(fixtureProcessCensus(f.root));
     // A supervisor can spawn its final 0.2s sleep between census and kill. Its
     // launcher is joined; observe that short-lived native writer gone as well.
-    try {await eventually('all captured fixture writers positively absent',()=>fixtureProcessCensus(f.root).filter(p=>p.pid!==process.pid).length===0||undefined,2000);}
+    try {await eventually('all captured fixture writers positively absent',()=>fixtureProcessCensus(f.root).filter(p=>p.pid!==process.pid).length===0||undefined,/* behaviour: post-signal receipt deadline */ 2000);}
     catch(error) {
       const survivors=fixtureProcessCensus(f.root).filter(p=>p.pid!==process.pid).map(p=>({pid:p.pid,identity:p.identity,group:p.group,started:p.started}));
       throw new Error('fixture writers remain after 2s: '+JSON.stringify(survivors),{cause:error});
@@ -71,18 +72,18 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
   await eventually('both native agents ready',async()=>{
     const status=(await ui.request({type:'hub.status'})).value as {hosts:Array<{state:string}>};
     return status.hosts.length===2&&status.hosts.every(h=>h.state==='up')||undefined;
-  },15000);
+  },testWaitMs());
   const specs=[...FAKE_FLAVOURS.map(harness=>({name:harness,harness,host:'f1',cwd:f.fake.home})),{name:'other',harness:'codex',host:'f2',cwd:second.home}];
   for (const spec of specs) {
     const launched=await ui.request({type:'session.launch',role:'implementer',...spec},15000);assert.equal(launched.ok,true,launched.error);
-    await eventually('native worker ready '+spec.name,()=>readFile(join(spec.cwd,spec.name+'.ready'),'utf8').catch(()=>undefined),5000);
+    await eventually('native worker ready '+spec.name,()=>readFile(join(spec.cwd,spec.name+'.ready'),'utf8').catch(()=>undefined),testWaitMs());
   }
   const old=table.all(); assert.equal(old.length,4);
   const direct=await AgentClient.connect(hostPaths(f.root,'f1').agentSocket,f.secrets.readSecret('f1'));
   const boot=direct.hello.bootId, agentPid=direct.hello.pid;await direct.close();
   const supervisorBefore=await readFile(join(f.fake.run,'supervisor.lock/pid'),'utf8');
   const redact=remoteRedactor([f.secrets.readSecret('f1'),f.secrets.readSecret('f2'),(JSON.parse(await readFile(join(f.fake.directory,'reboot-control'),'utf8')) as {token:string}).token]);
-  const cliReboot=async()=>{try{const result=await promisify(execFile)(process.execPath,[new URL('./fakes/fake-host.ts',import.meta.url).pathname,'reboot','f1'],{cwd:f.root,env:fixtureEnvironment(f.root,process.env,env),timeout:20000});if(result.stderr)t.diagnostic(redact.text(result.stderr).slice(-8192));return result;}catch(error){throw rebootCliFailure(error,redact);}};
+  const cliReboot=async()=>{try{const result=await promisify(execFile)(process.execPath,[new URL('./fakes/fake-host.ts',import.meta.url).pathname,'reboot','f1'],{cwd:f.root,env:fixtureEnvironment(f.root,process.env,env),timeout:testWaitMs(20000)});if(result.stderr)t.diagnostic(redact.text(result.stderr).slice(-8192));return result;}catch(error){throw rebootCliFailure(error,redact);}};
   const controlFile=join(f.fake.directory,'reboot-control');
   const control=await readFile(controlFile,'utf8');
   await writeFile(controlFile,JSON.stringify({...JSON.parse(control),token:'wrong-owner'}));
@@ -92,12 +93,12 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
   const unchanged=await AgentClient.connect(hostPaths(f.root,'f1').agentSocket,f.secrets.readSecret('f1'));
   for(const p of old.filter(p=>p.host==='f1'))assert.equal(await unchanged.request('identity',{pid:p.pid}),p.pidIdentity,'wrong-owner CLI never signals an older worker');
   await unchanged.close();
-  const retirement=eventually('durable exits for every rebooted native row',()=>old.filter(p=>p.host==='f1').every(p=>table.bySessionId(p.sessionId)?.status==='exited')||undefined,15000); void retirement.catch(()=>{});
+  const retirement=eventually('durable exits for every rebooted native row',()=>old.filter(p=>p.host==='f1').every(p=>table.bySessionId(p.sessionId)?.status==='exited')||undefined,/* behaviour: post-signal receipt deadline */ 15000); void retirement.catch(()=>{});
   await cliReboot();await retirement;
   const replacement=await eventually('authenticated replacement agent with a changed boot',async()=>{
     const client=await AgentClient.connect(hostPaths(f.root,'f1').agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);
     if(!client)return;const hello=client.hello;await client.close();return hello.bootId!==boot?hello:undefined;
-  },15000);
+  },/* behaviour: post-signal receipt deadline */ 15000);
   assert.notEqual(replacement.pid,agentPid);assert.notEqual(await readFile(join(f.fake.run,'supervisor.lock/pid'),'utf8'),supervisorBefore);
   assert.notEqual(await readFile(f.fake.bootId,'utf8'),boot);
   const rows=((await ui.request({type:'session.list'})).value as {processes:HarnessProcessView[]}).processes;

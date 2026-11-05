@@ -1,4 +1,5 @@
 // T2: persisted mixed-harness rows recover through recording Hosts; no native children.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -72,7 +73,7 @@ test('host ready retries unavailable mixed-harness startup without vacating or s
   assert.equal(calls.some(call => call.startsWith('local:') || call.endsWith(':stop')), false, 'no local PID probe or signal operation');
 });
 
-test('readiness during a held startup pass retries the earlier failed row before settling', {timeout:5000}, async t => {
+test('readiness during a held startup pass retries the earlier failed row before settling', {timeout:8 * testWaitMs() + 5000}, async t => {
   const root = await tempProject(t), core = new HubCore(), table = new ProcessTable();
   const release = Promise.withResolvers<void>();
   let inHeld = false;
@@ -94,7 +95,7 @@ test('readiness during a held startup pass retries the earlier failed row before
   sessions.register(adapter);
   t.after(async()=>{release.resolve();await sessions.close();table.close();core.close();core.store.close();});
   const startup = sessions.resumeHost('remote');
-  await eventually('later startup row held',()=>inHeld||undefined,1000);
+  await eventually('later startup row held',()=>inHeld||undefined,testWaitMs());
   assert.deepEqual(attempts,['early','held']);
   assert.equal(recovered.has('early'),false);
   let settled = false;
@@ -103,7 +104,7 @@ test('readiness during a held startup pass retries the earlier failed row before
   const ready = sessions.resumeHost('remote');
   assert.equal(ready,startup,'the ready edge stays inside the same drain owner');
   release.resolve();
-  await eventually('ready-driven recovery completion',()=>settled||undefined,1000);
+  await eventually('ready-driven recovery completion',()=>settled||undefined,/* behaviour: post-signal receipt deadline */ 1000);
   await ready;
   assert.deepEqual(attempts,['early','held','early','held']);
   assert.deepEqual([...recovered].sort(),['early','held']);

@@ -1,5 +1,6 @@
 // T3: hub/carrier restart with native fake harnesses on two authenticated fake SSH hosts.
 // Lifecycle: detached workers, production spokes and Unix forwards survive the hub; all owners join before removal.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -21,7 +22,7 @@ import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-test('three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss', {timeout:120000}, async t => {
+test('three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss', {timeout:8 * testWaitMs() + 120000}, async t => {
   const f = await sshHostFixture(t, {startTransport:false});
   await f.host.close();
   const second = await createFakeHost(f.root, 'f2');
@@ -80,7 +81,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   await eventually('both carriers ready', async () => {
     const status = (await ui.request({type:'hub.status'})).value as {hosts:Array<{state:string}>};
     return status.hosts.length === 2 && status.hosts.every(host=>host.state==='up') || undefined;
-  },10000);
+  },testWaitMs());
   const expected = new Map<string,string>();
   for (const spec of specs) {
     const launch = await ui.request({type:'session.launch',role:'implementer',...spec},20000);
@@ -88,11 +89,11 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
     expected.set(spec.name,(launch.value as {process:{sessionId:string}}).process.sessionId);
   }
   const rows = async () => ((await ui.request({type:'session.list'})).value as {processes:HarnessProcessView[]}).processes;
-  const welcome = () => eventually('all exact spokes welcomed',async()=>{
+  const welcome = (budgetMs:number) => eventually('all exact spokes welcomed',async()=>{
     const status = (await ui.request({type:'hub.status'})).value as {sessions:Array<{name:string;sessionId:string}>};
     return specs.every(spec=>status.sessions.some(p=>p.name===spec.name&&p.sessionId===expected.get(spec.name)))||undefined;
-  },15000);
-  await welcome().catch(async error=>{
+  },budgetMs);
+  await welcome(testWaitMs()).catch(async error=>{
     t.diagnostic(JSON.stringify(((await ui.request({type:'hub.status'})).value as {sessions:unknown}).sessions));
     t.diagnostic((await readFile(join(f.root,'.cland/log/hub.log'),'utf8')).split('\n').filter(line=>/refus|hello|connect|spoke|auth|failed/.test(line)).slice(-35).join('\n'));
     for(const server of await codex.servers()) t.diagnostic((await codex.log(server.pid)).slice(-4000));
@@ -105,7 +106,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   for (const row of before) assert.ok(row.pidIdentity);
   const deliver = async (tag:string) => {
     for (const spec of specs) {
-      const receipt = eventually('persisted spoke response '+spec.name+' '+tag,()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong: '+tag+'-'+spec.name)),15000);
+      const receipt = eventually('persisted spoke response '+spec.name+' '+tag,()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong: '+tag+'-'+spec.name)),/* behaviour: post-signal receipt deadline */ 15000);
       void receipt.catch(()=>{});
       const sent = await ui.request({type:'topic.send',topic:'general',to:[spec.name],text:tag+'-'+spec.name});
       assert.equal(sent.ok,true,sent.error);
@@ -121,7 +122,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   assert.deepEqual(stops,[],'hub shutdown sends no native stop');
   await delay(20000); // lint-allow-wall-clock: acceptance explicitly requires a real 20s stopped hub interval.
   hub = await start(); ui = await connectUi(t,hub.discovery); await ui.request({type:'subscribe'});
-  await welcome(); await deliver('restart');
+  await welcome(/* behaviour: post-restart welcome deadline */ 15000); await deliver('restart');
   for (const old of before) {
     const row = persisted.all().find(p=>p.sessionId===old.sessionId)!;
     assert.equal(row.status,'running');assert.equal(row.pid,old.pid);assert.equal(row.pidIdentity,old.pidIdentity);
@@ -129,12 +130,12 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   const master = JSON.parse(await readFile(join(second.directory,'master-control'),'utf8')) as {token:string};
   const replacement = eventually('replacement master durable receipt',async()=>{
     try { return (JSON.parse(await readFile(join(second.directory,'master-control'),'utf8')) as {token:string}).token !== master.token || undefined; } catch { return undefined; }
-  },15000);
+  },/* behaviour: post-signal receipt deadline */ 15000);
   void replacement.catch(()=>{});
   await hostControl('kill-master','f2',env);
   assert.ok((await rows()).every(p=>p.status==='running'));
   await replacement;
-  await welcome(); await deliver('tunnel');
+  await welcome(/* behaviour: post-restart welcome deadline */ 15000); await deliver('tunnel');
   assert.deepEqual(stops,[]);
   assert.equal(localCalls.some(operation=>operation!=='limitPolls'),false,JSON.stringify(localCalls));
   for (const old of before) {

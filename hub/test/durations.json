@@ -10467,23 +10467,23 @@
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
       "seconds": 47,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1685 corrected-source 3134bbdbb loaded assertion receipts: macOS arm64 Node24.21.0 20/20, worst 30.808951083 s, five continuous Math.sqrt(Math.random()) CPU burners on ten available CPUs; Linux arm64 Node24.21.0 container cland-t1613-diagnostic:local 20/20, worst 11.992901798 s, two identical burners on four CPUs. 47 s is ceil(1.5 times the worst sample across both sets), authorized by Coordinator. Includes setup, all native/resource/receipt assertions and joined teardown; excludes no test phase and is not revoke-only latency. Settlement cap now derives as 2*LAUNCH_SETTLEMENT_MS+2000=12 s; UI/CLI frame cap+3000=15 s. Whole-test timeout is named45 s setup/teardown budget plus frame=60 s, above this sampled allowance. Targeted repetitions assert behavior but do not execute the duration gate; integrated duration enforcement remains separate. Owner C-216 and expiry2026-11-11 retained."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [19.064036625, 17.953778958, 19.349470625, 16.844249, 17.270695083], \"linux\": [13.018840797, 13.064731297, 13.177109172, 12.808953548, 13.999319798]}. ceil(1.5 x worst 19.349470625000002) = 30s; selected cap 47s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 47s allowance rather than discarding earlier loaded evidence: T-1685 corrected-source 3134bbdbb loaded assertion receipts: macOS arm64 Node24.21.0 20/20, worst 30.808951083 s, five continuous Math.sqrt(Math.random()) CPU burners on ten available CPUs; Linux arm64 Node24.21.0 container cland-t1613-diagnostic:local 20/20, worst 11.992901798 s, two identical burners on four CPUs. 47 s is ceil(1.5 times the worst sample across both sets), authorized by Coordinator. Includes setup, all native/resource/receipt assertions and joined teardown; excludes no test phase and is not revoke-only latency. Settlement cap now derives as 2*LAUNCH_SETTLEMENT_MS+2000=12 s; UI/CLI frame cap+3000=15 s. Whole-test timeout is named45 s setup/teardown budget plus frame=60 s, above this sampled allowance. Targeted repetitions assert behavior but do not execute the duration gate; integrated duration enforcement remains separate. Owner C-216 and expiry2026-11-11 retained."
     },
     "hub/test/host-flush-native.test.ts::interrupted ready publication is abandoned under its Git lock and fresh admission runs at a new path": {
-      "seconds": 7.558,
+      "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1610 approved abandonment control: local macOS Node24.21.0 assertion-passing four-case sample at 107b3bb65 was 5.038113 s, with T0 checks concurrently active. 7.558 s rounds 1.5x the worst observed sample upward. Includes initial-publication/native Git failures, post-Git checkpoint fault, ambiguous admin ownership, 250 ms lock censuses, restart, fresh admission, worker completion and abandoned cleanup; not isolated publication latency. No Linux/configured verification evidence claimed. C-216 owns fixture cost reduction; assertions and bounds retained."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.982150708, 8.379906, 6.611360292, 7.465395583, 8.182207708], \"linux\": [3.251880751, 3.200014293, 3.226858585, 3.228047502, 3.226652959]}. ceil(1.5 x worst 8.379906) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/host-flush-native.test.ts::queued host verification retains pinned territory snapshot through restart and removes it after completion": {
-      "seconds": 6.367,
+      "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1610 stage allowance: local macOS Node24.21.0 assertion-passing four-case sample at 107b3bb65 was 4.244567042 s, with T0 checks concurrently active. 6.367 s rounds 1.5x the worst observed sample upward. Includes native source preparation, replacement/reuse refusal, scheduler/store restarts, worker completion, cleanup and transient startup lock recovery; not isolated publication latency. C-216 owns fixture cost reduction; assertions and bounds retained."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.480811708, 8.470758541, 8.637405708, 9.101698708, 7.732453166], \"linux\": [3.898638793, 2.910935502, 2.922990834, 2.806489084, 2.896250793]}. ceil(1.5 x worst 9.101698708) = 14s; selected cap 14s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/host-push-on-ref-move.test.ts::killed producer without result stays named and fenced until a later successful leased head": {
       "seconds": 11.33,
@@ -10564,46 +10564,46 @@
       "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 7.878188536 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": {
-      "seconds": 12,
+      "seconds": 17,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 4.280448 s; A-16521 4.914584 s; A-16524 7.478454 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 12 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.917467292, 11.126614209, 8.91643525, 9.568531833, 9.458043416], \"linux\": [5.469918002, 5.708368253, 6.07546117, 6.949763545, 6.096059337]}. ceil(1.5 x worst 11.126614209) = 17s; selected cap 17s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::Claude TERM-resistant SessionEnd hook is captured and killed by native birth": {
-      "seconds": 19,
+      "seconds": 21,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 12.499550391 s; prior macOS arm64 Node24.21 sample 8.235731416 s. The 19 s C-216 allowance rounds 1.5x worst (18.7493255865 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [12.761301917, 13.632230292, 12.515552875, 13.924341167, 12.585003709], \"linux\": [9.484794546, 9.570613213, 10.018983129, 9.815631963, 10.049960421]}. ceil(1.5 x worst 13.924341167) = 21s; selected cap 21s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::Claude hook born across root exit remains unacquired": {
-      "seconds": 7,
+      "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.250969 s; A-16521 2.482411 s; A-16524 4.095877 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.948872792, 7.244491542, 6.081420292, 5.460603458, 5.38398125], \"linux\": [2.775733751, 3.078145377, 3.26990721, 3.18469971, 3.271262501]}. ceil(1.5 x worst 7.244491542) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude failed adoption handshake joins rollback and removes its credential copies only": {
-      "seconds": 8,
+      "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.496135 s; A-16521 2.669410 s; A-16524 4.785955 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 8 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.75258375, 6.4789595, 5.938754166, 5.82327775, 6.047901292], \"linux\": [3.491313085, 3.383969502, 3.373546085, 4.01651546, 3.629318627]}. ceil(1.5 x worst 6.752583749999999) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::agent restart does not inherit Claude dynamic child acquisition from its serialized marker": {
-      "seconds": 8,
+      "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.704309 s; A-16521 3.051725 s; A-16524 4.695709 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 8 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.061266792, 7.967315958, 7.096876875, 5.947450958, 6.749742333], \"linux\": [3.806959085, 3.507194293, 4.197969586, 4.018037544, 4.029436502]}. ceil(1.5 x worst 7.967315958) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::hub restart after tree closure re-adopts its durable generation and releases the job": {
-      "seconds": 9,
+      "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.186895 s; A-16521 3.452053 s; A-16524 5.942786 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.821984833, 8.699921041, 6.914870208, 7.572587042, 7.876128417], \"linux\": [4.344591752, 4.270892668, 4.846898085, 4.846271211, 5.016274794]}. ceil(1.5 x worst 8.699921041) = 14s; selected cap 14s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::lost native release reply settles without replaying native stop": {
       "seconds": 9,
@@ -10617,78 +10617,78 @@
       "owner": "C-216",
       "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [9.845850667, 8.567148708, 8.564230833, 9.227979125, 7.607671167, 7.441424792, 6.896027541, 5.685377875, 7.052913875, 6.557208542]; linux [2.355151043, 2.691851085, 2.501584084, 2.499911793, 2.432526418, 2.578907835, 2.508198460, 2.559167626, 2.769961668, 2.607719127]. ceil(1.5 x worst 9.845850667) = 15s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.410529458, 7.9061295, 7.205081042, 7.518683541, 7.78432425], \"linux\": [4.242456377, 4.255605877, 4.926285127, 4.828977919, 5.605873627]}. ceil(1.5 x worst 8.410529458000001) = 13s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 15s allowance rather than discarding earlier loaded evidence: T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [9.845850667, 8.567148708, 8.564230833, 9.227979125, 7.607671167, 7.441424792, 6.896027541, 5.685377875, 7.052913875, 6.557208542]; linux [2.355151043, 2.691851085, 2.501584084, 2.499911793, 2.432526418, 2.578907835, 2.508198460, 2.559167626, 2.769961668, 2.607719127]. ceil(1.5 x worst 9.845850667) = 15s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged."
     },
     "hub/test/claude-code-remote.test.ts::lost native forget-restart reply settles without replaying native stop": {
-      "seconds": 8,
+      "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.560124 s; A-16521 3.858513 s; A-16524 5.162289 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 8 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.650266375, 7.874511834, 6.748655, 7.352733958, 6.550829167], \"linux\": [4.048120002, 4.45622571, 4.683487502, 4.840654711, 5.004616461]}. ceil(1.5 x worst 7.874511834) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::terminal remote PID settlement cleans before publishing exit without recurring CLI": {
-      "seconds": 7,
+      "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.332897 s; A-16521 3.643262 s; A-16524 4.415314 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.727888042, 7.960520417, 6.358788583, 6.973522083, 7.23786325], \"linux\": [4.084361793, 4.420079085, 4.782088544, 4.868789127, 5.572783753]}. ceil(1.5 x worst 7.960520417) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::terminal remote PID settlement holds the row on native failure without recurring CLI": {
-      "seconds": 11,
+      "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.472126 s; A-16521 4.002847 s; A-16524 6.708110 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 11 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.497881875, 7.830872209, 7.373562542, 7.393678584, 7.139353], \"linux\": [4.651745252, 5.007628877, 5.08629621, 5.682348752, 6.41427342]}. ceil(1.5 x worst 9.497881875) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::adopted Claude settles one descendant born between stop capture and commit before any signal": {
-      "seconds": 9,
+      "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.144803 s; A-16521 3.388156 s; A-16524 5.571318 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.519831458, 8.067768167, 7.673063708, 7.636337375, 7.849895583], \"linux\": [3.989249043, 3.92430146, 4.485262877, 4.629050211, 4.850867003]}. ceil(1.5 x worst 8.519831458) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::an unowned reparented child stays unacquired across explicit stops": {
-      "seconds": 10,
+      "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 4.371144 s; A-16521 4.870771 s; A-16524 6.323685 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 10 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.927927208, 7.442974291, 6.7749075, 7.134949417, 7.458402], \"linux\": [3.150387001, 3.923989544, 4.548833252, 3.748081918, 4.055662293]}. ceil(1.5 x worst 7.927927208) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::pinned native hook exit between prepare and commit settles without a manual re-stop": {
-      "seconds": 9,
+      "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.183794 s; A-16521 3.453145 s; A-16524 5.511141 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.549927834, 7.473182875, 7.252156083, 6.940430125, 7.386054334], \"linux\": [3.725189627, 3.940614043, 4.405132877, 4.317219919, 4.572205211]}. ceil(1.5 x worst 8.549927834) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart adoption": {
-      "seconds": 7,
+      "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.598499 s; A-16521 3.004179 s; A-16524 4.109649 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.517638833, 6.44946175, 5.972616083, 6.572052667, 5.840865292], \"linux\": [3.148745585, 3.378509002, 3.482993835, 3.691875793, 3.673636627]}. ceil(1.5 x worst 7.517638833) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart result": {
-      "seconds": 7,
+      "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.756138 s; A-16521 2.887391 s; A-16524 4.187371 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.571520834, 6.114683167, 5.931793958, 5.895702291, 5.943416666], \"linux\": [3.142522044, 3.458747919, 3.490043418, 3.486639792, 3.646446627]}. ceil(1.5 x worst 7.571520834) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart prune-failure": {
-      "seconds": 7,
+      "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 2.612240 s; A-16521 3.018265 s; A-16524 4.273872 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 7 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.118234, 5.926307792, 5.230174625, 6.069230541, 6.532115333], \"linux\": [3.055250501, 3.246269627, 3.557142959, 3.535766293, 3.620285669]}. ceil(1.5 x worst 7.118234) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts": {
-      "seconds": 225,
       "file": true,
+      "seconds": 316,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator 35a0544e authorizes the aggregate file refresh after batch09d9af98/A-16714: Linux x64 c-8sfo2 Node24.21 file sample 148.1 s under peak load 9.39, with initial-turn setup failures before stop in positive repetition3. The 225 s file allowance rounds 1.5x (222.15 s) upward with headroom. This is file-duration evidence from a failed batch, not a passing file or stop-latency claim. Prior T-1607 C-216 allowance was 90 s; owner, added date, expiry 2026-11-11 and global report mode stay unchanged. Assertions, production stop timing, acquisition and cleanup are unchanged; the separate initial setup adaptation uses the shared native fixture bound."
+      "reason": "T-1692: aggregate durations of the passing full-file runs on macOS arm64 local and Linux arm64 docker run --init (five samples per platform except remote Claude: five macOS/four Linux; fifth Linux file25/26 exit1 excluded from aggregate cost, T-1697) (Node24.21.0), aggregate top-level test seconds (excludes module/runner startup and machine wait). Samples [116.22580951100001, 198.318047836, 210.187162044, 185.80482820699999, 183.469833166, 118.016034636, 103.677846549, 182.957468122, 108.820578258]; ceil(1.5 x worst)=316s; selected cap 316s. Complete per-case/platform samples and load/burner receipts in item evidence. Assertion and behaviour deadlines unchanged; global report mode."
     },
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
       "seconds": 30,
@@ -13233,46 +13233,74 @@
       "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 7.378123208 s; A-15983 5.407016151 s; A-15991 3.775349667 s; A-15995 3.572024167 s. Cap 11.068 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude root-first stop mid-turn": {
-      "seconds": 14,
-      "owner": "C-216",
-      "added": "2026-11-04",
-      "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 9.141946981 s; prior macOS arm64 Node24.21 sample 5.616728167 s. The 14 s C-216 allowance rounds 1.5x worst (13.7129204715 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
-    },
-    "hub/test/claude-code-remote.test.ts::remote Claude root-first stop completed turn": {
-      "seconds": 14,
-      "owner": "C-216",
-      "added": "2026-11-04",
-      "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 9.262970845 s; prior macOS arm64 Node24.21 sample 5.705533333 s. The 14 s C-216 allowance rounds 1.5x worst (13.8944562675 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
-    },
-    "hub/test/claude-code-remote.test.ts::remote Claude exit-time orphan stays held after independent cleanup": {
-      "seconds": 10,
-      "owner": "C-216",
-      "added": "2026-11-04",
-      "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 6.616230213 s; prior macOS arm64 Node24.21 sample 3.363429083 s. The 10 s C-216 allowance rounds 1.5x worst (9.9243453195 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
-    },
-    "hub/test/claude-code-remote.test.ts::remote Claude retained hook retries after the pinned root exited": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 9.759662688 s; prior macOS arm64 Node24.21 sample 5.721210417 s. The 15 s C-216 allowance rounds 1.5x worst (14.6394940320 s) upward to whole seconds. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.494941417, 8.502555042, 8.570381625, 8.530657916, 7.385317833], \"linux\": [4.604342086, 5.134040211, 5.178761211, 5.323797627, 4.945413585]}. ceil(1.5 x worst 9.494941417) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude root-first stop completed turn": {
+      "seconds": 16,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [10.42245325, 8.1618625, 8.4859785, 8.060956959, 8.908220542], \"linux\": [5.093761378, 6.042812794, 5.731640795, 6.533095295, 6.742110128]}. ceil(1.5 x worst 10.42245325) = 16s; selected cap 16s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude exit-time orphan stays held after independent cleanup": {
+      "seconds": 13,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.3443505, 7.383477042, 6.864043333, 7.039653583, 6.737579666], \"linux\": [3.448170168, 3.666084376, 4.473520335, 3.75935746, 4.412839544]}. ceil(1.5 x worst 8.344350500000001) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude retained hook retries after the pinned root exited": {
+      "seconds": 21,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [13.796403625, 10.763476291, 11.086557834, 10.8217535, 10.807522292], \"linux\": [7.008749879, 7.455149711, 7.43615367, 7.206763794, 7.56113042]}. ceil(1.5 x worst 13.796403625) = 21s; selected cap 21s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude orphan detached-child escape retains unknown authority": {
-      "seconds": 11,
+      "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-04",
+      "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1678 Coordinator a977afe9 batch-sample audit: batch09d9af98/A-16714 Linux x64 Node24.21 worst passing base/load-gate case 6.876509874 s; prior macOS arm64 Node24.21 sample 2.452095791 s. The 11 s C-216 allowance rounds 1.5x worst (10.3147648110 s) upward to whole seconds. Detached-child base sample5.493756007 s is lower than its6.876509874 s load-gate maximum. Both root-first repetition3 failures were initial-turn SETUP waits before stop, not stop assertions; initial setup now uses shared fixture default, while all stop deadlines/native-birth/held-row/KILL assertions remain unchanged. Whole-case timings include setup/joined cleanup, not stop latency. Owner C-216/expiry2026-11-11/global report mode unchanged."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.796764417, 7.235946125, 7.3459505, 7.530521666, 7.4565215], \"linux\": [3.452832252, 3.656089044, 3.797521169, 3.764538002, 4.027328627]}. ceil(1.5 x worst 9.796764417) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     },
     "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": {
       "seconds": 28,
       "owner": "C-216",
       "added": "2026-11-05",
       "expires": "2026-11-11",
-      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [15.472687375, 13.014935459, 12.311403125, 12.017495042, 13.095473875, 10.466531750, 10.227864250, 11.118518584, 10.307232209, 10.632389167]; linux [4.241958877, 3.781416001, 3.719014793, 4.248407418, 3.744861377, 3.730874252, 4.231971085, 4.253560085, 4.272213126, 3.738657710]. ceil(1.5 x worst 15.472687375) = 24s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged. T-1691 macOS arm64 Node24.21.0 loaded native source28e56df4b:14 yes burners/10 CPUs, per-sample1m load13.109–23.25,10/10. Samples seconds:[18.307176458, 16.866371041999997, 14.202471292, 14.188273583, 12.8084635, 12.92182075, 12.163144417, 12.193577958, 11.509867166, 11.808925665999999]. ceil(1.5 x18.307176458)=28s; timeout60s. Includes setup/assertions/joined cleanup, no browser/duration gate. Diagnostic-only redaction/isolation review fixes follow this measurement; no native assertions changed."
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.970669458, 8.836857, 8.654842167, 9.229461, 9.828129333], \"linux\": [6.023346294, 6.024789211, 6.409343586, 5.993048002, 6.573092669]}. ceil(1.5 x worst 9.828129333000001) = 15s; selected cap 28s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 28s allowance rather than discarding earlier loaded evidence: T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [15.472687375, 13.014935459, 12.311403125, 12.017495042, 13.095473875, 10.466531750, 10.227864250, 11.118518584, 10.307232209, 10.632389167]; linux [4.241958877, 3.781416001, 3.719014793, 4.248407418, 3.744861377, 3.730874252, 4.231971085, 4.253560085, 4.272213126, 3.738657710]. ceil(1.5 x worst 15.472687375) = 24s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged. T-1691 macOS arm64 Node24.21.0 loaded native source28e56df4b:14 yes burners/10 CPUs, per-sample1m load13.109–23.25,10/10. Samples seconds:[18.307176458, 16.866371041999997, 14.202471292, 14.188273583, 12.8084635, 12.92182075, 12.163144417, 12.193577958, 11.509867166, 11.808925665999999]. ceil(1.5 x18.307176458)=28s; timeout60s. Includes setup/assertions/joined cleanup, no browser/duration gate. Diagnostic-only redaction/isolation review fixes follow this measurement; no native assertions changed."
+    },
+    "hub/test/claude-code-remote.test.ts::late SessionEnd after the recovery snapshot never grants an adopted closed receipt": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.972716875, 6.681786667, 6.986759458, 6.347233584, 6.381543042], \"linux\": [3.250228544, 3.070365876, 3.537701377, 3.329732959, 3.832918877]}. ceil(1.5 x worst 6.986759458000001) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart missing-receipt": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.29060175, 4.895654375, 4.6929945, 4.763615792, 4.583779875], \"linux\": [2.556222959, 2.615066918, 2.602715835, 2.898807835, 2.681976043]}. ceil(1.5 x worst 5.2906017499999995) = 8s; selected cap 8s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/claude-code-remote.test.ts::failed Claude launch restart missing-state": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.120986625, 4.89748225, 4.702249416, 5.134325792, 4.467344666], \"linux\": [2.553771668, 2.461230043, 2.624514001, 2.855262377, 2.857924835]}. ceil(1.5 x worst 6.120986625) = 10s; selected cap 10s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
+    },
+    "hub/test/host-flush-native.test.ts::host session verify flushes its owner before admission and never opens the host cwd locally": {
+      "seconds": 6,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [3.097643125, 3.844505, 3.298704791, 3.085290542, 2.8661705], \"linux\": [0.514593709, 0.507910375, 0.545639, 0.533545125, 0.529485959]}. ceil(1.5 x worst 3.8445050000000003) = 6s; selected cap 6s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved."
     }
   }
 }

@@ -1,4 +1,5 @@
 // T2: real session.attach frames with an in-process fake adapter and recording Host.
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import { once } from 'node:events';
 import { createConnection } from 'node:net';
@@ -42,7 +43,7 @@ for (const reason of ['host is revoked','ENOENT: client-key-path missing']) test
   const processes=(list.value as {processes:Array<{name:string;attach:string|null}>}).processes;
   assert.equal(processes.find(p=>p.name==='worker')?.attach,null);assert.ok(processes.find(p=>p.name==='other')?.attach);
   const refused=await ui.request({type:'session.attach',session:'worker'});assert.equal(refused.ok,false);assert.ok(String(refused.error).includes(reason));
-  const socket=createConnection(hub.discovery.socket);onCleanup(t,()=>socket.destroy());await once(socket,'connect',{signal:AbortSignal.timeout(2000)});socket.setEncoding('utf8');
+  const socket=createConnection(hub.discovery.socket);onCleanup(t,()=>socket.destroy());await once(socket,'connect',{signal:AbortSignal.timeout(testWaitMs())});socket.setEncoding('utf8');
   const snapshot=frameClient(line=>socket.write(line),fn=>socket.on('data',fn),()=>socket.destroy());
   const sessions=snapshot.waitFor(frame=>frame.type==='snapshot'&&frame.domain==='sessions');
   snapshot.send({type:'hello',protocol:2,secret:hub.discovery.secret,client:'ui',features:['snapshot']});

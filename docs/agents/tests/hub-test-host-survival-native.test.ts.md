@@ -19,3 +19,9 @@ T-1678 owns that shared refusal, with failed captures retained in A-16593. This
 scenario keeps its survival assertions and uses the fixture's existing native
 writer census/join before removal; the native preservation files keep their
 explicit stop assertions.
+
+T-1692 sets the outer guard to `8 * testWaitMs() + 120000` (240 s with
+the default15 s setup budget; `CLAND_TEST_WAIT_MS` overrides that budget).
+Initial carrier/welcome setup uses the shared budget. Both post-restart welcome
+calls retain an explicit15000 ms behaviour deadline, as do response receipts.
+The required real20 s downtime remains unchanged.

@@ -118,8 +118,9 @@ TERM-resistant SessionEnd control uses exported production CLAUDE_STOP_GRACE_MS
 (3000 ms), replacing its test-only 300 ms grace/900 ms total. Its purpose stays
 native-birth capture and KILL; every assertion remains unchanged. Coordinator
 2a68c8dd also permits a 15 s outer Node envelope for native setup plus the 9 s
-helper deadline. The asynchronous companion keeps its 300 ms grace. T-1690 raises the outer
-Node envelopes to 120 s to accommodate the shared native setup budget. The 20 full-file load repetitions retained the stricter 10 s outer
+helper deadline. The asynchronous companion keeps its 300 ms grace. The outer
+Node envelopes use `8 * testWaitMs() + 120000` (240 s with the default
+15 s setup budget; `CLAND_TEST_WAIT_MS` overrides that budget). The 20 full-file load repetitions retained the stricter 10 s outer
 envelope, as authorized evidence for the final 15 s envelope.
 
 A-16684's x64 deadline failure was not reproduced by two five-run ARM load
@@ -140,7 +141,7 @@ C-216 case allowances use the worst passing base or load-gate batch sample,
 including the detached-child control; counts and durations remain distinct from
 failed setup attempts. Five full-file Linux load runs validate this test-only
 change before delta review and authorized exception enqueue.
-The aggregate file allowance is 225 s, authorized by Coordinator 35a0544e from
+The previous aggregate file allowance was 225 s, authorized by Coordinator 35a0544e from
 the failed batch's 148.1 s file sample (1.5 times is 222.15 s). That duration
 is evidence of file cost, not a passing stop result.
 
@@ -151,5 +152,14 @@ deadline. The fault injection, stop deadlines and cleanup assertions are unchang
 
 T-1690 applies that shared setup budget to the remaining carrier readiness,
 worker startup, initial turn, initial live-tree capture and startup-producer
-receipts, plus both startup-hook native birth/exit joins. Outer Node envelopes are 120 s. Stop, settlement, post-signal and
+receipts, plus both startup-hook native birth/exit joins. Outer Node envelopes use `8 * testWaitMs() + 120000` (240 s by default). Stop, settlement, post-signal and
 fresh-turn behaviour deadlines and all assertions remain unchanged.
+
+T-1692 measured 316 s as the current aggregate file allowance: ceil(1.5 times
+its worst passing full-file sum of top-level case durations), owned by C-216
+through 2026-11-11. The selected cap retains any higher existing allowance.
+Five macOS full-file runs passed; Linux had four full passes and a fifth25/26,
+exit1, with only the lost-native-release case excluded by Coordinator decision
+under T-1697 (A-16915). All other25 cases passed all five Linux repetitions.
+Per-case allowances use the completed eligible samples on both platforms; they
+remain report-only and do not alter setup or behaviour deadlines.

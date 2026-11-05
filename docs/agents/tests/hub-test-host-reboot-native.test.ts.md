@@ -32,7 +32,7 @@ no run root is removed while that writer remains. T-1686 established a 24-second
 T-1686's ten passing loaded samples on each platform: worst macOS arm64
 15.472687375 seconds, with five yes burners on ten CPUs; Linux arm64 container
 uses two burners on four CPUs. That allowance was ceil(1.5 times the worst sample),
-with all samples recorded in durations.json. The test timeout remains 60 seconds.
+with all samples recorded in durations.json. The test timeout is `8 * testWaitMs() + 60000` (180 s by default).
 Times include native setup, assertions and joined cleanup; no browser is used.
 
 The original fixture final empty-writer assertion is unchanged. A two-second
@@ -54,6 +54,11 @@ children after SIGKILL; actual machine reboot would terminate them too.
 T-1691 measured ten macOS arm64 Node24.21.0 passing native cases at source
 `28e56df4b`, fourteen yes burners on ten CPUs and per-sample one-minute load
 13.109–23.25. Worst case 18.307176458 seconds gives ceil(1.5 × worst) = 28s,
-owned by C-216, expiring 2026-11-11; timeout remains 60s. No transient writer
+owned by C-216, expiring 2026-11-11; the whole-test guard is now `8 * testWaitMs() + 60000` (180 s by default). No transient writer
 was observed in these ten samples. Later review fixes only isolate diagnostic
 ps and redact before bounding CLI stderr; native assertions/census are unchanged.
+
+T-1692 uses the shared setup budget for initial agent/worker readiness.
+The separate reboot CLI harness guard is `testWaitMs(20000)` (20 s fallback);
+`CLAND_TEST_WAIT_MS` overrides it and the whole-test setup budget. Reboot row
+retirement, replacement-agent deadlines and final cleanup bounds stay unchanged.
