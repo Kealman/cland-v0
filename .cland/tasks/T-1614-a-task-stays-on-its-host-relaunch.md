@@ -3,7 +3,7 @@ id: T-1614
 kind: task
 title: A task stays on its host; relaunch elsewhere from the pushed branch
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-02T03:33:58.847Z
+updated: 2026-11-05T18:55:54.301Z
 ---
 
 ## Summary

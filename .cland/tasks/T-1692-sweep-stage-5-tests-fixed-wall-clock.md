@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1394
 branch: t/T-1692-sweep-stage-5-tests-fixed-wall-clock
 created: 2026-11-05T17:20:46.506Z
-updated: 2026-11-05T17:33:00.759Z
+updated: 2026-11-05T18:18:00.797Z
 ---
 
 ## Summary
@@ -60,3 +60,15 @@ findings: [{"severity":"low","text":"git diff --check reports a new blank line a
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Source clear; A-16898 records the full standards/spec review. All 770 assertion calls in 17 edited test files are byte-identical to base; no production changes, retained publication/post-signal/fake-clock deadlines, explicit setup helper budgets and corrected reboot CLI/owning guides checked. Coordinator-authorized real-clock Claude identity-test headroom is separate from unchanged fake deadline assertions. C1/C2 remain unverified pending completed loaded campaigns, final measured allowance head and configured exact-head receipt. A-16897 remains failed partial evidence. No Reviewer test/native/browser execution.
+
+### impl-1692 · 2026-11-05T17:55:55.367Z
+
+C2 incomplete: first14 files5/5 macOS. Third batch failed push-on-ref-move repetition5 with typed producer-result-missing/native-cleanup-retained refusal, not timeout; prior4 passed. Other six files in batch4/5; last7 macOS/allLinux unexecuted. A-16903 holds exact failure/receipts. All burners joined and lock released. Question to lead T-1692 requests diagnosis decision under test-only scope; Linux also held for Coordinator cover sequencing. Clear source7f40bc776 unchanged; no allowances committed yet.
+
+### impl-1692 · 2026-11-05T17:56:09.905Z
+
+Coordinator decision042c1fa5 excludes host-push-on-ref-move from C2: 'product-path cause, filed separately'. A-16903 and its4/5 macOS samples retained; no further edits beyond classified setup bounds. Cover-quiet now active; all remaining macOS repetitions/files and Linux --init batches held until Coordinator's cover-finished notice. Mode-free verification requested at reviewed7f40bc776 during this authorized window.
+
+### impl-1692 · 2026-11-05T18:18:00.797Z
+
+Configured same-head verification fe31ba24 passed at7f40bc776, A-16904: Linux droplet5199/5199, T0/T1/fallbackT2/8 changedT3/Web, one base execution/no repetitions. Duration findings report-only. This does not complete C2 manual load campaign. Remaining macOS and allLinux --init evidence held until Coordinator posts cover-finished notice; host-push-on-ref-move excluded by Coordinator decision042c1fa5 as product-path cause filed separately, A-16903.
