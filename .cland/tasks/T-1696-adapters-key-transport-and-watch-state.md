@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1396
 branch: t/T-1696-adapters-key-transport-and-watch-state
 created: 2026-11-05T19:05:29.327Z
-updated: 2026-11-05T19:23:22.491Z
+updated: 2026-11-05T19:50:28.033Z
 ---
 
 ## Summary
@@ -36,9 +36,9 @@ Add a generation handoff to the adapter contract, used by T-1614:
 ## Acceptance criteria
 
 - [ ] C1. For each of OpenCode, Codex and Claude, a new generation with the same sessionId and the same host-local URL never reuses the old generation's connection, forward or watch (test).
-  - failed: rev-35 [reviewer] · 2026-11-05T19:23:22.491Z · note Generation lookup omits native birth identity and can reuse a different generation's scope.
+  - failed: rev-35 [reviewer] · 2026-11-05T19:50:28.033Z · note A found resume that actually starts a fresh native worker remains aliased into the old generation scope.
 - [ ] C2. Releasing an unreachable generation sends no signal and makes no Host call to its host, drops its transport, forward, watch and in-flight state, and cannot affect a running new generation with the same id (test, with a held old cleanup racing the new launch).
-  - failed: rev-35 [reviewer] · 2026-11-05T19:23:22.491Z · note Old-row lookup can replace current routing; detach does not fence metadata/settlement authority or join every admitted stop/recovery writer.
+  - failed: rev-35 [reviewer] · 2026-11-05T19:50:28.033Z · note Old-row release can detach a fresh resumed generation, and released forward entries remain in SSH transport's reconnect inventory.
 - [ ] C3. Same-host resume and the existing stop, settle and revoke behaviour are unchanged: the existing adapter and session tests pass with no test edited.
   - failed: rev-35 [reviewer] · 2026-11-05T19:23:22.491Z · note Whole-adapter partitioning changes shared Claude scheduling and failed-launch admission, bypasses installed public wrappers and masks close diagnostics.
 
@@ -66,3 +66,18 @@ finding_counts: {"high":4,"medium":5,"low":1}
 Initial full source review not clear. A-16913 records separate standards/spec analysis for the eight core findings. Two additional lead-reported issues were independently confirmed before verdict and are included in findings: fresh scopes bypass shared FailedLaunches admission (Codex:981/1460, OpenCode:287/957), and generic close aggregation masks original error detail. Ten findings total: standards two medium; spec four high, three medium, one low. New held T2 teardown must use beforeDirectories; both owning test guides/index are missing at this pinned commit. Working-tree drafts are not reviewed. C1–C3 fail source review and remain unverified; preservation/configured/load evidence is incomplete, no Reviewer execution. Keep existing preservation tests unchanged and request fresh source review after correction.
 
 Criteria: C1 failed (Generation lookup omits native birth identity and can reuse a different generation's scope.), C2 failed (Old-row lookup can replace current routing; detach does not fence metadata/settlement authority or join every admitted stop/recovery writer.), C3 failed (Whole-adapter partitioning changes shared Claude scheduling and failed-launch admission, bypasses installed public wrappers and masks close diagnostics.).
+
+### rev-35 · 2026-11-05T19:50:28.033Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1696-source-2
+commit: 33f931c6fb3988042e7b787922efcf8e931b7e58
+scope: full
+findings: [{"severity":"high","text":"Spec: every found resume aliases the result into the old scope, including the Codex/OpenCode fallback that positively stops the old native worker and starts a fresh birth/startedAt. Old identity aliases then select the scope containing the new live connection/watch; releasing the captured old row fences and detaches the new generation. Distinguish true same-generation observations from fresh native launch and give the latter an independent scope.","file":"hub/src/adapters/generation-adapter.ts","line":165},{"severity":"medium","text":"Spec: detach drops adapter forward references but leaves their actual SshTransport #forwards entries/socket obligations intact. Reconnect replays those entries (transport/ssh.ts:265), so released generations retain transport-owned forwards. Require a positive local transport-inventory release receipt without a lost-host operation, preserve failures, and cover detach/reconnect against the real transport owner for both forwarded adapters.","file":"hub/src/adapters/opencode.ts","line":1017}]
+finding_counts: {"high":1,"medium":1,"low":0}
+
+Corrected full source not clear; A-16918 separates standards/spec review and checks the ten initial repairs. Two remaining ownership gaps: unconditional found-resume aliasing across a fresh native launch, and missing local SSH transport forward-inventory release. Both confirmed by lead; corrections need fresh review before configured verification. C3 remains unverified while preservation/load evidence is incomplete. Existing tests unedited, ordered teardown/docs fixed, no Reviewer execution.
+
+Criteria: C1 failed (A found resume that actually starts a fresh native worker remains aliased into the old generation scope.), C2 failed (Old-row release can detach a fresh resumed generation, and released forward entries remain in SSH transport's reconnect inventory.).
