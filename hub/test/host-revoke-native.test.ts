@@ -24,9 +24,12 @@ import { systemProcesses } from '../src/system-processes.ts';
 import { observeProcesses } from '../src/host/agent/native.ts';
 import { FakeClock } from './fake-clock.ts';
 import { remoteRedactor } from '../src/host/agent/redact.ts';
-import type { HostSettlement } from '../src/host/settle.ts';
+import { HOST_SETTLEMENT_MS, type HostSettlement } from '../src/host/settle.ts';
 
-test('revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host', {timeout:30000}, async t=>{
+const SETUP_BUDGET_MS = 45000;
+const REVOKE_FRAME_MS = HOST_SETTLEMENT_MS + 3000;
+
+test('revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host', {timeout:SETUP_BUDGET_MS + REVOKE_FRAME_MS}, async t=>{
   const f=await sshHostFixture(t,{startTransport:false}), fake=await fakeClaude(t,{awaitSignals:true});
   const code=join(f.fake.home,'code');await symlink(new URL('../../',import.meta.url).pathname,code);
   const remote={...f.layout,node:process.execPath,cli:join(code,'hub/bin/cland.ts'),spoke:join(code,'hub/bin/cland-spoke.ts'),modDir:join(code,'hub/mod/cland')};
@@ -118,7 +121,7 @@ test('revoke settles live Claude Codex OpenCode and an already released Claude g
   for(const row of rows.filter(row=>row.name!=='released')){assert.ok(row.pidIdentity);assert.equal(await machine.alive(row),true);}
   for(const record of records)for(const file of ['mcp.json','settings.json'])assert.equal((await stat(join(record.privateDirectory,file))).isFile(),true);
   for(const row of claudeRows.filter(row=>row.name!=='released'))await completeNativeTurn(row,'settle before revoke');
-  const result=await ui.request({type:'host.revoke',host:'f1'},5000);assert.equal(result.ok,true,result.error);
+  const result=await ui.request({type:'host.revoke',host:'f1'},REVOKE_FRAME_MS);assert.equal(result.ok,true,result.error);
   const outcome=(result.value as {cleanup:HostSettlement}).cleanup;
   assert.deepEqual(outcome,{inventoryComplete:true,timedOut:false,leftovers:[]},JSON.stringify(retirementFailures));
   assert.equal(store.hosts.get('f1')?.state,'revoked');

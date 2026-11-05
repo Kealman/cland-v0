@@ -26,3 +26,9 @@ OpenCode metadata-release failures retain bounded, shared-redacted producer
 messages in the final assertion diagnostic. The fake host's short ancestor
 alias exercises launch-captured canonical private-directory ownership; final
 file-removal assertions remain unchanged.
+
+T-1685 migrates the revoke frame wait to `HOST_SETTLEMENT_MS + 3000`,
+matching the CLI. The whole-test timeout adds a named 45-second setup/teardown
+budget to that frame wait (60 seconds at the 12-second settlement cap). All
+native, private-file, receipt and post-cut assertions remain unchanged. The
+sampled duration allowance is separate and must stay below the whole-test timeout.

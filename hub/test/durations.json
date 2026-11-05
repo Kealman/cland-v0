@@ -10327,11 +10327,11 @@
   },
   "allow": {
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
-      "seconds": 22,
+      "seconds": 47,
       "owner": "C-216",
       "added": "2026-11-04",
       "expires": "2026-11-11",
-      "reason": "T-1666 current five-generation green receipts: Linux x64 6.8.0-142-generic Node24.21.0 c-8 sfo2 run a034eb54 at 7ab3622b4f32782642532740471a5d8ef411ae1d recorded14.341706311 s; local macOS arm64 Node24.21.0 at2ff4dc9f recorded8.903084625 s (file9.285445125 s). 22 s rounds 1.5x the worst green Linux test sample upward for batch load headroom, per Coordinator9ca8df78. Samples9.981388333 s and8.192036375 s are historical exploratory/stale-setup measurements, not current five-launch coverage. Includes live Claude, Codex and OpenCode, normally stopped OpenCode, released Claude with interrupted private deletion, all revoke/resource/native assertions and joined fixture teardown; excludes no phase and is not revoke-only latency. Linux suite used two workers; macOS preservation held its exclusive lock with light T0 concurrently, so neither is an idle-machine latency sample. C-216 owns fixture cost reduction."
+      "reason": "T-1685 corrected-source 3134bbdbb loaded assertion receipts: macOS arm64 Node24.21.0 20/20, worst 30.808951083 s, five continuous Math.sqrt(Math.random()) CPU burners on ten available CPUs; Linux arm64 Node24.21.0 container cland-t1613-diagnostic:local 20/20, worst 11.992901798 s, two identical burners on four CPUs. 47 s is ceil(1.5 times the worst sample across both sets), authorized by Coordinator. Includes setup, all native/resource/receipt assertions and joined teardown; excludes no test phase and is not revoke-only latency. Settlement cap now derives as 2*LAUNCH_SETTLEMENT_MS+2000=12 s; UI/CLI frame cap+3000=15 s. Whole-test timeout is named45 s setup/teardown budget plus frame=60 s, above this sampled allowance. Targeted repetitions assert behavior but do not execute the duration gate; integrated duration enforcement remains separate. Owner C-216 and expiry2026-11-11 retained."
     },
     "hub/test/host-flush-native.test.ts::interrupted ready publication is abandoned under its Git lock and fresh admission runs at a new path": {
       "seconds": 7.558,

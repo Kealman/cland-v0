@@ -1,6 +1,7 @@
 // T2: Sessions ownership with in-memory remote workers and private-file receipts.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { HOST_SETTLEMENT_MS } from '../src/host/settle.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
@@ -76,7 +77,7 @@ test('revoke joins held failed-launch owner and reports it until durable cleanup
   let observed=false;void entered.promise.then(()=>{observed=true;});
   await clock.advance(5000);assert.equal(observed,true,'pre-existing recovery owner entered');
   const run=sessions.settleHostBeforeCut('f1',()=>{cut=true;},{clock});
-  await clock.advance(2000);const report=await run;
+  await clock.advance(HOST_SETTLEMENT_MS);const report=await run;
   assert.equal(cut,true);
   assert.equal(report.leftovers.some(row=>row.generation===process.sessionId),true,'held cleanup stays named');
   assert.equal(table.pendingStops().length,1);
@@ -161,7 +162,7 @@ test('retained generation enumeration yields to the deadline and preserves unexe
   const sessions=new Sessions({root,core,table,hosts:[{...localHost(),name:'f1',listFolder:async()=>[]}]});sessions.register(adapter);
   t.after(async()=>{await sessions.close();table.close();core.close();core.store.close();});
   const run=sessions.settleHostBeforeCut('f1',()=>{}, {clock});
-  await clock.advance(2000);const result=await run;
+  await clock.advance(HOST_SETTLEMENT_MS);const result=await run;
   assert.equal(result.timedOut,true);assert.equal(result.inventoryComplete,false);
   assert.ok(result.leftovers.length>0&&result.leftovers.length<=32,'at most one bounded metadata batch was read before cut');
   assert.equal(settled,0,'unexecuted retirement is never counted as complete');
@@ -330,4 +331,59 @@ for(const storage of ['independent-fence','prior-resource-marker'] as const)test
   assert.equal(table.hostGenerationRebooted(replacement),undefined,'a new native birth never inherits the old fence');
   assert.throws(()=>sessions.hostForSession(replacement.sessionId).run(command),/underlying native call reached/);assert.equal(nativeCalls,1,'positive control reaches the fake native boundary for the new birth');
   assert.throws(()=>recovered.run(command),/old-generation native operations/);assert.equal(nativeCalls,1,'captured old birth stays fenced after row replacement');
+});
+
+for(const delay of [3000,6000])test(`revoke observes OpenCode child-exit receipt at ${delay} ms against its stop bound`,async t=>{
+  const { OpenCodeAdapter }=await import('../src/adapters/opencode.ts');
+  const { OpenCodeClient }=await import('../src/adapters/opencode/client.ts');
+  const { fixtureEnvironment }=await import('./fixture-environment.ts');
+  const { join }=await import('node:path');
+  const { stat }=await import('node:fs/promises');
+  const {realClock}=await import('../src/hub/clock.ts');
+  const {beforeDirectories}=await import('./process-cleanup.ts');
+  const root=await tempProject(t),storage=await tempProject(t);
+  const nativeTimeout=setTimeout,nativeClear=clearTimeout;
+  let watchdogTimer:ReturnType<typeof setTimeout>;
+  const watchdog=new Promise<never>((_resolve,reject)=>{watchdogTimer=nativeTimeout(()=>reject(new Error('OpenCode receipt fixture exceeded its I/O bound')),5000);});
+  void watchdog.catch(()=>{});
+  t.mock.timers.enable({apis:['Date','setTimeout','setInterval'],now:Date.now()});
+  const core=new HubCore();
+  const remote=storage;
+  const path=join(root,'processes.db'),env=fixtureEnvironment(root,process.env);
+  let table=new ProcessTable(path),cut=false,stops=0,nativeAlive=true;
+  const timers=realClock,adapterClock=realClock;
+  const entered=Promise.withResolvers<void>();
+  const ended=Promise.withResolvers<{code:number|null;signal:string|null}>();
+  const baseHost=localHost(env);
+  const machine={...baseHost,name:'local',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:remote,logDirectory:remote,node:'',cli:'',spoke:''}),
+    identity:async(pid:number)=>({pid,pidIdentity:'linux:fixture:123'}),alive:async()=>nativeAlive,
+    spawn:async()=>({pid:987654,exited:ended.promise}),freePort:async()=>12345,
+    forward:async()=>({socket:join(remote,'session.sock')}),
+    stop:async()=>{assert.equal(cut,false);stops++;entered.resolve();nativeAlive=false;timers.setTimeout(()=>ended.resolve({code:0,signal:null}),delay);return true;},listFolder:baseHost.listFolder,
+  };
+  t.mock.method(OpenCodeClient.prototype,'request',async(_method:string,path:string)=>path==='/api/session'?{data:{id:'native-session'}}:{data:{}});
+  t.mock.method(OpenCodeClient.prototype,'events',async(_event:unknown,opened:()=>void,signal:AbortSignal)=>{opened();if(!signal.aborted)await new Promise<void>(resolve=>signal.addEventListener('abort',()=>resolve(),{once:true}));});
+  let sessions=new Sessions({root,core,table,hosts:[machine],env});
+  const register=()=>sessions.register(new OpenCodeAdapter(sessions.host({discoveryFile:join(root,'hub.json'),node:'',cli:'',spoke:''}),{env,bin:'unused-native-bin',clock:adapterClock,pollMs:10}));register();
+  beforeDirectories(t,async()=>{
+    ended.resolve({code:0,signal:null});
+    try{await sessions.close();table.close();core.close();core.store.close();}
+    finally{nativeClear(watchdogTimer!);t.mock.timers.reset();}
+  });
+  const view=await Promise.race([sessions.launch({name:'worker',host:'local',harness:'opencode',cwd:remote,model:'openai/gpt-5.2'}),watchdog]);
+  const run=sessions.settleHostBeforeCut('local',()=>{cut=true;},{clock:timers});
+  await Promise.race([entered.promise,watchdog]);
+  // Allow the stop continuation to arm boundedSettlement before advancing.
+  await new Promise<void>(resolve=>setImmediate(resolve));
+  t.mock.timers.tick(Math.min(delay,5001));
+  await Promise.race([run,watchdog]);
+  if(delay>5000){
+    const report=await run;
+    assert.equal(report.timedOut,false);assert.equal(report.inventoryComplete,true);
+    assert.equal(report.leftovers.some(row=>row.session===view.name&&row.reason==='session cleanup incomplete'),true);
+    assert.equal(cut,true);return;
+  }
+  assert.deepEqual(await run,{inventoryComplete:true,timedOut:false,leftovers:[]});
+  assert.equal(table.get(view.name)?.status,'stopped');
+  await assert.rejects(stat(join(remote,'opencode','worker','opencode.json')),{code:'ENOENT'});
 });

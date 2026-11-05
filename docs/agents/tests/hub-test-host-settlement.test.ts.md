@@ -22,3 +22,6 @@ Merged ref-watch/restore/flush held-boundary controls keep each helper's native
 request admission checked after awaits. Post-cut request counts stay unchanged;
 unknown-authority Claude inventory remains a named worker/resource obligation
 and sends no stop or deletion.
+
+T-1685 verifies concurrent stop/reap plus retirement windows against the exported
+launch bound, retaining deadline-cut and prior-wire renderer regressions.

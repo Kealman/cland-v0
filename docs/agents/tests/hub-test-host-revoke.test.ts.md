@@ -60,3 +60,7 @@ launch-captured canonical directory and device/inode ownership authorise metadat
 retirement. Retargeted aliases, final directory symlinks and same-path inode
 replacement stay named and preserve private files. Symlinked inventory remains
 explicitly unknown. These are component checks without native harness children.
+
+T-1685 holds a production local OpenCode child-exit receipt for three fake seconds
+and asserts complete revoke and private-file removal. Deadline readers import
+the production constant. No native child is launched in this T2 case.

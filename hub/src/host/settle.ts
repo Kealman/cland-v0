@@ -2,7 +2,11 @@ import { join, dirname, basename } from 'node:path';
 import type { Host } from './host.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 
-export const HOST_SETTLEMENT_MS = 2000;
+import { LAUNCH_SETTLEMENT_MS } from '../adapters/launch-settlement.ts';
+
+// Concurrent generations get one stop/reap bound, one retirement bound, then
+// two seconds of shared inventory/transport headroom. CLI adds its frame margin.
+export const HOST_SETTLEMENT_MS = 2 * LAUNCH_SETTLEMENT_MS + 2000;
 export type HostLeftover = { generation: string; session: string; remaining: string[]; reason: string };
 export type HostSettlement = { inventoryComplete: boolean; timedOut: boolean; leftovers: HostLeftover[] };
 export class HostSettlementIncomplete extends Error {
@@ -33,11 +37,11 @@ export async function settleHostBeforeCut(options: {
       for await(const step of options.retainedSteps) { check(); remember(step.generation,step.session);retained.push(step); }
       retainedComplete=true;
     }
-    for (const step of [...options.steps,...retained]) {
+    await Promise.all([...options.steps,...retained].map(async step => {
       check();
       try { await step.settle(); check(); pending.delete(step.generation); }
       catch (error) { if (active) { const row=pending.get(step.generation)!;row.reason=error instanceof HostSettlementIncomplete?error.message:'session cleanup incomplete';if(error instanceof HostSettlementIncomplete)row.remaining=[...error.remaining]; } }
-    }
+    }));
     const inspectClaude=async()=>{
     const host = options.host, run = options.runDirectory;
     if (!host || !run) return;

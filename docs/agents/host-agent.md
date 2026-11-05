@@ -327,7 +327,13 @@ all copy/install writers have joined.
 
 `cland host revoke <id>` runs `Sessions.settleHostBeforeCut`, backed by the reusable
 `settleHostBeforeCut` in `hub/src/host/settle.ts`, through the still-authorised
-Host. Its complete operation has a two-second deadline: stop the live sessions,
+Host. Captured generations settle concurrently after retained ownership fences
+are collected. The complete operation has a 12-second deadline, derived as
+`2 * LAUNCH_SETTLEMENT_MS + 2000`: one five-second stop/reap bound, one
+five-second private-resource retirement allowance, and two seconds of shared
+inventory/transport headroom. This is a total cap, including retained inventory;
+unbounded or excessive retained work remains explicitly incomplete. The CLI
+frame timeout is `HOST_SETTLEMENT_MS + 3000` (15 seconds). Stop the live sessions,
 join pending failed-launch cleanup, release private generation resources and
 inspect retained state, then cut authority even when cleanup is incomplete.
 Stop authority pins the captured session, host, native birth and generation

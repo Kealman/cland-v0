@@ -148,3 +148,22 @@ test('unknown-authority Claude generation remains a named obligation and is neve
   assert.equal(result.inventoryComplete,true);assert.equal(result.timedOut,false);assert.equal(result.leftovers.length,1);assert.equal(result.leftovers[0]?.generation,generation);
   assert.equal(result.leftovers[0]?.remaining.includes('worker (unconfirmed)'),true);assert.match(result.leftovers[0]!.reason,/incomplete/);assert.equal(stops,0);assert.equal(mutations,0);
 });
+
+test('generation stops share one stop/reap and retirement window before inventory',async()=>{
+  const {HOST_SETTLEMENT_MS}=await import('../src/host/settle.ts');
+  const {LAUNCH_SETTLEMENT_MS}=await import('../src/adapters/launch-settlement.ts');
+  assert.equal(HOST_SETTLEMENT_MS,2*LAUNCH_SETTLEMENT_MS+2000);
+  const clock=new FakeClock(),entered:string[]=[],finished:string[]=[];
+  let inventory=0;
+  const run=settleHostBeforeCut({clock,host:{...localHost(),listFolder:async()=>{inventory++;assert.equal(finished.length,3);return [];}},runDirectory:'/owned/run',cut:()=>{},
+    steps:['claude','codex','opencode'].map((session,index)=>({session,generation:session,settle:async()=>{
+      entered.push(session);
+      await new Promise<void>(resolve=>clock.setTimeout(resolve,2*LAUNCH_SETTLEMENT_MS-index*1000));
+      finished.push(session);
+    }}))});
+  assert.equal(entered.length,3,'every generation starts before another must finish');
+  await clock.advance(2*LAUNCH_SETTLEMENT_MS);
+  assert.deepEqual(await run,{inventoryComplete:true,timedOut:false,leftovers:[]});
+  assert.equal(inventory,1);
+  assert.deepEqual(finished,['opencode','codex','claude'],'reverse completion preserves generation ownership');
+});

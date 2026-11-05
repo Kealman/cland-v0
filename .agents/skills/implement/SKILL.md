@@ -219,7 +219,8 @@ watch work drain, and forward cancellation settle; failed cancellation retries
 before the exit notice.
 
 Host revocation uses `Sessions.settleHostBeforeCut` / `host/settle.ts` before the
-authority cut. Its two-second bound reports unresolved generations and unknown
+authority cut. Its derived 12-second bound (concurrent generation stop/reap plus
+retirement and inventory headroom) reports unresolved generations and unknown
 inventory; no later Host cleanup is authorised. Provider removal will reuse this
 entry point; no remove command is shipped. See docs/agents/host-agent.md.
 
