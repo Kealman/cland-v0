@@ -2,8 +2,8 @@
 id: T-1687
 kind: task
 title: Hub-local process identity keeps the exit-time /proc ESRCH race that T-1684 fixed for the agent (git daemon stop incomplete)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1684
 topic: topic-1391
 branch: t/T-1687-hub-local-process-identity-keeps-the
 created: 2026-11-05T11:55:24.090Z
-updated: 2026-11-05T13:32:21.937Z
+updated: 2026-11-05T14:16:49.319Z
+closed: 2026-11-05T14:16:39.043Z
 ---
 
 ## Summary
@@ -91,3 +92,11 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-11-05T13:32:21.937Z
 
 Batch c287e638 (A-16865) failed suite-cancel:141 (the worker pid wasn't alive after a refused cancel) on a droplet with degraded disk (fsync 197 ms). impl-1687 then ran suite-cancel 5/5 at head 5decccd1 and 5/5 at dev c6e19ffa, all eight cases each time (80 passes), in a Linux container with --init under CPU load (A-16866). Not reproduced on either head, so it is treated as an unrelated intermittent failure. Re-enqueued once at the unchanged head under the flaky rerun rule. The intermittent failure is filed separately.
+
+### coord · 2026-11-05T14:16:39.043Z
+
+Merged 018a135c6e82d71ef28927c8ab362a21fd817365 onto dev.
+
+### coord · 2026-11-05T14:16:49.319Z
+
+C3 evidence limitation (coord decision): A-16856's 20× Linux container ran without --init, so zombie reaping across the container did not match a droplet's. No repeat is required. C3 targets the ESRCH read path, which runs regardless of who reaps. host-git-daemon and host-ssh-contract also passed on real init in the item verify 3a5b55c8 (A-16860) and in the green batch c20552e0 (A-16868). Briefs now require `docker run --init` for native container evidence.
