@@ -45,12 +45,14 @@ export function refPushOwner(processes:AgentProcesses,env:NodeJS.ProcessEnv,runD
         return {state:'unknown',cause:'native producer admission mismatch: '+fields.join(', ')};
       }
       const row=candidate?.pid===native.pid&&candidate.identity===native.identity?candidate:undefined;
+      const targets=[native,...row?.targets??[]];
+      const observed=await observeNative(targets.map(target=>target.pid),env);
+      // The worker checkpoints before exit. Read after the native census so an
+      // ENOENT sampled while it was running cannot fence its completed result.
       let receipt:{launchId:string;pid:number;identity:string;head:string;complete:boolean;result:RunResult}|undefined;
       try{receipt=JSON.parse(await readFile(join(runDir,'ref-push',pending.id+'.json'),'utf8'));}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')return {state:'unknown',cause:'native producer receipt unreadable'};}
       const completed=receipt?.complete===true&&receipt.launchId===pending.id&&receipt.pid===native.pid&&receipt.identity===native.identity&&receipt.head===pending.head;
       if(row?.authority==='unknown'&&!completed)return {state:'unknown',cause:'native authority unknown; producer result missing'};
-      const targets=[native,...row?.targets??[]];
-      const observed=await observeNative(targets.map(target=>target.pid),env);
       const rootProof=observed.get(native.pid);
       if(!completed&&(rootProof?.ended||rootProof?.identity&&rootProof.identity!==native.identity))return {state:'unknown',cause:'producer result missing; native cleanup retained'};
       if(targets.some(target=>{const proof=observed.get(target.pid);return !proof?.ended&&!proof?.identity;}))return {state:'unknown',cause:'native producer target identity unobservable'};

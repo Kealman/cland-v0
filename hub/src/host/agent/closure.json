@@ -86,7 +86,7 @@
     },
     {
       "path": "hub/src/host/agent/ref-push.ts",
-      "sha256": "147f0ebade568b0e58699f2ff94aeffd2f523cbf295b8c5c2445af8e86e57bef"
+      "sha256": "ad7524d48a78b633dcf41b640d859704bf5332c43d89343d7fb0c301b1f37619"
     },
     {
       "path": "hub/src/host/agent/restart.ts",

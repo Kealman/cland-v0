@@ -188,3 +188,20 @@ for(const terminal of ['absent','replaced','live','unobservable'] as const)test(
  assert.equal(stops,0,'observation never authorizes a signal');
  assert.equal(reads,terminal==='unobservable'?3:2,'retry work is bounded');
 });
+
+for (const ended of [true, false]) test(`producer completion during native observation is reread before settlement (ended=${ended})`,async t=>{
+ const { refPushOwner }=await import('../src/host/agent/ref-push.ts');
+ const { checkpoint }=await import('../src/host/agent/storage.ts');
+ const root=await mkdtemp(join(tmpdir(),'push-receipt-order-'));t.after(ownDirectory(undefined,root));await mkdir(join(root,'ref-push'));
+ const native={pid:123,identity:'admitted-birth'},pending:PushAdmission={id:'ordered',head:'A',signature:'one',started:0,native};
+ const result={code:0,stdout:'',stderr:''};let observations=0;
+ const processes={operationRecord:async()=>({...native,authority:'owned',targets:[]})} as unknown as import('../src/host/agent/processes.ts').AgentProcesses;
+ const owner=refPushOwner(processes,fixtureEnvironment(root,process.env,{}),root,async()=>{
+  observations++;
+  // Initial read saw ENOENT; the worker checkpoints then exits while native census yields.
+  await checkpoint(join(root,'ref-push','ordered.json'),{launchId:pending.id,...native,head:'A',complete:true,result});
+  return new Map([[native.pid,ended?{identity:null,ended:true}:{identity:'replacement-birth',ended:false}]]);
+ });
+ assert.deepEqual(await owner.observe(pending),{state:'gone',code:0,signal:null,result});
+ assert.equal(observations,1);
+});

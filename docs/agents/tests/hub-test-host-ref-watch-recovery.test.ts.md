@@ -40,3 +40,10 @@ closure; the same birth stays running. Persistent ESRCH remains unknown after
 exactly three reads. Every case checks zero stop calls: observation grants no
 signal authority. These injected component cases run on both platforms; the
 native Linux push file exercises actual procfs under CPU load.
+
+T-1693 scripts completion inside the push owner's native census: its first
+receipt read would be absent, then the producer checkpoints and the census
+reports exit or a replaced birth. The owner reads the unchanged receipt shape
+after that census and settles only the matching completed admission. Existing
+missing, mismatched, incomplete and unreadable receipt cases keep their fences.
+No process, timer or signal is used by these ordering regressions.
