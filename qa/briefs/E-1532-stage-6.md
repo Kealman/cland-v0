@@ -20,6 +20,14 @@ These come from the stage-2, stage-3 and stage-4 runs (stage 4: qa-678, A-16583)
 - **No hub-side TCP for host traffic.** Unix sockets only, judged with a positive control first (a planted 127.0.0.1 listener the census must see).
 - **Refusal pushes are real ref moves** (stage 2, E1532S2-12): before every push that must be refused, the pushed commit differs from the territory branch, so the hook sees it.
 
+## Corrections from this brief's own run (qa-678, A-17053)
+
+The stage-6 run at `cbd3433f` applied three Coordinator-approved brief corrections; a brief that copies this kit carries them as written here:
+
+- **S0 PATH exemption.** The imported stage-4 kit line exempts only the running Node `bin`. The sealed `PATH` check exempts exactly two real-HOME directories, compared by realpath: the running Node `bin` and the build-resolved pinned Neovim directory (`node nvim/bin/nvim-path.ts`). Any other real-HOME entry fails S0.
+- **Manual shells are sealed per command.** A static `env.sh` snapshot misses provider variables that a later login shell adds (the harness login exec re-adds them from the user's shell startup, T-1705). Every manual scratch command is built fresh through the shared-builder seal, and the credential-name PRE is an immediate gate: a non-zero count stops the row before any command runs.
+- **Host clone discovery files are designed secret holders.** After an item launch on a fake host, each host clone root holds `.cland/hub.json` (written by `hub/src/host/clone.ts`). The holder scan admits exactly those files, and only when each is mode 0600, owned by the fixture user, has the remote discovery shape, holds its own host's credential (differing from the project hub's and the other host's) and lies under a clone root of a recorded worker. Anything else in the scan fails the row.
+
 ## Stage
 
 - Epic: E-1532 (The SSH transport, the host agent and git through the tunnel, under R-1530).

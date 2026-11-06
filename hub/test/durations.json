@@ -119,9 +119,10 @@
       "A-16942",
       "A-16971",
       "A-17008",
-      "A-17044"
+      "A-17044",
+      "A-17045"
     ],
-    "commit": "543741dbdba179a14345a5a7480ac9afda174285"
+    "commit": "cbd3433f21ca1e0d16c7d4eae93ed5341283e74c"
   },
   "budget": {
     "testSeconds": 5,
@@ -3606,6 +3607,14 @@
     "hub/test/host-relaunch.test.ts": {
       "seconds": 19.857252,
       "tests": 2
+    },
+    "hub/test/host-relaunch-component.test.ts": {
+      "seconds": 0.88122,
+      "tests": 4
+    },
+    "hub/test/host-relaunch-publication.test.ts": {
+      "seconds": 0.061188,
+      "tests": 1
     }
   },
   "tests": {
@@ -10517,7 +10526,14 @@
     "hub/test/worktree-host.test.ts::host relaunch watch registration can join a pending territory receive without holding its lock": 0.606189,
     "hub/test/worktree-host.test.ts::public relaunch admission refuses a nested territory owner before joining its serial queue": 0.35567,
     "hub/test/worktree-host.test.ts::public relaunch admission waits for an admitted receive and refreshes closed eligibility": 0.866495,
-    "hub/test/worktree-host.test.ts::public relaunch admission waits for an admitted receive and refreshes open eligibility": 0.726935
+    "hub/test/worktree-host.test.ts::public relaunch admission waits for an admitted receive and refreshes open eligibility": 0.726935,
+    "hub/test/host-ref-watch-recovery.test.ts::producer completion during native observation is reread before settlement (ended=false)": 0.003365,
+    "hub/test/host-ref-watch-recovery.test.ts::producer completion during native observation is reread before settlement (ended=true)": 0.003043,
+    "hub/test/host-relaunch-component.test.ts::C1 live host relaunch reuses placement and refuses a different requested host": 0.33679,
+    "hub/test/host-relaunch-component.test.ts::cross-host admission refuses missing generation receipt before destination effects": 0.174708,
+    "hub/test/host-relaunch-component.test.ts::cross-host admission refuses not-released generation receipt before destination effects": 0.182693,
+    "hub/test/host-relaunch-component.test.ts::cross-host admission refuses wrong-generation generation receipt before destination effects": 0.187029,
+    "hub/test/host-relaunch-publication.test.ts::native publication commits row ready warning and completion atomically across failure and reopen": 0.061188
   },
   "allow": {
     "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": {
