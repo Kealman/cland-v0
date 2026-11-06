@@ -147,6 +147,7 @@ export class DigitalOceanApi {
       if (++page > 10000) throw new DigitalOceanError(0, 'response', 'pagination limit reached');
     }
   }
+  async image(id: string | number, deadline?: number): Promise<unknown> { return (await this.#call<{ image: unknown }>('GET', `/images/${encodeURIComponent(id)}`, undefined, deadline)).image; }
   async account(deadline?: number): Promise<unknown> { return (await this.#call<{ account: unknown }>('GET', '/account', undefined, deadline)).account; }
   sizes(deadline?: number): Promise<Size[]> { return this.#list('/sizes', 'sizes', deadline); }
   regions(deadline?: number): Promise<Region[]> { return this.#list('/regions', 'regions', deadline); }

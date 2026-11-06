@@ -78,8 +78,8 @@ snapshotRetryAt, ready and advanceSnapshotWindow. ready observes all acquired
 machines ready; advanceSnapshotWindow reaches the retry boundary using the
 fixture clock. Keep all provider-specific fault injection in that factory.
 See the [volume test guide](../agents/tests/hub-test-host-provider-volumes.test.ts.md).
-Keep provider resource formats and tokens behind the interface. T-1713 registers
-the DigitalOcean implementation and invokes `hostProviderContract` from
+Keep provider resource formats and tokens behind the interface. The DigitalOcean
+implementation invokes `hostProviderContract` from
 `hub/test/host-provider-contract.ts`. The runnable test entry passes `(name, run) => test(name, run)` as the third
 argument, keeping native file identities on that entry for exact-name reruns.
 Its factory supplies an isolated provider
@@ -129,6 +129,54 @@ created machine architecture with that request. Single-architecture providers
 need not support the other architecture. The configurable fake returns a typed
 failed acquisition for an unsupported architecture without creating a machine.
 
+## DigitalOcean machines
+
+The registry includes `digitalocean`. It uses the executor's DigitalOceanApi,
+endpoint parser, shared token budget and confirmed DELETE/GET operations.
+The hub environment supplies DIGITALOCEAN_TOKEN; no token enters user-data,
+child arguments or returned diagnostics. Acquisition remains test-only: both an
+injected API and a matching CLAND_FAKE_HOST_ROOT are required. No CLI admission
+is added. The default region is lon1; fra1 and ams3 are also accepted. The
+configured size and image select the droplet; each acquire generates a new key.
+
+Provider state lives in `.cland/host-provider/digitalocean` under its root.
+Private intent records precede key import and droplet creation, recording the
+name and cland/project/pool/intent tags. Pool-qualified project-prefixed key names
+allow orphan cleanup without deleting another pool's keys. The host-record owner supplies
+`admitReap(target, remove)`: it holds its ownership/admission lock, checks the
+current machine id and key name, then either skips (undefined) or awaits remove
+through both confirmed deletions before releasing its lock. Host ownership cannot
+be published during that removal. Before calling remove, the owner persists a
+retirement reservation for both exact identities. An incomplete result, exception
+or restart keeps that reservation and refuses matching claims even after the lock
+is released. Reconciliation may clear it only on released, after both absence
+GETs. Key-only cleanup uses the same admission and rechecks a previously observed
+droplet/key association; a list omission cannot settle that retirement. An
+omitted integration means no host records exist; a legacy ownedMachineIds
+snapshot without admitReap fails closed. Pool identity is parsed exactly using
+the fixed UUID suffix, including pool names containing `-host-`. Missing inventory fails closed.
+Release confirms both droplet and key absence; an incomplete deletion retains
+its intent and keys for reconciliation. A lost create response remains findable
+by tags on the next reap, including after provider recreation.
+
+No-argument machine preparation only GETs the configured image and records `{image}` in the private
+`image.json`: first observation returns prepared, matching subsequent observations
+return current, and missing images fail. It builds no image. Recipe preparation
+replaces that receipt in its own item. Keyed pool requests from `host.prepare`
+return a typed unsupported failure before any API call or receipt write until
+DigitalOcean recipe preparation is implemented. They never claim a base image
+satisfies a pool recipe key. Volume operations currently return typed
+unsupported outcomes. See the [machine test guide](../agents/tests/hub-test-host-provider-digitalocean.test.ts.md).
+
+The advertised API budget uses the shared production endpoint default. An explicit
+test endpoint declaration may change transport pacing; it does not change the
+provider's advertised production capability.
+
+Provider intents checkpoint pending retirement before deletion and remain pending
+until the owner callback returns its durable settlement acknowledgement. Pending
+intents reconcile independently of droplet/key inventories, including after both
+resources have disappeared or the owner acknowledgement was lost.
+
 ## Pool images
 
 The local human CLI or Neovim can submit `host.prepare`; sessions, host-secret
@@ -151,8 +199,10 @@ region = "fake-1"
 transport = "ssh"
 ```
 
-Only the fake provider is registered at this stage. It still requires the explicit
-disposable `CLAND_FAKE_HOST_ROOT` environment fence. No real provider API runs.
+Only the fake provider supports keyed pool preparation at this stage. It requires
+the explicit disposable `CLAND_FAKE_HOST_ROOT` environment fence. DigitalOcean
+is registered for machine operations but rejects keyed pool preparation before
+any provider API call; configured-image observation is not a pool recipe build.
 Pool image keys include the running Node version, package-lock.json byte digest,
 sorted harness pins, the generic recipe digest and `[verification] provision`
 path/content digest. Recipe and provision hashing and stale names come from the

@@ -90,7 +90,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
@@ -110,6 +110,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
     if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await wait(faults.getDelayMs);
     const answer = (status: number, value?: unknown) => ({ status, value });
+    if (method === 'GET' && /^\/images\/[^/]+$/.test(path)) { const id = path.split('/').at(-1)!; const image = id === 'ubuntu-24-04-x64' ? { id } : images.find(i => String(i.id) === id); return image ? answer(200, { image }) : answer(404, { id: 'not_found', message: 'absent' }); }
     if (method === 'GET' && path === '/account') return answer(200, { account });
     if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
     if (method === 'GET' && path === '/regions') return answer(200, { regions });
@@ -145,6 +146,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
         await writeFile(join(stateRoot, 'addresses.json'), JSON.stringify(addresses));
       } else dropletAddresses.set(droplet.id, `203.0.113.${nextAddress++}`);
       droplets.push(droplet);
+      if (faults.loseCreateResponse > 0) { faults.loseCreateResponse--; throw new DigitalOceanError(0, 'transport', 'create response lost'); }
       return answer(202, { droplet });
     }
     if (method === 'GET' && path === '/snapshots') {
@@ -248,8 +250,9 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       }
       const n = (polls.get(id) ?? 0) + 1;
       polls.set(id, n);
-      if (n >= faults.activeAfter && droplet.status !== 'archive') droplet.status = 'active';
-      if (n > faults.activeAfter) droplet.networks.v4 = [{ type: 'public', ip_address: dropletAddresses.get(id)! }];
+      if (faults.bootFailed) droplet.status = 'off';
+      if (!faults.bootFailed && n >= faults.activeAfter && droplet.status !== 'archive') droplet.status = 'active';
+      if (faults.allocateAddressEarly || n > faults.activeAfter) droplet.networks.v4 = [{ type: 'public', ip_address: dropletAddresses.get(id)! }];
       return answer(200, { droplet: faults.dropletResponseId ? { ...droplet, id: faults.dropletResponseId } : droplet });
     }
     if (path === '/account/keys') {
