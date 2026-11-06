@@ -118,9 +118,10 @@
       "A-16899",
       "A-16942",
       "A-16971",
-      "A-17008"
+      "A-17008",
+      "A-17044"
     ],
-    "commit": "1cf72ae2f9403cca1f27941f6d306759e6f75e5d"
+    "commit": "543741dbdba179a14345a5a7480ac9afda174285"
   },
   "budget": {
     "testSeconds": 5,
@@ -10499,7 +10500,24 @@
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f3 preserves prepared ownership": 12.587015,
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f4 preserves prepared ownership": 19.737373,
     "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch refused keeps durable native and checkout ownership": 9.019382,
-    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": 10.83787
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": 10.83787,
+    "hub/test/host-allow-list.test.ts::territory push retains the named refusal after its lock wait bound": 0.648471,
+    "hub/test/host-allow-list.test.ts::territory push waits for the previous receive release and publishes its tip": 0.712144,
+    "hub/test/worktree-host.test.ts::host add rejects a caller already holding its territory lock": 0.008107,
+    "hub/test/worktree-host.test.ts::host add watch registration can join a pending territory receive without holding its lock": 0.495261,
+    "hub/test/worktree-host.test.ts::host prune joins a pending territory push outside the lock before deleting its record": 0.94737,
+    "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": 0.919131,
+    "hub/test/worktree-host.test.ts::host prune rejects a caller already holding its territory lock": 0.008737,
+    "hub/test/worktree-host.test.ts::host prune retains changed lease state after its unlocked removal window": 0.891387,
+    "hub/test/worktree-host.test.ts::host prune retains changed row state after its unlocked removal window": 0.865831,
+    "hub/test/worktree-host.test.ts::host prune retains changed tip state after its unlocked removal window": 1.163902,
+    "hub/test/worktree-host.test.ts::host prune retains its branch and row when the item reopens during final occupants observation": 1.092927,
+    "hub/test/worktree-host.test.ts::host prune retains replacement ownership arriving during final validation": 0.905389,
+    "hub/test/worktree-host.test.ts::host relaunch rejects a caller already holding its territory lock": 0.004563,
+    "hub/test/worktree-host.test.ts::host relaunch watch registration can join a pending territory receive without holding its lock": 0.606189,
+    "hub/test/worktree-host.test.ts::public relaunch admission refuses a nested territory owner before joining its serial queue": 0.35567,
+    "hub/test/worktree-host.test.ts::public relaunch admission waits for an admitted receive and refreshes closed eligibility": 0.866495,
+    "hub/test/worktree-host.test.ts::public relaunch admission waits for an admitted receive and refreshes open eligibility": 0.726935
   },
   "allow": {
     "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": {
