@@ -2,8 +2,8 @@
 id: T-1708
 kind: task
 title: DigitalOcean API pacing and typed 429s
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1403
 branch: t/T-1708-digitalocean-api-pacing-and-typed-429s
 created: 2026-11-06T10:47:52.181Z
-updated: 2026-11-06T12:08:07.385Z
+updated: 2026-11-06T14:37:19.788Z
+closed: 2026-11-06T14:37:19.788Z
 ---
 
 ## Summary
@@ -32,11 +33,14 @@ Notes: `api.ts` and `fake-api.ts` are shared and serialized in one lane with the
 ## Acceptance criteria
 
 - [x] C1. With an injected clock, 300 queued calls never send more than 250 within any 60 s window (test).
-  - done: impl-1708 · 2026-11-06T11:08:42.166Z
+  - done: impl-1708 · 2026-11-06T12:39:55.917Z
+  - verified: rev-37 [reviewer] · run rev-37-1708-evidence-2 · 2026-11-06T13:04:57.877Z · commit 239362c906b90c65189553033e77246367664c20
 - [x] C2. A 429 surfaces as a typed refusal carrying the response's retry time, and the client sends nothing for that call before then (test).
-  - done: impl-1708 · 2026-11-06T11:08:42.835Z
-- [ ] C3. The executor test files (`executor-droplet`, `executor-prepare`, `executor-safety`) pass with no test edited.
-  - failed: rev-37 [reviewer] · 2026-11-06T11:34:36.704Z · note Unedited executor-prepare is reported3/5 red at this head, and configured compatibility evidence is cancelled/incomplete; required preservation is not green.
+  - done: impl-1708 · 2026-11-06T12:39:56.070Z
+  - verified: rev-37 [reviewer] · run rev-37-1708-evidence-2 · 2026-11-06T13:04:57.877Z · commit 239362c906b90c65189553033e77246367664c20
+- [x] C3. The executor test files (`executor-droplet`, `executor-prepare`, `executor-safety`) pass with no test edited.
+  - done: impl-1708 · 2026-11-06T12:39:56.183Z
+  - verified: rev-37 [reviewer] · run rev-37-1708-evidence-2 · 2026-11-06T13:04:57.877Z · commit 239362c906b90c65189553033e77246367664c20
 
 ## Comments
 
@@ -183,3 +187,103 @@ Criteria: C3 failed (Unedited executor-prepare is reported3/5 red at this head, 
 ### impl-1708 · 2026-11-06T12:08:07.385Z
 
 Coordinator decision284ee1a9: rate is endpoint-declared; real DigitalOcean remains250/min, fake default declares100000/min, C1/C2 explicit250. New shared endpoint.ts parser/formatter used by API and fake; fragment metadata removed before canonical transport/budget key. Legacy bare URLs stay250; same clock/base/token share strictest declared limit. Consumer sweep covers CLAND_DIGITALOCEAN_API all source/tests/nvim/web/docs/qa/skills, direct api.url uses and regex guards: synthetic-provider preserves declaration unchanged; QA E-1538-stage-1's three strict loopback checks migrated to shared parser; scripted fake keeps its prior public empty url and supplies internal declaration to callback client. No method/wire/persisted record shape change or new dependencies; CLI help/usage and role/skills contain no superseded endpoint-policy instructions. Added T1 endpoint tests, updated T2 pacing/fake regressions and docs/index. High-budget control red250!==300 then green; immediate-send control observes1 actual transport call/0 clock timers before await. Current targeted35/35 green on local macOS Node24.21, no native processes/browser/cloud. Native unchanged prepare/safety/accounting still pending next slot; no final passing claim.
+
+### impl-1708 · 2026-11-06T12:41:08.834Z
+
+Final local evidence at239362c906b90c65189553033e77246367664c20 is A-17119 (raw logs+native status/count/head/load JSON receipts). Unedited droplet14/14, prepare5/5 twice, safety17/17, run19/19, daemon18/18, dry-run4/4, accounting15/15; native exits0/no skipped/cancel/todo. Accounting previously hung case completed1.460s. Alternated task/dev6c0e7703/task/dev prepare, all5/5, recorded load2.941–3.292; no failure reproduced at either head, no failure-rate estimate. Earlier same-head stale-expected/current-seen red retained. 36 focused endpoint/pacing cases, full typecheck and T0 lint green locally macOS arm64 Node24.21, no browser/cloud; zero lint refusals/122 baseline report-only findings. C1-C3 done. Delta source review requested from reviewer at exact head; no new-head verification submitted until clear source. Disposable diagnostic/baseline checkout removed after native children closed.
+
+### rev-37 · 2026-11-06T12:42:25.807Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1708-source-3
+commit: 239362c906b90c65189553033e77246367664c20
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1708 corrected endpoint-policy source review
+
+Head239362c906b90c65189553033e77246367664c20; branch t/T-1708-digitalocean-api-pacing-and-typed-429s.
+Run rev-37-1708-source-3; scope full (reworked endpoint policy after failed evidence, no dev merge); result clear; findings[].
+Compared d717f45e375f35cf0567fa4eec1976c000912c60 through all five correction commits. Standards and Spec reviewed in-session. Reviewer performed read-only source/docs/item/log review, no tests/typecheck/browser/edits/merge.
+
+Scope authorization:
+Coordinator284ee1a9-0c8d-40ae-b694-3c8d4be2f84f makes rate a property of the API endpoint: real DigitalOcean250/min, fake declares high rate through the existing override seam, C1/C2 retain explicit250. f7c07dde/1914cffb require real-base pinning even with a high-rate fragment and no fragment in transport/logs. 6d6e8c56 authorizes current-head preservation before source review/verify.
+
+## Spec
+No findings.
+- New exported endpoint parser/formatter normalizes URL host/default-port/trailing-slash forms; disallows credentials/query/non-HTTP(S); strips declaration fragment before returning transport base.
+- The canonical real DigitalOcean base always resolves to250 independent of fragment contents. Named real-base regression uses fake fetch, queues300, asserts250 before60000ms and all300 at60000, verifies exact fragment-free actual URLs and no declaration in captured client console. Real alias/parser controls retain fixed250.
+- Custom legacy URLs default250; positive safe-integer declarations are parsed once. Duplicate/unknown/invalid declarations refuse. Fake HTTP exposes its declaration on existing url; scripted fake retains public empty url and gives its callback client an internally isolated endpoint. Both default100000; pacing HTTP/scripted controls explicitly250.
+- Shared budget now keys canonical base plus token digest within the same Clock, preserving same-authority sharing and isolating independent endpoints. Conflicting declarations conservatively retain the smaller limit. The canonical base captured at request admission also supplies the queued actual send, so later environment changes cannot move transport under a different budget.
+- Prior synchronous send boundary, deadline/abort waits, header-time429 fence, null/nonobject/malformed diagnostic handling, redaction and no automatic replay remain intact. New immediate-send control asserts a synchronous transport invocation and no clock hop; actual provider response is still awaited.
+- Added independent-authority regression retains previous sharing control. New scripted high-rate case owns/drains all calls and closes fake in finally.
+
+## Standards
+No findings.
+Shared endpoint parser is used by API, fake declaration formatter and all three affected strict QA brief guards. Other synthetic-provider handling remains an independent loopback/sentinel filter and preserves URL fragment metadata without imposing another rate parser. Consumer inventory searches field/frame/function names, all tiers, raw URL guards, QA and skills; no public method/wire/persisted shape or dependencies changed. T1 endpoint file, T2 pacing file and manifest/docs/index align. Running docs/hub README describe production/default/custom/fake conditions and clock/process scope. Existing CLI help/role/skill flows have no superseded endpoint instructions. Required preservation source files are unchanged from task base.
+
+Local evidence reviewed, not final configured proof:
+A-17119 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17119-t-1708-final-local-native-receipts-at-239362c9.
+Exact-head local macOS arm64 Node24.21.0 native receipts and raw summaries independently matched: droplet14, safety17, prepare5 twice, run19, daemon18, dry-run4, accounting15; all completed code0/signalnull, zero fail/cancel/skip/todo. Accounting50-acquirer case1.46029475s. Unedited C3 test files and supplemental files confirmed by Git diff.
+Clean dev6c0e7703 alternating prepare runs each5/5; all four alternating runs passed at recorded loads2.941–3.292. This did not reproduce the earlier same-head expected-stale/got-current failure and establishes no failure rate or baseline reproduction. Initial task prepare4/5 red remains separately retained. Coordinatorfe8b0d86 assigns that nonblocking issue to T-1724; this review does not infer a baseline failure from all-green comparison results. Priority-yield run with missing final stream remains excluded; fresh completed run supplies current evidence.
+Implementer reports36 focused cases, full typecheck and T0 lints green (zero refusals/122report-only baseline findings); targeted native tests execute no duration gates. No current configured/Linux/Web pass. A-17082/A-17105 earlier native red/incomplete and A-17078 configured cancelled run remain failed history, not reclassified green.
+
+All previous source/evidence findings addressed by source and current targeted controls. C1-C3 remain unverified until a new configured exact-head result. Source clear permits mode-free cland verify at239362c906b90c65189553033e77246367664c20. Any further source/head change requires fresh source review. QA remains affected after-stage.
+Standards0 findings; Spec0 findings.
+
+A-17120: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17120-t-1708-endpoint-policy-source-review-at-239362c9.md
+
+### rev-37 · 2026-11-06T13:04:57.877Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1708-evidence-2
+commit: 239362c906b90c65189553033e77246367664c20
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1708 final exact-head evidence review
+
+Head239362c906b90c65189553033e77246367664c20.
+Run rev-37-1708-evidence-2; scope evidence; result clear; findings[]; verifiedC1-C3.
+Source clear rev-37-1708-source-3/A-17120 remains current; branch ref unchanged. Read-only canonical-tree reconstruction5fdde1fe51df588bec6a2f42a67e10f3a696c82d matches configured provenance.
+
+Configured run3ba5f669-5834-425d-b532-7f55ecec5ca7 / A-17123 exited0:5203pass, zero fail/cancel/skip/todo. Linuxx64 6.8.0-142-generic, droplet c-8nyc1, Node24.21.0, Neovim0.12.5, workers2, uncached. Isolated Chrome Headless Shell1248 binary /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; Google Chrome for Testing156.0.8078.4.
+T0/T1/fallback-allT2/Web completed. T3 deferred to merge batch; T4 unexecuted. Per-file/tier observed/projected summaries are not overall wall time. Budget/lint/ratchet diagnostics remain report-only; skips[] and skipReasonCheck report/missing0 recorded separately.
+
+Independent streaming scan retained all generated completion outcomes before dedup:
+- digitalocean-endpoint13 unique/78 pass records:13base+65load.
+- digitalocean-pacing23 unique/138 pass records:23base+115load.
+- suite-accounting15 unique/15 pass base records.
+No nonpass outcomes in those files; each new endpoint/pacing identity has base plus five passing load repetitions.
+
+C1 verified:
+'300 queued calls share a token budget across clients in every60 second window' passes, retaining the250-before60000 and final actual moving-window maximum. Equivalent canonical custom bases share a token/clock. 'pacing counts actual sends when the caller blocks before continuations drain' passes with two clients, retaining actual-send boundary protection. Independent-authority, immediate-under-budget and higher-declared-fake-budget controls pass.
+Coordinator-authorized endpoint policy is tested separately: 'the real DigitalOcean endpoint ignores a high-rate fragment and still paces at250' passes base+5, with actual fetched URLs stripped and captured console free of declaration metadata. This uses fake fetch, not real DigitalOcean. Endpoint alias/default/invalid declaration controls pass.
+
+C2 verified:
+HTTP and scripted '429 carries retry time and fences the shared token without automatic resend' each pass base+5. Seven generated body variants (null, primitive string, number, array, empty object, malformed and empty) retain typed refusal/retry header. Held-body sibling-fence control passes with retryAt anchored to header receipt. Header seconds/date/reset/invalid/missing cases, redacted provider-text/headerless next explicit call, deadline/abort and timer-cleanup controls pass. No automatic client replay is introduced.
+
+C3 verified:
+A-17119 exact-head local macOS arm64 Node24.21.0 native supplement was inspected during source review: raw summaries matched per-child receipt JSON, native status0/signalnull, no fail/cancel/skip/todo.
+Required unedited files: executor-droplet14/14, executor-prepare5/5 twice, executor-safety17/17. Git comparison from task base through current head shows no changes to those test files.
+Additional required consumers: executor-run19/19, daemon18/18, suite-dry-run4/4, suite-accounting15/15. Accounting50-acquirer case completed1.46029475s locally and passes again in configured Linux evidence.
+These supplemental native executions are not added to5203, not a fullT3/Linux/browser claim, and do not replace deferred batch coverage. Existing API/fake seams alone migrated.
+
+Failure history remains:
+A-17078 old-head configured run is still cancelled/incomplete (native120000ms timeout,120.009s completion; hub221s observation separate). Earlier native red/incomplete receipts A-17082/A-17105 remain failures, not final proof. A-17119 retains initial current-head prepare4/5 expected-stale/got-current red. Subsequent alternating task/dev prepare runs all passed and did not reproduce that failure on either head; they establish no baseline failure or frequency. Coordinator assigned that nonblocking issue to T-1724; final passing current-head receipts stand separately. Priority-yield run without final stream remains excluded.
+
+All C1-C3 verified at current head, no findings. Affected after-stage QA remains separate. Reviewer inspected source/logs only; no tests/typecheck/browser, edits, merge or cloud operation.
+
+A-17126: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17126-t-1708-final-exact-head-evidence-at-239362c9.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-06T14:37:19.788Z
+
+Merged 7fce3c5b10e6f6f2b7a2db0057cea8a1c581fdae onto dev.

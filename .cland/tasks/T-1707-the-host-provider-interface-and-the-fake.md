@@ -2,8 +2,8 @@
 id: T-1707
 kind: task
 title: The host provider interface and the fake host provider's machines
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1401
 branch: t/T-1707-the-host-provider-interface-and-the-fake
 created: 2026-11-06T10:47:48.096Z
-updated: 2026-11-06T12:01:37.336Z
+updated: 2026-11-06T13:04:23.454Z
+closed: 2026-11-06T13:04:23.454Z
 ---
 
 ## Summary
@@ -134,3 +135,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged source-reviewed 96c5c702a7f17b90f5b93da7cf1c2676b0abeb22. Independently matched all15 exact generated names at the runnable provider entry, each base+5 passing load-gate test receipts; no helper-file/missing receipt failures. Assertion facts settle C1–C4. Exact-head uncached2f53dffb/A-17098 overall0,5182pass/0fail/cancel/skip/todo, T0/T1/fallback allT2/Web green. Linuxx64 droplet Node24.21/Nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4; T0capture-tree61cd18bc not repeated remotely. T3/T4 task phases unexecuted. Native preservation: A-17072 fifteen predecessor-head files60/60, relevant production/shared/test bytes unchanged; original version-delivery cancellation retained, A-17093 exact-current-head two whole-file10/10/code0/signalnull passes. No timeout-fix or Linux-preservation claim; T-1721 separate. A-17081 stays failed. Budgets/lint/ratchet/skip report-only, affected after-stage QA separate. Details A-17099: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17099-t-1707-final-provider-and-preservation-evidence-at-96c5c702a.md. Reviewer ran no tests/probes/browser.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-06T13:04:23.454Z
+
+Merged 61599ac1ffc9ca5c37e44925155b1b6831b29739 onto dev.

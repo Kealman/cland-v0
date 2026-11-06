@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-1405
 branch: t/T-1722-remote-host-layouts-name-the-claude-code
 created: 2026-11-06T11:10:45.203Z
-updated: 2026-11-06T12:11:06.284Z
+updated: 2026-11-06T12:34:07.569Z
 ---
 
 ## Summary
@@ -36,12 +36,15 @@ updated: 2026-11-06T12:11:06.284Z
 - [x] C1. `remoteHostLayout(home)` returns a `modDir` of `<code>/hub/mod/cland` (where LOCAL_MOD_DIR sits in the installed tree) for the running version, and a configured override wins (test).
   - done: impl-1722 · 2026-11-06T11:42:29.674Z
   - verified: rev-35 [reviewer] · run rev-35-1722-final-1 · 2026-11-06T12:11:05.366Z · commit d0822fd18652c1a7a9e4a0c749ec7221cc630cec
+  - verified: rev-35 [reviewer] · run rev-35-1722-delta-1 · 2026-11-06T12:33:50.473Z · commit 98ef23d8590e658bb4687a91fca347b6ce0f56d4
 - [x] C2. A CLI-started hub with a fake host launches a Claude Code item session on it, and the session reaches running with its mod bridge connected through the tunnel (test, red before the fix).
   - done: impl-1722 · 2026-11-06T11:42:35.436Z
   - verified: rev-35 [reviewer] · run rev-35-1722-final-1 · 2026-11-06T12:11:05.366Z · commit d0822fd18652c1a7a9e4a0c749ec7221cc630cec
+  - verified: rev-35 [reviewer] · run rev-35-1722-delta-1 · 2026-11-06T12:33:50.473Z · commit 98ef23d8590e658bb4687a91fca347b6ce0f56d4
 - [x] C3. A layout without a mod directory is still refused with the existing message (test).
   - done: impl-1722 · 2026-11-06T11:42:35.880Z
   - verified: rev-35 [reviewer] · run rev-35-1722-final-1 · 2026-11-06T12:11:05.366Z · commit d0822fd18652c1a7a9e4a0c749ec7221cc630cec
+  - verified: rev-35 [reviewer] · run rev-35-1722-delta-1 · 2026-11-06T12:33:50.473Z · commit 98ef23d8590e658bb4687a91fca347b6ce0f56d4
 
 ## Comments
 
@@ -92,3 +95,30 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-17104: final same-head review clear. Independently read A-17102 run7da35b9b exit0: hub5194pass/zero fail,cancel,skip,todo; base5058pass/empty failure arrays. Execution tree c0003256e3b3fbcc0aa3bcda47f7dd6a41f6d80f independently matches source projection. C1 registry default/override/fake controls, C2 exact CLI bridge4.589207438s, C3 unchanged missing-mod refusal all pass. T0/T1/allT2/changedT3 27identities once/Web completed; remainingT3 deferred,T4 unexecuted. Uncached Linuxx64 Node24.21/Nvim0.12.5 droplet c8nyc1, HeadlessShell1248/CfT156.0.8078.4. A-17094 original macOS evidence retains transcribed-exit/working-tree linkage limits and actual red. Budgets/lint/ratchet advisory; 8s cap remains sufficient. Real-host code delivery remains T-1723; no fullT3/T4 claim.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1722 · 2026-11-06T12:32:56.141Z
+
+Coordinator-authorized conflict merge pushed98ef23d8590e658bb4687a91fca347b6ce0f56d4 (parentsd0822fd18,03e1cdf9), sole durations conflict kept both entries. Directed merged-head macOS arm64 Node24.21 local checks: npm run typecheck exit0; claude-code-remote27/27, layout18/18, registry2/2; zero skips/cancels/todo, native and driver exits0. Native slot released. Original logs/command/provenance A-17115. Delta inspection found exact allow-map union and unchanged T-1722 bytes; Reviewer awaiting these receipts to settle. Configured receipt7da35b9b atd0822fd18 carried only per Coordinator bbf8dbf4 rule6/7, no new merged-head Linux execution claimed.
+
+### rev-35 · 2026-11-06T12:33:50.473Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1722-delta-1
+commit: 98ef23d8590e658bb4687a91fca347b6ce0f56d4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17116: merged delta clear and C1–C3 reverified under Coordinator bbf8dbf4 rule6/7 authorization. Parents d0822fd18 and03e1cdf9; sole durations conflict resolved as exact parent allow-map union, other sections unchanged. T-1722 launch/layout/test bytes equal first parent; upstream helper/prelude/tests/tiers equal second parent. A-17115 merged-head macOS Node24.21 typecheck0, native remote27/layout18/registry2 all pass/native child+driver0, no fail/cancel/skip/todo; exact C2 bridge2.706117667s. Prior A-17102 Linux configured run7da35b9b remains explicitly executed at d0822fd18 and is carried only by authorization, not relabelled merged-head execution. RemainingT3/batch integration separate; T4 unrun; real host code delivery T-1723. Original-tool/native provenance limits retained; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-06T12:34:07.569Z
+
+Verify carry (coord, rule 6 conflict waiver plus rule 7). Verify 7da35b9b passed at the reviewed d0822fd1. Head 98ef23d8 differs only by the merge of dev 03e1cdf9: T-1710's additive prelude and cland-auth files, tests and docs, plus T-1710's durations.json entries. The only conflict was durations.json, resolved by keeping both entries. Evidence at the merged head (A-17115):
+- full typecheck exit 0;
+- claude-code-remote 27/27, host-launch-layout 18/18, host-ssh-registry 2/2;
+- the delta review is clear.
+d0822fd1's verify carries to 98ef23d8, and the merge batch runs T1+T3 on the integrated tree.

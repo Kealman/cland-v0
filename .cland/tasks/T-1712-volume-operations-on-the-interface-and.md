@@ -3,7 +3,7 @@ id: T-1712
 kind: task
 title: Volume operations on the interface and the fake host provider
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1533
 blocked_by:
   - T-1707
 topic: null
-branch: null
+branch: t/T-1712-volume-operations-on-the-interface-and
 created: 2026-11-06T10:48:15.245Z
-updated: 2026-11-06T10:49:14.833Z
+updated: 2026-11-06T14:37:55.225Z
 ---
 
 ## Summary

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-06T11:49:25.020Z
+updated: 2026-11-06T12:35:53.449Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Decide what the 250 ms bound is for. If it's status responsiveness, keep it and 
 
 - [ ] C1. A test that holds the key computation past 250 ms reports `unknown (inspection deferred)` once, and the next status read after the computation completes reports `current` (test, red before the fix).
 - [ ] C2. executor-prepare.test.ts passes 10/10 on macOS at a one-minute load of 12 or more, with its assertions unchanged (evidence).
+
+## Comments
+
+### coord · 2026-11-06T12:35:53.449Z
+
+Second variant of the same family (impl-1708, 2026-11-06, T-1708 head 239362c9, macOS, under load). `hub/test/executor-prepare.test.ts:238` expected `stale: base|nvim` after a pin commit and push, but saw `current`, so freshness read stale state after the change. An alternating comparison afterwards at load of about 3 passed 5/5 on both the T-1708 head and dev 6c0e7703, twice each, so it's intermittent and not tied to T-1708. Both variants of this case (`unknown (inspection deferred)` at :197, and current-instead-of-stale at :238) should be covered by this item's fix.
