@@ -88,7 +88,7 @@ refuse as `TerritoryBusy` with `another territory operation holds the lock`,
 appending `(pid N)` when a holder was observed. This includes exhaustion before
 any identity probe completes; the last observed holder survives a later probe
 timeout. Filesystem and cleanup failures retain their original errors. A public revoke inside its own active territory-lock context reuses
-that lock without waiting; grant, receive and merge retain immediate refusal. Immediate merges call
+that lock without waiting; grant and merge retain immediate refusal. Receive waits up to 30 seconds for territory acquisition, then retains the same named refusal on expiry. Immediate merges call
 `revokeBranchLeasesLocked` while already holding that lock. Native batch
 preparation takes the lock only to revoke every member's leases and pin its head,
 then releases it before building immutable candidates. The order remains

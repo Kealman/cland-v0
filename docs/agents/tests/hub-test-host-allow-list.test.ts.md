@@ -12,3 +12,5 @@ Contention asserts `TerritoryBusy` and the single documented refusal for immedia
 grant/revoke, a bounded revoke wait and a positive sub-millisecond wait that
 rounds to the current timestamp (no holder probe). Immediate refusals name the
 observed PID; deadline exhaustion names it when known.
+
+T-1702 receive contention: a push observes an independent held operation, releases it, and proves the exact published tip. A raw receive request with a 500 ms injected acquisition bound holds the operation through the named refusal and asserts no early refusal. The reverse revoke case injects a 100 ms acquisition bound; its fence, refusal and concurrent fetch assertions remain. Production acquisition defaults to 30 seconds separately from the native stalled-push cap.

@@ -87,7 +87,7 @@ async function symlinkOnPathAsync(root: string, path: string, resumed: <R>(work:
 /**
  * `withTerritoryLock` for the hub's request path: the lock is taken without blocking the event loop (its `ps` probes
  * awaited, `acquireLockAsync`), held until `operation` settles. A live holder refuses by default.
- * Public lease revoke alone opts into the lock module's bounded backoff; no release-notification API exists.
+ * Public lease revoke and host receive opt into the lock module's bounded backoff; no release-notification API exists.
  */
 export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>, resumed: <R>(work: () => R) => R = work => work(), waitMs = 0): Promise<T> {
   if (!Number.isFinite(waitMs) || waitMs < 0 || waitMs > 60_000) throw new Error('territory lock wait must be between 0 and 60000 ms');

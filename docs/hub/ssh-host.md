@@ -39,15 +39,13 @@ preparations before closing the Host, carrier or Git listener. A lost command ou
 reports incomplete ownership and keeps its storage fenced.
 
 Item launch creates its branch from territory dev (main fallback), grants the
-host a lease under the same territory lock, then fetches and adds the worktree
-through the agent. A confirmed failure revokes the launch lease and deletes only
+host a lease and checkpoints an `adding` row under the same territory lock, then releases the lock before fetching, installing and registering the watch through the agent. Finalization reacquires the lock and checks the exact row, tip and lease owners before marking ready. A confirmed failure revokes the launch lease and deletes only
 a newly created territory ref at its captured tip; an unknown outcome stays
 fenced. A ready-checkpoint failure after an accepted checkout retains its adding
 record, lease and ref rather than rolling back the accepted effect. The root node_modules link uses the existing agent install step.
 `host_worktrees` in hub.db retains item, host, clone root, path, branch and tip.
 TaskWorktrees reads it for launch reuse, list and prune after restart. Prune
-checks the closed item and occupancy, refuses unpublished host work or a moved
-merge tip, removes through the owning agent, then revokes the lease. It deletes a territory branch only at its recorded
+checks the closed item, occupancy, unpublished host work and expected merge tip under the lock, then checkpoints a `removing` row with a unique removal id, captured tip and lease-owner snapshot. Add and relaunch refuse that row. It releases the lock before agent removal drains its publishers, then reacquires and revalidates the exact row, tip, lease owners, closed state and occupancy before revoking the lease. `host-prune-changed` retains the current state when any final check fails; incomplete removal retains its checkpoint for retry. It deletes a territory branch only at its recorded
 launch base when this launch created it, or at the expected merged tip; existing
 or advanced branches remain. Existing local Git worktree discovery is unchanged.
 
@@ -302,3 +300,7 @@ the old supervisor. Fake-host mode requires its boot-file control on every
 platform and rejects missing evidence before agent recovery. The agent,
 supervisor child observers and admission bootstrap share that source; ordinary
 Linux agents ignore a stray boot-file variable and read the kernel boot id.
+
+Host checkout checkpoint acquisition uses the existing bounded backoff for up to 32 seconds (the 30 second receive ownership cap plus 2 seconds), at both preflight and finalization. This joins an admitted receive rather than refusing immediately. A caller already holding that territory lock refuses as `host-worktree-lock-order` before any Host operation; it never waits on itself. Receive acquisition remains capped at 30 seconds.
+
+Public cross-host relaunch admission uses the same checkout checkpoint policy before adapter drain: acquire with the bounded backoff, then refresh task eligibility, destination registration and exact row ownership before admission. Prune observes Host state first and refreshes row, tip, leases and synchronous item eligibility after those asynchronous observations, immediately before cleanup admission. An item reopened during an occupant query retains its branch and removing checkpoint.

@@ -69,3 +69,11 @@ captured checkout receipt: refresh the same checkout or retain its checkout and
 ref-watch obligations when moving onward. Unknown preparation remains fenced.
 There is no CLI host flag. See
 [host relaunch](../docs/agents/host-agent.md#relaunching-an-item-on-another-host).
+
+Host Git receive-pack waits up to 30 seconds for a held territory lock with bounded backoff; expiry retains the named push-retry refusal. Lease rejection remains immediate when the update hook evaluates the ref. The native stalled-push cap starts after acquisition; upload-pack remains concurrent. See [territory locking](../docs/adr/0004-agents-work-on-a-local-git-territory.md).
+
+Host checkout operations checkpoint ownership under short territory locks and join agent work outside them. Prune persists a `removing` fence before draining publishers, then revalidates the row, tip, leases and eligibility under a fresh lock; changed state is retained with `host-prune-changed`. Add/relaunch similarly prepare outside the lock between durable checkpoints. See [Host worktrees](../docs/hub/ssh-host.md#territory-clone-and-task-worktrees).
+
+Host checkout checkpoint acquisition uses the existing bounded backoff for up to 32 seconds (the 30 second receive ownership cap plus 2 seconds), at both preflight and finalization. This joins an admitted receive rather than refusing immediately. A caller already holding that territory lock refuses as `host-worktree-lock-order` before any Host operation; it never waits on itself. Receive acquisition remains capped at 30 seconds.
+
+Public cross-host relaunch admission uses the same checkout checkpoint policy before adapter drain: acquire with the bounded backoff, then refresh task eligibility, destination registration and exact row ownership before admission. Prune observes Host state first and refreshes row, tip, leases and synchronous item eligibility after those asynchronous observations, immediately before cleanup admission. An item reopened during an occupant query retains its branch and removing checkpoint.

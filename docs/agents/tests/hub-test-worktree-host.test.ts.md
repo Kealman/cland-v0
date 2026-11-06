@@ -30,3 +30,9 @@ must retain the worktree. Record Host realpath and statDirectory inputs for each
 Preserve both identity-change and occupant facts when they coincide. The unedited
 hub/test/tracker-native-boundary.test.ts alias races cover both diagnostic
 expectations; run that whole file after changing pre-removal checks.
+
+T-1702 remote-checkout regressions use bounded real territory-lock acquisition inside fake Host removal/registration to reproduce the push-join cycle without a30s stall. Add, relaunch and removal must permit that acquisition. Removal checks a durable `removing` row, rejects concurrent add/relaunch and preserves changed row, tip or lease state after re-acquisition with a named refusal. Local recording-Host preservation cases retain their original locked behavior.
+
+The preflight contention regression first observes native receive-pack advertisement, arms its exact lock-record observer, then triggers prune; the observer closes that admitted receive and prune must wait for native close/release. Setup bounds use testWaitMs. Nested add/relaunch/prune callers refuse before reading or writing checkout state, preserving the outer owner. Simulated join-cycle cases use the named100ms RECEIVE_JOIN_BOUND_MS behaviour cap.
+
+Finalization controls hold the final occupant or validation observation, then durably reopen the Tracker item or replace the ownership row. Both retain the branch and row with a named changed outcome. Public relaunch admission controls admit a real native receive first, observe the contender reading its exact lock record, optionally close the item, and close/join that receive before checking admission. The nested public caller must refuse before entering the serial queue or reading item state. Register native daemon/client ownership before setup awaits and drain them before closing Tracker/Store.

@@ -1,4 +1,4 @@
-import { addHostTaskWorktree, pruneHostTaskWorktree, relaunchHostTaskWorktree } from '../host/task-worktrees.ts';
+import { withHostWorktreeCheckpoint, requireUnlockedCaller, addHostTaskWorktree, pruneHostTaskWorktree, hostWorktreeMatches, relaunchHostTaskWorktree } from '../host/task-worktrees.ts';
 import { hostCloneRoot } from '../host/clone.ts';
 import type { Store } from './store.ts';
 import type { Host } from '../host/host.ts';
@@ -131,17 +131,20 @@ export class TaskWorktrees {
   }
 
   /** Short admission lock precedes adapter drain, which must never wait while holding this lock. */
-  admitRelaunch(item: string, from: string, host: Host, admit: () => void, retry?: import('../host/task-worktrees.ts').HostWorktreeRecord) {
-    return this.serial(async () => {
-      if (this.#store?.hosts.get(host.name)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
+  async admitRelaunch(item: string, from: string, host: Host, admit: () => void, retry?: import('../host/task-worktrees.ts').HostWorktreeRecord) {
+    requireUnlockedCaller(this.root);
+    const destination=host.name;
+    return this.serial(() => withHostWorktreeCheckpoint(this.root, async () => {
+      if (this.#store?.hosts.get(destination)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
       const view = await this.#tracker.viewAsync(item);
-      if (await this.#ineligible(view)) throw new Error(`${item}: cross-host relaunch requires an open task with a territory`);
-      await withTerritoryLockAsync(this.root, async () => {
-        const old = this.#store!.hostWorktrees().find(row => row.item === item);
-        if (!old || (retry ? JSON.stringify(old)!==JSON.stringify(retry) || !old.checkout : old.host !== from || old.phase === 'adding')) throw new Error(`${item}: original worktree ownership is unavailable or needs reconciliation`);
-        admit();
-      });
-    });
+      const ineligible=await this.#ineligible(view);
+      const fresh=this.#tracker.summary(item);
+      if (ineligible || !fresh || fresh.kind!=='task' || fresh.state!=='open') throw new Error(`${item}: cross-host relaunch requires an open task with a territory`);
+      const old = this.#store!.hostWorktrees().find(row => row.item === item);
+      if (!old || old.phase==='removing' || (retry ? !hostWorktreeMatches(old,retry) || !old.checkout : old.host !== from || old.phase === 'adding')) throw new Error(`${item}: original worktree ownership is unavailable or needs reconciliation`);
+      if(this.#store?.hosts.get(destination)?.state!=='registered')throw new Error('cross-host relaunch requires a registered destination host');
+      admit();
+    }));
   }
 
   /** Caller owns admitted native generation; no later connectivity observation undoes that admission. */
@@ -450,9 +453,12 @@ export class TaskWorktrees {
             const host=this.#resolveHost?.(remote.host);if(!host)throw new Error(`host ${remote.host} unavailable for prune`);
             const expected=expectedBranches.get(item);
             await pruneHostTaskWorktree({project:this.root,row:remote,host,store:this.#store!,env:this.#env,...(expected?{expected}:{}),validate:async()=>{
-              const current=await this.#tracker.viewAsync(item,resumed);
-              if(current.state!=='closed'||this.#launching.has(item))throw new Error(`${item}: no longer prunable`);
+              await this.#tracker.viewAsync(item,resumed);
+              const fresh=()=>{if(this.#tracker.summary(item)?.state!=='closed'||this.#launching.has(item))throw new Error(`${item}: no longer prunable`);};
+              fresh();
               if((await host.occupants(remote.path,this.#sessions().filter(s=>s.host===remote.host))).length)throw new Error(`${item}: occupied worktree`);
+              fresh();
+              return fresh;
             }});
             removed.push({item,path:remote.path,branch:remote.branch});continue;
           }

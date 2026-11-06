@@ -217,6 +217,8 @@ mutations instead of replaying side effects. See [SSH Host](../hub/ssh-host.md#a
 
 ## Host territory worktrees
 
+Prune checkpoints `removing` with a unique id, captured territory tip and lease owners before releasing the territory lock to join agent removal. Add, relaunch and publication admission reject this phase. After removal it reacquires the lock and repeats ownership, tip, lease, closed-item and occupant checks. A `host-prune-changed` refusal preserves the current row/ref/lease; unknown removal retains its checkpoint and is reconciled through the existing agent removal receipt. Legacy rows without a phase remain readable.
+
 The SSH registry prepares a managed territory clone for task worktrees after
 carrier readiness; clone work never holds tunnel readiness. Projects without a
 territory attempt no clone. See
@@ -534,8 +536,7 @@ a mismatched release receipt refuses the move. Native/file settlement obligation
 remain retained. A returning original host does not undo committed admission.
 
 The destination fetches the territory's pushed task tip and adds its checkout.
-The worktree serial queue precedes the territory lock, which covers tip capture,
-exclusive branch-lease replacement and destination preparation. The old host's
+The worktree serial queue precedes the territory lock. Tip capture, exclusive branch-lease replacement and the `adding` checkpoint hold that lock; destination preparation and watch registration run after releasing it. Finalization reacquires the lock and checks the exact row, tip and lease owners before accepting preparation. Host operations that join pushes never run under the territory lock. The old host's
 pushes are refused after transfer. Native publication atomically commits the new
 process row, ready checkout owner, restart warning and intent completion in the
 shared database. A post-commit observer failure does not roll back the native owner.
@@ -570,3 +571,7 @@ bounds. A client request timeout does not cancel or release that reservation.
 See [relaunch tests](tests/hub-test-host-relaunch.test.ts.md).
 
 Remote-to-local relaunch is refused explicitly; choose a registered remote host.
+
+Host checkout checkpoint acquisition uses the existing bounded backoff for up to 32 seconds (the 30 second receive ownership cap plus 2 seconds), at both preflight and finalization. This joins an admitted receive rather than refusing immediately. A caller already holding that territory lock refuses as `host-worktree-lock-order` before any Host operation; it never waits on itself. Receive acquisition remains capped at 30 seconds.
+
+Public cross-host relaunch admission uses the same checkout checkpoint policy before adapter drain: acquire with the bounded backoff, then refresh task eligibility, destination registration and exact row ownership before admission. Prune observes Host state first and refreshes row, tip, leases and synchronous item eligibility after those asynchronous observations, immediately before cleanup admission. An item reopened during an occupant query retains its branch and removing checkpoint.

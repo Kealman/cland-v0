@@ -70,3 +70,7 @@ a Host. A new local task uses the root's task-base tip, including unpublished
 commits; a nonlocal task uses the territory's task-base tip. Existing territory
 task refs supply their own tip. Merge, verification and the merge queue remain
 owned by the hub.
+
+T-1702: Host receive-pack waits up to 30 seconds for a held territory lock using the existing bounded backoff. After expiry it retains `push retry required: another territory operation holds the lock` (with the holder PID when known). Lease refusals remain immediate once Git evaluates the ref; waiting does not retry a lease rejection. The separate 30-second stalled receive cap starts at lock acquisition.
+
+T-1702 lock-order correction: host preparation/watch registration and removal can join pushes, so they execute between short territory critical sections. Durable `adding`/`removing` rows fence admission while unlocked; finalization validates captured identity, tip and leases before changing shared ownership. A removed checkout with changed final ownership stays retained under a named refusal rather than deleting newer state.

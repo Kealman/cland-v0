@@ -198,11 +198,13 @@ receive/release, using the shared bounded lock backoff. Its `waitMs` is injectab
 an active matching-root lock is reused without waiting. Immediate contention and
 bounded-wait exhaustion both refuse as `TerritoryBusy` with "another territory
 operation holds the lock", appending the last observed holder PID when known. Merge's branch-wide revoke
-requires the caller's existing lock; receive/merge keep immediate refusal.
+requires the caller's existing lock; receive waits up to 30 seconds through bounded lock backoff; merge keeps immediate refusal.
 Keep receive-pack locked through native close with a 30 second stalled-push cap,
 test expiry with an injected short `receiveTimeoutMs` plus a default-constant
 assertion, leave upload-pack concurrent, and pin batch member heads in a short revoke/read
-critical section. Preserve `worktrees.serial` → `territory.lock` → Git lock order.
+critical section. Preserve `worktrees.serial` → `territory.lock` → Git lock order. Host add/relaunch preparation and watch registration run outside the territory lock between durable `adding` and revalidated finalization. Prune checkpoints `removing`, releases the lock for agent publisher drainage/removal, then reacquires and revalidates row, tip, lease and eligibility before deleting metadata. Add/relaunch refuse removing rows; `host-prune-changed` retains new state. Never hold the territory lock while joining a Host operation that can await a push. Both checkpoint acquisitions use the existing 32 second bounded backoff; an already-locked caller refuses before any Host operation rather than waiting on itself.
+
+Public cross-host relaunch admission uses the same checkout checkpoint policy before adapter drain: acquire with the bounded backoff, then refresh task eligibility, destination registration and exact row ownership before admission. Prune observes Host state first and refreshes row, tip, leases and synchronous item eligibility after those asynchronous observations, immediately before cleanup admission. An item reopened during an occupant query retains its branch and removing checkpoint.
 Use scratch host socket tests and the unedited territory/merge preservation files;
 see `docs/agents/tests/hub-test-host-allow-list.test.ts.md`.
 

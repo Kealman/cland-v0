@@ -10502,6 +10502,27 @@
     "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": 10.83787
   },
   "allow": {
+    "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": {
+      "seconds": 6,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-11",
+      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.3770886669999998], \"linux arm64\": [0.23530783400000002]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"review3-preservation\": [0.765439208], \"review3-final-cases\": [1.916116375]}. ceil(1.5 x worst 3.3770886669999998) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847."
+    },
+    "hub/test/worktree-host.test.ts::host prune retains its branch and row when the item reopens during final occupants observation": {
+      "seconds": 6,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-11",
+      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.612388041], \"linux arm64\": [0.283308042]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"final-observation-green\": [1.9243115], \"review3-preservation\": [0.921608083], \"review3-final-cases\": [0.9586959580000001]}. ceil(1.5 x worst 3.612388041) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847."
+    },
+    "hub/test/worktree-host.test.ts::host prune retains replacement ownership arriving during final validation": {
+      "seconds": 6,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-11",
+      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.443848625], \"linux arm64\": [0.230583834]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"final-observation-green\": [0.667674875], \"review3-preservation\": [0.741627166], \"review3-final-cases\": [0.7798031670000001]}. ceil(1.5 x worst 3.443848625) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847."
+    },
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
       "seconds": 47,
       "owner": "C-216",

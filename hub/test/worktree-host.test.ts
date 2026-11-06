@@ -1,4 +1,9 @@
 // T3: native Git worktree creation/removal through a recording Host, including territory lock exclusion.
+import { connect } from 'node:net';
+import { once } from 'node:events';
+import { startGitDaemon } from '../src/host/git-daemon.ts';
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
+import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import fs from 'node:fs';
 import cp, { type ExecFileException, type ExecFileOptionsWithStringEncoding } from 'node:child_process';
@@ -8,17 +13,23 @@ import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { localHost } from '../src/host/local.ts';
 import type { Host } from '../src/host/host.ts';
-import { ensureTaskWorktree, removeTaskWorktree, withTerritoryLockAsync, territoryGitAsync } from '../src/territory.ts';
+import { ensureTaskWorktree, removeTaskWorktree, withTerritoryLockAsync, territoryGitAsync, territoryPath } from '../src/territory.ts';
+import { territoryLockHeld } from '../src/territory-lock-context.ts';
+import { branchLeasePath, grantBranchLease, grantBranchLeaseLocked } from '../src/host/branch-leases.ts';
+import { pruneHostTaskWorktree, addHostTaskWorktree, relaunchHostTaskWorktree, type HostWorktreeRecord } from '../src/host/task-worktrees.ts';
 import { TaskWorktrees } from '../src/hub/worktrees.ts';
+import { Store } from '../src/hub/store.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { preparedProject } from './prepared-project.ts';
-import { eventually, tempProject } from './harness.ts';
+import { eventually, tempProject, testWaitMs } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 
+// Exact behaviour bound for the simulated receive admission in lock-cycle regressions.
+const RECEIVE_JOIN_BOUND_MS = 100;
 const human = { id: 'human', name: 'human', role: null };
 function recording(root: string, env: NodeJS.ProcessEnv) {
   const native = localHost(env);
@@ -274,5 +285,232 @@ test('prune retains a directory when the Host reports a changed worktree or sess
     assert.equal(removed, false);
     for (const path of [cwd, tree.path]) { assert.ok(stats.includes(path)); assert.ok(paths.includes(path)); }
     await access(tree.path);
+  });
+});
+
+test('host prune joins a pending territory push outside the lock before deleting its record', async t => {
+  const root = await preparedProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  const native = localHost(env);
+  const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'cycle', branch: null }, undefined, undefined, env);
+  const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
+  const row = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true };
+  let rows: HostWorktreeRecord[] = [row]; let joined = false, validations = 0;
+  const store = { hostWorktrees: () => rows, saveHostWorktree: (value: HostWorktreeRecord) => { rows = [value]; }, deleteHostWorktree: () => { assert.equal(joined, true); rows = []; } };
+  const host = { ...native, worktreeRemove: async (options: Parameters<Host['worktreeRemove']>[0]) => {
+    // Agent removal joins an admitted receive: it must be able to take territory.lock.
+    await withTerritoryLockAsync(root, async () => { joined = true; }, undefined, RECEIVE_JOIN_BOUND_MS);
+    await native.worktreeRemove(options);
+  } };
+  await pruneHostTaskWorktree({ project: root, row, host, store, env, validate: async () => { validations++; } });
+  assert.equal(joined, true);
+  assert.ok(validations >= 2, 'prune revalidates after joining outside the lock');
+  assert.deepEqual(rows, []);
+  assert.equal(await native.fileType(tree.path), 'missing');
+});
+
+for (const operation of ['add', 'relaunch'] as const) test(`host ${operation} watch registration can join a pending territory receive without holding its lock`, async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
+  const native = localHost(env), branch = 't/T-1-watch-cycle';
+  const tip = await territoryGitAsync(root, ['rev-parse', 'HEAD'], false, undefined, env);
+  let rows: HostWorktreeRecord[] = [];
+  if (operation === 'relaunch') {
+    await territoryGitAsync(territoryPath(root), ['branch', branch, tip], false, undefined, env);
+    rows = [{ item: 'T-1', host: 'source', root, path: join(root, 'source'), branch, tip, phase: 'ready' }];
+  }
+  const store = { hostWorktrees: () => rows, saveHostWorktree: (row: HostWorktreeRecord) => { rows = [row]; }, deleteHostWorktree: () => { rows = []; } };
+  let joined = false;
+  const host = { ...native, name: 'destination', worktreeAdd: async () => {
+    await withTerritoryLockAsync(root, async () => { joined = true; }, undefined, RECEIVE_JOIN_BOUND_MS);
+    return {};
+  } };
+  const common = { project: root, root, host, item: 'T-1', store, env, authorize: () => {} };
+  if (operation === 'add') await addHostTaskWorktree({ ...common, branch });
+  else await relaunchHostTaskWorktree({ ...common, from: 'source' });
+  assert.equal(joined, true);
+  assert.equal(rows[0]?.host, 'destination');
+  assert.equal(rows[0]?.phase, operation === 'add' ? 'ready' : 'adding');
+});
+
+for (const change of ['row', 'tip', 'lease'] as const) test(`host prune retains changed ${change} state after its unlocked removal window`, async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
+  const native = localHost(env);
+  const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'changed', branch: null }, undefined, undefined, env);
+  const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
+  const row: HostWorktreeRecord = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true, phase: 'ready' };
+  let rows = [row], after: HostWorktreeRecord | undefined, movedTip = tip;
+  const store = { hostWorktrees: () => rows, saveHostWorktree: (value: HostWorktreeRecord) => { rows = [value]; }, deleteHostWorktree: () => { assert.fail('changed state must not be deleted'); } };
+  const host = { ...native, worktreeRemove: async (options: Parameters<Host['worktreeRemove']>[0]) => {
+    assert.equal(rows[0]?.phase, 'removing');
+    // Even direct concurrent callers cannot reuse the half-removed checkout.
+    const common = { project: root, root, host: native, item: row.item, store, env, authorize: () => {} };
+    await assert.rejects(addHostTaskWorktree({ ...common, branch: row.branch }), /needs reconciliation/);
+    await assert.rejects(relaunchHostTaskWorktree({ ...common, from: native.name }), /needs reconciliation/);
+    await native.worktreeRemove(options);
+    await withTerritoryLockAsync(root, async () => {
+      if (change === 'row') store.saveHostWorktree({ ...rows[0]!, host: 'replacement' });
+      if (change === 'lease') await grantBranchLeaseLocked(root, 'replacement', row.branch);
+      if (change === 'tip') {
+        const treeId = await territoryGitAsync(root, ['rev-parse', 'HEAD^{tree}'], false, undefined, env);
+        movedTip = await territoryGitAsync(root, ['commit-tree', treeId, '-p', tip, '-m', 'concurrent published tip'], false, undefined, env);
+        await territoryGitAsync(territoryPath(root), ['fetch', '--no-auto-maintenance', root, movedTip], false, undefined, env);
+        await territoryGitAsync(territoryPath(root), ['update-ref', `refs/heads/${row.branch}`, movedTip, tip], false, undefined, env);
+      }
+      after = structuredClone(rows[0]);
+    });
+  } };
+  await assert.rejects(pruneHostTaskWorktree({ project: root, row, host, store, env, validate: async () => {} }), /host-prune-changed:.*(?:row changed|branch moved|lease changed)/);
+  assert.deepEqual(rows, [after]);
+  assert.equal(await territoryGitAsync(territoryPath(root), ['rev-parse', row.branch], false, undefined, env), movedTip);
+  if (change === 'lease') assert.match(await readFile(branchLeasePath(root), 'utf8'), /replacement/);
+});
+
+async function admittedReceive(t: test.TestContext, root: string, env: NodeJS.ProcessEnv, label: string) {
+  const socket = fixtureSocketPath(root, label);
+  const daemon = await startGitDaemon({ host: label, socket, territory: territoryPath(root), env, log: () => {} });
+  let client: ReturnType<typeof connect> | undefined, closed = Promise.resolve();
+  onCleanup(t, async () => { client?.destroy(); await closed; await daemon.close(); });
+  client = connect({ path: socket, allowHalfOpen: true });
+  client.on('error', () => {});
+  closed = new Promise<void>(done => client!.once('close', () => done()));
+  const advertised = once(client, 'data', { signal: AbortSignal.timeout(testWaitMs(5_000)) });
+  const body = 'git-receive-pack /territory.git\0host=territory\0';
+  client.write(Buffer.from((Buffer.byteLength(body) + 4).toString(16).padStart(4, '0') + body));
+  await advertised;
+  return client;
+}
+
+test('host prune preflight waits for an admitted receive to release its territory lock', async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
+  const native = localHost(env);
+  const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'preflight', branch: null }, undefined, undefined, env);
+  const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
+  const row: HostWorktreeRecord = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true };
+  let rows = [row];
+  const store = { hostWorktrees: () => rows, saveHostWorktree: (value: HostWorktreeRecord) => { rows = [value]; }, deleteHostWorktree: () => { rows = []; } };
+  let pending: Promise<void> | undefined;
+  beforeDirectories(t, async () => { await pending?.catch(() => {}); });
+  const client = await admittedReceive(t, root, env, 'prune-receive');
+  const promises = (await import('node:fs/promises')).default, read = promises.readFile.bind(promises);
+  let observed = false;
+  t.mock.method(promises, 'readFile', async (...args: Parameters<typeof promises.readFile>) => {
+    const result = await read(...args);
+    if (args[0] === join(root, '.cland/territory.lock')) { observed = true; client.end(); }
+    return result;
+  });
+  pending = pruneHostTaskWorktree({ project: root, row, host: native, store, env, validate: async () => {} });
+  await pending;
+  assert.equal(observed, true, 'preflight observed the admitted receive before its native close/release');
+  assert.deepEqual(rows, []);
+  assert.equal(await native.fileType(tree.path), 'missing');
+});
+
+for (const operation of ['add', 'relaunch', 'prune'] as const) test(`host ${operation} rejects a caller already holding its territory lock`, async t => {
+  const root = await tempProject(t), env = fixtureEnvironment(root, process.env), host = localHost(env);
+  const store = { hostWorktrees: (): HostWorktreeRecord[] => { assert.fail('nested caller must refuse before observing checkout state'); }, saveHostWorktree: () => { assert.fail('must not write'); }, deleteHostWorktree: () => { assert.fail('must not delete'); } };
+  const row: HostWorktreeRecord = { item: 'T-1', host: host.name, root, path: join(root, 'tree'), branch: 't/T-1-nested', tip: '0'.repeat(40) };
+  await withTerritoryLockAsync(root, async () => {
+    const common = { project: root, root, host, item: row.item, store, env, authorize: () => {} };
+    const work = operation === 'add' ? addHostTaskWorktree({ ...common, branch: row.branch })
+      : operation === 'relaunch' ? relaunchHostTaskWorktree({ ...common, from: host.name })
+      : pruneHostTaskWorktree({ project: root, row, host, store, env, validate: async () => {} });
+    await assert.rejects(work, /host-worktree-lock-order: checkout requires an unlocked caller/);
+    assert.equal(territoryLockHeld(root), true, 'the original owner remains active after refusal');
+  });
+});
+
+test('host prune retains its branch and row when the item reopens during final occupants observation', async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
+  const store = new Store(join(root, '.cland/hub.db'));
+  const release = Promise.withResolvers<void>();
+  let pending: ReturnType<TaskWorktrees['prune']> | undefined;
+  beforeDirectories(t, async () => { release.resolve(); await pending?.catch(() => {}); await tracker.stop(); store.close(); });
+  const item = await tracker.create(human, { title: 'reopen during prune', kind: 'task' });
+  const tree = await ensureTaskWorktree(root, { id: item.id, slug: 'reopen', branch: null }, undefined, undefined, env);
+  const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
+  const native = localHost(env);
+  let removed = false, held = false;
+  const host = { ...native, name: 'remote', worktreeRemove: async (options: Parameters<Host['worktreeRemove']>[0]) => { await native.worktreeRemove(options); removed = true; }, occupants: async () => { if (removed && !held) { held = true; await release.promise; } return []; } };
+  store.hosts.insert({ id: host.name, address: 'fixture', user: 'agent', clientKeyPath: 'unused', knownHosts: 'unused' }, 'synthetic');
+  store.saveHostWorktree({ item: item.id, host: host.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true, phase: 'ready' });
+  await grantBranchLease(root, host.name, tree.branch);
+  const leases = await readFile(branchLeasePath(root), 'utf8');
+  await tracker.close(human, item.id);
+  const worktrees = new TaskWorktrees({ tracker, store, resolveHost: () => host, env });
+  pending = worktrees.prune([item.id]);
+  await eventually('final occupants observation held after native removal', () => held || undefined, testWaitMs(5_000));
+  await tracker.edit(human, item.id, { state: 'open' });
+  release.resolve();
+  const result = await pending;
+  assert.deepEqual(result.removed, []);
+  assert.match(result.failed[0]?.error ?? '', /host-prune-changed:.*no longer prunable/);
+  assert.equal(tracker.summary(item.id)?.state, 'open');
+  assert.equal(store.hostWorktrees()[0]?.phase, 'removing');
+  assert.equal(await territoryGitAsync(territoryPath(root), ['rev-parse', tree.branch], false, undefined, env), tip);
+  assert.equal(await readFile(branchLeasePath(root), 'utf8'), leases);
+});
+
+test('host prune retains replacement ownership arriving during final validation', async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env), native = localHost(env);
+  const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'last-check', branch: null }, undefined, undefined, env);
+  const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
+  const row: HostWorktreeRecord = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true };
+  let rows = [row], validations = 0, held = false;
+  const store = { hostWorktrees: () => rows, saveHostWorktree: (value: HostWorktreeRecord) => { rows = [value]; }, deleteHostWorktree: () => { rows = []; } };
+  const release = Promise.withResolvers<void>();
+  let pending: Promise<void> | undefined;
+  beforeDirectories(t, async () => { release.resolve(); await pending?.catch(() => {}); });
+  pending = pruneHostTaskWorktree({ project: root, row, host: native, store, env, validate: async () => { if (++validations === 2) { held = true; await release.promise; } } });
+  await eventually('final validation held', () => held || undefined, testWaitMs(5_000));
+  const replacement: HostWorktreeRecord = { ...rows[0]!, host: 'replacement', phase: 'ready' };
+  store.saveHostWorktree(replacement);
+  release.resolve();
+  await assert.rejects(pending, /host-prune-changed:.*row changed/);
+  assert.deepEqual(rows, [replacement]);
+  assert.equal(await territoryGitAsync(territoryPath(root), ['rev-parse', tree.branch], false, undefined, env), tip);
+});
+
+for (const afterWait of ['open', 'closed'] as const) test(`public relaunch admission waits for an admitted receive and refreshes ${afterWait} eligibility`, async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
+  const store = new Store(join(root, '.cland/hub.db'));
+  let pending: Promise<void> | undefined;
+  beforeDirectories(t, async () => { await pending?.catch(() => {}); await tracker.stop(); store.close(); });
+  const item = await tracker.create(human, { title: 'admission wait', kind: 'task' });
+  const host = { ...localHost(env), name: 'destination' };
+  store.hosts.insert({ id: host.name, address: 'fixture', user: 'agent', clientKeyPath: 'unused', knownHosts: 'unused' }, 'synthetic');
+  const row: HostWorktreeRecord = { item: item.id, host: 'source', root, path: join(root, 'source'), branch: 't/T-1-admit', tip: 'a'.repeat(40), phase: 'ready' };
+  store.saveHostWorktree(row);
+  const client = await admittedReceive(t, root, env, 'admission-receive');
+  const promises = (await import('node:fs/promises')).default, read = promises.readFile.bind(promises);
+  let observed = false, admitted = false;
+  t.mock.method(promises, 'readFile', async (...args: Parameters<typeof promises.readFile>) => {
+    const result = await read(...args);
+    if (!observed && args[0] === join(root, '.cland/territory.lock')) {
+      observed = true;
+      if (afterWait === 'closed') await tracker.close(human, item.id);
+      client.end();
+    }
+    return result;
+  });
+  const worktrees = new TaskWorktrees({ tracker, store, resolveHost: () => host, env });
+  pending = worktrees.admitRelaunch(item.id, 'source', host, () => { admitted = true; });
+  if (afterWait === 'open') { await pending; assert.equal(admitted, true); }
+  else { await assert.rejects(pending, /requires an open task/); assert.equal(admitted, false); }
+  assert.equal(observed, true);
+  assert.deepEqual(store.hostWorktrees(), [row]);
+});
+
+test('public relaunch admission refuses a nested territory owner before joining its serial queue', async t => {
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
+  beforeDirectories(t, () => tracker.stop());
+  const worktrees = new TaskWorktrees({ tracker, env });
+  const host = localHost(env);
+  t.mock.method(tracker, 'viewAsync', async () => { assert.fail('nested admission must refuse before reading eligibility'); });
+  await withTerritoryLockAsync(root, async () => {
+    await assert.rejects(async () => worktrees.admitRelaunch('T-1', 'source', host, () => assert.fail('must not admit')), /host-worktree-lock-order/);
+    assert.equal(territoryLockHeld(root), true);
   });
 });

@@ -6,6 +6,11 @@ import { HOST_PUSH_TIMEOUT_MS } from './git-daemon.ts';
 import { assertTerritoryLock, territoryLockHeld } from '../territory-lock-context.ts';
 
 export const branchLeasePath = (root: string) => join(territoryPath(root), 'cland-branch-leases');
+/** Snapshot the exact lease owners while the caller owns the territory lock. */
+export async function branchLeaseOwnersLocked(root: string, branch: string): Promise<string[]> {
+  assertTerritoryLock(root);
+  return (await read(root)).filter(row => row.branch === branch).map(row => row.host).sort();
+}
 type Lease = { host: string; branch: string };
 async function read(root: string): Promise<Lease[]> {
   const territory = await lstat(territoryPath(root)).catch(error => { if (error.code === 'ENOENT') return null; throw error; });

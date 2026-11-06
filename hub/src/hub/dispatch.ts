@@ -1,3 +1,4 @@
+import { hostWorktreeMatches } from '../host/task-worktrees.ts';
 import { flushHostBranch } from '../host/flush.ts';
 import { territoryPath, territoryGitAsync } from '../territory.ts';
 import { tunnelStatuses } from '../transport/transport.ts';
@@ -1128,7 +1129,7 @@ export class Dispatcher {
     const root=this.#options.tracker!.root;
     const head=await flushHostBranch(host,row,()=>territoryGitAsync(territoryPath(root),['rev-parse','--verify',`refs/heads/${row.branch}`],false,undefined,this.#options.env),reported);
     const current=this.#options.core.store.hostWorktrees().find(current=>current.item===id);
-    if(!current||current.host!==row.host||current.path!==row.path||current.branch!==row.branch||this.#sessions?.hostForSession(sessionId).name!==host.name||this.#options.tracker?.summary(id)?.branch!==row.branch)throw new Error(`host-flush-refused: worktree ownership or item branch changed; worktree HEAD ${head}; territory HEAD ${head}`);
+    if(!current||!hostWorktreeMatches(current,row)||current.host!==row.host||current.path!==row.path||current.branch!==row.branch||this.#sessions?.hostForSession(sessionId).name!==host.name||this.#options.tracker?.summary(id)?.branch!==row.branch)throw new Error(`host-flush-refused: worktree ownership or item branch changed; worktree HEAD ${head}; territory HEAD ${head}`);
     return {head,branch:row.branch};
   }
 

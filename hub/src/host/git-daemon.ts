@@ -24,6 +24,8 @@ export type GitDaemonOptions = {
   env?: NodeJS.ProcessEnv;
   /** Stalled receive ownership cap; production defaults to 30 seconds. */
   receiveTimeoutMs?: number;
+  /** Bounded territory acquisition; defaults to 30 seconds. */
+  receiveLockWaitMs?: number;
   log: (row: Record<string, unknown>) => void;
 };
 
@@ -31,6 +33,8 @@ export type GitDaemonOptions = {
 export async function startGitDaemon(options: GitDaemonOptions, chmodSocket: typeof chmod = chmod) {
   const receiveTimeoutMs = options.receiveTimeoutMs ?? HOST_PUSH_TIMEOUT_MS;
   if (!Number.isFinite(receiveTimeoutMs) || receiveTimeoutMs <= 0 || receiveTimeoutMs > 2_147_483_647) throw new Error('receive timeout must be a positive finite timer duration');
+  const receiveLockWaitMs = options.receiveLockWaitMs ?? HOST_PUSH_LOCK_WAIT_MS;
+  if (!Number.isFinite(receiveLockWaitMs) || receiveLockWaitMs <= 0 || receiveLockWaitMs > HOST_PUSH_LOCK_WAIT_MS) throw new Error('receive lock wait must be between 0 (exclusive) and 30000 ms');
   const env = withoutExecutorCredentials(gitDaemonEnvironment(options.host, options.env ?? process.env));
   const native = localHost(options.env);
   const active = new Set<{ stop: () => Promise<void>; done: Promise<void> }>();
@@ -104,7 +108,7 @@ export async function startGitDaemon(options: GitDaemonOptions, chmodSocket: typ
           timeout.unref();
           try { await launch(); }
           finally { clearTimeout(timeout); }
-        });
+        }, undefined, receiveLockWaitMs);
       } else await launch();
     })().catch(error => {
       if (writeOwned) {
@@ -140,6 +144,9 @@ export async function startGitDaemon(options: GitDaemonOptions, chmodSocket: typ
   }
   return { address: () => server.address(), close };
 }
+
+/** Maximum wait for a prior territory operation, separate from native receive ownership. */
+export const HOST_PUSH_LOCK_WAIT_MS = 30_000;
 
 /** Bounds both first-packet admission and a stalled push's ownership of territory.lock. */
 export const HOST_PUSH_TIMEOUT_MS = 30_000;

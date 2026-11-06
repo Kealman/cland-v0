@@ -7,14 +7,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { eventually, testWaitMs } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { HOST_PUSH_TIMEOUT_MS, startGitDaemon } from '../src/host/git-daemon.ts';
+import { HOST_PUSH_TIMEOUT_MS, HOST_PUSH_LOCK_WAIT_MS, startGitDaemon } from '../src/host/git-daemon.ts';
 import { grantBranchLease, revokeBranchLease } from '../src/host/branch-leases.ts';
 import { TERRITORY_HOOK, refreshTerritoryHook, withTerritoryLockAsync } from '../src/territory.ts';
 import { TerritoryBusy } from '../src/territory-lock-context.ts';
 const exec = promisify(execFile);
 
-async function fixture(t: test.TestContext) {
+async function fixture(t: test.TestContext, receiveLockWaitMs?: number) {
   const root = await mkdtemp(join(tmpdir(), 'cland-allow-'));
   const env = fixtureEnvironment(root, process.env, {});
   const closers: (() => Promise<void>)[] = [];
@@ -32,7 +33,7 @@ async function fixture(t: test.TestContext) {
   await writeFile(join(client, 'file'), 'one');
   await git(client, 'add', '.'); await git(client, 'commit', '-m', 'seed');
   const events = new EventEmitter();
-  const listener = await startGitDaemon({ host: 'host-a', territory, socket: join(root, 'git.sock'), env, log: row => events.emit(String(row.event), row) });
+  const listener = await startGitDaemon({ host: 'host-a', ...(receiveLockWaitMs === undefined ? {} : { receiveLockWaitMs }), territory, socket: join(root, 'git.sock'), env, log: row => events.emit(String(row.event), row) });
   closers.push(() => listener.close());
   const proxy = join(root, 'proxy');
   const source = fileURLToPath(new URL('../src/host/git-proxy.ts', import.meta.url));
@@ -101,7 +102,7 @@ function request(service: string): Buffer {
 }
 
 test('admitted push fences revoke until native exit; held revoke refuses push while fetch completes', async t => {
-  const f = await fixture(t);
+  const f = await fixture(t, 100);
   await grantBranchLease(f.root, 'host-a', 't/race');
   await f.push('HEAD:refs/heads/t/race');
   const events = new EventEmitter();
@@ -189,6 +190,7 @@ test('hub startup upgrades an existing territory update hook', async t => {
 
 test('a stalled receive releases its write fence after the injected cap and native close', { timeout: 10_000 }, async t => {
   assert.equal(HOST_PUSH_TIMEOUT_MS, 30_000);
+  assert.equal(HOST_PUSH_LOCK_WAIT_MS, 30_000);
   const f = await fixture(t);
   const events = new EventEmitter();
   const listener = await startGitDaemon({ host: 'host-a', territory: f.territory, socket: join(f.root, 'timeout.sock'), env: f.env, receiveTimeoutMs: 500, log: row => events.emit(String(row.event), row) });
@@ -270,4 +272,69 @@ test('public revoke reuses its active territory lock without waiting on itself',
     assert.equal(await readFile(join(f.territory, 'cland-branch-leases'), 'utf8'), '');
     await assert.rejects(grantBranchLease(f.root, 'host-b', 't/not-released'), /territory operation holds/);
   });
+});
+
+
+test('territory push waits for the previous receive release and publishes its tip', { timeout: testWaitMs(15_000) }, async t => {
+  const f = await fixture(t);
+  await grantBranchLease(f.root, 'host-a', 't/wait');
+  const released = Promise.withResolvers<void>();
+  const releaseEntered = Promise.withResolvers<void>();
+  const remove = fs.rm, read = fs.readFile;
+  let hold = true;
+  f.closers.push(async () => { hold = false; released.resolve(); });
+  t.mock.method(fs, 'rm', async (...args: Parameters<typeof fs.rm>) => {
+    if (hold && args[0] === join(f.root, '.cland/territory.lock')) {
+      releaseEntered.resolve();
+      await released.promise;
+    }
+    return remove(...args);
+  });
+  await f.push('HEAD:refs/heads/t/wait');
+  let releaseObserved = false;
+  void releaseEntered.promise.then(() => { releaseObserved = true; });
+  await eventually('previous receive reached asynchronous lock release', () => releaseObserved || undefined, testWaitMs(5_000));
+  await writeFile(join(f.client, 'file'), 'second tip');
+  await f.git(f.client, 'commit', '-am', 'second');
+  let observed = false;
+  t.mock.method(fs, 'readFile', async (...args: Parameters<typeof fs.readFile>) => {
+    const result = await read(...args);
+    if (hold && args[0] === join(f.root, '.cland/territory.lock')) {
+      observed = true; hold = false; released.resolve();
+    }
+    return result;
+  });
+  try {
+    await f.push('HEAD:refs/heads/t/wait');
+    assert.equal(observed, true, 'second push observed the previous receive release');
+    assert.equal(await f.git(f.territory, 'rev-parse', 't/wait'), await f.git(f.client, 'rev-parse', 'HEAD'));
+  } finally { hold = false; released.resolve(); }
+});
+
+test('territory push retains the named refusal after its lock wait bound', async t => {
+  const f = await fixture(t, 500);
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const holder = withTerritoryLockAsync(f.root, async () => { entered.resolve(); await release.promise; });
+  let client: ReturnType<typeof connect> | undefined;
+  const cleanup = async () => {
+    const closed = client && !client.closed ? new Promise<void>(done => client!.once('close', () => done())) : undefined;
+    client?.destroy();
+    release.resolve();
+    await holder;
+    await closed;
+  };
+  f.closers.push(cleanup); // Own the holder and any later client before setup can fail.
+  let enteredObserved = false;
+  void entered.promise.then(() => { enteredObserved = true; });
+  await eventually('independent territory holder entered', () => enteredObserved || undefined, testWaitMs(5_000));
+  client = connect({ path: join(f.root, 'git.sock'), allowHalfOpen: true });
+  await once(client, 'connect', { signal: AbortSignal.timeout(testWaitMs(5_000)) });
+  const reply = once(client, 'data', { signal: AbortSignal.timeout(testWaitMs(5_000)) });
+  const started = Date.now();
+  client.write(request('git-receive-pack'));
+  try {
+    const [packet] = await reply;
+    assert.match(packet.toString(), /host-a: push retry required: another territory operation holds the lock(?: \(pid \d+\))?/);
+    assert.ok(Date.now() - started >= 500, 'named 500 ms acquisition bound expires before refusal'); // lint-allow-wall-clock: native socket acquisition expiry is the behaviour under test; setup is separately bounded.
+  } finally { await cleanup(); }
 });
