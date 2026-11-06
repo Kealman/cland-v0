@@ -982,7 +982,7 @@ export type HarnessProcessView = {
   account?: string | null;
   stateReason?: string;
   deaf?: { message: string; since: string; text: string; notice: string };
-  /** Warning from an explicit recovery launch; absent from stored rows. */
+  /** Warning from a recovery launch or a durable cross-host restart note. */
   warning?: string;
   layer?: Layer;
   name: string;

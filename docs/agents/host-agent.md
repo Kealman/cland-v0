@@ -516,3 +516,50 @@ mismatch, unreadable producer receipt, unobservable captured target, or a live
 target without its native ledger. Diagnostics name differing fields without
 printing native admission secrets or account paths. They grant no new cleanup or
 retry authority. Clients still accept older observations without optional cause.
+
+## Relaunching an item on another host
+
+A task stays on its host while that host's tunnel is up. Same-host relaunch
+reuses its worktree and native conversation. A `session.resume` frame may carry
+`relaunch: true` and `host: "f2"`; there is no CLI host flag. A different host is
+refused while the original is available. A down, gone or authenticated rebooted
+original permits relaunch on a registered destination host.
+
+A short worktree-serial/territory-locked admission persists the exact source
+generation, destination and cause before the old adapter is irreversibly released.
+The public `Sessions.releaseUnreachableGeneration` method fences and drains
+transient adapter work and joins captured hub-local forward cleanup outside both
+locks; captured work can itself be awaiting territory I/O. Missing capability or
+a mismatched release receipt refuses the move. Native/file settlement obligations
+remain retained. A returning original host does not undo committed admission.
+
+The destination fetches the territory's pushed task tip and adds its checkout.
+The worktree serial queue precedes the territory lock, which covers tip capture,
+exclusive branch-lease replacement and destination preparation. The old host's
+pushes are refused after transfer. Native publication atomically commits the new
+process row, ready checkout owner, restart warning and intent completion in the
+shared database. A post-commit observer failure does not roll back the native owner.
+
+An incomplete or refused destination/native admission retains its durable intent
+and failure reason. After checkout/lease transfer, its owner stays `adding`; source
+resume and onward relaunch refuse, and delivery stays held. Nothing restores old
+push authority. Automatic reconciliation of unknown preparation and explicit retry
+of known failed preparation are outside this flow. The retained owner is kept for
+subsequent reconciliation; a failed relaunch reports that it remains fenced.
+
+This starts a fresh native conversation. The cland name, sessionId, role, claim,
+item, topic and subscriptions stay with the session. Its first input carries the
+recorded brief and a note naming both hosts, cause and territory SHA, saying
+native history and uncommitted edits were lost, and directing it to item-topic
+`history`. The reply notes and persisted generation warning show that restart.
+The old native generation stays a named settlement obligation; tunnel loss does
+not prove it exited. Reboot closure retains the existing authenticated boot proof.
+No conversation files are copied from the old host.
+
+The cross-host path performs no stop/reap on the unreachable host and adds no
+outer stop deadline. Worktree preparation and native spawn are awaited in order,
+under the session lifecycle reservation; each keeps its own native operation
+bounds. A client request timeout does not cancel or release that reservation.
+See [relaunch tests](tests/hub-test-host-relaunch.test.ts.md).
+
+Remote-to-local relaunch is refused explicitly; choose a registered remote host.

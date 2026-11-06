@@ -252,3 +252,15 @@ and territory HEADs. A fenced watch, unknown push or mismatch refuses admission;
 resolve the named cause through the item lead. Verification uses a pinned,
 hub-local detached territory snapshot, never the host session directory. See
 [host publication admission](../../../docs/agents/host-agent.md#publication-admission).
+
+A cross-host item relaunch uses optional `session.resume.host` with `relaunch`
+(frame only). An available original host refuses migration. A lost or rebooted
+host permits a registered destination to fetch the pushed task tip, take the
+exclusive branch lease and start a fresh native conversation with the recorded
+brief and loss note. Cland identity and claim stay; old native obligations stay
+retained. See docs/agents/host-agent.md, "Relaunching an item on another host".
+
+A pending or failed cross-host handoff remains fenced with its destination owner
+and failure reason. Report it to the item lead; do not overwrite the destination
+or resume the old native generation. Successful publication commits the native
+row, ready checkout, restart warning and intent completion atomically.

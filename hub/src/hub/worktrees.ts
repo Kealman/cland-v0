@@ -1,4 +1,4 @@
-import { addHostTaskWorktree, pruneHostTaskWorktree } from '../host/task-worktrees.ts';
+import { addHostTaskWorktree, pruneHostTaskWorktree, relaunchHostTaskWorktree } from '../host/task-worktrees.ts';
 import { hostCloneRoot } from '../host/clone.ts';
 import type { Store } from './store.ts';
 import type { Host } from '../host/host.ts';
@@ -18,7 +18,7 @@ import type { Claim } from '../tracker/index-db.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import type { HarnessProcessView } from '../protocol.ts';
 import type { LaunchRequest, Sessions } from '../adapters/sessions.ts';
-import { territoryPath, commitsAhead, ensureTaskWorktree, hasTerritory, listTaskWorktrees, removeTaskWorktree, taskBase, type TaskWorktree, type ExpectedBranch } from '../territory.ts';
+import { territoryPath, withTerritoryLockAsync, commitsAhead, ensureTaskWorktree, hasTerritory, listTaskWorktrees, removeTaskWorktree, taskBase, type TaskWorktree, type ExpectedBranch } from '../territory.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
 /** What a claim or a launch made of the item's worktree: the worktree, or why there is none. */
@@ -128,6 +128,28 @@ export class TaskWorktrees {
       }
     });
     return worktree;
+  }
+
+  /** Short admission lock precedes adapter drain, which must never wait while holding this lock. */
+  admitRelaunch(item: string, from: string, host: Host, admit: () => void) {
+    return this.serial(async () => {
+      if (this.#store?.hosts.get(host.name)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
+      const view = await this.#tracker.viewAsync(item);
+      if (await this.#ineligible(view)) throw new Error(`${item}: cross-host relaunch requires an open task with a territory`);
+      await withTerritoryLockAsync(this.root, async () => {
+        const old = this.#store!.hostWorktrees().find(row => row.item === item);
+        if (!old || old.host !== from || old.phase === 'adding') throw new Error(`${item}: original worktree ownership is unavailable or needs reconciliation`);
+        admit();
+      });
+    });
+  }
+
+  /** Caller owns admitted native generation; no later connectivity observation undoes that admission. */
+  relaunchElsewhere(item: string, from: string, host: Host, authorize: () => void) {
+    return this.serial(async () => {
+      if (this.#store?.hosts.get(host.name)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
+      return relaunchHostTaskWorktree({project:this.root,root:hostCloneRoot(host.layout({discoveryFile:'',node:'',cli:'',spoke:''}).runDirectory,this.root),host,item,from,store:this.#store,env:this.#env,authorize});
+    });
   }
 
   /** After a claim (decision D7): the worktree made or reused, or why there is none. A failure never undoes the claim. */

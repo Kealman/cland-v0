@@ -352,7 +352,7 @@ What the real Codex showed in the first smoke (0.160.0, `gpt-5.6-luna`): `turn/s
 | `{"type":"session.archive","id":…, "session":…}` | `{"process":…}`; stopped/exited only | UI, human CLI, Coordinator |
 | `{"type":"session.prune","id":…, "olderThan":"7d","dryRun"?:true}` | `{"names":[…],"dryRun":boolean}` | UI, human CLI, Coordinator |
 | `{"type":"session.stop","id":…,"session":…}` | `{"process":…}` | UI, CLI (Coordinator, Lead within its subtree, Aide on the human's word) |
-| `{"type":"session.resume","id":…,"session":…,"relaunch"?:true,"fresh"?:true}` | `{"found","reason"?,"process","role","claim","notes", "fresh"?:{"brief"}}` | UI, CLI (Coordinator, Aide on the human's word) |
+| `{"type":"session.resume","id":…,"session":…,"relaunch"?:true,"fresh"?:true,"host"?:"f2"}` | `{"found","reason"?,"process","role","claim","notes", "fresh"?:{"brief"}}` | UI, CLI (Coordinator, Aide on the human's word) |
 | `{"type":"session.retry","id":…,"session":…,"message":"<message id>"}` | `{"retried":true}`; force human input queued over 60 s through busy, or replay `uncertain`; optional `message` selects one delivery, omission chooses the oldest eligible one | UI, CLI |
 | `{"type":"session.signal","id":…,"session":…,"launch"?:…,"event":…,"at":…,"payload":{…}}` | `{"applied","state"?}` | `cland hook` |
 | `{"type":"session.bridge","id":…,"session":…,"launch"?:…}` | `{"bridged":true}`, then `{"type":"inject","session","message","text"}` frames | `cland hook bridge` |
@@ -920,6 +920,33 @@ host-local files outside the run directory. Lifecycle exit and role publication
 belong to the reboot caller. Its indexed native-operation fence survives resource
 receipt deletion and storage reopen; cleanup completion never restores authority
 for a captured old birth. See [host settlement](../agents/host-agent.md#settlement-before-host-revocation).
+
+## Cross-host item relaunch
+
+`session.resume {session, relaunch: true, host}` requests another registered
+host only when the original host is down, gone or has an authenticated reboot
+receipt. A live host refuses with "task stays on its host". Omitting `host`
+retains the existing resume path. `host` requires `relaunch` and cannot combine
+with `fresh`; no CLI flag is added.
+
+The session lifecycle owner serializes destination preparation through
+TaskWorktrees, then starts a fresh native generation using the normal adapter
+spawn contract. Stable cland identity and claim are retained; native history and
+uncommitted edits are lost. The recorded brief plus an explicit restart note is
+the first input. Reply notes and a generation-keyed durable warning expose the
+restart in session rows. The original generation remains in host retention with
+unknown native closure on tunnel loss, or its existing confirmed reboot closure.
+See [host procedure](../agents/host-agent.md#relaunching-an-item-on-another-host)
+and [native evidence guide](../agents/tests/hub-test-host-relaunch.test.ts.md).
+
+Remote-to-local relaunch is refused explicitly; choose a registered remote host.
+
+Cross-host admission persists before adapter release. Drain runs outside the
+territory lock; later source connectivity cannot cancel admission. Publication
+commits native row, ready checkout, restart warning and intent completion in one
+ProcessTable transaction. Failed native admission retains adding ownership and a
+durable reason, refusing source or onward resume until reconciliation. Explicit
+failed-checkout retry and unknown-preparation reconciliation are outside this flow.
 
 ### Unreachable generation transport handoff
 

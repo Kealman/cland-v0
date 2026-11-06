@@ -58,3 +58,11 @@ export async function revokeBranchLeasesLocked(root: string, branch: string, hos
   const keep = leases.filter(row => row.branch !== branch || (host !== undefined && row.host !== host));
   if (keep.length !== leases.length) await write(root, keep);
 }
+
+/** Replace every holder of this branch in one durable write while the caller owns the territory. */
+export async function transferBranchLeaseLocked(root: string, host: string, branch: string): Promise<void> {
+  assertTerritoryLock(root);
+  validate(host, branch);
+  const leases = await read(root);
+  await write(root, [...leases.filter(row => row.branch !== branch), { host, branch }]);
+}

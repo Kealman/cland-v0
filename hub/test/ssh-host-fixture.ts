@@ -14,9 +14,8 @@ import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { ownDirectory, cleanupOwnedProcesses, fixtureProcessCensus } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import type { Socket } from 'node:net';
-import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-export async function sshHostFixture(t: TestContext, options: {startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
+export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
   const root = join(realpathSync('/tmp'), 'cland-suite-' + randomUUID()); await mkdir(root,{mode:0o700});
   const previous = process.cwd(); process.chdir(root);
   const cleanup = ownDirectory(undefined,root);

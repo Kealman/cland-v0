@@ -9,7 +9,7 @@
 //   session.attach  {session}                                  → {command}
 //   session.archive {session}                                  → {process}   human and Coordinator; stopped/exited only
 //   session.stop    {session}                                  → {process}
-//   session.resume  {session, relaunch?, fresh?}               → {found, reason?, process, role, claim, notes[], fresh?: {brief}}
+//   session.resume  {session, relaunch?, fresh?, host?}               → {found, reason?, process, role, claim, notes[], fresh?: {brief}}
 //   session.retry   {session, message}                         → {retried: true}   the human: force old queued human input or replay uncertain delivery
 //   session.signal  {session?, sessionId?, launch?, event, at?, payload?} → {applied, state?}   clients only (`cland hook`)
 //   session.bridge  {session, launch?}                         → {bridged: true}, then `inject` frames  clients only
@@ -30,7 +30,7 @@ export type SessionRequest =
   | { type: 'session.archive'; id: string; session: string }
   | { type: 'session.prune'; id: string; olderThan: string; dryRun?: boolean }
   | { type: 'session.stop'; id: string; session: string }
-  | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean }
+  | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean; host?: string }
   | { type: 'session.retry'; id: string; session: string; message?: string }
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
@@ -56,7 +56,7 @@ export function isSessionRequest(f: Record<string, unknown>): f is SessionReques
     case 'session.bridge':
       return typeof f.session === 'string' && optString(f.launch);
     case 'session.resume':
-      return typeof f.session === 'string' && (f.relaunch === undefined || typeof f.relaunch === 'boolean') && (f.fresh === undefined || typeof f.fresh === 'boolean');
+      return typeof f.session === 'string' && (f.relaunch === undefined || typeof f.relaunch === 'boolean') && (f.fresh === undefined || typeof f.fresh === 'boolean') && (f.host === undefined || typeof f.host === 'string');
     case 'session.retry':
       return typeof f.session === 'string' && optString(f.message);
     case 'session.signal':
@@ -114,7 +114,7 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.stop':
         return ok({ process: await sessions.stop(frame.session, resumed, authorize) });
       case 'session.resume':
-        return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed, authorize, frame.fresh ?? false));
+        return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed, authorize, frame.fresh ?? false, frame.host, worktrees));
       case 'session.retry':
         return ok(sessions.retry(frame.session, frame.message));
       case 'session.signal':

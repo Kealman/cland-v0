@@ -1,4 +1,5 @@
-import { dropHostForwardsLocal, localForwardOwner } from '../transport/transport.ts';
+import { hostRelaunchIntentKey, hostRelaunchWarningKey, type HostRelaunchIntent, type HostRelaunchCompletion } from '../host/relaunch-state.ts';
+import { tunnelStatuses, dropHostForwardsLocal, localForwardOwner } from '../transport/transport.ts';
 import { AGENT_LAUNCH_DIRECTORY } from '../host/agent/processes.ts';
 import { serverFiles, retainedPrivateServerFiles } from './opencode/server.ts';
 import { settleHostBeforeCut, HostSettlementIncomplete, type HostSettlement } from '../host/settle.ts';
@@ -35,7 +36,7 @@ import type { HarnessProcessView, Message, SessionState, SessionUsage } from '..
 import type { LogFn } from '../log.ts';
 import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type LaunchPolicy, type ResumeResult, type StateSignal, type TurnReplay } from './contract.ts';
 import { ProcessTable, hostGenerationKey, type PendingStop } from './processes.ts';
-import type { Resumed } from '../hub/worktrees.ts';
+import type { Resumed, TaskWorktrees } from '../hub/worktrees.ts';
 import { clauseText, projectRulesText } from '../roles/clause.ts';
 import { roleLaunchPolicy } from '../roles/config.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
@@ -819,7 +820,9 @@ export class Sessions {
     const usage = this.#reportedUsage(p);
     const deaf = p.status === 'running' ? this.#deaf.get(p.sessionId) : undefined;
     const unknownHost = !this.#hosts.has(p.host ?? 'local');
-    const stateReason = unknownHost ? 'unknown host' : deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
+    const handoff = this.#relaunchIntent(p);
+    const relaunchWarning = this.#core.store.meta(hostRelaunchWarningKey(hostGenerationKey(p))) ?? (handoff ? `relaunch to ${handoff.targetHost} ${handoff.phase}${handoff.failure ? ': '+handoff.failure : ''}; destination remains fenced` : null);
+    const stateReason = handoff ? 'host relaunch pending' : unknownHost ? 'unknown host' : deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     let attach: string | null = null;
@@ -831,6 +834,7 @@ export class Sessions {
       }
     }
     return {
+      ...(relaunchWarning ? {warning:relaunchWarning} : {}),
       name: p.name,
       harness: p.harness,
       account: p.account ?? null,
@@ -1330,12 +1334,13 @@ export class Sessions {
     return resumed(() => reused ?? this.#launchNew(effective, role, resumed, authorize));
   }
 
-  async #launchNew(request: LaunchRequest | AccountLaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message, retainedId?: string): Promise<HarnessProcessView> {
+  /** heldSlot is used only after an exact cross-host release receipt, while its caller owns the session slot. */
+  async #launchNew(request: LaunchRequest | AccountLaunchRequest, role: string | null, resumed: Resumed, authorize: () => void, resumeConversation?: string, resolvedBrief?: Message, retainedId?: string, heldSlot = false, completion?: HostRelaunchCompletion): Promise<HarnessProcessView> {
     checkRoleHost(role, this.#hostForLaunch(request).name);
     const effectiveRequest = { ...request, role };
     const existing = this.#table.get(request.name);
     if (retainedId && existing?.sessionId !== retainedId) throw new Error(`session "${request.name}" was replaced; retry the fresh resume`);
-    if (existing?.status === 'running') throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
+    if (existing?.status === 'running' && !heldSlot) throw new Error(`session "${request.name}" is already running (${existing.harness}, pid ${existing.pid ?? '?'}); stop it first`);
     if ([...this.#pendingStops.values()].some(entry => entry.process.name === request.name)) throw new Error(`failed launch of "${request.name}" is still supervised; cleanup is pending`);
     const reserved = this.#core.nameReservation(request.name);
     if (reserved) throw new Error(reserved);
@@ -1349,7 +1354,7 @@ export class Sessions {
     this.#checkCrew(request.name, role);
     const admission = role !== null ? this.#core.admitRole(request.name, role) : null;
     if (role !== null) this.#crewAdmissions.set(request.name, role);
-    const slot = this.#lifecycleSlot(existing?.sessionId ?? `new:${request.name}`);
+    const slot = heldSlot ? { ready: undefined, release() {} } : this.#lifecycleSlot(existing?.sessionId ?? `new:${request.name}`);
     let reservation: { previous: string | null; previousSessionId: string | null } | null = null;
     const launching: SignalFrame[] = [];
     this.#launching.set(request.name, launching);
@@ -1402,7 +1407,7 @@ export class Sessions {
           if (!info || info.refusal !== null) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (this.#env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkRolesLaunch(role); this.#checkCrew(request.name, role); }, resumeConversation, retainedId);
+          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkRolesLaunch(role); this.#checkCrew(request.name, role); }, resumeConversation, retainedId, completion);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
@@ -1441,7 +1446,7 @@ export class Sessions {
     });
   }
 
-  async #spawnLaunch(request: AccountLaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string, retainedId?: string): Promise<HarnessProcessView> {
+  async #spawnLaunch(request: AccountLaunchRequest, cwd: string, resumed: Resumed, reservation: { previous: string | null; previousSessionId: string | null } | null, releaseAdmission: () => void, launchToken: string, identity: LaunchOwnership, brief?: Message, authorize: () => void = () => {}, resumeConversation?: string, retainedId?: string, completion?: HostRelaunchCompletion): Promise<HarnessProcessView> {
     const role = request.role ?? null;
     const restoreRow = retainedId ? this.#table.get(request.name) : null;
     // the role's launch defaults (roles.toml, read as it is now): the harness, and the model and effort meant for it
@@ -1489,10 +1494,11 @@ export class Sessions {
         const refusal = this.#core.nameReservation(request.name, p.sessionId);
         if (refusal) { conflict = true; throw new Error(refusal); }
         if (this.#core.roles) p.role = this.#core.store.roleOf(p.name);
-        try { this.#table.put(p); }
+        try { this.#table.put(p, completion); }
         finally {
           // An observer may throw after the row commits. Publish the binding for that
           // owned row too, but leave the prior binding intact on an unpublished failure.
+          if (completion && this.#table.get(p.name) && hostGenerationKey(this.#table.get(p.name)!) === hostGenerationKey(p) && !this.#core.store.meta(completion.intentKey)) accepted = true;
           if (this.#table.get(p.name)?.sessionId === p.sessionId) this.#core.rememberLaunchIdentity(p.name, p.sessionId, launchToken);
         }
         if (reservation) this.#core.launchSettled(request.name);
@@ -1523,6 +1529,12 @@ export class Sessions {
         return { ...view, ...(p.warning ? { warning: p.warning } : {}) };
       });
     } catch (cause) {
+      // A committed handoff is an accepted launch. Observer failure cannot undo its native owner.
+      if (completion && accepted && owned) {
+        try { if (reservation) this.#core.launchSettled(request.name); adapter.watch(owned); } catch { /* Durable row is recovered by normal host resume. */ }
+        try { this.#log({event:'session-publication-observer-failed',session:owned.name,error:cause instanceof Error ? cause.message : String(cause)}); } catch { /* Keep the accepted durable receipt. */ }
+        return this.view(this.#process(owned.name));
+      }
       let detail = cause instanceof Error ? cause.message : String(cause);
       if (cause instanceof LaunchRecoveryPending) {
         const child = cause.files.children[0];
@@ -1625,6 +1637,7 @@ export class Sessions {
         const current = this.#table.bySessionId(identity);
         if (!poolHandoff && this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        if (this.#relaunchIntent(current)) throw new Error('cross-host relaunch is fenced; reconciliation is required');
         if (this.#pendingStops.has(identity)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
         p = current;
         this.#clearCapacityRetry(identity);
@@ -1681,9 +1694,14 @@ export class Sessions {
   }
 
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
-  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false): Promise<SessionResumeAnswer> {
+  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false, host?: string, worktrees?: TaskWorktrees): Promise<SessionResumeAnswer> {
     authorize();
     const placement = this.#process(name);
+    if (this.#relaunchIntent(placement)) throw new Error('cross-host relaunch is fenced; inspect its reported failure before reconciliation');
+    if (host !== undefined && (!relaunch || fresh)) throw new Error('host requires relaunch without fresh');
+    if (host !== undefined && host !== (placement.host ?? 'local')) {
+      return this.#relaunchElsewhere(placement, host, resumed, authorize, worktrees);
+    }
     this.#hostForProcess(placement);
     if (relaunch || fresh) checkRoleHost(placement.role, placement.host);
     if (fresh) return this.#freshResume(name, resumed, authorize);
@@ -1702,6 +1720,7 @@ export class Sessions {
         const current = this.#table.bySessionId(identity);
         if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
+        if (this.#relaunchIntent(current)) throw new Error('cross-host relaunch is fenced; reconciliation is required');
         if ([...this.#pendingStops.values()].some(entry => entry.process.sessionId === identity || entry.process.name === current.name)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
         if (cwdRefusal) {
           const work = this.#resumeWork(current);
@@ -1711,6 +1730,83 @@ export class Sessions {
         }
         return this.#resume(current.name, relaunch, resumed, authorize);
       });
+    } finally { resumed(() => { this.#resuming--; slot.release(); }); }
+  }
+
+  #relaunchCause(p: HarnessProcess): string | null {
+    if ((p.host ?? 'local') === 'local') return null;
+    if (this.#table.hostGenerationRebooted(p)) return 'host rebooted';
+    const record = this.#core.store.hosts.get(p.host!);
+    if (!this.#hosts.has(p.host!) || record?.state === 'revoked') return 'host gone';
+    // Injected test Hosts without a registered carrier are conservatively available.
+    if (record && tunnelStatuses(this.#root, [record])[0]?.state === 'down') return 'host down';
+    return null;
+  }
+
+  #relaunchIntent(p: HarnessProcess): HostRelaunchIntent | null {
+    const value = this.#core.store.meta(hostRelaunchIntentKey(p.sessionId));
+    return value ? JSON.parse(value) as HostRelaunchIntent : null;
+  }
+
+  async #relaunchElsewhere(original: HarnessProcess, host: string, resumed: Resumed, authorize: () => void, worktrees?: TaskWorktrees): Promise<SessionResumeAnswer> {
+    if (host === 'local') throw new Error('relaunch to local from a remote host is not supported yet; relaunch on a registered host');
+    if (!this.#relaunchCause(original)) throw new Error('task stays on its host while that host is available');
+    const destination = this.validateLaunchHost({name:original.name,role:original.role,host});
+    if (!original.item || !worktrees) throw new Error('cross-host relaunch requires an item worktree');
+    const sourceGeneration = hostGenerationKey(original), intentKey = hostRelaunchIntentKey(original.sessionId);
+    const slot = this.#lifecycleSlot(original.sessionId);
+    let intent: HostRelaunchIntent | undefined;
+    this.#resuming++;
+    const current = () => {
+      authorize();
+      if (this.#closed) throw new Error('the hub is closing');
+      const p = this.#table.bySessionId(original.sessionId);
+      if (!p || p.item !== original.item || hostGenerationKey(p) !== sourceGeneration) throw new Error('session generation changed during cross-host relaunch');
+      if (this.#pendingStops.has(p.sessionId)) throw new Error('failed launch cleanup is pending');
+      if (this.#reusing.has(p.sessionId)) throw new Error('session is reserved for a pool handoff');
+      return p;
+    };
+    try {
+      if (slot.ready) await slot.ready;
+      const p = resumed(current);
+      if (this.#relaunchIntent(p)) throw new Error('cross-host relaunch is fenced; reconciliation is required');
+      this.#checkRolesLaunch(p.role);
+      this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
+      const sourceBrief = p.launchBrief == null ? null : await this.#resolveBrief(p.name, p.launchBrief, resumed, () => { resumed(current); });
+      const release: unknown = Reflect.get(this.adapter(p.harness),'releaseUnreachableGeneration');
+      if (typeof release !== 'function') throw new Error(`${p.harness}: cross-host generation handoff is unavailable`);
+      this.#table.retainHostGeneration(p,'unknown');
+      await worktrees.admitRelaunch(p.item!,p.host!,destination,() => resumed(() => {
+        const owner = current(), cause = this.#relaunchCause(owner);
+        if (!cause) throw new Error('task stays on its host while that host is available');
+        intent = {sourceGeneration,sourceHost:p.host!,targetHost:host,item:p.item!,cause,phase:'admitted'};
+        this.#core.store.setMeta(intentKey,JSON.stringify(intent));
+      }));
+      // Captured work may itself be waiting for territory I/O. Drain outside both worktree and territory locks.
+      await this.releaseUnreachableGeneration(p);
+      resumed(current);
+      const tree = await worktrees.relaunchElsewhere(p.item!,p.host!,destination,() => resumed(() => { current(); }));
+      intent = {...intent!,phase:'prepared',tree};
+      this.#core.store.setMeta(intentKey,JSON.stringify(intent));
+      const note = `relaunched on ${host} from ${p.host} (${intent.cause}); native conversation history and uncommitted edits were lost; branch at territory tip ${tree.tip}; read your item topic with \`history\` for context.`;
+      const brief = sourceBrief ? {...sourceBrief,text:`${sourceBrief.text}\n\n${note}`} : await this.#resolveBrief(p.name,note,resumed,() => { resumed(current); });
+      const launching = resumed(current);
+      const process = await this.#launchNew({name:launching.name,host,role:launching.role,harness:launching.harness,model:launching.model,effort:launching.effort ?? null,cwd:tree.path,item:launching.item!,resolvedAccount:{account:launching.account ?? null,accountEnv:launching.accountEnv ?? null},...(p.launchBrief == null ? {} : {brief:p.launchBrief})}, launching.role,resumed,() => { resumed(current); },undefined,brief,launching.sessionId,true,{intentKey,sourceGeneration,tree,note});
+      const launched = this.#process(process.name), work = this.#resumeWork(launched);
+      const notes = [...work.notes,note];
+      try {
+        this.#core.publishProcess(this.view(launched));
+        this.#log({event:'session-resumed',session:launched.name,harness:launched.harness,relaunched:true,conversationRestarted:true,fromHost:p.host,host,tip:tree.tip});
+      } catch (error) { notes.push(`native launch accepted; observer publication incomplete: ${error instanceof Error ? error.message : String(error)}`); }
+      return {found:true,process,...work,notes};
+    } catch (error) {
+      const pending = this.#core.store.meta(intentKey);
+      if (intent && pending) {
+        intent = {...intent,phase:'failed',failure:error instanceof Error ? error.message : String(error)};
+        this.#core.store.setMeta(intentKey,JSON.stringify(intent));
+        throw new Error(`relaunch on ${host} failed; destination remains fenced; reconciliation is required: ${intent.failure}`,{cause:error});
+      }
+      throw error;
     } finally { resumed(() => { this.#resuming--; slot.release(); }); }
   }
 
@@ -2450,7 +2546,7 @@ export class Sessions {
     if (this.#closed) return;
     const p = this.#table.bySessionId(sessionId);
     // a session no adapter launched has nobody to inject: its messages stay `delivered`
-    if (!p || p.status !== 'running' || !this.#hosts.has(p.host ?? 'local')) return;
+    if (!p || p.status !== 'running' || !this.#hosts.has(p.host ?? 'local') || this.#relaunchIntent(p)) return;
     const key = `${sessionId}:${messageId}`;
     const inflight = this.#inflight.get(key);
     if (inflight) {

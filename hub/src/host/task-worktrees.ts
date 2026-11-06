@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { Host } from './host.ts';
-import { grantBranchLeaseLocked, revokeBranchLease } from './branch-leases.ts';
+import { grantBranchLeaseLocked, revokeBranchLease, transferBranchLeaseLocked } from './branch-leases.ts';
 import { territoryPath, territoryGitAsync, withTerritoryLockAsync, type TaskWorktree } from '../territory.ts';
 import { HOST_ORIGIN } from './clone.ts';
 export type HostWorktreeRecord={item:string;host:string;root:string;path:string;branch:string;tip:string;createdBranch?:boolean;phase?:'adding'|'ready'};
@@ -56,5 +56,22 @@ export async function pruneHostTaskWorktree(o:{project:string;row:HostWorktreeRe
   await revokeBranchLease(o.project,row.host,row.branch);
   if(o.expected || row.createdBranch && tip===row.tip)await git(['update-ref','--no-deref','-d',`refs/heads/${row.branch}`,tip]);
   o.store.deleteHostWorktree(row.item);
+ });
+}
+
+/** A lost host's checkout is never read or removed. Incomplete destinations stay adding. */
+export async function relaunchHostTaskWorktree(o: {project:string;root:string;host:Host;item:string;from:string;store:HostWorktreeStore;env:NodeJS.ProcessEnv;authorize:()=>void}): Promise<HostWorktreeRecord> {
+ return withTerritoryLockAsync(o.project, async () => {
+  const old = o.store.hostWorktrees().find(row => row.item === o.item);
+  if (!old || old.host !== o.from || old.phase === 'adding') throw new Error(`${o.item}: original host worktree ownership is unavailable or needs reconciliation`);
+  const tip = (await territoryGitAsync(territoryPath(o.project), ['rev-parse', '--verify', `refs/heads/${old.branch}`], false, undefined, o.env)).trim();
+  o.authorize();
+  const row: HostWorktreeRecord = {...old, host:o.host.name, root:o.root, path:join(o.root,'.cland/worktrees',o.item), tip, phase:'adding'};
+  o.store.saveHostWorktree(row);
+  await transferBranchLeaseLocked(o.project, o.host.name, old.branch);
+  o.authorize();
+  await o.host.worktreeAdd({root:row.root,path:row.path,branch:row.branch,territory:{path:HOST_ORIGIN,tip},beforeInstall:o.authorize});
+  o.authorize();
+  return row;
  });
 }

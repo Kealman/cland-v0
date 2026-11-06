@@ -1,3 +1,4 @@
+import { hostRelaunchWarningKey, type HostRelaunchCompletion, type HostRelaunchIntent } from '../host/relaunch-state.ts';
 import { createHash } from 'node:crypto';
 import { realClock, type Clock } from '../hub/clock.ts';
 // The hub's process table (spec 4.3): the harness processes the hub launched, kept in `hub.db` in a table of
@@ -204,7 +205,9 @@ export class ProcessTable {
   }
 
   /** Record a launched process; a name launched again replaces its old row (the old process is gone or stopped). */
-  put(p: HarnessProcess): void {
+  put(p: HarnessProcess, relaunch?: HostRelaunchCompletion): void {
+    if (relaunch) this.#db.exec('begin immediate');
+    try {
     const previous=this.get(p.name);
     if(previous&&hostGenerationKey(previous)!==hostGenerationKey(p))this.#preserveTerminalHostGeneration(previous);
     this.#db
@@ -215,6 +218,20 @@ export class ProcessTable {
            pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
       )
       .run(p.host ?? 'local', p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
+    if (relaunch) {
+      const stored = this.#db.prepare('select value from meta where key=?').get(relaunch.intentKey);
+      const intent = stored?.value ? JSON.parse(String(stored.value)) as HostRelaunchIntent : null;
+      if (!previous || previous.sessionId !== p.sessionId || hostGenerationKey(previous) !== relaunch.sourceGeneration
+        || !intent || intent.sourceGeneration !== relaunch.sourceGeneration || intent.phase !== 'prepared'
+        || intent.targetHost !== p.host || intent.item !== p.item || intent.tree?.path !== p.cwd) throw new Error('host relaunch publication lost its admitted owner');
+      const checkout = this.#db.prepare('select value from host_worktrees where item=?').get(relaunch.tree.item);
+      if (!checkout || String(checkout.value) !== JSON.stringify(relaunch.tree) || JSON.stringify(intent.tree) !== JSON.stringify(relaunch.tree)) throw new Error('host relaunch checkout owner changed before publication');
+      this.#db.prepare('insert or replace into host_worktrees(item,value) values(?,?)').run(relaunch.tree.item, JSON.stringify({...relaunch.tree,phase:'ready'}));
+      this.#db.prepare('insert into meta(key,value) values(?,?) on conflict(key) do update set value=excluded.value').run(hostRelaunchWarningKey(hostGenerationKey(p)),relaunch.note);
+      this.#db.prepare('delete from meta where key=?').run(relaunch.intentKey);
+      this.#db.exec('commit');
+    }
+    } catch (error) { if (relaunch) this.#db.exec('rollback'); throw error; }
     this.#changed(p.name);
   }
 

@@ -59,3 +59,10 @@ through queued execution and restart; see [publication admission](../docs/agents
 Abandoned source preparations use a fresh run UUID on re-admission; bounded Git-lock
 cleanup retains named leftovers in hub status until locks clear. This path uses
 no PID/signal authority or Git maintenance.
+
+Item sessions can relaunch on another registered host through the optional
+`session.resume.host` frame field when their original host is down, gone or
+rebooted. Available hosts retain their tasks. The destination takes the branch
+lease and starts from the territory's pushed tip with a fresh native conversation;
+cland identity and claim remain. There is no CLI host flag. See
+[host relaunch](../docs/agents/host-agent.md#relaunching-an-item-on-another-host).

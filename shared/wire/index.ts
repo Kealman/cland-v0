@@ -443,7 +443,7 @@ export type HarnessProcessView = {
   account?: string | null;
   stateReason?: string;
   deaf?: { message: string; since: string; text: string; notice: string };
-  /** Warning from an explicit recovery launch; absent from stored rows. */
+  /** Warning from a recovery launch or a durable cross-host restart note. */
   warning?: string;
   layer?: Layer;
   name: string;
@@ -1165,7 +1165,7 @@ export type SessionRequest =
   | { type: 'session.archive'; id: string; session: string }
   | { type: 'session.prune'; id: string; olderThan: string; dryRun?: boolean }
   | { type: 'session.stop'; id: string; session: string }
-  | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean }
+  | { type: 'session.resume'; id: string; session: string; relaunch?: boolean; fresh?: boolean; host?: string }
   | { type: 'session.retry'; id: string; session: string; message?: string }
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };

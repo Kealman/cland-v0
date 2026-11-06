@@ -13341,6 +13341,27 @@
       "added": "2026-11-05",
       "expires": "2026-11-11",
       "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[0.036887333,0.030912208,0.02624425,0.041558541,1.6360876249999998],\"linux\":[0.037984958,0.054179000000000005,0.045645958,0.034500125,0.036164417]}. Current worst 1.6360876249999998s. Conservatively retain earlier observed macOS calibration cost 15.135638709s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 15.135638709)=23s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes."
+    },
+    "hub/test/host-relaunch-native.test.ts::C2 production Codex relaunch crosses owned carriers and consumes a fresh native first input": {
+      "seconds": 29,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[14.803628417,15.290325667,17.345012292,17.222493708000002,19.03315725],\"linux\":[9.450011046,9.053419754,9.124294128999999,9.599498003999999,9.092458378]}. ceil(1.5 x worst 19.03315725)=29s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode."
+    },
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": {
+      "seconds": 29,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[14.113220208000001,15.857640375,16.835979082999998,16.723385334,19.015927041999998],\"linux\":[7.497519046000001,7.1412837950000005,7.4182300869999995,7.394175586999999,7.27330192]}. ceil(1.5 x worst 19.015927041999998)=29s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode."
+    },
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch refused keeps durable native and checkout ownership": {
+      "seconds": 24,
+      "owner": "C-216",
+      "added": "2026-11-05",
+      "expires": "2026-11-11",
+      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[11.865064917,12.858119166,13.981045917,13.960658334,15.721050332999999],\"linux\":[6.414405503,6.436156003,6.104146545,6.899941628,5.948339378]}. ceil(1.5 x worst 15.721050332999999)=24s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode."
     }
   }
 }
