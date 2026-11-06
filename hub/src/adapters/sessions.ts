@@ -509,16 +509,30 @@ export class Sessions {
   /** The spawn-to-row gap is protected by these reservations, including relaunches. */
   lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0 || this.#pendingStops.size > 0; }
 
+  /** Register an opened Host with the same authority fence as startup Hosts. */
+  addHost(host: Host): void {
+    if (this.#hosts.has(host.name) && host.name !== 'local') throw new Error('host already open');
+    if (this.#cutHosts.has(host.name) || this.#settlingHosts.has(host.name)) throw new Error('host authority revoked');
+    this.#hosts.set(host.name, host.name === 'local' ? host : processHost(new Proxy(host, { get: (target, key) => {
+      const value: unknown = Reflect.get(target, key, target);
+      if (typeof value !== 'function') return value;
+      return (...args: unknown[]) => { if (this.#cutHosts.has(host.name)) throw new Error(`host ${host.name}: authority revoked`); return value.apply(target, args); };
+    } })));
+  }
+
+  /** Called only after settlement and carrier closure; captured Hosts stay fenced. */
+  removeHost(name: string): void {
+    if (!this.#cutHosts.has(name)) throw new Error('host authority has not been revoked');
+    this.#hosts.delete(name);
+  }
+
   constructor(options: SessionsOptions) {
     this.#recoveryClock = options.recoveryClock ?? realClock;
     this.#transportClock = options.transportClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#log = options.log ?? (() => {});
-    this.#hosts = new Map([['local', localHost(this.#env, this.#log)], ...(options.hosts ?? []).map(host => [host.name, host.name === 'local' ? host : processHost(new Proxy(host, { get: (target, key) => {
-      const value: unknown = Reflect.get(target, key, target);
-      if (typeof value !== 'function') return value;
-      return (...args: unknown[]) => { if (this.#cutHosts.has(host.name)) throw new Error(`host ${host.name}: authority revoked`); return value.apply(target, args); };
-    } }))] as const)]);
+    this.#hosts = new Map([['local', localHost(this.#env, this.#log)]]);
+    for (const host of options.hosts ?? []) this.addHost(host);
     this.#core = options.core;
     this.#table = options.table;
     this.#core.useSessionHost(name => this.#table.get(name)?.host);

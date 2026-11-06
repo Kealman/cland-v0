@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { hostDirectory } from '../../../shared/fake-host-directory.ts';
 import { HostSecretStore, hostPaths } from './records.ts';
-import type { HostRecords } from './records.ts';
+import type { HostRecords, HostRecord } from './records.ts';
 import type { Host, HostLaunchLayout } from './host.ts';
 import { remoteHostLayout, remoteCodeDirectory, remoteSupervisor } from './remote-layout.ts';
 import { sshHost } from './ssh-host.ts';
@@ -23,14 +23,22 @@ import { territoryPath } from '../territory.ts';
 type Carrier = Pick<SshTransport,'start'|'stop'|'status'|'forward'|'unforward'> & Partial<Pick<SshTransport,'copyFile'|'execute'>>;
 export type HostConfiguration = { home?: string; layout?: Partial<HostLaunchLayout>; supervisor?: string };
 /** Carrier and Host share one lifecycle owner; sessions close before this owner. */
-export async function projectSshHosts(options: {onReady?: (host: string, bootId: string) => void; createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
-  const hosts: Host[] = [], owners: Array<()=>Promise<void>> = [];
-  const quiescers: Array<()=>void> = [];
-  const close = async () => { const errors: unknown[]=[]; for (const cleanup of [...owners].reverse()) {try {await cleanup();} catch(error) {errors.push(error);}} if(errors.length) throw new AggregateError(errors,'SSH hosts cleanup failed'); };
+export async function projectSshHosts(options: { onAdd?: (host: Host) => void; settle?: (id: string) => Promise<unknown>; onRemove?: (id: string) => void; onReady?: (host: string, bootId: string) => void; createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
+  const hosts: Host[] = [];
+  const owners = new Map<string, {quiesce: () => void; close: () => Promise<void>}>();
+  let stopped = false, pending = Promise.resolve();
+  const serial = <T>(work: () => Promise<T>): Promise<T> => {
+    const result = pending.then(work); pending = result.then(() => {}, () => {}); return result;
+  };
+  const closeOwners = async () => { const errors: unknown[]=[]; for (const owner of [...owners.values()].reverse()) {try {await owner.close();} catch(error) {errors.push(error);}} if(errors.length) throw new AggregateError(errors,'SSH hosts cleanup failed'); };
+  const quiesce = () => { stopped = true; for (const owner of owners.values()) owner.quiesce(); };
+  const close = () => { quiesce(); return serial(closeOwners); };
   const secrets = new HostSecretStore(options.root,options.records);
-  try {
-    for (const record of options.records.list()) {
-      if (record.state !== 'registered' || options.provided?.some(host=>host.name === record.id)) continue;
+  const open = async (record: HostRecord) => {
+      if (stopped) throw new Error('SSH hosts owner stopped');
+      const persisted = options.records.get(record.id);
+      if (record.state !== 'registered' || !persisted || (Object.keys(persisted) as Array<keyof HostRecord>).some(key => persisted[key] !== record[key])) throw new Error('host registration changed');
+      if (owners.has(record.id) || options.provided?.some(host=>host.name === record.id)) throw new Error('host already open');
       const config = options.configurations?.[record.id];
       const fake = options.env.CLAND_FAKE_HOSTS?.split(',').includes(record.id) && options.env.CLAND_FAKE_HOST_ROOT;
       const home = config?.home ?? (fake ? join(hostDirectory(String(fake),record.id),'home') : record.user === 'root' ? '/root' : `/home/${record.user}`);
@@ -69,19 +77,48 @@ export async function projectSshHosts(options: {onReady?: (host: string, bootId:
         preparations.add(work);void work.then(()=>preparations.delete(work),()=>preparations.delete(work));return work;
       };
       const quiesce=()=>{cloneAbort.abort();host.quiesce();};
-      quiescers.push(quiesce);
+
       let daemon: {close():Promise<void>} | undefined;
-      owners.push(async () => {
+      owners.set(record.id, {quiesce, close: async () => {
         const failures: unknown[] = [];
         for (const cleanup of [async()=>{quiesce();await Promise.allSettled([...preparations]);await clone?.catch(()=>{});}, () => host.close(), () => carrier.stop(), () => daemon?.close()]) {
           try { await cleanup(); } catch (error) { failures.push(error); }
         }
         if (failures.length) throw new AggregateError(failures, `host ${record.id}: cleanup incomplete`);
-      });
+      }});
       daemon = await (options.gitDaemon ?? startGitDaemon)({host:record.id,socket:hostPaths(options.root,record.id).gitSocket,territory:territoryPath(options.root),env:options.env,log:options.log});
       await carrier.start();
+      if (stopped || options.records.get(record.id)?.state !== 'registered') throw new Error('host registration changed while opening');
+      options.onAdd?.(host);
       hosts.push(host);
+      return host;
+  };
+  /** The record and private bootstrap material must already be persisted. */
+  const add = (record: HostRecord) => serial(async () => {
+    try { return await open(record); }
+    catch (error) {
+      // A duplicate must not close an already published owner.
+      if (!hosts.some(host => host.name === record.id)) {
+        await owners.get(record.id)?.close(); owners.delete(record.id);
+      }
+      throw error;
     }
-    return {hosts,close,quiesce:()=>{for(const quiesce of quiescers)quiesce();}};
+  });
+  /** Settle and cut authority through the daemon's existing host.revoke path first. */
+  const remove = (id: string) => serial(async () => {
+    if (stopped) throw new Error('SSH hosts owner stopped');
+    if (!options.settle) throw new Error('host settlement unavailable');
+    const settlement = await options.settle(id);
+    await owners.get(id)?.close();
+    options.onRemove?.(id);
+    owners.delete(id);
+    const index = hosts.findIndex(host => host.name === id); if (index >= 0) hosts.splice(index, 1);
+    return settlement;
+  });
+  try {
+    for (const record of options.records.list()) {
+      if (record.state === 'registered' && !options.provided?.some(host => host.name === record.id)) await add(record);
+    }
+    return {hosts,add,remove,close,quiesce};
   } catch(error) {await close();throw error;}
 }

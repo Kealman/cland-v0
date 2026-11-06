@@ -306,3 +306,24 @@ Linux agents ignore a stray boot-file variable and read the kernel boot id.
 Host checkout checkpoint acquisition uses the existing bounded backoff for up to 32 seconds (the 30 second receive ownership cap plus 2 seconds), at both preflight and finalization. This joins an admitted receive rather than refusing immediately. A caller already holding that territory lock refuses as `host-worktree-lock-order` before any Host operation; it never waits on itself. Receive acquisition remains capped at 30 seconds.
 
 Public cross-host relaunch admission uses the same checkout checkpoint policy before adapter drain: acquire with the bounded backoff, then refresh task eligibility, destination registration and exact row ownership before admission. Prune observes Host state first and refreshes row, tip, leases and synchronous item eligibility after those asynchronous observations, immediately before cleanup admission. An item reopened during an occupant query retains its branch and removing checkpoint.
+
+### Runtime host ownership
+
+The daemon exposes its project SSH lifecycle owner as `dispatcher.hostOwner`.
+Provider orchestration persists a registered `HostRecord` and its private
+bootstrap material first, then awaits `hostOwner.add(record)`. Startup uses the
+same method. Add opens the Git daemon and carrier, publishes the Host to Sessions
+with its authority fence, and retains lazy territory cloning on first worktree
+add. Carrier start schedules connection recovery; callers needing agent readiness
+observe an authenticated Host operation, rather than treating add as a ready
+receipt. Duplicate, revoked and changed registrations refuse.
+
+`hostOwner.remove(id)` first calls the dispatcher's existing `revokeHost`, which
+settles captured generations and cuts host admission. It returns that settlement
+report after quiescing clone preparation, closing the Host, stopping the carrier,
+closing the Git daemon, and removing the Sessions map entry. Retained adapter
+Hosts remain fenced. A failed close keeps the owner for a cleanup retry. Removal
+revokes the persistent registration; ordinary hub shutdown leaves registrations
+registered so the next startup reopens them. Add/remove serialize with shutdown;
+quiesce prevents new additions and drains in-flight preparation before closure.
+No new frame or CLI command is introduced by this owner API.

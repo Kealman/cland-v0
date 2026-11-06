@@ -462,7 +462,7 @@ export const fixtureLockIdentity = (env: NodeJS.ProcessEnv) => capturedLockIdent
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; hostOwner: Dispatcher['hostOwner']; hostEnvironment: NodeJS.ProcessEnv; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   let sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra });
@@ -534,7 +534,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
       };
     }),
   };
-  return { fakes, discovery: daemon.discovery, dispatcher, stopped: daemon.stopped, stop: () => daemon.stop(), verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
+  return { fakes, hostEnvironment: env, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
 }
 
 /** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.

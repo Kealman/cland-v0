@@ -673,8 +673,9 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   try {
     log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
-    sshHosts = await projectSshHosts({onReady:hostReady,root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
+    sshHosts = await projectSshHosts({onAdd: host => adapters?.sessions.addHost(host), onRemove: id => adapters?.sessions.removeHost(id), settle: id => hub.dispatcher.revokeHost(id), onReady:hostReady,root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
     adapters = projectSessions({ hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
+    hub.dispatcher.hostOwner = sshHosts;
     hub.dispatcher.useSessions(adapters.sessions);
     await adapters.sessions.sweepArchive();
     await startGateway();

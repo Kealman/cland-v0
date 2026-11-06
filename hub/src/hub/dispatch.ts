@@ -215,6 +215,9 @@ export class Dispatcher {
   #sessions: Sessions | undefined;
   readonly #hostPeers = new Map<string, Set<() => void>>();
 
+  /** Project lifecycle owner; providers register durable records before add. */
+  hostOwner: Awaited<ReturnType<typeof import('../host/registry.ts').projectSshHosts>> | undefined;
+
   hostAdmission(secret: string) { return this.core.store.hosts.identify(secret); }
 
   async revokeHost(id: string) {
