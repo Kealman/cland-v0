@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-05T23:27:52.057Z
+updated: 2026-11-06T10:32:11.665Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -532,3 +532,7 @@ Incident 2026-11-05 23:23Z (coord). The hub exited on its own guard: "tracker st
 ### human · 2026-11-05T23:27:52.057Z
 
 Hub self-stop + launchd respawn, 2026-11-05 23:23Z: tracker-storage 'ready check on T-1614' stalled 23:21:28Z under load1 ~18 (Virtualization.framework VM at 390% CPU + local tests), tracker-storage-fatal 23:23:01Z, hub 3297 (85 h since #69) stopped itself 23:23:06Z. The launchd job cland-hub-r69 (restart #69 recipe) respawned it: hub 3668 listening 23:23:27Z, serving 23:23:30Z, gap 24 s, nice 0, 8 GB heap + DO token, ppid 1. Coord bridge-connected 23:23:28Z → injected 23:24:38Z, one bridge. hub.sock unresponsive ~3 min after serving; queue empty and doctor 34 ok / 4 warn / 0 fail at 23:27Z. impl-1693's verification submission at 23:15 (ask fb86cd19) fell into the window. Side effect found: launchd submit jobs respawn on exit and the stale #67/#68 jobs retried every ~10 s for 5 days, 63,638 'a hub already runs' lines in hub.log; r67/r68 removed 23:26Z, r69 kept (live). Second tracker-storage-fatal ever (first 2026-10-15 09:16Z).
+
+### human · 2026-11-06T10:32:11.665Z
+
+Coord deaf after a Claude Code auto-update re-exec, 2026-11-06 10:24–10:31Z: coord pid 96016 (2.1.318) exited 10:24:41Z, the daemon respawned job df72bd84 as pid 17899 (2.1.319). Unlike the re-execs of 11-03 and 11-04, the hub this time emitted harness-exited + role-cleared (10:24:43Z), then the new bridge connected (10:24:45Z), the role was re-taken at launch and coordinator-filled fired, but the harness row stayed 'exited 96016' and two deliveries (4661f8f1, a6a4853b) were only acked, never injected, for 6.5 min. Stand-in ran 'cland session resume coord' (no --relaunch) at 10:31:14Z: the row became '17899 running' and both deliveries were injected the same second; one bridge throughout, no twin. Hub 3668 unaffected.
