@@ -117,9 +117,10 @@
       "A-16811",
       "A-16899",
       "A-16942",
-      "A-16971"
+      "A-16971",
+      "A-17008"
     ],
-    "commit": "57d108144597b2d9743a72efa14bb88a43b59cc0"
+    "commit": "1cf72ae2f9403cca1f27941f6d306759e6f75e5d"
   },
   "budget": {
     "testSeconds": 5,
@@ -3592,6 +3593,18 @@
     "hub/test/adapter-generation.test.ts": {
       "seconds": 0.119534,
       "tests": 7
+    },
+    "hub/test/host-relaunch-native.test.ts": {
+      "seconds": 10.891278,
+      "tests": 1
+    },
+    "hub/test/host-relaunch-retry.test.ts": {
+      "seconds": 46.474754,
+      "tests": 3
+    },
+    "hub/test/host-relaunch.test.ts": {
+      "seconds": 19.857252,
+      "tests": 2
     }
   },
   "tests": {
@@ -10480,7 +10493,13 @@
     "hub/test/adapter-generation.test.ts::generation release joins admitted stop and permanently fences metadata and Host callbacks": 0.004835,
     "hub/test/adapter-generation.test.ts::missing stopped-owner proof refuses release without touching a replacement carrier": 0.057076,
     "hub/test/adapter-generation.test.ts::opencode isolates the same id and endpoint while unreachable old cleanup drains": 0.03707,
-    "hub/test/adapter-generation.test.ts::public wrappers surround routed operations and baseline fallback without recursion": 0.002996
+    "hub/test/adapter-generation.test.ts::public wrappers surround routed operations and baseline fallback without recursion": 0.002996,
+    "hub/test/host-relaunch-native.test.ts::C2 production Codex relaunch crosses owned carriers and consumes a fresh native first input": 10.891278,
+    "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f2 preserves prepared ownership": 14.150366,
+    "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f3 preserves prepared ownership": 12.587015,
+    "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f4 preserves prepared ownership": 19.737373,
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch refused keeps durable native and checkout ownership": 9.019382,
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": 10.83787
   },
   "allow": {
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
@@ -13364,25 +13383,25 @@
       "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[11.865064917,12.858119166,13.981045917,13.960658334,15.721050332999999],\"linux\":[6.414405503,6.436156003,6.104146545,6.899941628,5.948339378]}. ceil(1.5 x worst 15.721050332999999)=24s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f2 preserves prepared ownership": {
-      "seconds": 18,
+      "seconds": 22,
       "owner": "C-216",
       "added": "2026-11-06",
       "expires": "2026-11-11",
-      "reason": "T-1698 duration-only refresh authorized by Coordinator935daa76 (rule7 evidence carry). Passing named f2 samples seconds: macOS arm64 Node24.21 local [9.563723958,7.595442917,9.209523625,8.391883958,7.952442458,8.864307792,9.343291458]; Linuxx64 Node24.21 droplet40cc51e2/A-16995 [8.487115282]; batch16d0ab14/A-17000 base [11.052143807] and load-gate [10.553677072,9.859780067,10.126842444,9.847115238,10.565439485] (this named case passed; overall batch remains RED and classified T-1702); merged-head ee8a207e/A-17004 [11.355315502]. Worst11.355315502s; ceil(1.5 x worst)=18s. Includes fixture setup, native readiness, assertions and joined teardown; excludes runner/container startup and scheduling. Exact test source retains timeout:testWaitMs(180000), with unoverridden180s above18s. No browser for this case. Targeted runs do not execute duration gates; report-only budget policy unchanged. No source/assertion/timeout or f3/f4 allowance change; no runtime rerun requested."
+      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 22 s; worst 14.15 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 12.21-13.98 s; earlier ee8a207e/A-17004 11.36 s. Was 18 s from task samples. Test timeout 180 s unchanged."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f3 preserves prepared ownership": {
-      "seconds": 16,
+      "seconds": 21,
       "owner": "C-216",
       "added": "2026-11-06",
       "expires": "2026-11-11",
-      "reason": "T-1698: local macOS arm64 Node24.21.0 passing targeted samples8.629584208,7.838329084,10.479924333s; latest sample proves retry after source return. ceil(1.5 x worst10.479925)=16s. Includes setup, native receipt, assertions and joined teardown; excludes Node runner startup. Host load approximately2-3; no burners/browser. Linux unmeasured pending configured verification,1.6x is projection only. Targeted runs do not execute duration gates; report-only policy unchanged."
+      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 21 s; worst 13.38 s (A-17008 load-gate repetition, Linux x64 c-8); batch base 12.59 s; earlier A-17004 9.50 s. Was 16 s from task samples. Test timeout 180 s unchanged."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f4 preserves prepared ownership": {
-      "seconds": 17,
+      "seconds": 30,
       "owner": "C-216",
       "added": "2026-11-06",
       "expires": "2026-11-11",
-      "reason": "T-1698: local macOS arm64 Node24.21.0 passing targeted sample10.681210417s proves f2 then f3 failure followed by f4 success with two flat retained checkout/ref-watch obligations. ceil(1.5 x worst10.681211)=17s. Includes four SSH fixtures, native readiness, assertions and joined teardown; excludes Node runner startup. Host load approximately2-3; no burners/browser. Linux unmeasured pending configured verification;1.6x is projection only. Targeted runs do not execute duration gates; report-only policy unchanged."
+      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 30 s; worst 19.74 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 11.88-14.22 s; earlier A-17004 10.79 s. Was 17 s from task samples. Test timeout 180 s unchanged."
     }
   }
 }
