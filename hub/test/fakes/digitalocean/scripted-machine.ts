@@ -10,7 +10,7 @@ import type { PrepareKey } from '../../../src/executor/droplet/prepare.ts';
 export type MachineScript = { outcome?: 'green' | 'red' | 'lost' | 'slow'; code?: number; afterMs?: number; failures?: string[]; log?: string };
 /** Semantic remote receipts, without shell parsing, SSH or a worker process.
  * Native writers are injectable so tests can hold their completion receipts. */
-export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey, initial: MachineScript = {}, io = { writeFile, writeLease }) {
+export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey & { nvim?: { tag: string } }, initial: MachineScript = {}, io = { writeFile, writeLease }) {
   const waits = remoteWaits(clock);
   const scripts: MachineScript[] = [];
   const starts = new Map<string, ReturnType<typeof Promise.withResolvers<void>>>();

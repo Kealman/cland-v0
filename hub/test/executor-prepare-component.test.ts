@@ -14,7 +14,7 @@ import { FakeClock } from './fake-clock.ts';
 import { drive } from './remote-clock.ts';
 import { onCleanup, beforeDirectories } from './process-cleanup.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { keyHash, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
+import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 
@@ -33,13 +33,14 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   await writeFile(join(root, '.cland/config.toml'), '[verification]\nprepare = "npm ci"\n[verification.droplet]\nregions=["lon1", "nyc1", "sfo2"]\n');
   api.sizes[0]!.regions.push('sfo2'); api.regions.push({ slug: 'sfo2', available: true, sizes: ['c-8'] });
   let failure = '';
-  const dependencies = { ...machine.dependencies, api: api.provider, prepareKey: async () => structuredClone(key),
+  let keyInput: typeof import('../src/executor/droplet/prepare.ts').prepareKey = async () => structuredClone(key);
+  const dependencies = { ...machine.dependencies, api: api.provider, prepareKey: async (...args: Parameters<typeof keyInput>) => keyInput(...args),
     machine: { ...machine.dependencies.machine,
       exec: async (_lease: unknown, command: string) => {
         if (failure === 'ssh' || failure === 'unready' || failure === 'install' && command.includes('npm ci')) throw new Error('scripted machine failed');
         return JSON.stringify(failure === 'marker' ? { ...key, base: 'bad' } : key);
       },
-      result: async () => {
+      result: async (..._args: Parameters<Machine['result']>) => {
         if (failure === 'install') return { stdout: 'install-output', stderr: '', code: 8 };
         return { stdout: 'installed', stderr: '', code: 0 };
       },
@@ -54,6 +55,7 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   hubs.push(hub);
   return { root, api, env, clock, waits: machine.waits, dependencies, options, key,
     ui: await connectUi(t, hub.discovery), stop: () => drive({ waits: machine.waits }, hub.stop()),
+    setKeyInput: (value: typeof keyInput) => { keyInput = value; },
     setFailure: (value: string) => { failure = value; },
     moveBase: () => { key.base = 'd'.repeat(40); },
     reopen: async () => { const served = await projectHub(t, root, env, options); hubs.push(served); return served; },
@@ -539,4 +541,68 @@ test('a timed-out accepted retirement keeps the replacement while old is listed,
     return api.images.length === 1 && value.snapshot?.image === pending.snapshot!.image && !value.snapshotRecovery?.length ? true : undefined;
   });
   assert.ok(!api.requests.some(r => r.method === 'DELETE' && r.path === `/v2/snapshots/${pending.snapshot!.image}`));
+});
+
+for (const fails of [false, true]) test(`project provision runs as root before runner prepare, failure=${fails}`, async t => {
+  const f = await fixture(t);
+  const path = join(f.root, '.cland/config.toml');
+  Object.assign(f.key, { provisionPath: 'system.sh', provision: 'a'.repeat(64) });
+  await writeFile(path, (await readFile(path, 'utf8')).replace('[verification]', '[verification]\nprovision = "system.sh"'));
+  assert.equal((await f.ui.request({ type: 'hub.reload' })).ok, true);
+  const calls: { command: string; user: string }[] = [];
+  f.dependencies.machine.result = async (_lease, command, _timeout, _signal, user = 'runner') => {
+    calls.push({ command, user });
+    return { stdout: 'hook-output', stderr: 'hook-stderr', code: fails && user === 'root' ? 17 : 0 };
+  };
+  assert.equal((await prepare(f.ui)).ok, true);
+  const status = await drive(f, eventually('provision terminal receipt', async () => {
+    const value = (await f.ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error?: string } };
+    return value.prepare && value.prepare.state !== 'running' ? value.prepare : undefined;
+  }));
+  assert.equal(status.state, fails ? 'failed' : 'done', status.error);
+  await flushProjectLogs(t, f.root);
+  const journal = (await readFile(join(f.root, '.cland/log/hub.log'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  assert.ok(journal.some(row => row.event === 'executor-prepare-install' && row.phase === 'provision' && row.output === 'hook-outputhook-stderr'), JSON.stringify(journal.filter(row => row.event === 'executor-prepare-install')));
+  assert.equal(calls[0]?.user, 'root');
+  assert.match(calls[0]!.command, /system.sh/);
+  if (fails) {
+    assert.match(status.error!, /provision failed \(exit 17\)[\s\S]*hook-output[\s\S]*hook-stderr/);
+    assert.equal(calls.length, 1);
+  } else {
+    assert.equal(calls[1]?.user, 'runner');
+    assert.match(calls[1]!.command, /npm ci/);
+  }
+});
+
+test('previous persisted snapshot wire shape remains readable before recipe rebuild', async t => {
+  const f = await fixture(t);
+  const snapshot: Snapshot = { image: 900, name: 'legacy', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(f.root), JSON.stringify(snapshot));
+  assert.deepEqual(await readSnapshot(f.root), snapshot);
+});
+
+test('prepare captures applied provision input despite disk edits and refuses an unbound supplied key before reuse', async t => {
+  const f = await fixture(t);
+  const path = join(f.root, '.cland/config.toml');
+  await writeFile(path, (await readFile(path, 'utf8')).replace('[verification]', '[verification]\nprovision = "applied.sh"'));
+  assert.equal((await f.ui.request({ type: 'hub.reload' })).ok, true);
+  await writeFile(path, (await readFile(path, 'utf8')).replace('applied.sh', 'disk.sh'));
+  let captured: string | undefined;
+  f.setKeyInput(async (_root, _env, provision) => {
+    assert.ok(provision);
+    captured = provision;
+    return Object.assign(structuredClone(f.key), { provisionPath: provision, provision: 'a'.repeat(64) });
+  });
+  assert.equal((await prepare(f.ui)).ok, true);
+  const outcome = await drive(f, eventually('captured provision preparation completes', async () => {
+    const value = (await f.ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error?: string } };
+    return value.prepare && value.prepare.state !== 'running' ? value.prepare : undefined;
+  }));
+  assert.equal(captured, 'applied.sh');
+  assert.equal(outcome.state, 'done', outcome.error);
+  const { prepareSnapshot } = await import('../src/executor/droplet/prepare.ts');
+  await assert.rejects(prepareSnapshot({ root: f.root, key: { ...f.key, provision: 'a'.repeat(64), provisionPath: 'other.sh' }, provision: 'applied.sh', project: 'fixture', regions: ['lon1'], tags: [], log: () => {}, step: () => {},
+    builder: async () => { throw new Error('must refuse before builder'); }, release: async () => ({ lifetimeMs: 0, costUsd: 0 }),
+  }), /provision.*key.*mismatch/);
 });

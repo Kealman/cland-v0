@@ -37,9 +37,9 @@ export class Machine {
     catch (error) { throw failure('command', error, this.#env); }
   }
   /** Shell outcomes cross the transport unchanged; SSH failures still fail the request. */
-  async result(lease: DropletLease, command: string, timeoutMs: number, signal?: AbortSignal): Promise<{ stdout: string; stderr: string; code: number }> {
+  async result(lease: DropletLease, command: string, timeoutMs: number, signal?: AbortSignal, user: 'root' | 'runner' = 'runner'): Promise<{ stdout: string; stderr: string; code: number }> {
     const program = `const cp=require('child_process');const r=cp.spawnSync('sh',['-c',process.argv[1]],{encoding:'utf8',maxBuffer:8*1024*1024});console.log(JSON.stringify({stdout:r.stdout||'',stderr:r.stderr||(r.error?'shell command could not complete':''),code:r.status===null?1:r.status}));`;
-    const output = await this.exec(lease, `node -e ${shellQuote(program)} ${shellQuote(command)}`, { timeoutMs, signal });
+    const output = await this.exec(lease, `node -e ${shellQuote(program)} ${shellQuote(command)}`, { timeoutMs, signal, user });
     return JSON.parse(output) as { stdout: string; stderr: string; code: number };
   }
 

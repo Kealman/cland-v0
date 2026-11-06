@@ -83,7 +83,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     await exec('git', ['init', '--bare', '-q', territory], { env: fixtureEnvironment(root, process.env) });
     await git('remote', 'add', 'origin', territory); await git('push', '-qu', 'origin', 'dev');
   }
-  const key = scripted ? { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: createHash('sha256').update(await readFile(join(root, 'package-lock.json'))).digest('hex'), base: 'c'.repeat(40) } : await prepareKey(root);
+  const key = scripted ? { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: createHash('sha256').update(await readFile(join(root, 'package-lock.json'))).digest('hex'), base: 'c'.repeat(40) } : await prepareKey(root, fixtureEnvironment(root, process.env));
   const image = { id: 900 + api.images.length, name: 'suite-snapshot', regions: ['lon1'], size_gigabytes: 1, min_disk_size: 10, created_at: (scripted ? clock.now() : new Date()).toISOString() };
   await api.seedSnapshot(image, key);
   if (!scripted) {
@@ -91,7 +91,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     await exec('git', ['clone', '-q', '--no-hardlinks', root, join(imageHome, 'cland')], { env: fixtureEnvironment(root, process.env) });
     await exec('git', ['remote', 'remove', 'origin'], { env: fixtureEnvironment(join(imageHome, 'cland'), process.env), cwd: join(imageHome, 'cland') });
     await mkdir(join(imageHome, 'cland/node_modules'), { recursive: true });
-    await writeFile(join(imageHome, 'cland/node_modules/.cland-prepare-key'), JSON.stringify(key));
+    await writeFile(join(imageHome, 'cland/node_modules/.cland-prepare-key'), JSON.stringify({ lock: key.lock, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) } }));
   }
   await mkdir(join(root, '.cland/run/executor'), { recursive: true });
   await writeFile(join(root, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: 1, minDiskSize: 10, created: image.created_at }));

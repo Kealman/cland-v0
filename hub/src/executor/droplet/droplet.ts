@@ -43,7 +43,7 @@ export class DropletExecutor implements Executor {
   readonly #abort = new AbortController();
   #sweepState: 'idle' | 'reconciling' | 'sweeping' | 'deferred' = 'idle';
   #taggedDroplets: number | null = null;
-  #keyWork: Promise<PrepareKey> | null = null;
+  #keyWork = new Map<string, Promise<PrepareKey>>();
   readonly #reaps = new Set<Promise<Reaped>>();
   readonly #releases = new Map<string, Promise<Released>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
@@ -263,9 +263,14 @@ export class DropletExecutor implements Executor {
     }
   }
 
-  #key(): Promise<PrepareKey> {
-    this.#keyWork ??= (this.dependencies.prepareKey ?? prepareKey)(this.root, this.#env).finally(() => { this.#keyWork = null; });
-    return this.#keyWork;
+  async #key(capturedProvision?: string): Promise<PrepareKey> {
+    const provision = capturedProvision ?? (await this.#config()).verification.provision;
+    let work = this.#keyWork.get(provision);
+    if (!work) {
+      work = (this.dependencies.prepareKey ?? prepareKey)(this.root, this.#env, provision).finally(() => { this.#keyWork.delete(provision); });
+      this.#keyWork.set(provision, work);
+    }
+    return work;
   }
 
   submitPrepare(report: (text: string) => void, authorize: () => void = () => {}): { state: 'submitted'; summary: string } {
@@ -291,20 +296,21 @@ export class DropletExecutor implements Executor {
   /** Compatibility for callers that already captured a backend snapshot key. */
   prepare(key: PrepareKey, step?: (step: string) => void): Promise<Prepared>;
   async prepare(input: PrepareOptions | PrepareKey = {}, progress?: (step: string) => void): Promise<Prepared> {
-    const key = 'base' in input ? input : await this.#key();
+    const config = await this.#config();
+    const key = 'base' in input ? input : await this.#key(config.verification.provision);
+    if ((config.verification.provision || undefined) !== key.provisionPath || Boolean(config.verification.provision) !== Boolean(key.provision)) throw new Error('provision input/key mismatch');
     const step = 'base' in input ? progress ?? (() => {}) : input.step ?? (() => {});
     const recoveries = await readRecoveries(this.root);
     if (recoveries.some(record => record.phase !== 'cleanup' || record.requested && record.actionState !== 'completed' && record.actionState !== 'errored')) throw new Error('snapshot recovery pending; see cland executor status');
-    const config = await this.#config();
     const { prepare_size, size, regions, image } = config.verification.droplet;
     const current = await readSnapshot(this.root);
-    if (current && sameKey(current.key, key)) return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
+    if (current && sameKey(current.key, key)) return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, provision: config.verification.provision, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
     const sizes = await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).sizes();
     const builder = sizes.find(s => s.slug === prepare_size && s.available);
     const run = sizes.find(s => s.slug === size && s.available);
     if (!builder || !run || !Number.isFinite(builder.disk) || !Number.isFinite(run.disk)) throw new Error('prepare_size and size need available disks');
     if (builder.disk! > run.disk!) throw new Error(`verification.droplet.prepare_size ${prepare_size} disk exceeds run size ${size}`);
-    return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step,
+    return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, provision: config.verification.provision, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step,
       builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(this.clock.now().getTime() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }, config), release: lease => this.release(lease) });
   }
 
@@ -399,7 +405,7 @@ export class DropletExecutor implements Executor {
       // A job may replace/restore the record while provider and Git reads yield.
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
-      const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} key=${JSON.stringify({ ...snapshot.key, nvim: snapshot.key.nvim ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} key=${JSON.stringify({ ...snapshot.key, provision: snapshot.key.provision ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
       return { reconciliation: this.#sweepState, spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshnessText } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
     }
   }

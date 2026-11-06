@@ -1,3 +1,4 @@
+import { parseConfig } from '../../init/config.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, Provider } from './dependencies.ts';
 import { createHash, randomUUID } from 'node:crypto';
@@ -17,27 +18,28 @@ import type { Released } from '../executor.ts';
 
 const exec = promisify(execFile);
 const hash = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
-export type PrepareKey = { node: string; nvim?: { tag: string; digest: string }; lock?: string; base: string };
+export type PrepareKey = { node: string; recipe?: string; provisionPath?: string; provision?: string; lock?: string; base: string };
 export type Snapshot = { image: number; name: string; key: PrepareKey; keyHash: string; regions: string[]; sizeGb: number; minDiskSize: number; created: string };
 export const snapshotPath = (root: string): string => join(root, '.cland/run/executor/snapshot.json');
 export const keyHash = (key: PrepareKey): string => hash(JSON.stringify(key)).slice(0, 12);
-export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.nvim?.tag === b.nvim?.tag && a.nvim?.digest === b.nvim?.digest;
+export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.recipe === b.recipe && a.provision === b.provision && a.provisionPath === b.provisionPath;
 
-export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env): Promise<PrepareKey> {
+export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env, capturedProvision?: string): Promise<PrepareKey> {
   const git = async (...args: string[]) => (await exec('git', args, { cwd: root, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   await git('fetch', 'origin', 'dev');
   const base = (await git('rev-parse', 'origin/dev')).trim();
   const node = (await exec(process.execPath, ['--version'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
-  const optional = async (path: string) => (await git('ls-tree', '--name-only', base, '--', path)).trim() ? git('show', `${base}:${path}`) : undefined;
-  const tag = (await optional('nvim/NVIM_VERSION'))?.trim();
-  const sums = await optional('nvim/NVIM_SHA256SUMS');
-  const digest = sums?.split('\n').find(line => /\s+nvim-linux-x86_64\.tar\.gz$/.test(line))?.split(/\s+/)[0];
-  const hasNvim = tag !== undefined || sums !== undefined;
-  if (!/^v\d+\.\d+\.\d+$/.test(node) || hasNvim && (!tag || !/^v\d+\.\d+\.\d+(?:[-.][a-zA-Z0-9.-]+)?$/.test(tag) || !digest || !/^[a-f0-9]{64}$/.test(digest))) throw new Error('invalid Node or Neovim prepare pin');
+  if (!/^v\d+\.\d+\.\d+$/.test(node)) throw new Error('invalid Node prepare pin');
+  const provisionPath = capturedProvision ?? parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; }), 'project', env).verification.provision;
+  if (provisionPath) {
+    const entries = (await git('ls-tree', '-z', base, '--', provisionPath)).split('\0').filter(Boolean);
+    if (entries.length !== 1 || !/^(100644|100755) blob [a-f0-9]+\t/.test(entries[0]!) || entries[0]!.slice(entries[0]!.indexOf('\t') + 1) !== provisionPath) throw new Error('provision must name a committed regular file');
+  }
+  const provision = provisionPath ? hash((await exec('git', ['show', `${base}:${provisionPath}`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout) : undefined;
   // Hash bytes, not decoded text: the lock input identifies the committed base.
   const hasLock = (await git('ls-tree', '--name-only', base, '--', 'package-lock.json')).trim() !== '';
   const lock = hasLock ? hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout) : undefined;
-  return { node, ...(hasNvim ? { nvim: { tag: tag!, digest: digest! } } : {}), ...(lock === undefined ? {} : { lock }), base };
+  return { node, recipe: hash(await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)))), ...(provision === undefined ? {} : { provisionPath, provision }), ...(lock === undefined ? {} : { lock }), base };
 }
 /** Build the native base archive separately from snapshot lifecycle policy. */
 export async function prepareBundle(root: string, dir: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
@@ -57,8 +59,8 @@ export async function readSnapshot(root: string): Promise<Snapshot | null> {
   }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 }
-export function staleParts(snapshot: Snapshot, current: PrepareKey): string[] {
-  return (['base', 'lock', 'node', 'nvim'] as const).filter(part => JSON.stringify(snapshot.key[part] ?? 'none') !== JSON.stringify(current[part] ?? 'none'));
+export function staleParts(snapshot: Pick<Snapshot, 'key'>, current: PrepareKey): string[] {
+  return (['base', 'lock', 'node', 'recipe', 'provision'] as const).filter(part => JSON.stringify(snapshot.key[part] ?? 'none') !== JSON.stringify(current[part] ?? 'none') || part === 'provision' && snapshot.key.provisionPath !== current.provisionPath);
 }
 
 export async function waitForMachine(root: string, lease: DropletLease, key?: PrepareKey, boundMs = 180000, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}): Promise<void> {
@@ -94,13 +96,14 @@ export type Prepared = { state: 'current' | 'prepared'; snapshot: Snapshot; dura
 type PrepareOptions = {
   dependencies?: DropletDependencies;
   env?: NodeJS.ProcessEnv;
-  root: string; prepare?: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
+  root: string; provision?: string; prepare?: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
   builder: (userData: string) => Promise<DropletLease>; release: (lease: DropletLease) => Promise<Released>; step: (step: string) => void;
 };
 
 /** A replacement is published only after delivery, actions and builder release succeed. */
 export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared> {
   const { root, key, log } = options;
+  if ((options.provision || undefined) !== key.provisionPath || Boolean(options.provision) !== Boolean(key.provision)) throw new Error('provision input/key mismatch');
   const dependencies = options.dependencies ?? {};
   const clock = dependencies.clock ?? realClock;
   const wait = dependencies.wait ?? (ms => pause(ms, clock));
@@ -121,7 +124,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
   try {
     step('builder');
     const template = await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)), 'utf8');
-    builder = await options.builder(template.replace('__NODE_VERSION__', key.node).replace('__NVIM_VERSION__', key.nvim?.tag ?? '').replace('__NVIM_SHA256__', key.nvim?.digest ?? ''));
+    builder = await options.builder(template.replace('__NODE_VERSION__', key.node));
     recovery.builder = builder.resource!; await saveRecovery(root, recovery);
     await waitForMachine(root, builder, undefined, 900000, options.signal, env, dependencies);
     const machine = dependencies.machine ?? new Machine(root, env);
@@ -133,10 +136,16 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     await machine.exec(builder, `set -eu; git init --bare "$HOME/mirror.git"; git --git-dir="$HOME/mirror.git" fetch "$HOME/base.bundle" '+refs/heads/dev:refs/heads/dev'; git clone --no-hardlinks "$HOME/mirror.git" "$HOME/cland"; git -C "$HOME/cland" remote remove origin; git -C "$HOME/cland" checkout --detach ${shellQuote(key.base)}; rm "$HOME/base.bundle"`, { timeoutMs: timeout(), signal: options.signal });
     await rm(bundle, { force: true });
     step('install');
-    let installOutput = 'prepare: not set\n';
+    let installOutput = options.prepare || options.provision ? '' : 'prepare: not set\n';
+    if (options.provision) {
+      const result = await machine.result(builder, `cd /home/runner/cland && /bin/bash -- ${shellQuote(`./${options.provision}`)} 2>&1`, timeout(), options.signal, 'root');
+      installOutput = result.stdout + result.stderr;
+      log({ event: 'executor-prepare-install', phase: 'provision', output: installOutput });
+      if (result.code !== 0) throw new Error(`provision failed (exit ${result.code})\n${installOutput}`);
+    }
     if (options.prepare) {
       const result = await machine.result(builder, `cd "$HOME/cland" && CLAND_PREPARE_KEY=${shellQuote(JSON.stringify(key))} /bin/sh -c ${shellQuote(options.prepare)} 2>&1`, timeout(), options.signal);
-      installOutput = result.stdout + result.stderr;
+      installOutput += result.stdout + result.stderr;
       if (result.code !== 0) throw new Error(`prepare failed (exit ${result.code})\n${installOutput}`);
     }
     log({ event: 'executor-prepare-install', output: installOutput });

@@ -24,7 +24,7 @@ export type ProjectConfig = {
   release: { webBundle: boolean; homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { batchInteraction: 'report' | 'run'; queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -46,7 +46,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   release: { webBundle: false, homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
-  verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { provision: '', prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -93,6 +93,8 @@ declined_accounts = ${JSON.stringify(c.setup.declinedAccounts)}
 
 [verification]
 # cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'.
+# provision is a repository-relative script run once as root after the image recipe, before prepare.
+provision = ${JSON.stringify(c.verification.provision)}
 # prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally.
 # Commands run under /bin/sh -c; prepare must be idempotent and write only ignored files.
 prepare = ${JSON.stringify(c.verification.prepare)}
@@ -357,11 +359,12 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     }
   }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
-  for (const key of ['prepare', 'check', 'test', 'test_unit', 'test_component', 'test_integration', 'test_soak'] as const) {
+  for (const key of ['provision', 'prepare', 'check', 'test', 'test_unit', 'test_component', 'test_integration', 'test_soak'] as const) {
     if (verification[key] === undefined) continue;
     if (typeof verification[key] !== 'string') throw new Error(`verification.${key} must be a command string`);
     c.verification[key] = verification[key];
   }
+  if (c.verification.provision && (c.verification.provision.startsWith('/') || c.verification.provision.split('/').some(part => part === '..' || part === '.') || c.verification.provision.includes('\\'))) throw new Error('verification.provision must be a repository-relative script path');
   if (verification.dev_t3_every !== undefined) {
     if (typeof verification.dev_t3_every !== 'string') throw new Error('verification.dev_t3_every must be a duration string or empty');
     c.verification.devT3Every = verification.dev_t3_every;

@@ -332,18 +332,30 @@ Preparation and the other executor controls belong to the human and Coordinator.
 
 The snapshot contains the base packages, the host's exact Node version, the
 ordinary `runner` user, a bare repository mirror and a checkout of the base, plus
-what the project's prepare command installs (for cland: `node_modules`, pinned
-Neovim and Chrome Headless Shell). Root provisioning installs the Ubuntu 24.04
-Chromium runtime libraries before the runner's `npm ci` installs the pinned shell.
-Its key combines Node, the Neovim tag and Linux digest, the committed
-base's lockfile SHA-256, and `origin/dev` after a fetch from the local territory.
+what the project's prepare command installs. `[verification] provision` names an optional
+repository-relative script in the committed base, run with Bash as root after the
+generic recipe and before `prepare` runs as runner. Its output is logged as
+`executor-prepare-install`; a failed hook stops preparation and reports its output.
+Without a hook, no additional root step runs. This project configures
+`hub/bin/verify-provision.sh` for Ubuntu Chromium libraries and pinned Neovim;
+`verify-prepare.ts` installs Node dependencies and Chrome Headless Shell. The hook
+records the installed Neovim tag and digest under `.cache/nvim/.cland-installed.json`,
+independently of the executor key and the npm installation receipt. A known
+same-tag digest conflict refuses before seeding or publishing a matching marker;
+rebuild the snapshot with consistent pins. Legacy tag-only project markers can
+use the old image's tag-and-digest receipt.
+The key combines Node, the running hub recipe SHA-256, optional hook content
+SHA-256 with its captured path, the committed base's optional lockfile SHA-256, and `origin/dev` after
+a fetch from the local territory. Local uncommitted hook edits do not affect it. Hook capture uses the applied
+configuration; a changed applied path refuses an already captured key before
+reuse or builder admission. Committed hooks must be regular files, not symlinks.
 A matching prepare reports `current`; a new key builds a replacement and deletes
 the previous image only after the new image completes. Failures clean up the
 builder and partial image while keeping the previous snapshot. Status includes
 the image's size in GB.
 
 The record lives in `.cland/run/executor/snapshot.json`, mirrored in `hub.db` under
-`executor-snapshot`. Status lists its key and `current` or `stale: base|lock|node|nvim`
+`executor-snapshot`. Status lists its key and `current` or `stale: base|lock|node|recipe|provision`
 for the inputs that moved. A moved base increases future delivery bundles;
 changed install inputs need reseeding during a run. Re-prepare after a release or
 a lockfile change; this is a human or Coordinator action, never automatic.

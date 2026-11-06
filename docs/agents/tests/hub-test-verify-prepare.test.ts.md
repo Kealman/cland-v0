@@ -1,0 +1,7 @@
+# hub/test/verify-prepare.test.ts
+
+T-1709 provisioning evidence: run `node --test hub/test/verify-prepare.test.ts` with supported Node and inherited `CLAND_*` removed. Native T3 runs require the stage preservation lock and disposable fixture roots; never run a provisioning script on the host. Scripted component tests prove root hook ordering and failure output. Key tests prove hook and generic recipe staleness; native prepare tests hash committed hook bytes and retain no-hook snapshot coverage. Recipe inspection checks every Chromium library and both Neovim pins against project sources. QA runs these checks on stage dev; the Coordinator restarts the hub and rebuilds the snapshot before collecting full Linux suite evidence.
+
+The hook writes `.cache/nvim/.cland-installed.json` with the installed tag and Linux digest. The prepare marker records project install facts separately from the executor key. Exercise a matching hook pin and a differing hook pin; keep the warm executor-run delivery assertion unchanged.
+
+The same-tag/different-digest regression uses the real resolver with a planted old executable in its tag cache. It requires refusal before seeding, unchanged bytes and no newly published matching marker. A legacy tag-only project marker still uses the image receipt containing the digest. An older-tag project marker cannot hide a hook conflict at the requested tag; that case keeps the prior marker unchanged.

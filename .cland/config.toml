@@ -24,6 +24,8 @@ declined_accounts = []
 
 [verification]
 # cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'.
+# provision installs project system packages once as root on the image builder.
+provision = "hub/bin/verify-provision.sh"
 # prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally.
 # Commands run under /bin/sh -c; prepare must be idempotent and write only ignored files.
 prepare = "node hub/bin/verify-prepare.ts"

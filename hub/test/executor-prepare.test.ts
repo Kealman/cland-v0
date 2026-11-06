@@ -15,6 +15,8 @@ import type { TestContext } from 'node:test';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { DropletRun } from '../src/executor/droplet/run.ts';
+import { symlink, unlink } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { prepareKey, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -56,8 +58,8 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
     await mkdir(join(root, 'nvim'));
     await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
     await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
-    const key = await prepareKey(root);
-    assert.deepEqual(key, { node: process.version, base: await git(root, 'rev-parse', 'HEAD') });
+    const key = await prepareKey(root, fixtureEnvironment(root, process.env));
+    assert.deepEqual(key, { node: process.version, recipe: createHash('sha256').update(await readFile(new URL('../src/executor/droplet/provision.sh', import.meta.url))).digest('hex'), base: await git(root, 'rev-parse', 'HEAD') });
     await rm(join(root, 'nvim'), { recursive: true });
     const clock = new FakeClock();
     const api = await fakeDigitalOcean('cland-test-pinless', { machine: 'scripted', clock });
@@ -85,13 +87,12 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
     assert.ok(history.messages.some(message => message.text.includes('prepare: not set')));
     assert.deepEqual(status.snapshot.key, key);
     assert.equal(status.snapshot.freshness, 'current');
-    assert.match(status.summary, /"nvim":"none"/);
+    assert.match(status.summary, /"provision":"none"/);
     assert.match(status.summary, /"lock":"none"/);
     assert.doesNotMatch(status.summary, /stale/);
     const userData = String(api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!.user_data);
     assert.match(userData, /NODE_VERSION=v/);
-    assert.match(userData, /NVIM_VERSION=\n/);
-    assert.match(userData, /if \[ -n "\$NVIM_VERSION" \]; then\n[\s\S]*curl[^\n]*neovim[\s\S]*\nfi/);
+    assert.doesNotMatch(userData, /NVIM_VERSION|neovim/);
     const current = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
     assert.equal(current.code, 0, current.stderr);
     await drive(machine, eventually('snapshot is reused', async () => {
@@ -119,37 +120,39 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
   });
 });
 
-test('prepare accepts independent optional parts but rejects incomplete Neovim pins', async context => {
+test('prepare keys hash committed hook bytes without Neovim fields and ignore local hook edits', async context => {
   const { wait, fixtures: t } = caseDeadlines(context);
-  await wait('native prepare-key controls', async () => {
+  await wait('native hook-key controls', async () => {
     const git = ownedGit(t, wait);
     const root = await tempProject(t);
     await git(root, 'init', '-q', '-b', 'dev');
     await git(root, 'config', 'user.name', 'Test'); await git(root, 'config', 'user.email', 'test@example.com');
     await git(root, 'config', 'commit.gpgsign', 'false');
-    await writeFile(join(root, 'package-lock.json'), '{}\n');
-    await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Lock-only base');
+    await mkdir(join(root, '.cland'));
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\nprovision = "system.sh"\n');
+    await writeFile(join(root, '.gitignore'), '.cland/\n');
+    await writeFile(join(root, 'system.sh'), 'true\n');
+    await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Hook base');
     await git(root, 'remote', 'add', 'origin', root);
-    const lockOnly = await prepareKey(root);
-    assert.equal(lockOnly.nvim, undefined);
-    assert.equal(lockOnly.lock, 'ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356');
-    await mkdir(join(root, 'nvim'));
-    await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
-    await git(root, 'add', 'nvim'); await git(root, 'commit', '-qm', 'Incomplete pin');
-    await assert.rejects(prepareKey(root), /invalid Node or Neovim prepare pin/);
-    await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), 'bad  nvim-linux-x86_64.tar.gz\n');
-    await git(root, 'add', 'nvim'); await git(root, 'commit', '-qm', 'Invalid checksum');
-    await assert.rejects(prepareKey(root), /invalid Node or Neovim prepare pin/);
-    await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
-    await git(root, 'rm', 'package-lock.json');
-    await git(root, 'add', 'nvim'); await git(root, 'commit', '-qm', 'Pin-only base');
-    const pinOnly = await prepareKey(root);
-    assert.equal(pinOnly.lock, undefined);
-    assert.deepEqual(pinOnly.nvim, { tag: 'v0.12.5', digest: 'a'.repeat(64) });
-    await writeFile(join(root, 'nvim/NVIM_VERSION'), 'invalid-local-edit\n');
-    assert.deepEqual(await prepareKey(root), pinOnly);
-    await rm(join(root, 'nvim'), { recursive: true });
-    assert.deepEqual(await prepareKey(root), pinOnly);
+    const before = await prepareKey(root, fixtureEnvironment(root, process.env));
+    assert.equal(before.provision, 'a17fcf0a2f50e2d495e4f90ce263410edc183add6c62699a2facbccf60410f74');
+    assert.equal('nvim' in before, false);
+    assert.equal(before.provisionPath, 'system.sh');
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\nprovision = "unapplied.sh"\n');
+    assert.deepEqual(await prepareKey(root, fixtureEnvironment(root, process.env), 'system.sh'), before);
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\nprovision = "system.sh"\n');
+    await writeFile(join(root, 'system.sh'), 'true\n#');
+    assert.deepEqual(await prepareKey(root, fixtureEnvironment(root, process.env)), before);
+    await git(root, 'add', 'system.sh'); await git(root, 'commit', '-qm', 'One byte');
+    const after = await prepareKey(root, fixtureEnvironment(root, process.env));
+    assert.notEqual(after.provision, before.provision);
+    const { staleParts } = await import('../src/executor/droplet/prepare.ts');
+    assert.deepEqual(staleParts({ key: before } as Snapshot, after), ['base', 'provision']);
+    await unlink(join(root, 'system.sh'));
+    await writeFile(join(root, 'real.sh'), 'true\n');
+    await symlink('real.sh', join(root, 'system.sh'));
+    await git(root, 'add', 'system.sh', 'real.sh'); await git(root, 'commit', '-qm', 'Symlink hook');
+    await assert.rejects(prepareKey(root, fixtureEnvironment(root, process.env)), /provision.*regular.*file/);
   });
 });
 
@@ -191,11 +194,11 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
     assert.equal(JSON.parse(submitted.stdout).state, 'submitted');
     const status = await eventually('snapshot is prepared', async () => {
       const result = await ui.request({ type: 'executor.status' });
-      const value = result.value as { snapshot?: { image: number; key: { node: string; nvim: { tag: string }; lock: string; base: string }; freshness: string }; prepare?: { state: string } };
+      const value = result.value as { snapshot?: { image: number; key: { node: string; lock: string; base: string }; freshness: string }; prepare?: { state: string } };
       return value?.snapshot && value.prepare?.state !== 'running' ? value : undefined;
     }, 15000);
     assert.equal(status.snapshot!.freshness, 'current');
-    assert.equal(status.snapshot!.key.nvim.tag, 'v0.12.5');
+    assert.equal('nvim' in status.snapshot!.key, false);
     assert.equal(status.snapshot!.key.node, process.version);
     assert.match(status.snapshot!.key.lock, /^[a-f0-9]{64}$/);
     assert.equal(status.snapshot!.key.base, await git(root, 'rev-parse', 'HEAD'));
@@ -203,8 +206,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
     const builder = api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!;
     assert.equal(builder.image, 'ubuntu-24-04-x64');
     assert.match(String(builder.user_data), /NODE_VERSION=v/); assert.doesNotMatch(String(builder.user_data), /\bacct\b|cland-test-prepare/);
-    assert.match(String(builder.user_data), /NVIM_VERSION=v0\.12\.5/);
-    assert.match(String(builder.user_data), /curl[^\n]*neovim\/neovim\/releases/);
+    assert.doesNotMatch(String(builder.user_data), /NVIM_VERSION|neovim/);
     assert.deepEqual(api.images[0]!.regions, ['lon1', 'nyc1', 'sfo2']);
     const imageDir = api.imageDirs.get(status.snapshot!.image)!;
     assert.equal(await git(join(imageDir, 'home/runner/cland'), 'rev-parse', 'HEAD'), status.snapshot!.key.base);
@@ -235,7 +237,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.6\n');
   await git(root, 'add', 'nvim/NVIM_VERSION'); await git(root, 'commit', '-qm', 'Pin moved'); await git(root, 'push', '-q', 'origin', 'dev');
   const pinMoved = await inspectedSnapshot('pin change');
-  assert.equal(pinMoved.snapshot.freshness, 'stale: base|nvim');
+  assert.equal(pinMoved.snapshot.freshness, 'stale: base');
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
   await writeFile(join(root, 'package-lock.json'), (await readFile(join(root, 'package-lock.json'), 'utf8')).replaceAll('1.0.0', '1.0.1'));
   await writeFile(join(root, 'package.json'), '{"name":"prepared-fixture","version":"1.0.1"}\n');

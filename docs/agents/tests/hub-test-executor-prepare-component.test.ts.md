@@ -15,3 +15,5 @@ Default raw frames retain their previous shape (omitted optional `report`);
 the new hub chooses Agents and addresses the Coordinator. `--report` remains
 optional in old and new executor clients. Drain preparation and stop fixture hubs
 before closing the fake provider or removing any directories.
+
+T-1709 provisioning evidence: run `node --test hub/test/executor-prepare-component.test.ts` with supported Node and inherited `CLAND_*` removed. Native T3 runs require the stage preservation lock and disposable fixture roots; never run a provisioning script on the host. Scripted component tests prove root hook ordering and failure output. Key tests prove hook and generic recipe staleness; native prepare tests hash committed hook bytes and retain no-hook snapshot coverage. Recipe inspection checks every Chromium library and both Neovim pins against project sources. QA runs these checks on stage dev; the Coordinator restarts the hub and rebuilds the snapshot before collecting full Linux suite evidence.

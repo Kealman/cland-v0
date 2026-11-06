@@ -2096,11 +2096,13 @@ the package runner checks the source receipt and builds once before workers only
 when a hand run lacks a current bundle.
 
 Prepared Ubuntu 24.04 executor snapshots include Headless Shell's Chromium runtime
-libraries. Root cloud-init (`hub/src/executor/droplet/provision.sh`) installs them
+libraries. This project's `[verification] provision` hook
+(`hub/bin/verify-provision.sh`) installs them
 before the non-root runner executes the project's prepare command. For this repo,
 `verify-prepare.ts` runs `npm ci` on a cold image; its `prepare` lifecycle downloads
 the lockfile-pinned shell into the checkout. The snapshot key includes the committed
-`package-lock.json` SHA-256, so a changed browser pin invalidates the image.
+`package-lock.json` SHA-256, the running hub recipe digest and committed hook digest,
+so a changed browser pin or system package recipe invalidates the image.
 After provisioning changes land, the Coordinator or human restarts the hub onto
 that code and runs `cland executor prepare`: cloud-init comes from the running hub,
 not the delivered task branch. A branch receipt on the old image cannot prove new
