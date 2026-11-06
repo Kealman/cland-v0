@@ -8,14 +8,14 @@ size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1533
 blocked_by: []
 regression_of: T-1698
 found_by: droplet
 topic: null
 branch: null
 created: 2026-11-06T05:34:21.418Z
-updated: 2026-11-06T05:37:45.440Z
+updated: 2026-11-06T18:53:01.975Z
 ---
 
 ## Summary
@@ -40,3 +40,13 @@ The same run's other failure, host-relaunch-native C2 `push retry required`, bel
 ### coord · 2026-11-06T05:37:45.440Z
 
 The hub's failing-file rerun 54ea67cd (A-17028, Linux x64 c-8 nyc1, dev fa60199a, peak load 1.3) passed host-prepared.test.ts alone: 15 of 15 tests. Like T-1702, this points to a race that shows only under load, not a deterministic regression. The item stays in Bugs; promote it into E-1532 stage 6 if it recurs in the next stage covers.
+
+### coord · 2026-11-06T18:52:48.959Z
+
+coord: second occurrence.
+
+E-1533 stage-1 Linux cover 2424aed9 at dev e19c3496 (A-17186; droplet c-8 sfo2, 2 shards, old image 250987220) failed shard-2 on `hub/test/host-prepared.test.ts` "native agent restart cleans actual unfinished spawn and worktree preparations before publishing readiness". It failed after 1.80 s with the same `Error: agent closed` at `hub/src/host/agent-client.ts:30:124`.
+
+It was the only failure in that run: 7415 passed. The test is identical to the first occurrence (b9aa9e7d at 4df6c1ad, before stage 1). Stage 1 changes neither `hub/src/host/agent/prepared.ts` nor `agent-client.ts`.
+
+Two occurrences in about 10 h on Linux. Promoted into E-1533 stage 2 as its own lane, so it is fixed before it reddens more covers.

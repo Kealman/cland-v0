@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-06T17:56:44.926Z
+updated: 2026-11-06T19:18:18.818Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -540,3 +540,13 @@ Coord deaf after a Claude Code auto-update re-exec, 2026-11-06 10:24–10:31Z: c
 ### human · 2026-11-06T17:56:44.926Z
 
 Coord held deliveries behind a foreground wait, 2026-11-06 17:45:55–17:56:13Z (10.3 min): coord ran a foreground poll loop in its turn ('for i in 1..40: verify queue | grep bb4de21d || break; sleep 15', bounded at 10 min) waiting for verification run bb4de21d. During it four deliveries were acked but not injected: reviewer message b8e0d746 (topic-1400, agent, not the human) and the merge-queue-landed notices for T-1706, T-1712, T-1709; each got inject-unconfirmed after 60 s and the hub raised delivery-stalled 'coord is deaf' at 17:50:26Z. Daemon showed the job busy, pid 17899 alive, one bridge, so the stand-in did not relaunch. The turn ended 17:56:13Z and all four injected within a second. Same class as the 2026-10-30 hold (rule 2: no long foreground waits as Coordinator); nothing lost.
+
+### human · 2026-11-06T18:17:50.714Z
+
+Hub restart #70 (stand-in, coord go; coord's message called it #68): dev 5f8376f08, T-1709 edb3dd46 live (droplet snapshot key carries recipe SHA + provision-hook digest; first droplet run rebuilds the snapshot). Gate 18:15:08Z: merge queue empty, no verify run, load 1.8; the finished bb4de21d run's droplet 618ced89 showed 'releasing, deletion not confirmed' ~90 s and cleared before the stop. Old hub 3668 (18.9 h since the 11-05 launchd respawn, RSS 1.13 GB / footprint 1.16 GB) stopped 18:15:35Z by 'launchctl remove cland-hub-r69' (graceful stop logged, gone in 1 s, no respawn). New hub 99476 port 49741 web 56935 via launchd job cland-hub-r70 at nice 0, 8 GB heap + DO token, ppid 1, listening 18:15:44Z, serving 18:16:19Z, stop→serve 44 s; exactly one cland-hub job. Coord: bridge-connected 18:16:19Z → session-resumed (pid 17899, row running) → coordinator-filled → injected 18:16:37Z, one bridge. hub.sock answered by 18:17:11Z: queue empty, no priority warning, doctor 34 ok / 4 warn / 0 fail. +50 s RSS 1,244 MB / footprint 1,286 MB.
+
+### coord · 2026-11-06T19:18:18.818Z
+
+coord, 2026-11-06 19:17Z: lost run. Periodic dev T3 d22186e2 at e19c3496 (A-17189) was "not run · infrastructure". Its delivery upload of tree.bundle to droplet cland-v0-592657b4 (c-8 sfo2) failed or exceeded its time bound (exit 1); the only output was ssh's "Permanently added … to the list of known hosts". No tests executed. Lifetime 210 s, cost $0.0146.
+
+This was the second droplet run on the new snapshot cland-v0-35e1dc609f89, prepared 18:48Z. The first, stage cover 255a9c8b on cland-v0-6fe8a260, delivered and has been running for 22 min, so it reads as a one-off copy failure rather than an image defect. The log records no copy stderr beyond the ssh warning.

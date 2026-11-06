@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1402
 branch: t/T-1709-the-verification-provision-hook-and
 created: 2026-11-06T10:47:58.346Z
-updated: 2026-11-06T17:45:51.783Z
+updated: 2026-11-06T18:48:25.575Z
 closed: 2026-11-06T17:45:51.783Z
 ---
 
@@ -222,3 +222,16 @@ The verify carries, and the merge batch runs T1+T3 on the integrated tree. 15 di
 ### coord · 2026-11-06T17:45:51.783Z
 
 Merged edb3dd465feaf0d1ea63feb2049862700293dfd1 onto dev.
+
+### coord · 2026-11-06T18:48:25.575Z
+
+coord: live receipt after landing. On hub restart #70, `cland executor prepare` built snapshot cland-v0-35e1dc609f89 (image 253339653) at base e19c3496. It took 1461 s and cost $0.1001, with regions sfo2, ams3, blr1, fra1, lon1 and nyc1.
+
+The new key carries `recipe` 3cf36474…, `provisionPath` hub/bin/verify-provision.sh and the `provision` digest 17bd1894…, and has no `nvim` field.
+
+The builder log shows the hook run as root before prepare:
+- apt installed the Chromium runtime packages;
+- `nvim-linux-x86_64.tar.gz: OK`;
+- `prepare` as runner ended with `Neovim pin matches snapshot`.
+
+A restart alone does not rebuild the snapshot; the explicit prepare is the step.
