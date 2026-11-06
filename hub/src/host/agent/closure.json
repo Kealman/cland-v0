@@ -50,7 +50,7 @@
     },
     {
       "path": "hub/src/host/agent/operations.ts",
-      "sha256": "59df0ed9674364808dd5a9d5c22678a440872d51e1150c80c0269a4e9e296c37"
+      "sha256": "c743d58fd898707f31f8f241aa4eb9331cfcb2a822233e27c78b223335b5cc41"
     },
     {
       "path": "hub/src/host/agent/package.ts",
@@ -58,11 +58,11 @@
     },
     {
       "path": "hub/src/host/agent/prepared-checkout.ts",
-      "sha256": "7df0d5f3200c63ec2fbe2dd3afa090d91bca7403e2c98528f289973e9643987b"
+      "sha256": "ee034fb3f6e28426ee887988326d482dc847e661c7ad5692cc03c12a67d9c7b9"
     },
     {
       "path": "hub/src/host/agent/prepared.ts",
-      "sha256": "9a55d721b8ecbac515319fa9aa8cabe0e6cc9e5ee246e0f9e9cba8b803162344"
+      "sha256": "08087e79b78e331cccdc210132621e2e761d96d5b760713309228f878558e706"
     },
     {
       "path": "hub/src/host/agent/process-usage.ts",
@@ -122,7 +122,7 @@
     },
     {
       "path": "hub/src/host/agent/worktrees.ts",
-      "sha256": "8fc3323c47287c0976a4239c7895cfc254ab20c7f1d194a526764989125a37e1"
+      "sha256": "2a2ef8905e86d62563460f953c148b1d83ee9c30d2fb51877d13360b5fc3cf64"
     },
     {
       "path": "shared/executor-credentials.ts",

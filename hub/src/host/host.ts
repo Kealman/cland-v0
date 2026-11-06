@@ -73,7 +73,7 @@ export interface Host {
   listFolder(path: string): Promise<string[]>;
   /** Optional territory supplies the captured source path and commit before add; omitted keeps legacy local refs.
    * Await beforeInstall after Git and before install I/O; false skips installs for recovery. */
-  worktreeAdd(options: WorktreeAdd): Promise<{ warning?: string }>;
+  worktreeAdd(options: WorktreeAdd): Promise<{ warning?: string; checkout?: import('./agent/prepared-checkout.ts').CheckoutOwnership }>;
   worktreeRemove(options: { root: string; path: string }): Promise<void>;
   occupants(path: string, sessions: readonly { name: string; cwd: string }[]): Promise<string[]>;
   /** Whether this Host permits idle account polling. Live-session reads are separate. */

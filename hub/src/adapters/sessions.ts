@@ -1565,7 +1565,10 @@ export class Sessions {
         }
         if (!owned && !retainedId) for (const id of identity.sessionIds) this.#core.store.endSubscriptions(id);
         const original = cause instanceof LaunchRecoveryPending ? cause.cause : cause;
-        if (original instanceof Error) { original.message = detail; throw original; }
+        if (original instanceof Error) {
+          if (!(cause instanceof LaunchRecoveryPending) && !this.#pendingStops.has(owned?.sessionId ?? retainedId ?? '') && (original as NodeJS.ErrnoException).code !== 'CLAND_HOST_OUTCOME_UNKNOWN') this.#settledLaunchFailures.add(original);
+          original.message = detail; throw original;
+        }
         throw new Error(detail);
       });
     } finally {
@@ -1697,7 +1700,8 @@ export class Sessions {
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false, host?: string, worktrees?: TaskWorktrees): Promise<SessionResumeAnswer> {
     authorize();
     const placement = this.#process(name);
-    if (this.#relaunchIntent(placement)) throw new Error('cross-host relaunch is fenced; inspect its reported failure before reconciliation');
+    const handoff = this.#relaunchIntent(placement);
+    if (handoff && !(relaunch && host && host!==placement.host && !fresh && handoff.retryable)) throw new Error('cross-host relaunch is fenced; inspect its reported failure before reconciliation');
     if (host !== undefined && (!relaunch || fresh)) throw new Error('host requires relaunch without fresh');
     if (host !== undefined && host !== (placement.host ?? 'local')) {
       return this.#relaunchElsewhere(placement, host, resumed, authorize, worktrees);
@@ -1743,6 +1747,8 @@ export class Sessions {
     return null;
   }
 
+  readonly #settledLaunchFailures = new WeakSet<Error>();
+
   #relaunchIntent(p: HarnessProcess): HostRelaunchIntent | null {
     const value = this.#core.store.meta(hostRelaunchIntentKey(p.sessionId));
     return value ? JSON.parse(value) as HostRelaunchIntent : null;
@@ -1750,12 +1756,15 @@ export class Sessions {
 
   async #relaunchElsewhere(original: HarnessProcess, host: string, resumed: Resumed, authorize: () => void, worktrees?: TaskWorktrees): Promise<SessionResumeAnswer> {
     if (host === 'local') throw new Error('relaunch to local from a remote host is not supported yet; relaunch on a registered host');
-    if (!this.#relaunchCause(original)) throw new Error('task stays on its host while that host is available');
+    const admittedRetry=this.#relaunchIntent(original);
+    if (!admittedRetry && !this.#relaunchCause(original)) throw new Error('task stays on its host while that host is available');
     const destination = this.validateLaunchHost({name:original.name,role:original.role,host});
     if (!original.item || !worktrees) throw new Error('cross-host relaunch requires an item worktree');
     const sourceGeneration = hostGenerationKey(original), intentKey = hostRelaunchIntentKey(original.sessionId);
     const slot = this.#lifecycleSlot(original.sessionId);
     let intent: HostRelaunchIntent | undefined;
+    let retry: HostRelaunchIntent | null = null;
+    let nativeEntered = false;
     this.#resuming++;
     const current = () => {
       authorize();
@@ -1769,28 +1778,31 @@ export class Sessions {
     try {
       if (slot.ready) await slot.ready;
       const p = resumed(current);
-      if (this.#relaunchIntent(p)) throw new Error('cross-host relaunch is fenced; reconciliation is required');
+      retry=this.#relaunchIntent(p);
+      if (retry && !(retry.phase==='failed' && retry.retryable && retry.tree?.checkout && retry.sourceGeneration===sourceGeneration)) throw new Error('cross-host relaunch is fenced; reconciliation is required');
       this.#checkRolesLaunch(p.role);
       this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
       const sourceBrief = p.launchBrief == null ? null : await this.#resolveBrief(p.name, p.launchBrief, resumed, () => { resumed(current); });
       const release: unknown = Reflect.get(this.adapter(p.harness),'releaseUnreachableGeneration');
       if (typeof release !== 'function') throw new Error(`${p.harness}: cross-host generation handoff is unavailable`);
-      this.#table.retainHostGeneration(p,'unknown');
+      if(!retry)this.#table.retainHostGeneration(p,'unknown');
       await worktrees.admitRelaunch(p.item!,p.host!,destination,() => resumed(() => {
-        const owner = current(), cause = this.#relaunchCause(owner);
+        const owner = current(), cause = retry?.cause ?? this.#relaunchCause(owner);
         if (!cause) throw new Error('task stays on its host while that host is available');
         intent = {sourceGeneration,sourceHost:p.host!,targetHost:host,item:p.item!,cause,phase:'admitted'};
         this.#core.store.setMeta(intentKey,JSON.stringify(intent));
-      }));
+      }),retry?.tree);
       // Captured work may itself be waiting for territory I/O. Drain outside both worktree and territory locks.
-      await this.releaseUnreachableGeneration(p);
+      if(!retry)await this.releaseUnreachableGeneration(p);
       resumed(current);
-      const tree = await worktrees.relaunchElsewhere(p.item!,p.host!,destination,() => resumed(() => { current(); }));
+      const tree = await worktrees.relaunchElsewhere(p.item!,p.host!,destination,() => resumed(() => { current(); }),retry?.tree);
       intent = {...intent!,phase:'prepared',tree};
       this.#core.store.setMeta(intentKey,JSON.stringify(intent));
-      const note = `relaunched on ${host} from ${p.host} (${intent.cause}); native conversation history and uncommitted edits were lost; branch at territory tip ${tree.tip}; read your item topic with \`history\` for context.`;
+      const retainedNote = tree.retained?.map(r=>`${r.tree.host} checkout ${r.tree.path} retained with ref-watch for settlement: ${r.reason}`).join('; ');
+      const note = `relaunched on ${host} from ${p.host} (${intent.cause}); native conversation history and uncommitted edits were lost; branch at territory tip ${tree.tip}; read your item topic with \`history\` for context.${retainedNote ? ` ${retainedNote}` : ''}`;
       const brief = sourceBrief ? {...sourceBrief,text:`${sourceBrief.text}\n\n${note}`} : await this.#resolveBrief(p.name,note,resumed,() => { resumed(current); });
       const launching = resumed(current);
+      nativeEntered=true;
       const process = await this.#launchNew({name:launching.name,host,role:launching.role,harness:launching.harness,model:launching.model,effort:launching.effort ?? null,cwd:tree.path,item:launching.item!,resolvedAccount:{account:launching.account ?? null,accountEnv:launching.accountEnv ?? null},...(p.launchBrief == null ? {} : {brief:p.launchBrief})}, launching.role,resumed,() => { resumed(current); },undefined,brief,launching.sessionId,true,{intentKey,sourceGeneration,tree,note});
       const launched = this.#process(process.name), work = this.#resumeWork(launched);
       const notes = [...work.notes,note];
@@ -1800,9 +1812,10 @@ export class Sessions {
       } catch (error) { notes.push(`native launch accepted; observer publication incomplete: ${error instanceof Error ? error.message : String(error)}`); }
       return {found:true,process,...work,notes};
     } catch (error) {
+      const settledFailure = error instanceof Error && this.#settledLaunchFailures.delete(error);
       const pending = this.#core.store.meta(intentKey);
       if (intent && pending) {
-        intent = {...intent,phase:'failed',failure:error instanceof Error ? error.message : String(error)};
+        intent = {...intent,phase:'failed',retryable:nativeEntered && !!intent.tree?.checkout && settledFailure,failure:error instanceof Error ? error.message : String(error)};
         this.#core.store.setMeta(intentKey,JSON.stringify(intent));
         throw new Error(`relaunch on ${host} failed; destination remains fenced; reconciliation is required: ${intent.failure}`,{cause:error});
       }

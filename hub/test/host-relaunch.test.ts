@@ -102,8 +102,8 @@ for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host 
     assert.equal(moved.ok,false); assert.match(String(moved.error),/failed; destination remains fenced.*injected native admission refusal/);
     assert.equal(table.get('worker')!.host,'f1'); assert.equal(owned.hostWorktrees()[0]!.host,'f2'); assert.equal(owned.hostWorktrees()[0]!.phase,'adding');
     const failed=JSON.parse(owned.meta(hostRelaunchIntentKey(before.sessionId))!); assert.equal(failed.phase,'failed'); assert.match(failed.failure,/injected native admission refusal/);
-    for(const host of [undefined,'f2','f3']) {const retry=await ui.request({type:'session.resume',session:'worker',relaunch:true,...(host?{host}:{})});assert.equal(retry.ok,false);assert.match(String(retry.error),/fenced/);}
-    assert.equal(spawns.length,2); assert.equal(owned.hostWorktrees()[0]!.host,'f2');
+    for(const host of [undefined,'f2','f3']) {const retry=await ui.request({type:'session.resume',session:'worker',relaunch:true,...(host?{host}:{})});assert.equal(retry.ok,false);assert.match(String(retry.error),host==='f2'?/injected native admission refusal/:host==='f3'?/unknown host|not registered|unavailable/:/fenced/);}
+    assert.equal(spawns.length,3); assert.equal(owned.hostWorktrees()[0]!.host,'f2');
     await drainPublishers();
     return;
   }

@@ -131,24 +131,24 @@ export class TaskWorktrees {
   }
 
   /** Short admission lock precedes adapter drain, which must never wait while holding this lock. */
-  admitRelaunch(item: string, from: string, host: Host, admit: () => void) {
+  admitRelaunch(item: string, from: string, host: Host, admit: () => void, retry?: import('../host/task-worktrees.ts').HostWorktreeRecord) {
     return this.serial(async () => {
       if (this.#store?.hosts.get(host.name)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
       const view = await this.#tracker.viewAsync(item);
       if (await this.#ineligible(view)) throw new Error(`${item}: cross-host relaunch requires an open task with a territory`);
       await withTerritoryLockAsync(this.root, async () => {
         const old = this.#store!.hostWorktrees().find(row => row.item === item);
-        if (!old || old.host !== from || old.phase === 'adding') throw new Error(`${item}: original worktree ownership is unavailable or needs reconciliation`);
+        if (!old || (retry ? JSON.stringify(old)!==JSON.stringify(retry) || !old.checkout : old.host !== from || old.phase === 'adding')) throw new Error(`${item}: original worktree ownership is unavailable or needs reconciliation`);
         admit();
       });
     });
   }
 
   /** Caller owns admitted native generation; no later connectivity observation undoes that admission. */
-  relaunchElsewhere(item: string, from: string, host: Host, authorize: () => void) {
+  relaunchElsewhere(item: string, from: string, host: Host, authorize: () => void, retry?: import('../host/task-worktrees.ts').HostWorktreeRecord) {
     return this.serial(async () => {
       if (this.#store?.hosts.get(host.name)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
-      return relaunchHostTaskWorktree({project:this.root,root:hostCloneRoot(host.layout({discoveryFile:'',node:'',cli:'',spoke:''}).runDirectory,this.root),host,item,from,store:this.#store,env:this.#env,authorize});
+      return relaunchHostTaskWorktree({project:this.root,root:hostCloneRoot(host.layout({discoveryFile:'',node:'',cli:'',spoke:''}).runDirectory,this.root),host,item,from,store:this.#store,env:this.#env,authorize,...(retry?{retry}:{})});
     });
   }
 

@@ -541,11 +541,18 @@ process row, ready checkout owner, restart warning and intent completion in the
 shared database. A post-commit observer failure does not roll back the native owner.
 
 An incomplete or refused destination/native admission retains its durable intent
-and failure reason. After checkout/lease transfer, its owner stays `adding`; source
-resume and onward relaunch refuse, and delivery stays held. Nothing restores old
-push authority. Automatic reconciliation of unknown preparation and explicit retry
-of known failed preparation are outside this flow. The retained owner is kept for
-subsequent reconciliation; a failed relaunch reports that it remains fenced.
+and failure reason. After checkout/lease transfer its owner stays `adding` and
+delivery stays held. A known, settled native-admission failure with a captured
+checkout receipt permits an explicit retry with `relaunch: true` and `host` even
+if the original host has returned. The same destination validates the captured
+directory, Git file and Git-admin directory identities and previous tip, fetches
+the current territory tip and resets the same checkout before reinstalling.
+An onward destination takes the branch lease under the territory lock; the previous
+destination's full checkout record and ref-watch remain a named retained settlement
+obligation in the current owner. Reply notes and the durable session warning name
+that host/path and ref-watch. Prune refuses while such obligations remain.
+Older agents/records without a checkout receipt and unknown preparation remain
+fenced for reconciliation. Nothing restores old push authority.
 
 This starts a fresh native conversation. The cland name, sessionId, role, claim,
 item, topic and subscriptions stay with the session. Its first input carries the

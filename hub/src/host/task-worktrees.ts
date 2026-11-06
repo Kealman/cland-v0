@@ -1,9 +1,10 @@
+import type { CheckoutOwnership } from './agent/prepared-checkout.ts';
 import { join } from 'node:path';
 import type { Host } from './host.ts';
 import { grantBranchLeaseLocked, revokeBranchLease, transferBranchLeaseLocked } from './branch-leases.ts';
 import { territoryPath, territoryGitAsync, withTerritoryLockAsync, type TaskWorktree } from '../territory.ts';
 import { HOST_ORIGIN } from './clone.ts';
-export type HostWorktreeRecord={item:string;host:string;root:string;path:string;branch:string;tip:string;createdBranch?:boolean;phase?:'adding'|'ready'};
+export type HostWorktreeRecord={item:string;host:string;root:string;path:string;branch:string;tip:string;createdBranch?:boolean;phase?:'adding'|'ready';checkout?:CheckoutOwnership;retained?:{tree:HostWorktreeRecord;reason:string;refWatch:boolean}[]};
 export type HostWorktreeStore={hostWorktrees():HostWorktreeRecord[];saveHostWorktree(row:HostWorktreeRecord):void;deleteHostWorktree(item:string):void};
 /** Territory branch creation and lease ownership share the caller's territory lock. */
 export async function addHostTaskWorktree(o:{project:string;root:string;host:Host;item:string;branch:string;store:HostWorktreeStore;env:NodeJS.ProcessEnv;authorize:()=>void}):Promise<TaskWorktree> {
@@ -24,7 +25,7 @@ export async function addHostTaskWorktree(o:{project:string;root:string;host:Hos
   try {
    await grantBranchLeaseLocked(o.project,o.host.name,o.branch);
    o.authorize();
-   const record={item:o.item,host:o.host.name,root:o.root,path,branch:o.branch,tip:old?.tip ?? selected,createdBranch:old?.createdBranch ?? !tip};
+   const record={...old,item:o.item,host:o.host.name,root:o.root,path,branch:o.branch,tip:old?.tip ?? selected,createdBranch:old?.createdBranch ?? !tip};
    if(!old)o.store.saveHostWorktree({...record,phase:'adding'});
    const result=await o.host.worktreeAdd({root:o.root,path,branch:o.branch,territory:{path:HOST_ORIGIN,tip:selected},...(old?{reuseOnly:true}:{}),beforeInstall:()=>o.authorize()});
    accepted=true;
@@ -45,6 +46,7 @@ export async function addHostTaskWorktree(o:{project:string;root:string;host:Hos
 export async function pruneHostTaskWorktree(o:{project:string;row:HostWorktreeRecord;host:Host;store:HostWorktreeStore;env:NodeJS.ProcessEnv;expected?:{branch:string;tip:string};validate:()=>Promise<void>}):Promise<void> {
  await withTerritoryLockAsync(o.project,async()=>{
   const {row,host}=o;
+  if(row.retained?.length)throw new Error(`${row.item}: retained host checkout/ref-watch obligations need settlement`);
   if(row.phase==='adding')throw new Error(`${row.item}: host worktree outcome needs reconciliation`);
   const git=(args:string[])=>territoryGitAsync(territoryPath(o.project),args,false,undefined,o.env);
   const tip=(await git(['rev-parse',`refs/heads/${row.branch}`])).trim();
@@ -60,17 +62,23 @@ export async function pruneHostTaskWorktree(o:{project:string;row:HostWorktreeRe
 }
 
 /** A lost host's checkout is never read or removed. Incomplete destinations stay adding. */
-export async function relaunchHostTaskWorktree(o: {project:string;root:string;host:Host;item:string;from:string;store:HostWorktreeStore;env:NodeJS.ProcessEnv;authorize:()=>void}): Promise<HostWorktreeRecord> {
+export async function relaunchHostTaskWorktree(o: {project:string;root:string;host:Host;item:string;from:string;store:HostWorktreeStore;env:NodeJS.ProcessEnv;authorize:()=>void;retry?:HostWorktreeRecord}): Promise<HostWorktreeRecord> {
  return withTerritoryLockAsync(o.project, async () => {
   const old = o.store.hostWorktrees().find(row => row.item === o.item);
-  if (!old || old.host !== o.from || old.phase === 'adding') throw new Error(`${o.item}: original host worktree ownership is unavailable or needs reconciliation`);
+  if (!old || (o.retry ? JSON.stringify(old)!==JSON.stringify(o.retry) || !old.checkout : old.host !== o.from || old.phase === 'adding')) throw new Error(`${o.item}: original host worktree ownership is unavailable or needs reconciliation`);
   const tip = (await territoryGitAsync(territoryPath(o.project), ['rev-parse', '--verify', `refs/heads/${old.branch}`], false, undefined, o.env)).trim();
   o.authorize();
-  const row: HostWorktreeRecord = {...old, host:o.host.name, root:o.root, path:join(o.root,'.cland/worktrees',o.item), tip, phase:'adding'};
+  const same = !!o.retry && old.host===o.host.name;
+  if(o.retry && !same && old.retained?.some(r=>r.tree.host===o.host.name))throw new Error('destination has a retained checkout obligation; reconciliation required');
+  const retainedTree={...old};delete retainedTree.retained;
+  const row: HostWorktreeRecord = {...old, host:o.host.name, root:o.root, path:join(o.root,'.cland/worktrees',o.item), tip, phase:'adding',...(o.retry&&!same?{retained:[...(old.retained??[]),{tree:retainedTree,reason:'native admission failed; checkout and ref-watch retained for settlement',refWatch:true}]}:{})};
+  delete row.checkout;
   o.store.saveHostWorktree(row);
   await transferBranchLeaseLocked(o.project, o.host.name, old.branch);
   o.authorize();
-  await o.host.worktreeAdd({root:row.root,path:row.path,branch:row.branch,territory:{path:HOST_ORIGIN,tip},beforeInstall:o.authorize});
+  const prepared = await o.host.worktreeAdd({root:row.root,path:row.path,branch:row.branch,territory:{path:HOST_ORIGIN,tip},...(same?{reuseOnly:true,checkout:old.checkout}:{}),beforeInstall:o.authorize});
+  if(prepared.checkout)row.checkout=prepared.checkout;
+  o.store.saveHostWorktree(row);
   o.authorize();
   return row;
  });

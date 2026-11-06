@@ -11,7 +11,7 @@ lock. An injected post-publication log observer failure leaves accepted native
 ownership intact. A separate refused-admission case keeps destination adding,
 source process and native generation retained, and failure durable; source/same/
 third-host requests refuse without overwriting the destination owner. Successful
-retry and unknown-preparation reconciliation are outside this flow.
+retry is covered in host-relaunch-retry.test.ts; unknown preparation stays fenced.
 The new worker writes a readiness receipt; assertions wait for it separately
 from setup. Setup/harness bounds use testWaitMs/eventually. Fixture cleanup joins
 all agents, carriers, Git publishers and workers before deleting roots.
@@ -23,3 +23,10 @@ after measurement; no unexecuted repetition counts as a pass.
 
 Compatibility: run the unedited `hub/test/session-resume.test.ts`, plus the native
 preservation set specified by the item launch brief. No browser is used.
+
+T-1698 migration authorized by Coordinator decision8a85dc4d: the refused-case f2
+retry now reaches its always-refusing native fixture again, and f3 names its
+unregistered destination. Their previous blanket fences represented missing retry
+functionality. The drain/returned-f1 setup and no-host fence remain; the additional
+spawn is counted. Other T-1614 test files are unchanged. Successful returned-source
+f2/f3 retries and repeated f2→f3→f4 retention are in host-relaunch-retry.test.ts.

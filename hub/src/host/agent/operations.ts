@@ -1,3 +1,4 @@
+import { parseCheckoutOwnership } from './prepared-checkout.ts';
 import { open } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { fileOperations } from './files.ts';
@@ -99,7 +100,7 @@ export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): R
     },
     worktreeAdd: a => {
       const territory = a.territory === undefined ? undefined : object(a.territory);
-      return trees.worktreeAdd({root:text(a.root,'root'),path:path(a),branch:text(a.branch,'branch'),...(a.reuseOnly === undefined ? {} : {reuseOnly:flag(a.reuseOnly)!}),...(a.detached === undefined ? {} : {detached:flag(a.detached)!}), ...(territory ? {territory:{path:text(territory.path,'territory.path'),tip:text(territory.tip,'territory.tip')}} : {})});
+      return trees.worktreeAdd({root:text(a.root,'root'),path:path(a),branch:text(a.branch,'branch'),...(a.checkout===undefined?{}:{checkout:parseCheckoutOwnership(a.checkout)}),...(a.reuseOnly === undefined ? {} : {reuseOnly:flag(a.reuseOnly)!}),...(a.detached === undefined ? {} : {detached:flag(a.detached)!}), ...(territory ? {territory:{path:text(territory.path,'territory.path'),tip:text(territory.tip,'territory.tip')}} : {})});
     },
     worktreeRemove: async a => { await trees.worktreeRemove({root:text(a.root,'root'),path:path(a)}); return null; },
   };

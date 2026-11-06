@@ -945,8 +945,15 @@ Cross-host admission persists before adapter release. Drain runs outside the
 territory lock; later source connectivity cannot cancel admission. Publication
 commits native row, ready checkout, restart warning and intent completion in one
 ProcessTable transaction. Failed native admission retains adding ownership and a
-durable reason, refusing source or onward resume until reconciliation. Explicit
-failed-checkout retry and unknown-preparation reconciliation are outside this flow.
+durable reason. A settled launch failure marks the intent retryable only with a
+positive checkout receipt. Explicit same-destination retry validates directory,
+Git file and Git-admin identity plus the previous tip before fetch/reset to the
+current pushed tip. Onward retry persists the previous complete checkout and
+ref-watch as a retained obligation before replacing the current owner under the
+territory lock. Atomic publication preserves those obligations and names them in
+the warning. Missing receipts and unknown preparation remain fenced. The optional
+agent reply `checkout` and persisted record fields are additive; old reply shapes
+still work for initial relaunch but cannot authorize retry.
 
 ### Unreachable generation transport handoff
 

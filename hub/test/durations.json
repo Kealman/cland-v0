@@ -13362,6 +13362,27 @@
       "added": "2026-11-05",
       "expires": "2026-11-11",
       "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[11.865064917,12.858119166,13.981045917,13.960658334,15.721050332999999],\"linux\":[6.414405503,6.436156003,6.104146545,6.899941628,5.948339378]}. ceil(1.5 x worst 15.721050332999999)=24s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode."
+    },
+    "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f2 preserves prepared ownership": {
+      "seconds": 18,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-11",
+      "reason": "T-1698 duration-only refresh authorized by Coordinator935daa76 (rule7 evidence carry). Passing named f2 samples seconds: macOS arm64 Node24.21 local [9.563723958,7.595442917,9.209523625,8.391883958,7.952442458,8.864307792,9.343291458]; Linuxx64 Node24.21 droplet40cc51e2/A-16995 [8.487115282]; batch16d0ab14/A-17000 base [11.052143807] and load-gate [10.553677072,9.859780067,10.126842444,9.847115238,10.565439485] (this named case passed; overall batch remains RED and classified T-1702); merged-head ee8a207e/A-17004 [11.355315502]. Worst11.355315502s; ceil(1.5 x worst)=18s. Includes fixture setup, native readiness, assertions and joined teardown; excludes runner/container startup and scheduling. Exact test source retains timeout:testWaitMs(180000), with unoverridden180s above18s. No browser for this case. Targeted runs do not execute duration gates; report-only budget policy unchanged. No source/assertion/timeout or f3/f4 allowance change; no runtime rerun requested."
+    },
+    "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f3 preserves prepared ownership": {
+      "seconds": 16,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-11",
+      "reason": "T-1698: local macOS arm64 Node24.21.0 passing targeted samples8.629584208,7.838329084,10.479924333s; latest sample proves retry after source return. ceil(1.5 x worst10.479925)=16s. Includes setup, native receipt, assertions and joined teardown; excludes Node runner startup. Host load approximately2-3; no burners/browser. Linux unmeasured pending configured verification,1.6x is projection only. Targeted runs do not execute duration gates; report-only policy unchanged."
+    },
+    "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f4 preserves prepared ownership": {
+      "seconds": 17,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-11",
+      "reason": "T-1698: local macOS arm64 Node24.21.0 passing targeted sample10.681210417s proves f2 then f3 failure followed by f4 success with two flat retained checkout/ref-watch obligations. ceil(1.5 x worst10.681211)=17s. Includes four SSH fixtures, native readiness, assertions and joined teardown; excludes Node runner startup. Host load approximately2-3; no burners/browser. Linux unmeasured pending configured verification;1.6x is projection only. Targeted runs do not execute duration gates; report-only policy unchanged."
     }
   }
 }

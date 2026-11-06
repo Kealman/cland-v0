@@ -254,7 +254,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     listFolder: path => rpc('listFolder',{path}),
     worktreeAdd: async options => {
       const {beforeInstall,...args} = options;
-      const result = await prepared<{warning?:string}>('worktree',args,async () => beforeInstall?.());
+      const result = await prepared<{warning?:string;checkout?:import('./agent/prepared-checkout.ts').CheckoutOwnership}>('worktree',args,async () => beforeInstall?.());
       if (!result) throw new Error(`host ${o.name}: tunnel worktree not prepared`);
       try {const connection=await connected();if(!options.detached&&options.branch.startsWith('t/'))await updateRefWatch(admitted(connection),'watch',{path:options.path,branch:options.branch});}
       catch(error){throw Object.assign(error instanceof Error?error:new Error(String(error)),{code:'CLAND_HOST_OUTCOME_UNKNOWN'});}

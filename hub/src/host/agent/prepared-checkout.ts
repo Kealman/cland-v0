@@ -3,6 +3,14 @@ import { join } from 'node:path';
 import { run, nativeCommandFailure } from './command.ts';
 export type FileBirth = { dev: number; ino: number };
 export type CheckoutOwnership = { root: string; path: string; directory: FileBirth; tip: string; gitFile?: FileBirth; gitDirectory?: string; gitDirectoryBirth?: FileBirth };
+/** Shared validation for optional captured checkout receipts on agent operations. */
+export function parseCheckoutOwnership(value: unknown): CheckoutOwnership {
+  if (!value || typeof value !== 'object') throw new Error('invalid checkout receipt');
+  const row=value as Record<string,unknown>;
+  const text=(key:string)=>{const v=row[key];if(typeof v!=='string'||!v)throw new Error('invalid checkout '+key);return v;};
+  const birth=(key:string)=>{const v=row[key] as FileBirth|undefined;if(!v || !Number.isSafeInteger(v.dev)||v.dev<0||!Number.isSafeInteger(v.ino)||v.ino<0)throw new Error('invalid checkout '+key);return {dev:v.dev,ino:v.ino};};
+  return {root:text('root'),path:text('path'),tip:text('tip'),directory:birth('directory'),gitFile:birth('gitFile'),gitDirectory:text('gitDirectory'),gitDirectoryBirth:birth('gitDirectoryBirth')};
+}
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const same = (a: FileBirth, b: FileBirth) => a.dev === b.dev && a.ino === b.ino;
 async function info(path: string) { return lstat(path).catch(error => { if (!missing(error)) throw error; return null; }); }

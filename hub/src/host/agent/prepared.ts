@@ -11,7 +11,7 @@ import { worktreeOperations } from './worktrees.ts';
 import { worktreeInstall } from './worktree-install.ts';
 import type { AgentProcesses, ProcessTarget } from './processes.ts';
 import { remoteCommandEnvironment } from './command-environment.ts';
-import { reserveCheckout, observeCheckout, validateCheckout, cleanupCheckout } from './prepared-checkout.ts';
+import { reserveCheckout, observeCheckout, validateCheckout, cleanupCheckout, parseCheckoutOwnership } from './prepared-checkout.ts';
 import type { CheckoutOwnership, FileBirth } from './prepared-checkout.ts';
 
 type Phase = 'preparing' | 'git-running' | 'prepared' | 'committing';
@@ -176,7 +176,13 @@ export class PreparedOperations {
         try {result=await this.#processes.spawn({...plan.args,env:remoteCommandEnvironment({...this.#env,...plan.args.env as NodeJS.ProcessEnv})},pending.log,{launchId:token,accepted:async result=>{await this.#saveOutcome(token,plan,{state:'accepted',result});}});}
         catch(error){if(!(await this.#outcome(token))&&cleanup)plan.cleanup=cleanup;throw error;}
       } else if(plan.kind==='stop') result=await this.#processes.stop({...plan.args,captured:plan.targets});
-      else {if(plan.checkout)await this.#gitBoundary(token,plan,()=>validateCheckout(this.#env,plan.checkout!,this.#hooks.checkoutRun));const warning=install?await worktreeInstall(String(plan.args.root),String(plan.args.path)):undefined;result=warning?{warning}:{};}
+      else {
+        // Reused receipts validate identity but never grant this plan deletion authority.
+        const checkout=plan.checkout ?? (plan.args.checkout ? parseCheckoutOwnership({...plan.args.checkout as CheckoutOwnership,tip:(plan.args.territory as {tip:string}).tip}) : undefined);
+        if(checkout)await this.#gitBoundary(token,plan,()=>validateCheckout(this.#env,checkout,this.#hooks.checkoutRun));
+        const warning=install?await worktreeInstall(String(plan.args.root),String(plan.args.path)):undefined;
+        result={...(warning?{warning}:{}),...(checkout?{checkout}:{})};
+      }
       await this.#saveOutcome(token,plan,{state:'accepted',result});
       try{await pending.log?.close();}catch(error){if(plan.kind!=='spawn')throw error;}
       await this.#removePlan(token);return result;

@@ -300,6 +300,7 @@
     "hub/test/host-relaunch-component.test.ts": "T2",
     "hub/test/host-relaunch-native.test.ts": "T3",
     "hub/test/host-relaunch-publication.test.ts": "T2",
+    "hub/test/host-relaunch-retry.test.ts": "T3",
     "hub/test/host-relaunch.test.ts": "T3",
     "hub/test/host-revoke-native.test.ts": "T3",
     "hub/test/host-revoke.test.ts": "T2",

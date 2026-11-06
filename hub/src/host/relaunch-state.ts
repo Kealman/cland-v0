@@ -10,6 +10,7 @@ export type HostRelaunchIntent = {
   phase: 'admitted' | 'prepared' | 'failed';
   tree?: HostWorktreeRecord;
   failure?: string;
+  retryable?: boolean;
 };
 export type HostRelaunchCompletion = {
   intentKey: string;

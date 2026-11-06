@@ -260,7 +260,11 @@ exclusive branch lease and start a fresh native conversation with the recorded
 brief and loss note. Cland identity and claim stay; old native obligations stay
 retained. See docs/agents/host-agent.md, "Relaunching an item on another host".
 
-A pending or failed cross-host handoff remains fenced with its destination owner
-and failure reason. Report it to the item lead; do not overwrite the destination
-or resume the old native generation. Successful publication commits the native
+A pending or unknown cross-host handoff remains fenced with its destination owner
+and failure reason. A settled native-admission failure with a captured checkout
+receipt permits explicit retry even if the source has returned: same-host retry
+validates checkout/Git-admin identity and refreshes the pushed tip; onward retry
+retains the old checkout/ref-watch as a named settlement obligation. Missing
+receipts stay fenced. Report unresolved obligations to the item lead; never resume
+the old native generation or discard retained ownership. Successful publication commits the native
 row, ready checkout, restart warning and intent completion atomically.
