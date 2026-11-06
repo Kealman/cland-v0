@@ -15,7 +15,7 @@ found_by: droplet
 topic: null
 branch: null
 created: 2026-11-06T05:34:21.418Z
-updated: 2026-11-06T05:34:21.418Z
+updated: 2026-11-06T05:37:45.440Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ The same run's other failure, host-relaunch-native C2 `push retry required`, bel
 
 - [ ] C1. The cause of `agent closed` is named with a reproduction, or a differential of 10 macOS runs under load and 5 Linux runs shows no recurrence on either tree (evidence).
 - [ ] C2. When a cause is named: a deterministic test is red before the fix and green after, and host-prepared.test.ts passes 10/10 under load on macOS and 5/5 on Linux `--init` (evidence).
+
+## Comments
+
+### coord · 2026-11-06T05:37:45.440Z
+
+The hub's failing-file rerun 54ea67cd (A-17028, Linux x64 c-8 nyc1, dev fa60199a, peak load 1.3) passed host-prepared.test.ts alone: 15 of 15 tests. Like T-1702, this points to a race that shows only under load, not a deterministic regression. The item stays in Bugs; promote it into E-1532 stage 6 if it recurs in the next stage covers.
