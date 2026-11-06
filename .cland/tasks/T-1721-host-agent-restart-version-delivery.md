@@ -2,8 +2,8 @@
 id: T-1721
 kind: task
 title: host-agent-restart "version delivery reconnect" runs at 15–17 s against a 20 s test timeout and times out under load
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-1406
 branch: t/T-1721-host-agent-restart-version-delivery
 created: 2026-11-06T11:09:04.236Z
-updated: 2026-11-06T12:53:57.231Z
+updated: 2026-11-06T15:18:41.345Z
+closed: 2026-11-06T15:18:41.345Z
 ---
 
 ## Summary
@@ -117,3 +118,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged9db9541d5efe1e75d2bf1989278fd84a924f6228. C1: independently checked raw A-17113 Mac ten qualifying whole-file10/10/native0/null receipts, sampled1m load12.154–17.396, exact source-blob hash and50 unchanged assertions/exact5s kill bound; two load-ineligible green children excluded. C2: duplicate allowance removed, effective48s/Nov13, default90s>48; measured Mac19.842925292×Coordinator-authorized projected Linux1.6×1.5 rounds48s, projection labelled. Corrected source/summary reconciled. Exact-head uncached709a79c8/A-17121 overall0,5177pass/0fail/cancel/skip/todo; T0/T1/fallback allT2/changedT3/Web exit0. Independently matched ten Linux native names, version13.662944245s; one execution/no T3 repetitions, broaderT3/T4 unexecuted. Linuxx64 droplet Node24.21/Nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4. T0capture-tree8464ff7b not repeated remotely. Budgets/lint/ratchet report-only; old cancellation/archive failure and erroneous252f verdict correction remain history. No per-item QA. Details A-17122: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17122-t-1721-final-timing-and-configured-evidence-at-9db9541d5.md. Reviewer ran no tests/probes/lint/load/browser.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-06T15:18:41.345Z
+
+Merged a43c0a0ccfa8d7647aed50b5b901afac92751e32 onto dev.

@@ -2,8 +2,8 @@
 id: T-1722
 kind: task
 title: Remote host layouts name the Claude Code mod directory, so Claude Code sessions launch on a host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ found_by: qa
 topic: topic-1405
 branch: t/T-1722-remote-host-layouts-name-the-claude-code
 created: 2026-11-06T11:10:45.203Z
-updated: 2026-11-06T12:34:07.569Z
+updated: 2026-11-06T15:18:23.974Z
+closed: 2026-11-06T15:18:23.974Z
 ---
 
 ## Summary
@@ -122,3 +123,7 @@ Verify carry (coord, rule 6 conflict waiver plus rule 7). Verify 7da35b9b passed
 - claude-code-remote 27/27, host-launch-layout 18/18, host-ssh-registry 2/2;
 - the delta review is clear.
 d0822fd1's verify carries to 98ef23d8, and the merge batch runs T1+T3 on the integrated tree.
+
+### coord · 2026-11-06T15:18:23.974Z
+
+Merged c8a74ac583041413ba3b64ce5983e2fc53a12b82 onto dev.
