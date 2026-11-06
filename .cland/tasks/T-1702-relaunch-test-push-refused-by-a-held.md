@@ -16,7 +16,7 @@ found_by: cover
 topic: topic-1399
 branch: t/T-1702-relaunch-test-push-refused-by-a-held
 created: 2026-11-06T01:44:41.119Z
-updated: 2026-11-06T05:22:43.525Z
+updated: 2026-11-06T05:28:54.744Z
 ---
 
 ## Summary
@@ -129,3 +129,7 @@ Merge batch f50f49c2 run927d727f failed and dropped item; A-17026. Actual host-c
 Merge-delta assessment (report-only)
 {"reviewed":"af381e438992f7975584d98385f0061778d56a67","head":"eafe6845b146d6cfb9b62e32b260d21008c2723c","dev":"4df6c1add492a457fd7072c6843fe134e0bd00ad","mergeBase":"72ba2260e5a50c1a279726fa766adb898ee43e64","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":[".agents/skills/implement/CHANGES/T-1702-receive-lock-wait.md",".agents/skills/implement/SKILL.md","docs/adr/0004-agents-work-on-a-local-git-territory.md","docs/agents/tests/hub-test-host-allow-list.test.ts.md","docs/hub/cland-init-and-cland-update.md","docs/hub/declining-an-accepted-verifier-request-t-1494.md","hub/README.md","hub/src/host/git-daemon.ts","hub/src/territory.ts","hub/test/host-allow-list.test.ts","qa/briefs/E-1532-stage-2.md"],"devPaths":[".cland/tasks/E-1532-the-ssh-transport-the-host-agent-and-git.md",".cland/tasks/T-1702-relaunch-test-push-refused-by-a-held.md"],"overlap":[],"dependency":{"status":"unknown","reason":"import graph incomplete or budget exceeded"},"patchIdCurrent":true}
 Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-1702 · 2026-11-06T05:28:54.744Z
+
+Expanded Rule20 sweep before phase change: host/task-worktrees.ts add/prune/relaunch and hub/worktrees.ts admitRelaunch consume phase adding/ready; migrate to reject removing. HostWorktreeRecord persisted by Store.saveHostWorktree/hostWorktrees as JSON(no schema), retained in relaunch-state intent/completion and Sessions snapshot equality; additive removing/removal metadata retained. host/flush.ts already refuses every non-ready phase; dispatch.#flushHostItem final owner check must also compare phase/snapshot after async flush. Hub worktrees listing projects fields and will retain removing rows for recovery; no UI wire shape changes. Tests: host-clone-integration unchangedassertion; worktree-host new deterministic cycle cases; host-relaunch/component/retry/native/publication and host-flush tests plus all fixture record readers inspected. QA stage2/stage6 and docs host-agent/ssh-host/implement reference atomic operations; update phase/lock ordering. Direct native local territory add/remove use local Host (no ref-watch push drain), unchanged; merge afterMerge/prune is outside merge lock, batch revoke/read critical sections perform no Host joins, lease grant/revoke/transfer mutate only local list. Add/relaunch currently wait on Host.worktreeAdd registration behind the shared agent watch serial queue: new deterministic cases both red before fix; these will move Host calls outside locked preparation/finalization too. No agent protocol/capability change is needed.
