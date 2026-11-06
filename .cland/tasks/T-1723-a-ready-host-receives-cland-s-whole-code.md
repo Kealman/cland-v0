@@ -5,6 +5,7 @@ title: A ready host receives cland's whole code tree for its version (CLI, spoke
 state: open
 status: backlog
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T11:10:54.543Z
-updated: 2026-11-06T11:10:54.543Z
+updated: 2026-11-06T11:13:38.138Z
 ---
 
 ## Summary
@@ -30,7 +31,7 @@ The version handoff (hub/src/host/code-delivery.ts) ships only the host agent's 
 
 ## Acceptance criteria
 
-- [ ] C1. Delivering to a fake host's scratch home installs `<code>/<version>` with `hub/bin/cland.ts`, `hub/bin/cland-spoke.ts` and `mod/cland`, each file matching the manifest digest (test).
+- [ ] C1. Delivering to a fake host's scratch home installs `<code>/<version>` with `hub/bin/cland.ts`, `hub/bin/cland-spoke.ts` and `hub/mod/cland`, each file matching the manifest digest (test).
 - [ ] C2. A second delivery of the same version and digest copies nothing, and a changed digest replaces the tree atomically, never leaving a half-written version directory (test).
 - [ ] C3. The delivered spoke and CLI start from that tree on the fake host and answer `--version` with the hub's version (test).
 - [ ] C4. The agent bundle tests (host-agent-restart, host-agent-closure and the version-handoff cases) pass with no test edited.

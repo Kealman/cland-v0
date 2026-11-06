@@ -3,7 +3,7 @@ id: T-1709
 kind: task
 title: The `[verification] provision` hook, and Neovim and Chromium leave the recipe
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1402
 branch: t/T-1709-the-verification-provision-hook-and
 created: 2026-11-06T10:47:58.346Z
-updated: 2026-11-06T11:06:43.320Z
+updated: 2026-11-06T12:12:40.518Z
 ---
 
 ## Summary
@@ -37,14 +37,19 @@ Notes: `provision.sh` is read from the running hub's code, so the new recipe and
 
 - [x] C1. On the scripted machine, the builder runs the hook as root before `prepare` runs as `runner`, and a failing hook fails the prepare with its output (test).
   - done: impl-1709 · 2026-11-06T11:02:48.400Z
+  - verified: rev-35 [reviewer] · run rev-35-1709-final-1 · 2026-11-06T12:12:40.294Z · commit 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
 - [x] C2. The snapshot key carries the hook's content digest and no Neovim field, and editing one byte of the hook marks the snapshot stale with `provision` named in its stale parts (test).
   - done: impl-1709 · 2026-11-06T11:02:49.063Z
+  - verified: rev-35 [reviewer] · run rev-35-1709-final-1 · 2026-11-06T12:12:40.294Z · commit 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
 - [x] C3. `provision.sh` installs no `nvim` and none of the Chromium runtime packages (test).
   - done: impl-1709 · 2026-11-06T11:02:49.768Z
+  - verified: rev-35 [reviewer] · run rev-35-1709-final-1 · 2026-11-06T12:12:40.294Z · commit 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
 - [x] C4. This project's hook installs those Chromium packages and the Neovim tag and digest of `nvim/NVIM_VERSION` and `nvim/NVIM_SHA256SUMS`, which a test keeps equal (test).
   - done: impl-1709 · 2026-11-06T11:02:50.486Z
+  - verified: rev-35 [reviewer] · run rev-35-1709-final-1 · 2026-11-06T12:12:40.294Z · commit 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
 - [x] C5. `cland config` documents `[verification] provision`, and a project without it prepares exactly as before apart from the key (test).
   - done: impl-1709 · 2026-11-06T11:02:51.264Z
+  - verified: rev-35 [reviewer] · run rev-35-1709-final-1 · 2026-11-06T12:12:40.294Z · commit 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
 
 ## Comments
 
@@ -63,3 +68,56 @@ Package move from starting HEAD provision.sh lines 11–13: libasound2t64 libatk
 ### impl-1709 · 2026-11-06T11:06:43.320Z
 
 Native executor-run red at 8d2f72f16: warm-delivery assertion expected dependencies match snapshot / Neovim pin matches snapshot, actual dependencies match snapshot / Neovim pin changed: seed. remote-fixture.ts line 94 copied the executor key into the project installation marker, so removing key.nvim dropped the installed pin. Consumer sweep missed this read-then-serialize alias; correcting the fixture receipt, preserving executor-run assertions. Coordinator additionally requires hook to persist installed tag+digest and differing-hook-pin delivery regression. Hook writes .cache/nvim/.cland-installed.json (outside npm ci deletion); verify-prepare reads it independently of key. Hook source test observed red then green. Native new hook receipt test is written and awaiting the next authorized preservation slot for its red run before implementation. Source reviewer has been told to hold final verdict pending new head.
+
+### impl-1709 · 2026-11-06T11:12:23.529Z
+
+Review corrections pending new pin: captured provisionPath is additive beside provision digest; consumers prepareKey, sameKey, staleParts, DropletExecutor key work and prepareSnapshot migrated. The applied configuration supplies path to key capture; concurrency shares work by path; mismatched path/digest presence refuses before current reuse or builder. Prior keys remain readable. The scripted disk-edit/input-refusal regression and complete component/key set pass 27/27 locally on macOS Node24.21.0. Stale duration keys removed without sample transplant. Native prepare-key adds third-argument capture and committed symlink rejection tests; native verify-prepare adds hook-receipt match/mismatch cases, awaiting next preservation slot for red before reader/gate implementation. remote-fixture no longer conflates executor key with project installed pin receipt and now passes fixtureEnvironment to prepareKey.
+
+### impl-1709 · 2026-11-06T11:34:18.532Z
+
+Coordinator decision 4a3cb8b1-3994-4063-997e-c81bff648a72: the 16 additional direct-T3 consumers consist of suite-selection (targeted 161/161 green) and the following 15 files deferred to the merge batch's T3: hub/test/cover-quiet.test.ts, hub/test/demo-release.test.ts, hub/test/executor-health.test.ts, hub/test/remote-fixture-lifecycle.test.ts, hub/test/suite-cancel.test.ts, hub/test/suite-candidate-remote.test.ts, hub/test/suite-close-recovery.test.ts, hub/test/suite-close.test.ts, hub/test/suite-recovery.test.ts, hub/test/suite-remote-process.test.ts, hub/test/suite-timeouts.test.ts, hub/test/suite.test.ts, hub/test/telegram-polling-restart.test.ts, hub/test/telegram-voice-command.test.ts, hub/test/verification-workers.test.ts. Run targeted only if the batch reds on one. Earlier local receipts remain labelled ancestry evidence, not corrected-head full T3. Core corrected batch: prepare 5/5, droplet 14/14, safety 17/17, run 19/19, verify-prepare 1/1, suite-selection 161/161, every child exit 0 with no skips/cancels/todo. Scripted/config/key/selection group 54/54 green; full root typecheck and T0 lint pass (lint advisory findings report-only, zero refusals). All local macOS Node v24.21.0, fake API/transport only, no browser. Production source unchanged throughout corrected native batch. Receipt and symlink tests observed red before fixes. New test samples remain below 3 seconds; no allowance added. provisionPath is additive, consumer inventory migrated; previous keys remain readable.
+
+### rev-35 · 2026-11-06T11:36:35.730Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1709-source-1
+commit: 9a87a274a31fda20e148d0f9c92fcae62e2f91f4
+scope: full
+findings: [{"severity":"medium","text":"Same-tag/different-digest receipt calls nvim-path.ts, whose ensureNvim fast path reuses the existing tag-cache binary without digest verification; line44 then publishes the requested digest although old bytes may remain. Refuse conflicting installed facts before seed/marker publication or establish verified replacement under the cache owner. Add a planted old cached executable regression; a seed-call logger is insufficient.","file":"hub/bin/verify-prepare.ts","line":42}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-17083 records full source review at 9a87a274a. Prior regular-file hook validation, applied provision input binding before reuse/admission, and timing-baseline corrections are resolved. One installed-fact finding remains, confirmed by Implementer c1d3606e. C1–C5 remain unverified; no runtime criterion failure inferred from this source finding. Local A-17080 and Coordinator-authorized deferred T3 scope remain qualified; no configured verify/rebuilt-image/QA pass claimed. Fresh corrected committed source review before verification.
+
+### impl-1709 · 2026-11-06T11:43:33.719Z
+
+Source finding rev-35-1709-source-1 fixed: same-tag/different-digest installed receipt now refuses before npm/seed/marker publication. Regression runs real nvim-path.ts against a planted old tag-cache executable, observes missing expected rejection red on 9a87a274a, then green after correction with unchanged cached bytes and no matching marker. Legacy tag-only marker uses old image tag+digest rather than treating missing digest as known conflict. Authorized short native slot completed: test 1/1, exit 0, no skips/cancels/todo, macOS arm64 Node24.21.0; red child exit1 2.216s including startup, green child exit0 1.468s including startup (test body1.093s). No new duration allowance. Previous core native receipts are ancestry evidence; same-head configured verification still pending fresh source review. Coordinator retains 15 direct-T3 deferrals to merge batch.
+
+### rev-35 · 2026-11-06T11:47:29.932Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1709-source-2
+commit: 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Cumulative corrected source clear; A-17097 (see source artifact in topic) records inspection. All-receipt digest conflict refusal precedes npm/resolver/marker; planted real-resolver cache and older-marker precedence regressions preserve bytes/no false marker. Legacy tag-only project marker may use complete old-image evidence. Prior hook regular-file, applied-input binding and baseline corrections remain resolved. No Reviewer execution. C1–C5 remain unverified pending same-head configured evidence. A-17080 broader native/T0 is ancestry evidence; A-17095 final local targeted summary is qualified. Explicit 15-file T3 deferral and affected after-stage QA remain separate.
+
+### rev-35 · 2026-11-06T12:12:40.294Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1709-final-1
+commit: 719ed2231cf7a8bfa7b72ad255c1d6858b52bb4e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17106: final same-head clear, C1–C5 verified. A-17103 runa01a6474 exit0 hub5195pass/zero fail,cancel,skip,todo; base5047pass, six empty failure arrays. Independently matched execution tree cfcd3e8f654beeb7219511c95180733167b29222. Inspected exact root success/failure, committed-byte/symlink/path key, recipe/package/pin/config, no-hook and real-resolver installed-receipt outcomes; ten relevant newT1/T2 identities5/5. T0/T1/allT2/changedT3 six identities once/mappedT4base/Web complete; T4repetitions skipped, otherT3 deferred. A-17097 local transcriptions/timeline linkage retain prior-tree, overwritten-output and red/incomplete limits. Linuxx64 Node24.21/Nvim0.12.5 c8nyc1 uncached, HeadlessShell1248/CfT156.0.8078.4. Report diagnostics advisory. Existing-image configured pass does not establish Coordinator-owned post-landing restarted-hub snapshot rebuild/first new-image run or affected after-stageQA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

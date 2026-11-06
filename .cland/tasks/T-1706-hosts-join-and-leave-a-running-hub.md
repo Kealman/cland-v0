@@ -3,7 +3,7 @@ id: T-1706
 kind: task
 title: Hosts join and leave a running hub (prefactor)
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1400
 branch: t/T-1706-hosts-join-and-leave-a-running-hub
 created: 2026-11-06T10:47:42.499Z
-updated: 2026-11-06T11:11:22.705Z
+updated: 2026-11-06T11:44:53.048Z
 ---
 
 ## Summary
@@ -31,12 +31,18 @@ Notes: `projectSshHosts` is owned here; the later create-to-ready and destroy ti
 
 ## Acceptance criteria
 
-- [ ] C1. A fake host registered on a running hub opens its tunnel and takes a `session.launch` with its `host` within the test budget, with no hub restart (test).
-  - failed: rev-38 [reviewer] · 2026-11-06T11:08:49.581Z · note Publication/shutdown regressions exercise the race but do not establish join-before-public-settlement; add ordered promise-settlement and cleanup completion receipts.
-- [ ] C2. Removing that host stops its carrier and git daemon, and its running session rows settle through the revoke path, never staying `running` (test).
-  - failed: rev-38 [reviewer] · 2026-11-06T11:05:25.486Z · note Missing failed runtime-remove cleanup/retry regression; existing startup owner.close retry does not exercise this new path.
-- [ ] C3. A host added at runtime is reopened at the next hub start like any registered host (test).
-- [ ] C4. The existing host test files (`host-ssh-registry`, `host-relaunch`, `host-survival-native`) pass with no test edited.
+- [x] C1. A fake host registered on a running hub opens its tunnel and takes a `session.launch` with its `host` within the test budget, with no hub restart (test).
+  - done: impl-1706 · 2026-11-06T11:15:20.842Z
+  - verified: rev-38 [reviewer] · run rev-38-1706-evidence-1 · 2026-11-06T11:44:52.047Z · commit 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0
+- [x] C2. Removing that host stops its carrier and git daemon, and its running session rows settle through the revoke path, never staying `running` (test).
+  - done: impl-1706 · 2026-11-06T11:15:22.115Z
+  - verified: rev-38 [reviewer] · run rev-38-1706-evidence-1 · 2026-11-06T11:44:52.047Z · commit 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0
+- [x] C3. A host added at runtime is reopened at the next hub start like any registered host (test).
+  - done: impl-1706 · 2026-11-06T11:15:23.505Z
+  - verified: rev-38 [reviewer] · run rev-38-1706-evidence-1 · 2026-11-06T11:44:52.048Z · commit 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0
+- [x] C4. The existing host test files (`host-ssh-registry`, `host-relaunch`, `host-survival-native`) pass with no test edited.
+  - done: impl-1706 · 2026-11-06T11:15:24.717Z
+  - verified: rev-38 [reviewer] · run rev-38-1706-evidence-1 · 2026-11-06T11:44:52.048Z · commit 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0
 
 ## Comments
 
@@ -103,3 +109,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at 4e8aa7793; supersedes source-2/source-3 findings. Standards and Spec: no findings. All four required lifecycle cases now have assertions; rollback queues retry while held and records Git close before add rejection/new publication; shutdown records Git close/add rejection before public close resolution. A-17069 confirms both early-settlement mutants fail by AssertionError (exit1/cancelled0), focused evidence only. Full review retained from base74117dabb, product unchanged; correction in A-17070 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17070-t-1706-source-clear-at-4e8aa7793.md). C1/C2 source gaps resolved. Criteria marks: none; C1-C4 runtime verification remains pending exact-head native/preservation receipts and post-source configured verification. No Reviewer execution.
+
+### impl-1706 · 2026-11-06T11:18:58.904Z
+
+Exact-head preservation evidence at 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0: A-17075 log (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17075-t-1706-baseline-red-and-14-file-preservation-log-at-4e8aa7793.log), A-17076 per-child receipts (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17076-t-1706-native-child-receipts-at-4e8aa7793.json). macOS local, Node24.21.0, no browser/cloud; all 14 approved files / 56 generated cases passed, each native exit0 and full terminal summary; no skip/cancel/todo. Parsed counts checked separately from exit statuses. Baseline native tests on task-start dev 74117dabb failed at absent hostOwner API: 2 failed, 0 cancelled; this is retrospective regression proof, separate from initial TDD owner.add red. New native cases measured 1.543s/2.253s, below the 3s macOS allowance threshold. Existing C4 files unchanged (empty diff) and green. Owner typed tests 6/6 and early-settlement mutations in A-17069 support source-4 clear A-17070. C1-C4 done refreshed. Secret scan positive control matched, both exported outputs clear. Mode-free verify invocation is running local preflight; queued result still pending.
+
+### impl-1706 · 2026-11-06T11:44:13.681Z
+
+Configured same-head run 3f520689-1f2a-4a98-89df-e8032b196f9e green: A-17090, head 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0 / tree 238562a0786ccbb8ab8f0e090b65a2e4f7b3eb23. Droplet linux x64, Node24.21.0; T0, T1, all fallback T2, changed T3 runtime-join, mapped T4 inbox-verifier-load and Web executed. 5176 tests passed, 0 failed/cancelled/skipped/todo. Remaining T3 deferred to integrated merge batch (not counted as run). Browser provenance: pinned chromium_headless_shell-1248 binary, Chrome for Testing156.0.8078.4. Native new cases1.703s/1.774s Linux, under4s allowance threshold. Duration diagnostics and skip-reason check report mode; over-budget diagnostics are not enforcement passes. Droplet lifetime1377s, cost$0.0956 per hub receipt. Local preservation A-17075/A-17076 supplies the14 affected files/56 cases, with C4 files unedited. Final Reviewer evidence verdict pending; head unchanged.
+
+### rev-38 · 2026-11-06T11:44:52.048Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1706-evidence-1
+commit: 4e8aa7793e45c15ac3cbd22252a9b7f228065ef0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged source-reviewed4e8aa7793. A-17090 configured run3f520689 passed uncached after source-4; branch/task.verify/provenance match head. Completed T0/T1/fallback-allT2/Web +changed T3(two base identities once)+mapped T4(one base guard, repeats skipped);5176pass,0fail/cancel/skip/todo. Linuxx64 droplet c-8nyc1 Node24.21/Nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4, tree238562a0786ccbb8ab8f0e090b65a2e4f7b3eb23. Independently checked both runtime criterion outcomes and six owner base outcomes+5/5 load receipts. A-17075/A-17076: exact-head local macOS Node24.21 preservation14files/56tests green; C4 required files2/2,2/2,1/1 and unedited. Verified C1 runtime launch; C2 revoke settlement/closed owners/stopped row; C3 durable registered reopen; C4 unedited preservation. Remaining T3 deferred to merge batch/full T4 unexecuted; duration advisories report-only; after-stage QA separate. Findings:none. Full evidence review A-17091 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17091-t-1706-final-evidence-review-at-4e8aa7793.md). No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

@@ -3,7 +3,7 @@ id: T-1708
 kind: task
 title: DigitalOcean API pacing and typed 429s
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1403
 branch: t/T-1708-digitalocean-api-pacing-and-typed-429s
 created: 2026-11-06T10:47:52.181Z
-updated: 2026-11-06T11:09:44.238Z
+updated: 2026-11-06T12:08:07.385Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ Notes: `api.ts` and `fake-api.ts` are shared and serialized in one lane with the
 - [x] C2. A 429 surfaces as a typed refusal carrying the response's retry time, and the client sends nothing for that call before then (test).
   - done: impl-1708 · 2026-11-06T11:08:42.835Z
 - [ ] C3. The executor test files (`executor-droplet`, `executor-prepare`, `executor-safety`) pass with no test edited.
+  - failed: rev-37 [reviewer] · 2026-11-06T11:34:36.704Z · note Unedited executor-prepare is reported3/5 red at this head, and configured compatibility evidence is cancelled/incomplete; required preservation is not green.
 
 ## Comments
 
@@ -130,3 +131,55 @@ Source clear allows the lead to finish the Coordinator-authorized six-file unedi
 Standards0 findings; Spec0 findings. No criterion newly verified.
 
 A-17067: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17067-t-1708-corrected-source-review-at-d717f45e.md
+
+### impl-1708 · 2026-11-06T11:13:08.555Z
+
+Source clear rev-37-1708-source-2 at d717f45e375f35cf0567fa4eec1976c000912c60. All three findings reproduced red and fixed with regressions. Exact-head node --test hub/test/digitalocean-pacing.test.ts completed19/19, zero skips/cancel/todo; local macOS arm64 Node24.21.0, sealed disposable environment, no browser/cloud resources. Full typecheck green. Exact-head npm run test:lint exit0, zero refusals,122 baseline report-only findings. C1/C2 done again. C3 remains pending six UNEDITED preservation files in slot after T1706 (latest order); no mode-free verify submitted yet.
+
+### impl-1708 · 2026-11-06T11:29:31.865Z
+
+Regression diagnosis update, before scope fix: baseline detached0eb62a96 unedited prepare5/5 and run19/19 green; reviewed d717f45e prepare3/5 red, run incomplete180s, droplet14/14 safety17/17 green. New unit seam reproduces cross-authority leakage: same clock/sentinel token,250 sends to first fake API => fresh second fake API sends0 and expires15s deadline. Rule20 scope consumer sweep: CLAND_DIGITALOCEAN_API production api.ts callers keep canonical same-base per-token budget; test fake API url/synthetic-provider/account-fixture-env and docs/QA examples already pass per-fixture endpoints. No wire/method/persisted shapes changed. Default real API clients still share across executor/provider. New regression retains same-endpoint sharing and distinguishes independent provider authorities; native per-case send counts still pending instrumented disposable-copy run.
+
+### rev-37 · 2026-11-06T11:34:36.704Z
+
+verdict: review
+result: not clear
+by: rev-37 [reviewer]
+run: rev-37-1708-evidence-1
+commit: d717f45e375f35cf0567fa4eec1976c000912c60
+scope: evidence
+findings: [{"severity":"medium","text":"Configured compatibility control cancelled after native120000ms timeout (120.009s completion); hub hung221s is separate. Run is incomplete, with Web/later tiers unexecuted; provider admission/clock interactions require diagnosis before retry.","file":"hub/test/suite-accounting.test.ts","line":311},{"severity":"medium","text":"Budget key omits provider authority, coupling independent fake endpoints reusing clock/token. Item reports250 calls to one authority make fresh second authority send0/deadline; required unedited prepare3/5 red and run incomplete. Preserve same-authority sharing while migrating scoped admission/clock consumers; complete accounting-timeout cause remains unproved.","file":"hub/src/executor/droplet/api.ts","line":42}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+# T-1708 configured evidence review: not clear
+
+Head d717f45e375f35cf0567fa4eec1976c000912c60.
+Run rev-37-1708-evidence-1; scope evidence; result not clear.
+Configured run3e93c15b-754a-4801-9f09-ac4864543a14 / A-17078 exited1.
+Canonical verification tree independently reconstructed as cb06e6a4ad80fd540640a6d32a33e46f958fee23, matching run provenance. Source clear A-17067/rev-37-1708-source-2 covered this head before execution.
+
+Actual failure output:
+hub/test/suite-accounting.test.ts:311:1
+'50 parallel acquirers refuse the spend cap after a stalled budget publication'
+'test timed out after120000ms'
+Completion record: outcome cancelled, timedOut true,120.009066058s.
+The hub's later 'running221s' hung observation is a separate measurement, not the test's native timeout.
+
+Medium — hub/test/suite-accounting.test.ts:311. Required configured compatibility run is cancelled in the50-acquirer accounting control; it is not passing evidence. Investigate the provider admission/clock interactions and retain the exact failure; no source-supported classification as unrelated or mere load flake is established here.
+
+Medium — hub/src/executor/droplet/api.ts:42. New shared budget is keyed only by clock identity and token digest, coupling independent API authorities that reuse a sentinel token. The item records an unchanged-head synthetic reproduction:250 sends to one fake endpoint cause a fresh second authority to send0 and expire its15s deadline. It also records required unedited executor-prepare3/5 red and executor-run incomplete180s (versus detached baseline prepare5/5 and run19/19), with droplet14/14 and safety17/17 passing. These are Implementer reports pending durable raw producer receipts, not reviewer test runs. Shared per-token accounting must remain within the same provider authority, with old same-authority sharing preserved; broader scoped/fake-clock migration needs fresh source review. Cross-authority coupling is directly visible in source; it is not yet proved to be the accounting timeout's complete cause.
+
+Independent streaming facts: digitalocean-pacing has19 unique generated names and114 passing completion records (base19 plus95 load repetitions), no nonpass outcome. suite-accounting has15 unique completions:14pass/1cancelled. Thus C1/C2 named regressions ran successfully, but no final criterion verification is granted from this failed configured run.
+
+Execution: Linux x64 6.8.0-142-generic, droplet c-8 nyc1, Node24.21.0, Neovim0.12.5, workers2, cached:null. T0/T1 completed exit0; fallback T2 stopped exit1. Native phase summary4491tests/4490pass/1cancelled is distinct from hub observed4710 completed pass records before interruption. Neither is a full pass. T3/T4/Web did not execute; browser provenance binary/version null. Remaining T3 deferred to merge batch. Duration/lint/ratchet advisories report-only; skipReasonCheck report/missing0 and skips[] do not turn cancellation into success.
+
+C3 failed for compatibility evidence: required unedited executor-prepare is reported3/5 red, executor-run incomplete, and configured accounting case cancelled. C1/C2 remain done/unverified; no verified marks. Source fix must get a new source verdict before another configured run. Preserve all earlier ce355/d2a53 failed controls and current A-17078 failure; no allowance or timeout relaxation is implied.
+Reviewer read only, no tests/typecheck/browser/edits/merge.
+
+A-17079: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17079-t-1708-failed-configured-evidence-and-authority-scope.md
+
+Criteria: C3 failed (Unedited executor-prepare is reported3/5 red at this head, and configured compatibility evidence is cancelled/incomplete; required preservation is not green.).
+
+### impl-1708 · 2026-11-06T12:08:07.385Z
+
+Coordinator decision284ee1a9: rate is endpoint-declared; real DigitalOcean remains250/min, fake default declares100000/min, C1/C2 explicit250. New shared endpoint.ts parser/formatter used by API and fake; fragment metadata removed before canonical transport/budget key. Legacy bare URLs stay250; same clock/base/token share strictest declared limit. Consumer sweep covers CLAND_DIGITALOCEAN_API all source/tests/nvim/web/docs/qa/skills, direct api.url uses and regex guards: synthetic-provider preserves declaration unchanged; QA E-1538-stage-1's three strict loopback checks migrated to shared parser; scripted fake keeps its prior public empty url and supplies internal declaration to callback client. No method/wire/persisted record shape change or new dependencies; CLI help/usage and role/skills contain no superseded endpoint-policy instructions. Added T1 endpoint tests, updated T2 pacing/fake regressions and docs/index. High-budget control red250!==300 then green; immediate-send control observes1 actual transport call/0 clock timers before await. Current targeted35/35 green on local macOS Node24.21, no native processes/browser/cloud. Native unchanged prepare/safety/accounting still pending next slot; no final passing claim.

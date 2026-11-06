@@ -16,7 +16,7 @@ follows:
 topic: topic-1362
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-06T11:11:01.964Z
+updated: 2026-11-06T11:45:50.692Z
 ---
 
 ## Goal
@@ -175,6 +175,7 @@ stages:
       when: after-stage
     lanes:
       - - T-1722
+      - - T-1721
 ```
 
 ## Comments
