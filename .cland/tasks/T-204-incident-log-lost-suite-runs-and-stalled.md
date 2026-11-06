@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-06T10:32:11.665Z
+updated: 2026-11-06T17:56:44.926Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -536,3 +536,7 @@ Hub self-stop + launchd respawn, 2026-11-05 23:23Z: tracker-storage 'ready check
 ### human · 2026-11-06T10:32:11.665Z
 
 Coord deaf after a Claude Code auto-update re-exec, 2026-11-06 10:24–10:31Z: coord pid 96016 (2.1.318) exited 10:24:41Z, the daemon respawned job df72bd84 as pid 17899 (2.1.319). Unlike the re-execs of 11-03 and 11-04, the hub this time emitted harness-exited + role-cleared (10:24:43Z), then the new bridge connected (10:24:45Z), the role was re-taken at launch and coordinator-filled fired, but the harness row stayed 'exited 96016' and two deliveries (4661f8f1, a6a4853b) were only acked, never injected, for 6.5 min. Stand-in ran 'cland session resume coord' (no --relaunch) at 10:31:14Z: the row became '17899 running' and both deliveries were injected the same second; one bridge throughout, no twin. Hub 3668 unaffected.
+
+### human · 2026-11-06T17:56:44.926Z
+
+Coord held deliveries behind a foreground wait, 2026-11-06 17:45:55–17:56:13Z (10.3 min): coord ran a foreground poll loop in its turn ('for i in 1..40: verify queue | grep bb4de21d || break; sleep 15', bounded at 10 min) waiting for verification run bb4de21d. During it four deliveries were acked but not injected: reviewer message b8e0d746 (topic-1400, agent, not the human) and the merge-queue-landed notices for T-1706, T-1712, T-1709; each got inject-unconfirmed after 60 s and the hub raised delivery-stalled 'coord is deaf' at 17:50:26Z. Daemon showed the job busy, pid 17899 alive, one bridge, so the stand-in did not relaunch. The turn ended 17:56:13Z and all four injected within a second. Same class as the 2026-10-30 hold (rule 2: no long foreground waits as Coordinator); nothing lost.
