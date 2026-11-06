@@ -131,6 +131,11 @@ Empty/missing speech commands keep audio and name command setup.
 
 ## Host admission
 
+Pool image preparation (`cland host prepare [pool]`, frame `host.prepare`) is
+restricted to the local human CLI or Neovim, like host revocation. Implementers
+prove it in disposable sealed fixtures, never by preparing the live project.
+See [pool images](../../../docs/hub/host-providers.md#pool-images).
+
 Failed-launch rollback keeps child/file ownership when the captured native exit
 receipt misses its post-stop deadline. Preserve that receipt fence; retrying
 cleanup must not repeat an acknowledged stop. See the [recovery boundary](../../../docs/hub/adapters-and-sessions.md).

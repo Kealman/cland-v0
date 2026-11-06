@@ -64,6 +64,7 @@ export const WEB_AUTHORITY = {
   'push': 'pushes project history',
   'release': 'publishes a release',
   'resume': true,
+  'host.prepare': 'requires the local human CLI or Neovim',
   'host.revoke': 'requires the local human CLI or Neovim',
   'role.clear': true,
   'role.launch': true,

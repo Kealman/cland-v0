@@ -460,3 +460,9 @@ test('web user commands name users mode in single mode and admit an authenticate
     assert.equal(JSON.stringify(receipt).includes(token), false);
   }
 });
+
+ test('signed-in web refuses pool preparation', async t => {
+  const { web } = await clients(t);
+  const reply = await web.request({ type: 'host.prepare' });
+  assert.equal(reply.ok, false); assert.equal(reply.code, 'cli-neovim-only');
+ });

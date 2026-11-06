@@ -17,12 +17,14 @@ import { saveRecovery, recoverSnapshot, type SnapshotRecovery } from './snapshot
 import type { Released } from '../executor.ts';
 
 const exec = promisify(execFile);
-const hash = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
+export const hash = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 export type PrepareKey = { node: string; recipe?: string; provisionPath?: string; provision?: string; lock?: string; base: string };
 export type Snapshot = { image: number; name: string; key: PrepareKey; keyHash: string; regions: string[]; sizeGb: number; minDiskSize: number; created: string };
 export const snapshotPath = (root: string): string => join(root, '.cland/run/executor/snapshot.json');
 export const keyHash = (key: PrepareKey): string => hash(JSON.stringify(key)).slice(0, 12);
 export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.recipe === b.recipe && a.provision === b.provision && a.provisionPath === b.provisionPath;
+
+export async function recipeDigest(): Promise<string> { return hash(await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)))); }
 
 export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env, capturedProvision?: string): Promise<PrepareKey> {
   const git = async (...args: string[]) => (await exec('git', args, { cwd: root, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout;
@@ -39,7 +41,7 @@ export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.
   // Hash bytes, not decoded text: the lock input identifies the committed base.
   const hasLock = (await git('ls-tree', '--name-only', base, '--', 'package-lock.json')).trim() !== '';
   const lock = hasLock ? hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout) : undefined;
-  return { node, recipe: hash(await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)))), ...(provision === undefined ? {} : { provisionPath, provision }), ...(lock === undefined ? {} : { lock }), base };
+  return { node, recipe: await recipeDigest(), ...(provision === undefined ? {} : { provisionPath, provision }), ...(lock === undefined ? {} : { lock }), base };
 }
 /** Build the native base archive separately from snapshot lifecycle policy. */
 export async function prepareBundle(root: string, dir: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {

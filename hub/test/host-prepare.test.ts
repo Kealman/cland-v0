@@ -1,0 +1,86 @@
+// T2: real CLI over a projectHub socket; fake provider only, no native host.
+import { readHostPools } from '../src/host/transport-config.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { FakeHostProvider } from '../src/host/provider/fake.ts';
+import { testWaitMs, until } from './until.ts';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tempProject, projectHub, cland } from './harness.ts';
+
+test('pool prepare CLI publishes an image and then reports current', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider = "fake"\nsize = "fake"\nregion = "fake-1"\ntransport = "ssh"\n');
+  await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
+  const first = await cland(root, 'host', 'prepare');
+  assert.equal(first.code, 0, first.stderr);
+  assert.match(first.stdout, /agents: prepared/);
+  const second = await cland(root, 'host', 'prepare', 'agents');
+  assert.equal(second.code, 0, second.stderr);
+  assert.match(second.stdout, /agents: current/);
+});
+
+for (const [part, change] of [
+  ['harnesses', async (root: string, text: string) => writeFile(join(root, '.cland/config.toml'), text.replace('1.0.0', '2.0.0'))],
+  ['lock', async (root: string) => writeFile(join(root, 'package-lock.json'), '{"lockfileVersion":3}')],
+  ['provision', async (root: string) => writeFile(join(root, 'setup.sh'), '# changed hook\n')],
+] as const) test(`pool prepare invalidates ${part} and names the changed part`, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const text = '[verification]\nprovision = "setup.sh"\n[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider = "fake"\nsize = "fake"\nregion = "fake-1"\n';
+  await writeFile(join(root, '.cland/config.toml'), text);
+  await writeFile(join(root, 'setup.sh'), '# original hook\n');
+  await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
+  const first = await cland(root, 'host', 'prepare', 'agents');
+  assert.equal(first.code, 0, first.stderr);
+  await change(root, text);
+  const changed = await cland(root, 'host', 'prepare', 'agents');
+  assert.equal(changed.code, 0, changed.stderr);
+  assert.match(changed.stdout, new RegExp(`agents: prepared; changed: ${part}\\n`));
+});
+
+test('pool prepare selects all configured pools and unknown pool names the choices', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[hosts.first]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n[hosts.second]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n');
+  await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
+  const all = await cland(root, 'host', 'prepare');
+  assert.equal(all.code, 0, all.stderr);
+  assert.match(all.stdout, /first: prepared/); assert.match(all.stdout, /second: prepared/);
+  const unknown = await cland(root, 'host', 'prepare', 'missing');
+  assert.equal(unknown.code, 1);
+  assert.match(unknown.stderr, /unknown pool missing; configured pools: first, second/);
+  const help = await cland(root, 'host', '--help');
+  assert.equal(help.code, 0, help.stderr); assert.match(help.stdout, /host prepare \[pool\]/);
+});
+
+test('fake image build joins the configured build receipt and records its key', async t => {
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, {}, { CLAND_FAKE_HOST_ROOT: root });
+  let complete!: () => void;
+  let started = false;
+  const held = new Promise<void>(resolve => { complete = resolve; });
+  let now = 0;
+  const provider = new FakeHostProvider({ env, now: () => now, buildTimeMs: 250, wait: async ms => { assert.equal(ms, 250); started = true; await held; now += ms; } });
+  const key = { node: 'v24.21.0', base: 'pool', harnesses: { codex: '1.0.0' } };
+  const preparing = provider.prepare({ pool: 'agents', key });
+  t.after(async () => { complete(); await preparing; });
+  await until(() => started, { what: 'fake image build entered', timeoutMs: testWaitMs() });
+  assert.equal(started, true);
+  await assert.rejects(readFile(join(root, 'images/agents.json')), { code: 'ENOENT' });
+  complete();
+  assert.equal((await preparing).state, 'prepared');
+  const record = JSON.parse(await readFile(join(root, 'images/agents.json'), 'utf8'));
+  assert.deepEqual(record.key, key); assert.equal(record.buildTimeMs, 250); assert.equal(record.built, 250);
+  assert.equal((await provider.prepare({ pool: 'agents', key })).state, 'current');
+});
+
+test('pool harness pins use renderer ids and exact release versions', () => {
+  assert.deepEqual(readHostPools({ harnesses: { 'claude-code': '2.0.1', codex: '0.50.0', opencode: '1.2.3' } }).harnesses,
+    { 'claude-code': '2.0.1', codex: '0.50.0', opencode: '1.2.3' });
+  for (const harnesses of [{ claude: '2.0.1' }, { codex: 'latest' }, { codex: '^1.2.3' }, { codex: '1.2' }, { codex: '01.2.3' }]) {
+    assert.throws(() => readHostPools({ harnesses }), /hosts.harnesses/);
+  }
+});

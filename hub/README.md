@@ -19,7 +19,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Asks and the inbox](../docs/hub/asks-and-the-inbox.md)
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
-- [Host providers](../docs/hub/host-providers.md): machine provisioning contract, registry and directory-only fake provider.
+- [Host providers](../docs/hub/host-providers.md): machine provisioning contract, registry, pool image keys and human-only `cland host prepare [pool]` on the directory-only fake provider.
 - [SSH transport](../docs/hub/ssh-transport.md)
 - [Host revocation settlement](../docs/agents/host-agent.md#settlement-before-host-revocation): bounded pre-cut cleanup, changed-boot closure receipts and named unresolved generations.
 - [SSH Host and native launch receipts](../docs/hub/ssh-host.md): changed-boot session exits with durable retirement and no native signals; fake-host agent admission requires a boot file on every platform, while ordinary Linux uses the kernel boot; root-first Claude stop and bounded descendant convergence; private terminal attach records and separate pinned SSH terminals; atomic publish, append and stat; OpenCode shared ignore and launch rollback; territory clone, socket proxy, branch leases, agent version delivery, named unknown native-push identity boundaries; capability-gated automatic task-ref pushes and restart-safe host worktrees.

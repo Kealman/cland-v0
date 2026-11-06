@@ -1,3 +1,4 @@
+import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
 import { flushHostBranch } from '../host/flush.ts';
 import { territoryPath, territoryGitAsync } from '../territory.ts';
@@ -474,8 +475,10 @@ export class Dispatcher {
   /** Fence periodic metrics before daemon shutdown begins awaiting its owners. */
   stopWaitMetrics(): void { this.#suites?.stopWaitMetrics(); }
 
+  #poolPrepares = new Set<Promise<unknown>>();
   async close(): Promise<void> {
     this.#closed = true;
+    await Promise.allSettled([...this.#poolPrepares]);
     // A startup failure can close the dispatcher before serving admits recovery.
     this.#admitExecutorRecovery();
     if (this.#dropletTimer) this.#options.core.clock.clearInterval(this.#dropletTimer);
@@ -2051,12 +2054,22 @@ export class Dispatcher {
             if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
             return answer(this.#options.control.remoteStatus());
           }
+          case 'host.prepare':
           case 'host.revoke': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
-            if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, 'host.revoke', 'host revocation requires the human CLI or Neovim on a local connection');
+            if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type === 'host.prepare' ? 'host preparation' : 'host revocation'} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
+            if (frame.type === 'host.prepare') {
+              if (this.#closed) throw new Error('host preparation stopped');
+              const root = this.#options.control?.status().root;
+              if (!root) throw new Error('project root unavailable');
+              const preparation = preparePools(root, frame.pool, this.#options.env ?? process.env);
+              this.#poolPrepares.add(preparation);
+              void preparation.finally(() => this.#poolPrepares.delete(preparation)).catch(() => {});
+              return later(frame.type, preparation.then(value => ({ type: 'result', id: frame.id, ok: true, value } as HubFrame), err => Dispatcher.#failure(frame.id, err)));
+            }
             return later(frame.type, this.revokeHost(frame.host).then(cleanup => ({ type: 'result', id: frame.id, ok: true, value: { revoked: frame.host, ...(cleanup ? { cleanup } : {}) } } as HubFrame), err => Dispatcher.#failure(frame.id, err)));
           }
           case 'pairing.approve': {

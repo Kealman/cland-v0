@@ -31,7 +31,7 @@ short directory alias from `hostDirectory`. Homes, run directories, boot ids and
 pinned keys retain the existing fake transport shape.
 
 Fake options include an injected clock, bootDelayMs, neverBoot, refuseUntil,
-failAcquire and ignoreDelete. There are no real timers. Lifecycle calls on one
+failAcquire and ignoreDelete. Default lifecycle operations use no real timers. Lifecycle calls on one
 instance serialize and join their writes before returning. provider.json retains
 the captured identity and project/pool; another instance can recover inventory.
 Release removes fake keys and writes the deleted marker, then reads the marker
@@ -128,3 +128,41 @@ Contract lifecycle requests select a validated declared architecture and compare
 created machine architecture with that request. Single-architecture providers
 need not support the other architecture. The configurable fake returns a typed
 failed acquisition for an unsupported architecture without creating a machine.
+
+## Pool images
+
+The local human CLI or Neovim can submit `host.prepare`; sessions, host-secret
+connections and web/remotes cannot. `cland host prepare [pool]` prepares one pool
+or every configured pool. Unknown names report the configured choices. A running
+hub with this frame is required; older hubs return their unsupported-frame error.
+
+Each command reads `[hosts.<pool>]` provider, size, region and transport (`ssh`
+by default), and the exact `x.y.z` version strings in `[hosts] harnesses` (keys
+`claude-code`, `codex`, `opencode`; omitted pins are left to the renderer defaults). The remaining pool
+settings belong to the scheduler. For example:
+
+```toml
+[hosts]
+harnesses = { codex = "0.50.0", claude-code = "2.0.0" }
+[hosts.agents]
+provider = "fake"
+size = "fake"
+region = "fake-1"
+transport = "ssh"
+```
+
+Only the fake provider is registered at this stage. It still requires the explicit
+disposable `CLAND_FAKE_HOST_ROOT` environment fence. No real provider API runs.
+Pool image keys include the running Node version, package-lock.json byte digest,
+sorted harness pins, the generic recipe digest and `[verification] provision`
+path/content digest. Recipe and provision hashing and stale names come from the
+executor preparation code. Project commits are excluded: code arrives at ready.
+A configured hook must exist; an absent lock or hook is represented as absent.
+
+The fake provider records each pool key under its root's `images/`, with its
+build time. `buildTimeMs` defaults to zero; tests can inject `wait` to advance a
+fake clock, while an explicitly configured delay without `wait` uses a timer.
+The hub writes `.cland/run/hosts/<pool>-image.json` only after provider completion.
+CLI replies name `prepared` or `current` and changed key parts (`node`, `lock`,
+`recipe`, `provision`, `harnesses`). Calls serialize per project; shutdown drains
+admitted preparations before storage closes.

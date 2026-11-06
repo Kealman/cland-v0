@@ -87,6 +87,12 @@ test('C3/C4 host CLI requires session credential and denies human frames', { tim
 });
 test('C5 human revoke closes host peers and refuses subsequent hellos', { timeout: 10000 }, async t => {
   const f = await fixture(t); const { ws } = await f.spoke(); const c = await f.client();
+  for (const client of [c, f.ui]) {
+    const prepare = await client.request({ type: 'host.prepare', as: f.actor });
+    assert.equal(prepare.ok, false); assert.match(prepare.error!, /forbidden/);
+  }
+  const remotePrepare = await c.request({ type: 'host.prepare' });
+  assert.equal(remotePrepare.ok, false);
   const denied = await c.request({ type: 'host.revoke', host: 'f1', as: f.actor }); assert.match(denied.error!, /forbidden/);
   const fromSession = await f.ui.request({ type: 'host.revoke', host: 'f1', as: f.actor }); assert.match(fromSession.error!, /forbidden/);
   const socket = await connectSocket(f.discovery.socket); onCleanup(t, () => socket.close());

@@ -1,3 +1,4 @@
+import type { PoolImageKey } from './pool-image.ts';
 import type { HostProviderDeclarations } from './declarations.ts';
 /** Host provisioning is independent of verification's Executor. Provider tokens
  * and native resource details stay behind this interface, on the hub. */
@@ -15,7 +16,7 @@ export interface HostProvider {
   readonly transport: 'ssh';
   readonly declarations: HostProviderDeclarations;
   acquire(options: AcquireOptions): Promise<AcquireResult>;
-  prepare(): Promise<PrepareResult>;
+  prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult>;
   status(machine: Machine): Promise<MachineStatus>;
   /** Caller first drains sessions and host transports. Success requires a
    * positive read of native absence, including every associated key. */

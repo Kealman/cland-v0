@@ -42,7 +42,8 @@ export const SUBSCRIPTIONS_USAGE = SUBSCRIBE_USAGE + UNSUBSCRIBE_USAGE + SUBSCRI
 
 export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
 
-export const HOST_USAGE = `  host revoke <id> human-only local CLI: settle generations within 2s, revoke secret, report leftovers
+export const HOST_USAGE = `  host prepare [pool] human-only local CLI: prepare one or all configured pool images
+  host revoke <id> human-only local CLI: settle generations within 2s, revoke secret, report leftovers
   host git-proxy <socket> relay Git stdin/stdout through the forwarded Unix socket
   host attach <session> attach using this agent run folder’s private launch record
                   checks native identity; disables terminal suspend; exiting leaves the session running

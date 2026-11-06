@@ -1,3 +1,6 @@
+import { keyHash } from '../../executor/droplet/prepare.ts';
+import { durableJson } from '../../executor/droplet/lease.ts';
+import type { PoolImageKey } from './pool-image.ts';
 import { declareHostProvider, type HostProviderDeclarationInput, type HostProviderDeclarations } from './declarations.ts';
 import { readFile, writeFile, opendir, stat, unlink, mkdir } from 'node:fs/promises';
 import { join, isAbsolute } from 'node:path';
@@ -16,8 +19,10 @@ export type FakeHostProviderOptions = {
   ignoreDelete?: boolean;
   ignoreVolumeDelete?: boolean;
   snapshotWindowMs?: number;
+  buildTimeMs?: number;
+  wait?: (ms: number) => Promise<void>;
 };
-/** Directory-only provider: never starts a transport, process, socket or timer.
+/** Directory-only provider: never starts a transport, process or socket; image delay is opt-in.
  * The caller adds acquired ids to CLAND_FAKE_HOSTS before transport startup. */
 export class FakeHostProvider implements HostProvider {
   readonly transport = 'ssh' as const;
@@ -32,6 +37,7 @@ export class FakeHostProvider implements HostProvider {
     if (!Number.isFinite(options.bootDelayMs ?? 0) || (options.bootDelayMs ?? 0) < 0) throw new Error('fake provider requires a nonnegative boot delay');
     if (options.refuseUntil !== undefined && !Number.isFinite(Date.parse(options.refuseUntil))) throw new Error('fake provider requires a valid retry time');
     if (!Number.isSafeInteger(options.snapshotWindowMs ?? 60_000) || (options.snapshotWindowMs ?? 60_000) <= 0) throw new Error('fake provider requires a positive snapshot window');
+    if (!Number.isFinite(options.buildTimeMs ?? 0) || (options.buildTimeMs ?? 0) < 0) throw new Error('invalid fake image build time');
     this.declarations = declareHostProvider(options.declarations ?? {
       prices: { fake: { livePerHour: 0, idleComputePerHour: 0 } },
       stoppedBills: false, billingGranularityMs: 1000, billingMinimumMs: 60_000,
@@ -130,7 +136,21 @@ export class FakeHostProvider implements HostProvider {
       return { state: 'incomplete', reason: 'fake volume still exists after delete' };
     } catch { return { state: 'incomplete', reason: 'fake volume deletion unconfirmed' }; }
   }); }
-  prepare(): Promise<PrepareResult> { return this.#serial(async () => {
+  prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult> { return this.#serial(async () => {
+    if (options) {
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(options.pool)) return { state: 'failed', reason: 'invalid pool' };
+      const path = join(this.#root, 'images', options.pool + '.json');
+      try {
+        const old = JSON.parse(await readFile(path, 'utf8').catch(e => { if (missing(e)) return 'null'; throw e; }));
+        const digest = keyHash(options.key);
+        if (old?.key && keyHash(old.key) === old.digest && old.digest === digest) return { state: 'current', summary: 'fake image current' };
+        const delay = this.#options.buildTimeMs ?? 0;
+        if (delay) await (this.#options.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms))))(delay);
+        await mkdir(join(this.#root, 'images'), { recursive: true, mode: 0o700 });
+        await durableJson(path, { key: options.key, digest, built: this.#now(), buildTimeMs: delay });
+        return { state: 'prepared', summary: 'fake image prepared' };
+      } catch { return { state: 'failed', reason: 'fake image preparation failed' }; }
+    }
     const path = join(this.#root, 'provider-image');
     try { await readFile(path); return { state: 'current', summary: 'fake image current' }; }
     catch (e) { if (!missing(e)) return { state: 'failed', reason: 'fake image read failed' }; }

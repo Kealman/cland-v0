@@ -288,6 +288,7 @@
     },
     "hub/test/host-orphans.test.ts": "T3",
     "hub/test/host-prelude.test.ts": "T1",
+    "hub/test/host-prepare.test.ts": "T2",
     "hub/test/host-prepared.test.ts": {
       "tier": "T3",
       "scenario": "host-prepared"

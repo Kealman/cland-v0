@@ -100,7 +100,7 @@ for (const block of TASK_USAGE.slice(0, taskOptionsStart).split(/(?=^  task )/m)
 /** Undefined leaves argument parsing and command execution to the CLI. */
 export function commandHelp(command: string, args: readonly string[]): string | undefined {
   if (command === '--help' || command === '-h' || command === 'help') return usage;
-  if (command === 'host' && args.length === 2 && ['serve', 'revoke', 'git-proxy'].includes(args[0]!) && ['--help', '-h'].includes(args[1]!)) return HOST_USAGE;
+  if (command === 'host' && args.length === 2 && ['prepare', 'serve', 'revoke', 'git-proxy'].includes(args[0]!) && ['--help', '-h'].includes(args[1]!)) return HOST_USAGE;
   if (command === 'task' && args.length === 2 && (args[1] === '--help' || args[1] === '-h')) {
     const help = taskUsage.get(args[0]!);
     return help === undefined ? undefined : help + taskOptions;
