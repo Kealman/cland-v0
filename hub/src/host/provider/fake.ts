@@ -1,18 +1,21 @@
 import { declareHostProvider, type HostProviderDeclarationInput, type HostProviderDeclarations } from './declarations.ts';
-import { readFile, writeFile, opendir, stat, unlink } from 'node:fs/promises';
+import { readFile, writeFile, opendir, stat, unlink, mkdir } from 'node:fs/promises';
 import { join, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostDirectory } from '../../../../shared/fake-host-directory.ts';
 import { createFakeHost } from '../../../../shared/fake-host-machine.ts';
-import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult } from './provider.ts';
+import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, DeleteVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult } from './provider.ts';
 
-type Record = { machine: Machine; project: string; pool: string; readyAt: number; neverBoot: boolean };
+import { parseFakeVolumeRecord, isFakeVolumeId, type FakeVolumeRecord as VolumeRecord } from './fake-volume-record.ts';
+type Record = { region?: string; machine: Machine; project: string; pool: string; readyAt: number; neverBoot: boolean };
 export type FakeHostProviderOptions = {
   declarations?: HostProviderDeclarationInput;
   env: NodeJS.ProcessEnv; now?: () => number; bootDelayMs?: number;
   neverBoot?: boolean; refuseUntil?: string; failAcquire?: boolean;
   /** Simulates an acknowledged delete which did not delete the machine. */
   ignoreDelete?: boolean;
+  ignoreVolumeDelete?: boolean;
+  snapshotWindowMs?: number;
 };
 /** Directory-only provider: never starts a transport, process, socket or timer.
  * The caller adds acquired ids to CLAND_FAKE_HOSTS before transport startup. */
@@ -28,6 +31,7 @@ export class FakeHostProvider implements HostProvider {
     if (!root || !isAbsolute(root)) throw new Error('fake provider requires an absolute CLAND_FAKE_HOST_ROOT test environment');
     if (!Number.isFinite(options.bootDelayMs ?? 0) || (options.bootDelayMs ?? 0) < 0) throw new Error('fake provider requires a nonnegative boot delay');
     if (options.refuseUntil !== undefined && !Number.isFinite(Date.parse(options.refuseUntil))) throw new Error('fake provider requires a valid retry time');
+    if (!Number.isSafeInteger(options.snapshotWindowMs ?? 60_000) || (options.snapshotWindowMs ?? 60_000) <= 0) throw new Error('fake provider requires a positive snapshot window');
     this.declarations = declareHostProvider(options.declarations ?? {
       prices: { fake: { livePerHour: 0, idleComputePerHour: 0 } },
       stoppedBills: false, billingGranularityMs: 1000, billingMinimumMs: 60_000,
@@ -41,6 +45,91 @@ export class FakeHostProvider implements HostProvider {
   #serial<T>(work: () => Promise<T>): Promise<T> {
     const result = this.#tail.then(work); this.#tail = result.catch(() => {}); return result;
   }
+  #volumePath(id: string): string {
+    if (!isFakeVolumeId(id)) throw new Error('invalid volume identity');
+    return join(this.#root, 'volumes', id + '.json');
+  }
+  async #volume(volume: Volume): Promise<VolumeRecord> {
+    const record = parseFakeVolumeRecord(await readFile(this.#volumePath(volume.id), 'utf8'), volume.id);
+    for (const key of ['id', 'project', 'name', 'region', 'sizeGiB', 'created'] as const) {
+      if (record.volume[key] !== volume[key]) throw new Error('volume identity mismatch');
+    }
+    return record;
+  }
+  async #writeVolume(record: VolumeRecord): Promise<void> {
+    await writeFile(this.#volumePath(record.volume.id), JSON.stringify(record), { mode: 0o600 });
+  }
+  createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult> { return this.#serial(async () => {
+    if (!options.project || !options.name || !options.region || !Number.isSafeInteger(options.sizeGiB) || options.sizeGiB <= 0) return { state: 'failed', reason: 'invalid volume options' };
+    try {
+      const volume: Volume = { ...options, id: 'volume-' + randomUUID(), created: new Date(this.#now()).toISOString(), attachedTo: null };
+      await mkdir(join(this.#root, 'volumes'), { recursive: true, mode: 0o700 });
+      await this.#writeVolume({ volume });
+      return { state: 'created', volume };
+    } catch { return { state: 'failed', reason: 'fake volume create failed' }; }
+  }); }
+  listVolumes(options: { project: string }): Promise<ListVolumesResult> { return this.#serial(async () => {
+    try {
+      let directory;
+      try { directory = await opendir(join(this.#root, 'volumes')); }
+      catch (e) { if (missing(e)) return { state: 'listed', volumes: [] }; throw e; }
+      const volumes: Volume[] = [];
+      for await (const entry of directory) {
+        const record = parseFakeVolumeRecord(await readFile(join(this.#root, 'volumes', entry.name), 'utf8'), entry.name.replace(/\.json$/, ''));
+        if (record.volume.project === options.project) volumes.push(record.volume);
+      }
+      return { state: 'listed', volumes: volumes.sort((a, b) => a.id.localeCompare(b.id)) };
+    } catch { return { state: 'failed', reason: 'fake volume list failed' }; }
+  }); }
+  snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
+    try {
+      const record = await this.#volume(volume), now = this.#now();
+      const retry = record.lastSnapshotAt === undefined ? undefined : record.lastSnapshotAt + (this.#options.snapshotWindowMs ?? 60_000);
+      if (retry !== undefined && now < retry) return { state: 'refused', reason: 'rate limited', retryAt: new Date(retry).toISOString() };
+      const snapshot = { id: 'snapshot-' + randomUUID(), volumeId: record.volume.id, created: new Date(now).toISOString() };
+      record.lastSnapshotAt = now;
+      record.snapshot = snapshot;
+      await this.#writeVolume(record);
+      return { state: 'snapshotted', snapshot };
+    } catch { return { state: 'failed', reason: 'fake volume snapshot failed' }; }
+  }); }
+  attachVolume(volume: Volume, machine: Machine): Promise<AttachVolumeResult> { return this.#serial(async () => {
+    try {
+      const record = await this.#volume(volume), host = await this.#record(machine);
+      if ((await this.#status(machine)).state !== 'ready') return { state: 'refused', reason: 'machine unavailable' };
+      if (host.project !== record.volume.project) return { state: 'refused', reason: 'project mismatch' };
+      if ((host.region ?? 'fake-1') !== record.volume.region) return { state: 'refused', reason: 'region mismatch' };
+      if (record.volume.attachedTo && record.volume.attachedTo !== machine.id) return { state: 'refused', reason: 'attached elsewhere' };
+      record.volume.attachedTo = machine.id;
+      await this.#writeVolume(record);
+      return { state: 'attached' };
+    } catch { return { state: 'failed', reason: 'fake volume attach failed' }; }
+  }); }
+  detachVolume(volume: Volume, machine: Machine): Promise<DetachVolumeResult> { return this.#serial(async () => {
+    try {
+      const record = await this.#volume(volume);
+      await this.#record(machine);
+      if (record.volume.attachedTo && record.volume.attachedTo !== machine.id) return { state: 'refused', reason: 'attached elsewhere' };
+      record.volume.attachedTo = null;
+      await this.#writeVolume(record);
+      return { state: 'detached' };
+    } catch { return { state: 'failed', reason: 'fake volume detach failed' }; }
+  }); }
+  deleteVolume(volume: Volume): Promise<DeleteVolumeResult> { return this.#serial(async () => {
+    try {
+      const path = this.#volumePath(volume.id);
+      let record;
+      try { record = await this.#volume(volume); }
+      catch (e) { if (!missing(e)) throw e; }
+      if (record?.volume.attachedTo) return { state: 'refused', reason: 'attached' };
+      if (!this.#options.ignoreVolumeDelete) {
+        try { await unlink(path); } catch (e) { if (!missing(e)) throw e; }
+      }
+      try { await readFile(path); }
+      catch (e) { if (missing(e)) return { state: 'deleted' }; throw e; }
+      return { state: 'incomplete', reason: 'fake volume still exists after delete' };
+    } catch { return { state: 'incomplete', reason: 'fake volume deletion unconfirmed' }; }
+  }); }
   prepare(): Promise<PrepareResult> { return this.#serial(async () => {
     const path = join(this.#root, 'provider-image');
     try { await readFile(path); return { state: 'current', summary: 'fake image current' }; }
@@ -56,7 +145,7 @@ export class FakeHostProvider implements HostProvider {
     const machine: Machine = { id, address: id, architecture: options.architecture, created: new Date(this.#now()).toISOString() };
     try {
       const host = await createFakeHost(this.#root, id);
-      const record: Record = { machine, project: options.project, pool: options.pool, readyAt: this.#now() + (this.#options.bootDelayMs ?? 0), neverBoot: this.#options.neverBoot ?? false };
+      const record: Record = { region: options.region ?? 'fake-1', machine, project: options.project, pool: options.pool, readyAt: this.#now() + (this.#options.bootDelayMs ?? 0), neverBoot: this.#options.neverBoot ?? false };
       await writeFile(join(host.directory, 'provider.json'), JSON.stringify(record), { mode: 0o600 });
       return { state: 'created', machine };
     } catch { return { state: 'failed', reason: 'fake create failed' }; }

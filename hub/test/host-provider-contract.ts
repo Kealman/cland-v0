@@ -85,3 +85,75 @@ function declaredArchitecture(provider: HostProvider): HostArchitecture {
   assert.ok(architecture);
   return architecture;
 }
+
+/** Mandatory volume cases. Provider-specific factory owns fault injection,
+ * region names and advancing the snapshot window without wall-clock waits. */
+export function hostProviderVolumeContract(name: string, factory: (t: TestContext, scenario: 'normal' | 'ignored-volume-delete') => Promise<{
+  provider: HostProvider; region: string; otherRegion: string; snapshotRetryAt: string;
+  advanceSnapshotWindow: () => Promise<void>; ready: () => Promise<void>;
+}>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown) {
+  register(`${name}: volumes create, list and confirm deletion`, async t => {
+    const { provider, region } = await factory(t, 'normal');
+    const created = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });
+    assert.equal(created.state, 'created');
+    if (created.state !== 'created') return;
+    assert.ok(created.volume.id);
+    assert.equal(created.volume.region, region);
+    assert.equal(created.volume.sizeGiB, 1);
+    assert.deepEqual(await provider.listVolumes({ project: 'contract' }), { state: 'listed', volumes: [created.volume] });
+    assert.deepEqual(await provider.listVolumes({ project: 'other' }), { state: 'listed', volumes: [] });
+    assert.equal((await provider.deleteVolume(created.volume)).state, 'deleted');
+    assert.deepEqual(await provider.listVolumes({ project: 'contract' }), { state: 'listed', volumes: [] });
+    assert.equal((await provider.deleteVolume(created.volume)).state, 'deleted');
+  });
+  register(`${name}: volumes enforce one attachment and region binding`, async t => {
+    const { provider, region, otherRegion, ready } = await factory(t, 'normal');
+    const request = { project: 'contract', pool: 'agents', architecture: declaredArchitecture(provider), region };
+    const a = await provider.acquire(request), b = await provider.acquire(request);
+    const c = await provider.acquire({ ...request, region: otherRegion });
+    assert.equal(a.state, 'created'); assert.equal(b.state, 'created'); assert.equal(c.state, 'created');
+    const v = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });
+    assert.equal(v.state, 'created');
+    if (v.state !== 'created' || a.state !== 'created' || b.state !== 'created' || c.state !== 'created') return;
+    await ready();
+    assert.deepEqual(await provider.attachVolume(v.volume, a.machine), { state: 'attached' });
+    assert.deepEqual(await provider.attachVolume(v.volume, a.machine), { state: 'attached' });
+    assert.deepEqual(await provider.attachVolume(v.volume, b.machine), { state: 'refused', reason: 'attached elsewhere' });
+    assert.deepEqual(await provider.detachVolume(v.volume, b.machine), { state: 'refused', reason: 'attached elsewhere' });
+    assert.deepEqual(await provider.deleteVolume(v.volume), { state: 'refused', reason: 'attached' });
+    assert.deepEqual(await provider.listVolumes({ project: 'contract' }), { state: 'listed', volumes: [{ ...v.volume, attachedTo: a.machine.id }] });
+    assert.deepEqual(await provider.detachVolume(v.volume, a.machine), { state: 'detached' });
+    assert.deepEqual(await provider.detachVolume(v.volume, a.machine), { state: 'detached' });
+    assert.deepEqual(await provider.attachVolume(v.volume, c.machine), { state: 'refused', reason: 'region mismatch' });
+    assert.deepEqual(await provider.attachVolume(v.volume, b.machine), { state: 'attached' });
+    assert.deepEqual(await provider.detachVolume(v.volume, b.machine), { state: 'detached' });
+    assert.equal((await provider.deleteVolume(v.volume)).state, 'deleted');
+  });
+  register(`${name}: ignored volume deletion retains inventory`, async t => {
+    const { provider, region } = await factory(t, 'ignored-volume-delete');
+    const v = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });
+    assert.equal(v.state, 'created');
+    if (v.state !== 'created') return;
+    assert.equal((await provider.deleteVolume(v.volume)).state, 'incomplete');
+    assert.deepEqual(await provider.listVolumes({ project: 'contract' }), { state: 'listed', volumes: [v.volume] });
+  });
+
+  register(`${name}: volumes rate limit snapshots until retry time`, async t => {
+    const { provider, region, snapshotRetryAt, advanceSnapshotWindow } = await factory(t, 'normal');
+    const v = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });
+    assert.equal(v.state, 'created');
+    if (v.state !== 'created') return;
+    const first = await provider.snapshotVolume(v.volume);
+    assert.equal(first.state, 'snapshotted');
+    if (first.state !== 'snapshotted') return;
+    assert.ok(first.snapshot.id);
+    assert.equal(first.snapshot.volumeId, v.volume.id);
+    assert.ok(Number.isFinite(Date.parse(first.snapshot.created)));
+    assert.deepEqual(await provider.snapshotVolume(v.volume), { state: 'refused', reason: 'rate limited', retryAt: snapshotRetryAt });
+    await advanceSnapshotWindow();
+    const next = await provider.snapshotVolume(v.volume);
+    assert.equal(next.state, 'snapshotted');
+    if (next.state === 'snapshotted') assert.notEqual(next.snapshot.id, first.snapshot.id);
+  });
+
+}

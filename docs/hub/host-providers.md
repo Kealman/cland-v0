@@ -42,7 +42,42 @@ one root; concurrent independent owners of the same fake root are unsupported.
 
 ## Extension points
 
-Volume operations extend this interface in T-1712.
+Login disks use `createVolume`, `attachVolume`, `detachVolume`,
+`snapshotVolume`, `deleteVolume` and project-scoped `listVolumes`. Volumes carry
+an opaque id, project, name, region, sizeGiB, ISO created time and nullable
+attachedTo machine id. Acquire accepts an optional region; existing fake requests
+without it use `fake-1`. The fake stores the machine region privately, preserving
+the existing Machine shape and requests.
+
+Create returns created or failed. Attach/detach return attached/detached, failed,
+or a typed refusal (attached elsewhere, region mismatch, project mismatch or
+machine unavailable). Attachment requires a ready machine in the same project
+and region. Same-machine attach and already-detached detach are idempotent;
+detaching another machine's attachment refuses. Delete refuses attached volumes;
+otherwise it returns deleted only after a read confirms absence, or incomplete.
+List failures never become an empty successful inventory. Snapshot returns
+snapshotted with an opaque snapshot id, volumeId and ISO created time, failed,
+or refused with reason rate limited and ISO retryAt.
+
+The fake persists volume identity, attachment and the latest snapshot receipt
+under its disposable root. A shared record parser validates identity, explicit
+string-or-null attachment ownership and paired snapshot/timestamp facts for
+both inventory and mutations. Malformed retained state reports failed/incomplete
+and leaves the bytes untouched. Its per-volume snapshotWindowMs defaults to 60 seconds
+and must be a positive safe integer; the injected clock controls its exact
+boundary. ignoreVolumeDelete simulates an acknowledged deletion that retains the
+volume. Operations serialize with machine operations and drain writes before
+returning. Recreating a provider recovers these records; independent concurrent
+owners of one root remain unsupported. No operation mounts or reads disk contents.
+
+`hostProviderVolumeContract` in the same contract module registers mandatory
+volume cases. Each provider's runnable test entry supplies
+`(name, run) => test(name, run)`. The factory accepts normal and
+ignored-volume-delete scenarios and returns provider, region, otherRegion,
+snapshotRetryAt, ready and advanceSnapshotWindow. ready observes all acquired
+machines ready; advanceSnapshotWindow reaches the retry boundary using the
+fixture clock. Keep all provider-specific fault injection in that factory.
+See the [volume test guide](../agents/tests/hub-test-host-provider-volumes.test.ts.md).
 Keep provider resource formats and tokens behind the interface. T-1713 registers
 the DigitalOcean implementation and invokes `hostProviderContract` from
 `hub/test/host-provider-contract.ts`. The runnable test entry passes `(name, run) => test(name, run)` as the third

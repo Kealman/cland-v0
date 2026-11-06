@@ -58,3 +58,8 @@ acquire seam that every normal/fault request uses it; the normal case retains
 its created-machine architecture assertion. These are positive controls for
 single-architecture providers in both directions. The unsupported acquisition
 case separately requires failed and an empty reap inventory from the fake.
+
+Volume contract registration and fake volume regressions live in
+[host-provider-volumes.test.ts](hub-test-host-provider-volumes.test.ts.md).
+They use a separate exported contract registrar in host-provider-contract.ts;
+existing lifecycle factories and registration remain compatible.
