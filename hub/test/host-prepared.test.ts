@@ -1,6 +1,9 @@
-import { observeCheckout } from '../src/host/agent/prepared-checkout.ts';
 // T3: native Git preparation and agent restart cleanup are the lifecycle under test.
 // Lifecycle: no prepared operation launches a process; close agents and drain prepared work before root removal.
+import { observeCheckout } from '../src/host/agent/prepared-checkout.ts';
+import { RefWatches } from '../src/host/agent/watch.ts';
+import { serveAgent } from '../src/host/agent/server.ts';
+import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -49,7 +52,61 @@ import { spawn } from 'node:child_process';
 import { AgentClient } from '../src/host/agent-client.ts';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { ownProcess, beforeDirectories } from './process-cleanup.ts';
-test('native agent restart cleans actual unfinished spawn and worktree preparations before publishing readiness', {timeout:20000}, async t => {
+// Setup envelopes include every sequential observation, a final hello attempt
+// that can finish after its polling deadline, and fixed command/cleanup headroom.
+const agentAdmissionSetupMs=testWaitMs(10000);
+const watchStartupSetupMs=testWaitMs();
+const agentRequestMs=10000;
+const fixtureAndCleanupHeadroomMs=30000;
+const heldStartupTimeoutMs=2*watchStartupSetupMs+agentAdmissionSetupMs+2*agentRequestMs+fixtureAndCleanupHeadroomMs;
+// Two launches each observe identity and hello; five preparation/Git requests
+// plus a final in-flight hello on each launch use the fixed request allowance.
+const nativeRestartTimeoutMs=4*agentAdmissionSetupMs+7*agentRequestMs+fixtureAndCleanupHeadroomMs;
+
+// T-1704 fixes test observation: agent.pid records identity before admission.
+// Only retry the read-only hello; never replay an unknown preparation outcome.
+async function connectPreparedAgent(socket:string,secret:string,pid:number):Promise<AgentClient> {
+ const result=await eventually('authenticated agent admission for observed launch',async()=>{
+  try{return {client:await AgentClient.connect(socket,secret)};}catch(error){
+   if(error instanceof Error&&error.message==='agent closed')return undefined;
+   return {error};
+  }
+ },agentAdmissionSetupMs);
+ if('error' in result)throw result.error;
+ const {client}=result;
+ if(client.hello.pid!==pid){await client.close();assert.equal(client.hello.pid,pid);}
+ return client;
+}
+
+test('prepared restart observation waits through identity publication before agent admission', {timeout:heldStartupTimeoutMs}, async t=>{
+ const f=await sshHostFixture(t);await f.host.close();await f.transport.stop();await f.agent.close();
+ await (await import('node:fs/promises')).unlink(join(f.fake.run,'agent.pid'));
+ let entered=false,released=false,refused=0;
+ const nativeStart=RefWatches.prototype.start;
+ t.mock.method(RefWatches.prototype,'start',async function(this:RefWatches){
+  entered=true;await eventually('release held watch startup',()=>released||undefined,watchStartupSetupMs);await nativeStart.call(this);
+ });
+ const nativeConnect=AgentClient.connect;
+ t.mock.method(AgentClient,'connect',async (...args:Parameters<typeof nativeConnect>)=>{
+  try{return await nativeConnect(...args);}catch(error){
+   if(error instanceof Error&&error.message==='agent closed'){refused++;released=true;await starting;}
+   throw error;
+  }
+ });
+ const starting=serveAgent({runDir:f.fake.run,secret:f.secrets.readSecret('f1'),version:'test',env:f.env});
+ let client:AgentClient|undefined;
+ f.addCleanup(async()=>{released=true;await client?.close();await (await starting).close();});
+ await eventually('watch startup entered after identity checkpoint',()=>entered||undefined,watchStartupSetupMs);
+ const receipt=JSON.parse(await readFile(join(f.fake.run,'agent.pid'),'utf8'));
+ assert.equal(receipt.pid,process.pid);assert.equal(typeof receipt.identity,'string');
+ client=await connectPreparedAgent(join(f.fake.run,'agent.sock'),f.secrets.readSecret('f1'),receipt.pid);
+ await starting;
+ assert.equal(refused,1,'one hello reaches the held pre-admission boundary');
+ assert.equal(client.hello.pid,process.pid);
+ assert.ok(await client.request('identity',{pid:process.pid},agentRequestMs));
+});
+
+test('native agent restart cleans actual unfinished spawn and worktree preparations before publishing readiness', {timeout:nativeRestartTimeoutMs}, async t => {
  const f=await sshHostFixture(t);await f.host.close();await f.transport.stop();await f.agent.close();
  let client: AgentClient | undefined;
  const children: Array<{cleanup:()=>Promise<void>;closed:Promise<void>}> = [];
@@ -66,16 +123,17 @@ test('native agent restart cleans actual unfinished spawn and worktree preparati
   await eventually('native agent durable readiness for observed launch',async()=>{
    if(child.exitCode !== null || child.signalCode !== null) throw new Error(`agent readiness incomplete (code ${child.exitCode}, signal ${child.signalCode}): ${tail}`);
    try{const receipt=JSON.parse(await readFile(join(f.fake.run,'agent.pid'),'utf8'));return receipt.pid===child.pid&&typeof receipt.identity==='string'||undefined;}catch{return undefined;}
-  },10000);
-  client=await AgentClient.connect(join(f.fake.run,'agent.sock'),f.secrets.readSecret('f1'));
+  },agentAdmissionSetupMs);
+  assert.ok(child.pid,'observed native agent launch PID');
+  client=await connectPreparedAgent(join(f.fake.run,'agent.sock'),f.secrets.readSecret('f1'),child.pid);
   assert.equal(client.hello.pid,child.pid);return {child,closed};
  };
  const first=await start();const log=join(f.fake.home,'interrupted.log');
- await client!.request('prepare-spawn',{command:process.execPath,args:['-e','process.exit()'],cwd:f.fake.home,env:{},logFile:log});
+ await client!.request('prepare-spawn',{command:process.execPath,args:['-e','process.exit()'],cwd:f.fake.home,env:{},logFile:log},agentRequestMs);
  const repo=join(f.fake.home,'repo');await mkdir(repo);
- const git=async(args:string[])=>{const result=await client!.request('run-host',{command:'git',args:['-c','gc.auto=0',...args],cwd:repo,env:{}}) as {code:number;stderr:string;stdout:string};assert.equal(result.code,0,result.stderr);return result.stdout.trim();};
+ const git=async(args:string[])=>{const result=await client!.request('run-host',{command:'git',args:['-c','gc.auto=0',...args],cwd:repo,env:{}},agentRequestMs) as {code:number;stderr:string;stdout:string};assert.equal(result.code,0,result.stderr);return result.stdout.trim();};
  await git(['init']);await git(['commit','--allow-empty','-m','fixture']);await git(['branch','task']);
- const tree=join(f.fake.home,'tree');await client!.request('prepare-worktree',{root:repo,path:tree,branch:'task'});
+ const tree=join(f.fake.home,'tree');await client!.request('prepare-worktree',{root:repo,path:tree,branch:'task'},agentRequestMs);
  await access(log);await access(tree);
  first.child.kill('SIGKILL');await first.closed;await client!.close();
  await start();
