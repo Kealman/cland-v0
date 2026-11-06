@@ -12,7 +12,16 @@ source tree with planted ignored account/environment files; the delivered
 standalone agent runs without repository node_modules and launches its bootstrap.
 
 C1 times kill-agent to the replacement's running process table, bounded at five
-seconds. Other cases wait for authenticated version hellos, native completion
+seconds (`KILL_TO_RECONCILED_TABLE_MS`), independently of setup budgets.
+The version-delivery case keeps one worker across interrupted delivery, lost
+replies, duplicate selection and two further upgrades after pruning the original
+supervisor version. These are durable setup/receipt checks, rather than a
+version-delivery latency assertion; their waits use `testWaitMs()`. The case has
+a separate 90-second whole-test setup/teardown envelope (configurable through
+`CLAND_TEST_WAIT_MS`) above its sampled C-216 duration allowance. This does not
+change the five-second kill-to-table assertion. The duration manifest remains
+in report mode; targeted runs prove assertions without executing its gate.
+Other cases wait for authenticated version hellos, native completion
 receipts and exact PID/birth table rows. A signal log remains empty for the live
 harness through replacement. Installation/publication interruption retries the
 same immutable version. Accepted-publication reply loss settles through the

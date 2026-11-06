@@ -10,6 +10,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { randomUUID } from 'node:crypto';
 import { eventually, fakeClaude } from './harness.ts';
+import { testWaitMs } from './until.ts';
 import { AgentClient, restoreAdoptedWorkers } from '../src/host/agent-client.ts';
 import { sshHost } from '../src/host/ssh-host.ts';
 import { agentBundle, deliverAgent, retainAgentVersions, INSTALL_AGENT, agentVersionHandoff } from '../src/host/code-delivery.ts';
@@ -17,7 +18,11 @@ import { verifyAgentPackage } from '../src/host/agent/package.ts';
 import { hostControl } from './fakes/fake-host.ts';
 const supervisor=new URL('../src/host/agent/supervisor.sh',import.meta.url).pathname;
 const cli=new URL('../bin/cland.ts',import.meta.url).pathname;
-for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'kill-agent'} reconnect reads retained table without signalling harness`,{timeout:20000},async t=>{
+// C1 measures kill-to-reconciled table; version delivery instead joins several
+// native installations, replay controls and upgrades, each with setup receipts.
+const KILL_TO_RECONCILED_TABLE_MS=5000;
+const VERSION_DELIVERY_TIMEOUT_MS=testWaitMs(90_000);
+for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'kill-agent'} reconnect reads retained table without signalling harness`,{timeout:mismatch?VERSION_DELIVERY_TIMEOUT_MS:20000},async t=>{
  const f=await sshHostFixture(t);await f.host.close();
  f.env.CLAND_SCP_BIN=new URL('./fakes/fake-scp.ts',import.meta.url).pathname;
  const env=fixtureEnvironment(f.root,process.env,{...f.env,CLAND_HOST_RUN_DIR:f.fake.run,CLAND_HOST_SECRET:f.secrets.readSecret('f1'),CLAND_VERSION_OVERRIDE:'old'});
@@ -53,7 +58,7 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
   await f.transport.execute(script);
   if(++commands===2&&!lostInstallReply){lostInstallReply=true;throw new Error('injected lost accepted install reply');}
   if(!lostPublicationReply&&script.includes('restart.new')){
-   await eventually('accepted replacement durable readiness before lost publication reply',async()=>{try{return JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8')).version==='new'||undefined;}catch{return undefined;}},5000);
+   await eventually('accepted replacement durable readiness before lost publication reply',async()=>{try{return JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8')).version==='new'||undefined;}catch{return undefined;}},testWaitMs());
    lostPublicationReply=true;throw new Error('injected lost accepted restart-publication reply');
   }
  }};
@@ -64,10 +69,10 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
   await eventually('initial table receipt',()=>tables.length||undefined);
   tables=[];
   const start=performance.now();await hostControl('kill-agent','f1',env);
-  await eventually('replacement table receipt within five seconds',()=>tables.find(rows=>rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive)),5000);
-  assert.ok(performance.now()-start<5000); // lint-allow-wall-clock: C1 measures kill-to-reconciled running table, not hello.
+  await eventually('replacement table receipt within five seconds',()=>tables.find(rows=>rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive)),KILL_TO_RECONCILED_TABLE_MS);
+  assert.ok(performance.now()-start<KILL_TO_RECONCILED_TABLE_MS); // lint-allow-wall-clock: C1 measures kill-to-reconciled running table, not hello.
  } else {
-  await eventually('new version retained table',()=>tables.find(rows=>rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive)),10000);
+  await eventually('new version retained table',()=>tables.find(rows=>rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive)),testWaitMs());
   assert.equal(deliveries,3);assert.equal(lostInstallReply,true);assert.equal(injected,true);assert.equal(lostPublicationReply,true);
   await verifyAgentPackage(join(codeRoot,'new'),'new');
   const installedManifest=await readFile(join(codeRoot,'new/agent-manifest.json'),'utf8');assert.ok(!installedManifest.includes(planted));
@@ -80,7 +85,7 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
    const applied=JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8'));
    assert.equal(applied.pid,direct.hello.pid);
    await deliverAgent({transport:f.transport,node:process.execPath,codeRoot,version:'new',bundle});
-   const replay=await eventually('duplicate selection durable no-replay receipt',async()=>{try{const result=JSON.parse(await readFile(join(codeRoot,'restart-result.json'),'utf8'));return result.version==='new'&&result.outcome==='already-selected'?result:undefined;}catch{return undefined;}},5000);
+   const replay=await eventually('duplicate selection durable no-replay receipt',async()=>{try{const result=JSON.parse(await readFile(join(codeRoot,'restart-result.json'),'utf8'));return result.version==='new'&&result.outcome==='already-selected'?result:undefined;}catch{return undefined;}},testWaitMs());
    assert.equal(replay.pid,applied.pid);assert.equal(replay.identity,applied.identity);
    assert.equal((await direct.request('hello',{protocol:1,secret:f.secrets.readSecret('f1')}) as {pid:number}).pid,applied.pid);
    const output=join(f.fake.home,'delivered-spawn');
@@ -97,7 +102,7 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
   for(const version of ['third','fourth']){
    await direct.close();
    await deliverAgent({transport:f.transport,node:process.execPath,codeRoot,version});
-   direct=await eventually('consecutive upgrade hello '+version,async()=>{const next=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);if(next&&next.hello.version!==version){await next.close();return undefined;}return next;},5000);
+   direct=await eventually('consecutive upgrade hello '+version,async()=>{const next=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);if(next&&next.hello.version!==version){await next.close();return undefined;}return next;},testWaitMs());
    const rows=await direct.request('processes',{}) as Array<{pid:number;identity:string;alive:boolean}>;
    assert.ok(rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive));
    await retainAgentVersions({transport:f.transport,node:process.execPath,codeRoot,version,previous});

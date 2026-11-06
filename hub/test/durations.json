@@ -10536,6 +10536,13 @@
     "hub/test/host-relaunch-publication.test.ts::native publication commits row ready warning and completion atomically across failure and reopen": 0.061188
   },
   "allow": {
+    "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
+      "seconds": 48,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1721: macOS arm64 local Node24.21.0 disposable archive based on 0eb62a96d; ten qualifying full-file native children, each all10 generated cases passed with unchanged assertions. Version-case seconds [18.155473459, 15.750507917, 19.842925292, 18.628617833, 19.199364208, 17.337632499999998, 19.761022375, 19.424526874999998, 17.378785125, 18.179632458]. Sampled one-minute load across qualifying children 12.15380859375\u201317.396484375, every250ms, feedback-controlled yes burners (4\u201312). Extra assertion-green but load-ineligible case samples [18.360265208, 21.153307041] are excluded from C1. Historical reported samples: Linux15.4s A-17045; macOS17.1s A-17051,14.71s at load3.9,19.18s at load5.9;21.19s A-17072 at loadabout10 was cancelled by the old20s timeout and is incomplete, not a passing duration. Profiles: current12.0559345s, original T-1605 production11.160840666s; one sample each does not establish a regression. Coordinator sizing instruction: Linux native cost is approximately1.6x macOS; projected loaded Linux31.7486804672s = worst qualifying macOS19.842925292 x1.6 (projection, not an executed Linux sample). ceil(1.5 x31.7486804672)=48s. The historical cancelled21.19s is incomplete and not used as a passing sample. Mac-only ceil(1.5 x19.842925292)=30s. Includes fixture/setup, all assertions and joined cleanup; no browser or product-latency claim. Whole-case90s default envelope also leaves room for the Coordinator-reported approximately1.6x Linux native cost; no new Linux execution is claimed here. Setup receipt waits alone use testWaitMs; the exact5000ms kill-to-reconciled-table bound remains. Targeted runs do not execute a duration gate; manifest remains report mode. C-216 owns setup cost reduction."
+    },
     "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": {
       "seconds": 6,
       "owner": "C-216",
@@ -10641,13 +10648,6 @@
       "added": "2026-11-04",
       "expires": "2026-11-11",
       "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.130290939 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Existing allowance retains at least 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
-    },
-    "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
-      "seconds": 24,
-      "owner": "C-216",
-      "added": "2026-11-04",
-      "expires": "2026-11-11",
-      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 15.641018137 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed."
     },
     "hub/test/host-agent-restart.test.ts::C3 adopted Claude worker survives version replacement with receipt authority and no signal": {
       "seconds": 12,
