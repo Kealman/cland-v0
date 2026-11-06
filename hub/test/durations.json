@@ -13457,6 +13457,13 @@
       "added": "2026-11-06",
       "expires": "2026-11-11",
       "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 30 s; worst 19.74 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 11.88-14.22 s; earlier A-17004 10.79 s. Was 17 s from task samples. Test timeout 180 s unchanged."
+    },
+    "hub/test/cland-auth.test.ts::unmount observes writers gone and refuses a disk with persistent writers": {
+      "seconds": 6,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1710 source-review rework: fully stubbed helper with 40 bounded writer polls, fresh mount ID/source checks and positive census controls. macOS arm64 local Node24.21.0 uncommitted rework samples seconds [2.058893542, 1.456145084, 2.878092375, 2.991916167, 3.610551167, 3.644519]; latest observed host one-minute load 10.50, no artificial stress. ceil(1.5 x worst 3.644519)=6s. Includes scratch setup, script execution, assertions and synchronous child exit/cleanup; excludes test-driver startup. No Linux or repetition proof claimed; no browser/provider/mount used. Targeted runs do not execute duration gates; report mode unchanged."
     }
   }
 }
