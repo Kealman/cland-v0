@@ -227,6 +227,33 @@ for the clone-local proxy, bundle fallback, immutable discovery copy and hub.db
 records used to list/prune after restart. The proxy wrapper contains paths only;
 per-host authentication remains on the forwarded sockets.
 
+## Whole runtime delivery at ready
+
+`deliverRuntime` in `host/code-delivery.ts` delivers hub sources, bins,
+`hub/mod/cland`, shared sources and root/hub package manifests plus the root
+lockfile to `<home>/.cland-host/code/<version>`. The ready sequence calls it
+before starting the supervisor. Pool images supply Node and npm. A real install
+requires registry access (or a prefilled npm cache); the manifest pins the hub's
+lockfile. The host runs `npm ci -w hub --omit=dev --ignore-scripts`, skipping the
+root web build/browser prepare script. Future runtime install scripts need an
+explicit rebuild step. No dependency installation occurs on unchanged reuse. A confirmed upload aborted
+before installer admission is reclaimed after its copy writer joins. Unconfirmed
+copy, installer or cleanup outcomes raise `RuntimeDeliveryIncomplete` with the
+exact `remoteInput` identity retained for reconciliation.
+
+Each source file is verified against its SHA-256 digest before and after npm.
+A complete immutable sibling generation is selected by atomically renaming a
+version symlink. Failed staging leaves the old pointer intact. Old generations
+are retained for running readers. Existing non-symlink version directories refuse
+replacement; migration requires a new version name. The standalone agent handoff
+below keeps its own immutable-directory/manifest protocol unchanged. Later version
+handoffs remain closure-only until the whole-runtime upgrade integration in T-1730. Fake registry
+hosts continue to use the hub's installed tree; scratch delivery tests separately
+prove the whole-tree path. See the [delivery test guide](tests/hub-test-host-runtime-delivery.test.ts.md).
+
+The spoke supports `node hub/bin/cland-spoke.ts --version` from the installed
+runtime tree; it prints the same version as `cland --version` and exits.
+
 ## Agent package and version replacement
 
 `hub/bin/generate-host-agent-closure.ts` derives the runtime from
@@ -235,12 +262,11 @@ bootstrap/supervisor URL edges. It writes the committed `host/agent/closure.json
 projection (paths and SHA-256 hashes). A T1 regeneration test rejects stale
 projections. Runtime delivery reads that projection and verifies its source
 hashes; it loads no compiler. Run `node hub/bin/generate-host-agent-closure.ts`
-after changing the runtime. Initial provisioning uses the same committed graph. Only
+after changing the runtime. The standalone agent handoff uses this committed graph. Only
 Node built-ins, agent source modules and the credential-filter leaf are admitted.
 There are currently no npm dependencies in this closure; a package import refuses
 delivery until it is explicitly vendored. The standalone runtime requires Node
-24 and does not resolve the project's node_modules. Initial host provisioning
-must use this same package format; host images supply Node only.
+24 and does not resolve the project's node_modules. Host images supply Node; whole-tree ready delivery is described below.
 
 The wire bundle contains `version` and `files`, with `path`, `sha256` and base64
 `bytes` per file. The installed `agent-manifest.json` retains version and each

@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, rm, readdir } from 'node:fs/promises';
 import { agentDeliveryStagingPrefix } from '../state-paths.ts';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -102,4 +102,100 @@ export function agentVersionHandoff(o:{transport:Partial<Pick<SshTransport,'copy
       }
     },
   };
+}
+
+const digest = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
+/** Only shipped source/assets, never account files or arbitrary source-root files. */
+export function runtimeTreePath(p:string):boolean {
+ return !p.split('/').some(s=>s==='..'||s==='.'||s==='') && /^(?:hub\/bin\/cland|package(?:-lock)?\.json|hub\/package\.json|(?:hub\/(?:src|bin|mod\/cland)|shared)\/[A-Za-z0-9_./-]+\.(?:ts|js|json|sh|md))$/.test(p);
+}
+export async function runtimeBundle(version:string, root=fileURLToPath(new URL('../../..',import.meta.url))):Promise<AgentBundle> {
+ agentVersion(version);
+ const paths=['package.json','package-lock.json','hub/package.json'];
+ async function scan(dir:string):Promise<void> {
+  for(const e of await readdir(join(root,dir),{withFileTypes:true})) {
+   const p=dir+'/'+e.name;
+   if(e.isDirectory() && ((e.name!=='node_modules'&&!e.name.startsWith('.')) || p==='hub/mod/cland/.claude-plugin')) await scan(p);
+   else if(e.isFile()&&runtimeTreePath(p)) paths.push(p);
+  }
+ }
+ for(const dir of ['hub/src','hub/bin','hub/mod/cland','shared']) await scan(dir);
+ const files:AgentBundle['files']=[];
+ for(const path of paths.sort()) {const bytes=await readFile(join(root,path)); files.push({path,sha256:digest(bytes),bytes:bytes.toString('base64')});}
+ return {version,files};
+}
+const helpers=`const runtimeTreePath=${runtimeTreePath.toString()};const agentVersion=${agentVersion.toString()};\n`+String.raw`
+const fs=require('node:fs/promises'),p=require('node:path'),c=require('node:crypto');
+const hash=b=>c.createHash('sha256').update(b).digest('hex');
+async function verify(root,manifest){
+ for(const f of manifest.files){const file=p.join(root,f.path);if(!runtimeTreePath(f.path)||await fs.realpath(file)!==file||hash(await fs.readFile(file))!==f.sha256)throw Error('runtime file hash');}
+}
+`;
+const install=helpers+String.raw`
+(async()=>{
+ const [requested,input,expected]=process.argv.slice(1);
+ if((await fs.lstat(requested)).isSymbolicLink())throw Error('code root symlink');
+ const base=await fs.realpath(requested);
+ const bundle=JSON.parse(await fs.readFile(input,'utf8'));agentVersion(bundle.version);
+ const manifest={version:bundle.version,files:bundle.files.map(({path,sha256})=>({path,sha256}))};
+ if(hash(JSON.stringify(manifest))!==expected)throw Error('runtime manifest hash');
+ const stage=await fs.mkdtemp(p.join(base,'.runtime-stage-'));let link;
+ try {
+ const seen=new Set();
+ for(const f of bundle.files){
+  if(!runtimeTreePath(f.path)||seen.has(f.path))throw Error('runtime path');seen.add(f.path);
+  const bytes=Buffer.from(f.bytes,'base64');if(hash(bytes)!==f.sha256)throw Error('runtime hash');
+  const target=p.join(stage,f.path);await fs.mkdir(p.dirname(target),{recursive:true});await fs.writeFile(target,bytes,{flag:'wx',mode:(f.path.endsWith('.sh')||f.path==='hub/bin/cland')?0o700:0o600});
+ }
+ for(const required of ['package.json','package-lock.json','hub/package.json','hub/bin/cland.ts','hub/bin/cland-spoke.ts','hub/mod/cland/.claude-plugin/plugin.json'])if(!seen.has(required))throw Error('runtime missing '+required);
+ await verify(stage,manifest);
+ // Skip root prepare (web build/browser installation). A future runtime dependency
+ // with an install script needs an explicit rebuild step, keeping this flag.
+ await new Promise((resolve,reject)=>{const child=require('node:child_process').spawn('npm',['ci','-w','hub','--omit=dev','--ignore-scripts'],{cwd:stage,stdio:['ignore','ignore','pipe']});let tail='',failure;child.stderr.on('data',b=>tail=(tail+b).slice(-2000));child.on('error',error=>{failure=error;});child.on('close',(code,signal)=>failure?reject(failure):code===0?resolve():reject(Error('runtime npm ci failed exit='+code+' signal='+signal+' '+tail)));});
+ await verify(stage,manifest);
+ await fs.writeFile(p.join(stage,'runtime-manifest.json'),JSON.stringify(manifest),{flag:'wx',mode:0o600});
+ const generation=p.join(base,'.runtime-'+bundle.version+'-'+expected);
+ try{await fs.rename(stage,generation);}catch(e){if(e.code!=='EEXIST'&&e.code!=='ENOTEMPTY')throw e;await verify(generation,manifest);}
+ const target=p.join(base,bundle.version);
+ try{if(!(await fs.lstat(target)).isSymbolicLink())throw Error('runtime version occupied by directory');}catch(e){if(e.code!=='ENOENT')throw e;}
+ link=p.join(base,'.runtime-link-'+require('node:crypto').randomUUID());
+ await fs.symlink(p.basename(generation),link);await fs.rename(link,target);
+ }finally{if(link)await fs.rm(link,{force:true});await fs.rm(stage,{recursive:true,force:true});await fs.rm(input,{force:true});}
+})().catch(e=>{console.error(e.message);process.exitCode=1;});`;
+/** An unknown remote operation retains its exact private input for reconciliation. */
+export class RuntimeDeliveryIncomplete extends Error {
+ readonly remoteInput:string;
+ constructor(remoteInput:string,cause:unknown){super('runtime delivery cleanup incomplete: '+remoteInput,{cause});this.name='RuntimeDeliveryIncomplete';this.remoteInput=remoteInput;}
+}
+/** Ready-step owner: dependencies complete before publication. Old generations
+ * remain intact for running readers; this operation never restarts an agent. */
+export async function deliverRuntime(o:{transport:Pick<SshTransport,'copyFile'|'execute'>;codeRoot:string;node:string;version:string;bundle?:AgentBundle;signal?:AbortSignal}):Promise<void> {
+ agentVersion(o.version);o.signal?.throwIfAborted();
+ const bundle=o.bundle??await runtimeBundle(o.version);
+ if(bundle.version!==o.version)throw Error('runtime version mismatch');
+ const manifest={version:bundle.version,files:bundle.files.map(({path,sha256})=>({path,sha256}))}, expected=digest(JSON.stringify(manifest));
+ // A successful probe proves the complete digest; a failed probe attempts a verified install.
+ const probe=helpers+String.raw`(async()=>{const [base,version,expected]=process.argv.slice(1);await fs.mkdir(base,{recursive:true});if((await fs.lstat(base)).isSymbolicLink())throw Error('code root symlink');let ready=false;try{const root=await fs.realpath(p.join(base,version));if(p.dirname(root)!==await fs.realpath(base))throw Error('runtime root');const raw=await fs.readFile(p.join(root,'runtime-manifest.json'),'utf8');if(hash(raw)===expected){await verify(root,JSON.parse(raw));ready=true;}}catch{}if(!ready)process.exitCode=1;})().catch(e=>{console.error(e.message);process.exitCode=1;});`;
+ try {await o.transport.execute(`${quote(o.node)} -e ${quote(probe)} ${quote(o.codeRoot)} ${quote(o.version)} ${quote(expected)}\n`);
+ return;}catch {o.signal?.throwIfAborted();}
+ const scratch=await mkdtemp(agentDeliveryStagingPrefix());
+ const source=join(scratch,'runtime.json'),destination=join(o.codeRoot,`.runtime-input-${randomUUID()}.json`);
+ let copying=false,uploaded=false,installing=false;
+ try {
+  await writeFile(source,JSON.stringify(bundle),{mode:0o600});o.signal?.throwIfAborted();
+  copying=true;await o.transport.copyFile(source,destination);uploaded=true;
+  o.signal?.throwIfAborted();installing=true;
+  await o.transport.execute(`${quote(o.node)} -e ${quote(install)} ${quote(o.codeRoot)} ${quote(destination)} ${quote(expected)}\n`);
+ } catch(error) {
+  if(uploaded&&!installing){
+   // copyFile's successful completion joins its writer. No installer has been
+   // admitted, so only this owner can still use the exact uploaded input.
+   try {await o.transport.execute(`${quote(o.node)} -e ${quote("require('node:fs/promises').rm(process.argv[1],{force:true}).catch(e=>{console.error(e.message);process.exitCode=1;})")} ${quote(destination)}\n`);}
+   catch(cause){throw new RuntimeDeliveryIncomplete(destination,cause);}
+  }else if(copying){
+   // A lost copy/install reply is not positive closure; retain the input identity.
+   throw new RuntimeDeliveryIncomplete(destination,error);
+  }
+  throw error;
+ } finally {await rm(scratch,{recursive:true,force:true});}
 }

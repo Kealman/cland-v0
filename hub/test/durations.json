@@ -13622,6 +13622,13 @@
       "expires": "2026-11-13",
       "reason": "T-1710 source-review rework: fully stubbed helper with 40 bounded writer polls, fresh mount ID/source checks and positive census controls. macOS arm64 local Node24.21.0 uncommitted rework samples seconds [2.058893542, 1.456145084, 2.878092375, 2.991916167, 3.610551167, 3.644519]; latest observed host one-minute load 10.50, no artificial stress. ceil(1.5 x worst 3.644519)=6s. Includes scratch setup, script execution, assertions and synchronous child exit/cleanup; excludes test-driver startup. No Linux or repetition proof claimed; no browser/provider/mount used. Targeted runs do not execute duration gates; report mode unchanged."
     },
+    "hub/test/host-runtime-delivery.test.ts::C1-C3 whole runtime delivery verifies files, reuses digest and atomically replaces CLI and spoke": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1723: macOS arm64 local Node24.21.0 sample 4.100104375 s, including scratch setup, scripted offline npm, CLI/spoke exits, reuse/failure/replacement assertions and joined cleanup; driver startup excluded. ceil(1.5 x 1.6 x 4.100104375)=10 s uses stage brief Linux projection, no Linux sample claimed. No artificial stress or browser/provider/network. Report-mode duration policy unchanged."
+    },
     "hub/test/host-prepared.test.ts::prepared restart observation waits through identity publication before agent admission": {
       "seconds": 9,
       "owner": "C-216",

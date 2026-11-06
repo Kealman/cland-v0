@@ -8,6 +8,9 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 function checkSource(path: string, source: string): void {
   assert.doesNotMatch(source, /['"`]0\.1\.0['"`]/, `${path}: import VERSION instead of the old version literal`);
   for (const [, , reference] of source.matchAll(/(['"`])([^'"`\n]*package\.json)\1/g)) {
+    // Runtime delivery copies the workspace dependency manifest as opaque bytes;
+    // it never uses that manifest as a version source.
+    if (path === 'hub/src/host/code-delivery.ts' && reference === 'hub/package.json') continue;
     const target = resolve(dirname(join(root, path)), reference!);
     assert.ok(target !== join(root, 'hub/package.json') && reference !== 'hub/package.json', `${path}: do not read the hub package version (${reference})`);
   }
@@ -16,6 +19,8 @@ function checkSource(path: string, source: string): void {
 // A nested consumer's ../../package.json is the hub package, not the root package.
 assert.throws(() => checkSource('hub/src/spoke/spoke.ts', "readFileSync(new URL('../../package.json', import.meta.url), 'utf8')"), /do not read the hub package version/);
 assert.throws(() => checkSource('hub/src/version.ts', "readFileSync(new URL('../package.json', import.meta.url), 'utf8')"), /do not read the hub package version/);
+assert.throws(() => checkSource('hub/src/host/other-reader.ts', "readFile('hub/package.json')"), /do not read the hub package version/);
+checkSource('hub/src/host/code-delivery.ts', "['package.json','package-lock.json','hub/package.json']");
 checkSource('hub/src/version.ts', "readFileSync(new URL('../../package.json', import.meta.url), 'utf8')");
 checkSource('hub/src/spoke/spoke.ts', "readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')");
 

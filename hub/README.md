@@ -87,3 +87,11 @@ The shared image recipe accepts x86_64 or arm64 and optional pinned agent harnes
 the executor uses the unchanged x86_64 base. See the prepared snapshot reference above.
 
 Host image bootstrap: [host prelude and login-disk helper](../docs/agents/host-agent.md#host-bootstrap-and-login-disks) describes explicit user-data inputs, provider steps and the runner sudoers boundary.
+
+Whole host code delivery at ready uses `deliverRuntime` from
+`src/host/code-delivery.ts`: sources, CLI, spoke, Claude mod and the hub lockfile
+are verified in a sibling generation before the version symlink switches. Hosts
+need Node/npm and registry access or a prefilled cache; dependency installation
+uses `npm ci -w hub --omit=dev --ignore-scripts`. Fake registry hosts use the
+installed hub tree. See [runtime delivery](../docs/agents/host-agent.md#whole-runtime-delivery-at-ready)
+for reuse, old-reader retention and legacy-directory refusal.
