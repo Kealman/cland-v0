@@ -39,7 +39,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [The project's hub](../docs/hub/the-projects-hub.md)
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md)
 - [The tracker](../docs/hub/the-tracker.md)
-- [Running](../docs/hub/running.md)
+- [Running](../docs/hub/running.md): executor API endpoint declarations and per-token request budgets.
 - [Artifacts](../docs/hub/artifacts.md)
 - [Coordinator account refusal procedure](../docs/hub/coordinator-account-refusal-procedure.md)
 - [Coordinator session procedure](../docs/hub/coordinator-session-procedure.md)

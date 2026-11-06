@@ -1,3 +1,5 @@
+import { parseDigitalOceanEndpoint, type DigitalOceanEndpoint } from './endpoint.ts';
+import { createHash } from 'node:crypto';
 import { realClock, type Clock } from '../../hub/clock.ts';
 export type Size = { slug: string; available: boolean; price_hourly: number; regions: string[]; disk?: number };
 export type Region = { slug: string; available: boolean; sizes: string[] };
@@ -19,6 +21,37 @@ export class DigitalOceanError extends Error {
   constructor(status: number, id: string, message: string) { super(`DigitalOcean ${status} ${id}: ${message}`); this.status = status; this.id = id; }
 }
 
+/** A refused request is never automatically replayed. retryAt is UTC epoch milliseconds. */
+export class RateLimited extends DigitalOceanError {
+  readonly retryAt: number | undefined;
+  constructor(retryAt: number | undefined, id = 'rate_limited', message = 'request rate limited') { super(429, id, message); this.retryAt = retryAt; }
+}
+
+/** Shared by HTTP and the scripted fake. Invalid/missing headers impose no invented provider cooldown. */
+export function rateLimited(headers: { get(name: string): string | null }, now: number, id?: string, message?: string): RateLimited {
+  const after = headers.get('retry-after');
+  const reset = headers.get('ratelimit-reset');
+  const seconds = after !== null && /^\d+(?:\.\d+)?$/.test(after.trim()) ? Number(after) : NaN;
+  const afterAt = Number.isFinite(seconds) ? now + seconds * 1000 : after ? Date.parse(after) : NaN;
+  const resetAt = reset !== null && /^\d+(?:\.\d+)?$/.test(reset.trim()) ? Number(reset) * 1000 : NaN;
+  const times = [afterAt, resetAt].filter(time => Number.isFinite(time) && time >= now);
+  return new RateLimited(times.length ? Math.max(...times) : undefined, id, message);
+}
+
+// A rolling send log enforces the endpoint declaration in every moving minute.
+// Hash keys prevent the shared budget registry retaining credentials.
+type Budget = { sent: number[]; retryAt: number; limit: number };
+const budgets = new WeakMap<Clock, Map<string, Budget>>();
+function tokenBudget(clock: Clock, token: string, endpoint: DigitalOceanEndpoint): Budget {
+  let tokens = budgets.get(clock);
+  if (!tokens) { tokens = new Map(); budgets.set(clock, tokens); }
+  const key = createHash('sha256').update(endpoint.base).update('\0').update(token).digest('hex');
+  let budget = tokens.get(key);
+  if (!budget) { budget = { sent: [], retryAt: 0, limit: endpoint.requestsPerMinute }; tokens.set(key, budget); }
+  budget.limit = Math.min(budget.limit, endpoint.requestsPerMinute);
+  return budget;
+}
+
 /** The mutation may be accepted, but only a GET 404 confirms absence. */
 export class DeletionUnconfirmed extends DigitalOceanError {
   readonly path: string;
@@ -35,12 +68,37 @@ export class DigitalOceanApi {
   readonly #callProvider: ProviderCall | undefined;
   readonly #signal: AbortSignal | undefined;
   constructor(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, callProvider?: ProviderCall, signal?: AbortSignal) { this.#callProvider = callProvider; this.#clock = clock; this.#env = env; this.#signal = signal; }
+  async #admit<T>(budget: Budget, send: () => Promise<T>, deadline?: number): Promise<T> {
+    for (;;) {
+      this.#signal?.throwIfAborted();
+      const now = this.#clock.now().getTime();
+      if (deadline !== undefined && now >= deadline) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
+      budget.sent = budget.sent.filter(time => time > now - 60000);
+      const next = Math.max(budget.retryAt, budget.sent.length >= budget.limit ? budget.sent[0]! + 60000 : now);
+      if (next <= now) { budget.sent.push(now); return send(); }
+      await new Promise<void>((resolve, reject) => {
+        const finish = () => { this.#signal?.removeEventListener('abort', abort); resolve(); };
+        const timer = this.#clock.setTimeout(finish, Math.min(2147483647, Math.min(next, deadline ?? Infinity) - now));
+        const abort = () => { this.#clock.clearTimeout(timer); this.#signal?.removeEventListener('abort', abort); reject(this.#signal?.reason); };
+        this.#signal?.addEventListener('abort', abort, { once: true });
+      });
+    }
+  }
   async #call<T>(method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
     const token = this.#env.DIGITALOCEAN_TOKEN;
     if (!token) throw new Error('DIGITALOCEAN_TOKEN is required');
-    if (this.#callProvider) return await this.#callProvider(method, path, body, deadline) as T;
-    const base = this.#env.CLAND_DIGITALOCEAN_API ?? 'https://api.digitalocean.com/v2';
-    const url = new URL(`${base.replace(/\/$/, '')}${path}`);
+    const endpoint = parseDigitalOceanEndpoint(this.#env.CLAND_DIGITALOCEAN_API);
+    const base = endpoint.base;
+    const budget = tokenBudget(this.#clock, token, endpoint);
+    return this.#admit(budget, () => this.#send<T>(token, budget, base, method, path, body, deadline), deadline);
+  }
+  async #send<T>(token: string, budget: Budget, base: string, method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
+    this.#signal?.throwIfAborted();
+    if (this.#callProvider) {
+      try { return await this.#callProvider(method, path, body, deadline) as T; }
+      catch (error) { if (error instanceof RateLimited && error.retryAt !== undefined) budget.retryAt = Math.max(budget.retryAt, error.retryAt); throw error; }
+    }
+    const url = new URL(`${base}${path}`);
     const redact = (value: unknown): string => String(value ?? '').split(token).join('[redacted]');
     const remaining = deadline === undefined ? Infinity : deadline - this.#clock.now().getTime();
     const transportTimeout = apiTimeoutMs(this.#env);
@@ -52,6 +110,14 @@ export class DigitalOceanApi {
     const signal = this.#signal ? AbortSignal.any([controller.signal, this.#signal]) : controller.signal;
     try {
       const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal, redirect: 'error' });
+      if (response.status === 429) {
+        const refusal = rateLimited(response.headers, this.#clock.now().getTime());
+        if (refusal.retryAt !== undefined) budget.retryAt = Math.max(budget.retryAt, refusal.retryAt);
+        let diagnostics: unknown;
+        try { diagnostics = await response.json(); } catch { /* A 429 stays typed even without JSON. */ }
+        const value = diagnostics !== null && typeof diagnostics === 'object' && !Array.isArray(diagnostics) ? diagnostics as Record<string, unknown> : {};
+        throw new RateLimited(refusal.retryAt, value?.id === undefined ? undefined : redact(value.id), value?.message === undefined ? undefined : redact(value.message));
+      }
       if (response.status === 204) return undefined as T;
       let value: Record<string, unknown>;
       try { value = await response.json() as Record<string, unknown>; }

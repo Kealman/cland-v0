@@ -1,3 +1,4 @@
+import { declareDigitalOceanEndpoint } from '../../../src/executor/droplet/endpoint.ts';
 import assert from 'node:assert/strict';
 import { testWaitMs } from '../../until.ts';
 import { cleanupProcesses, fixtureProcessCensus } from '../../process-cleanup.ts';
@@ -5,7 +6,7 @@ import { realClock, type Clock } from '../../../src/hub/clock.ts';
 import { pause } from '../../../src/executor/droplet/watchdog.ts';
 import { FakeClock } from '../../fake-clock.ts';
 import { remoteWaits } from '../../remote-clock.ts';
-import { DigitalOceanApi, DigitalOceanError } from '../../../src/executor/droplet/api.ts';
+import { DigitalOceanApi, DigitalOceanError, rateLimited } from '../../../src/executor/droplet/api.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
@@ -15,7 +16,9 @@ import { join } from 'node:path';
 import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
 
 /** Provider boundary: never retains Authorization in its request log. */
-export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock } = {}) {
+export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock; requestsPerMinute?: number } = {}) {
+  const limit = options.requestsPerMinute ?? 100000;
+  declareDigitalOceanEndpoint('http://127.0.0.1/v2', limit);
   const clock = options.clock ?? realClock;
   const scripted = options.machine === 'scripted';
   if (scripted && !(clock instanceof FakeClock)) throw new Error('scripted provider needs a FakeClock for native-I/O receipts');
@@ -87,7 +90,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
@@ -97,9 +100,13 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   let beforeImport: (() => Promise<void>) | undefined;
   let beforeSnapshotDelete: ((id: number) => Promise<void>) | undefined;
   let nextId = 100;
-  const handle = async (method: string, url: URL, body: Record<string, unknown> | null): Promise<{ status: number; value?: unknown }> => {
+  const handle = async (method: string, url: URL, body: Record<string, unknown> | null): Promise<{ status: number; value?: unknown; headers?: Record<string, string> }> => {
     const path = url.pathname.replace(/^\/v2/, '');
     requests.push({ method, path: `${url.pathname}${url.search}`, body });
+    if (faults.rateLimits > 0) {
+      faults.rateLimits--;
+      return { status: 429, value: { id: 'rate_limited', message: 'try later' }, headers: { 'Retry-After': faults.retryAfter, 'ratelimit-reset': faults.rateLimitReset } };
+    }
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
     if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await wait(faults.getDelayMs);
     const answer = (status: number, value?: unknown) => ({ status, value });
@@ -268,7 +275,22 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     }
     return answer(404, { id: 'not_found', message: 'unknown endpoint' });
   };
-  const provider = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token }, clock, async (method, path, body, deadline) => {
+  const server = scripted ? null : createServer((req, res) => {
+    // Own body reads as well as handler continuations; connection close alone does not join them.
+    void admit(async () => {
+      if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
+      let source = '';
+      for await (const chunk of req) source += String(chunk);
+      const result = await handle(req.method!, new URL(req.url!, 'http://fake'), source ? JSON.parse(source) : null);
+      res.writeHead(result.status, { 'Content-Type': 'application/json', ...result.headers });
+      res.end(result.value === undefined ? '' : JSON.stringify(result.value));
+    }).catch(() => req.socket.destroy());
+  });
+  if (server) await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server?.address();
+  const url = address && typeof address !== 'string' ? declareDigitalOceanEndpoint(`http://127.0.0.1:${address.port}/v2`, limit) : '';
+  const endpoint = url || declareDigitalOceanEndpoint(`http://127.0.0.1/${stateRoot.split('/').at(-1)}/v2`, limit);
+  const provider = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: endpoint }, clock, async (method, path, body, deadline) => {
     const request = async () => {
       const remaining = (deadline ?? Infinity) - clock.now().getTime();
       if (remaining <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
@@ -279,6 +301,10 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
           admit(() => handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>)),
           new Promise<never>((_, reject) => { timer = clock.setTimeout(() => reject(new DigitalOceanError(0, remaining <= 15000 ? 'deadline' : 'transport', 'request failed or exceeded its time bound')), bound); }),
         ]);
+        if (result.status === 429) {
+          const value = result.value as { id: string; message: string };
+          throw rateLimited(new Headers(result.headers), clock.now().getTime(), value.id, value.message.split(token).join('[redacted]'));
+        }
         if (result.status >= 400) {
           const value = result.value as { id: string; message: string };
           throw new DigitalOceanError(result.status, value.id, value.message.split(token).join('[redacted]'));
@@ -288,20 +314,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     };
     return waits ? waits.track(request) : request();
   });
-  const server = scripted ? null : createServer((req, res) => {
-    // Own body reads as well as handler continuations; connection close alone does not join them.
-    void admit(async () => {
-      if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
-      let source = '';
-      for await (const chunk of req) source += String(chunk);
-      const result = await handle(req.method!, new URL(req.url!, 'http://fake'), source ? JSON.parse(source) : null);
-      res.writeHead(result.status, { 'Content-Type': 'application/json' });
-      res.end(result.value === undefined ? '' : JSON.stringify(result.value));
-    }).catch(() => req.socket.destroy());
-  });
-  if (server) await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-  const address = server?.address();
-  const url = address && typeof address !== 'string' ? `http://127.0.0.1:${address.port}/v2` : '';
+
   let closing: Promise<void> | undefined;
   return { provider, url, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot: (image: SnapshotImage, key: unknown) => admit(() => seedSnapshot(image, key)),
     setMachineFaults: (value: Partial<typeof machineFaults>) => admit(async () => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); }),

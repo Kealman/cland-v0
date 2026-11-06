@@ -878,6 +878,34 @@ restart. `local` is the default; `droplet` runs on a prepared DigitalOcean snaps
 owns the existing suite worker, compatibility slot and process cleanup; the hub
 shares the queue, cache, timings, verify card and report across executors.
 
+The shared DigitalOcean client admits the endpoint's declared requests per minute
+in every rolling 60-second window, per token and canonical API base within the
+hub process and clock. Executor and host-provider clients share that budget.
+`endpoint.ts` owns parsing and formatting. The real DigitalOcean base is fixed at
+250/minute regardless of any URL fragment; that fragment is ignored. Existing `CLAND_DIGITALOCEAN_API` overrides without a declaration also
+retain 250. Custom HTTP(S) bases can declare `#requests-per-minute=100000`; this
+fragment is metadata and is removed before transport. Bases cannot contain a
+query or embedded credentials. Limits are positive safe integers. Equivalent
+scheme/host/default-port/trailing-slash forms share one budget; differing limit
+declarations for the same service/token conservatively use the smaller limit.
+Independent configured API services have separate budgets. Queued calls use the
+injected clock and respect caller deadlines and cancellation; calls under budget
+invoke transport immediately. Detached processes have their own budgets.
+
+The fake DigitalOcean API declares 100000/minute by default through its existing
+endpoint URL and scripted-provider environment. Its `requestsPerMinute` option
+uses the same parser; pacing regressions explicitly select 250. This keeps fast
+fixture polling from consuming the production service's request allowance. The
+sentinel token, loopback-only transport and disposable-root requirements remain.
+
+An HTTP 429 raises `RateLimited` (a `DigitalOceanError`, status 429), with
+`retryAt` in UTC epoch milliseconds when valid retry headers are present. It uses the later valid `Retry-After`
+(seconds or HTTP date) and `ratelimit-reset` (epoch seconds); absent, invalid or
+past headers impose no provider cooldown. The shared token waits until that time
+before admitting further calls. The fence starts at header receipt, before
+optional body diagnostics are read; a null or invalid body keeps the typed 429.
+The refused call is never automatically resent.
+
 `[verification].budget` defaults to 1. Higher values are retained in config but
 capped at 1 with a `verification-budget-capped` log note. T-215 retains this
 conservative budget: only five hermetic hub files qualify for overlap, too little

@@ -166,6 +166,8 @@
     "hub/test/dependency-install.test.ts": "T1",
     "hub/test/dev-t3-search-component.test.ts": "T2",
     "hub/test/dev-t3-search.test.ts": "T1",
+    "hub/test/digitalocean-endpoint.test.ts": "T1",
+    "hub/test/digitalocean-pacing.test.ts": "T2",
     "hub/test/discord-api.test.ts": "T2",
     "hub/test/discord-artifacts.test.ts": "T2",
     "hub/test/discord-cards.test.ts": "T2",
