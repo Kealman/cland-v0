@@ -120,9 +120,10 @@
       "A-16971",
       "A-17008",
       "A-17044",
-      "A-17045"
+      "A-17045",
+      "A-17180"
     ],
-    "commit": "cbd3433f21ca1e0d16c7d4eae93ed5341283e74c"
+    "commit": "0b22f15e05d64179c0ab8deb0bd16a7e9b54a832"
   },
   "budget": {
     "testSeconds": 5,
@@ -3615,6 +3616,26 @@
     "hub/test/host-relaunch-publication.test.ts": {
       "seconds": 0.061188,
       "tests": 1
+    },
+    "hub/test/cland-auth.test.ts": {
+      "seconds": 1.044807,
+      "tests": 9
+    },
+    "hub/test/digitalocean-endpoint.test.ts": {
+      "seconds": 0.005433,
+      "tests": 13
+    },
+    "hub/test/host-prelude.test.ts": {
+      "seconds": 0.012469,
+      "tests": 3
+    },
+    "hub/test/host-provider-declarations.test.ts": {
+      "seconds": 0.004012,
+      "tests": 3
+    },
+    "hub/test/host-runtime-join.test.ts": {
+      "seconds": 4.833531,
+      "tests": 2
     }
   },
   "tests": {
@@ -10531,7 +10552,45 @@
     "hub/test/host-relaunch-component.test.ts::cross-host admission refuses missing generation receipt before destination effects": 0.174708,
     "hub/test/host-relaunch-component.test.ts::cross-host admission refuses not-released generation receipt before destination effects": 0.182693,
     "hub/test/host-relaunch-component.test.ts::cross-host admission refuses wrong-generation generation receipt before destination effects": 0.187029,
-    "hub/test/host-relaunch-publication.test.ts::native publication commits row ready warning and completion atomically across failure and reopen": 0.061188
+    "hub/test/host-relaunch-publication.test.ts::native publication commits row ready warning and completion atomically across failure and reopen": 0.061188,
+    "hub/test/cland-auth.test.ts::C4: invalid helper arguments fail before any external command": 0.048631,
+    "hub/test/cland-auth.test.ts::contended operation lock refuses before mount discovery or effects": 0.007523,
+    "hub/test/cland-auth.test.ts::failed positive census and failed signal retain the mounted disk": 0.04546,
+    "hub/test/cland-auth.test.ts::helper dispatches freeze and thaw only for the matching mounted volume": 0.047928,
+    "hub/test/cland-auth.test.ts::lost or replaced mount after admission refuses every later effect": 0.12842,
+    "hub/test/cland-auth.test.ts::mount changes after the writer census fence signals and final unmount": 0.056727,
+    "hub/test/cland-auth.test.ts::mount installs the requested scratch device and checks identity before permissions": 0.027036,
+    "hub/test/cland-auth.test.ts::unmount observes writers gone and refuses a disk with persistent writers": 0.612687,
+    "hub/test/cland-auth.test.ts::writer probe errors and missing fuser never authorize unmount": 0.070395,
+    "hub/test/claude-code-remote.test.ts::CLI-started hub launches a Claude item on a fake host with its mod bridge connected": 6.005212,
+    "hub/test/digitalocean-endpoint.test.ts::endpoint declaration metadata is normalized and omitted from transport": 0.000475,
+    "hub/test/digitalocean-endpoint.test.ts::equivalent real endpoint declarations cannot increase the production cap": 0.000264,
+    "hub/test/digitalocean-endpoint.test.ts::legacy real and custom URLs retain the 250 per minute policy": 0.002187,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration other=100000": 0.000302,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration requests-per-minute=-1": 0.000216,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration requests-per-minute=0": 0.000414,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration requests-per-minute=1.5": 0.000198,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration requests-per-minute=250&requests-per-minute=100000": 0.000228,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration requests-per-minute=9007199254740992": 0.000208,
+    "hub/test/digitalocean-endpoint.test.ts::reject invalid endpoint declaration requests-per-minute=Infinity": 0.000218,
+    "hub/test/digitalocean-endpoint.test.ts::reject non-base endpoint credentials": 0.000143,
+    "hub/test/digitalocean-endpoint.test.ts::reject non-base endpoint file scheme": 0.000401,
+    "hub/test/digitalocean-endpoint.test.ts::reject non-base endpoint query": 0.000179,
+    "hub/test/executor-prepare.test.ts::prepare keys hash committed hook bytes without Neovim fields and ignore local hook edits": 0.5264,
+    "hub/test/host-prelude.test.ts::C1: prelude installs pinned keys and hardened sshd settings": 0.001153,
+    "hub/test/host-prelude.test.ts::C2: DigitalOcean steps, helper, sudoers and file credential store are installed": 0.00026,
+    "hub/test/host-prelude.test.ts::C3: sentinel scan detects planted values and assignments, and rendered data excludes environment secrets": 0.011056,
+    "hub/test/host-provider-declarations.test.ts::declarations reject missing fields, negative prices and misaligned minimums": 0.002115,
+    "hub/test/host-provider-declarations.test.ts::earliestStop respects both the created billing minimum and idle duration": 0.000526,
+    "hub/test/host-provider-declarations.test.ts::reusable contract rejects providers missing each declaration and invalid billing": 0.001371,
+    "hub/test/host-runtime-join.test.ts::C1/C2 runtime host joins without restart and removal settles rows and closes carrier and Git": 2.355443,
+    "hub/test/host-runtime-join.test.ts::C3 runtime registered host reopens on the next hub start": 2.478088,
+    "hub/test/prepare-key.test.ts::a hook path change with identical bytes still marks provision stale": 0.000349,
+    "hub/test/prepare-key.test.ts::config template documents the optional root provisioning script": 0.002806,
+    "hub/test/prepare-key.test.ts::generic recipe digest invalidates a project snapshot without a hook": 0.000261,
+    "hub/test/prepare-key.test.ts::legacy keys without recipe compare stale with recipe named": 0.000246,
+    "hub/test/prepare-key.test.ts::project hook owns Chromium libraries and pinned Neovim while the generic recipe stays neutral": 0.00706,
+    "hub/test/prepare-key.test.ts::provision digest changes invalidate the snapshot with provision named": 0.000207
   },
   "allow": {
     "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
