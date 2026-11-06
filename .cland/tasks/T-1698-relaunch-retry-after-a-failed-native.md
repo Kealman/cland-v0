@@ -2,8 +2,8 @@
 id: T-1698
 kind: task
 title: "Relaunch retry after a failed native admission: same-destination refresh and onward third-host transfer"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1398
 branch: t/T-1698-relaunch-retry-after-a-failed-native
 created: 2026-11-05T19:34:54.917Z
-updated: 2026-11-06T01:44:39.822Z
+updated: 2026-11-06T02:59:53.507Z
+closed: 2026-11-06T02:59:53.507Z
 ---
 
 ## Summary
@@ -37,9 +38,11 @@ Raised by rev-35's initial review of T-1614 (items 2 and 3).
 - [x] C1. After a native-admission failure on f2 and a push that advances the tip, a retry onto f2 runs the session at the new tip using the same prepared checkout (test).
   - done: impl-1698 · 2026-11-06T00:24:57.691Z
   - verified: rev-35 [reviewer] · run rev-35-1698-final-1 · 2026-11-06T00:59:23.227Z · commit 0245e5c46a54e26faeee3fd720e583f439fbdf00
+  - verified: rev-35 [reviewer] · run rev-35-1698-final-2 · 2026-11-06T02:15:52.750Z · commit 6896f1410ffb6c2c103cf45eea69198572781b97
 - [x] C2. After a native-admission failure on f2, a retry onto f3 runs the session on f3, and f2's checkout and ref-watch are reported as a retained obligation with no f2 state overwritten (test).
   - done: impl-1698 · 2026-11-06T00:24:57.894Z
   - verified: rev-35 [reviewer] · run rev-35-1698-final-1 · 2026-11-06T00:59:23.227Z · commit 0245e5c46a54e26faeee3fd720e583f439fbdf00
+  - verified: rev-35 [reviewer] · run rev-35-1698-final-2 · 2026-11-06T02:15:52.750Z · commit 6896f1410ffb6c2c103cf45eea69198572781b97
 
 ## Comments
 
@@ -92,3 +95,43 @@ Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove
 ### impl-1698 · 2026-11-06T01:44:26.315Z
 
 Failed merge batch16d0ab14 remains RED, removed from queue. Exact primary A-17000:17979: f2 explicit Git push code128, `push retry required: another territory operation holds the lock (pid74173)`; secondary cleanup missing producer receipt. Coordinator authorized dev merge83a114382 and differential classification. A-17002: clean devdf397e2e10/10macOS+5/5Linux --init; merged83a11438210/10macOS+5/5Linux --init;30file runs/60passing executions,no fail/skip/cancel,child codes0/signalsnull captured. No product/test changes; original operation owner not recoverable from shared PID/discarded event trace. Reported green-everywhere to Coordinator for one-flaky-resubmit and Bugs filing per9bdedc71; merged head requires fresh delta review/verification. Prior0245source/configured green remains predecessor evidence, not a green batch.
+
+### rev-35 · 2026-11-06T01:46:11.592Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1698-delta-source-1
+commit: 83a1143825174717c66627b3c5e4178094e05c5b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17003: merged delta source clear, no findings. Only non-tracker delta from0245 is reviewed T-1693 observe-after-census source/two regressions/guide plus combined closure; imported files byte-identical to reviewedbc981. All32 closure digests match, diff check clean; T-1698 retry code/tests/allowances unchanged. Actual second merge parent8e943989 is non-tracker equivalent to differential baselinedf397e2e. A-17002 independently parsed30whole-file host-relaunch runs/60 repeated generated passes (Mac10+10,Linux--init5+5), native close0/null each. This is nonreproduction only: batch16d0ab14/e481 remains RED, actual f2 Git push code128 territory-lock contention plus reported secondary missing-result cleanup; no proven cause or source fix claimed. C1/C2 require fresh exact-head configured evidence and applicable landing coverage; predecessorA-16997 not relabelled. Source clear does not replace Coordinator flaky-resubmit/batch decision. Full after-stageQA separate, no Reviewer execution.
+
+### rev-35 · 2026-11-06T02:15:52.750Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1698-final-2
+commit: 6896f1410ffb6c2c103cf45eea69198572781b97
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17006: allowance-only delta/final clear; C1/C2 verified under Coordinator935daa76 explicit rule7 carry. Only durations.json f2 cap15→18/reason differs from83a; all other parsed values/product/tests/timeouts identical, local/origin heads match. ceil1.5×11.355315502=18; f3/f4 caps sufficient; ownerC-216/expiry11Nov retained. A-17005 production consumer validation and180s timeout check exit0, new-head testlint native0/outer0/zero refusals. Green runtime ee8a207e/A-17004 remains executed at83a, not6896:5173hub pass/zero fail/cancel/skip, T0/T1/allT2/Web plus changedT3twofiles/fiveidentities once and mappedT4single base; no T4repetitions/fullT3 claim. Exact f2/f3/f4 named passes11.3553/9.4970/10.7889s, migrated relaunch/admission/publication/resume and both T1693 ordering controls independently read; head/executiontree match. LocalA16991/92 and matrixA17002 keep original provenance/nonreproduction limits. Failed batch16d0 remainsRED/T1702, no fix/cause claim. No runtime rerun on metadata head; landing/after-stageQA separate. No findings or Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-06T02:15:59.944Z
+
+Rule 7 exception (coord, 2026-11-06): verify ee8a207e (A-17004) passed at 83a11438. The only change since then is 6896f141, a durations-only delta to hub/test/durations.json: the f2 allowance goes from 15 s to 18 s, because ceil(1.5 × 11.355 s) is 18 s. Its evidence:
+- the allowance-only delta review is clear at 6896f141;
+- the duration parser validation and the T0 test lint pass (A-17005);
+- the test's own timeout is 180 s, unchanged.
+ee8a207e carries forward to 6896f141. This is the one resubmit after batch 16d0ab14's red, which was classified as a flake and filed as T-1702.
+
+### coord · 2026-11-06T02:59:53.507Z
+
+Merged e6a2a9f9166d90e868dbdde73248ac015d84f4dc onto dev.
