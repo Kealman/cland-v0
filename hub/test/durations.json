@@ -121,9 +121,10 @@
       "A-17008",
       "A-17044",
       "A-17045",
-      "A-17180"
+      "A-17180",
+      "A-17195"
     ],
-    "commit": "0b22f15e05d64179c0ab8deb0bd16a7e9b54a832"
+    "commit": "5795362b04395d88d08cdbb3069b16d38d4c5054"
   },
   "budget": {
     "testSeconds": 5,
@@ -3636,6 +3637,22 @@
     "hub/test/host-runtime-join.test.ts": {
       "seconds": 4.833531,
       "tests": 2
+    },
+    "hub/test/digitalocean-pacing.test.ts": {
+      "seconds": 0.479294,
+      "tests": 23
+    },
+    "hub/test/host-provider-fake.test.ts": {
+      "seconds": 0.211696,
+      "tests": 34
+    },
+    "hub/test/host-provider-volumes.test.ts": {
+      "seconds": 0.139357,
+      "tests": 9
+    },
+    "hub/test/host-runtime-owner.test.ts": {
+      "seconds": 0.046655,
+      "tests": 6
     }
   },
   "tests": {
@@ -10590,7 +10607,83 @@
     "hub/test/prepare-key.test.ts::generic recipe digest invalidates a project snapshot without a hook": 0.000261,
     "hub/test/prepare-key.test.ts::legacy keys without recipe compare stale with recipe named": 0.000246,
     "hub/test/prepare-key.test.ts::project hook owns Chromium libraries and pinned Neovim while the generic recipe stays neutral": 0.00706,
-    "hub/test/prepare-key.test.ts::provision digest changes invalidate the snapshot with provision named": 0.000207
+    "hub/test/prepare-key.test.ts::provision digest changes invalidate the snapshot with provision named": 0.000207,
+    "hub/test/digitalocean-pacing.test.ts::300 queued calls share a token budget across clients in every 60 second window": 0.044487,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"\" retains the typed refusal and retry header": 0.000408,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"[]\" retains the typed refusal and retry header": 0.000743,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"{\" retains the typed refusal and retry header": 0.000469,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"{}\" retains the typed refusal and retry header": 0.000814,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"\\\"refused\\\"\" retains the typed refusal and retry header": 0.000844,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"42\" retains the typed refusal and retry header": 0.000729,
+    "hub/test/digitalocean-pacing.test.ts::429 body \"null\" retains the typed refusal and retry header": 0.003004,
+    "hub/test/digitalocean-pacing.test.ts::429 carries retry time and fences the shared token without automatic resend (http)": 0.169811,
+    "hub/test/digitalocean-pacing.test.ts::429 carries retry time and fences the shared token without automatic resend (scripted)": 0.005041,
+    "hub/test/digitalocean-pacing.test.ts::429 header retry time: {\"ratelimit-reset\":\"5\"}": 0.000144,
+    "hub/test/digitalocean-pacing.test.ts::429 header retry time: {\"Retry-After\":\"2\"}": 0.000312,
+    "hub/test/digitalocean-pacing.test.ts::429 header retry time: {\"Retry-After\":\"bad\",\"ratelimit-reset\":\"bad\"}": 0.000146,
+    "hub/test/digitalocean-pacing.test.ts::429 header retry time: {\"Retry-After\":\"Thu, 01 Jan 1970 00:00:04 GMT\"}": 0.000144,
+    "hub/test/digitalocean-pacing.test.ts::429 header retry time: {}": 0.000215,
+    "hub/test/digitalocean-pacing.test.ts::429 headers fence a sibling client before held body diagnostics complete": 0.005455,
+    "hub/test/digitalocean-pacing.test.ts::a missing-header 429 preserves provider text and permits the next explicit call": 0.123279,
+    "hub/test/digitalocean-pacing.test.ts::an under-budget call invokes transport without a clock-scheduled hop": 0.000534,
+    "hub/test/digitalocean-pacing.test.ts::independent API authorities do not inherit traffic from the same opaque token": 0.013183,
+    "hub/test/digitalocean-pacing.test.ts::pacing counts actual sends when the caller blocks before continuations drain": 0.024148,
+    "hub/test/digitalocean-pacing.test.ts::queued budget waits respect deadlines and cancellation without sending": 0.012005,
+    "hub/test/digitalocean-pacing.test.ts::the fake endpoint declares a higher budget for its scripted transport": 0.024421,
+    "hub/test/digitalocean-pacing.test.ts::the real DigitalOcean endpoint ignores a high-rate fragment and still paces at 250": 0.048958,
+    "hub/test/executor-prepare-component.test.ts::prepare captures applied provision input despite disk edits and refuses an unbound supplied key before reuse": 0.181937,
+    "hub/test/executor-prepare-component.test.ts::previous persisted snapshot wire shape remains readable before recipe rebuild": 0.111939,
+    "hub/test/executor-prepare-component.test.ts::project provision runs as root before runner prepare, failure=false": 0.215637,
+    "hub/test/executor-prepare-component.test.ts::project provision runs as root before runner prepare, failure=true": 0.188866,
+    "hub/test/host-provider-fake.test.ts::configured boot delay and refusal use typed states and the fixture clock": 0.006285,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: delayed-boot preserves observed lifecycle outcomes": 0.010666,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: failed-acquire acquire has a typed outcome": 0.001089,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: ignored-delete preserves observed lifecycle outcomes": 0.006785,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: never-boot preserves observed lifecycle outcomes": 0.003787,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: provider contract creates, prepares, observes and confirms release": 0.008813,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: provider declares sane prices, billing and capabilities": 0.001564,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: reap releases only the requested project and pool": 0.011727,
+    "hub/test/host-provider-fake.test.ts::fake arm64 only: refused acquire has a typed outcome": 0.001341,
+    "hub/test/host-provider-fake.test.ts::fake declarations include paid address in idle price and destroy billed stopped machines": 0.001125,
+    "hub/test/host-provider-fake.test.ts::fake machine has independent home, run, boot identity and pinned key": 0.0059,
+    "hub/test/host-provider-fake.test.ts::fake opens no network socket for any lifecycle operation": 0.012926,
+    "hub/test/host-provider-fake.test.ts::fake refuses acquisition outside its declared architectures": 0.001102,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: delayed-boot preserves observed lifecycle outcomes": 0.004158,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: failed-acquire acquire has a typed outcome": 0.000902,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: ignored-delete preserves observed lifecycle outcomes": 0.006423,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: never-boot preserves observed lifecycle outcomes": 0.006682,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: provider contract creates, prepares, observes and confirms release": 0.010078,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: provider declares sane prices, billing and capabilities": 0.000999,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: reap releases only the requested project and pool": 0.009902,
+    "hub/test/host-provider-fake.test.ts::fake x86_64 only: refused acquire has a typed outcome": 0.00312,
+    "hub/test/host-provider-fake.test.ts::fake: delayed-boot preserves observed lifecycle outcomes": 0.004261,
+    "hub/test/host-provider-fake.test.ts::fake: failed-acquire acquire has a typed outcome": 0.001083,
+    "hub/test/host-provider-fake.test.ts::fake: ignored-delete preserves observed lifecycle outcomes": 0.007478,
+    "hub/test/host-provider-fake.test.ts::fake: never-boot preserves observed lifecycle outcomes": 0.005821,
+    "hub/test/host-provider-fake.test.ts::fake: provider contract creates, prepares, observes and confirms release": 0.019201,
+    "hub/test/host-provider-fake.test.ts::fake: provider declares sane prices, billing and capabilities": 0.01296,
+    "hub/test/host-provider-fake.test.ts::fake: reap releases only the requested project and pool": 0.017009,
+    "hub/test/host-provider-fake.test.ts::fake: refused acquire has a typed outcome": 0.001191,
+    "hub/test/host-provider-fake.test.ts::ignored delete is incomplete after confirming read, including reap and restart": 0.011441,
+    "hub/test/host-provider-fake.test.ts::missing provider metadata cannot turn a retained machine into released": 0.004073,
+    "hub/test/host-provider-fake.test.ts::never-boot and failed creation are typed failures and remain reapable": 0.005363,
+    "hub/test/host-provider-fake.test.ts::reap never calls a missing machine record a successful sweep": 0.004802,
+    "hub/test/host-provider-fake.test.ts::registry refuses fake outside its test environment and caches registered providers": 0.001639,
+    "hub/test/host-provider-volumes.test.ts::concurrent volume attachment and snapshot calls each admit one winner": 0.012443,
+    "hub/test/host-provider-volumes.test.ts::fake snapshot window rejects invalid durations": 0.002459,
+    "hub/test/host-provider-volumes.test.ts::fake: ignored volume deletion retains inventory": 0.004363,
+    "hub/test/host-provider-volumes.test.ts::fake: volumes create, list and confirm deletion": 0.021276,
+    "hub/test/host-provider-volumes.test.ts::fake: volumes enforce one attachment and region binding": 0.031518,
+    "hub/test/host-provider-volumes.test.ts::fake: volumes rate limit snapshots until retry time": 0.00606,
+    "hub/test/host-provider-volumes.test.ts::malformed retained volume ownership and snapshot facts fail closed without writes": 0.041035,
+    "hub/test/host-provider-volumes.test.ts::mandatory volume contract rejects deletion acknowledged without removal": 0.008325,
+    "hub/test/host-provider-volumes.test.ts::volume inventory, attachment and snapshot pacing survive provider recreation": 0.011878,
+    "hub/test/host-runtime-owner.test.ts::duplicate runtime add retains the published owner without reacquiring or closing it": 0.005175,
+    "hub/test/host-runtime-owner.test.ts::failed runtime publication joins rollback before allowing another add": 0.005285,
+    "hub/test/host-runtime-owner.test.ts::failed runtime remove retains ownership and retries cleanup before unpublishing": 0.004386,
+    "hub/test/host-runtime-owner.test.ts::runtime add opens the same owners and reopens a registered host after close": 0.021452,
+    "hub/test/host-runtime-owner.test.ts::runtime removal settles before carrier and Git closure and refuses later add": 0.006176,
+    "hub/test/host-runtime-owner.test.ts::shutdown joins an in-flight runtime add and prevents its publication": 0.004181
   },
   "allow": {
     "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
