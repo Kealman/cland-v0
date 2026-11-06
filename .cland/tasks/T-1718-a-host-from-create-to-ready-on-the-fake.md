@@ -13,10 +13,11 @@ blocked_by:
   - T-1706
   - T-1716
   - T-1710
+  - T-1723
 topic: null
 branch: null
 created: 2026-11-06T10:48:53.045Z
-updated: 2026-11-06T10:48:53.045Z
+updated: 2026-11-06T11:10:56.840Z
 ---
 
 ## Summary
