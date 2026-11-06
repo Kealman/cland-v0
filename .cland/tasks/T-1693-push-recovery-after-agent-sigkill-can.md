@@ -2,8 +2,8 @@
 id: T-1693
 kind: task
 title: Push recovery after agent SIGKILL can find the producer ended with no completed receipt under load
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1609
 topic: topic-1397
 branch: t/T-1693-push-recovery-after-agent-sigkill-can
 created: 2026-11-05T17:56:03.123Z
-updated: 2026-11-05T23:27:11.074Z
+updated: 2026-11-06T00:47:33.024Z
+closed: 2026-11-06T00:47:33.024Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Determine whether, after an agent SIGKILL, the push producer (`ref-push-worker`)
 
 - [x] C1. The failing order (producer end versus receipt write versus recovery observation) is named with a deterministic reproduction (test, red before the fix).
   - done: impl-1693 · 2026-11-05T23:09:16.006Z
+  - verified: rev-35 [reviewer] · run rev-35-1693-final-1 · 2026-11-05T23:57:11.381Z · commit bc98117b218019e558402459311f10754fc2d44c
 - [x] C2. After the fix, host-push-on-ref-move passes 10/10 under heavy CPU load on macOS and in a Linux container run with `docker run --init`, with fences and assertions unchanged (evidence).
   - done: impl-1693 · 2026-11-05T23:27:11.074Z
+  - verified: rev-35 [reviewer] · run rev-35-1693-final-1 · 2026-11-05T23:57:11.381Z · commit bc98117b218019e558402459311f10754fc2d44c
 
 ## Comments
 
@@ -68,3 +71,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-16967: sole delta completes the scripted Observation identity/ended fields with null/false, preserving all predicates/assertions and deterministic ordering. Product/closure/required native file unchanged. No findings; C1/C2 remain unverified pending evidence. Native loaded receipts keep actual execution-head lineage with explicit source equivalence, not a fabricated new-head rerun. No Reviewer execution.
+
+### impl-1693 · 2026-11-05T23:54:00.907Z
+
+Final configured receipt A-16984: mode-free d34b05fd at reviewed bc98117b218019e558402459311f10754fc2d44c/tree c1ecf229756cc1838be87d564dfa35f642f52536, droplet Linux x64 6.8.0-142-generic Node24.21.0,5162pass/0fail/0cancel/0skip; T0/T1/T2/Web exit0. Browser isolated Chrome Headless Shell Google Chrome for Testing156.0.8078.4. Budgets/lint report-only. T3 unexecuted here, assigned merge batch; no T4 selection. c-8 sfo2 lifetime1402s cost$0.0974. Local macOS/Linux native10/10 each and all7preservation complete; full localT2 raw node summaries3012+380pass, tier census separately3316/359files. Evidence/provenance A-16979/A-16983, logs A-16965/68/69/70/73/74/78, drivers A-16980/81/82. No new allowance needed (newcases11ms). Clean pushed head unchanged; awaiting Reviewer's final same-head settlement.
+
+### rev-35 · 2026-11-05T23:57:11.381Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1693-final-1
+commit: bc98117b218019e558402459311f10754fc2d44c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-16985: final same-head evidence clear; C1/C2 verified. Independently checked both deterministic ordering cases (base plus 5/5 load finishes), all23 recovery controls and previous-wire/status guards in exact-head d34b05fd/A-16984: exit0, hub5162pass/zero fail/cancel/skip; T0/T1/fallback allT2/Web complete. Head and independently reconstructed execution tree match. C1 original red/green tool-observation transcription remains labelled, corroborated by reviewed ordering and current raw green cases. C2 raw loaded whole-file10/10 macOS +10/10 docker--init Linux, allfour exact cases and native Node0/null each; genuine missing-result assertion unchanged. Qualified lineage/outer-exit/burner limits A-16983 retained; Mac pre-ceiling high loads explicitly accepted, Linux raw startmax6.02 corrects summary typo. Preservation initial flush AdmissionTimeout remains history with4/4 retry; localT2 Node3392 and tier3316 counts remain distinct. Local npm numeric exit unavailable, independent configuredT0 green. T3/T4 configured execution not claimed; batch/integrated coverage and full after-stage QA remain separate. No new allowance/source change, no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-06T00:47:33.024Z
+
+Merged df397e2e7fcc4a638f76d81dab30793e06031896 onto dev.

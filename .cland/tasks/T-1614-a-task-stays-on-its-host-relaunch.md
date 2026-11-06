@@ -2,8 +2,8 @@
 id: T-1614
 kind: task
 title: A task stays on its host; relaunch elsewhere from the pushed branch
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1395
 branch: t/T-1614-a-task-stays-on-its-host-relaunch
 created: 2026-11-02T03:33:58.847Z
-updated: 2026-11-05T23:08:07.330Z
+updated: 2026-11-06T00:13:28.778Z
+closed: 2026-11-06T00:13:28.778Z
 ---
 
 ## Summary
@@ -30,12 +31,16 @@ Hot files: `hub/src/adapters/requests.ts`, `hub/src/adapters/sessions.ts`, `hub/
 
 - [x] C1. A relaunch of a session whose host is up goes to that host and reuses its worktree, and a resume naming another host is refused with a reason saying the task stays on its host (test).
   - done: impl-1614 · 2026-11-05T22:14:26.767Z
+  - verified: rev-36 [reviewer] · run rev-36-1614-final-1 · 2026-11-05T23:35:43.704Z · commit 8370003e2b207d0c3523c56e49b76eee5766ebf0
 - [x] C2. After `fake-host.ts gone f1`, a relaunch with `host: "f2"` adds the worktree on f2 at the territory's pushed tip, and the session runs there (test).
   - done: impl-1614 · 2026-11-05T23:08:07.057Z
+  - verified: rev-36 [reviewer] · run rev-36-1614-final-1 · 2026-11-05T23:35:43.704Z · commit 8370003e2b207d0c3523c56e49b76eee5766ebf0
 - [x] C3. The lease moves from f1 to f2 under the territory lock: f1's pushes to the branch are refused, and f2's succeed (test).
   - done: impl-1614 · 2026-11-05T22:14:27.352Z
+  - verified: rev-36 [reviewer] · run rev-36-1614-final-1 · 2026-11-05T23:35:43.704Z · commit 8370003e2b207d0c3523c56e49b76eee5766ebf0
 - [x] C4. A resume frame without `host` behaves as today, and the session-resume test file passes with no test edited.
   - done: impl-1614 · 2026-11-05T22:14:27.525Z
+  - verified: rev-36 [reviewer] · run rev-36-1614-final-1 · 2026-11-05T23:35:43.705Z · commit 8370003e2b207d0c3523c56e49b76eee5766ebf0
 
 ## Notes
 
@@ -158,3 +163,26 @@ Criteria: C2 failed (Configured c0f68bd2 fails sole mapped push-recovery identit
 ### impl-1614 · 2026-11-05T23:07:49.873Z
 
 Coordinator classified c0f68bd2's only failure as known dev defectT-1693 (7842fde9 /4a69fa67), now stage6 with its own Implementer. T-1614 diagnosis remains held. Coordinator authorized exactly one mode-free flaky rerun at unchanged8370003e2b207d0c3523c56e49b76eee5766ebf0; submission is in flight. All C1–C4 implementation-done marks are present. On a repeated sole killed-producer failure, hold for Coordinator decision; no second automatic retry or merge.
+
+### impl-1614 · 2026-11-05T23:34:11.493Z
+
+Authorized unchanged-head flaky rerun6392fc41-8a82-41bb-b16b-86413f44ba62 is green at reviewed8370003e2b207d0c3523c56e49b76eee5766ebf0 (treee654a1c54308f5de4cca13ced27511c994b02a70), A-16975:5217pass,0fail/skip/cancel, T0/T1/T2/selectedT3/mappedT4base/Web exit0. T3 selected11files51passingidentities once; mappedT4base1passingidentity, T4repetitions skipped and remainingT3 deferred to merge-batch/stage. The known T-1693 killed-producer case passed. Droplet c-8 sfo2 cland-v0-8741ee4a Linuxx64 6.8.0-142-generic Node24.21.0 Neovim0.12.5 workers2; Chrome Headless Shell/CfT156.0.8078.4 Playwright1248; lifetime1431s,cost$0.0994. Final evidence A-16976 includes exact C1–C4 facts and all local loaded/preservation references; three29/29/24s allowances committed and source-clearA-16962. Both earlier red receipts retained. All implementer evidence complete; final evidence settlement/ready is Reviewer/hub-owned. QA is full after-stage, Coordinator-owned; claim retained until merge.
+
+### rev-36 · 2026-11-05T23:35:43.705Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1614-final-1
+commit: 8370003e2b207d0c3523c56e49b76eee5766ebf0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, Standards/Spec no outstanding findings; C1–C4 verified. Recovered item inspected, same reviewed head intact. Independently checked A-16975 exact named outcomes: live-host placement/refusal; scripted/production Codex native relaunch with durable first input/tip/claim; source push refusal/destination success; atomic checkpoint/refusal controls; two unedited previous-wire session-resume cases. Fresh authorized retry6392fc41 passes5217/5217, T0/T1/fallback-allT2/11selectedT3(51identities)/mappedT4base/Web exit0, uncached Linuxx64 c8sfo2 Node24.21/Nvim0.12.5, isolated HeadlessShell1248 Chrome156.0.8078.4. RemainingT3, T4 repetitions and full after-stageQA separate; report-only advisories retained. A-16955/56 independently parsed40 native/TAP pairs: eight generated cases5/platform=40 executions/platform, native0/null; Mac min14.076, prior above20 samples grandfathered; Linux --init PID1docker-init/four burners/four CPUs. A-16958 checked240 preservation executions/19processes,15files unchanged from authorized dev, push5/5. A-16954 full localT2/unedited resume receipts checked; capture aside separately T-1701. Local source3f978a1db remains labelled that head; final data-only caps29/29/24 source-reviewed A-16962. Earlier budget-red A-16960 and known-dev-T1693 red A-16963 remain red; Coordinator7842fde9 authorized the one successful retry, no failure carried as green. A-16977 complete map/provenance/limits: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-16977-t-1614-final-verified-relaunch-evidence-at-8370003e2.md . Reviewer ran no tests/validators.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-06T00:13:28.778Z
+
+Merged 36492afe738f120f0cf6dbd03a2154f756c95e93 onto dev.
