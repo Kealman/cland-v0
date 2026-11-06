@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1398
 branch: t/T-1698-relaunch-retry-after-a-failed-native
 created: 2026-11-05T19:34:54.917Z
-updated: 2026-11-06T00:32:44.178Z
+updated: 2026-11-06T01:44:39.822Z
 ---
 
 ## Summary
@@ -36,8 +36,10 @@ Raised by rev-35's initial review of T-1614 (items 2 and 3).
 
 - [x] C1. After a native-admission failure on f2 and a push that advances the tip, a retry onto f2 runs the session at the new tip using the same prepared checkout (test).
   - done: impl-1698 · 2026-11-06T00:24:57.691Z
+  - verified: rev-35 [reviewer] · run rev-35-1698-final-1 · 2026-11-06T00:59:23.227Z · commit 0245e5c46a54e26faeee3fd720e583f439fbdf00
 - [x] C2. After a native-admission failure on f2, a retry onto f3 runs the session on f3, and f2's checkout and ref-watch are reported as a retained obligation with no f2 state overwritten (test).
   - done: impl-1698 · 2026-11-06T00:24:57.894Z
+  - verified: rev-35 [reviewer] · run rev-35-1698-final-1 · 2026-11-06T00:59:23.227Z · commit 0245e5c46a54e26faeee3fd720e583f439fbdf00
 
 ## Comments
 
@@ -61,3 +63,32 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-16989: full source clear. Positive settled native-failure receipt + exact checkout ownership authorize retry; same destination validates inode/Git-admin/branch/tip before refresh and before install without acquiring deletion authority. Onward transfer preserves prior full checkout/ref-watch obligations once, under existing locks, and existing atomic publication preserves the complete owner. Returned-source continuation and recursive retention blockers from the ongoing predecessor review are corrected under Coordinator8a85dc4d/105c6e3a; initial live-source refusal and no-host/source-directed fencing remain. New f4 case checks two flat retained records and unchanged old watch/identity facts. Only authorized old refusal assertions/count migrated; consumers/docs/skill/tier/index inspected, all32 closure hashes match, diff check clean. No remaining findings. C1/C2 remain unverified pending named exact-head runtime/preservation/configured evidence; predecessor reports are not final coverage. Source clear permits configured mode-free verify at this unchanged head after required local checks; no Reviewer execution. After-stage QA separate.
+
+### impl-1698 · 2026-11-06T00:59:04.614Z
+
+Configured mode-free40cc51e2 at reviewed0245e5c46 is green,A-16995:5171passing,0fail/cancel/skip/todo; T0/T1/fallback-allT2/changedT3(two files5identities once)/mappedT4base/Web exit0,cached:null. Actual named retryf2/f3/f4 pass8.4871/7.5877/8.8662s; migrated host-relaunch running/refused pass. A-16996 maps final evidence/limits; A-16991 + acceptedA-16992 contain local required26file/247execution evidence and5/5whole push-file runs each4/4. DropletLinuxx64 c8sfo2 Node24.21/Nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4,lifetime1144s,cost$0.0795. RemainingT3 and T4repetitions deferred; full after-stageQA separate. Source unchanged/clean. Reviewer has final same-head settlement; claim retained until merge.
+
+### rev-35 · 2026-11-06T00:59:23.227Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1698-final-1
+commit: 0245e5c46a54e26faeee3fd720e583f439fbdf00
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-16997: final same-head evidence clear; C1/C2 verified. Independently checked A-16995/40cc51e2 exact retryf2/f3/f4 passes8.4871/7.5877/8.8662s, migrated relaunch2/2, unedited admission4/publication1/resume2 controls, and unchanged branch/reconstructed execution tree. Hub5171pass/zero fail/cancel/skip; T0/T1/fallbackallT2/Web green, changedT3 twofiles/fiveidentities once and mappedT4 onebase pass, repetitions skipped. C1 source assertions bind advanced pushed tip to same captured checkout/Git-admin identity/native readiness; C2 binds preserved full old checkout/ref-watch obligation and flat two-onward retention to new native publication. A-16991 independently parsed26files/247passing generated executions including5whole push files×4cases; A-16992 original printed child returncodes0/source-sequence linkage accepted with absent signal/PID/perchildhash limits, outer0 not substituted for child proof. A-16988 predecessor red remains labelled. Existing15/16/17 caps sufficient for retained Mac/Linux worst samples; no edit needed. RemainingT3/integrated coverage and full after-stageQA separate. No findings/source changes or Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### hub · 2026-11-06T01:35:50.210Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"0245e5c46a54e26faeee3fd720e583f439fbdf00","head":"83a1143825174717c66627b3c5e4178094e05c5b","dev":"8e94398990e3391d835de4bdaf8a439a8b7011ae","mergeBase":"36492afe738f120f0cf6dbd03a2154f756c95e93","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":[".agents/skills/implement/CHANGES/T-1698-relaunch-retry.md",".agents/skills/implement/SKILL.md","docs/agents/host-agent.md","docs/agents/tests/hub-test-host-relaunch-retry.test.ts.md","docs/agents/tests/hub-test-host-relaunch.test.ts.md","docs/agents/tests/index.md","docs/evidence/T-1698-consumers.md","docs/hub/adapters-and-sessions.md","hub/README.md","hub/src/adapters/sessions.ts","hub/src/host/agent/closure.json","hub/src/host/agent/operations.ts","hub/src/host/agent/prepared-checkout.ts","hub/src/host/agent/prepared.ts","hub/src/host/agent/worktrees.ts","hub/src/host/host.ts","hub/src/host/relaunch-state.ts","hub/src/host/ssh-host.ts","hub/src/host/task-worktrees.ts","hub/src/hub/worktrees.ts","hub/test/durations.json","hub/test/host-relaunch-retry.test.ts","hub/test/host-relaunch.test.ts","hub/test/tiers.json"],"devPaths":[".cland/tasks/T-1614-a-task-stays-on-its-host-relaunch.md",".cland/tasks/T-1693-push-recovery-after-agent-sigkill-can.md",".cland/tasks/T-1698-relaunch-retry-after-a-failed-native.md","docs/agents/tests/hub-test-host-ref-watch-recovery.test.ts.md","hub/src/host/agent/closure.json","hub/src/host/agent/ref-push.ts","hub/test/host-ref-watch-recovery.test.ts"],"overlap":["hub/src/host/agent/closure.json"],"dependency":{"status":"known","importers":["hub/src/host/ssh-host.ts","hub/test/host-relaunch-retry.test.ts","hub/test/host-relaunch.test.ts"]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-1698 · 2026-11-06T01:44:26.315Z
+
+Failed merge batch16d0ab14 remains RED, removed from queue. Exact primary A-17000:17979: f2 explicit Git push code128, `push retry required: another territory operation holds the lock (pid74173)`; secondary cleanup missing producer receipt. Coordinator authorized dev merge83a114382 and differential classification. A-17002: clean devdf397e2e10/10macOS+5/5Linux --init; merged83a11438210/10macOS+5/5Linux --init;30file runs/60passing executions,no fail/skip/cancel,child codes0/signalsnull captured. No product/test changes; original operation owner not recoverable from shared PID/discarded event trace. Reported green-everywhere to Coordinator for one-flaky-resubmit and Bugs filing per9bdedc71; merged head requires fresh delta review/verification. Prior0245source/configured green remains predecessor evidence, not a green batch.
