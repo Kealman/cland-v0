@@ -3,7 +3,7 @@ id: T-1727
 kind: task
 title: A Claude launch refused on a host stays "still supervised; cleanup is pending" with no generation receipt, blocking a relaunch of that name
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
@@ -15,7 +15,7 @@ found_by: qa
 topic: null
 branch: null
 created: 2026-11-06T16:38:40.126Z
-updated: 2026-11-06T17:00:28.723Z
+updated: 2026-11-06T20:34:10.492Z
 ---
 
 ## Summary

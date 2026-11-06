@@ -3,7 +3,7 @@ id: T-1704
 kind: task
 title: Native agent restart test sees "agent closed" while cleaning unfinished spawn and worktree preparations (one dev T3 occurrence after T-1698)
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
@@ -15,7 +15,7 @@ found_by: droplet
 topic: null
 branch: null
 created: 2026-11-06T05:34:21.418Z
-updated: 2026-11-06T18:53:01.975Z
+updated: 2026-11-06T20:34:10.891Z
 ---
 
 ## Summary

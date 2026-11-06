@@ -3,7 +3,7 @@ id: T-1717
 kind: task
 title: DigitalOcean volumes
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:48:46.395Z
-updated: 2026-11-06T10:48:46.395Z
+updated: 2026-11-06T20:34:09.136Z
 ---
 
 ## Summary

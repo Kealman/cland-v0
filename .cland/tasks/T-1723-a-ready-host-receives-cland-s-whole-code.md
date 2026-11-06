@@ -3,7 +3,7 @@ id: T-1723
 kind: task
 title: A ready host receives cland's whole code tree for its version (CLI, spoke and the Claude Code mod)
 state: open
-status: backlog
+status: planned
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T11:10:54.543Z
-updated: 2026-11-06T11:13:38.138Z
+updated: 2026-11-06T20:34:10.199Z
 ---
 
 ## Summary

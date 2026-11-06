@@ -3,7 +3,7 @@ id: T-1713
 kind: task
 title: The DigitalOcean host provider's machines
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:48:21.140Z
-updated: 2026-11-06T10:48:21.140Z
+updated: 2026-11-06T20:34:08.589Z
 ---
 
 ## Summary

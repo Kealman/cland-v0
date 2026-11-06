@@ -3,7 +3,7 @@ id: T-1714
 kind: task
 title: One image recipe with an architecture parameter
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:48:27.331Z
-updated: 2026-11-06T10:48:27.331Z
+updated: 2026-11-06T20:34:09.543Z
 ---
 
 ## Summary

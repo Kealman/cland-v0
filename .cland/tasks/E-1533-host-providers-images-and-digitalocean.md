@@ -13,10 +13,10 @@ blocked_by:
   - E-1532
 follows:
   - E-1532
-topic: null
+topic: topic-1409
 branch: null
 created: 2026-10-31T18:22:03.678Z
-updated: 2026-11-06T18:53:04.823Z
+updated: 2026-11-06T20:34:07.638Z
 ---
 
 ## Goal
@@ -130,3 +130,81 @@ Note for planning (coord, 2026-11-04, from T-1605): `remoteHostLayout` defaults 
 ### coord · 2026-11-04T14:54:44.260Z
 
 Planning note (coord, 2026-11-04, from T-1666): host remove and destroy are not implemented today. Only revoke exists (`host.revoke`, `HostRecords.revoke`). T-1666 builds the pre-cut settlement of session generations as one reusable, bounded operation; E-1533's remove or destroy path must call it before cutting authority or destroying the machine, and report leftovers by name.
+
+### qa-678 · 2026-11-06T20:34:07.638Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-s1-2026-11-06-qa678-1
+commit: 5795362b04395d88d08cdbb3069b16d38d4c5054
+stage: provider interface, fake provider, hook and prelude
+stage_hash: a16d1d4c9b5dad638b9e1fe100599cd1bc56c69d03a3420c3966c33fee5110c2
+findings: [{"severity":"low","text":"E1533S1-36: T-1676 (Bugs, S) found aside; seven dead TMPDIR entries from executor-droplet/executor-prepare, zero open listeners, six receipt PIDs gone. Original census retained; coord-authorised literal cleanup and repeated census zero.","file":"hub/test/executor-droplet.test.ts"},{"severity":"low","text":"Brief omitted fresh per-command sealing/streaming redaction and the known-residue cleanup precondition from reused kit corrections. Both corrected in run copy with Coordinator authority; original blocks/captures retained, assertions unchanged.","file":"qa/briefs/E-1533-stage-1.md"}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| S0 | hub-api | PASS | [S0-setup.txt](S0-setup.txt), [S0-env.txt](S0-env.txt) |
+| E1533S1-00 | hub-api | PASS | [E1533S1-00.txt](E1533S1-00.txt) |
+| E1533S1-01 | hub-api | PASS | [E1533S1-01.txt](E1533S1-01.txt) |
+| E1533S1-02 | hub-api | PASS | [E1533S1-02.txt](E1533S1-02.txt) |
+| E1533S1-03 | hub-api | PASS | [E1533S1-03.txt](E1533S1-03.txt) |
+| E1533S1-10 | hub-api | PASS | [E1533S1-10.log](E1533S1-10.log), [E1533S1-10.check.txt](E1533S1-10.check.txt), [E1533S1-10-validation.json](E1533S1-10-validation.json) |
+| E1533S1-11 | hub-api | PASS | [E1533S1-11.log](E1533S1-11.log), [E1533S1-11.check.txt](E1533S1-11.check.txt), [E1533S1-11-validation.json](E1533S1-11-validation.json) |
+| E1533S1-12 | hub-api | PASS | [E1533S1-12.log](E1533S1-12.log), [E1533S1-12.check.txt](E1533S1-12.check.txt), [E1533S1-12-validation.json](E1533S1-12-validation.json) |
+| E1533S1-13 | hub-api | PASS | [E1533S1-13.log](E1533S1-13.log), [E1533S1-13.check.txt](E1533S1-13.check.txt), [E1533S1-13-validation.json](E1533S1-13-validation.json) |
+| E1533S1-14 | hub-api | PASS | [E1533S1-14.log](E1533S1-14.log), [E1533S1-14.check.txt](E1533S1-14.check.txt), [E1533S1-14-validation.json](E1533S1-14-validation.json) |
+| E1533S1-15 | hub-api | PASS | [E1533S1-15.log](E1533S1-15.log), [E1533S1-15.check.txt](E1533S1-15.check.txt), [E1533S1-15-validation.json](E1533S1-15-validation.json) |
+| E1533S1-16 | hub-api | PASS | [E1533S1-16.log](E1533S1-16.log), [E1533S1-16.check.txt](E1533S1-16.check.txt), [E1533S1-16-validation.json](E1533S1-16-validation.json) |
+| E1533S1-17 | hub-api | PASS | [E1533S1-17.log](E1533S1-17.log), [E1533S1-17.check.txt](E1533S1-17.check.txt), [E1533S1-17-validation.json](E1533S1-17-validation.json) |
+| E1533S1-18 | hub-api | PASS | [E1533S1-18.log](E1533S1-18.log), [E1533S1-18.check.txt](E1533S1-18.check.txt), [E1533S1-18-validation.json](E1533S1-18-validation.json) |
+| E1533S1-19 | hub-api | PASS | [E1533S1-19.log](E1533S1-19.log), [E1533S1-19.check.txt](E1533S1-19.check.txt), [E1533S1-19-validation.json](E1533S1-19-validation.json) |
+| E1533S1-20 | hub-api | PASS | [E1533S1-20.log](E1533S1-20.log), [E1533S1-20.check.txt](E1533S1-20.check.txt), [E1533S1-20-validation.json](E1533S1-20-validation.json) |
+| E1533S1-21 | hub-api | PASS | [E1533S1-21.log](E1533S1-21.log), [E1533S1-21.check.txt](E1533S1-21.check.txt), [E1533S1-21-validation.json](E1533S1-21-validation.json) |
+| E1533S1-22 | hub-api | PASS | [E1533S1-22.log](E1533S1-22.log), [E1533S1-22.check.txt](E1533S1-22.check.txt), [E1533S1-22-validation.json](E1533S1-22-validation.json) |
+| E1533S1-23 | hub-api | PASS | [E1533S1-23.log](E1533S1-23.log), [E1533S1-23.check.txt](E1533S1-23.check.txt), [E1533S1-23-validation.json](E1533S1-23-validation.json) |
+| E1533S1-24 | hub-api | PASS | [E1533S1-24.log](E1533S1-24.log), [E1533S1-24.check.txt](E1533S1-24.check.txt), [E1533S1-24-validation.json](E1533S1-24-validation.json) |
+| E1533S1-25 | hub-api | PASS | [E1533S1-25.log](E1533S1-25.log), [E1533S1-25.check.txt](E1533S1-25.check.txt), [E1533S1-25-validation.json](E1533S1-25-validation.json) |
+| E1533S1-26 | hub-api | PASS | [E1533S1-26.log](E1533S1-26.log), [E1533S1-26.check.txt](E1533S1-26.check.txt), [E1533S1-26-validation.json](E1533S1-26-validation.json) |
+| E1533S1-27 | hub-api | PASS | [E1533S1-27.log](E1533S1-27.log), [E1533S1-27.check.txt](E1533S1-27.check.txt), [E1533S1-27-validation.json](E1533S1-27-validation.json) |
+| E1533S1-28 | hub-api | PASS | [E1533S1-28.log](E1533S1-28.log), [E1533S1-28.check.txt](E1533S1-28.check.txt), [E1533S1-28-validation.json](E1533S1-28-validation.json) |
+| E1533S1-29 | hub-api | PASS | [E1533S1-29.log](E1533S1-29.log), [E1533S1-29.check.txt](E1533S1-29.check.txt), [E1533S1-29-validation.json](E1533S1-29-validation.json) |
+| E1533S1-30 | hub-api | PASS | [E1533S1-30.txt](E1533S1-30.txt) |
+| E1533S1-31 | hub-api | PASS | [E1533S1-31.txt](E1533S1-31.txt) |
+| E1533S1-32 | hub-api | PASS | [E1533S1-32.txt](E1533S1-32.txt) |
+| E1533S1-33 | hub-api | PASS | [E1533S1-33.txt](E1533S1-33.txt) |
+| E1533S1-34 | hub-api | PASS | [E1533S1-34.txt](E1533S1-34.txt) |
+| E1533S1-35 | hub-api | PASS | [E1533S1-35.txt](E1533S1-35.txt) |
+| E1533S1-36 | hub-api | PASS | [E1533S1-36-original.txt](E1533S1-36-original.txt), [E1533S1-36.txt](E1533S1-36.txt), [residue-inventory.json](residue-inventory.json), [residue-removal.sh](residue-removal.sh) |
+
+Clear: E-1533 stage **provider interface, fake provider, hook and prelude** at `5795362b04395d88d08cdbb3069b16d38d4c5054`, run `qa-s1-2026-11-06-qa678-1`. All 32 scoped checks pass. No epic criterion marks were made.
+
+QA ran on macOS 27.0.1 (Darwin 27.0.0) arm64, local executor, Node v24.21.0. The integrated typecheck passed. The 23 named files ran once each, serially, with 232 tests passed and zero failures, cancellations, skips or todos. Exact/subset generated names were validated independently of exit status; all top-level names and native TAP counters remain in the logs. The safety file has 15 top-level results and 17 tests including its nested shell/host cases. The macOS idle-sleep case ran and passed. No browser binary, Neovim process, real provider, SSH service, real harness, GUI, suite or stress load ran in this QA execution. Synthetic loopback provider APIs and native fake fixtures were exercised.
+
+Admission checked the live verify queue and enforced one-minute load <=10 before each file. The explicitly prescribed preservation lock covered only targeted native files and was released after each. Plain node --test enforces neither duration allowances nor resource tripwires; recorded per-invocation wallMs excludes admission and includes child launch/stream drain. It is diagnostic, not a suite wall time or budget pass. Source-only checks do not claim execution of the real provisioning recipe.
+
+Findings, ranked:
+
+- **Low, found aside — T-1676 (Bugs, S):** row36 first read `T entries other than node-compile-cache: 7`. Exact per-invocation inventories attribute five dead spoke fallback sockets and five ownership receipts to executor-droplet.test.ts, and one socket/receipt to executor-prepare.test.ts. The six owner PIDs were absent and lsof found no open Unix entries under this run's TMPDIR. The original inventory and original row36 are retained. No hp-, hp-vol- or cland-auth-script- residue was present. Executor-droplet is unchanged by the stage; the executor-prepare landing diff concerns the hook/key checks, not cleanup. `hub/src/cli/hub.ts:327–328` registers receipt removal on normal process exit; this matches the known T-1676 cleanup defect, not an intentional-retention exemption. This source attribution is not a captured runtime call stack. Coordinator decision 7866d452-0141-4d9c-9bea-5033938bfa28 classifies it found aside and authorises the omitted cleanup precondition. After row35, only the seven inventoried literal paths in residue-removal.sh were removed; repeated row36 reads zero. No test file was rerun.
+- **Low, brief defect — execution seal/redaction:** decision 118fbb6b-97c2-4783-831d-d9c4e4114d6c authorised a fresh shared-builder seal for each command, hub inputs inside the builder, an immediate credential-name gate, streaming capture redaction and login:false. Static env.sh/env-hub.sh execution was replaced; no copied credential filter follows the builder. Original blocks and corrected scripts/diffs are retained. Command arguments, assertions and expected values are unchanged. S0 proves zero credential-prefix names, exact permitted CLAND_ names, isolated HOME/TMPDIR, no real harness on PATH, Q=23 bytes and T=61 bytes.
+- **Low, brief defect — final cleanup precondition:** Coordinator decision 7866d452-0141-4d9c-9bea-5033938bfa28 for row36 restores the known-residue handling omitted from the reused kit. Original failure of that precondition remains separate from the corrected final census and product results.
+
+Recorder disclosure: S0 and rows00–03 have session `rescue` in their original recorder lines because the fixture seal removed the inherited session name and the recorder used its default. These were run by qa-678, not a rescue process. Later records explicitly set QA_SESSION=qa-678 through the builder. Originals were not rewritten; this metadata issue did not change captures, execution, case results or the hub verdict's QA identity.
+
+Build and source evidence: brief lint passed at the full requested SHA; the reused kit blob is 4ed467672750bf34179ed72549df863d1541eddb. Stage plan had 7/7 merged, affected/after-stage, stage open. Each item had exactly one first-parent landing. HEAD and dev equalled the requested SHA before and after, detached dirty count0, root non-tracker status unchanged. Preservation file diffs and the seven landing test-path sets matched the brief. All source exact-string checks and the provider filesystem/path/crypto import closure matched. Generated contract variants were re-read from the build's source; required registered names passed. The inferred fresh hub, reload `applies now`, registry construction writing no fh entry and CLI help facts were observed as expected. T-1710 C2 was judged on the supplied test; later provider wiring T-1719 C7 remains outside this stage.
+
+Scratch observations: init and hub start succeeded; the provision template comment/key was present; unknown, absolute and parent paths were refused; a relative path saved with `applies now`, refusal preserved it, and clearing restored the empty key. Registry refused missing/relative fake roots and unknown digitalocean, while the absolute scratch positive control returned ssh. Host help remained revoke/git-proxy/attach/serve only. Final hub stop succeeded, the recorded PID was absent, and no process named this scratch root or build.
+
+Existing cover evidence, inspected rather than rerun:
+
+- Linux ad7e8f92-428c-45d0-af8b-5c4140829acc, A-17195, full head `5795362b04395d88d08cdbb3069b16d38d4c5054`, tree 2c721e12ad362ab66c6658201e3285230981a1ef, droplet Linux x64 6.8.0-147-generic / Node24.21.0 / Neovim0.12.5. Two c-8 sfo2 shards completed T1–T4 and Web after the host check. Nine explicit platform/binary skips are in A-17195-provenance.json. Browser: Google Chrome for Testing156.0.8078.4, `/home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell`. Shard admission-to-finish durations were2233.43s and1692.43s; artifact lifetime and cost remain **pending confirmation**, not zero. These are not confirmed billed lifetimes. Prior red2424aed9 and unexecuted255a9c8b are excluded.
+- macOS1e5be530-46d3-4c51-b0cb-c5ad33e82dd8, A-17190, head e19c3496074a57d905683f2caf83c31ddb0a3e89, same verification tree; local Darwinarm64 27.0.0 / Node24.21.0 / Neovim0.12.5. T0–T4 and Web exit0. One Linux-only native-birth case skipped, explicitly named in A-17190-provenance.json. Browser: Google Chrome for Testing156.0.8078.4, root node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell. Local cost not applicable.
+- Both cover artifacts label T4 repetitions skipped (base phase runs), and budgets/ratchets as report-only. They are not enforce-mode duration evidence. Plan cover names both receipts and has missing=[]; no cached result was reported. Full provenance and phase summaries are retained in the two JSON files. QA's own local run has no droplet lifetime/cost.
+
+Rule proposal sent in this topic: reconcile any reused pinned kit block with the source brief's recorded run corrections; a matching blob alone is insufficient. Coordinator queued it for rule batch6.
+
+Evidence publication uses the unchanged qa-demo-policy secret scanner with a positive control. Only declared evidence and source/run-copy helpers are exported, never scratch HOME, environment snapshots, hub config/credentials or cookies. Cleanup of the stopped scratch and detached worktree follows the recorded verdict.
+
+
+Durable evidence: A-17199 — /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17199-e-1533-stage-1-qa-232-tests-and-32-checks-clear-at-5795362b/report.md

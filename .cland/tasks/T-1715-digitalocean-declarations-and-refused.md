@@ -3,7 +3,7 @@ id: T-1715
 kind: task
 title: DigitalOcean declarations and refused creates
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:48:33.314Z
-updated: 2026-11-06T10:48:33.314Z
+updated: 2026-11-06T20:34:08.856Z
 ---
 
 ## Summary

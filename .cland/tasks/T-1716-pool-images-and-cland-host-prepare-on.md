@@ -3,7 +3,7 @@ id: T-1716
 kind: task
 title: Pool images and `cland host prepare` on the fake provider
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:48:40.049Z
-updated: 2026-11-06T10:48:40.049Z
+updated: 2026-11-06T20:34:09.806Z
 ---
 
 ## Summary
