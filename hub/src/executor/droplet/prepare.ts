@@ -1,3 +1,4 @@
+import { renderRecipe } from '../../image/recipe.ts';
 import { parseConfig } from '../../init/config.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, Provider } from './dependencies.ts';
@@ -125,8 +126,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
   let released: Released = { lifetimeMs: null, costUsd: null };
   try {
     step('builder');
-    const template = await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)), 'utf8');
-    builder = await options.builder(template.replace('__NODE_VERSION__', key.node));
+    builder = await options.builder(renderRecipe({ arch: 'x86_64', node: key.node }));
     recovery.builder = builder.resource!; await saveRecovery(root, recovery);
     await waitForMachine(root, builder, undefined, 900000, options.signal, env, dependencies);
     const machine = dependencies.machine ?? new Machine(root, env);

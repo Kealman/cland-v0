@@ -344,6 +344,18 @@ independently of the executor key and the npm installation receipt. A known
 same-tag digest conflict refuses before seeding or publishing a matching marker;
 rebuild the snapshot with consistent pins. Legacy tag-only project markers can
 use the old image's tag-and-digest receipt.
+The shared `renderRecipe({ arch, node, harnesses? })` in `hub/src/image/recipe.ts`
+uses the retained `provision.sh` base template. It accepts `x86_64` and `arm64`,
+selects the matching checksum-verified Node archive, and refuses unknown architectures.
+The executor builder remains x86_64 and omits harnesses, preserving its template
+bytes and digest. Agent-image callers pass a harness pin object; omitted pins use
+`doctor/ranges.ts` tested minimums. Agent plans install pinned Codex via npm with an explicit `/usr/local` prefix,
+OpenCode 2 via its v2 installer and Claude Code via its native installer, with
+user-level installers running as runner before the ready marker. Executable checks
+and stable `/usr/local/bin` links to the baked runner binaries keep native harnesses
+available when an account uses a login-disk HOME. Rendering executes
+no installer; base packages remain project-neutral.
+
 The key combines Node, the running hub recipe SHA-256, optional hook content
 SHA-256 with its captured path, the committed base's optional lockfile SHA-256, and `origin/dev` after
 a fetch from the local territory. Local uncommitted hook edits do not affect it. Hook capture uses the applied

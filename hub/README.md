@@ -83,4 +83,7 @@ Executor images support an optional `[verification] provision` repository script
 as root before runner preparation. Snapshot keys include the running recipe and
 committed hook digests; see [prepared snapshots](../docs/hub/running.md#controls-and-the-prepared-snapshot).
 
+The shared image recipe accepts x86_64 or arm64 and optional pinned agent harnesses;
+the executor uses the unchanged x86_64 base. See the prepared snapshot reference above.
+
 Host image bootstrap: [host prelude and login-disk helper](../docs/agents/host-agent.md#host-bootstrap-and-login-disks) describes explicit user-data inputs, provider steps and the runner sudoers boundary.
