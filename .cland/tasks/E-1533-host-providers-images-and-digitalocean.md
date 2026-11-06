@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.678Z
-updated: 2026-11-04T14:54:44.260Z
+updated: 2026-11-06T10:49:12.910Z
 ---
 
 ## Goal
@@ -81,6 +81,42 @@ In a scratch project QA configures a pool on the fake provider, runs `cland host
 - Prototype, on `prototype/agent-host` at 7f7ecb0f: `hub/src/host/README.md` (boot to ready, decisions 11, 12, 17 and 19), `hosts.ts`, `host-root.sh`, `host-runner.sh`, `watchdog.ts`.
 - Code: `hub/src/executor/executor.ts`, `hub/src/executor/droplet/{api,droplet,machine,prepare,lease,cleanup}.ts`, `provision.sh`, `shared/executor-credentials.ts`, `hub/src/init/config.ts` (`[verification]`).
 - GLOSSARY: Host provider, Host (added for v0.4); Executor and Lease (amended for v0.4).
+
+## Plan
+
+```yaml
+stages:
+  - name: provider interface, fake provider, hook and prelude
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1706
+      - - T-1707
+        - T-1711
+        - T-1712
+      - - T-1708
+      - - T-1709
+      - - T-1710
+  - name: DigitalOcean on a fake API, the recipe and pool images
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1713
+        - T-1715
+        - T-1717
+      - - T-1714
+      - - T-1716
+  - name: create to ready
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-1719
+      - - T-1718
+        - T-1720
+```
 
 ## Comments
 
