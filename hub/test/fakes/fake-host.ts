@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile, access, realpath, rm, open, rename } from 'node:fs/promises';
+import { readFile, writeFile, access, realpath, rm, open, rename } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { createServer, type Socket } from 'node:net';
 import { fixtureEnvironment } from '../fixture-environment.ts';
@@ -16,20 +16,8 @@ import { cleanupOwnedProcesses, fixtureProcessCensus } from '../process-cleanup.
 import { observeProcesses } from '../../src/host/agent/native.ts';
 import { controlRequest, hostOwner, sameOwner } from './fake-ssh-common.ts';
 import type { MasterReceipt, Control } from './fake-ssh-common.ts';
-export async function createFakeHost(root: string, name: string) {
-  const directory = hostDirectory(root, name);
-  const home = join(directory, 'home');
-  fakeHostSocketPath(home);
-  const run = join(home, '.cland-host/run');
-  await mkdir(run, { recursive: true, mode: 0o700 });
-  const key = `ssh-ed25519 ${Buffer.from(`fake-host:${name}`).toString('base64')}`;
-  await writeFile(join(directory, 'host-key.pub'), key);
-  await writeFile(join(directory, 'client-key'), 'FAKE CLIENT KEY\n', { mode: 0o600 });
-  await writeFile(join(directory, 'boot-id'), randomUUID());
-  const knownHosts = join(directory, 'known_hosts');
-  await writeFile(knownHosts, `${name} ${key}\n`);
-  return { directory, home, run, knownHosts, bootId: join(directory, 'boot-id'), key };
-}
+export { createFakeHost } from '../../../shared/fake-host-machine.ts';
+import { createFakeHost } from '../../../shared/fake-host-machine.ts';
 export async function fakeHost(env: NodeJS.ProcessEnv, name: string) {
   if (!env.CLAND_FAKE_HOSTS?.split(',').includes(name) || !env.CLAND_FAKE_HOST_ROOT) throw new Error('unreachable fake host');
   const directory = hostDirectory(env.CLAND_FAKE_HOST_ROOT, name);

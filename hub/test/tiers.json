@@ -290,6 +290,7 @@
       "tier": "T3",
       "scenario": "host-prepared"
     },
+    "hub/test/host-provider-fake.test.ts": "T2",
     "hub/test/host-push-facts.test.ts": "T2",
     "hub/test/host-push-on-ref-move.test.ts": "T3",
     "hub/test/host-reboot-controller.test.ts": "T2",
