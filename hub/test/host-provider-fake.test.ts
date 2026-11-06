@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { hostProviderContract } from './host-provider-contract.ts';
+import { hostProviderContract, type ProviderScenario } from './host-provider-contract.ts';
+import type { AcquireOptions, HostArchitecture } from '../src/host/provider/provider.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
 import { HostProviderRegistry } from '../src/host/provider/registry.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -19,14 +20,29 @@ async function fixture(t: TestContext) {
   return { root, env, now: () => time, advance: (ms: number) => { time += ms; } };
 }
 const request = { project: 'contract', pool: 'agents', architecture: 'x86_64' as const };
-hostProviderContract('fake', async (t, scenario) => {
+async function contractFactory(t: TestContext, scenario: ProviderScenario, architecture?: HostArchitecture) {
   const f = await fixture(t);
-  return { provider: new FakeHostProvider({ env: f.env, now: f.now,
+  const defaults = new FakeHostProvider({ env: f.env, now: f.now }).declarations;
+  const provider = new FakeHostProvider({ env: f.env, now: f.now,
+    declarations: { ...defaults, architectures: architecture ? [architecture] : defaults.architectures },
     bootDelayMs: scenario === 'delayed-boot' ? 200 : 0, neverBoot: scenario === 'never-boot',
     failAcquire: scenario === 'failed-acquire', ignoreDelete: scenario === 'ignored-delete',
     ...(scenario === 'refused' ? { refuseUntil: new Date(f.now() + 1000).toISOString() } : {}),
-  }), ready: async () => { f.advance(200); } };
-}, (name, run) => test(name, run));
+  });
+  if (architecture) {
+    const acquire = provider.acquire.bind(provider);
+    t.mock.method(provider, 'acquire', async (options: AcquireOptions) => {
+      assert.equal(options.architecture, architecture);
+      return acquire(options);
+    });
+  }
+  return { provider, ready: async () => { f.advance(200); } };
+}
+hostProviderContract('fake', (t, scenario) => contractFactory(t, scenario), (name, run) => test(name, run));
+for (const architecture of ['arm64', 'x86_64'] as const) {
+  hostProviderContract(`fake ${architecture} only`, (t, scenario) => contractFactory(t, scenario, architecture), (name, run) => test(name, run));
+}
+
 test('fake machine has independent home, run, boot identity and pinned key', async t => {
   const f = await fixture(t), p = new FakeHostProvider({ env: f.env, now: f.now });
   const a = await p.acquire(request), b = await p.acquire(request);
@@ -121,4 +137,28 @@ test('missing provider metadata cannot turn a retained machine into released', a
   await rm(join(hostDirectory(f.root, a.machine.id), 'provider.json'));
   assert.deepEqual(await p.status(a.machine), { state: 'failed', reason: 'fake machine read failed' });
   assert.equal((await p.release(a.machine)).state, 'incomplete');
+});
+test('fake declarations include paid address in idle price and destroy billed stopped machines', async t => {
+  const f = await fixture(t);
+  const declarations = {
+    prices: { small: { livePerHour: 0.1, idleComputePerHour: 0.02 } },
+    stoppedBills: true, billingGranularityMs: 1000, billingMinimumMs: 60_000,
+    tokenConfinement: 'project' as const, apiRequestsPerMinute: 17, machineLimit: 5,
+    architectures: ['arm64' as const], extraAddressPerHour: 0.01,
+  };
+  const p = new FakeHostProvider({ env: f.env, declarations });
+  assert.ok(p.declarations.prices.small);
+  assert.equal(p.declarations.prices.small.idlePerHour, 0.03);
+  assert.equal(p.declarations.stopAction, 'destroy');
+  assert.equal(p.declarations.apiRequestsPerMinute, 17);
+  assert.equal(new FakeHostProvider({ env: f.env, declarations: { ...declarations, stoppedBills: false } }).declarations.stopAction, 'stop');
+  assert.throws(() => new FakeHostProvider({ env: f.env, declarations: { ...declarations, billingMinimumMs: 1001 } }), /invalid host provider declaration/);
+});
+
+test('fake refuses acquisition outside its declared architectures', async t => {
+  const f = await fixture(t);
+  const defaults = new FakeHostProvider({ env: f.env }).declarations;
+  const provider = new FakeHostProvider({ env: f.env, now: f.now, declarations: { ...defaults, architectures: ['arm64'] } });
+  assert.deepEqual(await provider.acquire(request), { state: 'failed', reason: 'fake architecture unsupported' });
+  assert.deepEqual(await provider.reap(request), { state: 'reaped', released: [], incomplete: [] });
 });

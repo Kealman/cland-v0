@@ -1,6 +1,7 @@
+import { validateHostProviderDeclarations } from '../src/host/provider/declarations.ts';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import type { HostProvider } from '../src/host/provider/provider.ts';
+import type { HostArchitecture, HostProvider } from '../src/host/provider/provider.ts';
 
 /** Caller supplies a registration wrapper located in its .test.ts entry so
  * native test receipts and exact-name reruns identify that runnable file.
@@ -10,17 +11,21 @@ export type ProviderScenario = 'normal' | 'refused' | 'failed-acquire' | 'delaye
 export function hostProviderContract(name: string, factory: (t: TestContext, scenario: ProviderScenario) => Promise<{
   provider: HostProvider; ready: () => Promise<void>;
 }>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown) {
+  register(`${name}: provider declares sane prices, billing and capabilities`, async t => {
+    const { provider } = await factory(t, 'normal');
+    validateHostProviderDeclarations(provider.declarations);
+  });
   register(`${name}: provider contract creates, prepares, observes and confirms release`, async t => {
     const { provider, ready } = await factory(t, 'normal');
     assert.equal(provider.transport, 'ssh');
     assert.equal((await provider.prepare()).state, 'prepared');
     assert.equal((await provider.prepare()).state, 'current');
-    const acquired = await provider.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64' });
+    const acquired = await provider.acquire({ project: 'contract', pool: 'agents', architecture: declaredArchitecture(provider) });
     assert.equal(acquired.state, 'created');
     if (acquired.state !== 'created') return;
     const machine = acquired.machine;
     assert.ok(machine.id); assert.ok(machine.address);
-    assert.equal(machine.architecture, 'x86_64');
+    assert.equal(machine.architecture, declaredArchitecture(provider));
     assert.ok(Number.isFinite(Date.parse(machine.created)));
     await ready();
     assert.equal((await provider.status(machine)).state, 'ready');
@@ -31,8 +36,8 @@ export function hostProviderContract(name: string, factory: (t: TestContext, sce
   });
   register(`${name}: reap releases only the requested project and pool`, async t => {
     const { provider } = await factory(t, 'normal');
-    const one = await provider.acquire({ project: 'contract', pool: 'agents', architecture: 'arm64' });
-    const other = await provider.acquire({ project: 'other', pool: 'agents', architecture: 'arm64' });
+    const one = await provider.acquire({ project: 'contract', pool: 'agents', architecture: declaredArchitecture(provider) });
+    const other = await provider.acquire({ project: 'other', pool: 'agents', architecture: declaredArchitecture(provider) });
     assert.equal(one.state, 'created'); assert.equal(other.state, 'created');
     if (one.state !== 'created' || other.state !== 'created') return;
     try {
@@ -44,7 +49,7 @@ export function hostProviderContract(name: string, factory: (t: TestContext, sce
   for (const scenario of ['refused', 'failed-acquire'] as const) {
     register(`${name}: ${scenario} acquire has a typed outcome`, async t => {
       const { provider } = await factory(t, scenario);
-      const result = await provider.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64' });
+      const result = await provider.acquire({ project: 'contract', pool: 'agents', architecture: declaredArchitecture(provider) });
       assert.equal(result.state, scenario === 'refused' ? 'refused' : 'failed');
       assert.ok(result.reason);
       if (result.state === 'refused') assert.ok(Number.isFinite(Date.parse(result.retryAt)));
@@ -53,7 +58,7 @@ export function hostProviderContract(name: string, factory: (t: TestContext, sce
   for (const scenario of ['delayed-boot', 'never-boot', 'ignored-delete'] as const) {
     register(`${name}: ${scenario} preserves observed lifecycle outcomes`, async t => {
       const { provider, ready } = await factory(t, scenario);
-      const result = await provider.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64' });
+      const result = await provider.acquire({ project: 'contract', pool: 'agents', architecture: declaredArchitecture(provider) });
       assert.equal(result.state, 'created');
       if (result.state !== 'created') return;
       if (scenario === 'delayed-boot') {
@@ -72,4 +77,11 @@ export function hostProviderContract(name: string, factory: (t: TestContext, sce
     });
   }
 
+}
+
+function declaredArchitecture(provider: HostProvider): HostArchitecture {
+  validateHostProviderDeclarations(provider.declarations);
+  const architecture = provider.declarations.architectures[0];
+  assert.ok(architecture);
+  return architecture;
 }

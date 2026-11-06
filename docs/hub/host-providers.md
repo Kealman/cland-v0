@@ -42,7 +42,7 @@ one root; concurrent independent owners of the same fake root are unsupported.
 
 ## Extension points
 
-T-1711 adds declarations to this interface and T-1712 adds volume operations.
+Volume operations extend this interface in T-1712.
 Keep provider resource formats and tokens behind the interface. T-1713 registers
 the DigitalOcean implementation and invokes `hostProviderContract` from
 `hub/test/host-provider-contract.ts`. The runnable test entry passes `(name, run) => test(name, run)` as the third
@@ -53,3 +53,43 @@ factory uses an injected clock. Contract assertions contain no fake directories
 or DigitalOcean fields. Fault injection and transport isolation assertions live
 in the provider-specific file. Pool image inputs belong to the later preparation
 implementation; this foundation's prepare has no pool arguments.
+
+## Declarations and stopping policy
+
+Every provider exposes validated, immutable `declarations` from
+`host/provider/declarations.ts`. `declareHostProvider` accepts a nonempty size
+price map in USD/hour (`livePerHour`, `idleComputePerHour`), `stoppedBills`,
+positive integer `billingGranularityMs` and `billingMinimumMs` (minimum must be a
+multiple of granularity), `tokenConfinement` (`account`, `project` or `resource`),
+positive integer `apiRequestsPerMinute` and `machineLimit`, a nonempty
+`architectures` list (`x86_64`, `arm64`), and `extraAddressPerHour`. Account
+confinement means the token cannot be narrowed below the provider account;
+project/resource describe the narrowest scope supported. Prices must be finite
+and nonnegative. Live price is the provider's live size price; idle compute is
+its retained idle compute price, before the required SSH address charge.
+
+The normalized size price includes `idlePerHour = idleComputePerHour +
+extraAddressPerHour`; validation of an already-normalized declaration never adds
+the address twice. `stopAction` is `destroy` when `stoppedBills` is true and
+`stop` otherwise. These declarations describe policy; lifecycle `release` still
+confirms removal. The fake accepts the entire input through its `declarations`
+option; defaults are a free `fake` size, 1-second granularity, 60-second minimum,
+resource confinement, 60 requests/minute, 100 machines, both architectures and
+no address charge. These are fake values, not cloud defaults. A DigitalOcean
+provider supplies pacing from `parseDigitalOceanEndpoint`'s declaration rather
+than repeating its request limit.
+
+`earliestStop({created, idleSince, idleStopMs, declarations})` returns epoch
+milliseconds: the later of `created + billingMinimumMs` and
+`idleSince + idleStopMs`. Times and durations are safe nonnegative integers;
+idleSince cannot precede created, and overflowing deadlines refuse. E-1534's
+scheduler must call this policy when implementing `idle_stop`.
+
+The reusable contract includes `provider declares sane prices, billing and
+capabilities`, using `validateHostProviderDeclarations` on the normal factory
+scenario. Its other named fault scenarios and lifecycle outcomes remain intact.
+
+Contract lifecycle requests select a validated declared architecture and compare
+created machine architecture with that request. Single-architecture providers
+need not support the other architecture. The configurable fake returns a typed
+failed acquisition for an unsupported architecture without creating a machine.

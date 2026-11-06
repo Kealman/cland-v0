@@ -1,3 +1,4 @@
+import { declareHostProvider, type HostProviderDeclarationInput, type HostProviderDeclarations } from './declarations.ts';
 import { readFile, writeFile, opendir, stat, unlink } from 'node:fs/promises';
 import { join, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -7,6 +8,7 @@ import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatu
 
 type Record = { machine: Machine; project: string; pool: string; readyAt: number; neverBoot: boolean };
 export type FakeHostProviderOptions = {
+  declarations?: HostProviderDeclarationInput;
   env: NodeJS.ProcessEnv; now?: () => number; bootDelayMs?: number;
   neverBoot?: boolean; refuseUntil?: string; failAcquire?: boolean;
   /** Simulates an acknowledged delete which did not delete the machine. */
@@ -16,6 +18,7 @@ export type FakeHostProviderOptions = {
  * The caller adds acquired ids to CLAND_FAKE_HOSTS before transport startup. */
 export class FakeHostProvider implements HostProvider {
   readonly transport = 'ssh' as const;
+  readonly declarations: HostProviderDeclarations;
   readonly #root: string;
   readonly #options: FakeHostProviderOptions;
   readonly #now: () => number;
@@ -25,6 +28,12 @@ export class FakeHostProvider implements HostProvider {
     if (!root || !isAbsolute(root)) throw new Error('fake provider requires an absolute CLAND_FAKE_HOST_ROOT test environment');
     if (!Number.isFinite(options.bootDelayMs ?? 0) || (options.bootDelayMs ?? 0) < 0) throw new Error('fake provider requires a nonnegative boot delay');
     if (options.refuseUntil !== undefined && !Number.isFinite(Date.parse(options.refuseUntil))) throw new Error('fake provider requires a valid retry time');
+    this.declarations = declareHostProvider(options.declarations ?? {
+      prices: { fake: { livePerHour: 0, idleComputePerHour: 0 } },
+      stoppedBills: false, billingGranularityMs: 1000, billingMinimumMs: 60_000,
+      tokenConfinement: 'resource', apiRequestsPerMinute: 60, machineLimit: 100,
+      architectures: ['x86_64', 'arm64'], extraAddressPerHour: 0,
+    });
     this.#root = root; this.#options = { ...options }; this.#now = options.now ?? Date.now;
   }
   // A lifecycle operation drains its own writes before settling. Reap calls the
@@ -40,6 +49,7 @@ export class FakeHostProvider implements HostProvider {
     catch { return { state: 'failed', reason: 'fake image preparation failed' }; }
   }); }
   acquire(options: AcquireOptions): Promise<AcquireResult> { return this.#serial(async () => {
+    if (!this.declarations.architectures.includes(options.architecture)) return { state: 'failed', reason: 'fake architecture unsupported' };
     if (this.#options.refuseUntil && Date.parse(this.#options.refuseUntil) > this.#now()) return { state: 'refused', reason: 'fake capacity unavailable', retryAt: this.#options.refuseUntil };
     if (this.#options.failAcquire) return { state: 'failed', reason: 'fake create failed' };
     const id = 'fake-' + randomUUID().replaceAll('-', '').slice(0, 12);

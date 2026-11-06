@@ -1,3 +1,4 @@
+import type { HostProviderDeclarations } from './declarations.ts';
 /** Host provisioning is independent of verification's Executor. Provider tokens
  * and native resource details stay behind this interface, on the hub. */
 export type HostArchitecture = 'x86_64' | 'arm64';
@@ -12,6 +13,7 @@ export type ReapOptions = { project: string; pool: string };
 export type ReapResult = { state: 'reaped'; released: string[]; incomplete: string[] } | Failed;
 export interface HostProvider {
   readonly transport: 'ssh';
+  readonly declarations: HostProviderDeclarations;
   acquire(options: AcquireOptions): Promise<AcquireResult>;
   prepare(): Promise<PrepareResult>;
   status(machine: Machine): Promise<MachineStatus>;
