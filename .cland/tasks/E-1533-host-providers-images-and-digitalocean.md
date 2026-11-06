@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-31T18:22:03.678Z
-updated: 2026-11-06T11:11:18.822Z
+updated: 2026-11-06T17:00:33.273Z
 ---
 
 ## Goal
@@ -109,6 +109,7 @@ stages:
       - - T-1714
       - - T-1716
       - - T-1723
+      - - T-1727
   - name: create to ready
     qa:
       scope: full

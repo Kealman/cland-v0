@@ -2,8 +2,8 @@
 id: T-1706
 kind: task
 title: Hosts join and leave a running hub (prefactor)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1400
 branch: t/T-1706-hosts-join-and-leave-a-running-hub
 created: 2026-11-06T10:47:42.499Z
-updated: 2026-11-06T11:44:53.048Z
+updated: 2026-11-06T17:45:24.455Z
+closed: 2026-11-06T17:45:24.455Z
 ---
 
 ## Summary
@@ -132,3 +133,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged source-reviewed4e8aa7793. A-17090 configured run3f520689 passed uncached after source-4; branch/task.verify/provenance match head. Completed T0/T1/fallback-allT2/Web +changed T3(two base identities once)+mapped T4(one base guard, repeats skipped);5176pass,0fail/cancel/skip/todo. Linuxx64 droplet c-8nyc1 Node24.21/Nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4, tree238562a0786ccbb8ab8f0e090b65a2e4f7b3eb23. Independently checked both runtime criterion outcomes and six owner base outcomes+5/5 load receipts. A-17075/A-17076: exact-head local macOS Node24.21 preservation14files/56tests green; C4 required files2/2,2/2,1/1 and unedited. Verified C1 runtime launch; C2 revoke settlement/closed owners/stopped row; C3 durable registered reopen; C4 unedited preservation. Remaining T3 deferred to merge batch/full T4 unexecuted; duration advisories report-only; after-stage QA separate. Findings:none. Full evidence review A-17091 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17091-t-1706-final-evidence-review-at-4e8aa7793.md). No Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-06T17:45:24.455Z
+
+Merged d8acb0598b2526b2162a9bbd5cceb76c151c99c2 onto dev.

@@ -2,8 +2,8 @@
 id: T-1712
 kind: task
 title: Volume operations on the interface and the fake host provider
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1408
 branch: t/T-1712-volume-operations-on-the-interface-and
 created: 2026-11-06T10:48:15.245Z
-updated: 2026-11-06T15:09:57.093Z
+updated: 2026-11-06T17:45:40.612Z
+closed: 2026-11-06T17:45:40.612Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-17163: final same-head clear, C1–C4 verified. A-17161 run26cb8682 exit0 hub5252pass/zero fail,cancel,skip,todo; base5116pass/four empty failure arrays. Independently matched source/execution tree4f925eb250952b5153d48a3d4dc0991c2054d309. All9 named volume cases basepass and5 distinct passing repetitions each: attachment/region, snapshot retry, read-confirmed/ignored deletion and actual-case false-ack control, persisted recreation/concurrency/invalid window and12-variant exact-byte malformed-state test. T0/T1/allT2/Web complete; T3deferred,T4unrun. A-17160 original-tool transcription/combined-command/source-timeline limits retained. Linuxx64 Node24.21/Nvim0.12.5 c8sfo2 uncached, HeadlessShell1248/CfT156.0.8078.4. Report diagnostics advisory. Real volume operations/mounting and affected after-stageQA not established here.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-06T17:45:40.612Z
+
+Merged c34a4acc6da43d1bde3d1381cf235c1ec9ef94ed onto dev.

@@ -2,8 +2,8 @@
 id: T-1709
 kind: task
 title: The `[verification] provision` hook, and Neovim and Chromium leave the recipe
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1402
 branch: t/T-1709-the-verification-provision-hook-and
 created: 2026-11-06T10:47:58.346Z
-updated: 2026-11-06T12:34:52.901Z
+updated: 2026-11-06T17:45:51.783Z
+closed: 2026-11-06T17:45:51.783Z
 ---
 
 ## Summary
@@ -217,3 +218,7 @@ Verify carry (coord, rule 6 conflict waiver plus rule 7). Verify passed at the r
 - verify-prepare 1/1;
 - the delta review is clear (A-17110).
 The verify carries, and the merge batch runs T1+T3 on the integrated tree. 15 direct T3 importers are deferred to that batch, listed in the item comment. After landing, the new recipe and snapshot key take effect only at a hub restart, which coord arranges through cland-impl after E-1532's stage-7 covers.
+
+### coord · 2026-11-06T17:45:51.783Z
+
+Merged edb3dd465feaf0d1ea63feb2049862700293dfd1 onto dev.

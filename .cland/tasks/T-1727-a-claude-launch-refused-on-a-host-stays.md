@@ -8,14 +8,14 @@ size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1533
 blocked_by: []
 regression_of: T-1607
 found_by: qa
 topic: null
 branch: null
 created: 2026-11-06T16:38:40.126Z
-updated: 2026-11-06T16:41:38.726Z
+updated: 2026-11-06T17:00:28.723Z
 ---
 
 ## Summary

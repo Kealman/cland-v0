@@ -5,6 +5,7 @@ title: DigitalOcean pool images, and hosts created from them
 state: open
 status: backlog
 size: M
+criterion_seq: 7
 labels:
   - ready-for-agent
 assignee: null
@@ -17,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:49:01.153Z
-updated: 2026-11-06T10:49:01.153Z
+updated: 2026-11-06T17:20:04.648Z
 ---
 
 ## Summary
@@ -40,3 +41,10 @@ Decision (coord, open question 4): until E-1534's host lease, watchdog and `host
 - [ ] C4. A host create sends the current pool image id and the rendered prelude as `user_data`, and with no current image it is refused naming `cland host prepare` before any POST (test).
 - [ ] C5. The executor's prepare test files pass with no test edited.
 - [ ] C6. Outside the test environment, `host.create` on the `digitalocean` provider is refused before any API call with a message naming the missing lease, watchdog and spend of E-1534 (test).
+- [ ] C7. The DigitalOcean provider supplies its own prelude steps, so the `user_data` of a host create removes `99-digitalocean-automount.rules`, installs `cland-auth` with its sudoers line and writes Codex's `cli_auth_credentials_store = "file"`; those steps reach the rendering from the provider, not from the test (test).
+
+## Comments
+
+### coord · 2026-11-06T17:20:04.648Z
+
+coord: C7 added while writing the E-1533 stage-1 brief. T-1710 C2 is proven only with DigitalOcean steps the test passes in itself through `providerSteps`; no hub code supplies them at this build. The provider wiring belongs here, with the host create that sends the prelude (C4).
