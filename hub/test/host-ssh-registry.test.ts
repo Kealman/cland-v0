@@ -11,10 +11,13 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { createFakeHost } from './fakes/fake-host.ts';
 import { HostRecords, HostSecretStore, hostPaths } from '../src/host/records.ts';
 import { projectSshHosts } from '../src/host/registry.ts';
+import { VERSION } from '../src/version.ts';
 import { remoteHostLayout, remoteCodeDirectory, remoteSupervisor } from '../src/host/remote-layout.ts';
 
 test('default version layout derives code root and supervisor once',()=>{
  const layout=remoteHostLayout('/home/agent');
+ assert.equal(layout.modDir,`/home/agent/.cland-host/code/${VERSION}/hub/mod/cland`);
+ assert.equal(remoteHostLayout('/home/agent',{modDir:'/custom/mod'}).modDir,'/custom/mod');
  assert.equal(remoteCodeDirectory(layout),layout.cli.slice(0,-'/hub/bin/cland.ts'.length));
  assert.equal(remoteSupervisor(layout),join(remoteCodeDirectory(layout),'hub/src/host/agent/supervisor.sh'));
 });
@@ -30,6 +33,7 @@ test('registry startup uses default installed supervisor and cleanup drains all 
   },gitDaemon:async()=>({close:async()=>{calls.push('git-close');}}),
  });
  beforeDirectories(t,async()=>{fail=false;await registry.close();db.close();if(!paths.socketDirectory.startsWith(root+'/'))await rmdir(paths.socketDirectory).catch(error=>{if(error.code!=='ENOENT')throw error;});});
+ assert.equal(registry.hosts[0]!.layout({discoveryFile:'unused',node:'unused',cli:'unused',spoke:'unused'}).modDir,fileURLToPath(new URL('../mod/cland',import.meta.url)));
  assert.equal(registry.hosts[0]?.name,'f1');assert.deepEqual(calls,['start']);
  await assert.rejects(registry.close(),/SSH hosts cleanup failed/);
  assert.deepEqual(calls,['start','stop','git-close']);

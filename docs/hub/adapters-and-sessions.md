@@ -841,7 +841,8 @@ forward/unforward preserve endpoints. Adapters resolve their launch paths from t
 its private settings and MCP files through LaunchFiles; the layout's optional
 modDir supplies --plugin-dir. The local Host supplies the historical installed
 mod directory; a nonlocal Claude layout without modDir refuses launch. The SSH
-Host uses a supplied installed host mod directory. SSH Claude launch/adoption
+Host defaults to `<code>/hub/mod/cland` in its versioned installed tree, with
+a host-configuration override; fake hosts use the running installation’s plugin. SSH Claude launch/adoption
 requires `claude-launch-adopt-v1`: the agent performs the one discovery and pins
 the worker before granting stop authority. See [SSH Host](ssh-host.md). Codex uses layout run/log directories and
 node/spoke/discovery entries, preserving the local long-socket fallback. Its

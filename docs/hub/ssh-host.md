@@ -76,8 +76,10 @@ observations perform one bounded generation settlement before publishing exit,
 with one restart recovery retry. Failed settlement holds the row and role as
 cleanup-incomplete. Liveness and discovery timers remain CLI-free.
 
-No remote `modDir` is assumed. Claude refuses a layout without it; callers may
-supply an installed host-side mod directory. OpenCode prepares its shared ignore
+The versioned remote layout names `<code>/hub/mod/cland` as `modDir`; host
+configuration may override it. Fake hosts use the running installation’s
+`hub/mod/cland`. The layout names the path; host code delivery must install
+the plugin there. Claude still refuses a layout without a mod directory. OpenCode prepares its shared ignore
 through the launch Host, preserving existing contents and appending a missing wildcard.
 
 ## Atomic files and metadata

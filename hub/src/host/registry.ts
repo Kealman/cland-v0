@@ -35,7 +35,7 @@ export async function projectSshHosts(options: {onReady?: (host: string, bootId:
       const fake = options.env.CLAND_FAKE_HOSTS?.split(',').includes(record.id) && options.env.CLAND_FAKE_HOST_ROOT;
       const home = config?.home ?? (fake ? join(hostDirectory(String(fake),record.id),'home') : record.user === 'root' ? '/root' : `/home/${record.user}`);
       const installed = fileURLToPath(new URL('../../..',import.meta.url));
-      const layout = remoteHostLayout(home, { ...(fake ? {node:process.execPath,cli:join(installed,'hub/bin/cland.ts'),spoke:join(installed,'hub/bin/cland-spoke.ts')} : {}), ...config?.layout });
+      const layout = remoteHostLayout(home, { ...(fake ? {modDir:join(installed,'hub/mod/cland'),node:process.execPath,cli:join(installed,'hub/bin/cland.ts'),spoke:join(installed,'hub/bin/cland-spoke.ts')} : {}), ...config?.layout });
       const code = remoteCodeDirectory(layout);
       const carrier = (options.createTransport ?? (o=>new SshTransport(o)))({ beforeReady:async(signal)=>{
         const client = await AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id));

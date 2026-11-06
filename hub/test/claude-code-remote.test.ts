@@ -6,7 +6,7 @@ import { testWaitMs } from './until.ts';
 import { readFile, symlink, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sshHostFixture } from './ssh-host-fixture.ts';
-import { projectHub, connectUi, fakeClaude, eventually } from './harness.ts';
+import { projectHub, connectUi, fakeClaude, eventually, startDaemon, killDaemon } from './harness.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import { Store } from '../src/hub/store.ts';
 import { writeFile } from 'node:fs/promises';
@@ -552,4 +552,52 @@ test('remote Claude retained hook retries after the pinned root exited',{timeout
  assert.ok(signals.slice(before).some(target=>target.pid===pid&&target.identity===identity),'retry signals the exact retained hook birth');assert.equal(signals.slice(before).some(target=>target.pid===d!.row.pid),false,'retry never signals a vanished root');
  assert.equal((await observeProcesses([pid],d.f.env)).get(pid)?.ended,true);
  const rows=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;ended?:boolean;authority?:string}>;assert.ok(rows.some(row=>row.pid===d!.row.pid&&row.ended&&row.authority==='closed'),'retained-hook closure is durable before success');
+});
+
+
+// The CLI-started process must build its own registry: an injected Host/layout masks this regression.
+test('CLI-started hub launches a Claude item on a fake host with its mod bridge connected', {timeout: testWaitMs(120000)}, async t => {
+ const fake = await fakeClaude(t,{awaitSignals:true});
+ const f = await sshHostFixture(t,{startTransport:false,env:fake.env});
+ const env = fixtureEnvironment(f.root, f.env, {...f.env, ...fake.env, CLAND_CLAUDE_BIN:new URL('./fakes/claude-code/claude',import.meta.url).pathname, CLAUDE_CONFIG_DIR:fake.home});
+ const {territoryGitAsync,territoryPath,refreshTerritoryHook} = await import('../src/territory.ts');
+ const {mkdir} = await import('node:fs/promises');
+ await mkdir(join(f.root,'claude'),{recursive:true,mode:0o700});
+ const git = (cwd:string,args:string[])=>territoryGitAsync(cwd,args,false,undefined,fixtureEnvironment(f.root,env));
+ await git(f.root,['init','--initial-branch=dev']);
+ await writeFile(join(f.root,'seed'),'seed'); await writeFile(join(f.root,'.gitignore'),'.cland\nnode_modules\n');
+ await git(f.root,['add','.']);await git(f.root,['commit','-m','seed']);
+ await mkdir(join(f.root,'.cland'),{recursive:true});
+ await git(f.root,['clone','--bare',f.root,territoryPath(f.root)]);await refreshTerritoryHook(f.root);
+ const store = new Store(join(f.root,'.cland/hub.db'));
+ const record=f.records.get('f1')!;
+ store.hosts.insert({...record,clientKeyPath:'/fake',knownHosts:'fake'},f.secrets.readSecret('f1'));store.close();
+ const {discovery}=await startDaemon(t,f.root,env as Record<string,string>);
+ f.addCleanup(()=>killDaemon(discovery.pid));
+ const {setRoleKey}=await import('../src/roles/editor.ts');
+ const rolesFile=join(f.root,'.cland/roles.toml');
+ await writeFile(rolesFile,setRoleKey(await readFile(rolesFile,'utf8'),'implementer','launch','writable_roots',['.']));
+ const ui=await connectUi(t,discovery);await ui.request({type:'subscribe'});
+ await eventually('CLI registry carrier ready',async()=>{
+   const status=(await ui.request({type:'hub.status'})).value as {hosts:Array<{name:string;state:string}>};
+   return status.hosts.some(host=>host.state==='up')||undefined;
+ },testWaitMs()).catch(async error=>{t.diagnostic(JSON.stringify((await ui.request({type:'hub.status'})).value));t.diagnostic((await readFile(join(f.root,'.cland/log/hub.log'),'utf8')).slice(-6000));throw error;});
+ const created=await ui.request({type:'task.create',size:'S',title:'Claude remote layout regression'});assert.equal(created.ok,true,created.error);
+ const item=(created.value as {item:{id:string}}).item.id;
+ const made=await ui.request({type:'artifact.create',kind:'prompt',title:'Claude layout brief',topic:'general',content:'Exercise the remote mod bridge.'});assert.equal(made.ok,true,made.error);
+ const brief=(made.value as {artifact:{id:string}}).artifact.id;
+ const reply=await ui.request({type:'session.launch',name:'worker',harness:'claude-code',role:'implementer',host:'f1',item,brief},testWaitMs(60000));
+ assert.equal(reply.ok,true,reply.error);
+ const row=(reply.value as {process:{sessionId:string;harnessId:string;status:string;cwd:string;item:string}}).process;
+ assert.equal(row.status,'running');assert.equal(row.item,item);
+ const {ProcessTable}=await import('../src/adapters/processes.ts');
+ const table=new ProcessTable(join(f.root,'.cland/hub.db'));
+ try {assert.equal(table.get('worker')!.host,'f1');} finally {table.close();}
+ const receipt=await eventually('exact native worker mod bridge acknowledged through tunnel',async()=>{
+   const log=await fake.log(row.harnessId);return log.includes('mod bridge bridged')?log:undefined;
+ },testWaitMs());
+ assert.match(receipt,/mod bridge bridged/);
+ const status=(await ui.request({type:'hub.status'})).value as {sessions:Array<{name:string;sessionId:string}>};
+ assert.ok(status.sessions.some(session=>session.name==='worker'&&session.sessionId===row.sessionId));
+ const stopped=await ui.request({type:'session.stop',session:'worker'},testWaitMs());assert.equal(stopped.ok,true,stopped.error);
 });

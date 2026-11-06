@@ -163,3 +163,10 @@ exit1, with only the lost-native-release case excluded by Coordinator decision
 under T-1697 (A-16915). All other25 cases passed all five Linux repetitions.
 Per-case allowances use the completed eligible samples on both platforms; they
 remain report-only and do not alter setup or behaviour deadlines.
+
+T-1722 adds a CLI-started hub control: its production registry builds the fake
+host layout without injected configuration. A disposable Git territory backs
+the item launch; scripted Claude must report running and its exact job log
+must contain the mod bridge acknowledgment through the host tunnel. The
+CLI-started hub process and fixture-owned agent/workers are joined before root
+removal. This proves installed plugin selection, not delivery to real hosts.

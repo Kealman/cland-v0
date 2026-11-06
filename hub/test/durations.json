@@ -13458,6 +13458,13 @@
       "expires": "2026-11-11",
       "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 30 s; worst 19.74 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 11.88-14.22 s; earlier A-17004 10.79 s. Was 17 s from task samples. Test timeout 180 s unchanged."
     },
+    "hub/test/claude-code-remote.test.ts::CLI-started hub launches a Claude item on a fake host with its mod bridge connected": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1722: ceil(1.5 x 1.6 x macOS arm64 passing sample 3.266 s) = 8 s. Linux projected, no sample (Coordinator decision 3488d592). CLI-started hub, fake SSH registry, item launch, exact native mod bridge acknowledgment and joined cleanup."
+    },
     "hub/test/cland-auth.test.ts::unmount observes writers gone and refuses a disk with persistent writers": {
       "seconds": 6,
       "owner": "C-216",
