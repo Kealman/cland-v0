@@ -2,7 +2,8 @@
 id: E-1532
 kind: epic
 title: The SSH transport, the host agent and git through the tunnel
-state: open
+state: closed
+criterion_seq: 10
 labels:
   - epic
   - v0.4
@@ -16,7 +17,8 @@ follows:
 topic: topic-1362
 branch: null
 created: 2026-10-31T18:22:03.352Z
-updated: 2026-11-06T11:45:50.692Z
+updated: 2026-11-06T16:59:41.715Z
+closed: 2026-11-06T16:59:41.715Z
 ---
 
 ## Goal
@@ -57,15 +59,25 @@ QA runs the demo below on `dev` through the hub's frame protocol and the `cland`
 In a scratch project QA starts two fake hosts and launches an OpenCode, a Codex and a Claude Code session on them, one an item session. It sends each a delivery and reads its state, commits on the item session's host and reads the branch in the territory, and tries a push to `dev`, a push to the other host's branch and a branch deletion through that host's git socket. It runs `ready` from the host session and reads the flush. It kills a host's SSH master, then its host agent, then stops the hub for 20 seconds, and after each reads that every session survived and its forwards are back. It revokes a host secret and reads the spoke's refusal. It reads the attach command for a host session. It "reboots" a fake host and reads its sessions as exited and their roles vacated. It reads the slim spoke's evidence and both ADR amendments.
 
 - [ ] C1. Each remote host has one hub-owned SSH master with the specified options, pinned host keys and the hub's own reconnect loop, and a killed master comes back with every forward.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.529Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C2. Every host-side endpoint is a Unix socket in the agent-owned run directory, and no TCP forward exists.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.529Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C3. Spokes on hosts connect through the hub's Unix-socket spoke edge with a per-host secret in a remote `hub.json`, and a revoked secret is refused.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.529Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C4. The host agent runs every Host operation over `agent.sock`, is restarted by its supervisor within seconds, and sessions survive its restart.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.529Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C5. Sessions of all three harnesses run on a host, and survive a hub restart and a tunnel loss with their rows re-found.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.529Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C6. A host clones, fetches and pushes only through `git daemon --inetd` on its own socket, and a push to `dev`, to another host's branch or a deletion is refused.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.529Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C7. A commit on a host reaches the territory without the session pushing, and `verify` and `ready` flush first.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.530Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C8. `cland session attach` on a host session opens its own `ssh -t` running `cland host attach` with `stty susp undef`.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.530Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C9. A rebooted host makes its sessions exited and vacates their roles, and a relaunch elsewhere recreates the worktree from the pushed branch.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.530Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 - [ ] C10. ADR 0003 and ADR 0004 carry the amendments of spec §3.12.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-06-qa678-1-L2 · 2026-11-06T16:58:59.530Z · commit 6f0cf6aed9db5946862705fd8c5f765fc8e81067
 
 ## Constraints
 
@@ -475,3 +487,79 @@ Post-census resources: detached worktree removed without force, scratch executio
 
 
 Criterion marks: none (stage QA).
+
+### qa-678 · 2026-11-06T16:58:59.530Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-dod-2026-11-06-qa678-1-L2
+commit: 6f0cf6aed9db5946862705fd8c5f765fc8e81067
+findings: [{"severity":"medium","text":"Found aside T-1727 (Coordinator classification): first fixture's 0755 Claude config refusal left hidden pending generation and host-wide adoption/storage fence. Same generation proved in durable row and cc2 refusal, pending 354.406s. Clean authorised L2 at correct mode passes required live Claude proof; A-17178 preserves original evidence.","file":"hub/src/host/ssh-host.ts","line":201},{"severity":"low","text":"Found aside T-1726: Lead clause omits automatic host pushes promised by epic Contents; E1532D-02 count 0. Brief explicitly excludes from C7 failure.","file":"hub/src/roles/default-roles.ts"}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+| Case | Result | Run / observation |
+|---|---|---|
+| S0 | PASS | Common run / A-17178: Exact committed kit extracted and checked; three prescribed edits each anchor1; fresh shared-builder seal credential0, Node24.21 and pinned NV0.12.5, exact two PATH exemptions, fake-only harness paths, Q23/T61/socket limits; all scripts parsed |
+| E1532D-00 | PASS | Common run / A-17178: Clean detached SHA, root dev, committed brief, seven closed stages and all landed members checked; stale six-stage table prose superseded by live seven-stage plan |
+| E1532D-01 | PASS | Common run / A-17178: QA hold confirmed; root dev unchanged at full requested SHA |
+| E1532D-02 | PASS | Common run / A-17178: 38 exact source checks pass; Lead automatic-host-push clause absent, low found-aside follow-up reported to Coordinator as brief directs |
+| E1532D-03 | PASS | Common run / A-17178: Five serial whole files: exact required names and TAP counters validated, 23 passing tests; local macOS |
+| E1532D-04 | PASS | Common run / A-17178: Five serial whole files, 16 tests; required names and TAP facts checked |
+| E1532D-05 | PASS | Common run / A-17178: Five serial files, 39 tests; names and TAP facts checked; two raw TAP logs private under T-1665, check receipts exported |
+| E1532D-06 | PASS | Common run / A-17178: Five serial files; 73 passing tests including nested Host contracts, exact names and TAP counters checked |
+| E1532D-07 | PASS | Common run / A-17178: Five serial files, 33 tests; mixed-harness downtime survival, Claude bridge and registry cases present and clean |
+| E1532D-08 | PASS | Common run / A-17178: Four serial files, 24 tests; socket Git, host leases, clones, rollback and Git-lock cases clean |
+| E1532D-09 | PASS | Common run / A-17178: Three serial files, 21 tests; automatic ref pushes, admission flush and interrupted native recovery clean |
+| E1532D-10 | PASS | Common run / A-17178: Two serial files, eight tests; private attach environment, stty and printed SSH routing exact names checked |
+| E1532D-11 | PASS | Common run / A-17178: Seven serial whole files, 15 tests; boot identity, mixed-row retirement and native relaunch exact cases clean |
+| E1532D-12 | PASS | Common run / A-17178: Both ADR amendments, spec targets and glossary counts match; four documentation tests clean |
+| E1532D-13 | PASS | Common run / A-17178: Linux before/after RSS artifacts match specified heads and values; two local files, three tests clean; local RSS 122503168 bytes is informational |
+| E1532D-14 | PASS | Common run / A-17178: Stage cover pair applicable: only QA brief differs from ca3a07f1; current true, Linux two shards and macOS one clean completion, all 24 required file receipts pass; recorded skips 9 and 1 |
+| S0-L2 | PASS | L2: Coordinator-authorised fresh part-L rerun: prior fixture drained to zero and removed; pinned helper blob/full SHA rechecked; fresh shared-builder seal and both Claude roots mode 0700; supplemental bootstrap HOME creation corrected before fixture actions |
+| E1532D-20 | PASS | L2: Clean second live fixture; both hosts up, pinned private discovery and four sockets, positive TCP control then zero host TCP, all modes and cwd facts pass |
+| E1532D-21 | PASS | L2: Clean setup: Codex worker/cx2, OpenCode oc and Claude cc running; Claude mod bridge receipt in 2s; all spokes welcomed, zero host TCP. Topic null accepted per coord-authorised brief expectation correction |
+| E1532D-22 | PASS | L2: All four host sessions answered d1 via topic history within 2s and became idle within 1s |
+| E1532D-23 | PASS | L2: Host ref-watch published commit within 2s; socket fetch/control push succeeded; real ref moves to dev and other-host branch plus deletion refused, protected state unchanged |
+| E1532D-24 | BLOCKED | L2: BLOCKED as brief permits: after 120 polling iterations item remains in progress, no clear/refusal reply or ready-refusal; heads equal. C7 flush evidence rests on passing E1532D-09, not this fixture |
+| E1532D-25 | PASS | L2: Both killed masters reconnect, all forward counts restored; all four original PIDs alive and all d2 replies observed; positive TCP control then zero host TCP |
+| E1532D-26 | PASS | L2: Owned agent killed; supervisor replaced it in measured 1219ms, restore count increased, same four harness PIDs and forwards retained; all d3 replies observed |
+| E1532D-27 | PASS | L2: Hub stopped for measured 20s; all four harnesses stayed alive, same PIDs re-adopted, spokes/forward counts restored, all d4 replies and idle states observed |
+| E1532D-28 | PASS | L2: Positive f2 spoke/hello controls then revoke: 401 Host revoked and unauthorized host secret revoked; f1 welcome and worker running preserved; cleanup leftovers recorded as brief directs |
+| E1532D-29 | PASS | L2: Printed attach command has all required pinned non-sharing flags and no known secret; private record 0600. hostPlan fake-identity refusal informational per brief; actual terminal behavior covered by row10. Command not executed |
+| E1532D-30 | BLOCKED | L2: BLOCKED under explicit brief fallback: fake reboot incomplete, host writers remain; boot unchanged, worker alive, old agent and supervisor retained, no retirement. C9 reboot/relaunch rests on clean seven-file E1532D-11 |
+| E1532D-31 | PASS | L2: 887 files scanned: all three known fixture secrets absent outside approved holders; f1 clone discovery exact mode/owner/shape/own-secret provenance passes, f2 absent; secret and publication positive controls found and removed |
+| E1532D-32 | PASS | L2: Reviewer stopped; revoked/down-host stop refusals retained; identity-checked owned processes drained, all supervisor/agent PIDs gone, fixture census zero and alias removed; supplemental build-agent census zero |
+| E1532D-40 | PASS | L2: Final full SHA equals clean detached HEAD and dev; root non-tracker count unchanged zero; TMPDIR leftovers zero; demo status current true with no lease |
+
+**QA assessment: clear under the committed brief’s explicit coverage fallbacks.** Rows24 and30 remain BLOCKED live fixture checks, never passes. C7 rests on row09 and the live automatic-push check; C9 rests on row11. Every mandatory gate and all ten criterion coverage sets are satisfied. This is the epic DoD, with no stage field.
+
+Findings, ranked:
+
+- **Medium, found aside — T-1727 (Bugs, S).** First live attempt: the brief-created 0755 Claude config root correctly refused launch, but its failed generation remained supervised and fenced the whole host. Corrected cc retry: `failed launch of "cc" is still supervised; cleanup is pending`. Fresh cc2: `host f2: tunnel outcome unknown for claude-adopt:17b2477e-1d3d-4f2e-8f14-fdc80e2b2be0; storage remains fenced`. The persisted cc generation matches that token: phase launching, pid null, pending 354.406 seconds, stopped=true, rowRemoved=false, roleRolledBack=false. Source: hub/src/adapters/sessions.ts:934,1087,1344; hub/src/adapters/claude-code.ts:574; hub/src/host/ssh-host.ts:201. The process-only census initially missed the hidden durable row; the retry and durable-state capture explicitly supersede that observation. Hub logs repeat the missing-receipt error; agent stdout offers no per-adopt diagnostic. Successful adoption/settlement is the source path to release the fence, but the missing generation cannot provide its receipt; no release workaround was attempted. During teardown cx2 stop was also refused by the same fence. The Coordinator classified this found aside and ordered full teardown and clean L2. All evidence is retained in A-17178; no product fix.
+- **Low, found aside — T-1726 (Follow-ups, XS).** Row02's read-only check finds zero Lead-clause lines about automatic host pushes in hub/src/roles/default-roles.ts, contrary to epic Contents. The brief excludes this from C7 failure.
+- **Brief/setup corrections.** L2 creates exactly the scratch Claude config and fake account roots at 0700 before launch (coord f2c9bf4d/e444de63). Item launch leaves topic null; expected behaviour, General fallback retained (coord e4da8ef7). All seven stages checked despite stale six-stage table prose. A copied supplemental bootstrap lacked its own scratch HOME; failed read and corrected pinned-blob observation retained before fixture actions. A supplemental exact-line bridge search missed the timestamp prefix; its empty result is retained beside a corrected substring observation matching the brief: `2026-11-06T16:44:47.738Z mod bridge bridged`. No launch rerun for that observation.
+
+Build: `6f0cf6aed9db5946862705fd8c5f765fc8e81067`, clean detached worktree; root dev remains exactly S, non-tracker entries 0. No tracker-only hold commit. Local macOS 27.0.1 / Darwin 27.0.0 arm64, Node v24.21.0, pinned Neovim v0.12.5. No browser/binary exercised here; no demo lease, lifetime or cost. Load gate enforced at <=10 before files/live rows; no load stress or local suite.
+
+Common run `qa-dod-2026-11-06-qa678-1`: 44 serial whole-file invocations, 259 passing test results including nested cases; required generated names, exact plans and counters checked independently of exit status. No fail/cancel/skip/todo. Two raw TAP files stayed private under T-1665; validated summaries exported. Coordinator authorised `qa-dod-2026-11-06-qa678-1-L2` to rerun only part L at the same SHA, retaining 00–14. This is not a new run of all 259 tests. Per-file timings exclude queue/load admission. The helper's polling labels in seconds are iteration counts, not measured wall time.
+
+Live L2 proof: Codex worker on f1, Codex cx2/OpenCode oc/Claude cc on f2. Claude job 2db095c3 produced its bridge receipt within two polling iterations. All four answered d1/d2/d3/d4, retained their PIDs through both master losses and measured 20-second hub downtime, and regained welcomed spokes/forwards. F1's agent replacement measured 1219ms. Ref-watch published the commit; socket fetch/control push passed; protected/other-host moves and deletion were refused. F2 revocation changed positive controls to 401 Host revoked and unauthorized host secret revoked, while f1 stayed admitted. Attach inspected, not executed; row10 supplies terminal/stty proof.
+
+Limits: row24's reviewer never produced a qualifying result after 120 polling iterations, with no ready-refusal and equal heads. The session's own verify/ready and automatic-ready flush are row09 evidence. Row30 returned `fake reboot incomplete: host writers remain`; boot unchanged, worker/agent retained, readiness false after measured 120117ms, no role retirement. The brief expressly permits this BLOCKED fixture outcome; reboot and relaunch-elsewhere are the seven clean row11 files. Neither blocked live sub-check counts as successful.
+
+Secret/census gates: row31 scanned 887 files with zero known-secret hits outside admitted holders, both positive controls detected/removed, correct f1 clone discovery ownership/mode/shape/own-secret/canonical bytes; f2 clone absent. Row32 retains down/revoked-host stop refusals then drains identity-checked fixture processes. Hub down, supervisors/agents gone, fixture census 0, alias gone, supplemental build-agent census 0. TMPDIR leftovers 0; final freshness.current=true, state none.
+
+Suites reused: Linux droplet 1b9279d1/A-17168 (two shards), macOS local c206238f/A-17176, head `ca3a07f1d8c1c12b0f477c967ed97e820ffd2fa1`, verification tree `d01df7779ab0ca5174b9bde7638a434c6c0e08d3`. Candidate tree `66f5b99289a70beb97c474ed06060606a558ab60` differs only by qa/briefs/E-1532.md; cover freshness current=true. All 24 required per-file receipts pass, T0–T4 and Web complete. Nine Linux and one macOS platform skips are retained in A-17178/cover-provenance.json, not passes; extra T4 repetitions skipped. Duration budgets report-only, projections not measured wall time. Droplet lifetime/cost and browser binary absent from inspected provenance, not claimed. No new suite submitted.
+
+Criterion marks: C1,C2,C3,C4,C5,C6,C7,C8,C9,C10 with run `qa-dod-2026-11-06-qa678-1-L2`, incorporating unchanged-build common run. C1:02/03/20/25; C2:02/04/20/21/25; C3:02/05/20/21/27/28; C4:02/06/26; C5:04/07/21/22/25/27; C6:02/08/23; C7:02/09/23(24 blocked fallback); C8:02/10/29; C9:11(30 blocked fallback); C10:12. All common gates plus 31/32/40 pass. Coordinator owns closure.
+
+Common/first-attempt evidence: A-17178, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17178-e-1532-dod-common-checks-and-blocked-first-live-attempt-t-1727-trace/report.md`.
+
+Final evidence A-17179: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17179-e-1532-dod-final-qa-clean-live-rerun-and-criterion-evidence-at-6f0cf6ae/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-11-06T16:59:41.715Z
+
+Closed by coord on qa-678's Definition-of-done verdict: qa clear at dev 6f0cf6ae, run qa-dod-2026-11-06-qa678-1-L2 (A-17179, with A-17178 retaining the blocked first live attempt). C1–C10 are verified. Seven stages closed; stage 7 "Claude Code on hosts" (T-1722, T-1721) was added when the DoD brief found remote layouts without a Claude Code mod directory. Found aside: T-1727 (medium; a pre-spawn Claude refusal on a host leaves a host-wide fence) and T-1726 (low; Lead clause). Brief fallbacks: row 24 (ready flush) rests on E1532D-09, and row 30 (fake reboot) on E1532D-11.
