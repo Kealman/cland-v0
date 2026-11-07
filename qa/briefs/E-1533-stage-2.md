@@ -38,6 +38,11 @@ From the same brief's "Corrections folded in from earlier E-1532 runs", carried 
 - **Censuses** exclude the census process and all its ancestors and match only this run's `$Q` and `$W` paths.
 - **The preservation lock** is the directory `/tmp/cland-preserve.lock`, taken with `mkdir`, an owner file naming this run and row, and an owner-checked removal by literal path. A held lock makes the row BLOCKED for now (retry it later; never remove another owner's lock).
 
+## Decisions from this brief’s first run (qa-678, A-17342)
+
+- **T-1676 dead residue covers an unchanged producer inside a file the stage edited.** In E1533S2-35 a `cland-fixture-owners-<uid>` receipt came from the CLI-started-hub block of `claude-code-remote.test.ts`, which is byte-identical to the stage-1 build. That counts as T-1676 found aside, once QA has shown the residue is dead (PID absent, receipt not open, fixture root gone) and that the producing block’s SHA-256 is unchanged. Residue whose producing code the stage changed stays a finding.
+- **E1533S2-50 found T-1733.** `cland config set` deletes the `[hosts.*]` tables, so the stage was not clear. The rerun after T-1733 lands uses this brief’s original row order, because the fix must make row 50 pass as written.
+
 ## Stage
 
 - Epic: E-1533 (Host providers, images and DigitalOcean, under R-1530).
