@@ -35,3 +35,10 @@ head, and label any unexecuted heavy test as pending.
 
 Run `node --test hub/test/host-prepare.test.ts` on supported Node with inherited
 `CLAND_*` variables stripped. These T1/T2 cases need no native host or browser.
+
+T-1734: `pool grammar refuses <name> at config and storage` exercises underscore,
+leading hyphen, empty, overlong and dotted names. Each must name the grammar.
+
+`host prepare decoder shares pool grammar and preserves omitted and valid legacy
+frames` proves the previous omitted/agents frame shape remains accepted, valid
+64-character and embedded-host names work, and invalid names fail decoding.

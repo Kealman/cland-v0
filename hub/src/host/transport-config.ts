@@ -1,9 +1,12 @@
+import { parsePoolName } from './pool-name.ts';
 import { parseTransportKind } from './transport-kind.ts';
 
 /** Interim validation only: E-1534 owns the rest of the hosts table. */
 export function validateHostTransports(hosts: unknown): void {
   if (!hosts || typeof hosts !== 'object' || Array.isArray(hosts)) return;
   for (const [pool, value] of Object.entries(hosts)) {
+    if (pool === 'harnesses') continue;
+    parsePoolName(pool);
     if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, 'transport')) continue;
     try { parseTransportKind((value as Record<string, unknown>).transport); }
     catch (error) { throw new Error(`hosts.${pool}.transport: ${(error as Error).message}`); }
@@ -21,7 +24,8 @@ export function readHostPools(hosts: unknown): { pools: Record<string, HostPool>
   const pools: Record<string, HostPool> = Object.create(null);
   for (const [name, entry] of Object.entries(table)) {
     if (name === 'harnesses') continue;
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(name) || !entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error(`invalid host pool: ${name}`);
+    parsePoolName(name);
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error(`invalid host pool: ${name}`);
     const value = entry as Record<string, unknown>;
     for (const key of ['provider', 'size', 'region']) if (typeof value[key] !== 'string' || !value[key].trim()) throw new Error(`hosts.${name}.${key} required`);
     const transport = parseTransportKind(value.transport ?? 'ssh');

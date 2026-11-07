@@ -1,7 +1,9 @@
+import { isClientRequest } from '../src/protocol.ts';
 // T2: real CLI over a projectHub socket; fake provider only, no native host.
 import { parse } from 'smol-toml';
 import { preservedConfig } from './config-preservation.ts';
-import { defaultConfig, renderConfig } from '../src/init/config.ts';
+import { defaultConfig, renderConfig, parseConfig } from '../src/init/config.ts';
+import { poolSnapshotStorage } from '../src/host/provider/pool-image.ts';
 import { readHostPools } from '../src/host/transport-config.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
@@ -109,4 +111,24 @@ test('config set preserves SSH hosts and both pools before host prepare', async 
   const second = await cland(root, 'host', 'prepare', 'second');
   assert.equal(second.code, 0, second.stderr);
   assert.match(second.stdout, /second: prepared/);
+});
+
+for (const name of ['agents_1', '-agents', '', 'a'.repeat(65), 'agents.dot', 'agents\n']) test(`pool grammar refuses ${JSON.stringify(name)} at config and storage`, () => {
+  const entry = { provider: 'fake', size: 'fake', region: 'fake-1' };
+  assert.throws(() => readHostPools({ [name]: entry }), /letters, digits and hyphens/);
+  assert.throws(() => poolSnapshotStorage('/unused', name), /letters, digits and hyphens/);
+});
+
+test('project config read refuses underscore pool before any host command', () => {
+  assert.throws(() => parseConfig('[hosts.agents_1]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n', 'fixture', {}), /letters, digits and hyphens/);
+});
+
+test('host prepare decoder shares pool grammar and preserves omitted and valid legacy frames', () => {
+  assert.equal(isClientRequest({ type: 'host.prepare', id: 'prepare' }), true);
+  for (const pool of ['agents', 'agents-host-x', 'A' + 'a'.repeat(63)]) {
+    assert.equal(isClientRequest({ type: 'host.prepare', id: 'prepare', pool }), true, pool);
+  }
+  for (const pool of ['agents_1', '', '-agents', 'a'.repeat(65), 'agents\n']) {
+    assert.equal(isClientRequest({ type: 'host.prepare', id: 'prepare', pool }), false, JSON.stringify(pool));
+  }
 });

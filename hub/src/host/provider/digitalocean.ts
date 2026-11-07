@@ -1,3 +1,4 @@
+import { parsePoolName } from '../pool-name.ts';
 import { renderPrelude } from '../prelude.ts';
 import { poolImageKey, samePoolImageKey, poolSnapshotStorage } from './pool-image.ts';
 import { readSnapshot } from '../../executor/droplet/prepare.ts';
@@ -90,7 +91,7 @@ export class DigitalOceanHostProvider implements HostProvider {
   acquire(options: AcquireOptions): Promise<AcquireResult> { return this.#serial(async () => {
     if (!['lon1', 'fra1', 'ams3'].includes(options.region ?? 'lon1')) return { state: 'failed', reason: 'region unsupported' };
     if (this.#options.pool !== undefined && this.#options.pool !== options.pool) return { state: 'failed', reason: 'machine pool mismatch' };
-    if (options.architecture !== 'x86_64' || !options.project || !/^[a-zA-Z0-9-]+$/.test(options.pool)) return { state: 'failed', reason: 'machine options unsupported' };
+    if (options.architecture !== 'x86_64' || !options.project || !validPool(options.pool)) return { state: 'failed', reason: 'machine options unsupported' };
     // No project setting can enable production host.create before pool admission.
     if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host.create requires E-1534 host lease, watchdog and spend', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
     let image: number;
@@ -180,6 +181,7 @@ export class DigitalOceanHostProvider implements HostProvider {
   }); }
   reap(options: ReapOptions): Promise<ReapResult> { return this.#serial(async () => {
     try {
+      parsePoolName(options.pool);
       const tag = projectTag(this.#options.root, options.project), poolTag = `cland-pool-${options.pool}`;
       if (this.#options.ownedMachineIds && !this.#options.admitReap) return { state: 'failed', reason: 'reap requires owner-held deletion admission' };
       const records = await this.#records();
@@ -187,7 +189,7 @@ export class DigitalOceanHostProvider implements HostProvider {
       // one, the owner must fence its writes through each admitted deletion.
       const admit = this.#options.admitReap ?? (async (_target: ReapTarget, remove: () => Promise<ReleaseResult>) => remove());
       const droplets = await this.#api.droplets(tag), keys = await this.#api.keys();
-      const selected = droplets.filter(d => d.tags.includes('cland') && d.tags.includes(tag) && d.tags.includes(poolTag));
+      const selected = droplets.filter(d => d.tags.includes('cland') && d.tags.includes(tag) && d.tags.some(t => t.startsWith('cland-pool-') && validPool(t.slice(11)) && parsePoolName(t.slice(11)) === options.pool));
       const released: string[] = [], incomplete: string[] = [];
       const protectedKeys = new Set<number>();
       const processed = new Set<Record>();
@@ -244,7 +246,7 @@ export class DigitalOceanHostProvider implements HostProvider {
       try { options = { pool: this.#options.pool ?? 'agents', key: await poolImageKey(this.#options.root, this.#options.env, 'digitalocean') }; }
       catch { return { state: 'failed', reason: 'run cland host prepare with a configured pool' }; }
     }
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(options.pool)) return { state: 'failed', reason: 'run cland host prepare with a configured pool' };
+    if (!validPool(options.pool)) return { state: 'failed', reason: 'run cland host prepare with a configured pool' };
     const executor = new DropletExecutor(this.#options.root, undefined, () => {}, this.#options.env, undefined, { ...this.#options.dependencies, api: this.#api, clock: this.#clock });
     try {
       const result = await executor.preparePool(options.pool, options.key);
@@ -260,7 +262,7 @@ export class DigitalOceanHostProvider implements HostProvider {
       const pools = new Set((await this.#records()).filter(r => r.project === options.project).map(r => r.pool));
       const pool = this.#options.pool ?? (pools.size === 1 ? [...pools][0] : undefined);
       if (!pool) return { state: 'refused', reason: 'volume pool unavailable' };
-      if (!/^[a-zA-Z0-9-]+$/.test(pool) || !options.project || options.sizeGiB !== 1 || !['lon1', 'fra1', 'ams3'].includes(options.region)) return { state: 'failed', reason: 'volume options unsupported' };
+      if (!validPool(pool) || !options.project || options.sizeGiB !== 1 || !['lon1', 'fra1', 'ams3'].includes(options.region)) return { state: 'failed', reason: 'volume options unsupported' };
       if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean volume acquisition is test-only' };
       if (this.#clock.now().getTime() < this.#createRetryAt) return { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(this.#createRetryAt).toISOString() };
       const volume = await this.#api.createVolume({ name: options.name, region: options.region, size_gigabytes: 1, tags: ['cland', projectTag(this.#options.root, options.project), `cland-pool-${pool}`] });
@@ -335,8 +337,8 @@ function missing(e: unknown): boolean { return (e as NodeJS.ErrnoException).code
 function keyIdentity(name: string, project: string): { pool: string; intent: string } | undefined {
   const prefix = `${project}-pool-`;
   if (!name.startsWith(prefix)) return;
-  const match = /^([a-zA-Z0-9-]+)-host-([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.exec(name.slice(prefix.length));
-  return match ? { pool: match[1]!, intent: match[2]! } : undefined;
+  const match = /^(.+)-host-([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.exec(name.slice(prefix.length));
+  return match && validPool(match[1]!) ? { pool: parsePoolName(match[1]!), intent: match[2]! } : undefined;
 }
 
 function digitalOceanPrelude(): string {
@@ -358,3 +360,5 @@ function openSshPrivateKey(jwk: { d?: string }, publicKey: Buffer): string {
   const bytes = Buffer.concat([Buffer.from('openssh-key-v1\0'), field('none'), field('none'), field(''), uint(1), field(publicBlob), field(privateBlob)]);
   return `-----BEGIN OPENSSH PRIVATE KEY-----\n${bytes.toString('base64').match(/.{1,70}/g)!.join('\n')}\n-----END OPENSSH PRIVATE KEY-----\n`;
 }
+
+function validPool(value: string): boolean { try { parsePoolName(value); return true; } catch { return false; } }

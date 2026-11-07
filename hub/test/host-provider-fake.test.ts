@@ -162,3 +162,10 @@ test('fake refuses acquisition outside its declared architectures', async t => {
   assert.deepEqual(await provider.acquire(request), { state: 'failed', reason: 'fake architecture unsupported' });
   assert.deepEqual(await provider.reap(request), { state: 'reaped', released: [], incomplete: [] });
 });
+
+test('fake provider refuses underscore pools consistently with config', async t => {
+  const f = await fixture(t);
+  const provider = new FakeHostProvider({ env: f.env, now: f.now });
+  assert.equal((await provider.acquire({ ...request, pool: 'agents_1' })).state, 'failed');
+  assert.equal((await provider.reap({ ...request, pool: 'agents_1' })).state, 'failed');
+});

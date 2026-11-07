@@ -216,7 +216,7 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
   const stopTimeoutMs = Number(env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
   let config: ReturnType<typeof readProjectConfig>;
   try {
-    config = readProjectConfig(l.config, root, error => { if (/^(hosts\.[\s\S]*\.transport:|auth\.|verification\.(lifetime|run_timeout|daily_spend_usd))/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); }, env);
+    config = readProjectConfig(l.config, root, error => { if (/^(hosts\.[\s\S]*\.transport:|invalid host pool:|auth\.|verification\.(lifetime|run_timeout|daily_spend_usd))/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); }, env);
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });

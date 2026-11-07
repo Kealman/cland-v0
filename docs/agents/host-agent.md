@@ -632,7 +632,9 @@ Stub-script and rendering checks are documented in [cland-auth tests](tests/hub-
 
 Pool images are prepared by the local human CLI or Neovim through `host.prepare`
 (`cland host prepare [pool]`); sessions and remote connections cannot submit it.
-The fake provider requires a disposable sealed root. See [pool images](../hub/host-providers.md#pool-images).
+Pool names use 1–64 ASCII letters, digits and hyphens, starting with a letter
+or digit; invalid names fail config reading. The fake provider requires a
+disposable sealed root. See [pool images](../hub/host-providers.md#pool-images).
 
 Managed config writes through settings/auth, init/update and setup retain `[hosts]`
 and unknown TOML fields. They may regenerate formatting and comments; removing

@@ -1,3 +1,4 @@
+import { parsePoolName } from '../../host/pool-name.ts';
 import type { Provider } from './dependencies.ts';
 import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -113,8 +114,9 @@ export async function recoverPoolSnapshots(root: string, log: LogFn, env: NodeJS
   try { names = await readdir(join(root, '.cland/run/hosts')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
   for (const name of names) {
-    const pool = /^([a-zA-Z0-9][a-zA-Z0-9_-]{0,63})-recovery$/.exec(name)?.[1];
-    if (!pool) continue;
+    if (!name.endsWith('-recovery')) continue;
+    let pool: string;
+    try { pool = parsePoolName(name.slice(0, -9)); } catch { continue; }
     const storage = poolSnapshotStorage(root, pool);
     const release = claimSnapshotStorage(storage);
     if (!release) continue;

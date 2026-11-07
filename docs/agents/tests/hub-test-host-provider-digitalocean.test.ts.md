@@ -69,3 +69,9 @@ API close/root removal, and joins in finally on exceptional setup exits. Setup
 uses testWaitMs with an explicit 2x factor on every executor; the outer watchdog
 includes that same scaled setup budget plus separate remaining-work/drainage
 headroom. These are setup/watchdog caps, not the exact 2s/10s product boundaries.
+
+T-1734: `digitalocean refuses invalid pool <name> before acquire or reap API calls`
+proves refusal before fake API traffic. `digitalocean reaps valid pool tags and
+keys exactly: <pool>` covers the 64-character boundary and embedded `-host-`,
+preserving malformed sibling tags/keys and malformed UUID suffixes. These use
+the scripted fake API only; no real DigitalOcean service or browser is used.

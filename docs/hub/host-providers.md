@@ -256,6 +256,11 @@ connections and web/remotes cannot. `cland host prepare [pool]` prepares one poo
 or every configured pool. Unknown names report the configured choices. A running
 hub with this frame is required; older hubs return their unsupported-frame error.
 
+Pool names use 1–64 ASCII letters, digits and hyphens, starting with a letter
+or digit. Config reading refuses other names (including underscores) and names
+the allowed characters. Snapshot storage, provider tags, key identities and
+orphan recovery use the same parser.
+
 Each command reads `[hosts.<pool>]` provider, size, region and transport (`ssh`
 by default), and the exact `x.y.z` version strings in `[hosts] harnesses` (keys
 `claude-code`, `codex`, `opencode`; omitted pins are left to the renderer defaults). The remaining pool
@@ -271,10 +276,9 @@ region = "fake-1"
 transport = "ssh"
 ```
 
-Only the fake provider supports keyed pool preparation at this stage. It requires
-the explicit disposable `CLAND_FAKE_HOST_ROOT` environment fence. DigitalOcean
-is registered for machine operations but rejects keyed pool preparation before
-any provider API call; configured-image observation is not a pool recipe build.
+The fake provider requires the explicit disposable `CLAND_FAKE_HOST_ROOT`
+environment fence. DigitalOcean keyed preparation uses the executor-backed pool
+image flow described above; configured-image observation is not a pool recipe build.
 Pool image keys include the running Node version, package-lock.json byte digest,
 sorted harness pins, the generic recipe digest and `[verification] provision`
 path/content digest. Recipe and provision hashing and stale names come from the

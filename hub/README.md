@@ -96,3 +96,6 @@ need Node/npm and registry access or a prefilled cache; dependency installation
 uses `npm ci -w hub --omit=dev --ignore-scripts`. Fake registry hosts use the
 installed hub tree. See [runtime delivery](../docs/agents/host-agent.md#whole-runtime-delivery-at-ready)
 for reuse, old-reader retention and legacy-directory refusal.
+
+Configured host pool names use 1–64 ASCII letters, digits and hyphens, beginning
+with a letter or digit; see [pool images](../docs/hub/host-providers.md#pool-images).

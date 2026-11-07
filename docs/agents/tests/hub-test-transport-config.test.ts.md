@@ -10,3 +10,6 @@ readback equals the prior config. Scratch suite locks stay below the fixture roo
 Run `node --test hub/test/transport-config.test.ts` alone after checking disk/load.
 The companion T1 transport-kind test covers the parser's input types; T2
 transport-records checks invalid persisted rows and the unchanged previous shape.
+
+T-1734: quoted-empty pool startup now reports the pool grammar before transport
+validation; invalid pool names are fatal startup configuration errors.

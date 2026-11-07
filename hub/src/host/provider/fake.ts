@@ -1,3 +1,4 @@
+import { parsePoolName } from '../pool-name.ts';
 import { keyHash } from '../../executor/droplet/prepare.ts';
 import { durableJson } from '../../executor/droplet/lease.ts';
 import type { PoolImageKey } from './pool-image.ts';
@@ -138,7 +139,7 @@ export class FakeHostProvider implements HostProvider {
   }); }
   prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult> { return this.#serial(async () => {
     if (options) {
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(options.pool)) return { state: 'failed', reason: 'invalid pool' };
+      try { parsePoolName(options.pool); } catch { return { state: 'failed', reason: 'invalid pool' }; }
       const path = join(this.#root, 'images', options.pool + '.json');
       try {
         const old = JSON.parse(await readFile(path, 'utf8').catch(e => { if (missing(e)) return 'null'; throw e; }));
@@ -158,6 +159,7 @@ export class FakeHostProvider implements HostProvider {
     catch { return { state: 'failed', reason: 'fake image preparation failed' }; }
   }); }
   acquire(options: AcquireOptions): Promise<AcquireResult> { return this.#serial(async () => {
+    try { parsePoolName(options.pool); } catch { return { state: 'failed', reason: 'invalid pool' }; }
     if (!this.declarations.architectures.includes(options.architecture)) return { state: 'failed', reason: 'fake architecture unsupported' };
     if (this.#options.refuseUntil && Date.parse(this.#options.refuseUntil) > this.#now()) return { state: 'refused', reason: 'fake capacity unavailable', retryAt: this.#options.refuseUntil };
     if (this.#options.failAcquire) return { state: 'failed', reason: 'fake create failed' };
@@ -214,6 +216,7 @@ export class FakeHostProvider implements HostProvider {
   }
   release(machine: Machine): Promise<ReleaseResult> { return this.#serial(() => this.#release(machine)); }
   reap(options: ReapOptions): Promise<ReapResult> { return this.#serial(async () => {
+    try { parsePoolName(options.pool); } catch { return { state: 'failed', reason: 'invalid pool' }; }
     const released: string[] = [], incomplete: string[] = [];
     try {
       let directory;

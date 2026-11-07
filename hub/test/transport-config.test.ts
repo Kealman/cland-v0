@@ -51,5 +51,5 @@ test('quoted empty pool transport is refused at startup', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[hosts.""]\ntransport="outbound"\n');
-  await assert.rejects(projectHub(t, root), /0\.4\.x/);
+  await assert.rejects(projectHub(t, root), /letters, digits and hyphens/);
 });

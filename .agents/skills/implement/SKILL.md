@@ -131,6 +131,9 @@ Empty/missing speech commands keep audio and name command setup.
 
 ## Host admission
 
+Pool names use `host/pool-name.ts`: 1–64 ASCII letters, digits and hyphens,
+starting with a letter or digit; config reading rejects underscores.
+
 Pool image preparation (`cland host prepare [pool]`, frame `host.prepare`) is
 restricted to the local human CLI or Neovim, like host revocation. Implementers
 prove it in disposable sealed fixtures, never by preparing the live project.

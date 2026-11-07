@@ -63,3 +63,6 @@ Volume contract registration and fake volume regressions live in
 [host-provider-volumes.test.ts](hub-test-host-provider-volumes.test.ts.md).
 They use a separate exported contract registrar in host-provider-contract.ts;
 existing lifecycle factories and registration remain compatible.
+
+`fake provider refuses underscore pools consistently with config` proves direct
+acquire and reap reject `agents_1` using the shared pool grammar.

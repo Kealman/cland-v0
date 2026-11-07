@@ -1,3 +1,4 @@
+import { parsePoolName } from './host/pool-name.ts';
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
 // Frames travel as JSON text over one WebSocket per spoke.
 
@@ -1122,7 +1123,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'remote.unpair':
       return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
     case 'host.prepare':
-      return f.pool === undefined || typeof f.pool === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.pool);
+      if (f.pool === undefined) return true;
+      if (typeof f.pool !== 'string') return false;
+      try { parsePoolName(f.pool); return true; } catch { return false; }
     case 'host.revoke':
       return typeof f.host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.host) && f.host !== 'local';
     case 'pairing.approve':

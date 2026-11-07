@@ -449,3 +449,27 @@ test('digitalocean held create refusal cannot shorten a concurrent declaration r
   assert.equal((await acquire()).state, 'created');
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
 });
+
+for (const pool of ['agents_1', '-agents', 'a'.repeat(65)]) test(`digitalocean refuses invalid pool ${JSON.stringify(pool)} before acquire or reap API calls`, async t => {
+  const { api, provider } = await fixture(t);
+  assert.equal((await provider.acquire({ ...request, pool })).state, 'failed');
+  assert.equal((await provider.reap({ ...request, pool })).state, 'failed');
+  assert.equal(api.requests.length, 0);
+});
+
+for (const pool of ['agents-host-x', 'A' + 'a'.repeat(63)]) test(`digitalocean reaps valid pool tags and keys exactly: ${pool}`, async t => {
+  const { api, provider } = await fixture(t);
+  const tag = projectTag(api.stateRoot, request.project);
+  const intent = '12345678-1234-4234-8234-123456789abc';
+  const seed = async (name: string) => {
+    const key = await api.provider.importKey(`${tag}-pool-${name}-host-${intent}`, 'ssh-ed25519 sentinel');
+    return api.provider.create({ name: `cland-host-${intent}`, tags: ['cland', tag, `cland-pool-${name}`], size: 's-2vcpu-4gb', region: 'lon1', image: 'ubuntu-24-04-x64', ssh_keys: [key.id] });
+  };
+  const target = await seed(pool);
+  await seed(pool + '_1');
+  await api.provider.importKey(`${tag}-pool-${pool}-host-${intent}extra`, 'ssh-ed25519 sentinel');
+  assert.deepEqual(await provider.reap({ ...request, pool }), { state: 'reaped', released: [String(target.id)], incomplete: [] });
+  assert.equal(api.droplets.length, 1);
+  assert.equal(api.keys.length, 2);
+  assert.equal(api.droplets[0]!.tags.at(-1), `cland-pool-${pool}_1`);
+});

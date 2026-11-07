@@ -1,3 +1,4 @@
+import { parsePoolName } from '../pool-name.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from 'smol-toml';
@@ -59,6 +60,6 @@ export function samePoolImageKey(a: PrepareKey, b: PrepareKey): boolean {
 }
 
 export function poolSnapshotStorage(root: string, pool: string): SnapshotStorage {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(pool)) throw new Error('invalid pool name');
+  parsePoolName(pool);
   return { recordPath: join(root, '.cland/run/hosts', pool + '-image.json'), recoveryRoot: join(root, '.cland/run/hosts', pool + '-recovery') };
 }
