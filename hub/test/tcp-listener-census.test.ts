@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { listenerFailure } from './tcp-listener-census.ts';
+import { listenerFailure, fixtureTreePids } from './tcp-listener-census.ts';
 
 test('listener attribution retains metadata only across a stable native birth', async () => {
   const message = await listenerFailure(42, ['worker', 'control-socket holder'], {
@@ -45,4 +45,19 @@ test('empty listener census returns no failure', async () => {
     identity: async () => 'linux:boot:123', listeners: async () => '',
     description: async () => { throw new Error('no diagnostic metadata needed'); },
   }), null);
+});
+
+
+test('fixture census includes launch roots and every descendant but excludes sibling socket holders', () => {
+  const rows = [
+    {pid: 10, parent: 1}, // in-process fixture worker
+    {pid: 20, parent: 10}, // unrelated decoy
+    {pid: 30, parent: 10}, // fixture SSH launch
+    {pid: 40, parent: 30},
+    {pid: 50, parent: 40},
+    {pid: 60, parent: 1}, // another test worker
+  ];
+  assert.deepEqual([...fixtureTreePids([30], rows)].sort((a,b) => a-b), [30, 40, 50]);
+  assert.deepEqual([...fixtureTreePids([30], [...rows].reverse())].sort((a,b) => a-b), [30, 40, 50]);
+  assert.deepEqual([...fixtureTreePids([99], rows)], []);
 });

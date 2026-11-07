@@ -22,3 +22,20 @@ export async function listenerFailure(pid: number, sources: string[], probes: Li
   const description = stable && row ? `parent=${row.parent} command=${row.command}` : `parent=unavailable command=unavailable${stable ? descriptionError ?? ' (process metadata missing)' : ''}`;
   return `pid=${pid} source=${sources.join(', ')} nativeStart=${nativeStart} ${description}\n${listeners}`;
 }
+
+
+/** Read-only census scope; socket holders alone never establish fixture ownership.
+ * Roots are live launches validated against their launch-written native birth.
+ * The in-process fixture worker is added separately, without its unrelated children.
+ */
+export function fixtureTreePids(roots: readonly number[], rows: readonly {pid: number; parent: number}[]): Set<number> {
+  const children = new Map<number, number[]>();
+  const present = new Set(rows.map(row => row.pid));
+  for (const row of rows) {
+    const siblings = children.get(row.parent) ?? [];
+    siblings.push(row.pid); children.set(row.parent, siblings);
+  }
+  const owned = new Set(roots.filter(pid => present.has(pid)));
+  for (const pid of owned) for (const child of children.get(pid) ?? []) owned.add(child);
+  return owned;
+}

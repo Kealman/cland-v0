@@ -8,3 +8,8 @@ command observation and unavailable birth observations retain the raw listener
 failure while suppressing unproven metadata. An empty census stays clear.
 No native PID reuse is induced; these cases prove the observation policy, while
 `transport-forwards.test.ts` proves the actual platform probes and zero-TCP check.
+
+Tree selection covers present launch roots, children and grandchildren with
+arbitrary process-table ordering, excluding sibling workers and absent roots.
+The native caller validates roots against launch-written births and adds only
+the in-process worker itself; the helper grants no cleanup or signal authority.
