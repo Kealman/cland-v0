@@ -10770,6 +10770,20 @@
       "expires": "2026-11-13",
       "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [4.535327, 5.671381792]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 9.074211s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 7.733943333s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
     },
+    "hub/test/host-runtime-delivery.test.ts::C1-C3 whole runtime delivery verifies files, reuses digest and atomically replaces CLI and spoke": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1723: macOS arm64 local Node24.21.0 sample 4.100104375 s, including scratch setup, scripted offline npm, CLI/spoke exits, reuse/failure/replacement assertions and joined cleanup; driver startup excluded. ceil(1.5 x 1.6 x 4.100104375)=10 s uses stage brief Linux projection, no Linux sample claimed. No artificial stress or browser/provider/network. Report-mode duration policy unchanged."
+    },
+    "hub/test/transport-forwards.test.ts::C1 Unix and host-loopback forwards answer with no hub TCP listener; C2 cancellation removes both": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1670 corrected stable-birth diagnostic: Linux arm64 Node24.21.0 docker run --init --cpus=4 --network=none,8 measured CPU burners after2 warmup burners joined.20/20 C1 next to actual tracker-ready-native neighbour, each overlap checked; complete measured container observations8.12..11.25,5-second meter8.51..11.25, independent Mac host including warmup2.30810546875..9.1142578125. Source SHA25600c0c339a46e293105e9ef9e7af8d9b4aa865740e161ea6cee6fddb79a3a4199,helper SHA25682d5b4de1197c75e50e779d8a68bb387f56d4a7da5ba64893426574c46e428e5; seconds [4.55479221, 4.523806876, 4.20269021, 4.338345294, 5.523821461000001, 4.399984711, 4.571159085000001, 4.700361377, 4.756582835000001, 5.2964615020000005, 5.119389626, 6.418997461, 5.700198919, 4.946353460999999, 5.0318968349999995, 5.294082294, 4.95243071, 5.526614294, 5.763013336, 5.120126626999999]. Current Mac arm64 Node24.21.0 C1 planted control/full file6/6, C1 1.301230333s. ceil(1.5 x worst6.418997461)=10s. Prior-head20 evidence A-17285/A-17287 complete container observations9.39..11.26 (meter-only9.84..11.26), host5.48..6.49, is prior coverage only. Whole-test setup/assertions/joined teardown; excludes warmup/scheduling; no browser/product latency claim; targeted duration gates unexecuted, manifest report mode."
+    },
     "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
       "seconds": 48,
       "owner": "C-216",
@@ -13705,13 +13719,6 @@
       "added": "2026-11-06",
       "expires": "2026-11-13",
       "reason": "T-1710 source-review rework: fully stubbed helper with 40 bounded writer polls, fresh mount ID/source checks and positive census controls. macOS arm64 local Node24.21.0 uncommitted rework samples seconds [2.058893542, 1.456145084, 2.878092375, 2.991916167, 3.610551167, 3.644519]; latest observed host one-minute load 10.50, no artificial stress. ceil(1.5 x worst 3.644519)=6s. Includes scratch setup, script execution, assertions and synchronous child exit/cleanup; excludes test-driver startup. No Linux or repetition proof claimed; no browser/provider/mount used. Targeted runs do not execute duration gates; report mode unchanged."
-    },
-    "hub/test/host-runtime-delivery.test.ts::C1-C3 whole runtime delivery verifies files, reuses digest and atomically replaces CLI and spoke": {
-      "seconds": 10,
-      "owner": "C-216",
-      "added": "2026-11-06",
-      "expires": "2026-11-13",
-      "reason": "T-1723: macOS arm64 local Node24.21.0 sample 4.100104375 s, including scratch setup, scripted offline npm, CLI/spoke exits, reuse/failure/replacement assertions and joined cleanup; driver startup excluded. ceil(1.5 x 1.6 x 4.100104375)=10 s uses stage brief Linux projection, no Linux sample claimed. No artificial stress or browser/provider/network. Report-mode duration policy unchanged."
     },
     "hub/test/host-prepared.test.ts::prepared restart observation waits through identity publication before agent admission": {
       "seconds": 9,

@@ -15,8 +15,11 @@ import { ownDirectory } from './process-cleanup.ts';
 import { createFakeHost, hostControl } from './fakes/fake-host.ts';
 import { serveAgent } from '../src/host/agent/server.ts';
 import { HostRecords, HostSecretStore, hostPaths } from '../src/host/records.ts';
+import { processIdentityAsync } from '../src/process-identity.ts';
+import { processTableArgs, parseProcessTable } from '../src/process-table.ts';
 import { SshTransport } from '../src/transport/ssh.ts';
 import { eventually } from './harness.ts';
+import { listenerFailure } from './tcp-listener-census.ts';
 
 async function fixture(t: import('node:test').TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'fw-'));
@@ -69,16 +72,46 @@ test('C1 Unix and host-loopback forwards answer with no hub TCP listener; C2 can
   const control = net.createServer(); await new Promise<void>(r=>control.listen(0,'127.0.0.1',r));
   t.after(async()=>{if(control.listening) await new Promise<void>(r=>control.close(()=>r()));});
   const port = (control.address() as net.AddressInfo).port;
-  const census = async(pid:number) => { try { return (await promisify(execFile)('lsof',['-nP','-a','-p',String(pid),'-iTCP','-sTCP:LISTEN'],{env:fixtureEnvironment(f.root, process.env)})).stdout; } catch(e) { if((e as {code?:number}).code===1)return ''; throw e; } };
+  const census = async(pid:number) => { try { return (await promisify(execFile)('lsof',['-nP','-a','-p',String(pid),'-iTCP','-sTCP:LISTEN'],{env:fixtureEnvironment(f.root, process.env), timeout:3000})).stdout; } catch(e) { if((e as {code?:number}).code===1)return ''; throw e; } };
   assert.match(await census(process.pid),new RegExp(':'+port+'\\b'));
+  const assertNoListeners = async (sources: Map<number, string[]>) => {
+    const failures: string[] = [];
+    const env = fixtureEnvironment(f.root, process.env);
+    for (const [pid, sourcesForPid] of sources) {
+      const failure = await listenerFailure(pid, sourcesForPid, {
+        identity: () => processIdentityAsync(pid, env),
+        listeners: () => census(pid),
+        description: async () => {
+          const rows = parseProcessTable((await promisify(execFile)('ps', processTableArgs([pid]), { env: fixtureEnvironment(f.root, process.env), timeout: 3000 })).stdout);
+          return rows.find(row => row.pid === pid) ?? null;
+        },
+      });
+      if (failure) failures.push(failure);
+    }
+    assert.equal(failures.length, 0, `Unexpected TCP listeners:\n${failures.join('\n')}`);
+  };
+  // The same assertion used below must attribute a planted listener, not merely
+  // fail with lsof's truncated command column.
+  await assert.rejects(assertNoListeners(new Map([[process.pid, ['worker', 'control-socket holder (positive control)']]])), error => {
+    const message = (error as Error).message;
+    assert.match(message, new RegExp(`pid=${process.pid}\\b`));
+    assert.match(message, /source=worker, control-socket holder/);
+    assert.match(message, /command=.*transport-forwards/);
+    assert.match(message, /nativeStart=(darwin:|linux:)/);
+    assert.match(message, /parent=\d+/);
+    assert.match(message, new RegExp(':'+port+'\\b'));
+    return true;
+  });
   await new Promise<void>(r=>control.close(()=>r()));
   const a=await f.carrier.forward('codex', {socket:f.unix}), b=await f.carrier.forward('opencode', {port:4567});
   for(const endpoint of [a,b]) { assert.ok('socket' in endpoint); assert.equal(dirname(endpoint.socket),f.paths.socketDirectory); assert.ok(Buffer.byteLength(endpoint.socket)+1<=104); assert.equal(await f.exchange(endpoint.socket),'proof'); }
   const receipt=JSON.parse(await readFile(join(f.host.directory,'master-control'),'utf8'));
-  // The fake master writes no PID to its control record; get its owned PID from native Unix census.
-  const native = (await promisify(execFile)('lsof',['-t',f.paths.controlSocket],{env:fixtureEnvironment(f.root, process.env)})).stdout.trim().split('\n').map(Number);
+  // Keep every native control-socket holder; do not assume each holder is the master.
+  const native = (await promisify(execFile)('lsof',['-t',f.paths.controlSocket],{env:fixtureEnvironment(f.root, process.env), timeout:3000})).stdout.trim().split('\n').map(Number);
   assert.ok(native.length>0,JSON.stringify(receipt));
-  for(const pid of new Set([process.pid,...native])) assert.equal(await census(pid),'');
+  const sources = new Map<number, string[]>([[process.pid, ['worker']]]);
+  for (const pid of native) sources.set(pid, [...(sources.get(pid) ?? []), 'control-socket holder']);
+  await assertNoListeners(sources);
   await f.carrier.unforward('codex'); await f.carrier.unforward('opencode');
   for(const endpoint of [a,b]) if('socket' in endpoint) { await assert.rejects(stat(endpoint.socket),{code:'ENOENT'}); await assert.rejects(f.exchange(endpoint.socket)); }
   const rows=await f.argv(); assert.equal(rows.filter(a=>a.includes('cancel')).length,2);
