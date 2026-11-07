@@ -26,3 +26,23 @@ test('no roles file requires no particular harness or account lookup', async () 
     accounts: async () => { throw new Error('must not read accounts'); },
   }), []);
 });
+
+
+test('role pools default to local and accept named pools for built-in and custom workers', async () => {
+  const { parseRoles } = await import('../src/roles/config.ts');
+  assert.equal(parseRoles('').get('implementer')!.launch.pool, 'local');
+  assert.equal(parseRoles('[implementer.launch]\npool = "agents"').get('implementer')!.launch.pool, 'agents');
+  assert.equal(parseRoles('[custom.writer]\nclause = "Write"\n[custom.writer.launch]\nharness = "codex"\npool = "agents"').get('writer')!.launch.pool, 'agents');
+});
+
+
+test('role pool validation shares pool-name syntax and the local-only role policy', async () => {
+  const { parseRoles } = await import('../src/roles/config.ts');
+  for (const pool of ['""', '"bad_pool"', '" leading"', '"-agents"', '42', '"' + 'a'.repeat(65) + '"']) {
+    assert.throws(() => parseRoles(`[implementer.launch]\npool = ${pool}`), /invalid host pool/);
+  }
+  for (const role of ['coordinator', 'aide']) {
+    assert.throws(() => parseRoles(`[${role}.launch]\npool = "agents"`), /Coordinator and Aide roles run only on the local host/);
+    assert.equal(parseRoles(`[${role}.launch]\npool = "local"`).get(role)!.launch.pool, 'local');
+  }
+});

@@ -817,6 +817,8 @@ export type RoleHolder = { name: string; role: string | null; label: string; liv
 
 /** A role's launch defaults (roles.toml): `approval` and `sandbox` are null where the file gives none. */
 export type RoleLaunch = {
+  /** Absent on older hubs; clients resolve it to local. */
+  pool?: string;
   harness: string;
   account: string | null;
   permissions: string | null;

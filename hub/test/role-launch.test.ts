@@ -155,3 +155,24 @@ test('a queued role launch rechecks caller authority before writing', { timeout:
   assert.match(String(refused.error), /forbidden.*role.launch/);
   assert.equal(await readFile(path, 'utf8'), original);
 });
+
+
+test('role launch pool CLI writes a named pool and help advertises it', { timeout: 5000 }, async t => {
+  const { root, path } = await fixture(t);
+  const result = await cland(root, 'role', 'launch', 'implementer', '--pool', 'agents', '--json');
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).launch.pool, 'agents');
+  assert.equal(await readFile(path, 'utf8'), original.replace('[reviewer.launch]', 'pool = "agents"\n[reviewer.launch]'));
+  const help = await cland(root, 'role', 'launch', '--help');
+  assert.match(help.stdout + help.stderr, /--pool/);
+  const listed = await cland(root, 'role', 'list');
+  assert.match(listed.stdout, /Implementer.*pool agents/);
+});
+
+for (const role of ['coordinator', 'aide']) test(`role launch pool refuses remote ${role} without writing`, { timeout: 5000 }, async t => {
+  const { root, path } = await fixture(t);
+  const result = await cland(root, 'role', 'launch', role, '--pool', 'agents');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Coordinator and Aide roles run only on the local host/);
+  assert.equal(await readFile(path, 'utf8'), original);
+});

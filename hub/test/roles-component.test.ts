@@ -202,10 +202,10 @@ test('Coordinator is exclusive: a second assignment is refused with the reason; 
   // cland role list: each role with its defaults and holders
   const list = await cland(root, 'role', 'list');
   assert.equal(list.code, 0, list.stderr);
-  assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, model claude-fable-5-1, effort max, account harness default, permissions auto, approval harness default, sandbox danger-full-access\n {2}coord \[Coordinator\]\n/);
-  assert.match(list.stdout, /\nImplementer  launch: opencode, model harness default, effort harness default, account harness default, guard: OpenCode's own\n {2}impl-1 \[Implementer\]\n/);
-  assert.match(list.stdout, /\nReviewer  launch: codex, model gpt-6\.1-sol, effort high, account harness default, permissions harness default, approval never, sandbox read-only \(network: none\)\n {2}no holder\n/);
-  assert.match(list.stdout, /\nQA  launch: codex, model gpt-6-astra, effort high, account harness default, permissions harness default, approval never, sandbox danger-full-access\n {2}no holder\n/);
+  assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, pool local, model claude-fable-5-1, effort max, account harness default, permissions auto, approval harness default, sandbox danger-full-access\n {2}coord \[Coordinator\]\n/);
+  assert.match(list.stdout, /\nImplementer  launch: opencode, pool local, model harness default, effort harness default, account harness default, guard: OpenCode's own\n {2}impl-1 \[Implementer\]\n/);
+  assert.match(list.stdout, /\nReviewer  launch: codex, pool local, model gpt-6\.1-sol, effort high, account harness default, permissions harness default, approval never, sandbox read-only \(network: none\)\n {2}no holder\n/);
+  assert.match(list.stdout, /\nQA  launch: codex, pool local, model gpt-6-astra, effort high, account harness default, permissions harness default, approval never, sandbox danger-full-access\n {2}no holder\n/);
   assert.match(list.stdout, /\ncoordinator: coord\n$/);
 
   // the human clears the only Coordinator: the vacancy is the very next role event, and status shows it
@@ -244,18 +244,18 @@ test('roles.toml: approval, sandbox, writable_roots and network of a launch are 
     '.git/objects', '.git/refs', '.git/logs', '.git/worktrees',
     '.cland/territory.git/objects', '.cland/territory.git/refs', '.cland/territory.git/logs', '.cland/artifacts',
   ] };
-  assert.deepEqual(launch(''), { harness: 'codex', account: null, model: null, effort: null, approval: 'never', sandbox: qaSandbox, permissions: null });
+  assert.deepEqual(launch(''), { pool: 'local', harness: 'codex', account: null, model: null, effort: null, approval: 'never', sandbox: qaSandbox, permissions: null });
   const implementer = parseRoles('[implementer.launch]\nharness = "codex"\nmodel = "gpt-6.1-sol"\n').get('implementer')?.launch;
   assert.deepEqual([implementer?.approval, implementer?.sandbox], ['never', implementerSandbox]);
   // Coordinator has an explicit full-access sandbox, while approval remains the harness default.
-  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { harness: 'codex', account: null, model: null, effort: null, approval: null, sandbox: qaSandbox, permissions: null });
+  assert.deepEqual(parseRoles('[coordinator.launch]\nharness = "codex"\n').get('coordinator')?.launch, { pool: 'local', harness: 'codex', account: null, model: null, effort: null, approval: null, sandbox: qaSandbox, permissions: null });
   // only what is written overrides, key by key
-  assert.deepEqual(launch('approval = "on-request"'), { harness: 'codex', account: null, model: null, effort: null, approval: 'on-request', sandbox: qaSandbox, permissions: null });
+  assert.deepEqual(launch('approval = "on-request"'), { pool: 'local', harness: 'codex', account: null, model: null, effort: null, approval: 'on-request', sandbox: qaSandbox, permissions: null });
   assert.deepEqual(launch('network = "full"')?.sandbox, { ...qaSandbox, network: 'full' });
   assert.deepEqual(launch('sandbox = "workspace-write"\nnetwork = "local"\nwritable_roots = [".", "../shared"]')?.sandbox, { mode: 'workspace-write', writableRoots: ['.', '../shared'], network: 'local' });
   assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "workspace-write"\nnetwork = "local"\nwritable_roots = []\n').get('implementer')?.launch.sandbox, { mode: 'workspace-write', writableRoots: [], network: 'local' });
   // "" is the adapter's default approval and the harness's own sandbox
-  assert.deepEqual(launch('approval = ""\nsandbox = ""'), { harness: 'codex', account: null, model: null, effort: null, approval: null, sandbox: null, permissions: null });
+  assert.deepEqual(launch('approval = ""\nsandbox = ""'), { pool: 'local', harness: 'codex', account: null, model: null, effort: null, approval: null, sandbox: null, permissions: null });
   // a written mode keeps what still fits it: no roots outside workspace-write, nothing closed without a sandbox
   assert.deepEqual(parseRoles('[implementer.launch]\nharness = "codex"\nsandbox = "read-only"\n').get('implementer')?.launch.sandbox, { mode: 'read-only', writableRoots: [], network: 'full' });
   assert.deepEqual(launch('sandbox = "read-only"\nnetwork = "none"')?.sandbox, { mode: 'read-only', writableRoots: [], network: 'none' });

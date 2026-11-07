@@ -269,7 +269,7 @@ Events, after `subscribe`:
 | --- | --- |
 | `cland role set <session> <role> [--note-file <file>] [--move]` | Assigns the role; prints `rev-1 [Reviewer]: role set` (`(offline)` when the session is not connected). `--note-file` (a Markdown note) or `--move` moves the Coordinator from its holder (Handover). |
 | `cland role clear <session>` | Revokes the session's role. |
-| `cland role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]` | Saves the role's launch settings in `.cland/roles.toml`, applying from its next launch. Requires at least one launch flag; `--model ""` and `--account ""` use the harness's default. `--json` prints the raw result. |
+| `cland role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--pool …] [--json]` | Saves the role's launch settings in `.cland/roles.toml`, applying from its next launch. Requires at least one launch flag; `--model ""` and `--account ""` use the harness's default. `--json` prints the raw result. |
 | `cland role list` | Each role with its launch defaults and holders, and the coordinator or `no coordinator`; `--json` for the raw value. |
 
 ### Handover
@@ -418,3 +418,20 @@ the pushed build at admission. The optional pending.head survives queue/restart.
 Legacy requests without Head remain accepted with ordered retirement. Unrelated
 verdicts do not settle pinned work; ancestry is computed asynchronously. No new
 role clause lines or permissions are needed.
+
+
+### Role host pool defaults
+
+`[<role>.launch] pool = "agents"` records the role's host pool; an omitted key
+resolves to `local`, including older files and generated templates. Pool names
+use 1–64 ASCII letters, digits and hyphens and start with a letter or digit.
+The parser checks syntax independently of `config.toml`; pool existence belongs
+to launch admission. `cland role launch implementer --pool agents` saves the key
+and `cland role list` and `roles-loaded` show the resolved pool. This setting
+records placement intent; scheduler-based pool launch admission is separate.
+
+Coordinator and Aide roles run only on `local`. A remote pool for either is
+refused by the same policy used for explicit host placement, before a settings
+write. Invalid file edits keep the last good roles and block new role launches
+until corrected. Older hub role-list replies omit `pool`; the CLI displays
+`local` for those replies.

@@ -19,7 +19,7 @@ function describe(v: RoleList): string {
     const sandbox = box && `sandbox ${box.mode}${details ? ` (${details})` : ''}`;
     const guard = r.launch.harness === 'opencode' ? ["guard: OpenCode's own"]
       : [`permissions ${r.launch.permissions ?? 'harness default'}`, `approval ${r.launch.approval ?? 'harness default'}`, sandbox || 'sandbox harness default'];
-    const launch = [r.launch.harness, `model ${r.launch.model ?? 'harness default'}`, `effort ${r.launch.effort ?? 'harness default'}`, `account ${r.launch.account ?? 'harness default'}`, ...guard].join(', ');
+    const launch = [r.launch.harness, `pool ${r.launch.pool ?? 'local'}`, `model ${r.launch.model ?? 'harness default'}`, `effort ${r.launch.effort ?? 'harness default'}`, `account ${r.launch.account ?? 'harness default'}`, ...guard].join(', ');
     lines.push(`${r.label}${r.exclusive ? ' (one holder)' : ''}  launch: ${launch || 'harness default'}`);
     for (const warning of r.warnings ?? []) lines.push(`  warning: ${warning}`);
     lines.push(r.holders.length ? r.holders.map((h) => `  ${holderLine(h)}`).join('\n') : '  no holder');
@@ -47,7 +47,7 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
   switch (sub) {
     case 'launch': {
       const [role, ...flags] = rest;
-      if (!role || role.startsWith('--')) throw new Error('usage: cland role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]');
+      if (!role || role.startsWith('--')) throw new Error('usage: cland role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--pool …] [--json]');
       const fields: LaunchFields = {};
       for (let i = 0; i < flags.length; i++) {
         const flag = flags[i]!;

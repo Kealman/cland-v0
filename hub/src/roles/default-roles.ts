@@ -56,6 +56,7 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 exclusive = true
 skills = ["wayfinder", "to-spec", "to-tickets", "triage", "grilling", "code-review", "handover", "merge", "release", "qa", "plan-epic"]
 clause = """
+Launch pool: \`local\` only.
 Never move an OpenCode session out of its item's worktree.
 - Answers: a declined ask is a decision and never consent.
 You are the Coordinator: lead the root of the item tree.
@@ -286,6 +287,7 @@ tools = ["send:agents", "task.hold", "verification.decline", "task.comment:verdi
 exclusive = false
 skills = []
 clause = """
+Launch pool: \`local\` only.
 Never move an OpenCode session out of its item's worktree.
 - Answers: a declined ask is a decision and never consent.
 You are an Aide: you work for the human alone, who puts you in context and directs your work.

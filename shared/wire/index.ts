@@ -1030,10 +1030,12 @@ export type ClientRequest =
 export type LaunchFields = Partial<Record<typeof LAUNCH_FIELDS[number], string>>;
 
 // hub/src/roles/launch.ts
-export const LAUNCH_FIELDS = ['harness', 'model', 'effort', 'account', 'permissions'] as const;
+export const LAUNCH_FIELDS = ['harness', 'model', 'effort', 'account', 'permissions', 'pool'] as const;
 
 // hub/src/protocol.ts
 export type RoleLaunch = {
+  /** Absent on older hubs; clients resolve it to local. */
+  pool?: string;
   harness: string;
   account: string | null;
   permissions: string | null;

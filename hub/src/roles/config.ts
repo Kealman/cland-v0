@@ -4,6 +4,8 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { parse } from 'smol-toml';
+import { parsePoolName } from '../host/pool-name.ts';
+import { checkRoleHost } from '../host/role-placement.ts';
 import { ROLE_NAMES, nameRefusal } from '../names.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from '../hub/budget.ts';
@@ -15,6 +17,7 @@ import { DEFAULT_PERMISSIONS, grantRefusal, customGrantRefusal } from './permiss
 import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Permissions, type Sandbox } from '../adapters/contract.ts';
 
 export type LaunchDefaults = {
+  pool: string;
   harness: string;
   account: string | null;
   /** null: the harness's own default. */
@@ -173,10 +176,12 @@ function parseDefinitions(text: string, fallback: RolesConfig | null, allowedHar
     if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${where}.exclusive must be true or false`);
     if (isCustom) {
       for (const key of Object.keys(t)) if (!['clause', 'skills', 'exclusive', 'launch', 'permissions'].includes(key)) throw new Error(`${where}.${key}: unknown field`);
-      for (const key of Object.keys(launch)) if (!['harness', 'model', 'effort', 'account', 'approval', 'sandbox', 'writable_roots', 'network', 'permissions'].includes(key)) throw new Error(`${where}.launch.${key}: unknown field`);
+      for (const key of Object.keys(launch)) if (!['pool', 'harness', 'model', 'effort', 'account', 'approval', 'sandbox', 'writable_roots', 'network', 'permissions'].includes(key)) throw new Error(`${where}.launch.${key}: unknown field`);
       for (const key of Object.keys(permissions)) if (key !== 'tools') throw new Error(`${where}.permissions.${key}: unknown field`);
       if (!optString(t.clause, `${where}.clause`)) throw new Error(`${where}.clause is required`);
     }
+    const pool = launch.pool === undefined ? 'local' : parsePoolName(typeof launch.pool === 'string' ? launch.pool : '');
+    checkRoleHost(role, pool);
     const selectedHarness = launch.harness === undefined ? builtin?.harness : launch.harness;
     const harness = allowedHarnesses === undefined ? optString(selectedHarness, `${where}.launch.harness`)
       : oneOf(selectedHarness, allowedHarnesses, `${where}.launch.harness`);
@@ -191,6 +196,7 @@ function parseDefinitions(text: string, fallback: RolesConfig | null, allowedHar
       ...(nativePolicy ? { policyOverrides: Object.fromEntries(ignored.map(key => [key, launch[key]])) } : {}),
       ...(ignored.length ? { warnings: [`${where}.launch: OpenCode ignores ${ignored.join(', ')}; OpenCode's own configuration governs`] } : {}),
       launch: {
+        pool,
         account: optString(launch.account, `${where}.launch.account`),
         harness,
         model: optString(launch.model, `${where}.launch.model`),

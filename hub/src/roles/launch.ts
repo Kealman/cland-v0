@@ -7,7 +7,7 @@ import { CODEX_SANDBOX } from './template.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { namedAccount, readAccounts } from '../accounts/registry.ts';
 
-export const LAUNCH_FIELDS = ['harness', 'model', 'effort', 'account', 'permissions'] as const;
+export const LAUNCH_FIELDS = ['harness', 'model', 'effort', 'account', 'permissions', 'pool'] as const;
 export type LaunchFields = Partial<Record<typeof LAUNCH_FIELDS[number], string>>;
 export type RoleLaunchResult = { role: string; launch: LaunchDefaults; changes: LaunchFields; applies: string };
 

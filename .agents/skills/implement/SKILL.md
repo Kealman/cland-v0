@@ -294,3 +294,9 @@ spend with pool-specific image/recovery records. Host creation remains refused
 outside sealed tests pending E-1534 host admission; image preparation is allowed.
 Use the scripted pool preparation tests and preserve executor preparation tests
 unchanged. See [pool preparation](../../../docs/hub/host-providers.md#pool-images).
+
+
+Role host pool settings use `[<role>.launch] pool` (default `local`) or
+`cland role launch <role> --pool <pool>`. Coordinator and Aide accept only
+`local`. Check syntax independently of pool existence; see
+[role pool defaults](../../../docs/hub/roles.md#role-host-pool-defaults).

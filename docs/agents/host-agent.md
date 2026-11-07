@@ -644,3 +644,9 @@ Host creation, inventory and destruction (`cland host create [pool]`, `cland hos
 share prepare/revoke's local human CLI or Neovim boundary. Implementers exercise
 these through sealed disposable fixtures. The [provider reference](../hub/host-providers.md#create-to-ready)
 names current provider prerequisites, lifecycle receipts and retained failures.
+
+
+Role placement intent is stored in `[<role>.launch] pool` in `roles.toml`,
+defaulting to `local`. `cland role launch <role> --pool <pool>` edits it;
+Coordinator and Aide accept only `local`. Syntax is checked when loading roles,
+independently of the pool configuration. See [role pool defaults](../hub/roles.md#role-host-pool-defaults).

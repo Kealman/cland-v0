@@ -1,7 +1,7 @@
 // T2: role snapshots and permission refreshes in-process; slow CLI coverage is in roles-snapshot-cli.test.ts.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles, RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
@@ -290,4 +290,36 @@ test('OpenCode role snapshots warn once for ignored keys in validation and role 
   assert.deepEqual(records.filter(row => row.event === 'roles-warning').map(row => row.warning), [warning]);
   const launch = file.get().get('implementer')!.launch;
   assert.deepEqual([launch.approval, launch.sandbox, launch.permissions], [null, null, null]);
+});
+
+
+test('invalid Coordinator and Aide pools retain the last good role snapshot and loaded pools', async t => {
+  const root = await tempProject(t);
+  const path = join(root, '.cland', 'roles.toml');
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const logs: Array<Record<string, unknown>> = [];
+  const file = new RolesFile(path, row => logs.push(row));
+  t.after(() => file.stop());
+  await writeFile(path, '[implementer.launch]\npool = "agents"');
+  await file.fresh();
+  const good = file.get();
+  assert.equal(good.get('implementer')!.launch.pool, 'agents');
+  const loaded = logs.find(row => row.event === 'roles-loaded')!;
+  assert.equal((loaded.launch as Record<string, { pool: string }>).implementer!.pool, 'agents');
+  // Atomic replacement gives fresh() a new inode even when tmpfs stamps share a tick.
+  const replace = async (text: string) => {
+    const next = join(root, '.cland', 'next-roles.toml');
+    await writeFile(next, text);
+    await rename(next, path);
+  };
+  for (const role of ['coordinator', 'aide']) {
+    await replace(`[${role}.launch]\npool = "agents"`);
+    await file.fresh();
+    assert.match(file.launchError()!, /Coordinator and Aide roles run only on the local host/);
+    assert.equal(file.get(), good);
+  }
+  await replace('[implementer.launch]\npool = "next"');
+  await file.fresh();
+  assert.equal(file.launchError(), null);
+  assert.equal(file.get().get('implementer')!.launch.pool, 'next');
 });

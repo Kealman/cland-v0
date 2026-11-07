@@ -115,7 +115,7 @@ test('task text output preserves an old-hub item without optional card fields', 
         if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
         else {
           requests.push(frame.type);
-          peer.write(JSON.stringify({ type: 'result', id: frame.id, ok: true, value: { item } }) + '\n');
+          peer.write(JSON.stringify({ type: 'result', id: frame.id, ok: true, value: frame.type === 'role.list' ? { roles: [{ role: 'implementer', label: 'Implementer', exclusive: false, skills: [], launch: { harness: 'codex', account: null, permissions: null, model: null, effort: null, approval: null, sandbox: null }, holders: [] }], coordinator: null } : { item } }) + '\n');
         }
       }
     });
@@ -138,6 +138,10 @@ test('task text output preserves an old-hub item without optional card fields', 
     assert.doesNotMatch(result.stdout, /undefined/);
   }
   assert.deepEqual(requests, ['task.view', 'task.comment']);
+  const legacyRoles = await cland(root, 'role', 'list');
+  assert.equal(legacyRoles.code, 0, legacyRoles.stderr);
+  assert.match(legacyRoles.stdout, /Implementer.*pool local/);
+  assert.doesNotMatch(legacyRoles.stdout, /undefined/);
   Object.assign(item, {
     criteriaCounts: { total: 7, done: 2, verified: 3, stale: 1, failed: 1 },
     closed: '2026-10-13T17:02:00Z',
