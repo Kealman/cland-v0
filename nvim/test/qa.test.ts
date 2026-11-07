@@ -227,7 +227,7 @@ test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   const { screen, state } = run.line.evidence as { screen: string; state: { mode: string; roles: Array<{ role: string; launch: Record<string, unknown> }> } };
   assert.deepEqual(state.roles.find((r) => r.role === 'coordinator')?.launch, {
-    harness: 'codex', model: 'qa-model', effort: 'low',
+    pool: 'local', harness: 'codex', model: 'qa-model', effort: 'low',
     sandbox: { mode: 'danger-full-access', network: 'full', writableRoots: [] },
   });
   // the launcher's float is on the grid, with the keys typed into it
