@@ -9,10 +9,11 @@ import { AgentClient } from '../src/host/agent-client.ts';
 test('new client accepts original protocol-1 hello without capabilities',async()=>{
  const root=await mkdtemp(join(tmpdir(),'agent-client-'));
  const original={protocol:1,version:'previous',pid:123,bootId:'original'};
- const server=createServer(socket=>socket.once('data',bytes=>{const request=JSON.parse(bytes.toString());socket.write(JSON.stringify({id:request.id,ok:true,result:original})+'\n');}));
+ const server=createServer(socket=>socket.on('data',bytes=>{const request=JSON.parse(bytes.toString());socket.write(JSON.stringify({id:request.id,...(request.op==='hello'?{ok:true,result:original}:{ok:false,error:'previous spawn failure'})})+'\n');}));
  let client:AgentClient|undefined;
  try {
   const path=join(root,'agent.sock');await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(path,resolve);});
   client=await AgentClient.connect(path,'synthetic');assert.deepEqual(client.hello,original);
+  await assert.rejects(client.request('spawn',{}), error => (error as Error).message === 'previous spawn failure' && !('code' in (error as Error)));
  } finally {await client?.close();await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(root,{recursive:true,force:true});}
 });

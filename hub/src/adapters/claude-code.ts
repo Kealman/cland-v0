@@ -1,3 +1,4 @@
+import { memoryFloorDetails } from '../host/agent/memory.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { MissingClaudeGeneration } from '../host/host.ts';
@@ -647,6 +648,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         if(this.#machine(p).name!=='local')this.#saveFailedGeneration({generation:basename(this.#launchDirectories.get(p.sessionId)!),process:{...p,pid:null,harnessId:null,startedAt:new Date().toISOString(),status:'running'},privateDirectory:this.#launchDirectories.get(p.sessionId)!,previousGeneration:previousGeneration??null,...(previousDirectory?{previousDirectory}:{}),phase:'launching'});
         attempted=true;
         const r = yield* wait(this.#run(args, p.cwd, p, undefined, resumed, launchToken).catch(error => {
+          if(memoryFloorDetails(error))throw error;
           throw Object.assign(new Error(`${error instanceof Error ? error.message : String(error)}${remedy}`),{code:(error as NodeJS.ErrnoException).code});
         }));
         const harnessId = ClaudeCodeAdapter.parseBackgroundId(r.stdout);
@@ -687,7 +689,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
           const previous=this.#failedGeneration(p.sessionId);
           const record=(previous?.generation===basename(directory)?previous:undefined)??{generation:basename(directory),process:launched??{...p,pid:null,harnessId:null,startedAt:new Date().toISOString(),status:'running'},privateDirectory:directory,previousGeneration:previousGeneration??null,...(previousDirectory?{previousDirectory}:{}),phase:attempted?'launching' as const:'prepared' as const};
           if(launched)record.process={...launched};
-          if(!launched&&!backgroundStarted&&(err as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED')record.phase='prepared';
+          if(!launched&&!backgroundStarted&&((err as NodeJS.ErrnoException).code==='CLAND_AGENT_ADMISSION_REFUSED'||memoryFloorDetails(err)))record.phase='prepared';
           try{this.#saveFailedGeneration(record);}catch(checkpoint){this.#failedGenerations.set(p.sessionId,record);err=new Error('Claude cleanup-incomplete: failed generation checkpoint unavailable',{cause:checkpoint});}
           const finish:LaunchSettled=()=>this.#failedSettlement(record.process)();
           return yield* wait(this.#recoveries.failed(p.sessionId,p.name,files,err,finish));

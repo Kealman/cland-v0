@@ -291,6 +291,7 @@
       "tier": "T3",
       "scenario": "local-host-liveness"
     },
+    "hub/test/host-memory.test.ts": "T2",
     "hub/test/host-orphans.test.ts": "T3",
     "hub/test/host-pools-config.test.ts": "T1",
     "hub/test/host-prelude.test.ts": "T1",

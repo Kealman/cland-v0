@@ -1,3 +1,4 @@
+import { memoryFloorDetails, type MemoryFloorDetails } from './agent/memory.ts';
 import { REF_FLUSH_CAPABILITY } from './agent/watch.ts';
 import { MissingClaudeGeneration } from './host.ts';
 import { CLAUDE_LAUNCH_CAPABILITY } from './agent/claude.ts';
@@ -9,6 +10,18 @@ import type { Host, HostCommand, HostLaunchLayout, HostCapturedProcess } from '.
 import type { SshTransport } from '../transport/ssh.ts';
 import type { AgentEvent } from './agent/protocol.ts';
 import type { PreparedOutcome } from './agent/prepared.ts';
+
+export class HostMemoryFloorRefusal extends Error {
+  readonly code = 'memory-floor';
+  readonly availableBytes: number;
+  readonly floorBytes: number;
+  readonly host: string;
+  constructor(host: string, details: MemoryFloorDetails) {
+    super(`host ${host}: available memory ${details.availableBytes} bytes is below floor ${details.floorBytes} bytes`);
+    this.name = 'HostMemoryFloorRefusal'; this.host = host;
+    this.availableBytes = details.availableBytes; this.floorBytes = details.floorBytes;
+  }
+}
 
 type Options = { terminalAttachCommand?: (name: string) => string; watchStatus?: (rows:Array<{path:string;branch:string;state:string;cause?:string}>)=>void; expectedVersion?: string; agentReady?: () => Promise<void>; restoreAdoptedWorkers?: (client:AgentClient) => Promise<void>; updateAgent?: (previousVersion: string, signal:AbortSignal) => Promise<void>; onTable?: (rows: unknown[], bootId: string) => void; log?: (entry: Record<string, unknown>) => void; available?: () => boolean; codeDirectory?: string; name: string; transport: Pick<SshTransport, 'status' | 'forward' | 'unforward'>; connect: () => Promise<AgentClient>; layout: HostLaunchLayout };
 /** No fallback to native hub operations, including while connecting or disconnected. */
@@ -127,7 +140,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       let outcome:PreparedOutcome|undefined;
       try{outcome=await request(await connected(),'settle-prepared',{token,recoveryKey}) as PreparedOutcome;}catch{/* No terminal outcome: keep the admitted operation fenced. */}
       if(outcome?.state==='accepted'){unknown.delete(token);return outcome.result as T;}
-      if(outcome?.state==='failed'){unknown.delete(token);throw new Error(`host ${o.name}: tunnel agent confirmed failure: ${outcome.error}`);}
+      if(outcome?.state==='failed'){unknown.delete(token);const memory=memoryFloorDetails(outcome);if(memory)throw new HostMemoryFloorRefusal(o.name,memory);throw new Error(`host ${o.name}: tunnel agent confirmed failure: ${outcome.error}`);}
       await pause();
     }
   };

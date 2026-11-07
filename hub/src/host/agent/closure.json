@@ -41,6 +41,10 @@
       "sha256": "6d042fbe93d4b1e85fdab3bf32c0694923661de05854767c0f10343a8e4a88c6"
     },
     {
+      "path": "hub/src/host/agent/memory.ts",
+      "sha256": "074a9d50a7b7679b91f993701faabc1522cb3d853e60dd7c4741b50a34e34a48"
+    },
+    {
       "path": "hub/src/host/agent/native.ts",
       "sha256": "388b2802ecdd18204727d9bfe0476081e1111963c3883c23269dccc4556994c2"
     },
@@ -62,7 +66,7 @@
     },
     {
       "path": "hub/src/host/agent/prepared.ts",
-      "sha256": "08087e79b78e331cccdc210132621e2e761d96d5b760713309228f878558e706"
+      "sha256": "83f76bae4a571ed56bb52a39c0eecbcc7e3ff9e71a6f2563fc3dac99f302c489"
     },
     {
       "path": "hub/src/host/agent/process-usage.ts",
@@ -70,11 +74,11 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "0c974e2c211c64994209cfac3252419d19738a8f933bb7bb535a4f80d6fd3ac6"
+      "sha256": "577b0ed86588b567727eb8bd0d62a7212ee3ceed59b2bb5fb82c77bb571e5f0c"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",
-      "sha256": "24346363a5fd7b97d0deeee6a2a491d1602dba662454b4f15f15ccd1e7d59a46"
+      "sha256": "f8095b497bbb1d247ae71fdb435d0fe8994141a7d822b5f90e86f2fccd9ef148"
     },
     {
       "path": "hub/src/host/agent/redact.ts",
@@ -94,7 +98,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "21b64fdcc06bfd55b9925dd8ce45a389e6c16848150a96a084cf3f638d09103e"
+      "sha256": "9173b3884907e398a729951961c6884a082d1ba7e574659e7754eeaa9f7b9db5"
     },
     {
       "path": "hub/src/host/agent/stat-directory.ts",

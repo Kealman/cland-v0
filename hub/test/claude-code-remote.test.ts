@@ -22,7 +22,7 @@ import { spawn } from 'node:child_process';
 import { ownProcess } from './process-cleanup.ts';
 import { deliverRuntime, agentVersionHandoff } from '../src/host/code-delivery.ts';
 
-async function remoteClaudeFixture(t:TestContext, options:{upgrade?:boolean;nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
+async function remoteClaudeFixture(t:TestContext, options:{memoryFloor?:boolean;upgrade?:boolean;nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
  let replySocket:import('node:net').Socket|undefined,nativeAbortHeld=false;
  const f=await sshHostFixture(t,{startTransport:false,...(options.nativeRefusal==='aborted'?{beforeRun:async(signal:AbortSignal)=>{
    if(nativeAbortHeld)return;nativeAbortHeld=true;
@@ -105,10 +105,10 @@ async function remoteClaudeFixture(t:TestContext, options:{upgrade?:boolean;nati
  const ui=await connectUi(t,hub.discovery);await ui.request({type:'subscribe'});
  if(options.refuseRoot)await chmod(fake.home,0o755);
  const reply=await ui.request({type:'session.launch',name:'worker',harness:'claude-code',role:'implementer',host:'f1',cwd:f.fake.home},10000);
- assert.equal(reply.ok,!options.rollback&&!options.failedAdoption&&!options.failedResult&&!options.refuseRoot&&!options.nativeRefusal&&!options.lostNativeReply&&!options.sentAbort,reply.error);
+ assert.equal(reply.ok,!options.rollback&&!options.failedAdoption&&!options.failedResult&&!options.refuseRoot&&!options.nativeRefusal&&!options.lostNativeReply&&!options.sentAbort&&!options.memoryFloor,reply.error);
  if(options.lostNativeReply||options.sentAbort)expectedIncompleteOperation=lostToken;
  const row=(reply.value as {process:{pid:number;pidIdentity:string;harnessId:string}}|undefined)?.process!;
- return {f,fake,machine,remote,clock,ui,hub,startHub,row,launchError:reply.error,expectIncompleteClose:(operation:string)=>{expectedIncompleteOperation=operation;},allowFailedStop:()=>{allowFailedStop=true;},holdFailedStop:()=>{const gate={entered:Promise.withResolvers<void>(),release:Promise.withResolvers<void>()};stopGate=gate;return gate;},nativeAlive,aliveReceipts:()=>aliveReceipts,credential:()=>credential,releaseClaude:()=>releaseClaude?.()};
+ return {f,fake,machine,nativeLaunchClaude:launchClaude,remote,clock,ui,hub,startHub,row,launchError:reply.error,expectIncompleteClose:(operation:string)=>{expectedIncompleteOperation=operation;},allowFailedStop:()=>{allowFailedStop=true;},holdFailedStop:()=>{const gate={entered:Promise.withResolvers<void>(),release:Promise.withResolvers<void>()};stopGate=gate;return gate;},nativeAlive,aliveReceipts:()=>aliveReceipts,credential:()=>credential,releaseClaude:()=>releaseClaude?.()};
 }
 
 for(const name of ['worker','second'])test(`remote Claude pre-spawn root refusal permits immediate ${name==='worker'?'same-name':'different-name'} launch`,{timeout:8 * testWaitMs() + 120000},async t=>{
@@ -710,4 +710,26 @@ for(const mode of ['aborted','throw','no-pid-error','pid-existed'] as const)test
  const result=await run(bin,['-e','process.exit(1)'],env,commandTimeoutMs,false,mode==='aborted'?AbortSignal.abort():undefined,'utf8',root);
  assert.equal(result.nativeAdmission,mode==='pid-existed'?undefined:'no-process');
  if(mode==='pid-existed')assert.equal(result.code,1,'a native PID existed even though the command failed');
+});
+
+
+test('remote Claude memory floor refuses actual launchClaude with no process then admits exact floor', {timeout:8 * testWaitMs() + 120000}, async t=>{
+  const d=await remoteClaudeFixture(t,{memoryFloor:true,setup:async f=>{
+    await writeFile(join(f.fake.directory,'available-memory'),JSON.stringify({availableBytes:1200000000}));
+  }});
+  assert.match(d.launchError!,/available memory 1200000000 bytes/);
+  assert.equal((await d.fake.calls()).filter(call=>call.args[0]==='--bg').length,0);
+  assert.deepEqual(JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8').catch(error=>{if(error.code==='ENOENT')return '[]';throw error;})),[]);
+  await assert.rejects(d.nativeLaunchClaude({command:process.execPath,args:[],cwd:d.f.fake.home,env:d.f.env},'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'), (error:any)=>error.code==='memory-floor'&&error.host==='f1'&&error.availableBytes===1200000000);
+  await writeFile(join(d.f.fake.directory,'available-memory'),JSON.stringify({availableBytes:1300000000}));
+  const reply=await d.ui.request({type:'session.launch',name:'worker',harness:'claude-code',role:'implementer',host:'f1',cwd:d.f.fake.home},testWaitMs());
+  assert.equal(reply.ok,true,reply.error);
+  const row=(reply.value as {process:{pid:number;pidIdentity:string}}).process;
+  const birth=await d.machine.identity(row.pid);
+  const worker=await eventually('exact-floor durable native worker ownership',async()=>{
+    const workers=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string}>;
+    return workers.find(worker=>worker.pid===row.pid&&worker.identity===birth?.pidIdentity);
+  },testWaitMs());
+  assert.equal(worker.pid,row.pid);assert.equal(worker.identity,birth?.pidIdentity);
+  const stopped=await d.ui.request({type:'session.stop',session:'worker'},testWaitMs());assert.equal(stopped.ok,true,stopped.error);
 });

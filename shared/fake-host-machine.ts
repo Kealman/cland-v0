@@ -17,6 +17,7 @@ export async function createFakeHost(root: string, name: string) {
   await writeFile(join(directory, 'host-key.pub'), key);
   await writeFile(join(directory, 'client-key'), 'FAKE CLIENT KEY\n', { mode: 0o600 });
   await writeFile(join(directory, 'boot-id'), randomUUID());
+  await writeFile(join(directory, 'available-memory'), JSON.stringify({availableBytes:8 * 1024 ** 3}));
   const knownHosts = join(directory, 'known_hosts');
   await writeFile(knownHosts, `${name} ${key}\n`);
   return { directory, home, run, knownHosts, bootId: join(directory, 'boot-id'), key };

@@ -1,3 +1,4 @@
+import { memoryFloorDetails } from './agent/memory.ts';
 import { REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './agent/watch.ts';
 import { createConnection } from 'node:net';
 import type { Socket } from 'node:net';
@@ -22,7 +23,7 @@ export class AgentClient extends EventEmitter {
           const frame = JSON.parse(line);
           if (frame.event) { this.emit('event', frame); continue; }
           const pending = this.#pending.get(frame.id);
-          if (pending) { this.#pending.delete(frame.id); clearTimeout(pending.timer); if (frame.ok) pending.resolve(frame.result); else pending.reject(Object.assign(new Error(frame.error), typeof frame.code === 'string' ? {code:frame.code} : {})); }
+          if (pending) { this.#pending.delete(frame.id); clearTimeout(pending.timer); if (frame.ok) pending.resolve(frame.result); else pending.reject(Object.assign(new Error(frame.error), typeof frame.code === 'string' ? {code:frame.code,...memoryFloorDetails(frame)} : {})); }
         } catch { socket.destroy(new Error('malformed agent reply')); }
       }
     });

@@ -1,3 +1,4 @@
+import { requireSpawnMemory } from './memory.ts';
 import { CLAUDE_STOP_GRACE_MS, stopClaude, claudeProcessMembers, claudeDescendantCapture, claudePinnedTargets, claudeRootReplacement, observeClaudeProcesses, processTargetKey as targetKey } from './claude-stop.ts';
 import { spawn, execFile } from 'node:child_process';
 import { readFile, mkdir, readdir, rm, open, access } from 'node:fs/promises';
@@ -34,6 +35,7 @@ export class AgentProcesses {
   #receipts = new Map<string, AgentEvent>();
   #closed = false;
   #file: string;
+  #runDir: string;
   #launches: string;
   #admissions = new Set<string>();
   #inflight = new Set<string>();
@@ -47,6 +49,7 @@ export class AgentProcesses {
   #nativeCompletions = new Map<ProcessRow, Promise<void>>();
   #emit: (event: AgentEvent) => void;
   constructor(runDir: string, env: NodeJS.ProcessEnv, emit: (event: AgentEvent) => void, hooks: ProcessHooks = {}) {
+    this.#runDir = runDir;
     this.#file = join(runDir, 'processes.json'); this.#launches = join(runDir, AGENT_LAUNCH_DIRECTORY); this.#env = env; this.#emit = emit; this.#hooks = hooks;
   }
   async load() {
@@ -164,6 +167,7 @@ export class AgentProcesses {
   }
   async spawn(args: Record<string, unknown>, preparedLog?: FileHandle, admission?: {launchId: string; accepted: (result: {pid:number;identity:string}) => Promise<void>}) {
     if (this.#closed) throw new Error('agent closing');
+    await requireSpawnMemory(this.#runDir, this.#env);
     if (!process.execve) throw new Error('native execve unavailable');
     if (typeof args.command !== 'string' || !args.command || !Array.isArray(args.args) || !args.args.every(a => typeof a === 'string') || typeof args.cwd !== 'string' || !args.env || typeof args.env !== 'object' || Array.isArray(args.env)) throw new Error('invalid spawn');
     const env: Record<string, string> = {};

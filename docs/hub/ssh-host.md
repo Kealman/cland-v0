@@ -340,3 +340,12 @@ revokes the persistent registration; ordinary hub shutdown leaves registrations
 registered so the next startup reopens them. Add/remove serialize with shutdown;
 quiesce prevents new additions and drains in-flight preparation before closure.
 No new frame or CLI command is introduced by this owner API.
+
+Spawn admission enforces the agent's decimal 1.3 GB memory floor independently
+of slots. `HostMemoryFloorRefusal` (exported from `host/ssh-host.ts`) carries code
+`memory-floor`, `host`, `availableBytes` and `floorBytes`. Direct/prepared spawns and Claude launches
+share the admission guard; durable prepared failures preserve the typed refusal
+when the reply is lost. Older agents' fieldless failures remain generic. Native memory admission uses
+Linux MemAvailable only; non-Linux without a fake override has no verdict and
+admits launches. See
+[the agent memory override](../agents/host-agent.md) for fake-host byte controls.

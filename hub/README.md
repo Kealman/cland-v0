@@ -100,6 +100,8 @@ for reuse, old-reader retention and legacy-directory refusal.
 Configured host pool names use 1–64 ASCII letters, digits and hyphens, beginning
 with a letter or digit; see [pool images](../docs/hub/host-providers.md#pool-images).
 
+Host spawn memory admission and fake-host controls: [host agent](../docs/agents/host-agent.md).
+
 Host and verification accounting share the version-1 per-user spend ledger. Host
 reservations and renewals obey both the shared daily cap and hosts sub-cap; UTC
 settled totals are available per category and pool. See [spend accounting](../docs/hub/running.md#leases-cleanup-and-spend)

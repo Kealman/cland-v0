@@ -218,3 +218,11 @@ the authenticated V2 hello before launching Claude through the delivered CLI,
 spoke and mod paths. A routed message must return a `pong:` message over the
 mod bridge and a completed native turn receipt. It uses no browser or real Claude.
 The fixture owns the supervisor and joins all writers before root removal.
+
+T-1741: `remote Claude memory floor refuses actual launchClaude with no process
+then admits exact floor` sets the fake directory's `available-memory` to JSON
+`{"availableBytes":1200000000}` under `CLAND_FAKE_HOSTS`. It proves failed UI launch,
+no native --bg call or worker row, and a typed direct launchClaude refusal naming
+host f1 and available bytes. It then sets 1,300,000,000 bytes and proves the real
+adapter route has a durable native worker before stopping it. The shared fixture
+owns teardown. No provider API or live account is used.

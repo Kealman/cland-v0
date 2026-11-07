@@ -298,6 +298,8 @@ outside sealed tests pending E-1534 host admission; image preparation is allowed
 Use the scripted pool preparation tests and preserve executor preparation tests
 unchanged. See [pool preparation](../../../docs/hub/host-providers.md#pool-images).
 
+For host spawn memory admission and fake byte controls, see
+[host-agent memory admission](../../../docs/agents/host-agent.md).
 
 Role host pool settings use `[<role>.launch] pool` (default `local`) or
 `cland role launch <role> --pool <pool>`. Coordinator and Aide accept only

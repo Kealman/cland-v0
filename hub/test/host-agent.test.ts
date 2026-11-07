@@ -38,6 +38,7 @@ test('agent persists detached process identity and usage, fences stale signals a
   const { eventually } = await import('./harness.ts');
   const boot = join(root, 'boot'); await writeFile(boot, '11111111-1111-1111-1111-111111111111');
   const env = fixtureEnvironment(root, process.env, { CLAND_FAKE_HOSTS: '1', CLAND_HOST_BOOT_ID_FILE: boot, CLAND_HOST_SECRET: 'must-not-leak' });
+  await writeFile(join(root,'available-memory'),JSON.stringify({availableBytes:8*1024**3}));
   const options = { runDir: root, secret: 'secret', version: 'test', env, memoryIntervalMs: 20 };
   let server = await serveAgent(options);
   let client = await AgentClient.connect(server.socket, 'secret');
@@ -467,4 +468,65 @@ spawn(process.execPath,['-e',"global.keep=Buffer.alloc(64*1024*1024,1);require('
     assert.equal(await fixture.client.request('stop',parent),true);
     await eventually('retained writer native absence',async()=>await fixture.client.request('identity',{pid:writer.pid})===null||undefined);
   }finally{await clean();}
+});
+
+const MEMORY_SETUP_MS = 60_000;
+const MEMORY_BEHAVIOUR_MS = 60_000;
+const MEMORY_CLEANUP_MS = 60_000;
+test('memory floor refuses direct and prepared spawn, reports fake bytes and admits the exact floor', { timeout: MEMORY_SETUP_MS + MEMORY_BEHAVIOUR_MS + MEMORY_CLEANUP_MS }, async t => {
+  const { writeFile } = await import('node:fs/promises');
+  const { until } = await import('./until.ts');
+  const { sshHostFixture } = await import('./ssh-host-fixture.ts');
+  const f = await sshHostFixture(t, {memoryIntervalMs:20});
+  const client = await AgentClient.connect(f.paths.agentSocket, f.secrets.readSecret('f1'));
+  f.addCleanup(() => client.close());
+  const memoryFile = join(f.fake.directory, 'available-memory');
+  const setMemory = (availableBytes:number) => writeFile(memoryFile, JSON.stringify({availableBytes}));
+  await setMemory(1200000000);
+  const command = { command: process.execPath, args: ['-e', 'process.exit(0)'], cwd: f.fake.home, env: f.env };
+  const samples: number[] = [];
+  client.on('event', event => { if (event.event === 'memory') samples.push(event.availableBytes); });
+  await assert.rejects(client.request('spawn', command), (error: any) => error.code === 'memory-floor' && error.availableBytes === 1200000000);
+  assert.deepEqual(await client.request('processes', {}), []);
+  await until(() => samples.includes(1200000000), { what: 'fake memory event' });
+  await assert.rejects(f.host.spawn(command), (error: any) => error.name === 'HostMemoryFloorRefusal' && error.code === 'memory-floor' && error.host === 'f1' && error.availableBytes === 1200000000);
+  await setMemory(1300000000);
+  const prepared = await client.request('prepare-spawn', { ...command, operationId: '11111111-1111-1111-1111-111111111111', recoveryKey: 'test-key' }) as {token:string};
+  await setMemory(1299999999);
+  await assert.rejects(client.request('commit-prepared', prepared), (error: any) => error.code === 'memory-floor');
+  const outcome = await client.request('settle-prepared', {token:prepared.token,recoveryKey:'test-key'}) as any;
+  assert.equal(outcome.code, 'memory-floor'); assert.equal(outcome.availableBytes, 1299999999);
+  await setMemory(1300000000);
+  assert.deepEqual(await (await f.host.spawn(command)).exited, {code:0,signal:null});
+  await setMemory(1400000000);
+  assert.deepEqual(await (await f.host.spawn(command)).exited, {code:0,signal:null});
+  await assert.rejects(f.host.spawn({...command,command:'/missing-command'}), error => (error as any).code !== 'memory-floor');
+});
+
+test('memory fixture drains accepted server after failed client setup before removing its root', {timeout: MEMORY_SETUP_MS + MEMORY_CLEANUP_MS}, async t => {
+  const {sshHostFixture} = await import('./ssh-host-fixture.ts');
+  const {access} = await import('node:fs/promises');
+  let cleanup:()=>Promise<void> = async()=>{};
+  const owner = {after(work:()=>Promise<void>){let joined:Promise<void>|undefined;cleanup=()=>joined??=work();t.after(cleanup);}};
+  const f = await sshHostFixture(owner);
+  await assert.rejects(AgentClient.connect(f.paths.agentSocket,'wrong-secret'),/secret/);
+  await cleanup();
+  await assert.rejects(access(f.root),{code:'ENOENT'});
+});
+
+test('memory override is ignored without the fake-host marker and malformed fake bytes refuse', async () => {
+  const { writeFile } = await import('node:fs/promises');
+  const { availableMemory, requireSpawnMemory } = await import('../src/host/agent/memory.ts');
+  const root = await mkdtemp(join(tmpdir(), 'agent-memory-reader-'));
+  try {
+    await writeFile(join(root, 'available-memory'), JSON.stringify({availableBytes:0}));
+    assert.equal(await availableMemory(root, {CLAND_FAKE_HOSTS:'1'}), 0);
+    const native = await availableMemory(root, {});
+    if(process.platform==='linux')assert.ok(native!>0, 'real Linux reader ignores planted zero');
+    else {assert.equal(native,null);await requireSpawnMemory(root,{});}
+    for(const invalid of ['1200000000','{}','{"availableBytes":-1}','{"availableBytes":1.5}','{"availableBytes":"1300000000"}','malformed']){
+      await writeFile(join(root, 'available-memory'),invalid);
+      await assert.rejects(availableMemory(root, {CLAND_FAKE_HOSTS:'1'}), /invalid fake/);
+    }
+  } finally { await rm(root, {recursive:true,force:true}); }
 });

@@ -1,6 +1,6 @@
 # hub/test/host-agent.test.ts
 
-T3 `hub/test/host-agent.test.ts` runs isolated Unix sockets and the actual CLI with a scratch HOME, Git configuration and environment. Fake Linux and macOS hosts set `CLAND_FAKE_HOSTS` and `CLAND_HOST_BOOT_ID_FILE`; ordinary Linux agents read `/proc`. The native death test observes agent close before restarting and confirms the child's identity after restart. Cleanup captures native child ownership immediately, stops children and joins close and persistence before removing roots. No SSH, cloud or systemd is used. Tests bound event waits and readiness independently; RSS/CPU are snapshots, and memory is reported without enforcing a launch floor.
+T3 `hub/test/host-agent.test.ts` runs isolated Unix sockets and the actual CLI with a scratch HOME, Git configuration and environment. Fake Linux and macOS hosts set `CLAND_FAKE_HOSTS` and `CLAND_HOST_BOOT_ID_FILE`; ordinary Linux agents read `/proc`. The native death test observes agent close before restarting and confirms the child's identity after restart. Cleanup captures native child ownership immediately, stops children and joins close and persistence before removing roots. Memory admission cases use the fake SSH carrier; no real SSH host, cloud or systemd is used. Tests bound event waits and readiness independently; RSS/CPU are snapshots, and available-memory samples feed the shared 1,300,000,000-byte launch floor, with the Linux-only native policy and fake JSON override described below.
 
 Review fault controls hold spawn/exit checkpoints, kill the real CLI before the process-table checkpoint, fail log-close and socket mode changes, add a group member after capture, and check bounded 600-row previous-shape confirmed-closed recovery (one shared pass, zero terminal PID probes, 256 rows, under 64 KiB). Independent native ownership cleanup survives a refused protocol stop. Unknown exit status stays null.
 
@@ -17,3 +17,29 @@ start-tick assertion. CLI restart retains the captured birth on both platforms;
 changing the fixture boot revokes authority and restoring it cannot regain
 authority. Production Linux reads the kernel boot. The T2 host-boot-source file
 checks missing-file admission before recovery and real-host stray-variable safety.
+
+T-1741 memory cases use the shared SSH fixture owner, registered before server,
+client or child acquisition. The owner attempts every close, joins native writers
+and retains the root on incomplete teardown. `memory fixture drains accepted
+server after failed client setup before removing its root` proves failed client
+setup still closes the accepted server before the root is removed.
+
+Set `<fake-host-directory>/available-memory` to JSON
+`{"availableBytes":1200000000}`. The directory is beside `CLAND_HOST_BOOT_ID_FILE`
+(fallback: agent run directory). Only `CLAND_FAKE_HOSTS` enables this override.
+Shared fake hosts start with `{"availableBytes":8589934592}` (8 GiB). Unitless,
+malformed, negative, fractional and string byte values refuse admission.
+
+`memory floor refuses direct and prepared spawn, reports fake bytes and admits
+the exact floor` proves direct/SSH refusal at 1.2 GB, matching memory events,
+commit-time refusal after a drop to 1,299,999,999 bytes, durable failure settlement,
+and native completion at exactly 1,300,000,000 bytes and above. Setup, behaviour
+and cleanup have separate named allowances within the outer watchdog.
+`memory override is ignored without the fake-host marker and malformed fake bytes
+refuse` proves marker gating, invalid inputs and non-Linux no-verdict admission.
+Native Linux uses MemAvailable; non-Linux without override emits no memory sample.
+
+Run `node --test hub/test/host-agent.test.ts` under the stage preservation lock.
+`host-agent-client.test.ts` retains old hello and fieldless error compatibility.
+See also `host-memory.test.ts` for injected-reader T2 policy and
+`claude-code-remote.test.ts` for actual Claude launch admission.

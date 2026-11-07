@@ -1,3 +1,4 @@
+import { MemoryFloorRefusal, memoryFloorDetails, type MemoryFloorDetails } from './memory.ts';
 import { parseAgentFile } from './operations.ts';
 import { fileOperations } from './files.ts';
 import { randomUUID } from 'node:crypto';
@@ -16,7 +17,7 @@ import type { CheckoutOwnership, FileBirth } from './prepared-checkout.ts';
 
 type Phase = 'preparing' | 'git-running' | 'prepared' | 'committing';
 type Plan = { kind: 'spawn' | 'worktree' | 'stop' | 'run' | 'publishFile' | 'appendFile'; phase: Phase; args: Record<string, unknown>; recoveryKey?: string; cleanup?: FileBirth & {path:string}; checkout?: CheckoutOwnership; targets?: ProcessTarget[] };
-export type PreparedOutcome = {state:'accepted';result:unknown} | {state:'failed';error:string} | {state:'pending';reason:string};
+export type PreparedOutcome = {state:'accepted';result:unknown} | ({state:'failed';error:string} & Partial<MemoryFloorDetails>) | {state:'pending';reason:string};
 type Pending = { deadline: number; plan: Plan; log?: FileHandle; timer?: NodeJS.Timeout };
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 /** Tokens bind commits to admission; durable results reconcile a lost accepted reply. */
@@ -138,7 +139,7 @@ export class PreparedOperations {
       pending.timer=setTimeout(()=>{void this.abort(token).catch(error=>{this.#failures.set(token,error instanceof Error?error:new Error(String(error)));});},this.timeoutMs);
       this.#pending.set(token,pending);return {token,targets:plan.targets};
     } catch(error) {
-      this.#fenced.add(token);await log?.close();await this.#cleanup(token,plan);await this.#saveOutcome(token,plan,{state:'failed',error:String(error)});await this.#removePlan(token);throw error;
+      this.#fenced.add(token);await log?.close();await this.#cleanup(token,plan);await this.#saveOutcome(token,plan,{state:'failed',error:String(error),...memoryFloorDetails(error)});await this.#removePlan(token);throw error;
     }
   });}
   async #recoverCommit(token:string,plan:Plan):Promise<PreparedOutcome> {
@@ -193,7 +194,7 @@ export class PreparedOperations {
         this.#fenced.add(token);this.#failures.set(token,error instanceof Error?error:new Error(String(error)));throw error;
       }
       this.#fenced.add(token);await pending.log?.close();
-      await this.#cleanup(token,plan);await this.#saveOutcome(token,plan,{state:'failed',error:String(error)});await this.#removePlan(token);throw error;
+      await this.#cleanup(token,plan);await this.#saveOutcome(token,plan,{state:'failed',error:String(error),...memoryFloorDetails(error)});await this.#removePlan(token);throw error;
     }
   });}
   settle(token:string,recoveryKey:string) {return this.#serial(async():Promise<PreparedOutcome>=>{
@@ -234,7 +235,9 @@ export class PreparedOperations {
       if(nativeCommandIncomplete(result)){this.#fenced.add(token);throw Object.assign(new Error(result.error),{code:'CLAND_NATIVE_INCOMPLETE'});}
       result=boundedCommandResult(result);
       await this.#saveOutcome(token,pending.plan,{state:'accepted',result});await this.#removePlan(token);return result;
-    }).catch(error=>{this.#fenced.add(token);this.#failures.set(token,error instanceof Error?error:new Error(String(error)));throw error;});
+    }).catch(async error=>{
+      if(error instanceof MemoryFloorRefusal){await this.#saveOutcome(token,pending.plan,{state:'failed',error:error.message,...memoryFloorDetails(error)});await this.#removePlan(token);throw error;}
+      this.#fenced.add(token);this.#failures.set(token,error instanceof Error?error:new Error(String(error)));throw error;});
     this.#commands.set(token,running);
     try{return await running;}finally{this.#commands.delete(token);}
   }

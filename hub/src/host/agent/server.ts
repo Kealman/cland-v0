@@ -1,3 +1,4 @@
+import { availableMemory, memoryFloorDetails, requireSpawnMemory } from './memory.ts';
 import { refPushOwner } from './ref-push.ts';
 import { RefWatches, REF_FLUSH_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './watch.ts';
 import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY } from './claude.ts';
@@ -8,11 +9,10 @@ import { createConnection, createServer } from 'node:net';
 import type { Socket } from 'node:net';
 import { mkdir, chmod, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { totalmem, freemem } from 'node:os';
+import { totalmem } from 'node:os';
 import type { ProcessHooks } from './processes.ts';
 import { AgentProcesses } from './processes.ts';
 import { agentBootId } from './native.ts';
-import { readFile } from 'node:fs/promises';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { checkpoint } from './storage.ts';
 import { run as runCommand } from './command.ts';
@@ -146,7 +146,7 @@ export async function serveAgent(options: AgentOptions) {
                   try {result=await prepared.runCommand(token,recoveryKey,command,async()=>{
                     if(connection.destroyed)prepared.fenceCommand(token);
                     await options.runStarted?.(token,connection,controller.signal);
-                    if(typeof command.claudeGeneration==='string')return claude.launch(parsed,command.claudeGeneration,controller.signal);
+                    if(typeof command.claudeGeneration==='string'){await requireSpawnMemory(options.runDir,options.env??process.env);return claude.launch(parsed,command.claudeGeneration,controller.signal);}
                     return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd);
                   });} finally {commands.delete(token);}
                   break;
@@ -178,7 +178,7 @@ export async function serveAgent(options: AgentOptions) {
               connection.write(reply + '\n');
             }
           } catch (error) {
-            const frame = JSON.stringify({ id, ok: false, error: error instanceof Error ? error.message : 'operation failed', ...(typeof (error as NodeJS.ErrnoException)?.code === 'string' ? {code:(error as NodeJS.ErrnoException).code} : {}) }) + '\n';
+            const frame = JSON.stringify({ id, ok: false, ...memoryFloorDetails(error), error: error instanceof Error ? error.message : 'operation failed', ...(typeof (error as NodeJS.ErrnoException)?.code === 'string' ? {code:(error as NodeJS.ErrnoException).code} : {}) }) + '\n';
             if (!authenticated || /hello secret/.test(error instanceof Error ? error.message : '')) connection.end(frame); else connection.write(frame);
           }
         });
@@ -204,8 +204,8 @@ export async function serveAgent(options: AgentOptions) {
     await (options.socketChmod ? options.socketChmod(socket) : chmod(socket, 0o600));
     memoryTimer = setInterval(() => { memoryWork = memoryWork.then(async () => {
       await processes.reconcile();
-      let availableBytes = freemem();
-      if (process.platform === "linux") { const info = await readFile("/proc/meminfo", "utf8"); const kb = /^MemAvailable:\s+(\d+) kB/m.exec(info)?.[1]; if (!kb) return; availableBytes = Number(kb) * 1024; }
+      const availableBytes = await availableMemory(options.runDir, options.env ?? process.env);
+      if(availableBytes===null)return;
       broadcast({ event: "memory", totalBytes: totalmem(), availableBytes });
     }).catch(() => {}); }, options.memoryIntervalMs ?? 5000);
     const identity = await processes.identity(process.pid);
