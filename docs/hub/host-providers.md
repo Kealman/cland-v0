@@ -36,7 +36,10 @@ HostRecord. A matching registered identity may rejoin only after provider valida
 Independent manually configured fake hosts keep the existing registration path.
 Both the provider and `createFakeHost` use `shared/fake-host-machine.ts` and the
 short directory alias from `hostDirectory`. Homes, run directories, boot ids and
-pinned keys retain the existing fake transport shape.
+pinned keys retain the existing fake transport shape. The shared factory writes
+a self-ignore in each private machine directory before keys and runtime files,
+so a disposable parent Git project never stages the machine home or atomic
+checkpoint temporaries.
 
 Fake options include an injected clock, bootDelayMs, neverBoot, refuseUntil,
 failAcquire and ignoreDelete. Default lifecycle operations use no real timers. Lifecycle calls on one

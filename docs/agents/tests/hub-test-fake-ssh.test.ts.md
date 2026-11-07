@@ -81,3 +81,8 @@ Reboot's post-capture writer census is bounded by `LAUNCH_SETTLEMENT_MS`; it wai
 for trailing children without acquiring new signal authority. Residual diagnostics
 include PID, parent, comm and birth. The reboot control request/receipt shape,
 authentication, kill-agent and kill-master contracts are unchanged (T-1691).
+
+The shared `createFakeHost` factory self-ignores each fake machine directory
+before writing keys or runtime state. A fixture may initialize Git in its parent;
+`git add .` then excludes the home and atomic checkpoint temporaries. The native
+relaunch regression in `host-relaunch-native.test.ts` proves this staging boundary.

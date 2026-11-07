@@ -18,3 +18,14 @@ Run serially under the preservation lock. Required loaded proof repeats this
 case and the other new native cases five times on macOS (load >=12, actual ranges
 recorded) and Linux docker --init with four burners/four CPUs. Allowances name
 actual final samples; missing/unexecuted evidence is not a pass.
+
+T-1735 staging regression: before the seed commit, an unserved third fake machine
+holds `processes.json.new` at the exact `git add .` boundary. The index must contain
+none of either live fake machine or the staging machine. An asynchronous writer
+then repeatedly renames that temporary to `processes.json` while another real
+staging pass runs. Its completed rename count is positive and the writer joins
+before teardown. The original native cross-carrier relaunch assertions still run.
+The unserved machine avoids contending with a real agent's checkpoint writer.
+The shared fake-machine factory writes a self-ignore before keys/runtime, so
+fixture-owned homes remain under the disposable root and outside seed commits.
+No production territory staging exclusion or wire shape changes.

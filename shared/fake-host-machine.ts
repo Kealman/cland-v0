@@ -8,6 +8,10 @@ export async function createFakeHost(root: string, name: string) {
   const home = join(directory, 'home');
   fakeHostSocketPath(home);
   const run = join(home, '.cland-host/run');
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  // A fake machine can live inside a disposable Git project. Never stage its
+  // keys or concurrently renamed runtime checkpoints into that project's seed.
+  await writeFile(join(directory, '.gitignore'), '*\n');
   await mkdir(run, { recursive: true, mode: 0o700 });
   const key = `ssh-ed25519 ${Buffer.from(`fake-host:${name}`).toString('base64')}`;
   await writeFile(join(directory, 'host-key.pub'), key);

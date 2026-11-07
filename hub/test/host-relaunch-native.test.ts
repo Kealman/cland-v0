@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { mkdtemp, mkdir, writeFile, readFile, unlink, lstat } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, unlink, lstat, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { ownDirectory } from './process-cleanup.ts';
@@ -51,7 +51,24 @@ test('C2 production Codex relaunch crosses owned carriers and consumes a fresh n
   secondHost.forward=async(...args)=>{const result=await secondForward(...args);if(!('socket' in result))throw Error('expected scoped Unix forward');forwards.push({host:'f2',id:args[0],socket:result.socket});return result;};
   f.addCleanup(()=>secondHost.close());
   const git=(cwd:string,args:string[])=>territoryGitAsync(cwd,['-c','gc.auto=0',...args],false,undefined,fixtureEnvironment(f.root,process.env,env));
-  await git(f.root,['init','--initial-branch=dev']);await writeFile(join(f.root,'seed'),'seed');await writeFile(join(f.root,'.gitignore'),'.cland\nnode_modules\n');await git(f.root,['add','.']);await git(f.root,['commit','-m','seed']);
+  await git(f.root,['init','--initial-branch=dev']);await writeFile(join(f.root,'seed'),'seed');await writeFile(join(f.root,'.gitignore'),'.cland\nnode_modules\n');
+  // Hold the exact atomic-write temporary at the relaunch fixture's staging boundary.
+  const stagingHost=await createFakeHost(f.root,'staging');
+  const pending=join(stagingHost.run,'processes.json.new'),checkpoint=join(stagingHost.run,'processes.json');
+  await writeFile(pending,'[]');
+  await git(f.root,['add','.']);
+  assert.equal((await git(f.root,['ls-files'])).split('\n').some(path=>/^\.fixture-sockets\/(?:f[12]|staging)\//.test(path)),false,'fake host runtime must never enter the seed index');
+  // Keep renaming while a second unchanged staging pass runs; join before cleanup.
+  let stopWriter=false,writes=0;
+  const writer=(async()=>{while(!stopWriter){await rename(pending,checkpoint);writes++;await writeFile(pending,'[]');}})();
+  // Timeout teardown also owns this writer; observe rejection before Git settles.
+  void writer.catch(()=>{});
+  const joinWriter=async()=>{stopWriter=true;await writer;};
+  f.addCleanup(joinWriter);
+  try{await git(f.root,['add','.']);}finally{await joinWriter();}
+  assert.ok(writes>0,'atomic writer crossed staging');
+  await unlink(pending);
+  await git(f.root,['commit','-m','seed']);
   await mkdir(join(f.root,'.cland'),{recursive:true});await git(f.root,['clone','--bare',f.root,territoryPath(f.root)]);await refreshTerritoryHook(f.root);
   for(const [host,layout] of [[firstHost,firstLayout],[secondHost,secondLayout]] as const){
     const daemon=await startGitDaemon({host:host.name,socket:hostPaths(f.root,host.name).gitSocket,territory:territoryPath(f.root),env:fixtureEnvironment(f.root,process.env,env),log:()=>{}});f.addCleanup(()=>daemon.close());
