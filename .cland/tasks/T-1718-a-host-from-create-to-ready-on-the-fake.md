@@ -2,8 +2,8 @@
 id: T-1718
 kind: task
 title: A host from create to ready on the fake provider, and `cland host list`
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1421
 branch: t/T-1718-a-host-from-create-to-ready-on-the-fake
 created: 2026-11-06T10:48:53.045Z
-updated: 2026-11-07T07:02:34.498Z
+updated: 2026-11-07T10:45:27.121Z
+closed: 2026-11-07T10:45:27.121Z
 ---
 
 ## Summary
@@ -35,16 +36,26 @@ Decisions (coord, open questions 3 and 5): `cland host create [<pool>]` stays a 
 
 ## Acceptance criteria
 
-- [ ] C1. On the fake provider, `cland host create agents` reaches `ready` with the tunnel up and the territory cloned, and a `session.launch` with that `host` runs an OpenCode session on it (test).
-  - failed: rev-35 [reviewer] · 2026-11-07T06:41:47.586Z · note Prepopulated fake membership bypasses failed provider identity/status restoration and can still open the rejected host.
+- [x] C1. On the fake provider, `cland host create agents` reaches `ready` with the tunnel up and the territory cloned, and a `session.launch` with that `host` runs an OpenCode session on it (test).
+  - done: impl-1718 · 2026-11-07T08:56:54.487Z
+  - verified: rev-36 [reviewer] · run rev-36-1718-final-1 · 2026-11-07T09:26:12.354Z · commit 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+  - verified: rev-36 [reviewer] · run rev-36-1718-merge-1 · 2026-11-07T10:01:59.468Z · commit 76f7b1025954ff827a24ab009a0458ed28d82ff9
 - [x] C2. `cland host list` shows that host's id, pool, provider, size, region, state, uptime and the declared live price per hour (test).
   - done: impl-1718 · 2026-11-07T06:12:41.110Z
+  - verified: rev-36 [reviewer] · run rev-36-1718-final-1 · 2026-11-07T09:26:12.354Z · commit 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+  - verified: rev-36 [reviewer] · run rev-36-1718-merge-1 · 2026-11-07T10:01:59.468Z · commit 76f7b1025954ff827a24ab009a0458ed28d82ff9
 - [x] C3. A fake machine whose key differs from the one in its user-data is never connected, and after the bounded wait the create ends `failed` and releases the machine (test).
-  - done: impl-1718 · 2026-11-07T06:12:42.103Z
+  - done: impl-1718 · 2026-11-07T08:56:54.638Z
+  - verified: rev-36 [reviewer] · run rev-36-1718-final-1 · 2026-11-07T09:26:12.354Z · commit 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+  - verified: rev-36 [reviewer] · run rev-36-1718-merge-1 · 2026-11-07T10:01:59.468Z · commit 76f7b1025954ff827a24ab009a0458ed28d82ff9
 - [x] C4. A create on a pool whose image is not current is refused naming `cland host prepare` (test).
   - done: impl-1718 · 2026-11-07T06:12:43.033Z
+  - verified: rev-36 [reviewer] · run rev-36-1718-final-1 · 2026-11-07T09:26:12.354Z · commit 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+  - verified: rev-36 [reviewer] · run rev-36-1718-merge-1 · 2026-11-07T10:01:59.468Z · commit 76f7b1025954ff827a24ab009a0458ed28d82ff9
 - [x] C5. `host.create` and `host.list` from a session or a remote are refused, and `cland host --help` lists `create` and `list` (test).
   - done: impl-1718 · 2026-11-07T06:12:43.957Z
+  - verified: rev-36 [reviewer] · run rev-36-1718-final-1 · 2026-11-07T09:26:12.354Z · commit 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+  - verified: rev-36 [reviewer] · run rev-36-1718-merge-1 · 2026-11-07T10:01:59.468Z · commit 76f7b1025954ff827a24ab009a0458ed28d82ff9
 
 ## Comments
 
@@ -93,3 +104,84 @@ Criteria: C1 failed (Prepopulated fake membership bypasses failed provider ident
 ### impl-1718 · 2026-11-07T07:02:34.498Z
 
 Rule20 before authorized T-1719 integration (fd73a4e9/32bd03fe): HostProvider createAdmission will be implemented by FakeHostProvider and DigitalOceanHostProvider; production consumers are provider interface/registry, DO.acquire and provision-host.createHost. poolImageKey callers after landing: preparePools, provision-host.createHost, DO acquire/prepare and digitalocean-pool-fixture/prepare tests; unify to one landed implementation. Shared contract suite host-provider-contract runs via host-provider-fake (default/arm64/x64), host-provider-digitalocean, and volume suites; add admission case and effect snapshots at both real factories. Declaration-only test double in host-provider-declarations deliberately invokes only its registered declaration case and is unaffected by new admission case; document/retain. Direct provider consumers: host-provider-volumes, host-provider-digitalocean-volumes, host-prepare, host-create-ready, host-provision-recovery, incoming digitalocean-pool-fixture and host-provider-digitalocean-prepare. Sweep searched interface/import names, acquire/frame/function names, shipped docs/skills/QA/fixtures and all tiers; no web/nvim wire consumer of internal HostProvider interface. Docs host-providers, CLI admission per-file guide and provider contract guides will describe refusal ordering. Existing host.create/list wire frames and older SSH HostRecord shape remain unchanged. T-1734 owns later pool grammar; DO edits limited to admission extraction.
+
+### rev-36 · 2026-11-07T08:52:33.792Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1718-source-1
+commit: 8f120815110482642cd67af4fbfe32a28c6d1861
+scope: full
+findings: [{"severity":"medium","text":"Restore only scans provision rows joined to registered HostRecords, but create publishes the machine address to shared CLAND_FAKE_HOSTS before gate/registration. Pre-registration failed/interrupted/released captured machines therefore escape restore fencing; startup auto-registration may admit the rejected physical address or fail on released key files. Fence all durable provision-owned captured addresses in restore and auto-registration; keep gate-only membership local until intended registration; add no-HostRecord stale-membership controls.","file":"hub/src/host/provision-host.ts","line":122}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full corrected/integrated source not clear. Standards0/Spec1medium; claimant confirms remaining gap ad0bbc75. Prior positive settlement, interrupted classification, atomic ready/revoke and registered fixture teardown corrections reviewed/resolved. Joined registered-only restore fixes do not cover no-HostRecord provision-owned addresses. Current-head native preservation/configured verification remain pending; C2/C4/C5 unverified. Source-linked A-17424 development execution is not final-head proof. Full A-17429: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17429-t-1718-full-corrected-source-pre-registration-membership-gap.md. Reviewer reads only.
+
+Criteria: C1 failed (Pre-registration failed/interrupted captured machines are absent from restore ownership query and can be auto-registered from stale environment membership on restart.), C3 failed (A wrong-key retained machine with no intended HostRecord can bypass the provisioning gate through stale-membership physical-address auto-registration.).
+
+### impl-1718 · 2026-11-07T08:52:59.557Z
+
+A-17429 correction consumer sweep before change: provision ownership lookup consumers will be restoreProvisionedFakeHosts (daemon startup before registerFakeHosts) and registerFakeHosts (startup plus configured fake registration). Existing provision callers create/list, HostRecords revoke trigger, runtime registry startup admission remain unchanged. Searched provisions, registerFakeHosts, restoreProvisionedFakeHosts and CLAND_FAKE_HOSTS across production host/daemon, T1 provision-records, T2 recovery, T3 create-ready/runtime tests, host docs/QA guides. Add indexed lookup for captured fake machine id/address, not a retained-history startup scan; no wire/HostRecord shape change. Tests first for failed/interrupted/released no-HostRecord prepopulated membership, direct auto-registration without restore, and independent legacy host positive control. Gate/delivery gets private membership until intended registration persists.
+
+### rev-36 · 2026-11-07T08:58:59.863Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1718-source-2
+commit: 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source clear; Standards0/Spec0. Resolves A-17429 via central indexed captured-id/address ownership for restore and automatic registration, independent of HostRecord/lifecycle state. Gate/delivery membership stays local; shared membership only after intended registration persists. Six no-registration interrupted/failed/released controls cover both boundaries with zero aliases/carriers/Hosts and independent manual positive control; native wrong-key shared-env assertion added. Prior settlement/atomic readiness/teardown/admission fixes unchanged. Read raw61 component and11 native outcomes at functional8433tree; independent diff to0bf onlydurations, so evidence remains source-linked development, not final-head configured proof. Duplicate keys none,8s/9s projection arithmetic correct/report-only. All C1-C5 unverified pending directed final-head preservation/configured result. A-17431: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17431-t-1718-corrected-durable-membership-source-review.md. Reviewer reads only.
+
+### rev-36 · 2026-11-07T09:26:12.354Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1718-final-1
+commit: 0bf8670502b807ac8981aa86aa49656b7dd7d9b6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at0bf; C1-C5verified, no findings. Independently matched e8451912/A-17435 overall0,5449pass/0fail/cancel/skip/todo; T0/T1/fallbackallT2/selectedT3/Web0. Native create-ready10 suite identities pass (C1/C2ready/OpenCode/list7.045s, wrongkey1.127s);21 new record/admission/recovery identities each base+5pass (105repetitions), including all6 no-registration fences. Authority17/47 and provider/runtime controls pass. T3fourfiles67identities once/no repetitions, not allT3. Read A-17432 original22/22 native preservation (20top+2nested), exact0bf stable7a7tree/absolutecommand/cwd/Macarm64Node24.21/close0/signalnull. No staged-tree result relabelled. UncachedLinuxx64 c8lon1 Node24.21/Nvim.12.5, Headless1248/CfT156.0.8078.4; T0capture2ced5c8d not repeated remotely; advisories report-only,skipmissing0. A-17436: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17436-t-1718-final-create-ready-and-durable-restore-evidence.md. FullafterstageQA/T4/remainingT3/laterrequesteddevmerge separate. Reviewer reads only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-36 · 2026-11-07T10:01:59.468Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1718-merge-1
+commit: 76f7b1025954ff827a24ab009a0458ed28d82ff9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear; C1-C5refreshed under independently retrieved Coordinator56f68af8/3f06ca8a carry waiver. Three resolutions retain create/list help+snapshot, shared grammar guidance and local-only skill paragraph. Fixture JSON duplicate-free, other values equal both parents; single-parent-only blobs preserved. Merged decoder+readHostPools use parsePoolName; create admits validated-map own property before paths/provider, list onlydisplays durable labels. Existing createAdmission/private membership/durable ownership guards retained. Read A-17439 directed native0/null typecheck,49/49 components and11/11 native at staged8fb tree matching merge; correctly labelled prior HEAD0bf during precommit execution. Earlier final A-17436/e8451912/A-17435 green5449 and prior22/22 A-17432 carry explicitly, not new76f configured runs. A-17440: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17440-t-1718-pool-parser-merge-delta-and-carried-criteria.md. No findings; fullafterstageQA/remainingcoverage/landingbatch separate. Reviewer reads only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-07T10:03:11.128Z
+
+coord: rule 6 carry, enqueued at 76f7b102.
+
+Verify e8451912 passed at the reviewed head 0bf86705 (A-17435). 76f7b102 merges dev after T-1734 landed. Its manual resolutions keep both sides of `usage.ts`, the cli-usage fixture and `SKILL.md`. The merge also auto-combines T-1718's `createAdmission` with T-1734's pool grammar in `digitalocean.ts`, `fake.ts` and `protocol.ts`.
+
+Checks at the merged head:
+- delta review clear (rev-36-1718-merge-1, A-17440);
+- typecheck clean;
+- usage/help/prepare/admission tests 49/49;
+- `host-create-ready` native 11/11;
+- the seven provider and grammar files that the T1+T3 batch would not cover, 124/124 one at a time (A-17441).
+
+The verify carries over.
+
+### coord · 2026-11-07T10:45:27.121Z
+
+Merged 142fbe97d8883b44cbc820ca9f0c228d82fcb0a8 onto dev.
