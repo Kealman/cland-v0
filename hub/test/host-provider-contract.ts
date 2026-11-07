@@ -9,11 +9,18 @@ import type { HostArchitecture, HostProvider } from '../src/host/provider/provid
  * the provider's bounded readiness receipt. No provider-specific assertions here. */
 export type ProviderScenario = 'normal' | 'refused' | 'failed-acquire' | 'delayed-boot' | 'never-boot' | 'ignored-delete';
 export function hostProviderContract(name: string, factory: (t: TestContext, scenario: ProviderScenario) => Promise<{
-  provider: HostProvider; prepared?: boolean; ready: () => Promise<void>;
+  provider: HostProvider; admissionEffects?:()=>unknown|Promise<unknown>; prepared?: boolean; ready: () => Promise<void>;
 }>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown) {
   register(`${name}: provider declares sane prices, billing and capabilities`, async t => {
     const { provider } = await factory(t, 'normal');
     validateHostProviderDeclarations(provider.declarations);
+  });
+  register(`${name}: create admission is allowed without side effects`,async t=>{
+    const fixture=await factory(t,'normal');
+    assert.ok(fixture.admissionEffects,'factory supplies observable admission effects');
+    const before=await fixture.admissionEffects();
+    assert.deepEqual(fixture.provider.createAdmission(),{state:'allowed'});
+    assert.deepEqual(await fixture.admissionEffects(),before,'admission changes no API or provider files');
   });
   register(`${name}: provider contract creates, prepares, observes and confirms release`, async t => {
     const { provider, ready, prepared } = await factory(t, 'normal');

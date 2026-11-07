@@ -158,15 +158,27 @@ export class FakeHostProvider implements HostProvider {
     try { await writeFile(path, 'fake-image-v1', { flag: 'wx', mode: 0o600 }); return { state: 'prepared', summary: 'fake image prepared' }; }
     catch { return { state: 'failed', reason: 'fake image preparation failed' }; }
   }); }
+  createAdmission(): {state:'allowed'} { return {state:'allowed'}; }
   acquire(options: AcquireOptions): Promise<AcquireResult> { return this.#serial(async () => {
     try { parsePoolName(options.pool); } catch { return { state: 'failed', reason: 'invalid pool' }; }
     if (!this.declarations.architectures.includes(options.architecture)) return { state: 'failed', reason: 'fake architecture unsupported' };
     if (this.#options.refuseUntil && Date.parse(this.#options.refuseUntil) > this.#now()) return { state: 'refused', reason: 'fake capacity unavailable', retryAt: this.#options.refuseUntil };
     if (this.#options.failAcquire) return { state: 'failed', reason: 'fake create failed' };
+    if (options.image) {
+      try {
+        const image = JSON.parse(await readFile(join(this.#root, 'images', options.pool + '.json'), 'utf8'));
+        if (image.digest !== keyHash(options.image) || keyHash(image.key) !== image.digest) throw new Error('stale image');
+      } catch { return { state: 'failed', reason: `pool image is not current; run cland host prepare ${options.pool}` }; }
+    }
     const id = 'fake-' + randomUUID().replaceAll('-', '').slice(0, 12);
     const machine: Machine = { id, address: id, architecture: options.architecture, created: new Date(this.#now()).toISOString() };
     try {
+      const publicKey = options.userData?.match(/'([^'\n]*ssh-ed25519 [^'\n]+)' > \/etc\/ssh\/ssh_host_ed25519_key.pub/ )?.[1];
+      if (options.userData !== undefined && !publicKey) throw new Error('missing prelude public key');
       const host = await createFakeHost(this.#root, id);
+      if (publicKey) {
+        await writeFile(join(host.directory, 'host-key.pub'), publicKey);
+      }
       const record: Record = { region: options.region ?? 'fake-1', machine, project: options.project, pool: options.pool, readyAt: this.#now() + (this.#options.bootDelayMs ?? 0), neverBoot: this.#options.neverBoot ?? false };
       await writeFile(join(host.directory, 'provider.json'), JSON.stringify(record), { mode: 0o600 });
       return { state: 'created', machine };

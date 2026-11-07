@@ -4,7 +4,8 @@ import type { HostProviderDeclarationState } from './declarations.ts';
  * and native resource details stay behind this interface, on the hub. */
 export type HostArchitecture = 'x86_64' | 'arm64';
 export type Machine = { id: string; address: string; architecture: HostArchitecture; created: string };
-export type AcquireOptions = { project: string; pool: string; architecture: HostArchitecture; region?: string };
+export type AcquireOptions = { project: string; pool: string; architecture: HostArchitecture; region?: string; userData?: string; image?: PoolImageKey };
+export type CreateAdmission = { state:'allowed' } | { state:'refused'; reason:string; retryAt?:string };
 export type Failed = { state: 'failed'; reason: string };
 export type AcquireResult = { state: 'created'; machine: Machine } | { state: 'refused'; reason: string; retryAt: string } | Failed;
 export type MachineStatus = { state: 'booting' | 'ready' | 'gone' } | Failed;
@@ -15,6 +16,8 @@ export type ReapResult = { state: 'reaped'; released: string[]; incomplete: stri
 export interface HostProvider {
   readonly transport: 'ssh';
   readonly declarations: HostProviderDeclarationState;
+  /** Side-effect free: no API call or resource admission. */
+  createAdmission(): CreateAdmission;
   acquire(options: AcquireOptions): Promise<AcquireResult>;
   prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult>;
   status(machine: Machine): Promise<MachineStatus>;

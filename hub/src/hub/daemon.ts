@@ -1,3 +1,4 @@
+import { restoreProvisionedFakeHosts } from '../host/provision-host.ts';
 import { registerFakeHosts } from '../host/records.ts';
 import { userInfo } from 'node:os';
 import { prepareAuthMode } from '../init/config-set.ts';
@@ -312,12 +313,15 @@ export async function serveProject(root: string, options: { uploadOpen?: typeof 
     }
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
     store = new Store(l.db, options.openDatabase);
+    store.hosts.provisions.reconcileInterrupted();
+    await restoreProvisionedFakeHosts(store.hosts,env);
     registerFakeHosts(root, store.hosts, env, remoteOutput.register);
     store.users.validateMode(config?.auth.mode ?? 'single', l.config);
     log({ event: 'hub-startup-step', step: 'restoring core and suites', pid: process.pid });
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
       uploadRedactor: remoteOutput,
+      registerHostSecrets: remoteOutput.register,
       ...(options.uploadOpen ? { uploadOpen: options.uploadOpen } : {}),
       deferExecutorRecovery: true,
       clock,

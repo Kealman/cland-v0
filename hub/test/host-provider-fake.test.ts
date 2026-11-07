@@ -1,7 +1,7 @@
 // T2: socket API instrumentation proves no network; filesystem fake, no processes or real-time waits.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, stat, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { hostProviderContract, type ProviderScenario } from './host-provider-contract.ts';
@@ -36,7 +36,7 @@ async function contractFactory(t: TestContext, scenario: ProviderScenario, archi
       return acquire(options);
     });
   }
-  return { provider, ready: async () => { f.advance(200); } };
+  return { provider, admissionEffects:async()=> (await readdir(f.root,{recursive:true})).sort(), ready: async () => { f.advance(200); } };
 }
 hostProviderContract('fake', (t, scenario) => contractFactory(t, scenario), (name, run) => test(name, run));
 for (const architecture of ['arm64', 'x86_64'] as const) {

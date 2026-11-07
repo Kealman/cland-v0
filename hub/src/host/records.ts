@@ -1,3 +1,4 @@
+import { ProvisionRecords } from './provision-records.ts';
 // Host persistence and private bootstrap material. Admission belongs to the socket edge.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmodSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -15,6 +16,7 @@ function hostId(id: string): void {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(id) || id === 'local') throw new Error('invalid host id');
 }
 export class HostRecords {
+  readonly provisions:ProvisionRecords;
   readonly #db: DatabaseSync;
   constructor(db: DatabaseSync) {
     this.#db = db;
@@ -22,6 +24,10 @@ export class HostRecords {
       id text primary key, transport text not null, address text not null,
       user text not null, state text not null, secret_digest text not null
     )`);
+    this.provisions=new ProvisionRecords(db);
+    db.exec(`create trigger if not exists revoke_host_provision after update of state on hosts when new.state='revoked' begin
+      update provisioned_hosts set record=json_set(record,'$.state','failed','$.reason','host revoked','$.release',case when json_extract(record,'$.release')='released' then 'released' else 'incomplete' end) where id=new.id;
+    end;`);
   }
   get(id: string): HostRecord | null {
     const row = this.#db.prepare('select id,transport,address,user,state from hosts where id=?').get(id);
@@ -114,9 +120,10 @@ export function registerFakeHosts(root: string, records: HostRecords, env: NodeJ
   secrets.restore();
   if (!env.CLAND_FAKE_HOSTS || !env.CLAND_FAKE_HOST_ROOT) return;
   if (!isAbsolute(env.CLAND_FAKE_HOST_ROOT)) throw new Error('fake host root must be absolute');
+  const registeredAddresses=new Set(records.list().map(record=>record.address));
   for (const id of env.CLAND_FAKE_HOSTS.split(',').filter(Boolean)) {
     hostId(id);
-    if (records.get(id)) continue; // Revoked hosts never mint automatically on restart.
+    if (records.get(id) || registeredAddresses.has(id) || records.provisions.ownsFakeAddress(id)) continue; // Revoked hosts never mint automatically on restart.
     const fake = hostDirectory(env.CLAND_FAKE_HOST_ROOT, id);
     const key = readFileSync(join(fake, 'host-key.pub'), 'utf8').trim();
     secrets.register({ id, address: id, user: 'agent', clientKeyPath: join(fake, 'client-key'), knownHosts: `${id} ${key}\n` });

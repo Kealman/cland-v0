@@ -1,9 +1,12 @@
 # Host providers
 
 `hub/src/host/provider/provider.ts` provisions session machines independently of
-verification's `Executor`. A provider exposes `transport: 'ssh'` and acquire,
+verification's `Executor`. A provider exposes `transport: 'ssh'`, side-effect-free
+`createAdmission()` and acquire,
 prepare, status, release and reap. Machines carry provider identity, address,
-architecture (`x86_64` or `arm64`) and ISO creation time. Acquire returns created,
+architecture (`x86_64` or `arm64`) and ISO creation time. Create admission returns
+allowed or refused with a reason and optional retryAt; acquire owns dynamic
+resource admission. Acquire returns created,
 refused (reason and ISO retryAt), or failed. Status reports booting, ready, gone
 or failed. Booting is an observation; the caller owns its bounded readiness wait.
 Preparation reports prepared, current or failed. Provider failures use fixed,
@@ -25,7 +28,12 @@ The fake provider requires an absolute `CLAND_FAKE_HOST_ROOT` in its explicit
 environment; project configuration alone cannot enable it. The caller owns that
 disposable directory and seals the environment through `fixtureEnvironment`.
 It creates no network socket or process. Its machine address is its fake host id;
-add that id to `CLAND_FAKE_HOSTS` when starting the existing fake SSH transport.
+For create-to-ready, gate and delivery commands use a private `CLAND_FAKE_HOSTS`
+environment; the shared runtime membership is published only after the intended
+HostRecord persists. Startup and automatic fake registration fence every captured
+provision-owned machine id/address, including failed or released rows without a
+HostRecord. A matching registered identity may rejoin only after provider validation.
+Independent manually configured fake hosts keep the existing registration path.
 Both the provider and `createFakeHost` use `shared/fake-host-machine.ts` and the
 short directory alias from `hostDirectory`. Homes, run directories, boot ids and
 pinned keys retain the existing fake transport shape.
@@ -292,3 +300,52 @@ The hub writes `.cland/run/hosts/<pool>-image.json` only after provider completi
 CLI replies name `prepared` or `current` and changed key parts (`node`, `lock`,
 `recipe`, `provision`, `harnesses`). Calls serialize per project; shutdown drains
 admitted preparations before storage closes.
+
+## Create to ready
+
+`cland host create [pool]` and `cland host list` (`host.create`, `host.list`)
+require the local human CLI or Neovim. Sessions, host-secret connections, web
+and messenger remotes are refused. Creation currently supports the directory-only
+fake provider under its explicit fake-host environment; DigitalOcean acquisition
+remains test-only and is refused by this command. The omitted pool selects
+`agents`, or the sole configured pool; ambiguous pools require a name.
+
+Creation first asks the provider's side-effect-free `createAdmission()`, before
+computing the image key or checking its receipt. The fake provider allows;
+DigitalOcean's production refusal names E-1534's host lease, watchdog and spend
+requirements, unchanged from `acquire`, and makes no API call. Creation then
+compares the prepared pool key with the current Node, lock, recipe,
+harness pins and provision hook. A stale or absent key names
+`cland host prepare <pool>` before acquisition. It renders a fresh pinned host
+key in the prelude user-data and acquires the machine with that pool image.
+The SSH gate allows five minutes for boot and successful strict pinned-key
+admission, before any runtime delivery or registration. A mismatching key never
+starts the supervisor. Whole-runtime delivery then precedes registration and
+runtime add. Ready waits for authenticated tunnel readiness and the territory
+clone when the project has a territory.
+
+Lifecycle records live in the `provisioned_hosts` table in hub.db, independently
+of the public SSH registration shape, and retain provider, pool, size, region, machine identity,
+creation time, state and failure/release outcome. States are `creating`,
+`booting`, `connecting`, `cloning`, `ready`, `failed`. A failed machine is released
+only after positive complete runtime settlement (known inventory, no timeout or
+leftovers); unknown delivery or cleanup retains it as
+`release: incomplete`. `host list` reads these records and reports uptime in
+seconds for ready hosts and the provider's declared live USD/hour for its size.
+Unavailable facts are `null`. It does not implement `host status`.
+
+See [create test cases](../agents/tests/hub-test-host-create-ready.test.ts.md).
+
+Final ready publication is one SQLite checkpoint conditional on the captured
+registration id/address still being registered. Revocation changes the provision
+state in the same database statement; shutdown aborts readiness before that
+checkpoint. Bootstrap keys remain private under `.cland/run/host-provisions/<id>/`.
+
+At startup, interrupted creating/booting/connecting/cloning checkpoints become
+explicit failed/incomplete records. Unknown acquisitions, copies and installs
+are retained, with no acquire/delivery replay or inferred release. Registered
+fake machines first lose any preexisting provision-owned environment membership,
+then restore it only after matching the durable
+registration/address and provider machine identity. Physical addresses never
+mint duplicate registrations. A missing fake environment or unverifiable machine
+is retained as failed/incomplete and is never opened through real SSH fallback.

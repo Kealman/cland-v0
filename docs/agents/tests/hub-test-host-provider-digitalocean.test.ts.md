@@ -70,6 +70,11 @@ uses testWaitMs with an explicit 2x factor on every executor; the outer watchdog
 includes that same scaled setup budget plus separate remaining-work/drainage
 headroom. These are setup/watchdog caps, not the exact 2s/10s product boundaries.
 
+The shared `create admission is allowed without side effects` case compares the
+factory's observable file/API effects before and after `createAdmission()`. The
+fake factory snapshots its directory; DigitalOcean also counts scripted API
+requests. Production DigitalOcean refusal parity with acquire is covered in
+host-provider-digitalocean-prepare and the public create CLI admission test.
 T-1734: `digitalocean refuses invalid pool <name> before acquire or reap API calls`
 proves refusal before fake API traffic. `digitalocean reaps valid pool tags and
 keys exactly: <pool>` covers the 64-character boundary and embedded `-host-`,

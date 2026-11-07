@@ -25,6 +25,7 @@ export type HostConfiguration = { home?: string; layout?: Partial<HostLaunchLayo
 /** Carrier and Host share one lifecycle owner; sessions close before this owner. */
 export async function projectSshHosts(options: { onAdd?: (host: Host) => void; settle?: (id: string) => Promise<unknown>; onRemove?: (id: string) => void; onReady?: (host: string, bootId: string) => void; createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
   const hosts: Host[] = [];
+  const readiness = new Map<string, (signal?:AbortSignal) => Promise<void>>();
   const owners = new Map<string, {quiesce: () => void; close: () => Promise<void>}>();
   let stopped = false, pending = Promise.resolve();
   const serial = <T>(work: () => Promise<T>): Promise<T> => {
@@ -40,10 +41,10 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
       if (record.state !== 'registered' || !persisted || (Object.keys(persisted) as Array<keyof HostRecord>).some(key => persisted[key] !== record[key])) throw new Error('host registration changed');
       if (owners.has(record.id) || options.provided?.some(host=>host.name === record.id)) throw new Error('host already open');
       const config = options.configurations?.[record.id];
-      const fake = options.env.CLAND_FAKE_HOSTS?.split(',').includes(record.id) && options.env.CLAND_FAKE_HOST_ROOT;
-      const home = config?.home ?? (fake ? join(hostDirectory(String(fake),record.id),'home') : record.user === 'root' ? '/root' : `/home/${record.user}`);
+      const fake = options.env.CLAND_FAKE_HOSTS?.split(',').includes(record.address) && options.env.CLAND_FAKE_HOST_ROOT;
+      const home = config?.home ?? (fake ? join(hostDirectory(String(fake),record.address),'home') : record.user === 'root' ? '/root' : `/home/${record.user}`);
       const installed = fileURLToPath(new URL('../../..',import.meta.url));
-      const layout = remoteHostLayout(home, { ...(fake ? {modDir:join(installed,'hub/mod/cland'),node:process.execPath,cli:join(installed,'hub/bin/cland.ts'),spoke:join(installed,'hub/bin/cland-spoke.ts')} : {}), ...config?.layout });
+      const layout = remoteHostLayout(home, { ...(fake && !record.id.startsWith('host-') ? {modDir:join(installed,'hub/mod/cland'),node:process.execPath,cli:join(installed,'hub/bin/cland.ts'),spoke:join(installed,'hub/bin/cland-spoke.ts')} : {}), ...(fake && record.id.startsWith('host-') ? {node:process.execPath} : {}), ...config?.layout });
       const code = remoteCodeDirectory(layout);
       const carrier = (options.createTransport ?? (o=>new SshTransport(o)))({ beforeReady:async(signal)=>{
         const client = await AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id));
@@ -71,6 +72,23 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
         })().catch(error=>{clone=undefined;options.log({event:'host-clone',host:record.id,state:'failed',error:String(error)});throw new Error(`host ${record.id}: territory clone failed: ${error instanceof Error?error.message:String(error)}`);});
         await clone;
       };
+      readiness.set(record.id, async (signal) => {
+        const deadline = Date.now() + 300000;
+        while (carrier.status().state !== 'up') {
+          signal?.throwIfAborted();
+          if (stopped || Date.now() >= deadline) throw new Error('host tunnel readiness timed out');
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        const receipt=await host.statDirectory(home);
+        if(receipt.refusal!==null)throw Error('host home unavailable');
+        const cancel=()=>cloneAbort.abort();
+        signal?.addEventListener('abort',cancel,{once:true});
+        try {signal?.throwIfAborted();await prepareClone();}
+        finally {signal?.removeEventListener('abort',cancel);}
+        signal?.throwIfAborted();
+        const current=options.records.get(record.id);
+        if(stopped||!current||current.state!=='registered'||current.address!==record.address||current.user!==record.user)throw Error('host registration changed before readiness');
+      });
       const add=host.worktreeAdd.bind(host),preparations=new Set<Promise<{warning?:string}>>();
       host.worktreeAdd=args=>{
         const work=(async()=>{cloneAbort.signal.throwIfAborted();await prepareClone();cloneAbort.signal.throwIfAborted();return add(args);})();
@@ -99,7 +117,7 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
     catch (error) {
       // A duplicate must not close an already published owner.
       if (!hosts.some(host => host.name === record.id)) {
-        await owners.get(record.id)?.close(); owners.delete(record.id);
+        await owners.get(record.id)?.close(); owners.delete(record.id);readiness.delete(record.id);
       }
       throw error;
     }
@@ -111,14 +129,17 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
     const settlement = await options.settle(id);
     await owners.get(id)?.close();
     options.onRemove?.(id);
-    owners.delete(id);
+    owners.delete(id);readiness.delete(id);
     const index = hosts.findIndex(host => host.name === id); if (index >= 0) hosts.splice(index, 1);
     return settlement;
   });
   try {
     for (const record of options.records.list()) {
+      if(options.records.provisions.get(record.id)?.provider==='fake'&&(!options.env.CLAND_FAKE_HOST_ROOT||!options.env.CLAND_FAKE_HOSTS?.split(',').includes(record.address))) {
+        options.log({event:'host-unavailable',host:record.id,reason:'provisioned fake transport identity unavailable'});continue;
+      }
       if (record.state === 'registered' && !options.provided?.some(host => host.name === record.id)) await add(record);
     }
-    return {hosts,add,remove,close,quiesce};
+    return {hosts,add,remove,close,quiesce,ready: async (id:string, signal?:AbortSignal) => { const ready=readiness.get(id); if(!ready)throw Error('host not open');await ready(signal); }};
   } catch(error) {await close();throw error;}
 }

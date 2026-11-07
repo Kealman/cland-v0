@@ -88,12 +88,17 @@ export class DigitalOceanHostProvider implements HostProvider {
     return records;
   }
   #save(record: Record): Promise<void> { return this.#write(`intent-${record.name.slice('cland-host-'.length)}.json`, record); }
+  createAdmission(): {state:'allowed'} | Extract<AcquireResult,{state:'refused'}> {
+    if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host.create requires E-1534 host lease, watchdog and spend', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
+    return {state:'allowed'};
+  }
   acquire(options: AcquireOptions): Promise<AcquireResult> { return this.#serial(async () => {
     if (!['lon1', 'fra1', 'ams3'].includes(options.region ?? 'lon1')) return { state: 'failed', reason: 'region unsupported' };
     if (this.#options.pool !== undefined && this.#options.pool !== options.pool) return { state: 'failed', reason: 'machine pool mismatch' };
     if (options.architecture !== 'x86_64' || !options.project || !validPool(options.pool)) return { state: 'failed', reason: 'machine options unsupported' };
     // No project setting can enable production host.create before pool admission.
-    if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host.create requires E-1534 host lease, watchdog and spend', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
+    const admission=this.createAdmission();
+    if(admission.state==='refused')return admission;
     let image: number;
     try {
       const storage = poolSnapshotStorage(this.#options.root, options.pool);

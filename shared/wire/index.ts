@@ -920,6 +920,8 @@ export type RemoteStatusResult = { remotes: RemoteStatusRow[] };
 export type ClientRequest =
   | { type: 'remote.status'; id: string }
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
+  | { type: 'host.create'; id: string; pool?: string }
+  | { type: 'host.list'; id: string }
   | { type: 'host.prepare'; id: string; pool?: string }
   | { type: 'host.revoke'; id: string; host: string }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }

@@ -64,5 +64,10 @@ Volume contract registration and fake volume regressions live in
 They use a separate exported contract registrar in host-provider-contract.ts;
 existing lifecycle factories and registration remain compatible.
 
+The shared `create admission is allowed without side effects` case compares the
+factory's observable file/API effects before and after `createAdmission()`. The
+fake factory snapshots its directory; DigitalOcean also counts scripted API
+requests. Production DigitalOcean refusal parity with acquire is covered in
+host-provider-digitalocean-prepare and the public create CLI admission test.
 `fake provider refuses underscore pools consistently with config` proves direct
 acquire and reap reject `agents_1` using the shared pool grammar.

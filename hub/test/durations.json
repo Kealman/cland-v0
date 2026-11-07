@@ -10804,6 +10804,69 @@
     "hub/test/init-config.test.ts::managed provisioning preserves hosts and unknown keys across every section": 0.004259
   },
   "allow": {
+    "hub/test/host-create-ready.test.ts::forced fixture body failure joins held creation before storage and root disposal": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 forced-failure fixture drain control, passing macOS arm64 local Node24.21.0 sample 2.565670125s. Includes sealed native setup, guarded cleanup and joined producer/native closure. Linux 4.1050722s is an unexecuted1.6x projection; allowance ceil(1.5 x projection). Scripted provider/installer, no browser or real-provider latency claim; report mode. Parent and nested raw TAP timings are inclusive; suite duration reporter owns only top-level identity."
+    },
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: unknown": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.796785166s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.4748562656s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded."
+    },
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: inventory unknown": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.692131708s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.3074107328s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Pre-registration correction smoke at staged8433d536: passing macOS arm64 local Node24.21.0 sample 3.027497917s includes fixture/assertions/joined cleanup. Linux 4.8439966672s is an unexecuted1.6x projection; allowance ceil(1.5 x projection)."
+    },
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: timed out": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.430446625s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 3.8887146s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Authorized dev integration smoke: passing macOS arm64 local Node24.21.0 sample 2.716408s at captured tree6ef247a6, inclusive setup/assertion/cleanup. Linux 4.3462528s remains unexecuted1.6x projection; allowance updated ceil(1.5 x projection). Pre-registration correction smoke at staged8433d536: passing macOS arm64 local Node24.21.0 sample 3.62207475s includes fixture/assertions/joined cleanup. Linux 5.7953196s is an unexecuted1.6x projection; allowance ceil(1.5 x projection)."
+    },
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: leftovers": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.560202083s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.0963233328s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded."
+    },
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: complete": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.313132042s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 3.7010112672s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Source-2 correction passing sample macOS arm64 local Node24.21.0 2.578109542s, inclusive fixture/assertions/joined teardown; Linux 4.1249752672s remains unexecuted1.6x projection, updated ceil(1.5 x projection)."
+    },
+    "hub/test/host-create-ready.test.ts::held final readiness cannot publish ready after revoke": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 held-boundary correction; macOS arm64 local Node24.21.0 worst passing-case sample 2.588854292s, inclusive of setup/assertions/joined cleanup. Linux 4.1421668672s is an unexecuted 1.6x projection, allowance ceil(1.5 x projection). Scripted native provider/installer only, no browser. Report mode; invalid setup timeout excluded. Source-2 correction passing sample macOS arm64 local Node24.21.0 2.9845625s, inclusive fixture/assertions/joined teardown; Linux 4.7753000000000005s remains unexecuted1.6x projection, updated ceil(1.5 x projection)."
+    },
+    "hub/test/host-create-ready.test.ts::held final readiness cannot publish ready after shutdown": {
+      "seconds": 7,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 held-boundary correction; macOS arm64 local Node24.21.0 worst passing-case sample 2.579070958s, inclusive of setup/assertions/joined cleanup. Linux 4.1265135328s is an unexecuted 1.6x projection, allowance ceil(1.5 x projection). Scripted native provider/installer only, no browser. Report mode; invalid setup timeout excluded."
+    },
+    "hub/test/host-create-ready.test.ts::C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list shows declared facts": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1718 macOS arm64 local Node24.21.0 passing sample 4.448543084s including sealed fixture, scripted npm/setsid/OpenCode, native SSH, clone, assertions and joined cleanup. Linux 7.1176689344s is an unexecuted 1.6x projection; allowance ceil(1.5 x projection)=11s. Earlier invalid-fixture/key-format red runs are excluded, not passing timings. No browser or real-provider latency claim; duration gate report mode."
+    },
     "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire same-name retry": {
       "seconds": 14,
       "owner": "C-216",

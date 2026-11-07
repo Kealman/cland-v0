@@ -639,3 +639,8 @@ disposable sealed root. See [pool images](../hub/host-providers.md#pool-images).
 Managed config writes through settings/auth, init/update and setup retain `[hosts]`
 and unknown TOML fields. They may regenerate formatting and comments; removing
 the managed mark leaves the file under human control.
+
+Host creation and inventory (`cland host create [pool]`, `cland host list`)
+share prepare/revoke's local human CLI or Neovim boundary. Implementers exercise
+these through sealed disposable fixtures. The [provider reference](../hub/host-providers.md#create-to-ready)
+names current provider prerequisites, lifecycle receipts and retained failures.

@@ -17,6 +17,13 @@ export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.e
     throw new Error('attach exec returned');
   }
   if (args[0] === 'git-proxy' && args[1]) { await gitProxy(args[1],process.stdin,process.stdout); return 0; }
+  if (args[0] === 'create' && args.length <= 2 || args[0] === 'list' && args.length === 1) {
+    const discovery = readDiscovery(hubDiscovery(process.cwd()));
+    if (!discovery) throw new Error('no hub runs for this project — run cland hub start');
+    const value = await askHubFrame(discovery, { type: args[0] === 'create' ? 'host.create' : 'host.list', ...(args[1] ? { pool: args[1] } : {}) }, 600000, env);
+    process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+    return args[0] === 'create' && (value as {state?:string}).state === 'failed' ? 1 : 0;
+  }
   if (args[0] === 'prepare' && args.length <= 2) {
     const discovery = readDiscovery(hubDiscovery(process.cwd()));
     if (!discovery) throw new Error('no hub runs for this project — run cland hub start');

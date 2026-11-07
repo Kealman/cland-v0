@@ -10,7 +10,10 @@ test('digitalocean production create names the missing host lease watchdog and s
   const api = await fakeDigitalOcean('pool-sentinel', { machine: 'scripted', clock });
   t.after(() => api.close());
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env: {}, api: api.provider, clock });
+  const admission=provider.createAdmission();
+  assert.equal(admission.state,'refused');assert.equal(api.requests.length,0,'preflight makes no API call');
   const result = await provider.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64' });
+  assert.deepEqual(result,admission,'acquire uses the same refusal policy');
   assert.equal(result.state, 'refused');
   if (result.state !== 'refused') return;
   assert.match(result.reason, /E-1534.*lease.*watchdog.*spend/);

@@ -1,3 +1,4 @@
+import { createHost, listHosts } from '../host/provision-host.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
 import { flushHostBranch } from '../host/flush.ts';
@@ -158,6 +159,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  registerHostSecrets?: (values:readonly string[])=>void;
   uploadOpen?: typeof import('node:fs/promises').open;
   uploadRedactor?: Pick<import('../remote/redact.ts').RemoteRedactor, 'containsSecret' | 'text'>;
   /** The project daemon admits provider recovery only after publishing serving. */
@@ -475,9 +477,11 @@ export class Dispatcher {
   /** Fence periodic metrics before daemon shutdown begins awaiting its owners. */
   stopWaitMetrics(): void { this.#suites?.stopWaitMetrics(); }
 
+  #hostProvisionAbort = new AbortController();
   #poolPrepares = new Set<Promise<unknown>>();
   async close(): Promise<void> {
     this.#closed = true;
+    this.#hostProvisionAbort.abort();
     await Promise.allSettled([...this.#poolPrepares]);
     // A startup failure can close the dispatcher before serving admits recovery.
     this.#admitExecutorRecovery();
@@ -2054,13 +2058,26 @@ export class Dispatcher {
             if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
             return answer(this.#options.control.remoteStatus());
           }
+          case 'host.create':
+          case 'host.list':
           case 'host.prepare':
           case 'host.revoke': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
-            if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type === 'host.prepare' ? 'host preparation' : 'host revocation'} requires the human CLI or Neovim on a local connection`);
+            if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
+            if (frame.type === 'host.list' || frame.type === 'host.create') {
+              if(this.#closed)throw Error('host provisioning stopped');
+              const root=this.#options.control?.status().root;
+              if(!root)throw Error('project root unavailable');
+              const env=this.#options.env??process.env;
+              if(!this.hostOwner)throw Error('host runtime unavailable');
+              const work=frame.type==='host.list'?listHosts(core.store.hosts,env):createHost({root,pool:frame.pool,env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets?{registerSecrets:this.#options.registerHostSecrets}:{}),records:core.store.hosts,owner:this.hostOwner});
+              this.#poolPrepares.add(work);
+              void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
+              return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
+            }
             if (frame.type === 'host.prepare') {
               if (this.#closed) throw new Error('host preparation stopped');
               const root = this.#options.control?.status().root;

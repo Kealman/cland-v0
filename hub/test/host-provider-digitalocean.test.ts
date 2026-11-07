@@ -1,3 +1,4 @@
+import { readdir } from 'node:fs/promises';
 import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted DigitalOcean boundary and disposable provider records; no sockets or processes.
 import test, { type TestContext } from 'node:test';
@@ -49,7 +50,7 @@ hostProviderContract('digitalocean', async (t, scenario) => {
   f.api.faults.rateLimits = 0;
   await f.provider.refreshDeclarations();
   if (scenario === 'refused') f.api.faults.rateLimits = 1;
-  return { provider: f.provider, prepared: true, ready: async () => {
+  return { provider: f.provider, admissionEffects:async()=>({requests:f.api.requests.length,files:(await readdir(f.api.stateRoot,{recursive:true})).sort()}), prepared: true, ready: async () => {
     f.api.faults.activeAfter = 0;
     for (const d of f.api.droplets) await f.api.provider.droplet(d.id);
   } };

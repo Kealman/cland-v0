@@ -20,6 +20,7 @@ import { KEEPALIVE_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 export type HubBaseOptions = CoreOptions & {
   uploadOpen?: DispatcherOptions['uploadOpen'];
   uploadRedactor?: DispatcherOptions['uploadRedactor'];
+  registerHostSecrets?: DispatcherOptions['registerHostSecrets'];
   secret: string;
   /** How long a fresh socket may stay silent before its hello, ms. */
   helloTimeoutMs?: number;
@@ -133,6 +134,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
     ...(options.uploadOpen ? { uploadOpen: options.uploadOpen } : {}),
+    ...(options.registerHostSecrets ? {registerHostSecrets:options.registerHostSecrets} : {}),
     ...(options.uploadRedactor ? { uploadRedactor: options.uploadRedactor } : {}),
     ...(options.readArtifact ? { readArtifact: options.readArtifact } : {}),
     ...(options.selectSuite ? { selectSuite: options.selectSuite } : {}),

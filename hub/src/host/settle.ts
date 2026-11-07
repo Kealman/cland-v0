@@ -114,3 +114,10 @@ export function hostRevocationLines(reply: { cleanup?: HostSettlement }): string
     ...cleanup.leftovers.map(row => `left generation ${row.generation} (${row.session}): ${row.remaining.join(', ')}; ${row.reason}`),
   ];
 }
+
+/** A fulfilled removal is not itself a positive native settlement receipt. */
+export function hostSettlementComplete(value:unknown):value is HostSettlement {
+  if(!value||typeof value!=='object')return false;
+  const receipt=value as Partial<HostSettlement>;
+  return receipt.inventoryComplete===true&&receipt.timedOut===false&&Array.isArray(receipt.leftovers)&&receipt.leftovers.length===0;
+}
