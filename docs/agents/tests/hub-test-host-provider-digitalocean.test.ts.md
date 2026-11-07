@@ -45,3 +45,28 @@ with only the public external image GET boundary routed to the scripted API.
 DigitalOcean rejects keyed preparation without API calls, a new recipe receipt or
 changes to an existing receipt after harness pins change. No-argument contract
 preparation remains covered; fake keyed preparation stays in host-prepare tests.
+
+T-1715 declaration and pause cases (exact generated names):
+
+- `digitalocean declarations load API prices and limit atomically and retain the last good read`: two size prices, API machine limit, fixed billing/capability facts, 429/lost-reply/503 preservation.
+- `digitalocean unavailable declarations refuse safely and recover without partial publication`: typed initial failure, no POST, malformed account rejection, shared concurrent refresh, last-good atomic retention.
+- `digitalocean initial declaration 429 holds subsequent creates without a request`: missing declarations load on acquire, typed refusal and recovery at the deadline.
+- `digitalocean 429 pauses every create until retry time without POST cascades or token leaks` and `digitalocean 422 pauses every create until retry time without POST cascades or token leaks`: second/third requests (different pools) return immediately with no request; 1999 ms stays paused, 2000 ms allows exactly one POST per create. Sentinel never enters refusal text. New fake create-limit identity and retry headers are opt-in.
+- `digitalocean unrelated 422 is failed and does not pause creation`: ordinary validation refusal does not become a droplet-limit cooldown.
+
+The normal DigitalOcean contract factory explicitly loads declarations before
+validation and architecture selection. The fake provider retains its synchronous
+successful declaration shape. These are scripted T2 receipts, not real cloud
+pricing, Linux native process or browser evidence. Stage QA can rerun this entry
+and the unchanged preservation files at the integrated head.
+
+Review controls:
+
+- `digitalocean accepted create followed by address GET 429 retains ownership and pauses later creates`: successful POST followed by observation refusal returns failed with no retryAt; later acquire is paused without API work; original droplet/key are reaped after the deadline without another create.
+- `digitalocean held create refusal cannot shorten a concurrent declaration refresh pause`: arm a held POST observer, complete a concurrent refresh's 10-second refusal, then release the shorter 2-second create refusal. Both the original and later callers report the 10-second deadline with no API work before it; exactly one new POST is sent after it.
+
+The held-response fixture prearms release and join of the provider acquire before
+API close/root removal, and joins in finally on exceptional setup exits. Setup
+uses testWaitMs with an explicit 2x factor on every executor; the outer watchdog
+includes that same scaled setup budget plus separate remaining-work/drainage
+headroom. These are setup/watchdog caps, not the exact 2s/10s product boundaries.

@@ -91,7 +91,10 @@ implementation; this foundation's prepare has no pool arguments.
 
 ## Declarations and stopping policy
 
-Every provider exposes validated, immutable `declarations` from
+Every provider exposes `declarations`: either validated, immutable values or
+`{ state: "unavailable", reason }` before its first successful API read. Consumers
+must narrow that state before prices, capabilities or `earliestStop` are used.
+The successful shape is unchanged for compatibility. Validation comes from
 `host/provider/declarations.ts`. `declareHostProvider` accepts a nonempty size
 price map in USD/hour (`livePerHour`, `idleComputePerHour`), `stoppedBills`,
 positive integer `billingGranularityMs` and `billingMinimumMs` (minimum must be a
@@ -113,6 +116,28 @@ resource confinement, 60 requests/minute, 100 machines, both architectures and
 no address charge. These are fake values, not cloud defaults. A DigitalOcean
 provider supplies pacing from `parseDigitalOceanEndpoint`'s declaration rather
 than repeating its request limit.
+
+DigitalOcean's additive `refreshDeclarations()` reads `/v2/sizes` and `/v2/account`
+through the configured API endpoint and shared pacing budget. It publishes the
+whole validated result atomically; concurrent refreshes share one read. Failures
+retain the last good result, or the typed unavailable state when none exists.
+Live prices equal each size's `price_hourly`; idle compute after destruction and
+extra address charges are zero. The account's `droplet_limit` supplies capacity.
+The provider declares account-confined tokens, x86_64, billed stopped machines,
+per-second billing with a 60-second minimum, and the shared 250 requests/minute cap.
+Acquisition loads missing declarations first and refuses while unavailable.
+
+A 429 or a droplet-limit 422 pauses creates on that provider instance. Calls during
+the pause return `refused` and the same ISO `retryAt` without sending a request or
+creating a key. The API's retry headers set the deadline; absent usable headers,
+the create pause uses 60 seconds. Other 422s remain failures. After the deadline,
+each caller may try once; no automatic replay or retry cascade occurs. The pause
+uses the injected clock, independently of shared API pacing, and concurrent
+refusals can only extend its deadline. An address-observation failure after a
+successful create retains the accepted identity for reap and returns `failed`,
+not a retryable refused-create outcome; a 429 still pauses later creates. Status and cleanup
+do not consult the create pause (API pacing still applies). Production acquisition
+remains test-only; endpoint configuration and credentials do not enable it.
 
 `earliestStop({created, idleSince, idleStopMs, declarations})` returns epoch
 milliseconds: the later of `created + billingMinimumMs` and

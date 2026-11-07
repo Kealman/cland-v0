@@ -76,7 +76,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     }
     else deleting.set(id, left - 1);
   };
-  const account = { status: 'active' };
+  const account: { status: string; droplet_limit?: number } = { status: 'active' };
   // Split-answer state advances only on GET-by-id, never on lists or repeated DELETE.
   const splitReads = new Map<string, number>();
   const splitDelete = (path: string, reads: number): boolean => {
@@ -90,7 +90,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
@@ -116,7 +116,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (method === 'GET' && path === '/regions') return answer(200, { regions });
     if (method === 'POST' && path === '/droplets') {
       try { await beforeCreate?.(); } catch { return answer(500, { id: 'lease-missing', message: 'lease not armed before create' }); }
-      if (faults.create) return answer(faults.create, { id: 'refused', message: faults.echoToken ? token : 'create refused' });
+      if (faults.create) return { status: faults.create, value: { id: faults.createLimit ? 'droplet_limit' : 'refused', message: faults.echoToken ? token : 'create refused' }, ...(faults.createRetryHeaders ? { headers: { 'Retry-After': faults.retryAfter } } : {}) };
       const droplet: Droplet = { id: nextId++, name: String(body!.name), tags: body!.tags as string[], created_at: clock.now().toISOString(), status: 'new', networks: { v4: [] } };
       if (!scripted) {
         const directory = join(stateRoot, `droplet-${droplet.id}`);
@@ -310,7 +310,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
         }
         if (result.status >= 400) {
           const value = result.value as { id: string; message: string };
-          throw new DigitalOceanError(result.status, value.id, value.message.split(token).join('[redacted]'));
+          throw new DigitalOceanError(result.status, value.id, value.message.split(token).join('[redacted]'), result.status === 422 ? rateLimited(new Headers(result.headers), clock.now().getTime()).retryAt : undefined);
         }
         return structuredClone(result.value);
       } finally { clock.clearTimeout(timer); }

@@ -69,3 +69,6 @@ export function earliestStop(options: {
   requireValue(Number.isSafeInteger(deadline));
   return deadline;
 }
+
+/** Successful declarations retain their original shape for older readers. */
+export type HostProviderDeclarationState = HostProviderDeclarations | Readonly<{ state: 'unavailable'; reason: string }>;

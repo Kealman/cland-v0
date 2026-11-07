@@ -18,13 +18,13 @@ export const apiTimeoutMs = (env: NodeJS.ProcessEnv = process.env): number => {
 export class DigitalOceanError extends Error {
   readonly status: number;
   readonly id: string;
-  constructor(status: number, id: string, message: string) { super(`DigitalOcean ${status} ${id}: ${message}`); this.status = status; this.id = id; }
+  readonly retryAt: number | undefined;
+  constructor(status: number, id: string, message: string, retryAt?: number) { super(`DigitalOcean ${status} ${id}: ${message}`); this.status = status; this.id = id; this.retryAt = retryAt; }
 }
 
 /** A refused request is never automatically replayed. retryAt is UTC epoch milliseconds. */
 export class RateLimited extends DigitalOceanError {
-  readonly retryAt: number | undefined;
-  constructor(retryAt: number | undefined, id = 'rate_limited', message = 'request rate limited') { super(429, id, message); this.retryAt = retryAt; }
+  constructor(retryAt: number | undefined, id = 'rate_limited', message = 'request rate limited') { super(429, id, message, retryAt); }
 }
 
 /** Shared by HTTP and the scripted fake. Invalid/missing headers impose no invented provider cooldown. */
@@ -125,7 +125,7 @@ export class DigitalOceanApi {
         if (signal.aborted) throw error;
         throw new DigitalOceanError(response.status, 'response', 'invalid JSON response');
       }
-      if (!response.ok) throw new DigitalOceanError(response.status, redact(value.id), redact(value.message));
+      if (!response.ok) throw new DigitalOceanError(response.status, redact(value.id), redact(value.message), response.status === 422 ? rateLimited(response.headers, this.#clock.now().getTime()).retryAt : undefined);
       return value as T;
     } catch (error) {
       this.#signal?.throwIfAborted();

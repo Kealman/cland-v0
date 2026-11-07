@@ -5,16 +5,19 @@ import childProcess from 'node:child_process';
 import { DigitalOceanHostProvider } from '../src/host/provider/digitalocean.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
+import { testWaitMs, until } from './until.ts';
+import { RateLimited } from '../src/executor/droplet/api.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { hostProviderContract, type ProviderScenario } from './host-provider-contract.ts';
 import { HostProviderRegistry } from '../src/host/provider/registry.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 
 const request = { project: 'contract', pool: 'agents', architecture: 'x86_64' as const };
-async function fixture(t: TestContext, scenario: ProviderScenario = 'normal') {
+async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', beforeClose?: () => Promise<void>) {
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('provider-sentinel-secret', { machine: 'scripted', clock });
-  t.after(() => api.close());
+  t.after(async () => { await beforeClose?.(); await api.close(); });
+  api.account.droplet_limit = 10;
   api.faults.allocateAddressEarly = true;
   api.faults.activeAfter = scenario === 'delayed-boot' ? 3 : 0;
   api.faults.bootFailed = scenario === 'never-boot';
@@ -41,6 +44,9 @@ test('digitalocean create carries configured inputs, isolated key and project/po
 
 hostProviderContract('digitalocean', async (t, scenario) => {
   const f = await fixture(t, scenario);
+  f.api.faults.rateLimits = 0;
+  await f.provider.refreshDeclarations();
+  if (scenario === 'refused') f.api.faults.rateLimits = 1;
   return { provider: f.provider, ready: async () => {
     f.api.faults.activeAfter = 0;
     for (const d of f.api.droplets) await f.api.provider.droplet(d.id);
@@ -311,4 +317,160 @@ test('digitalocean keyed pool preparation refuses through preparePools and regis
   await assert.rejects(preparePools(api.stateRoot, 'agents', env), /DigitalOcean pool image preparation unsupported/);
   assert.equal(await readFile(receipt, 'utf8'), previous);
   assert.equal(api.requests.length, 0, 'unsupported keyed prepare refuses before any provider call');
+});
+
+test('digitalocean declarations load API prices and limit atomically and retain the last good read', async t => {
+  const { api, provider, clock } = await fixture(t);
+  assert.deepEqual(provider.declarations, { state: 'unavailable', reason: 'DigitalOcean declarations not loaded' });
+  Object.assign(api.account, { droplet_limit: 37 });
+  api.sizes.push({ slug: 'second', available: true, price_hourly: 0.123, regions: ['lon1'] });
+  const first = await provider.refreshDeclarations();
+  assert.ok(!('state' in first));
+  if ('state' in first) return;
+  assert.equal(first.machineLimit, 37);
+  assert.deepEqual(first.prices, { 'c-8': { livePerHour: 0.25, idleComputePerHour: 0, idlePerHour: 0 }, second: { livePerHour: 0.123, idleComputePerHour: 0, idlePerHour: 0 } });
+  assert.equal(first.apiRequestsPerMinute, 250);
+  assert.equal(first.billingMinimumMs, 60000); assert.equal(first.billingGranularityMs, 1000);
+  assert.equal(first.stoppedBills, true); assert.equal(first.extraAddressPerHour, 0);
+  assert.equal(first.tokenConfinement, 'account'); assert.deepEqual(first.architectures, ['x86_64']);
+  api.faults.rateLimits = 1;
+  assert.equal(await provider.refreshDeclarations(), first);
+  await clock.advance(1000);
+  api.beforeSizes(async () => { throw new Error('lost reply provider-sentinel-secret'); });
+  assert.equal(await provider.refreshDeclarations(), first);
+  api.beforeSizes(async () => { throw new (await import('../src/executor/droplet/api.ts')).DigitalOceanError(503, 'unavailable', 'try later'); });
+  assert.equal(await provider.refreshDeclarations(), first);
+});
+
+for (const status of [429, 422]) test(`digitalocean ${status} pauses every create until retry time without POST cascades or token leaks`, { timeout: testWaitMs(2000) }, async t => {
+  const { api, provider, clock } = await fixture(t);
+  await provider.refreshDeclarations();
+  Object.assign(api.faults, { create: status, createLimit: status === 422, createRetryHeaders: true, echoToken: true, retryAfter: '2' });
+  const start = clock.now().getTime();
+  const first = await provider.acquire(request);
+  assert.equal(first.state, 'refused');
+  if (first.state !== 'refused') return;
+  assert.equal(first.retryAt, new Date(start + 2000).toISOString());
+  assert.ok(!JSON.stringify(first).includes('provider-sentinel-secret'));
+  const sent = api.requests.length;
+  const postCount = () => api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length;
+  assert.equal(postCount(), 1);
+  api.faults.create = 0;
+  const held = await Promise.all([provider.acquire({ ...request, pool: 'second' }), provider.acquire({ ...request, pool: 'third' })]);
+  assert.deepEqual(held, [first, first]);
+  assert.equal(api.requests.length, sent);
+  await clock.advance(1999);
+  assert.deepEqual(await provider.acquire(request), first);
+  assert.equal(api.requests.length, sent);
+  await clock.advance(1);
+  const results = await Promise.all([provider.acquire(request), provider.acquire({ ...request, pool: 'second' }), provider.acquire({ ...request, pool: 'third' })]);
+  assert.deepEqual(results.map(r => r.state), ['created', 'created', 'created']);
+  assert.equal(postCount(), 4);
+});
+
+test('digitalocean unavailable declarations refuse safely and recover without partial publication', async t => {
+  const { api, provider } = await fixture(t);
+  api.beforeSizes(async () => { throw new Error('lost provider-sentinel-secret'); });
+  const unavailable = await provider.refreshDeclarations();
+  assert.deepEqual(unavailable, { state: 'unavailable', reason: 'DigitalOcean declarations not loaded' });
+  const refused = await provider.acquire(request);
+  assert.equal(refused.state, 'refused');
+  assert.ok(!JSON.stringify(refused).includes('provider-sentinel-secret'));
+  assert.ok(!api.requests.some(r => r.method === 'POST'));
+  api.beforeSizes(async () => {});
+  api.account.droplet_limit = -1;
+  assert.equal(await provider.refreshDeclarations(), unavailable);
+  api.account.droplet_limit = 23;
+  const before = api.requests.length;
+  const [one, two] = await Promise.all([provider.refreshDeclarations(), provider.refreshDeclarations()]);
+  assert.equal(one, two);
+  assert.equal(api.requests.length - before, 2, 'concurrent refresh shares one complete API read');
+  assert.ok(!('state' in one));
+  if ('state' in one) return;
+  assert.equal(one.machineLimit, 23);
+  api.account.droplet_limit = -1;
+  api.sizes[0]!.price_hourly = 99;
+  assert.equal(await provider.refreshDeclarations(), one);
+  assert.equal(one.prices['c-8']!.livePerHour, 0.25);
+});
+test('digitalocean initial declaration 429 holds subsequent creates without a request', async t => {
+  const { api, provider, clock } = await fixture(t);
+  api.faults.rateLimits = 1;
+  const first = await provider.acquire(request);
+  assert.equal(first.state, 'refused');
+  const count = api.requests.length;
+  assert.deepEqual(await provider.acquire(request), first);
+  assert.equal(api.requests.length, count);
+  await clock.advance(1000);
+  assert.equal((await provider.acquire(request)).state, 'created');
+});
+test('digitalocean unrelated 422 is failed and does not pause creation', async t => {
+  const { api, provider } = await fixture(t);
+  api.faults.create = 422;
+  assert.equal((await provider.acquire(request)).state, 'failed');
+  api.faults.create = 0;
+  assert.equal((await provider.acquire(request)).state, 'created');
+});
+
+test('digitalocean accepted create followed by address GET 429 retains ownership and pauses later creates', async t => {
+  const { api, provider, clock } = await fixture(t);
+  const retry = clock.now().getTime() + 2000;
+  api.beforeDropletRead(async () => { throw new RateLimited(retry); });
+  const result = await provider.acquire(request);
+  assert.equal(result.state, 'failed', 'an accepted create is never a safely refused create');
+  assert.ok(!('retryAt' in result));
+  assert.equal(api.droplets.length, 1); assert.equal(api.keys.length, 1);
+  const count = api.requests.length;
+  const held = await provider.acquire(request);
+  assert.equal(held.state, 'refused');
+  if (held.state === 'refused') assert.equal(held.retryAt, new Date(retry).toISOString());
+  assert.equal(api.requests.length, count);
+  await clock.advance(2000);
+  api.beforeDropletRead(async () => {});
+  const id = String(api.droplets[0]!.id);
+  assert.deepEqual(await provider.reap(request), { state: 'reaped', released: [id], incomplete: [] });
+  assert.equal(api.droplets.length, 0); assert.equal(api.keys.length, 0);
+  assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+});
+// This scripted fixture explicitly admits 2x setup headroom on every executor.
+// The outer watchdog includes that same setup scale plus behavior and drainage.
+const heldSetupMs = testWaitMs(2000), heldSetupScale = 2;
+const heldRemainingMs = testWaitMs(15000);
+test('digitalocean held create refusal cannot shorten a concurrent declaration refresh pause', { timeout: heldSetupMs * heldSetupScale + heldRemainingMs * 2 }, async t => {
+  const gate = Promise.withResolvers<void>();
+  let closing = false;
+  let pending: ReturnType<DigitalOceanHostProvider['acquire']> | undefined;
+  // Install the release/join ahead of api.close before acquire can own a writer.
+  const { api, provider, clock } = await fixture(t, 'normal', async () => {
+    closing = true; gate.resolve();
+    if (pending) await Promise.allSettled([pending]);
+  });
+  const acquire = () => {
+    if (closing) throw new Error('held fixture is closing');
+    return pending = provider.acquire(request);
+  };
+  await provider.refreshDeclarations();
+  const latest = clock.now().getTime() + 10000;
+  let entered = false;
+  api.beforeCreate(async () => { entered = true; await gate.promise; });
+  Object.assign(api.faults, { create: 429, createRetryHeaders: true, retryAfter: '2' });
+  const initial = acquire();
+  try {
+    await until(() => entered, { what: 'create POST reached held provider response', timeoutMs: heldSetupMs, loadFactor: heldSetupScale });
+    api.beforeSizes(async () => { throw new RateLimited(latest); });
+    await provider.refreshDeclarations(); // Complete publication of the longer deadline.
+  } finally { gate.resolve(); await initial; }
+  const first = await initial;
+  assert.equal(first.state, 'refused');
+  if (first.state !== 'refused') return;
+  assert.equal(first.retryAt, new Date(latest).toISOString());
+  const count = api.requests.length;
+  assert.deepEqual(await acquire(), first);
+  await clock.advance(2000);
+  assert.deepEqual(await acquire(), first);
+  assert.equal(api.requests.length, count);
+  await clock.advance(8000);
+  api.faults.create = 0;
+  assert.equal((await acquire()).state, 'created');
+  assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
 });

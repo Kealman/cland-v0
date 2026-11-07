@@ -1,5 +1,5 @@
 import type { PoolImageKey } from './pool-image.ts';
-import type { HostProviderDeclarations } from './declarations.ts';
+import type { HostProviderDeclarationState } from './declarations.ts';
 /** Host provisioning is independent of verification's Executor. Provider tokens
  * and native resource details stay behind this interface, on the hub. */
 export type HostArchitecture = 'x86_64' | 'arm64';
@@ -14,7 +14,7 @@ export type ReapOptions = { project: string; pool: string };
 export type ReapResult = { state: 'reaped'; released: string[]; incomplete: string[] } | Failed;
 export interface HostProvider {
   readonly transport: 'ssh';
-  readonly declarations: HostProviderDeclarations;
+  readonly declarations: HostProviderDeclarationState;
   acquire(options: AcquireOptions): Promise<AcquireResult>;
   prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult>;
   status(machine: Machine): Promise<MachineStatus>;

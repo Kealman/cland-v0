@@ -5,7 +5,7 @@ import { DigitalOceanApi, DigitalOceanError, RateLimited } from '../../executor/
 import { digitalOceanRequestsPerMinute } from '../../executor/droplet/endpoint.ts';
 import { projectTag } from '../../executor/droplet/droplet.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
-import { declareHostProvider } from './declarations.ts';
+import { declareHostProvider, type HostProviderDeclarations, type HostProviderDeclarationState } from './declarations.ts';
 import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult } from './provider.ts';
 
 export type ReapTarget = { machineId?: string | undefined; keyName?: string | undefined };
@@ -30,11 +30,36 @@ type Record = { name: string; project: string; pool: string; tags: string[]; key
  * this file with pool recipe preparation; it is not the executor snapshot record. */
 export class DigitalOceanHostProvider implements HostProvider {
   readonly transport = 'ssh' as const;
-  readonly declarations = declareHostProvider({ prices: { 's-2vcpu-4gb': { livePerHour: 0.03571, idleComputePerHour: 0.03571 } }, stoppedBills: true, billingGranularityMs: 1000, billingMinimumMs: 60_000, tokenConfinement: 'account', apiRequestsPerMinute: digitalOceanRequestsPerMinute, machineLimit: 10, architectures: ['x86_64'], extraAddressPerHour: 0 });
+  #declarations: HostProviderDeclarationState = Object.freeze({ state: 'unavailable', reason: 'DigitalOcean declarations not loaded' });
+  get declarations(): HostProviderDeclarationState { return this.#declarations; }
+  #refresh: Promise<HostProviderDeclarationState> | undefined;
+  refreshDeclarations(): Promise<HostProviderDeclarationState> {
+    if (this.#refresh) return this.#refresh;
+    this.#refresh = (async () => {
+      try {
+        const sizes = await this.#api.sizes();
+        const account = await this.#api.account() as { droplet_limit?: unknown };
+        const candidate: HostProviderDeclarations = declareHostProvider({
+          prices: Object.fromEntries(sizes.map(size => [size.slug, { livePerHour: size.price_hourly, idleComputePerHour: 0 }])),
+          stoppedBills: true, billingGranularityMs: 1000, billingMinimumMs: 60_000,
+          tokenConfinement: 'account', apiRequestsPerMinute: digitalOceanRequestsPerMinute,
+          machineLimit: account.droplet_limit as number, architectures: ['x86_64'], extraAddressPerHour: 0,
+        });
+        this.#declarations = candidate;
+      } catch (e) {
+        if (e instanceof RateLimited) this.#pauseUntil(e.retryAt);
+        // Keep the last complete declaration; no provider diagnostics.
+      }
+      return this.#declarations;
+    })().finally(() => { this.#refresh = undefined; });
+    return this.#refresh;
+  }
+
   readonly #options: DigitalOceanHostProviderOptions;
   readonly #api: DigitalOceanApi;
   readonly #clock: Clock;
   readonly #directory: string;
+  #createRetryAt = 0;
   #tail: Promise<unknown> = Promise.resolve();
   constructor(options: DigitalOceanHostProviderOptions) {
     this.#options = options; this.#clock = options.clock ?? realClock;
@@ -61,6 +86,13 @@ export class DigitalOceanHostProvider implements HostProvider {
     if (options.architecture !== 'x86_64' || !options.project || !/^[a-zA-Z0-9-]+$/.test(options.pool)) return { state: 'failed', reason: 'machine options unsupported' };
     // No project setting can enable production host.create before pool admission.
     if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host acquisition is test-only', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
+    if (this.#clock.now().getTime() < this.#createRetryAt) return this.#paused();
+    if ('state' in this.#declarations) {
+      await this.refreshDeclarations();
+      if (this.#clock.now().getTime() < this.#createRetryAt) return this.#paused();
+      if ('state' in this.#declarations) return { state: 'refused', reason: this.#declarations.reason, retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
+    }
+    let accepted = false;
     try {
       const id = randomUUID(), tag = projectTag(this.#options.root, options.project);
       const pair = generateKeyPairSync('ed25519');
@@ -71,7 +103,8 @@ export class DigitalOceanHostProvider implements HostProvider {
       const key = await this.#api.importKey(record.keyName, `ssh-ed25519 ${Buffer.concat([prefix, publicBytes]).toString('base64')}`);
       record.keyId = key.id; await this.#save(record);
       const droplet = await this.#api.create({ name: record.name, tags: record.tags, region: options.region ?? 'lon1', size: this.#options.size ?? 's-2vcpu-4gb', image: this.#options.image ?? 'ubuntu-24-04-x64', ssh_keys: [key.id] });
-      record.dropletId = droplet.id;
+      accepted = true;
+      record.dropletId = droplet.id; await this.#save(record);
       // GET is the address observation, never the launch reply.
       const observed = await this.#api.droplet(droplet.id);
       const machine: Machine = { id: String(droplet.id), address: observed.networks.v4.find(a => a.type === 'public')?.ip_address ?? '', architecture: options.architecture, created: droplet.created_at };
@@ -79,10 +112,18 @@ export class DigitalOceanHostProvider implements HostProvider {
       if (!machine.address) return { state: 'failed', reason: 'machine address not yet observed; retained for reap' };
       return { state: 'created', machine };
     } catch (e) {
-      if (e instanceof RateLimited) return { state: 'refused', reason: 'provider rate limited', retryAt: new Date(e.retryAt ?? this.#clock.now().getTime() + 60_000).toISOString() };
+      if (e instanceof RateLimited || e instanceof DigitalOceanError && e.status === 422 && (e.id === 'droplet_limit' || /droplet.*limit|limit.*droplet/i.test(e.message))) {
+        this.#pauseUntil(e.retryAt);
+        if (!accepted) return this.#paused();
+      }
       return { state: 'failed', reason: 'DigitalOcean create failed; retained for reap' };
     }
   }); }
+  #pauseUntil(retryAt: number | undefined): void {
+    const now = this.#clock.now().getTime();
+    this.#createRetryAt = Math.max(this.#createRetryAt, now + 1, retryAt ?? now + 60_000);
+  }
+  #paused(): AcquireResult { return { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(this.#createRetryAt).toISOString() }; }
   async #record(machine: Machine): Promise<Record> {
     const record = (await this.#records()).find(r => r.machine?.id === machine.id);
     if (!record?.machine || (['id', 'address', 'created', 'architecture'] as const).some(k => record.machine![k] !== machine[k])) throw new Error('machine identity mismatch');
