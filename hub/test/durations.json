@@ -126,9 +126,10 @@
       "A-17332",
       "A-17334",
       "A-17358",
-      "A-17457"
+      "A-17457",
+      "A-17633"
     ],
-    "commit": "c583757ca61d3b06e911a16825c5356df0caedc9"
+    "commit": "6a533be22043e32dd1cbb7510c90b7dfefa380f8"
   },
   "budget": {
     "testSeconds": 5,
@@ -3693,6 +3694,22 @@
     "hub/test/host-provision-records.test.ts": {
       "seconds": 0.007397,
       "tests": 4
+    },
+    "hub/test/host-pools-config.test.ts": {
+      "seconds": 0.012033,
+      "tests": 16
+    },
+    "hub/test/host-provision-gate.test.ts": {
+      "seconds": 0.386039,
+      "tests": 3
+    },
+    "hub/test/host-scheduler.test.ts": {
+      "seconds": 0.004943,
+      "tests": 9
+    },
+    "hub/test/host-spend.test.ts": {
+      "seconds": 0.158528,
+      "tests": 8
     }
   },
   "tests": {
@@ -10832,7 +10849,52 @@
     "hub/test/host-provision-records.test.ts::ready checkpoint refuses a different durable machine address": 0.000929,
     "hub/test/host-provision-records.test.ts::ready checkpoint refuses a registration revoked at the held final boundary": 0.003579,
     "hub/test/host-provision-records.test.ts::revocation after ready atomically replaces the provision state": 0.001106,
-    "hub/test/host-provision-records.test.ts::startup inventory streams only current registrations while retaining failed history": 0.001783
+    "hub/test/host-provision-records.test.ts::startup inventory streams only current registrations while retaining failed history": 0.001783,
+    "hub/test/claude-code-remote.test.ts::remote Claude memory floor refuses actual launchClaude with no process then admits exact floor": 2.93091,
+    "hub/test/host-agent.test.ts::memory fixture drains accepted server after failed client setup before removing its root": 1.161835,
+    "hub/test/host-agent.test.ts::memory floor refuses direct and prepared spawn, reports fake bytes and admits the exact floor": 1.68802,
+    "hub/test/host-agent.test.ts::memory override is ignored without the fake-host marker and malformed fake bytes refuse": 0.007924,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid idle_stop naming its key": 0.000268,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid max_hosts naming its key": 0.000212,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid min_hosts naming its key": 0.000257,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid provider naming its key": 0.000542,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid region naming its key": 0.000219,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid size naming its key": 0.000193,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid slots naming its key": 0.00019,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid spread naming its key": 0.000332,
+    "hub/test/host-pools-config.test.ts::host pool refuses invalid transport naming its key": 0.000231,
+    "hub/test/host-pools-config.test.ts::host pools default capacity, agent minimum and global policy": 0.00229,
+    "hub/test/host-pools-config.test.ts::hosts refuses invalid daily_spend_usd naming its key": 0.000218,
+    "hub/test/host-pools-config.test.ts::hosts refuses invalid harnesses naming its key": 0.000158,
+    "hub/test/host-pools-config.test.ts::hosts refuses invalid lease naming its key": 0.000169,
+    "hub/test/host-pools-config.test.ts::hosts refuses invalid weights naming its key": 0.000233,
+    "hub/test/host-pools-config.test.ts::hosts rendering adds global defaults without creating a pool and upgrades old config": 0.006007,
+    "hub/test/host-pools-config.test.ts::required provider, custom size slots, lease boundary and explicit overrides": 0.000514,
+    "hub/test/host-provision-gate.test.ts::never-booting creation releases at exactly 300000 ms on the hub clock": 0.182798,
+    "hub/test/host-provision-gate.test.ts::settings entry publishes durable creating id before held acquisition completes": 0.091367,
+    "hub/test/host-provision-gate.test.ts::tunnel readiness expires at exactly 300000 ms on its injected clock": 0.111874,
+    "hub/test/host-scheduler.test.ts::accumulated fractional weights fill eight slots exactly": 0.000256,
+    "hub/test/host-scheduler.test.ts::default weights fill eight slots with Claude Code or mixed Codex sessions": 0.001962,
+    "hub/test/host-scheduler.test.ts::dense packing chooses fullest eligible host and spread chooses emptiest": 0.00034,
+    "hub/test/host-scheduler.test.ts::fractional overrides convert once to milli-slots and reject one milli excess": 0.000232,
+    "hub/test/host-scheduler.test.ts::no room creates below the limit but promises booting room before another create": 0.00027,
+    "hub/test/host-scheduler.test.ts::non-serving hosts are skipped for each verdict and default serves every harness": 0.000369,
+    "hub/test/host-scheduler.test.ts::reservations, unavailable hosts and verdicts preserve the boot and maximum fences": 0.000297,
+    "hub/test/host-scheduler.test.ts::used and promised milli-slots share capacity and affect dense packing": 0.000565,
+    "hub/test/host-scheduler.test.ts::weight overrides change placement and leave unspecified defaults intact": 0.000652,
+    "hub/test/host-spend.test.ts::executor shard admission does not mistake a host identity for a verification run": 0.009282,
+    "hub/test/host-spend.test.ts::host and executor admissions share the cap while hosts also obey their own cap": 0.018661,
+    "hub/test/host-spend.test.ts::host reservation preserves previous v1 settlements and legacy reconciliation": 0.027543,
+    "hub/test/host-spend.test.ts::native host lease conflict refuses admission without changing durable accounting": 0.022131,
+    "hub/test/host-spend.test.ts::offset settlement instants count in the UTC day and month and shared cap": 0.011378,
+    "hub/test/host-spend.test.ts::renewal raises the held lifetime and settlement bills actual lifetime with a minimum": 0.027717,
+    "hub/test/host-spend.test.ts::settled UTC totals separate days, months and pools while pending costs stay excluded": 0.01787,
+    "hub/test/host-spend.test.ts::shard host lease conflict refuses admission without changing durable accounting": 0.023946,
+    "hub/test/init-config.test.ts::managed init and update add hosts defaults without a pool and keep pins": 0.001819,
+    "hub/test/roles-harnesses.test.ts::role pool validation shares pool-name syntax and the local-only role policy": 0.001205,
+    "hub/test/roles-harnesses.test.ts::role pools default to local and accept named pools for built-in and custom workers": 0.000641,
+    "hub/test/tcp-listener-census.test.ts::fixture census includes launch roots and every descendant but excludes sibling socket holders": 0.000913,
+    "hub/test/transport-forwards.test.ts::cleanup rejection still joins fixture and decoy before removing their roots": 0.709921
   },
   "allow": {
     "hub/test/host-create-ready.test.ts::forced fixture body failure joins held creation before storage and root disposal": {
