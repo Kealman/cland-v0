@@ -122,9 +122,11 @@
       "A-17044",
       "A-17045",
       "A-17180",
-      "A-17195"
+      "A-17195",
+      "A-17332",
+      "A-17334"
     ],
-    "commit": "5795362b04395d88d08cdbb3069b16d38d4c5054"
+    "commit": "3c80255e0713f2fe08c5abe516b255516fa7ddf3"
   },
   "budget": {
     "testSeconds": 5,
@@ -3653,6 +3655,30 @@
     "hub/test/host-runtime-owner.test.ts": {
       "seconds": 0.046655,
       "tests": 6
+    },
+    "hub/test/host-prepare.test.ts": {
+      "seconds": 3.189966,
+      "tests": 7
+    },
+    "hub/test/host-provider-digitalocean.test.ts": {
+      "seconds": 0.275426,
+      "tests": 32
+    },
+    "hub/test/host-runtime-delivery.test.ts": {
+      "seconds": 4.458997,
+      "tests": 2
+    },
+    "hub/test/host-runtime-bundle.test.ts": {
+      "seconds": 0.272054,
+      "tests": 3
+    },
+    "hub/test/image-recipe.test.ts": {
+      "seconds": 0.028021,
+      "tests": 7
+    },
+    "hub/test/tcp-listener-census.test.ts": {
+      "seconds": 0.003042,
+      "tests": 7
     }
   },
   "tests": {
@@ -10683,7 +10709,96 @@
     "hub/test/host-runtime-owner.test.ts::failed runtime remove retains ownership and retries cleanup before unpublishing": 0.004386,
     "hub/test/host-runtime-owner.test.ts::runtime add opens the same owners and reopens a registered host after close": 0.021452,
     "hub/test/host-runtime-owner.test.ts::runtime removal settles before carrier and Git closure and refuses later add": 0.006176,
-    "hub/test/host-runtime-owner.test.ts::shutdown joins an in-flight runtime add and prevents its publication": 0.004181
+    "hub/test/host-runtime-owner.test.ts::shutdown joins an in-flight runtime add and prevents its publication": 0.004181,
+    "hub/test/claude-code-remote.test.ts::native command admission receipt aborted": 0.002381,
+    "hub/test/claude-code-remote.test.ts::native command admission receipt no-pid-error": 0.006848,
+    "hub/test/claude-code-remote.test.ts::native command admission receipt pid-existed": 0.036052,
+    "hub/test/claude-code-remote.test.ts::native command admission receipt throw": 0.002187,
+    "hub/test/claude-code-remote.test.ts::remote Claude native aborted different-name retry": 3.095001,
+    "hub/test/claude-code-remote.test.ts::remote Claude native aborted same-name retry": 3.424909,
+    "hub/test/claude-code-remote.test.ts::remote Claude native lost-reply different-name retry": 2.01652,
+    "hub/test/claude-code-remote.test.ts::remote Claude native lost-reply same-name retry": 2.010404,
+    "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire different-name retry": 2.982905,
+    "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire same-name retry": 3.597556,
+    "hub/test/claude-code-remote.test.ts::remote Claude native sent-abort different-name retry": 2.042005,
+    "hub/test/claude-code-remote.test.ts::remote Claude native sent-abort same-name retry": 2.231359,
+    "hub/test/claude-code-remote.test.ts::remote Claude native spawn-error different-name retry": 3.185602,
+    "hub/test/claude-code-remote.test.ts::remote Claude native spawn-error same-name retry": 3.359019,
+    "hub/test/claude-code-remote.test.ts::remote Claude pre-spawn root refusal permits immediate different-name launch": 3.440667,
+    "hub/test/claude-code-remote.test.ts::remote Claude pre-spawn root refusal permits immediate same-name launch": 3.471338,
+    "hub/test/doctor-run.test.ts::native no-PID error admission closed": 0.000793,
+    "hub/test/doctor-run.test.ts::native no-PID error admission missing-close": 0.00081,
+    "hub/test/doctor-run.test.ts::native no-PID error admission pid-seen": 0.001326,
+    "hub/test/host-prepare.test.ts::fake image build joins the configured build receipt and records its key": 0.008565,
+    "hub/test/host-prepare.test.ts::pool harness pins use renderer ids and exact release versions": 0.001629,
+    "hub/test/host-prepare.test.ts::pool prepare CLI publishes an image and then reports current": 0.691752,
+    "hub/test/host-prepare.test.ts::pool prepare invalidates harnesses and names the changed part": 0.607216,
+    "hub/test/host-prepare.test.ts::pool prepare invalidates lock and names the changed part": 0.566017,
+    "hub/test/host-prepare.test.ts::pool prepare invalidates provision and names the changed part": 0.63126,
+    "hub/test/host-prepare.test.ts::pool prepare selects all configured pools and unknown pool names the choices": 0.683527,
+    "hub/test/host-prepared.test.ts::prepared restart observation waits through identity publication before agent admission": 1.314553,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean 422 pauses every create until retry time without POST cascades or token leaks": 0.012349,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean 429 pauses every create until retry time without POST cascades or token leaks": 0.009733,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean accepted create followed by address GET 429 retains ownership and pauses later creates": 0.00682,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean create carries configured inputs, isolated key and project/pool tags; invalid region makes no call": 0.031928,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean declarations load API prices and limit atomically and retain the last good read": 0.003048,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean held create refusal cannot shorten a concurrent declaration refresh pause": 0.006974,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean incomplete retirement blocks owner claims through restart until both resources reconcile": 0.015222,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean initial declaration 429 holds subsequent creates without a request": 0.009404,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean keyed pool preparation refuses through preparePools and registry without publishing a recipe receipt": 0.01305,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean lost create response is reaped after provider restart; other pool and project survive": 0.012785,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean missing configured image fails without a preparation receipt": 0.001661,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean owned host and its key survive reap while an unowned host is removed": 0.014543,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean pending retirement reconciles after transient key GET failure and empty inventories": 0.009539,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean pending retirement survives a lost owner settlement acknowledgement": 0.011353,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean provider keeps sentinel out of output, errors and user-data, and launches no child": 0.006218,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean reap admits orphan key cleanup through its current owner": 0.00329,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean reap finds tagged droplets and pool-prefixed keys without local intents": 0.003944,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean reap holds owner admission through both confirmed deletes; snapshot-only callers fail closed": 0.006176,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean reap preserves overlapping pool keys with and without intent records": 0.011708,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean reap rechecks owner admission after held inventory and preceding deletion": 0.014286,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean registry resolves and production acquisition refuses before any API request": 0.001663,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean release confirms both droplet and key with GET after split DELETE 404": 0.00677,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean unavailable declarations refuse safely and recover without partial publication": 0.003967,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean unrelated 422 is failed and does not pause creation": 0.005769,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: delayed-boot preserves observed lifecycle outcomes": 0.007387,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: failed-acquire acquire has a typed outcome": 0.003523,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: ignored-delete preserves observed lifecycle outcomes": 0.007105,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: never-boot preserves observed lifecycle outcomes": 0.003827,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: provider contract creates, prepares, observes and confirms release": 0.013465,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: provider declares sane prices, billing and capabilities": 0.002575,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: reap releases only the requested project and pool": 0.011086,
+    "hub/test/host-provider-digitalocean.test.ts::digitalocean: refused acquire has a typed outcome": 0.004258,
+    "hub/test/host-runtime-delivery.test.ts::C1-C3 whole runtime delivery verifies files, reuses digest and atomically replaces CLI and spoke": 3.352388,
+    "hub/test/host-runtime-delivery.test.ts::held installer fixture teardown joins writer before removing its root": 1.106609,
+    "hub/test/web-authority.test.ts::signed-in web refuses pool preparation": 0.084361,
+    "hub/test/accounts-policy.test.ts::image installer exception permits only the exact v2 literal in its recipe file": 0.001587,
+    "hub/test/claude-agent-launch.test.ts::an already admitted Claude generation cannot claim pre-spawn refusal": 0.003122,
+    "hub/test/claude-agent-launch.test.ts::native incomplete classification honors owner proof generation": 0.00319,
+    "hub/test/claude-agent-launch.test.ts::native incomplete classification honors owner proof native": 0.006397,
+    "hub/test/claude-agent-launch.test.ts::native incomplete classification honors owner proof real-incomplete": 0.003414,
+    "hub/test/claude-agent-launch.test.ts::native incomplete classification honors owner proof untyped": 0.003256,
+    "hub/test/host-command-environment.test.ts::SSH Claude pre-spawn admission receipt legacy": 0.001174,
+    "hub/test/host-command-environment.test.ts::SSH Claude pre-spawn admission receipt matching-generation": 0.000552,
+    "hub/test/host-command-environment.test.ts::SSH Claude pre-spawn admission receipt native-only": 0.000452,
+    "hub/test/host-command-environment.test.ts::SSH Claude pre-spawn admission receipt other-generation": 0.00067,
+    "hub/test/host-runtime-bundle.test.ts::runtime manifest carries the hub lock, CLI, spoke and Claude mod with verified digests": 0.263393,
+    "hub/test/host-runtime-bundle.test.ts::upload abort reclaims joined input": 0.005699,
+    "hub/test/host-runtime-bundle.test.ts::upload abort retains input identity on incomplete cleanup": 0.002962,
+    "hub/test/image-recipe.test.ts::agent defaults use doctor minimums and reject unpinned or injected harness versions": 0.000441,
+    "hub/test/image-recipe.test.ts::agent recipe pins all harnesses and installs OpenCode only from the v2 installer before ready": 0.000462,
+    "hub/test/image-recipe.test.ts::arm64 base downloads and verifies exact Node bytes without project packages": 0.00035,
+    "hub/test/image-recipe.test.ts::baked harness installer stubs remain discoverable with a login-disk HOME": 0.020613,
+    "hub/test/image-recipe.test.ts::unknown architectures and unsafe version pins refuse before rendering": 0.000534,
+    "hub/test/image-recipe.test.ts::x86_64 base downloads and verifies exact Node bytes without project packages": 0.000918,
+    "hub/test/image-recipe.test.ts::x86_64 builder preserves the committed recipe bytes and snapshot digest": 0.004703,
+    "hub/test/tcp-listener-census.test.ts::empty listener census returns no failure": 0.00031,
+    "hub/test/tcp-listener-census.test.ts::listener attribution retains metadata only across a stable native birth": 0.001272,
+    "hub/test/tcp-listener-census.test.ts::listener attribution stays unavailable when native birth observation 0 is missing": 0.000294,
+    "hub/test/tcp-listener-census.test.ts::listener attribution stays unavailable when native birth observation 1 is missing": 0.000252,
+    "hub/test/tcp-listener-census.test.ts::listener attribution stays unavailable when native birth observation 2 is missing": 0.000196,
+    "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during description": 0.00032,
+    "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during listeners": 0.000398
   },
   "allow": {
     "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire same-name retry": {
