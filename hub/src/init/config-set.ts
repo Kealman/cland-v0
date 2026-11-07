@@ -65,7 +65,7 @@ function prepareConfigValue(root: string, path: string, key: string, value: unkn
   const field = parts.pop()!;
   tableAt(doc, parts)[field] = value;
   const candidate = parseConfig(stringify(doc), name, env, { strict: true });
-  const text = renderConfig(candidate);
+  const text = renderConfig(candidate, original);
   // Validate the rendered candidate too, before publishing any bytes.
   parseConfig(text, name, env, { strict: true });
   const readback = tableAt(parse(text) as Table, parts)[field];

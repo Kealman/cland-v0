@@ -1,4 +1,7 @@
 // T2: real CLI over a projectHub socket; fake provider only, no native host.
+import { parse } from 'smol-toml';
+import { preservedConfig } from './config-preservation.ts';
+import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { readHostPools } from '../src/host/transport-config.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
@@ -83,4 +86,27 @@ test('pool harness pins use renderer ids and exact release versions', () => {
   for (const harnesses of [{ claude: '2.0.1' }, { codex: 'latest' }, { codex: '^1.2.3' }, { codex: '1.2' }, { codex: '01.2.3' }]) {
     assert.throws(() => readHostPools({ harnesses }), /hosts.harnesses/);
   }
+});
+
+test('config set preserves SSH hosts and both pools before host prepare', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const path = join(root, '.cland/config.toml');
+  const config = defaultConfig('preservation');
+  config.verification.lockPath = join(root, 'suite.lock');
+  const original = renderConfig(config) + preservedConfig;
+  await writeFile(path, original);
+  await writeFile(join(root, 'setup.sh'), '# fixture provision\n');
+  await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
+  const saved = await cland(root, 'config', 'set', 'verification.provision', 'setup.sh');
+  assert.equal(saved.code, 0, saved.stderr);
+  const expected = parse(original);
+  (expected.verification as Record<string, unknown>).provision = 'setup.sh';
+  assert.deepEqual(parse(await readFile(path, 'utf8')), expected);
+  const prepared = await cland(root, 'host', 'prepare', 'first');
+  assert.equal(prepared.code, 0, prepared.stderr);
+  assert.match(prepared.stdout, /first: prepared/);
+  const second = await cland(root, 'host', 'prepare', 'second');
+  assert.equal(second.code, 0, second.stderr);
+  assert.match(second.stdout, /second: prepared/);
 });

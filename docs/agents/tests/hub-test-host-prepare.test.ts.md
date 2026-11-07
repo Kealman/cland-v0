@@ -28,3 +28,10 @@ prepare-key, host-ssh-registry, cli-identity, cli-help and cli-help-pure (if pre
 Stage QA can rerun these on the stage head using the same disposable fixtures;
 no real DigitalOcean token or API is required. Report platform, Node and exact
 head, and label any unexecuted heavy test as pending.
+
+## Config writer preservation (T-1733)
+
+`config set preserves SSH hosts and both pools before host prepare` compares the complete TOML document after a real config CLI edit, then observes successful prepare receipts for first and second on the fake directory provider. Uses no provider network.
+
+Run `node --test hub/test/host-prepare.test.ts` on supported Node with inherited
+`CLAND_*` variables stripped. These T1/T2 cases need no native host or browser.

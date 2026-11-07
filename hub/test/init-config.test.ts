@@ -1,4 +1,5 @@
 // T1: tracker level parsing and ladder validation are pure configuration rules.
+import { preservedConfig } from './config-preservation.ts';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,9 +7,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
 import { defaultConfig, parseConfig, provisionConfig, renderConfig } from '../src/init/config.ts';
-import { setConfigValue } from '../src/init/config-set.ts';
+import { prepareAuthMode, setConfigValue } from '../src/init/config-set.ts';
 import { Report } from '../src/init/files.ts';
-import { parse } from 'smol-toml';
+import { parse, stringify } from 'smol-toml';
 
 test('init renders remote and speech defaults and update adds them while preserving existing settings', t => {
   const root = mkdtempSync(join(tmpdir(), 'cland-remote-config-'));
@@ -274,4 +275,35 @@ test('sign-in mode defaults survive managed update and generic settings cannot c
     assert.throws(() => setConfigValue(root, path, 'auth.mode', value, {}), /cland auth/);
     assert.equal(readFileSync(path, 'utf8'), before);
   }
+});
+
+test('managed provisioning preserves hosts and unknown keys across every section', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-preserve-config-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  const original = renderConfig(defaultConfig('preserved')) + preservedConfig;
+  const doc = parse(original);
+  for (const [key, value] of Object.entries(doc)) {
+    if (key !== 'hosts' && key !== 'visibility' && value && typeof value === 'object' && !Array.isArray(value)) Reflect.set(value, 'future_key', { values: ['kept'] });
+  }
+  writeFileSync(path, '# managed by cland\n' + stringify(doc));
+  provisionConfig(new Report(root), path, root);
+  assert.deepEqual(parse(readFileSync(path, 'utf8')), parse(stringify(doc)));
+  const once = readFileSync(path, 'utf8');
+  provisionConfig(new Report(root), path, root);
+  assert.equal(readFileSync(path, 'utf8'), once);
+});
+
+test('auth mode writer preserves the complete config document', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-preserve-auth-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  const original = renderConfig(defaultConfig('preserved')) + preservedConfig;
+  writeFileSync(path, original);
+  const expected = parse(original);
+  (expected.auth as Record<string, unknown>).mode = 'users';
+  prepareAuthMode(root, path, 'users', {})();
+  assert.deepEqual(parse(readFileSync(path, 'utf8')), expected);
 });

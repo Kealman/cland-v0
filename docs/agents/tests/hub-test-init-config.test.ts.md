@@ -8,3 +8,10 @@ platform, browser or native process; each writer owns a scratch directory.
 
 The [T2 config-set guide](hub-test-config-set.test.ts.md) covers actual CLI/frame
 requests, factory settings, active messenger receipts and held reload ownership.
+
+## Config writer preservation (T-1733)
+
+`managed provisioning preserves hosts and unknown keys across every section` compares all original parsed fields and checks repeated provisioning is byte-stable. `auth mode writer preserves the complete config document` covers the auth writer. The shared provisionConfig seam covers init re-runs, update and setup/onboarding provisioning.
+
+Run `node --test hub/test/init-config.test.ts` on supported Node with inherited
+`CLAND_*` variables stripped. These T1/T2 cases need no native host or browser.

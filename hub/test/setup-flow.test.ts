@@ -1,4 +1,6 @@
 // T1: setup actions and reports on an in-memory machine; no processes or terminal; scratch roles and trust configs.
+import { parse } from 'smol-toml';
+import { preservedConfig } from './config-preservation.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -124,7 +126,7 @@ test('setup keeps an installer open when a role requires the missing harness', a
 
 test('a declined installer persists across setup runs until an explicit install', async t => {
   const root = scratch(t);
-  let config = renderConfig(defaultConfig('project'));
+  let config = renderConfig(defaultConfig('project')) + preservedConfig;
   let runs = 0;
   const m: SetupMachine = {
     ...machine,
@@ -140,6 +142,7 @@ test('a declined installer persists across setup runs until an explicit install'
   const first = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: false }, declineTelegram, declineDiscord]);
   await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter: first, machine: m });
   assert.deepEqual(parseConfig(config, 'project').setup.declinedInstalls, ['codex']);
+  assert.deepEqual(parse(config).hosts, parse(preservedConfig).hosts);
   const second = scriptedPrompter([declineTelegram, declineDiscord]);
   const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter: second, machine: m });
   const line = report.steps.find(s => s.name === 'codex')!;
@@ -150,6 +153,7 @@ test('a declined installer persists across setup runs until an explicit install'
   await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes: false, install: 'codex', prompter: second, machine: m });
   assert.equal(runs, 1);
   assert.deepEqual(parseConfig(config, 'project').setup.declinedInstalls, []);
+  assert.deepEqual(parse(config).hosts, parse(preservedConfig).hosts);
 });
 
 test('nonterminal detection and --yes never install or record a decline', async t => {

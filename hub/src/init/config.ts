@@ -1,4 +1,5 @@
 import { validateHostTransports } from '../host/transport-config.ts';
+import { isDeepStrictEqual } from 'node:util';
 import { canonicalAddress } from '../web-address.ts';
 import { isIP } from 'node:net';
 // `.cland/config.toml` (spec 4.9, decision #17): the project's name and the hub's hygiene thresholds, committed.
@@ -9,7 +10,7 @@ import { qaPolicy, type QaPolicy } from '../tracker/plan.ts';
 import { visibilityOverrides, type VisibilityOverrides } from '../hub/visibility.ts';
 import { DEFAULT_LEVELS, configuredLevels, Ladder, type Levels } from '../tracker/kinds.ts';
 import { basename } from 'node:path';
-import { parse } from 'smol-toml';
+import { parse, stringify } from 'smol-toml';
 import { EVENT_LIMIT, LOOP_BREAKER, MAX_TEXT_BYTES, RATE_LIMIT, type LoopBreaker, type RateLimit } from '../hub/hygiene.ts';
 import { MANAGED_MARK } from '../project.ts';
 import { VERSION } from '../version.ts';
@@ -61,7 +62,27 @@ export const defaultConfig = (name: string): ProjectConfig => ({
 
 const minutes = (ms: number): number => ms / MINUTE;
 
-export function renderConfig(c: ProjectConfig): string {
+/** Existing-file writers must supply the source: ProjectConfig is a runtime projection,
+ * not the whole document. Keep unmodeled tables/keys while upgrading modeled defaults. */
+export function renderConfig(c: ProjectConfig, source?: string | null): string {
+  if (source != null) {
+    const template = renderConfig(c);
+    const original = parse(source);
+    const merge = (target: Record<string, unknown>, values: Record<string, unknown>): void => {
+      for (const [key, value] of Object.entries(values)) {
+        const previous = target[key];
+        if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date) &&
+            previous && typeof previous === 'object' && !Array.isArray(previous) && !(previous instanceof Date)) {
+          merge(previous as Record<string, unknown>, value as Record<string, unknown>);
+        } else target[key] = value;
+      }
+    };
+    const modeled = parse(template);
+    merge(original, modeled);
+    // Keep the annotated template when it already represents the whole document.
+    if (isDeepStrictEqual(original, modeled)) return template;
+    return template.slice(0, template.indexOf('\n\n') + 2) + stringify(original) + '\n';
+  }
   const h = c.hygiene;
   return `${MANAGED_MARK} ${VERSION} — cland update rewrites this file and keeps the values below; remove this line to take it over.
 # The project's cland settings (spec 4.9). Committed.
@@ -548,7 +569,7 @@ export function provisionConfig(report: Report, path: string, root: string): voi
       ladderNote = `tracker levels kept: ${JSON.stringify(config.tracker.levels)}`;
     }
   }
-  writeIfChanged(report, path, renderConfig(config), current);
+  writeIfChanged(report, path, renderConfig(config, current), current);
   const change = report.changes.at(-1);
   if (ladderNote && change && change.action !== 'kept') change.note = ladderNote;
 }

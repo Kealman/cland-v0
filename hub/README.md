@@ -32,6 +32,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Telegram voice transcripts](../docs/hub/telegram-voice-transcripts.md)
 - [Project secrets](../docs/hub/project-secrets.md)
 - [Remote commands](../docs/hub/remote-commands.md)
+- [Config preservation](../docs/hub/cland-init-and-cland-update.md): managed settings, auth, init/update and setup writers retain host tables and unknown TOML fields.
 - [cland setup](../docs/hub/cland-setup.md)
 - [cland init and cland update](../docs/hub/cland-init-and-cland-update.md)
 - [Prebuilt Web release assets](../docs/hub/prebuilt-web-release-assets.md)

@@ -23,7 +23,7 @@ async function rememberDecline(machine: SetupMachine, root: string, env: NodeJS.
   const ids = new Set(config.setup.declinedInstalls);
   if (declined) ids.add(id); else ids.delete(id);
   config.setup.declinedInstalls = [...ids];
-  await machine.write('config.toml', renderConfig(config), text);
+  await machine.write('config.toml', renderConfig(config, text), text);
 }
 
 export const harnesses: SetupStep = async ({ machine, root, env, interactive, yes, install, prompter, narrate, json }) => {

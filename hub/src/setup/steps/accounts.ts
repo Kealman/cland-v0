@@ -55,7 +55,7 @@ export function createAccountsStep({ identity = accountIdentity }: { identity?: 
       if (yes || !await prompter.confirm('Write them to ~/.config/cland/accounts.toml?', false)) {
         if (configText === null || !isManagedFile(configText)) throw new Error('config.toml has no managed by cland mark; cannot save setup declines');
         config.setup.declinedAccounts = [...new Set([...declined, ...candidates.map(a => a.name)])];
-        await machine.write('config.toml', renderConfig(config), configText);
+        await machine.write('config.toml', renderConfig(config, configText), configText);
         return [{ name: 'accounts', verdict: 'skip', detail: `declined: ${names}` }];
       }
       let original = '';

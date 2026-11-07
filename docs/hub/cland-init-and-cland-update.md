@@ -17,7 +17,7 @@ Nothing is written or removed through a symbolic link: every destination and eac
 | Path | Committed | How it is managed |
 | --- | --- | --- |
 | `.cland/.gitignore` | yes | The hub's own rule: rewritten while its first line carries the mark. |
-| `.cland/config.toml` | yes | Written with the defaults; `update` rewrites it to the current template and keeps the values it finds. |
+| `.cland/config.toml` | yes | Written with the defaults; `init` re-runs and `update` refresh modeled defaults and retain all original TOML fields, including hosts and unknown sections. Comments and formatting may be regenerated. |
 | `.cland/crew.toml` | yes | Staffing policy, written once with defaults; reloaded on change, keeping the last good version. |
 | `.cland/roles.toml` | yes | Written with the defaults when missing, then the human's: never rewritten (`roles.toml` above). |
 | `.cland/tasks/.gitkeep` | yes | A mark line. |

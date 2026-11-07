@@ -1,4 +1,6 @@
 // T1: accounts use scratch files, an injected identity command and fake prompter; no processes or real time.
+import { parse } from 'smol-toml';
+import { preservedConfig } from './config-preservation.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -12,7 +14,7 @@ import { scriptedPrompter } from './setup-prompter.ts';
 function fixture(t: test.TestContext) {
   const root = mkdtempSync(join(tmpdir(), 'cland-accounts-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  let config = renderConfig(defaultConfig('accounts'));
+  let config = renderConfig(defaultConfig('accounts')) + preservedConfig;
   const options: SetupOptions = { root, env: { HOME: root }, interactive: true, yes: false, prompter: scriptedPrompter([]), machine: {
     projectExists: async () => true, requiredHarnesses: async () => [], onPath: async () => true,
     run: async () => { throw new Error('unexpected run'); },
@@ -42,6 +44,7 @@ test('Enter declines a new account and the next run reports the remembered name 
   assert.equal((await step(f.options))[0]?.verdict, 'skip');
   assert.equal(existsSync(f.registry), false);
   assert.deepEqual(parseConfig(f.config(), 'accounts').setup.declinedAccounts, ['claude-work']);
+  assert.deepEqual(parse(f.config()).hosts, parse(preservedConfig).hosts);
   const second = (await step(f.options))[0]!;
   assert.equal(second.verdict, 'ok');
   assert.match(second.detail, /declined earlier: claude-work; add them to accounts.toml by hand to use them/);
