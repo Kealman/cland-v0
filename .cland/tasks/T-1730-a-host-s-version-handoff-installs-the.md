@@ -3,7 +3,7 @@ id: T-1730
 kind: task
 title: A host's version handoff installs the whole runtime tree, so an upgraded host keeps its CLI, spoke and Claude Code mod
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1533
 blocked_by:
   - T-1723
 topic: null
-branch: null
+branch: t/T-1730-a-host-s-version-handoff-installs-the
 created: 2026-11-06T20:59:24.215Z
-updated: 2026-11-06T20:59:24.215Z
+updated: 2026-11-07T05:55:45.909Z
 ---
 
 ## Summary

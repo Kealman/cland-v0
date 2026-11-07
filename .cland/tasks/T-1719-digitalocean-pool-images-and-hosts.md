@@ -3,7 +3,7 @@ id: T-1719
 kind: task
 title: DigitalOcean pool images, and hosts created from them
 state: open
-status: backlog
+status: in progress
 size: M
 criterion_seq: 7
 labels:
@@ -15,10 +15,10 @@ blocked_by:
   - T-1714
   - T-1716
   - T-1710
-topic: null
-branch: null
+topic: topic-1420
+branch: t/T-1719-digitalocean-pool-images-and-hosts
 created: 2026-11-06T10:49:01.153Z
-updated: 2026-11-06T17:20:04.648Z
+updated: 2026-11-07T05:55:47.426Z
 ---
 
 ## Summary

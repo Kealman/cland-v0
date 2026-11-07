@@ -3,7 +3,7 @@ id: T-1720
 kind: task
 title: "`cland host destroy`"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-06T10:49:05.400Z
-updated: 2026-11-06T10:49:05.400Z
+updated: 2026-11-07T05:55:04.256Z
 ---
 
 ## Summary

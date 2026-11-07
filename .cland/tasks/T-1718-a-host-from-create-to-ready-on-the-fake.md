@@ -3,7 +3,7 @@ id: T-1718
 kind: task
 title: A host from create to ready on the fake provider, and `cland host list`
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -14,10 +14,10 @@ blocked_by:
   - T-1716
   - T-1710
   - T-1723
-topic: null
-branch: null
+topic: topic-1421
+branch: t/T-1718-a-host-from-create-to-ready-on-the-fake
 created: 2026-11-06T10:48:53.045Z
-updated: 2026-11-06T11:10:56.840Z
+updated: 2026-11-07T05:55:51.207Z
 ---
 
 ## Summary
