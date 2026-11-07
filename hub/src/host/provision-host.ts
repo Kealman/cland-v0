@@ -1,14 +1,16 @@
+import { parsePoolName } from './pool-name.ts';
 import { hostSettlementComplete } from './settle.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { machineEnv } from '../executor/droplet/machine.ts';
 import { spawn } from 'node:child_process';
-import { setTimeout as pause } from 'node:timers/promises';
+import { realClock, type Clock } from '../hub/clock.ts';
+import { clockDelay } from './clock-delay.ts';
 import { parse } from 'smol-toml';
 import { poolImageKey, samePoolImageKey } from './provider/pool-image.ts';
 import { HostProviderRegistry } from './provider/registry.ts';
-import { readHostPools } from './transport-config.ts';
+import { readHostPools, type HostPool } from './transport-config.ts';
 import { renderPrelude } from './prelude.ts';
 import { HostSecretStore } from './records.ts';
 import type { HostRecords } from './records.ts';
@@ -43,11 +45,14 @@ async function command(binary:string,args:string[],env:NodeJS.ProcessEnv,input='
   child.once('close',(code,signal)=>{clearTimeout(timer);if(error||code!==0)reject(error??new Error(`provision command exit=${code} signal=${signal}: ${tail}`));else resolve();});
  });
 }
-export async function createHost(o:{root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
- const text=await readFile(join(o.root,'.cland/config.toml'),'utf8');
- const {pools}=readHostPools(parse(text).hosts), names=Object.keys(pools).sort();
+export type CreateHost = typeof createHost;
+export async function createHost(o:{clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
+ const clock=o.clock??realClock;
+ const pools=o.settings ? {[o.pool??'agents']:o.settings} : readHostPools(parse(await readFile(join(o.root,'.cland/config.toml'),'utf8')).hosts).pools;
+ const names=Object.keys(pools).sort();
  const pool=o.pool??(names.includes('agents')?'agents':names.length===1?names[0]:undefined);
  if(!pool||!Object.hasOwn(pools,pool))throw Error(`choose a configured pool: ${names.join(', ')||'none'}`);
+ parsePoolName(pool);
  const config=pools[pool]!;
  const provider=o.provider??new HostProviderRegistry({env:o.env,digitalocean:{root:o.root}}).resolve(config);
  const admission=provider.createAdmission();
@@ -56,7 +61,7 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
  let prepared;
  try {prepared=JSON.parse(await readFile(join(o.root,'.cland/run/hosts',pool+'-image.json'),'utf8'));}catch{}
  if(!prepared?.key||!samePoolImageKey(prepared.key,key))throw Error(`pool ${pool} image is not current; run cland host prepare ${pool}`);
- const record:ProvisionRecord={id:'host-'+randomUUID(),...config,pool,created:new Date().toISOString(),state:'creating'};
+ const record:ProvisionRecord={id:'host-'+randomUUID(),...config,pool,created:clock.now().toISOString(),state:'creating'};
  o.records.provisions.save(record);
  const completion=Promise.withResolvers<void>(),abort=new AbortController();
  const signal=o.signal?AbortSignal.any([o.signal,abort.signal]):abort.signal;
@@ -64,6 +69,7 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
  creations.set(creationKey,{abort,done:completion.promise});
  let registered=false,acquiring=false;
  try {
+  o.onCreating?.(record.id);
   // An actual OpenSSH key, never a key inferred from a responding machine.
   await mkdir(directory(o.root),{recursive:true,mode:0o700});
   const privateDirectory=join(directory(o.root),record.id);
@@ -86,12 +92,12 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
   const base=['-F','/dev/null','-i',join(fake,'client-key'),...['BatchMode=yes','StrictHostKeyChecking=yes','GlobalKnownHostsFile=/dev/null','KnownHostsCommand=none','VerifyHostKeyDNS=no','UpdateHostKeys=no',`UserKnownHostsFile="${known}"`].flatMap(v=>['-o',v])];
   const destination=`agent@${acquired.machine.address}`;
   const ssh=o.env.CLAND_SSH_BIN??'ssh',scp=o.env.CLAND_SCP_BIN??'scp';
-  const deadline=Date.now()+(o.gateMs??PROVISION_GATE_MS);
+  const deadline=clock.now().getTime()+(o.gateMs??PROVISION_GATE_MS);
   signal?.throwIfAborted();
   let lastGateFailure='machine has not answered';
   while(true) {
-   try {if((await provider.status(acquired.machine)).state!=='ready')throw Error('machine booting');await command(ssh,[...base,destination,'sh','-s'],provisioningEnv,'true\n',Math.max(1,Math.min(10000,deadline-Date.now())));break;}
-   catch(error) {lastGateFailure=error instanceof Error?error.message:'probe outcome unavailable';signal?.throwIfAborted();if(Date.now()>=deadline)throw Error('pinned-key provisioning gate timed out: '+lastGateFailure);await pause(Math.max(1,Math.min(250,deadline-Date.now())),undefined,signal?{signal:signal}:{});}
+   try {if((await provider.status(acquired.machine)).state!=='ready')throw Error('machine booting');await command(ssh,[...base,destination,'sh','-s'],provisioningEnv,'true\n',Math.max(1,Math.min(10000,deadline-clock.now().getTime())));break;}
+   catch(error) {lastGateFailure=error instanceof Error?error.message:'probe outcome unavailable';signal?.throwIfAborted();if(clock.now().getTime()>=deadline)throw Error('pinned-key provisioning gate timed out: '+lastGateFailure);await clockDelay(clock,Math.max(1,Math.min(250,deadline-clock.now().getTime())),signal);}
   }
   record.state='connecting';o.records.provisions.save(record);
   const home=join(fake,'home');

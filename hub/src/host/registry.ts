@@ -1,3 +1,5 @@
+import { realClock, type Clock } from '../hub/clock.ts';
+import { clockDelay } from './clock-delay.ts';
 import { updateHostWatches } from '../transport/transport.ts';
 import { terminalAttachCommand } from './attach.ts';
 import { VERSION } from '../version.ts';
@@ -23,7 +25,8 @@ import { territoryPath } from '../territory.ts';
 type Carrier = Pick<SshTransport,'start'|'stop'|'status'|'forward'|'unforward'> & Partial<Pick<SshTransport,'copyFile'|'execute'>>;
 export type HostConfiguration = { home?: string; layout?: Partial<HostLaunchLayout>; supervisor?: string };
 /** Carrier and Host share one lifecycle owner; sessions close before this owner. */
-export async function projectSshHosts(options: { onAdd?: (host: Host) => void; settle?: (id: string) => Promise<unknown>; onRemove?: (id: string) => void; onReady?: (host: string, bootId: string) => void; createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
+export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: Host) => void; settle?: (id: string) => Promise<unknown>; onRemove?: (id: string) => void; onReady?: (host: string, bootId: string) => void; createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
+  const clock = options.clock ?? realClock;
   const hosts: Host[] = [];
   const readiness = new Map<string, (signal?:AbortSignal) => Promise<void>>();
   const owners = new Map<string, {quiesce: () => void; close: () => Promise<void>}>();
@@ -72,13 +75,15 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
         })().catch(error=>{clone=undefined;options.log({event:'host-clone',host:record.id,state:'failed',error:String(error)});throw new Error(`host ${record.id}: territory clone failed: ${error instanceof Error?error.message:String(error)}`);});
         await clone;
       };
-      readiness.set(record.id, async (signal) => {
-        const deadline = Date.now() + 300000;
+      const activeReadiness=new Set<Promise<void>>();
+      const waitUntilReady = async (signal:AbortSignal) => {
+        const deadline = clock.now().getTime() + 300000;
         while (carrier.status().state !== 'up') {
           signal?.throwIfAborted();
-          if (stopped || Date.now() >= deadline) throw new Error('host tunnel readiness timed out');
-          await new Promise(resolve => setTimeout(resolve, 50));
+          if (stopped || clock.now().getTime() >= deadline) throw new Error('host tunnel readiness timed out');
+          await clockDelay(clock, Math.min(50, deadline-clock.now().getTime()), signal);
         }
+        signal.throwIfAborted();
         const receipt=await host.statDirectory(home);
         if(receipt.refusal!==null)throw Error('host home unavailable');
         const cancel=()=>cloneAbort.abort();
@@ -88,6 +93,13 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
         signal?.throwIfAborted();
         const current=options.records.get(record.id);
         if(stopped||!current||current.state!=='registered'||current.address!==record.address||current.user!==record.user)throw Error('host registration changed before readiness');
+      };
+      readiness.set(record.id, callerSignal => {
+        const signal=callerSignal?AbortSignal.any([callerSignal,cloneAbort.signal]):cloneAbort.signal;
+        const work=waitUntilReady(signal);
+        activeReadiness.add(work);
+        void work.then(()=>activeReadiness.delete(work),()=>activeReadiness.delete(work));
+        return work;
       });
       const add=host.worktreeAdd.bind(host),preparations=new Set<Promise<{warning?:string}>>();
       host.worktreeAdd=args=>{
@@ -99,7 +111,7 @@ export async function projectSshHosts(options: { onAdd?: (host: Host) => void; s
       let daemon: {close():Promise<void>} | undefined;
       owners.set(record.id, {quiesce, close: async () => {
         const failures: unknown[] = [];
-        for (const cleanup of [async()=>{quiesce();await Promise.allSettled([...preparations]);await clone?.catch(()=>{});}, () => host.close(), () => carrier.stop(), () => daemon?.close()]) {
+        for (const cleanup of [async()=>{quiesce();await Promise.allSettled([...preparations]);await clone?.catch(()=>{});}, () => host.close(), async()=>{await Promise.allSettled([...activeReadiness]);}, () => carrier.stop(), () => daemon?.close()]) {
           try { await cleanup(); } catch (error) { failures.push(error); }
         }
         if (failures.length) throw new AggregateError(failures, `host ${record.id}: cleanup incomplete`);

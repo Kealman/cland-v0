@@ -382,6 +382,25 @@ logging GET 404 for the droplet and its key. Production DigitalOcean creation
 still requires E-1534 admission; this command does not enable it. No provider
 credentials or private key bytes appear in the deletion evidence.
 
+### In-hub creation and clock
+
+`createHost` accepts optional `settings` (a parsed HostPool), `clock`, and
+`onCreating(id)`. With settings supplied it uses that pool object; the prepared
+image key still reflects the project's recipe and harness pins. The callback
+runs after the `creating` provision checkpoint and cancellation owner are saved,
+before provider acquisition. A thrown callback follows failed-create cleanup.
+Without settings, the manual CLI keeps its configured-pool selection.
+
+The daemon passes its clock to creation and `projectSshHosts` tunnel readiness.
+Both polling deadlines remain 300000 ms; creation retains its explicit `gateMs`
+option. Native command I/O and transport deadlines use real time. Dispatcher and
+serveProject accept an injected `createHost` function for callers testing host
+admission without native creation. No wire reply or provision-record shape changes.
+
+Readiness belongs to the host runtime owner as well as its optional caller.
+Quiesce aborts down-tunnel polling even on a frozen clock; close/remove join
+active readiness after closing the Host client and before reporting completion.
+
 ## Placement decision core
 
 `host/scheduler.ts` exports the pure `decidePlacement` policy. It accepts one
