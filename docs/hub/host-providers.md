@@ -381,3 +381,39 @@ for absence. DigitalOcean release uses the API's confirmed DELETE/GET paths,
 logging GET 404 for the droplet and its key. Production DigitalOcean creation
 still requires E-1534 admission; this command does not enable it. No provider
 credentials or private key bytes appear in the deletion evidence.
+
+## Placement decision core
+
+`host/scheduler.ts` exports the pure `decidePlacement` policy. It accepts one
+pool snapshot and one launch harness and returns `place` with a host id, `create`,
+or `wait` with a reason. It does not launch, provision or reserve capacity.
+Default weights are Claude Code 1, Codex 0.5 and OpenCode 0.75; partial weight
+overrides replace individual defaults, and a custom harness needs an explicit
+positive finite weight. Missing or invalid selected weights are errors.
+
+Callers map lifecycle states to ready, booting or unavailable and supply slots,
+`usedMilli` and `promisedMilli` for every host in the pool. Capacity uses integer
+milli-slots: convert each harness weight once with the exported
+`harnessWeightMilli(harness, overrides)` (`Math.round(weight * 1000)`), then sum
+those integers. Overrides are honoured to 0.001 slot; finer values round at
+conversion, including rounding very small positive weights to zero. Defaults
+convert to 1000, 500 and 750. `usedMilli` counts running sessions;
+`promisedMilli` counts reservations for earlier waiting launches. The caller
+must reserve those integers before its next decision. The exact fit rule is
+`usedMilli + promisedMilli + weightMilli <= slots * 1000`, without an epsilon.
+Snapshot totals and converted capacity must be nonnegative safe integers;
+weights that exceed safe milli-slot capacity are errors.
+
+Ready hosts with room come first, ordered by greatest used plus promised
+milli-slots for dense placement or least for spread;
+equal weights preserve snapshot order. Only a per-host/per-harness verdict of
+`serves` is eligible. The default hook serves every harness; `can-bind`,
+`signed-out` and `no-login` skip the host and never produce a login wait.
+
+With no ready host, eligible booting room yields `waiting for host <id> to boot`
+before another create. Ready plus booting hosts count toward `max_hosts`, even
+when full or ineligible. Below that maximum the result is `create`; otherwise it
+is `waiting for a host`. Unavailable hosts offer no room and do not count in
+that snapshot. `min_hosts` is carried in the pool policy for callers; maintaining
+the floor is a separate lifecycle operation, not an extra creation decision for
+one launch. This core alone does not enable automatic or production host creation.

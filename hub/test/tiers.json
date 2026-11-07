@@ -325,6 +325,7 @@
     "hub/test/host-runtime-delivery.test.ts": "T3",
     "hub/test/host-runtime-join.test.ts": "T3",
     "hub/test/host-runtime-owner.test.ts": "T2",
+    "hub/test/host-scheduler.test.ts": "T1",
     "hub/test/host-secret-admission.test.ts": "T2",
     "hub/test/host-settlement.test.ts": "T1",
     "hub/test/host-ssh-contract.test.ts": {
