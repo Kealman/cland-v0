@@ -125,9 +125,10 @@
       "A-17195",
       "A-17332",
       "A-17334",
-      "A-17358"
+      "A-17358",
+      "A-17457"
     ],
-    "commit": "7ae000516192338cee64ed6fc8a6500fc4ab1d98"
+    "commit": "c583757ca61d3b06e911a16825c5356df0caedc9"
   },
   "budget": {
     "testSeconds": 5,
@@ -3680,6 +3681,18 @@
     "hub/test/tcp-listener-census.test.ts": {
       "seconds": 0.003042,
       "tests": 7
+    },
+    "hub/test/host-create-ready.test.ts": {
+      "seconds": 37.307223,
+      "tests": 10
+    },
+    "hub/test/host-destroy-native.test.ts": {
+      "seconds": 14.416409,
+      "tests": 3
+    },
+    "hub/test/host-provision-records.test.ts": {
+      "seconds": 0.007397,
+      "tests": 4
     }
   },
   "tests": {
@@ -10801,7 +10814,26 @@
     "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during description": 0.00032,
     "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during listeners": 0.000398,
     "hub/test/init-config.test.ts::auth mode writer preserves the complete config document": 0.003215,
-    "hub/test/init-config.test.ts::managed provisioning preserves hosts and unknown keys across every section": 0.004259
+    "hub/test/init-config.test.ts::managed provisioning preserves hosts and unknown keys across every section": 0.004259,
+    "hub/test/claude-code-remote.test.ts::T-1730 C2 upgraded runtime launches Claude with connected mod bridge": 8.081385,
+    "hub/test/host-agent-restart.test.ts::T-1730 supervisor launches verified generation after version pointer changes": 6.097064,
+    "hub/test/host-create-ready.test.ts::C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list shows declared facts": 5.437976,
+    "hub/test/host-create-ready.test.ts::C3 mismatched prelude key never registers or starts a supervisor and releases machine after gate": 0.827846,
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: complete": 4.519216,
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: inventory unknown": 3.277935,
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: leftovers": 3.764702,
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: timed out": 3.211355,
+    "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: unknown": 3.153979,
+    "hub/test/host-create-ready.test.ts::forced fixture body failure joins held creation before storage and root disposal": 3.979918,
+    "hub/test/host-create-ready.test.ts::held final readiness cannot publish ready after revoke": 4.33479,
+    "hub/test/host-create-ready.test.ts::held final readiness cannot publish ready after shutdown": 4.799506,
+    "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=false": 6.873819,
+    "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=true": 6.416493,
+    "hub/test/host-destroy-native.test.ts::destroy joins an admitted held acquisition and prevents ready resurrection": 1.126097,
+    "hub/test/host-provision-records.test.ts::ready checkpoint refuses a different durable machine address": 0.000929,
+    "hub/test/host-provision-records.test.ts::ready checkpoint refuses a registration revoked at the held final boundary": 0.003579,
+    "hub/test/host-provision-records.test.ts::revocation after ready atomically replaces the provision state": 0.001106,
+    "hub/test/host-provision-records.test.ts::startup inventory streams only current registrations while retaining failed history": 0.001783
   },
   "allow": {
     "hub/test/host-create-ready.test.ts::forced fixture body failure joins held creation before storage and root disposal": {
