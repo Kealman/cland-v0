@@ -71,3 +71,8 @@ The reusable optional flush case calls the real SSH Host/agent on a disposable
 unregistered task path and requires its named watch refusal. Local absence and
 scripted successful drain/capability-absent refusal use the same exported
 optionalFlushHostContract in host-flush.test.ts; the inventory guard stays unedited.
+
+The Claude environment control expects missing account-root admission to reject
+with typed CLAND_AGENT_ADMISSION_REFUSED while retaining its refusal-message
+assertion. This is the client outcome, rather than an ordinary returned command
+failure; no native process starts on that refused generation.

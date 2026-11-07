@@ -3,7 +3,7 @@
 import test, {type TestContext} from 'node:test';
 import assert from 'node:assert/strict';
 import { testWaitMs } from './until.ts';
-import { readFile, symlink, readdir, stat } from 'node:fs/promises';
+import { readFile, symlink, readdir, stat, chmod } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { projectHub, connectUi, fakeClaude, eventually, startDaemon, killDaemon } from './harness.ts';
@@ -19,18 +19,43 @@ import { FakeClock } from './fake-clock.ts';
 import { observeProcesses } from '../src/host/agent/native.ts';
 import { systemProcesses } from '../src/system-processes.ts';
 
-async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
- const f=await sshHostFixture(t,{startTransport:false,...(options.signals||options.stopHooks?{processHooks:{...options.stopHooks,...(options.signals?{beforeSignals:async(targets:readonly {pid:number;identity:string}[])=>{options.signals!.push(...targets);await options.stopHooks?.beforeSignals?.(targets);}}:{})}}:{})});
+async function remoteClaudeFixture(t:TestContext, options:{nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
+ let replySocket:import('node:net').Socket|undefined,nativeAbortHeld=false;
+ const f=await sshHostFixture(t,{startTransport:false,...(options.nativeRefusal==='aborted'?{beforeRun:async(signal:AbortSignal)=>{
+   if(nativeAbortHeld)return;nativeAbortHeld=true;
+   await eventually('native admission held until cancellation observed',()=>signal.aborted||undefined,testWaitMs());
+   assert.equal(signal.aborted,true,'native execution is released only after positive cancellation');
+ }}:{}),...(options.sentAbort?{afterOperation:(op:string,socket:import('node:net').Socket)=>{if(op==='run-host'&&!replySocket){replySocket=socket;socket.cork();}}}:{}),...(options.signals||options.stopHooks?{processHooks:{...options.stopHooks,...(options.signals?{beforeSignals:async(targets:readonly {pid:number;identity:string}[])=>{options.signals!.push(...targets);await options.stopHooks?.beforeSignals?.(targets);}}:{})}}:{})});
  const fake=await fakeClaude(t,{awaitSignals:options.awaitSignals??true,stopCrash:options.stopCrash??false});
  await options.setup?.(f,fake);
  const code=join(f.fake.home,'code');await symlink(new URL('../../',import.meta.url).pathname,code);
  const remote={...f.layout,node:process.execPath,cli:join(code,'hub/bin/cland.ts'),spoke:join(code,'hub/bin/cland-spoke.ts'),modDir:join(code,'hub/mod/cland')};
  let carrier:SshTransport,launchedAdapter:ClaudeCodeAdapter;let credential='';let pruneFaultInjected=false;let releaseClaude:(()=>Promise<void>)|undefined;
  const machine=sshHost({name:'f1',layout:remote,transport:{status:()=>carrier.status(),forward:(...args)=>carrier.forward(...args),unforward:(...args)=>carrier.unforward(...args)},connect:()=>AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'))});
+ let lostToken='';
+ if(options.lostNativeReply||options.sentAbort||options.nativeRefusal==='aborted'){
+   const request=AgentClient.prototype.request;
+   t.mock.method(AgentClient.prototype,'request',async function(this:AgentClient,...args:Parameters<AgentClient['request']>){
+     const pending=request.apply(this,args);
+     if(options.nativeRefusal==='aborted'&&args[0]==='run-host'&&typeof args[1].claudeGeneration==='string'&&!failureInjected){
+       failureInjected=true;
+       // Arm native cancellation on the same socket before its serial run begins.
+       const cancelled=request.call(this,'cancel-run',{token:args[1].token});
+       const result=await pending;await cancelled;return result;
+     }
+     const result=await pending.catch(error=>{if(options.sentAbort&&args[0]==='run-host'){lostToken=String(args[1].token);throw Object.assign(new Error('sent abort reply unavailable'),{code:'CLAND_NATIVE_INCOMPLETE'});}throw error;});
+     if((options.lostNativeReply||options.sentAbort)&&args[0]==='run-host'&&typeof args[1].claudeGeneration==='string'&&!lostToken){lostToken=String(args[1].token);throw Object.assign(new Error('planted lost native reply after PID receipt'),{code:'CLAND_NATIVE_INCOMPLETE'});}
+     return result;
+   });
+ }
  const launchClaude=machine.launchClaude!.bind(machine);
- machine.launchClaude=async(command,generation)=>{const path=command.args[command.args.indexOf('--settings')+1]!;const settings=JSON.parse(await readFile(path,'utf8'));credential=settings.env.CLAND_LAUNCH_TOKEN;if(options.settings){options.settings(settings);await writeFile(path,JSON.stringify(settings),{mode:0o600});}const result=await launchClaude(command,generation);if(options.failedResult&&!failureInjected){failureInjected=true;throw Object.assign(new Error('planted lost launch result'),{code:'CLAND_NATIVE_INCOMPLETE'});}return result;};
+ const sentController=new AbortController();
+ machine.launchClaude=async(command,generation)=>{const path=command.args[command.args.indexOf('--settings')+1]!;const settings=JSON.parse(await readFile(path,'utf8'));credential=settings.env.CLAND_LAUNCH_TOKEN;if(options.settings){options.settings(settings);await writeFile(path,JSON.stringify(settings),{mode:0o600});}const refuse=options.nativeRefusal==='spawn-error'&&!failureInjected;if(refuse)failureInjected=true;const preWire=options.nativeRefusal==='pre-wire'&&!failureInjected;if(preWire)failureInjected=true;
+ const pending=launchClaude(preWire?{...command,signal:AbortSignal.abort()}:refuse?{...command,command:join(f.fake.home,'cleanup incomplete missing-claude')}:options.sentAbort?{...command,signal:sentController.signal}:command,generation);
+ if(options.sentAbort&&!failureInjected){failureInjected=true;await eventually('native reply corked after worker persistence',()=>replySocket||undefined,testWaitMs());sentController.abort();replySocket!.destroy();}
+ const result=await pending;if(options.failedResult&&!failureInjected){failureInjected=true;throw Object.assign(new Error('planted lost launch result'),{code:'CLAND_NATIVE_INCOMPLETE'});}return result;};
  let stopGate:{entered:ReturnType<typeof Promise.withResolvers<void>>;release:ReturnType<typeof Promise.withResolvers<void>>}|undefined;
- let failureInjected=false,allowFailedStop=!options.failedAdoption&&!options.failedResult;
+ let failureInjected=false,allowFailedStop=!options.failedAdoption&&!options.failedResult&&!options.lostNativeReply&&!options.sentAbort;
  const stop=machine.stop.bind(machine);machine.stop=async(...args)=>{if(!allowFailedStop)return false;const gate=stopGate;if(gate){gate.entered.resolve();await gate.release.promise;stopGate=undefined;}return stop(...args);};
  const adopt=machine.adopt!.bind(machine);machine.adopt=async generation=>{const receipt=await adopt(generation);releaseClaude=receipt.release;if(options.failedAdoption&&!failureInjected){failureInjected=true;throw Object.assign(new Error('planted lost adoption reply'),{code:'CLAND_NATIVE_INCOMPLETE'});}if(options.rollback){await eventually('worker startup joined before rollback trigger',async()=>(await fake.log(receipt.job)).includes('session ready')||undefined);const closing=launchedAdapter.close();if(closing)void closing.catch(()=>{});}return receipt;};
  let expectedIncompleteOperation:string|undefined;
@@ -55,11 +80,52 @@ async function remoteClaudeFixture(t:TestContext, options:{failPrune?:boolean;fa
  carrier=new SshTransport({root:f.root,record,secrets:f.secrets,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,remoteRun:f.fake.run,supervisor:f.supervisor,agentCommand:['stub'],env:f.env,readinessPollMs:5,reconnectDelayMs:()=>10});
  f.addCleanup(()=>carrier.stop());await carrier.start();await eventually('carrier up',()=>carrier.status().state==='up'||undefined);
  const ui=await connectUi(t,hub.discovery);await ui.request({type:'subscribe'});
+ if(options.refuseRoot)await chmod(fake.home,0o755);
  const reply=await ui.request({type:'session.launch',name:'worker',harness:'claude-code',role:'implementer',host:'f1',cwd:f.fake.home},10000);
- assert.equal(reply.ok,!options.rollback&&!options.failedAdoption&&!options.failedResult,reply.error);
+ assert.equal(reply.ok,!options.rollback&&!options.failedAdoption&&!options.failedResult&&!options.refuseRoot&&!options.nativeRefusal&&!options.lostNativeReply&&!options.sentAbort,reply.error);
+ if(options.lostNativeReply||options.sentAbort)expectedIncompleteOperation=lostToken;
  const row=(reply.value as {process:{pid:number;pidIdentity:string;harnessId:string}}|undefined)?.process!;
  return {f,fake,machine,remote,clock,ui,hub,startHub,row,launchError:reply.error,expectIncompleteClose:(operation:string)=>{expectedIncompleteOperation=operation;},allowFailedStop:()=>{allowFailedStop=true;},holdFailedStop:()=>{const gate={entered:Promise.withResolvers<void>(),release:Promise.withResolvers<void>()};stopGate=gate;return gate;},nativeAlive,aliveReceipts:()=>aliveReceipts,credential:()=>credential,releaseClaude:()=>releaseClaude?.()};
 }
+
+for(const name of ['worker','second'])test(`remote Claude pre-spawn root refusal permits immediate ${name==='worker'?'same-name':'different-name'} launch`,{timeout:8 * testWaitMs() + 120000},async t=>{
+ const d=await remoteClaudeFixture(t,{refuseRoot:true});
+ assert.match(d.launchError!,/account config root.*0700/);
+ assert.equal((await d.fake.calls()).filter(call=>call.args[0]==='--bg').length,0,'refused generation never entered native spawn');
+ const {ProcessTable}=await import('../src/adapters/processes.ts');
+ const table=new ProcessTable(join(d.f.root,'.cland/hub.db'));d.f.addCleanup(async()=>table.close());
+ assert.deepEqual(table.pendingStops(),[],'pre-spawn refusal settled failed-launch supervision');
+ await chmod(d.fake.home,0o700);
+ const reply=await d.ui.request({type:'session.launch',name,harness:'claude-code',role:'implementer',host:'f1',cwd:d.f.fake.home},testWaitMs());
+ assert.equal(reply.ok,true,reply.error);
+ const row=(reply.value as {process:{pid:number;pidIdentity:string}}).process;
+ const birth=await d.machine.identity(row.pid);
+ const workers=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string}>;
+ assert.ok(workers.some(worker=>worker.pid===row.pid&&worker.identity===birth?.pidIdentity),'successful relaunch has durable native ownership');
+ const stopped=await d.ui.request({type:'session.stop',session:name},testWaitMs());assert.equal(stopped.ok,true,stopped.error);
+});
+
+for(const mode of ['aborted','spawn-error','pre-wire','lost-reply','sent-abort'] as const)for(const name of ['worker','second'])test(`remote Claude native ${mode} ${name==='worker'?'same-name':'different-name'} retry`,{timeout:8 * testWaitMs() + 120000},async t=>{
+ const unknown=mode==='lost-reply'||mode==='sent-abort';
+ const d=await remoteClaudeFixture(t,mode==='sent-abort'?{sentAbort:true}:mode==='lost-reply'?{lostNativeReply:true}:{nativeRefusal:mode});
+ const calls=(await d.fake.calls()).filter(call=>call.args[0]==='--bg');
+ assert.equal(calls.length,unknown?1:0,'native call receipt distinguishes executed from absent spawn');
+ if(!unknown&&mode!=='pre-wire')assert.deepEqual(await readdir(join(d.f.fake.run,'claude')),[],'no-process terminal reply follows pending checkpoint removal');
+ const reply=await d.ui.request({type:'session.launch',name,harness:'claude-code',role:'implementer',host:'f1',cwd:d.f.fake.home},testWaitMs());
+ if(unknown){
+   assert.equal(reply.ok,false);assert.match(reply.error!,name==='worker'?/failed launch of "worker" is still supervised; cleanup is pending/:/tunnel outcome unknown for .*; storage remains fenced/);
+   const workers=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string}>;
+   assert.ok(workers.some(worker=>worker.pid>0&&worker.identity),'lost reply follows persisted native PID');
+ }else{
+   assert.equal(reply.ok,true,'initial: '+d.launchError+'; retry: '+reply.error);
+   const {ProcessTable}=await import('../src/adapters/processes.ts');const table=new ProcessTable(join(d.f.root,'.cland/hub.db'));d.f.addCleanup(async()=>table.close());
+   assert.deepEqual(table.pendingStops(),[]);
+   const row=(reply.value as {process:{pid:number}}).process,birth=await d.machine.identity(row.pid);
+   const workers=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string}>;
+   assert.ok(workers.some(worker=>worker.pid===row.pid&&worker.identity===birth?.pidIdentity));
+   const stopped=await d.ui.request({type:'session.stop',session:name},testWaitMs());assert.equal(stopped.ok,true,stopped.error);
+ }
+});
 
 async function joinInitialHookWriters(d:Awaited<ReturnType<typeof remoteClaudeFixture>>, timeoutMs:number):Promise<void>{
  const rows=await systemProcesses(undefined,undefined,undefined,false,d.f.env);
@@ -394,6 +460,10 @@ for(const mode of ['adoption','result','missing-receipt','missing-state','prune-
  const table=new ProcessTable(join(d.f.root,'.cland/hub.db'));d.f.addCleanup(async()=>table.close());
  const pending=table.pendingStops()[0]!;assert.ok(pending,'failed launch has a durable owner: '+d.launchError);assert.equal(pending.process.host,'f1');
  assert.deepEqual(pending.files?.undo,[],'private MCP/settings are outside generic rollback');assert.deepEqual(pending.files?.children,[],'generic process stop cannot bypass Claude settlement');
+ if(mode==='result'){
+   const retry=await d.ui.request({type:'session.launch',name:'worker',harness:'claude-code',role:'implementer',host:'f1',cwd:d.f.fake.home},testWaitMs());
+   assert.equal(retry.ok,false);assert.match(retry.error!,/failed launch of "worker" is still supervised; cleanup is pending/);
+ }
  const sid=pending.process.sessionId,credential=pending.ownership!.credential;
  assert.equal(credential,d.credential(),'the pending owner retains the original launch credential');
  const generation=JSON.parse(await readFile(join(d.f.fake.run,'claude',(await readdir(join(d.f.fake.run,'claude')))[0]!),'utf8')) as {generation:string;privateDirectory:string;pid:number};
@@ -600,4 +670,13 @@ test('CLI-started hub launches a Claude item on a fake host with its mod bridge 
  const status=(await ui.request({type:'hub.status'})).value as {sessions:Array<{name:string;sessionId:string}>};
  assert.ok(status.sessions.some(session=>session.name==='worker'&&session.sessionId===row.sessionId));
  const stopped=await ui.request({type:'session.stop',session:'worker'},testWaitMs());assert.equal(stopped.ok,true,stopped.error);
+});
+
+for(const mode of ['aborted','throw','no-pid-error','pid-existed'] as const)test(`native command admission receipt ${mode}`,async t=>{
+ const {run}=await import('../src/host/agent/command.ts');
+ const {tempProject}=await import('./harness.ts');const root=await tempProject(t),env=fixtureEnvironment(root,process.env),commandTimeoutMs=testWaitMs();
+ const bin=mode==='throw'?'\0':mode==='no-pid-error'?join(root,'missing-native-command'):process.execPath;
+ const result=await run(bin,['-e','process.exit(1)'],env,commandTimeoutMs,false,mode==='aborted'?AbortSignal.abort():undefined,'utf8',root);
+ assert.equal(result.nativeAdmission,mode==='pid-existed'?undefined:'no-process');
+ if(mode==='pid-existed')assert.equal(result.code,1,'a native PID existed even though the command failed');
 });

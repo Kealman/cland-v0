@@ -170,7 +170,17 @@ settleFailedLaunch fallback rebuilds that callback only when the captured observ
 is absent; missing state/receipt holds the row and role. Forget acknowledgement
 follows durable pending-stop clearance and prunes only settled metadata/cache.
 See the failed-launch section in the adapter/session reference for its restart
-acknowledgement intent and typed non-admission boundary.
+acknowledgement intent and typed non-admission boundary. An agent command result's
+`claudeAdmission` receipt must match the requested generation before SSH maps
+`refused-before-spawn` to non-admission. Old replies lacking it stay conservative;
+never infer non-admission from an error string or missing worker receipt.
+Native `no-process` proof comes from the run owner before spawn or after a no-PID
+error and joined close; Claude removes its pending checkpoint before publishing
+the generation refusal. Any observed PID or incomplete close retains the fence. Pre-wire cancellation is
+proven only by wire() observing its own aborted signal before the request write;
+after any write, cancellation alone grants no cleanup authority. Shared incomplete
+classification must honor positive owner receipts before any diagnostic-text
+fallback, including when an executable or config path contains those words.
 A terminal remote Claude PID owns one bounded native settlement and one retry
 through restart recovery; recurring liveness/discovery never launches a CLI.
 Keep the row and role held with the cleanup-incomplete cause until settlement.

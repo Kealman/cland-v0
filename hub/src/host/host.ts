@@ -7,7 +7,8 @@ export type HostCommand = {
   /** Host-side path; spawn appends stdout and stderr, otherwise ignoring both. */
   logFile?: string;
 };
-export type HostRunResult = { code: number | null; stdout: string; stderr: string; error?: string };
+/** Additive native and generation-bound proof; absent fields never establish non-admission. */
+export type HostRunResult = { code: number | null; stdout: string; stderr: string; error?: string; nativeAdmission?: 'no-process'; claudeAdmission?: { generation: string; outcome: 'refused-before-spawn' } };
 export type { HostProcessUsage } from './agent/process-usage.ts';
 import type { HostProcessUsage } from './agent/process-usage.ts';
 

@@ -195,7 +195,15 @@ private-file deletion and forget. A lost accepted result can therefore be joined
 even when close began before adoption. An unknown result stays under the durable
 pending-stop owner with its original session identity and launch credential.
 After restart the optional settleFailedLaunch fallback reconstructs the same
-callback; missing state/receipt remains cleanup-incomplete.
+callback; missing state/receipt remains cleanup-incomplete. A positively typed
+pre-spawn refusal (including account-root mode/ownership validation) settles
+without worker adoption; fixing the root permits immediate same-name and other-name
+launches on that host. The native run owner proves an already-aborted signal,
+synchronous spawn throw or a closed no-PID spawn error with a typed no-process
+receipt. Claude removes its pending checkpoint before publishing non-admission.
+An observed PID, lost reply or missing/unreadable receipt remains fenced.
+Older untyped replies and unknown native outcomes remain
+fenced.
 
 The agent's receipt bound stays one per active/incomplete generation and zero
 after cleanup. A terminal hub marker remains until durable pending-stop cleanup

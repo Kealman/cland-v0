@@ -17,3 +17,13 @@ a pending launch, skip released/confirmed-closed records without native identity
 reads, and retain a vanished generation while still restoring its healthy peer.
 No native process runs in these controls; native downtime/descendant boundaries
 are exercised by host-agent-restart.test.ts.
+
+The account-root refusal asserts a generation-bound `refused-before-spawn`
+receipt with zero command calls. Ambiguous native discovery has no such receipt.
+The already-admitted generation control retains the prior worker's fence instead
+of reclassifying its duplicate launch as non-admission.
+
+`native incomplete classification honors owner proof` checks native and
+prevalidation generation receipts whose error text contains `cleanup incomplete`,
+including bounded oversized results. Typed proof wins over incidental path text;
+untyped and real incomplete results retain their fallback classification.

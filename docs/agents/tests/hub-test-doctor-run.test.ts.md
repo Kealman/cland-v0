@@ -16,3 +16,9 @@ latin1 for binary kinfo bytes. The combined binary/cancel control preserves
 bytes 00/80/ff, observes the group signal, holds the native close event, and
 keeps its original pending/terminal assertions. Old five-argument calls and
 sixth-slot AbortSignal calls retain their behavior.
+
+The pre-aborted probe's additive no-process receipt records zero spawn calls.
+`native no-PID error admission` compares joined close, missing close and an
+already-observed PID. Only joined no-PID error grants positive non-admission;
+error alone, a missing close and a PID seen before error keep existing unknown
+semantics. All children/timers in these cases are mocked.

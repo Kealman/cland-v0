@@ -82,7 +82,7 @@ test('a command cancelled before launch starts no child', async t => {
   const pending = run('synthetic-maintenance', [], {}, 30_000, false, abort.signal);
   assert.equal((cp.spawn as unknown as { mock: { callCount(): number } }).mock.callCount(), 0);
   t.mock.timers.tick(0);
-  assert.deepEqual(await pending, { code: null, stdout: '', stderr: '', error: 'cancelled' });
+  assert.deepEqual(await pending, { code: null, stdout: '', stderr: '', error: 'cancelled', nativeAdmission:'no-process' });
 });
 
 test('seventh-slot binary output preserves bytes while sixth-slot cancellation still awaits close', async t => {
@@ -98,4 +98,18 @@ test('seventh-slot binary output preserves bytes while sixth-slot cancellation s
   t.mock.timers.tick(0);
   await pending;
   assert.deepEqual(result, { code: null, stdout: '\x00\x80\xff', stderr: '', error: 'cancelled' });
+});
+
+for(const boundary of ['closed','missing-close','pid-seen'] as const)test(`native no-PID error admission ${boundary}`,async t=>{
+ const {child}=fakeProbe(t);
+ if(boundary!=='pid-seen')Object.assign(child,{pid:undefined});
+ let observed:RunResult|undefined;
+ const pending=run('synthetic-no-process',[],{},20000).then(result=>{observed=result;});
+ Object.assign(child,{pid:undefined});
+ child.emit('error',new Error('synthetic spawn error'));
+ t.mock.timers.tick(0);await Promise.resolve();assert.equal(observed,undefined,'error is not a drained native close');
+ if(boundary==='missing-close')t.mock.timers.tick(1000);else child.emit('close',null);
+ t.mock.timers.tick(0);await pending;
+ assert.equal(observed!.nativeAdmission,boundary==='closed'?'no-process':undefined);
+ if(boundary==='missing-close')assert.match(observed!.error!,/cleanup incomplete/);
 });

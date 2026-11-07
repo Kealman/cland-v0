@@ -1,17 +1,22 @@
 import { spawn } from 'node:child_process';
 import { MAX_LINE_BYTES } from './protocol.ts';
-export type RunResult = { code: number | null; stdout: string; stderr: string; error?: string };
+export type RunResult = import('../host.ts').HostRunResult;
 /** Leave room for both reply envelopes; oversized results retain native facts and diagnostic tails. */
 export function boundedCommandResult(result: RunResult): RunResult {
   if (Buffer.byteLength(JSON.stringify(result)) <= MAX_LINE_BYTES / 2) return result;
   return {
     code: result.code,
+    ...(result.nativeAdmission ? {nativeAdmission:result.nativeAdmission} : {}),
+    ...(result.claudeAdmission ? {claudeAdmission:result.claudeAdmission} : {}),
     stdout: result.stdout.slice(-4096),
     stderr: result.stderr.slice(-4096),
     error: `command output exceeds agent frame cap (${MAX_LINE_BYTES} bytes); stdout ${Buffer.byteLength(result.stdout)} bytes, stderr ${Buffer.byteLength(result.stderr)} bytes; native exit code ${result.code}${result.error ? `; ${result.error.slice(-4096)}` : ''}`,
   };
 }
-export const nativeCommandIncomplete = (result: Pick<RunResult,'error'>): boolean => result.error?.includes('cleanup incomplete') === true;
+export const nativeCommandIncomplete = (result: Pick<RunResult,'error'|'nativeAdmission'|'claudeAdmission'>): boolean => {
+  if(result.nativeAdmission==='no-process'||result.claudeAdmission?.outcome==='refused-before-spawn')return false;
+  return result.error?.includes('cleanup incomplete') === true;
+};
 export function nativeCommandFailure(result: RunResult, fallback: string): Error {
   return Object.assign(new Error(result.error || result.stderr || fallback),nativeCommandIncomplete(result)?{code:'CLAND_NATIVE_INCOMPLETE'}:{});
 }
@@ -53,16 +58,18 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
     };
     const abort = () => { error ??= 'cancelled'; terminate(); };
     if (signal?.aborted) {
-      finish({ code: null, stdout, stderr, error: 'cancelled' });
+      finish({ code: null, stdout, stderr, error: 'cancelled', nativeAdmission:'no-process' });
       return;
     }
     let child;
     try {
       child = spawn(bin, args, { env, cwd, stdio: [inheritStdin ? 0 : 'ignore', 'pipe', 'pipe'], detached: true });
     } catch (err) {
-      finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err) });
+      finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err), nativeAdmission:'no-process' });
       return;
     }
+    let sawPid=child.pid!==undefined,noPidError=false;
+    child.once('spawn',()=>{sawPid=true;});
     const terminate = () => {
       if (settled || cleanupTimer !== undefined) return;
       clearTimeout(timer);
@@ -85,7 +92,7 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
     }, timeoutMs);
     child.stdout?.setEncoding(encoding).on('data', (c: string) => (stdout += c));
     child.stderr?.setEncoding(encoding).on('data', (c: string) => (stderr += c));
-    child.on('error', (err) => { error ??= err.message; terminate(); });
-    child.once('close', (code) => finish({ code: error === undefined ? code : null, stdout, stderr, ...(error === undefined ? {} : { error }) }));
+    child.on('error', (err) => { sawPid ||= child.pid!==undefined;noPidError=!sawPid&&child.pid===undefined;error ??= err.message; terminate(); });
+    child.once('close', (code) => finish({ code: error === undefined ? code : null, stdout, stderr, ...(error === undefined ? {} : { error }),...(!sawPid&&noPidError?{nativeAdmission:'no-process' as const}:{}) }));
   });
 }

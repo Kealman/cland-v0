@@ -18,7 +18,7 @@ import { checkpoint } from './storage.ts';
 import { run as runCommand } from './command.ts';
 import { agentOperations, parseAgentRun } from './operations.ts';
 import { AGENT_PROTOCOL, PREPARED_HOST_CAPABILITY, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
-export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket) => void };
+export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket, signal:AbortSignal) => void | Promise<void> };
 export async function serveAgent(options: AgentOptions) {
   if (!options.secret) throw new Error('host secret required');
   // Invalid fake-host configuration must not begin recovery or acquire resources.
@@ -145,7 +145,7 @@ export async function serveAgent(options: AgentOptions) {
                   commands.set(token,controller);if(cancelled.delete(token))controller.abort();
                   try {result=await prepared.runCommand(token,recoveryKey,command,async()=>{
                     if(connection.destroyed)prepared.fenceCommand(token);
-                    options.runStarted?.(token,connection);
+                    await options.runStarted?.(token,connection,controller.signal);
                     if(typeof command.claudeGeneration==='string')return claude.launch(parsed,command.claudeGeneration,controller.signal);
                     return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd);
                   });} finally {commands.delete(token);}

@@ -311,7 +311,23 @@ Remote Claude keeps generation-owned MCP/settings outside generic LaunchFiles
 undo. Its failed-launch LaunchSettled callback re-adopts the exact agent receipt,
 joins the native tree, confirms native job stop/absence, releases the job, then
 removes private files and forgets the agent receipt. A lost accepted result never
-replays --bg. Only the agent client's typed CLAND_AGENT_ADMISSION_REFUSED outcome
+replays --bg. The agent's durable command result may carry
+`claudeAdmission: {generation, outcome: 'refused-before-spawn'}` after a fresh
+generation fails validation before its launch checkpoint. The native command
+owner also emits `nativeAdmission: 'no-process'` when already aborted before any
+spawn call, when spawn throws, or after a no-PID spawn error and joined close.
+Claude deletes its pending generation checkpoint before mapping this positive
+receipt to the same generation-bound refusal. A missing close or any observed
+PID grants no such receipt. Shared command classification gives these explicit
+owner facts precedence over incidental `cleanup incomplete` words in a path or
+diagnostic; genuinely incomplete and untyped results retain their fences. SSH translates this
+exact generation's positive receipt to `CLAND_AGENT_ADMISSION_REFUSED`, so rollback
+deletes private files without adoption and releases both the name and host.
+SSH `wire()` also emits typed `CLAND_AGENT_ADMISSION_REFUSED` directly when its
+own signal is already aborted before any request write (`cancelled before send`).
+After any request bytes are written, client cancellation grants no non-admission
+authority; unknown results remain fenced until a positive owner receipt reconciles.
+Only that typed outcome or the agent client's typed CLAND_AGENT_ADMISSION_REFUSED
 proves non-admission; an untyped error, even with that text, stays supervised.
 
 HarnessAdapter.settleFailedLaunch(process) is optional. For a file-backed pending

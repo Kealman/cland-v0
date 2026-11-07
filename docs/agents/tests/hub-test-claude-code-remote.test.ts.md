@@ -170,3 +170,43 @@ the item launch; scripted Claude must report running and its exact job log
 must contain the mod bridge acknowledgment through the host tunnel. The
 CLI-started hub process and fixture-owned agent/workers are joined before root
 removal. This proves installed plugin selection, not delivery to real hosts.
+
+## Pre-spawn account-root refusal
+
+The generated cases `remote Claude pre-spawn root refusal permits immediate same-name launch`
+and `remote Claude pre-spawn root refusal permits immediate different-name launch` use the
+existing fake SSH agent and scripted Claude, with a disposable account root changed to
+0755. Each observes the actual 0700 fence, zero native --bg calls, fixes the root,
+and immediately launches through the UI frame seam. The positive receipt is the
+new worker's pinned birth in processes.json; stop and fixture cleanup join writers.
+Run with `node --test --test-name-pattern='pre-spawn root refusal' hub/test/claude-code-remote.test.ts`.
+Use the stage preservation lock and load ceiling for this native file. No real Claude,
+DigitalOcean resources or browser are involved. The failed-launch restart result and
+missing-receipt cases, plus remote-files untyped-lookalike controls, retain unknown
+outcome supervision and old-wire compatibility.
+
+## Native no-process outcomes
+
+The `remote Claude native aborted`, `spawn-error` and `lost-reply` cases each
+have `same-name retry` and `different-name retry` variants. Aborted uses a
+cancel-run frame armed before native execution; spawn-error names a missing
+executable. Both prove zero native background calls and subsequent persisted
+worker birth, and no pending-stop owner. The lost-reply fixture drops the
+accepted transport result with a typed incomplete transport fault after native
+worker persistence; both retries remain fenced with their existing messages.
+The four `native command admission receipt` cases separately exercise already
+aborted, synchronous throw, no-PID error and an actual failed native PID. Run
+with `--test-name-pattern='remote Claude native|native command admission receipt'`
+in the same native file, under the preservation lock. No real provider is used.
+
+The `pre-wire` variants abort the hub-side signal before wire() and prove both
+names recover. `sent-abort` corks the server reply after worker persistence,
+then aborts and disconnects while the result is unavailable; both names remain
+fenced. Cork readiness uses a bounded observable setup receipt. Native abort cases send cancel-run while an awaitable runStarted fixture
+hook holds native admission. The hook releases only after positively observing
+its captured signal.aborted, with a testWaitMs-bounded wait, so native run entry
+cannot race the later cancel frame. The one-shot hold is absent from retries.
+
+The missing-executable path deliberately contains `cleanup incomplete`: typed
+no-process proof must outrank those incidental diagnostic words when prepared
+results are persisted. Untyped and truly incomplete controls stay fenced.

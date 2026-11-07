@@ -10686,6 +10686,90 @@
     "hub/test/host-runtime-owner.test.ts::shutdown joins an in-flight runtime add and prevents its publication": 0.004181
   },
   "allow": {
+    "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire same-name retry": {
+      "seconds": 14,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 2.1635514170000003s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.461682s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.763805458s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire different-name retry": {
+      "seconds": 14,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 2.436897542s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.899036s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.816024209s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native sent-abort same-name retry": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 1.75642075s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 2.810273s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 3.6467785829999997s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native sent-abort different-name retry": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 1.72437075s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 2.758993s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 3.9025880419999996s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native aborted same-name retry": {
+      "seconds": 15,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.466971333, 2.6032440419999996], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.165190s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 6.097948166999999s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native aborted different-name retry": {
+      "seconds": 14,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.460038334, 2.493245125], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.989192s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.81493775s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native spawn-error same-name retry": {
+      "seconds": 13,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.452172459, 2.520544458], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.032871s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.132396167s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native spawn-error different-name retry": {
+      "seconds": 15,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.68075225, 3.3237282919999998], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 5.317965s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 6.002207958s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native lost-reply same-name retry": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.59112725, 2.339951416], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.145804s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 4.418358916s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude native lost-reply different-name retry": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.633539083, 2.5041479169999996], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.213663s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 4.184137959s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude pre-spawn root refusal permits immediate same-name launch": {
+      "seconds": 25,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [5.186233125, 5.554243167]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 8.886789s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 10.078065208s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
+    "hub/test/claude-code-remote.test.ts::remote Claude pre-spawn root refusal permits immediate different-name launch": {
+      "seconds": 19,
+      "owner": "C-216",
+      "added": "2026-11-06",
+      "expires": "2026-11-13",
+      "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [4.535327, 5.671381792]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 9.074211s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 7.733943333s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
+    },
     "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
       "seconds": 48,
       "owner": "C-216",

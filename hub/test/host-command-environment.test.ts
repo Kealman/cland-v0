@@ -33,6 +33,7 @@ test('ssh Host refuses an older hello without prepared capability and never call
 
 import { EventEmitter } from 'node:events';
 import { PREPARED_HOST_CAPABILITY } from '../src/host/agent/protocol.ts';
+import { CLAUDE_LAUNCH_CAPABILITY } from '../src/host/agent/claude.ts';
 // These fakes perform only promise work: bound the receipt by work, not native time.
 async function receipt<T>(promise:Promise<T>,what:string):Promise<T>{
  let settled=false;
@@ -71,4 +72,19 @@ test('Host.close joins a held observation connection independently of recovery r
  observation=host.identity(42).then(()=>null,error=>error);await receipt(entered.promise,'held observation acquisition');
  const stopping=host.close();release.resolve();await receipt(stopping,'observation close');
  assert.ok(await receipt(observation,'rejected observation operation'));assert.equal(closed,true);assert.equal(operations,0);
+});
+
+for(const shape of ['legacy','native-only','other-generation','matching-generation'] as const)test(`SSH Claude pre-spawn admission receipt ${shape}`,async t=>{
+ const generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+ const result:import('../src/host/host.ts').HostRunResult={code:1,stdout:'',stderr:'',error:'Claude launch refused: account config root must be private',...(shape==='native-only'?{nativeAdmission:'no-process' as const}:{}),...(shape==='legacy'||shape==='native-only'?{}:{claudeAdmission:{generation:shape==='other-generation'?'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb':generation,outcome:'refused-before-spawn' as const}})};
+ const client=Object.assign(new EventEmitter(),{
+  hello:{protocol:1,version:'test',pid:42,bootId:'test',capabilities:[PREPARED_HOST_CAPABILITY,CLAUDE_LAUNCH_CAPABILITY]},
+  request:async(op:string)=>{if(op==='processes'||op==='native-receipts')return [];if(op==='run-host')return result;throw new Error('unexpected operation '+op);},
+  close:async()=>{client.emit('closed');},
+ });
+ const host=sshHost({name:'f1',transport:{status:()=>({state:'up'})},connect:async()=>client as unknown as AgentClient} as Parameters<typeof sshHost>[0]);
+ t.after(()=>host.close());
+ const launch=host.launchClaude!({command:'claude',args:['--bg'],cwd:'/scratch',env:{}},generation);
+ if(shape==='matching-generation')await assert.rejects(launch,{code:'CLAND_AGENT_ADMISSION_REFUSED'});
+ else assert.deepEqual(await launch,result,'older replies and foreign generations grant no rollback authority');
 });

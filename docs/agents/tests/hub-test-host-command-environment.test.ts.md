@@ -16,3 +16,8 @@ Setup, close and rejected-operation receipts have a 100-microtask work bound;
 this measures no wall time. Cleanup is registered before triggering the held
 operation and always releases the gate, joins Host.close and drains the operation,
 including when setup or a final assertion fails.
+
+The `SSH Claude pre-spawn admission receipt` cases feed the client previous
+wire shape, an unbound native-only receipt, another generation's receipt, and the matching receipt through an
+in-memory agent edge. Only the exact generation grants typed non-admission;
+legacy error text passes through without cleanup authority. No process runs.

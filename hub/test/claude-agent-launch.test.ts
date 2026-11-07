@@ -6,12 +6,14 @@ import { join } from 'node:path';
 import { claudeLaunches } from '../src/host/agent/claude.ts';
 import { tempProject } from './harness.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
+import { nativeCommandIncomplete, boundedCommandResult } from '../src/host/agent/command.ts';
 const generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const command=(root:string)=>({command:'fake',args:['--bg','--settings',join(root,'sessions','a'.repeat(64),generation,'settings.json')],cwd:root,env:{CLAUDE_CONFIG_DIR:root}});
 for(const output of ['[]','[{"id":"abc","pid":42,"sessionId":"native"},{"id":"abc","pid":43,"sessionId":"native"}]','malformed'])test(`Claude launch fails closed on ambiguous discovery ${output}`,async t=>{
  const root=await tempProject(t),calls:string[]=[];
  const owner=claudeLaunches(root,{}, {run:async command=>{calls.push(command.args[0]!);return {code:0,stdout:command.args[0]==='--bg'?'claude attach abc':output,stderr:''};},identity:async()=> 'linux:boot:1',uid:async()=>process.getuid!(),closed:()=>true});
  const result=await owner.launch(command(root),generation);
+ assert.equal(result.claudeAdmission,undefined,'unknown native outcome never grants non-admission');
  assert.match(result.error!,/cleanup incomplete/);assert.deepEqual(calls,['--bg','agents','stop']);
  const record=JSON.parse(await readFile(join(root,'claude',generation+'.json'),'utf8'));assert.equal(record.generation,generation);assert.equal(record.phase,'launching');assert.equal(record.job,'abc');assert.equal(record.config.path,root);assert.equal(record.jobs.path,join(root,'jobs'));assert.equal(record.privateDirectory,join(root,'sessions','a'.repeat(64),generation));assert.equal(record.nativeStopCode,0);await assert.rejects(owner.receipt(generation),/cleanup-incomplete/);
 });
@@ -31,6 +33,7 @@ test('Claude refuses nonprivate account root before any command and rejects fore
  const owner=claudeLaunches(root,{}, {run:async()=>{calls++;throw new Error('must not run');}});
  const result=await owner.launch(command(root),generation);
  assert.match(result.error!,/config root.*0700/);assert.equal(calls,0);
+ assert.deepEqual(result.claudeAdmission,{generation,outcome:'refused-before-spawn'});
  assert.match(claudeConfigRefusal({directory:true,symlink:false,uid:process.getuid!()+1,mode:0o700})!,/agent-owned/);
 });
 
@@ -125,4 +128,20 @@ test('restart restore reports a vanished generation without blocking a healthy r
  const outcome=await owner.restore(async()=>false,async worker=>{restored.push(worker.generation);});
  assert.deepEqual(restored,[generation]);assert.deepEqual(outcome.incomplete,[{generation:vanished,stage:'receipt'}]);
  assert.equal(JSON.parse(await readFile(join(root,'claude',vanished+'.json'),'utf8')).released,undefined);
+});
+
+test('an already admitted Claude generation cannot claim pre-spawn refusal',async t=>{
+ const root=await tempProject(t);
+ const owner=claudeLaunches(root,{}, {run:async command=>({code:0,stdout:command.args[0]==='--bg'?'claude attach abc':'[{"id":"abc","pid":42,"sessionId":"native"}]',stderr:''}),identity:async()=> 'linux:boot:1',uid:async()=>process.getuid!(),closed:()=>true});
+ assert.equal((await owner.launch(command(root),generation)).code,0);
+ const duplicate=await owner.launch(command(root),generation);
+ assert.match(duplicate.error!,/already admitted/);
+ assert.equal(duplicate.claudeAdmission,undefined,'an existing worker retains its receipt fence');
+});
+
+for(const proof of ['native','generation','untyped','real-incomplete'] as const)test(`native incomplete classification honors owner proof ${proof}`,()=>{
+ const result:import('../src/host/host.ts').HostRunResult={code:null,stdout:'',stderr:'',error:proof==='real-incomplete'?'cleanup incomplete: native close missing':'ENOENT: /fixture/cleanup incomplete/missing',...(proof==='native'?{nativeAdmission:'no-process' as const}:{}),...(proof==='generation'?{claudeAdmission:{generation,outcome:'refused-before-spawn' as const}}:{})};
+ assert.equal(nativeCommandIncomplete(result),proof==='untyped'||proof==='real-incomplete');
+ const bounded=boundedCommandResult({...result,stdout:'x'.repeat(1024*1024)});
+ assert.equal(nativeCommandIncomplete(bounded),proof==='untyped'||proof==='real-incomplete','bounded output retains the authoritative receipt');
 });

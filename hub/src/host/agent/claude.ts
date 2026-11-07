@@ -112,9 +112,11 @@ export function claudeLaunches(directory: string, env: NodeJS.ProcessEnv, overri
       await unlink(path(generation)).catch(error=>{if(error.code!=='ENOENT')throw error;});
     }),
     launch: (command:Command,generation:string,signal?:AbortSignal):Promise<RunResult> => operation(generation,'launch',async()=>{
-      let entered=false;
+      let entered=false,fresh=false;
       try {
       const target=path(generation);
+      try{await readFile(target);throw new Error('Claude generation already admitted');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+      fresh=true;
       const config=await deps.configRoot(hostClaudeConfigDirectory(command.env,env));
       const jobPath=join(config.path,'jobs');
       await mkdir(jobPath,{mode:0o700}).catch(error=>{if(error.code!=='EEXIST')throw error;});
@@ -126,11 +128,17 @@ export function claudeLaunches(directory: string, env: NodeJS.ProcessEnv, overri
       const privateDirectory=dirname(resolve(settings));
       if(basename(privateDirectory)!==generation || !/^[a-f0-9]{64}$/.test(basename(dirname(privateDirectory))) || dirname(dirname(privateDirectory))!==join(directory,'sessions'))throw new Error('Claude private settings path invalid');
       await mkdir(join(directory,'claude'),{recursive:true,mode:0o700});
-      try{await readFile(target);throw new Error('Claude generation already admitted');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
       const pending={generation,phase:'launching',privateDirectory,config,jobs,uid:process.getuid?.()};
-      await checkpoint(target,pending);
+      // A failed checkpoint can have persisted; from here onward retain the generation fence.
       entered=true;
+      await checkpoint(target,pending);
       const background=await deps.run(command,signal);
+      if(background.nativeAdmission==='no-process'){
+        // Only the native owner proves this pending launch never acquired a process.
+        // Drain and delete its checkpoint before publishing terminal non-admission.
+        await unlink(target);
+        return {...background,claudeAdmission:{generation,outcome:'refused-before-spawn'}};
+      }
       if(background.code!==0 || background.error)return {...background,error:'Claude launch cleanup incomplete: launch outcome unavailable'};
       const parsedJob=claudeBackgroundId(background.stdout),job=isClaudeJobId(parsedJob)?parsedJob:null;
       await checkpoint(target,{...pending,...(job?{job}:{}),reason:'discovery pending'});
@@ -153,7 +161,7 @@ export function claudeLaunches(directory: string, env: NodeJS.ProcessEnv, overri
       await mkdir(join(directory,'claude'),{recursive:true,mode:0o700});
       await checkpoint(target,record);
       return background;
-      }catch(error){return {code:1,stdout:'',stderr:'',error:entered?'Claude launch cleanup incomplete: native launch receipt unavailable':`Claude launch refused: ${error instanceof Error?error.message:'invalid launch'}`};}
+      }catch(error){return {code:1,stdout:'',stderr:'',...(!entered&&fresh?{claudeAdmission:{generation,outcome:'refused-before-spawn' as const}}:{}),error:entered?'Claude launch cleanup incomplete: native launch receipt unavailable':`Claude launch refused: ${error instanceof Error?error.message:'invalid launch'}`};}
     }),
   };
 }

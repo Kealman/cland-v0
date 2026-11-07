@@ -97,7 +97,7 @@ for(const [name,Adapter] of Object.entries({claude:ClaudeCodeAdapter,codex:Codex
  const host:AdapterHost={root:f.root,discoveryFile:join(f.root,'hub.json'),node:process.execPath,cli:'/hub/cli',spoke:'/hub/spoke',hostForLaunch:()=>machine,...(name==='claude'?{hostForProcess:()=>machine}:{}),log:()=>{},signal:()=>{},exited:()=>{},recordPid:()=>{}};
  const adapter=new Adapter(host,{env,bin:'/fake/harness',pollMs:600000});f.addCleanup(async()=>{await adapter.close();});
  await assert.rejects(adapter.spawn({name:'worker',host:'f1',sessionId:'synthetic-session',role:null,model:null,cwd:f.fake.home}),/observed fake harness boundary/);
- if(name==='claude'){const refused=await f.host.launchClaude!({command:'/never-run',args:['--bg'],cwd:f.fake.home,env:{CLAUDE_CONFIG_DIR:join(f.root,'missing-private-config')}},'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');assert.match(refused.error!,/Claude launch refused/);}
+ if(name==='claude')await assert.rejects(f.host.launchClaude!({command:'/never-run',args:['--bg'],cwd:f.fake.home,env:{CLAUDE_CONFIG_DIR:join(f.root,'missing-private-config')}},'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),{code:'CLAND_AGENT_ADMISSION_REFUSED',message:/Claude launch refused/});
  const received=JSON.parse(await readFile(output,'utf8'));assert.equal(received.HUB_ONLY,undefined);
 });
 

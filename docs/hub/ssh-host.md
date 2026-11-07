@@ -204,7 +204,20 @@ native exit code, the final 4096 characters of stdout and stderr, and an explici
 error naming the cap and original output byte counts. Small results retain their
 original bytes. The same stored result serves the first reply and later
 settlement replies, so escaped output and a lost reply cannot prevent completion.
-The retained monolithic `run` operation is unchanged.
+Both command paths may add `nativeAdmission: 'no-process'`: the native owner
+recorded an already-aborted signal without a spawn call, a synchronous throw,
+or an error with no observed PID followed by native close. Any observed PID or
+missing close keeps ordinary failure/unknown semantics. Bounded results and
+stored settlement replies preserve this receipt. The shared incomplete-result
+classifier honors explicit native or generation non-admission before its legacy
+error-text fallback, so an executable/config/cwd path containing `cleanup incomplete`
+cannot negate positive owner proof. Untyped results retain the fallback. Claude consumes it only within
+its captured generation, removes that pending checkpoint, and returns its
+matching `claudeAdmission` refusal. Older results without these fields grant no
+new cleanup authority. Before preparing a frame, `wire()` maps its own already
+aborted signal to typed `CLAND_AGENT_ADMISSION_REFUSED` (`cancelled before send`).
+It does not classify generic AbortError names or text. Partial/unflushed request
+writes count as sent and retain unknown ownership without a positive receipt.
 
 Claude cleanup retains a terminal generation receipt until the hub confirms
 private-file deletion and invokes the receipt's forget closure. Lost release or

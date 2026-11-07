@@ -158,7 +158,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   const claudeProcesses = new Set<string>();
   const claudeCommands = new WeakMap<HostCommand,string>();
   const wire = (command: HostCommand) => {
-    command.signal?.throwIfAborted();
+    if(command.signal?.aborted)throw Object.assign(new Error('cancelled before send'),{code:'CLAND_AGENT_ADMISSION_REFUSED'});
     return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
@@ -196,7 +196,11 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
       const connection=await connected();
       if(!connection.hello.capabilities?.includes(CLAUDE_LAUNCH_CAPABILITY))throw new Error(`host ${o.name}: tunnel agent missing capability ${CLAUDE_LAUNCH_CAPABILITY}`);
       claudeCommands.set(command,generation);
-      try{return await host.run(command);}finally{claudeCommands.delete(command);}
+      try{
+        const result=await host.run(command);
+        if(result.claudeAdmission?.generation===generation&&result.claudeAdmission.outcome==='refused-before-spawn')throw Object.assign(new Error(result.error||'Claude launch refused before spawn'),{code:'CLAND_AGENT_ADMISSION_REFUSED'});
+        return result;
+      }finally{claudeCommands.delete(command);}
     },
     adopt: async generation => {
       const connection=await connected();

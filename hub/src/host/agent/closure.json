@@ -10,7 +10,7 @@
     },
     {
       "path": "hub/src/host/agent/claude.ts",
-      "sha256": "d55af4087c463427ba488f46e7a2b7e9829eb00a1fd14ec7c008e5579ff7a26b"
+      "sha256": "f7dc7a789a3ceb803a99fb60f740803e5e4a3fb6e34e3485e0c190cbc6684347"
     },
     {
       "path": "hub/src/host/agent/command-environment.ts",
@@ -18,7 +18,7 @@
     },
     {
       "path": "hub/src/host/agent/command.ts",
-      "sha256": "f5b7899f3f7e4491105ace01525e91dad844768045efe559680470cc04f6ec4b"
+      "sha256": "587e946ad515a43492df68e39daf0c05bf47c922f4bced2a0250b129c07ee806"
     },
     {
       "path": "hub/src/host/agent/entry.ts",
@@ -94,7 +94,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "784e935070b57c4d8c42650774c42328e2085c444a956229910dc485c4d296d8"
+      "sha256": "21b64fdcc06bfd55b9925dd8ce45a389e6c16848150a96a084cf3f638d09103e"
     },
     {
       "path": "hub/src/host/agent/stat-directory.ts",
