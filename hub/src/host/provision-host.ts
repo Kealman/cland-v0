@@ -19,6 +19,7 @@ import { remoteRedactor } from './agent/redact.ts';
 import { VERSION } from '../version.ts';
 import type { projectSshHosts } from './registry.ts';
 
+const creations=new Map<string,{abort:AbortController;done:Promise<void>}>();
 export const PROVISION_GATE_MS = 300000;
 export type { ProvisionState, ProvisionRecord } from './provision-records.ts';
 import type { ProvisionRecord } from './provision-records.ts';
@@ -57,6 +58,10 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
  if(!prepared?.key||!samePoolImageKey(prepared.key,key))throw Error(`pool ${pool} image is not current; run cland host prepare ${pool}`);
  const record:ProvisionRecord={id:'host-'+randomUUID(),...config,pool,created:new Date().toISOString(),state:'creating'};
  o.records.provisions.save(record);
+ const completion=Promise.withResolvers<void>(),abort=new AbortController();
+ const signal=o.signal?AbortSignal.any([o.signal,abort.signal]):abort.signal;
+ const creationKey=join(o.root,record.id);
+ creations.set(creationKey,{abort,done:completion.promise});
  let registered=false,acquiring=false;
  try {
   // An actual OpenSSH key, never a key inferred from a responding machine.
@@ -67,12 +72,12 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
   await command('ssh-keygen',['-t','ed25519','-N','','-C','cland','-f',hostKey],o.env);
   const publicKey=(await readFile(hostKey+'.pub','utf8')).trim().split(/\s+/).slice(0,2).join(' ');
   const userData=renderPrelude({hostKey:await readFile(hostKey,'utf8'),hostPublicKey:publicKey,providerSteps:''});
-  o.signal?.throwIfAborted();
+  signal?.throwIfAborted();
   acquiring=true;
   const acquired=await provider.acquire({project:o.root,pool,architecture:process.arch==='arm64'?'arm64':'x86_64',region:config.region,userData,image:key});
   if(acquired.state!=='created')throw Error(acquired.reason);
   record.machine=acquired.machine;record.state='booting';o.records.provisions.save(record);
-  o.signal?.throwIfAborted();
+  signal?.throwIfAborted();
   const fake=hostDirectory(o.env.CLAND_FAKE_HOST_ROOT!,acquired.machine.id);
   const provisioningEnv={...o.env,CLAND_FAKE_HOSTS:[o.env.CLAND_FAKE_HOSTS,acquired.machine.address].filter(Boolean).join(',')};
   const known=join(privateDirectory,'known_hosts');
@@ -82,23 +87,23 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
   const destination=`agent@${acquired.machine.address}`;
   const ssh=o.env.CLAND_SSH_BIN??'ssh',scp=o.env.CLAND_SCP_BIN??'scp';
   const deadline=Date.now()+(o.gateMs??PROVISION_GATE_MS);
-  o.signal?.throwIfAborted();
+  signal?.throwIfAborted();
   let lastGateFailure='machine has not answered';
   while(true) {
    try {if((await provider.status(acquired.machine)).state!=='ready')throw Error('machine booting');await command(ssh,[...base,destination,'sh','-s'],provisioningEnv,'true\n',Math.max(1,Math.min(10000,deadline-Date.now())));break;}
-   catch(error) {lastGateFailure=error instanceof Error?error.message:'probe outcome unavailable';o.signal?.throwIfAborted();if(Date.now()>=deadline)throw Error('pinned-key provisioning gate timed out: '+lastGateFailure);await pause(Math.max(1,Math.min(250,deadline-Date.now())),undefined,o.signal?{signal:o.signal}:{});}
+   catch(error) {lastGateFailure=error instanceof Error?error.message:'probe outcome unavailable';signal?.throwIfAborted();if(Date.now()>=deadline)throw Error('pinned-key provisioning gate timed out: '+lastGateFailure);await pause(Math.max(1,Math.min(250,deadline-Date.now())),undefined,signal?{signal:signal}:{});}
   }
   record.state='connecting';o.records.provisions.save(record);
   const home=join(fake,'home');
-  await deliverRuntime({transport:{execute:script=>command(ssh,[...base,destination,'sh','-s'],provisioningEnv,script,120000),copyFile:(source,target)=>command(scp,[...base,source,`${destination}:${target}`],provisioningEnv)},codeRoot:join(home,'.cland-host/code'),node:process.execPath,version:VERSION,...(o.signal?{signal:o.signal}:{})});
-  o.signal?.throwIfAborted();
+  await deliverRuntime({transport:{execute:script=>command(ssh,[...base,destination,'sh','-s'],provisioningEnv,script,120000),copyFile:(source,target)=>command(scp,[...base,source,`${destination}:${target}`],provisioningEnv)},codeRoot:join(home,'.cland-host/code'),node:process.execPath,version:VERSION,...(signal?{signal:signal}:{})});
+  signal?.throwIfAborted();
   const registration=new HostSecretStore(o.root,o.records,o.registerSecrets).register({id:record.id,address:acquired.machine.address,user:'agent',clientKeyPath:join(fake,'client-key'),knownHosts:`${acquired.machine.address} ${publicKey}\n`});
   registered=true;
   o.env.CLAND_FAKE_HOSTS=[o.env.CLAND_FAKE_HOSTS,acquired.machine.address].filter(Boolean).join(',');
   await o.owner.add(registration);
   record.state='cloning';o.records.provisions.save(record);
-  await o.owner.ready(record.id,o.signal);
-  o.signal?.throwIfAborted();
+  await o.owner.ready(record.id,signal);
+  signal?.throwIfAborted();
   record.state='ready';o.records.provisions.ready(record);
  } catch(error) {
   record.state='failed';record.reason=error instanceof Error?error.message:String(error);
@@ -113,7 +118,7 @@ export async function createHost(o:{root:string;pool?:string|undefined; provider
    }
   }catch {record.release='incomplete';}
   o.records.provisions.save(record);
- }
+ } finally {creations.delete(creationKey);completion.resolve();}
  return record;
 }
 
@@ -142,4 +147,30 @@ export async function restoreProvisionedFakeHosts(records:HostRecords,env:NodeJS
   else records.provisions.save({...provision,state:'failed',release:'incomplete',reason:'fake host identity or environment unavailable; machine retained'});
  }
  env.CLAND_FAKE_HOSTS=[...membership].join(',');
+}
+
+/** Explicit destruction remains available when the transport cannot answer.
+ * remove joins the existing revoke owner before provider deletion. */
+export async function destroyHost(o:{root:string;id:string;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>;provider?:HostProvider;settleDeleted?:(id:string,read:string)=>void|Promise<void>;log:(event:{event:string;host:string;resource:string;read:string})=>void}) {
+ const initial=o.records.provisions.get(o.id);
+ if(!initial)throw Error('unknown host');
+ let record:ProvisionRecord=initial;
+ if(record.state==='destroyed')return record;
+ record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);
+ try {
+  const creation=creations.get(join(o.root,o.id));
+  if(creation){creation.abort.abort();await creation.done;record=o.records.provisions.get(o.id)!;record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);}
+  // A failed provisioning attempt may never have published a registration.
+  if(o.records.get(record.id))await o.owner.remove(record.id);
+  const provider=o.provider??new HostProviderRegistry({env:o.env}).resolve(record);
+  const confirmed=new Set<string>();
+  if(!record.machine)throw Error('acquisition outcome unknown');
+  const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
+  if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
+  record.release=result.state;
+  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){record.state='destroyed';delete record.reason;}
+  else {record.release='incomplete';record.reason='deletion not confirmed'+(result.state==='incomplete'?': '+result.reason:': confirming reads missing');}
+ }catch{record.release='incomplete';record.reason='deletion not confirmed';}
+ o.records.provisions.save(record);
+ return record;
 }

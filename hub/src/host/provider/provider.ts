@@ -9,6 +9,8 @@ export type CreateAdmission = { state:'allowed' } | { state:'refused'; reason:st
 export type Failed = { state: 'failed'; reason: string };
 export type AcquireResult = { state: 'created'; machine: Machine } | { state: 'refused'; reason: string; retryAt: string } | Failed;
 export type MachineStatus = { state: 'booting' | 'ready' | 'gone' } | Failed;
+export type ReleaseRead = {resource:'machine'|'key';read:string};
+export type ReleaseObserver = (receipt:ReleaseRead)=>void;
 export type ReleaseResult = { state: 'released' } | { state: 'incomplete'; reason: string };
 export type PrepareResult = { state: 'prepared' | 'current'; summary: string } | Failed;
 export type ReapOptions = { project: string; pool: string };
@@ -23,7 +25,7 @@ export interface HostProvider {
   status(machine: Machine): Promise<MachineStatus>;
   /** Caller first drains sessions and host transports. Success requires a
    * positive read of native absence, including every associated key. */
-  release(machine: Machine): Promise<ReleaseResult>;
+  release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult>;
   reap(options: ReapOptions): Promise<ReapResult>;
   snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult>;
   attachVolume(volume: Volume, machine: Machine): Promise<AttachVolumeResult>;

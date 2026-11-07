@@ -8,7 +8,7 @@ import { join, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostDirectory } from '../../../../shared/fake-host-directory.ts';
 import { createFakeHost } from '../../../../shared/fake-host-machine.ts';
-import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, DeleteVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult } from './provider.ts';
+import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReleaseObserver, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, DeleteVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult } from './provider.ts';
 
 import { parseFakeVolumeRecord, isFakeVolumeId, type FakeVolumeRecord as VolumeRecord } from './fake-volume-record.ts';
 type Record = { region?: string; machine: Machine; project: string; pool: string; readyAt: number; neverBoot: boolean };
@@ -210,23 +210,27 @@ export class FakeHostProvider implements HostProvider {
     } catch (e) { return { state: 'failed', reason: 'fake machine read failed' }; }
   }
   status(machine: Machine): Promise<MachineStatus> { return this.#serial(() => this.#status(machine)); }
-  async #release(machine: Machine): Promise<ReleaseResult> {
+  async #release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult> {
     try {
-      const before = await this.#status(machine);
-      if (before.state === 'gone') return { state: 'released' };
-      // A failed boot remains deletable; an identity mismatch does not.
       await this.#record(machine);
+      const directory = hostDirectory(this.#root, machine.id);
       if (!this.#options.ignoreDelete) {
-        const directory = hostDirectory(this.#root, machine.id);
         for (const key of ['host-key.pub', 'client-key', 'known_hosts']) {
           try { await unlink(join(directory, key)); } catch (e) { if (!missing(e)) throw e; }
         }
         await writeFile(join(directory, 'gone'), 'deleted');
       }
-      return (await this.#status(machine)).state === 'gone' ? { state: 'released' } : { state: 'incomplete', reason: 'fake machine still exists after delete' };
+      if ((await this.#status(machine)).state !== 'gone') return {state:'incomplete',reason:'fake machine still exists after delete'};
+      confirm?.({resource:'machine',read:`read ${join(directory,'gone')}: deleted`});
+      for (const key of ['host-key.pub','client-key','known_hosts']) {
+        try { await stat(join(directory,key)); return {state:'incomplete',reason:'fake key still exists after delete'}; }
+        catch(e){if(!missing(e))throw e;}
+      }
+      confirm?.({resource:'key',read:`stat ${directory}/{host-key.pub,client-key,known_hosts}: ENOENT`});
+      return {state:'released'};
     } catch { return { state: 'incomplete', reason: 'fake machine deletion unconfirmed' }; }
   }
-  release(machine: Machine): Promise<ReleaseResult> { return this.#serial(() => this.#release(machine)); }
+  release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult> { return this.#serial(() => this.#release(machine,confirm)); }
   reap(options: ReapOptions): Promise<ReapResult> { return this.#serial(async () => {
     try { parsePoolName(options.pool); } catch { return { state: 'failed', reason: 'invalid pool' }; }
     const released: string[] = [], incomplete: string[] = [];

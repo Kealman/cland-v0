@@ -230,6 +230,38 @@ export class Sessions {
     this.#settlingHosts.set(name, work); return work;
   }
 
+  /** Called only with the provider read already checkpointed on this provision. */
+  async hostDeleted(host:string, read:string):Promise<void> {
+    const provision=this.#core.store.hosts.provisions.get(host);
+    if(!read||provision?.machineDeletionRead!==read||this.#core.store.hosts.get(host)?.state!=='revoked')throw Error('host deletion receipt unavailable');
+    const captured=(function* (this:Sessions){
+      yield* this.#table.activeOnHost(host);
+      yield* this.#table.stoppedOnHost(host);
+      for(const row of this.#table.retainedHostGenerations(host))yield row.process;
+      for(const entry of this.#pendingStops.values())if(entry.process.host===host)yield entry.process;
+    }).call(this);
+    const seen=new Set<string>();let count=0;
+    for(const p of captured) {
+      const generation=hostGenerationKey(p);
+      if(seen.has(generation))continue;seen.add(generation);
+      if(++count%32===0)await new Promise<void>(resolve=>setImmediate(resolve));
+      // Retain the exact obligation if adapter/forward drainage fails.
+      this.#table.retainHostGeneration(p,'unknown');
+      await this.releaseUnreachableGeneration(p);
+      const pending=this.#pendingStops.get(p.sessionId);
+      if(pending&&hostGenerationKey(pending.process)===generation){
+        this.#table.clearPendingStop(p.sessionId);this.#pendingStops.delete(p.sessionId);
+      }
+      this.#table.clearHostGeneration(p);
+      const current=this.#table.bySessionId(p.sessionId);
+      if(!current||hostGenerationKey(current)!==generation)continue;
+      this.#table.update(current.name,{status:'exited',cleanupItem:this.#stopItem(current)});
+      this.#log({event:'harness-exited',session:current.name,harness:p.harness,pid:p.pid,detail:'host destroyed',host,read});
+      this.#setObservedState(current.sessionId,current.name,'unknown','process');
+      this.#vacate(current,'its host was destroyed');
+    }
+  }
+
   readonly #localForwardOwners = new Map<string, string>();
   #captureForwardOwner(host: Host): Host {
     if (host.name === 'local') return host;

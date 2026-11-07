@@ -31,6 +31,13 @@ export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.e
     for (const result of results) process.stdout.write(`${result.pool}: ${result.state}; changed: ${result.changed.join(', ') || 'none'}\n`);
     return 0;
   }
+  if (args[0] === 'destroy' && args.length === 2) {
+    const discovery = readDiscovery(hubDiscovery(process.cwd()));
+    if (!discovery) throw new Error('no hub runs for this project — run cland hub start');
+    const value = await askHubFrame(discovery, { type: 'host.destroy', host: args[1] }, 600000, env) as {state?:string};
+    process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+    return value.state === 'destroyed' ? 0 : 1;
+  }
   if (args[0] === 'revoke' && args.length === 2) {
     const discovery = readDiscovery(hubDiscovery(process.cwd()));
     if (!discovery) throw new Error('no hub runs for this project — run cland hub start');
@@ -39,7 +46,7 @@ export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.e
     for (const line of hostRevocationLines(reply)) process.stdout.write(line + '\n');
     return 0;
   }
-  if (args.length !== 1 || args[0] !== 'serve') throw new Error('usage: cland host <prepare [pool] | serve | attach session | revoke id | git-proxy socket>');
+  if (args.length !== 1 || args[0] !== 'serve') throw new Error('usage: cland host <create [pool] | list | destroy id | prepare [pool] | serve | attach session | revoke id | git-proxy socket>');
   const runDir = env.CLAND_HOST_RUN_DIR ?? join(userHome(env), '.cland-host', 'run');
   const secret = env.CLAND_HOST_SECRET;
   if (!secret) throw new Error('CLAND_HOST_SECRET required');

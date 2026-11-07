@@ -274,6 +274,8 @@
     "hub/test/host-contract-coverage.test.ts": "T1",
     "hub/test/host-create-admission.test.ts": "T2",
     "hub/test/host-create-ready.test.ts": "T3",
+    "hub/test/host-destroy-native.test.ts": "T3",
+    "hub/test/host-destroy.test.ts": "T2",
     "hub/test/host-flush-native.test.ts": "T3",
     "hub/test/host-flush.test.ts": "T1",
     "hub/test/host-git-daemon.test.ts": "T3",

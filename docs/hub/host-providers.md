@@ -349,3 +349,35 @@ then restore it only after matching the durable
 registration/address and provider machine identity. Physical addresses never
 mint duplicate registrations. A missing fake environment or unverifiable machine
 is retained as failed/incomplete and is never opened through real SSH fallback.
+
+## Destroying a provisioned host
+
+The local human CLI or Neovim can run `cland host destroy <id>` (`host.destroy`).
+Sessions, host-secret peers, web and remote clients cannot destroy hosts. Unknown
+provision ids are refused. Destruction works when the tunnel is down and does
+not require a reachable agent or a current pool image.
+
+The hub checkpoints `destroying`, aborts and joins an active creation for that exact
+project/provision id, then removes the runtime owner through the existing
+revoke settlement, then calls the recorded provider's `release`. Each positive
+machine/key absence read produces a `host-destroy` event naming the read. The
+machine read is also persisted as `machineDeletionRead` before remaining session
+rows settle as exited; an incomplete native inventory alone cannot settle them.
+The existing Sessions unreachable-generation owner validates the adapter receipt
+and drains identity-bound local forwards. Cleanup streams retained generations,
+including those whose display row moved; only an exact current generation can
+receive the exited update after an asynchronous release. Failed cleanup retains
+the obligation and leaves destruction incomplete.
+After both deletions are confirmed the provision record becomes `destroyed`.
+Records remain in `host list` as lifecycle history. If deletion cannot be
+confirmed, the record stays `destroying` with `deletion not confirmed`; its
+unconfirmed sessions stay fenced. A second destroy retries the removal and
+provider release. A repeated destroy of a destroyed record is idempotent. A restarted ambiguous
+acquisition with no returned machine remains deletion-not-confirmed; absence of
+a machine id supplies no non-admission receipt.
+
+The fake provider reads its machine tombstone and stats all associated key files
+for absence. DigitalOcean release uses the API's confirmed DELETE/GET paths,
+logging GET 404 for the droplet and its key. Production DigitalOcean creation
+still requires E-1534 admission; this command does not enable it. No provider
+credentials or private key bytes appear in the deletion evidence.

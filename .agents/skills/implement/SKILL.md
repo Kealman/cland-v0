@@ -134,8 +134,8 @@ Empty/missing speech commands keep audio and name command setup.
 Pool names use `host/pool-name.ts`: 1–64 ASCII letters, digits and hyphens,
 starting with a letter or digit; config reading rejects underscores.
 
-Pool image preparation and create/list (`cland host prepare [pool]`,
-`cland host create [pool]`, `cland host list`) are restricted to the local human CLI or Neovim, like host revocation. Implementers
+Pool image preparation, creation, inventory and destruction (`cland host prepare [pool]`,
+`cland host create [pool]`, `cland host list`, `cland host destroy <id>`) are restricted to the local human CLI or Neovim, like host revocation. Implementers
 prove it in disposable sealed fixtures, never by preparing the live project.
 See [pool images](../../../docs/hub/host-providers.md#pool-images).
 

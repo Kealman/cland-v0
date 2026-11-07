@@ -46,6 +46,7 @@ export const HOST_USAGE = `  host create [pool] human-only local CLI: create a f
   host list       human-only local CLI: id, pool, provider, size, region, state, uptime, USD/hour
   host prepare [pool] human-only local CLI: prepare one or all configured pool images
                   pool: 1–64 letters, digits and hyphens; first character letter or digit
+  host destroy <id> human-only local CLI: remove host, delete machine and key with confirming reads
   host revoke <id> human-only local CLI: settle generations within 2s, revoke secret, report leftovers
   host git-proxy <socket> relay Git stdin/stdout through the forwarded Unix socket
   host attach <session> attach using this agent run folder’s private launch record

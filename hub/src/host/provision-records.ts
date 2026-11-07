@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Machine } from './provider/provider.ts';
-export type ProvisionState = 'creating'|'booting'|'connecting'|'cloning'|'ready'|'failed';
-export type ProvisionRecord = { id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; release?:'released'|'incomplete' };
+export type ProvisionState = 'creating'|'booting'|'connecting'|'cloning'|'ready'|'failed'|'destroying'|'destroyed';
+export type ProvisionRecord = { id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
 /** Shares the registration database: final readiness and revocation serialize in SQLite. */
 export class ProvisionRecords {
  readonly #db:DatabaseSync;

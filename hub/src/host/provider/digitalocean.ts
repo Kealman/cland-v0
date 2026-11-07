@@ -12,7 +12,7 @@ import { digitalOceanRequestsPerMinute } from '../../executor/droplet/endpoint.t
 import { projectTag } from '../../executor/droplet/droplet.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import { declareHostProvider, type HostProviderDeclarations, type HostProviderDeclarationState } from './declarations.ts';
-import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult, DeleteVolumeResult } from './provider.ts';
+import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReleaseObserver, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult, DeleteVolumeResult } from './provider.ts';
 
 export type ReapTarget = { machineId?: string | undefined; keyName?: string | undefined };
 export type DigitalOceanHostProviderOptions = {
@@ -160,15 +160,15 @@ export class DigitalOceanHostProvider implements HostProvider {
       return { state: 'failed', reason: 'machine unavailable' };
     } catch (e) { return e instanceof DigitalOceanError && e.status === 404 ? { state: 'gone' } : { state: 'failed', reason: 'DigitalOcean status failed' }; }
   }); }
-  async #delete(id: number, keyIds: number[]): Promise<ReleaseResult> {
-    try { await this.#api.deleteDroplet(id); for (const keyId of keyIds) await this.#api.deleteKey(keyId); return { state: 'released' }; }
+  async #delete(id: number, keyIds: number[], confirm?:ReleaseObserver): Promise<ReleaseResult> {
+    try { await this.#api.deleteDroplet(id); confirm?.({resource:'machine',read:`GET /droplets/${id}: 404`}); for (const keyId of keyIds) { await this.#api.deleteKey(keyId); confirm?.({resource:'key',read:`GET /account/keys/${keyId}: 404`}); } return { state: 'released' }; }
     catch { return { state: 'incomplete', reason: 'DigitalOcean deletion unconfirmed' }; }
   }
-  async #retire(record: Record): Promise<ReleaseResult> {
+  async #retire(record: Record, confirm?:ReleaseObserver): Promise<ReleaseResult> {
     record.retiring = true;
     await this.#save(record);
     let result: ReleaseResult;
-    if (record.dropletId !== undefined) result = await this.#delete(record.dropletId, record.keyId === undefined ? [] : [record.keyId]);
+    if (record.dropletId !== undefined) result = await this.#delete(record.dropletId, record.keyId === undefined ? [] : [record.keyId],confirm);
     else {
       try { if (record.keyId !== undefined) await this.#api.deleteKey(record.keyId); result = { state: 'released' }; }
       catch { result = { state: 'incomplete', reason: 'DigitalOcean key deletion unconfirmed' }; }
@@ -180,8 +180,8 @@ export class DigitalOceanHostProvider implements HostProvider {
     // A lost/throwing acknowledgement must leave this target discoverable.
     if (result?.state === 'released') { record.retiring = false; await this.#save(record); }
   }
-  release(machine: Machine): Promise<ReleaseResult> { return this.#serial(async () => {
-    try { const r = await this.#record(machine), result = await this.#retire(r); await this.#settled(r, result); return result; }
+  release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult> { return this.#serial(async () => {
+    try { const r = await this.#record(machine), result = await this.#retire(r,confirm); await this.#settled(r, result); return result; }
     catch { return { state: 'incomplete', reason: 'machine ownership unconfirmed' }; }
   }); }
   reap(options: ReapOptions): Promise<ReapResult> { return this.#serial(async () => {

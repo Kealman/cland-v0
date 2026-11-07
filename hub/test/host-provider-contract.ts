@@ -36,9 +36,13 @@ export function hostProviderContract(name: string, factory: (t: TestContext, sce
     assert.ok(Number.isFinite(Date.parse(machine.created)));
     await ready();
     assert.equal((await provider.status(machine)).state, 'ready');
-    assert.equal((await provider.release(machine)).state, 'released');
+    {const reads:Array<{resource:string;read:string}>=[];
+    assert.equal((await provider.release(machine,receipt=>reads.push(receipt))).state, 'released');
+    assert.deepEqual(reads.map(r=>r.resource),['machine','key']);assert.ok(reads.every(r=>r.read.length>0));}
     assert.equal((await provider.status(machine)).state, 'gone');
-    assert.equal((await provider.release(machine)).state, 'released');
+    {const reads:Array<{resource:string;read:string}>=[];
+    assert.equal((await provider.release(machine,receipt=>reads.push(receipt))).state, 'released');
+    assert.deepEqual(reads.map(r=>r.resource),['machine','key']);assert.ok(reads.every(r=>r.read.length>0));}
     assert.deepEqual(await provider.reap({ project: 'contract', pool: 'agents' }), { state: 'reaped', released: [], incomplete: [] });
   });
   register(`${name}: reap releases only the requested project and pool`, async t => {

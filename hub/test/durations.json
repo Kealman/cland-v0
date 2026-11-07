@@ -13921,6 +13921,20 @@
       "added": "2026-11-06",
       "expires": "2026-11-13",
       "reason": "T-1704 A-17247: loaded macOS27.0.1 arm64 local Node24.21.0 samples seconds [5.415768083, 2.647145875, 4.144065875, 3.737814625, 3.6271258750000004, 1.941559709, 5.6239518749999995, 4.551781459, 2.4908771670000003, 2.4914932910000003]; Linux x64 droplet Node24.21.0 A-17242 sample 0.949490745s. ceil(1.5 x worst 5.6239518749999995s) = 9s. Includes fixture setup, real admission handshake, assertions and joined cleanup; excludes test-driver startup. Runtime at136a954a6; sources unchanged by this duration-only allowance. Owner C-216, expiry per brief; report-mode policy unchanged."
+    },
+    "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=false": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy."
+    },
+    "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=true": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy."
     }
   }
 }

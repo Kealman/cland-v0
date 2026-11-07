@@ -1,4 +1,4 @@
-import { createHost, listHosts } from '../host/provision-host.ts';
+import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
 import { flushHostBranch } from '../host/flush.ts';
@@ -2061,19 +2061,20 @@ export class Dispatcher {
           case 'host.create':
           case 'host.list':
           case 'host.prepare':
+          case 'host.destroy':
           case 'host.revoke': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
-            if (frame.type === 'host.list' || frame.type === 'host.create') {
+            if (frame.type === 'host.list' || frame.type === 'host.create' || frame.type === 'host.destroy') {
               if(this.#closed)throw Error('host provisioning stopped');
               const root=this.#options.control?.status().root;
               if(!root)throw Error('project root unavailable');
               const env=this.#options.env??process.env;
               if(!this.hostOwner)throw Error('host runtime unavailable');
-              const work=frame.type==='host.list'?listHosts(core.store.hosts,env):createHost({root,pool:frame.pool,env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets?{registerSecrets:this.#options.registerHostSecrets}:{}),records:core.store.hosts,owner:this.hostOwner});
+              const work=frame.type==='host.destroy'?destroyHost({root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):createHost({root,pool:frame.pool,env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets?{registerSecrets:this.#options.registerHostSecrets}:{}),records:core.store.hosts,owner:this.hostOwner});
               this.#poolPrepares.add(work);
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));

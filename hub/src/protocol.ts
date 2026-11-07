@@ -709,6 +709,7 @@ export type ClientRequest =
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'host.list'; id: string }
   | { type: 'host.prepare'; id: string; pool?: string }
+  | { type: 'host.destroy'; id: string; host: string }
   | { type: 'host.revoke'; id: string; host: string }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
@@ -1130,6 +1131,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       if (f.pool === undefined) return true;
       if (typeof f.pool !== 'string') return false;
       try { parsePoolName(f.pool); return true; } catch { return false; }
+    case 'host.destroy':
     case 'host.revoke':
       return typeof f.host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.host) && f.host !== 'local';
     case 'pairing.approve':

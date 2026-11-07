@@ -923,6 +923,7 @@ export type ClientRequest =
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'host.list'; id: string }
   | { type: 'host.prepare'; id: string; pool?: string }
+  | { type: 'host.destroy'; id: string; host: string }
   | { type: 'host.revoke'; id: string; host: string }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }
   | { type: 'resume'; id: string; epoch: string; seq: number }
