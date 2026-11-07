@@ -2,8 +2,8 @@
 id: T-1742
 kind: task
 title: Spend-ledger categories and host reservations
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1430
 branch: t/T-1742-spend-ledger-categories-and-host
 created: 2026-11-07T16:01:57.593Z
-updated: 2026-11-07T16:17:28.316Z
+updated: 2026-11-07T18:03:17.594Z
+closed: 2026-11-07T18:03:17.594Z
 ---
 
 ## Summary
@@ -29,14 +30,19 @@ An additive ledger API that the executor keeps calling unchanged in behaviour. E
 
 - [x] C1. Entries carry `category`, and host entries their pool; an entry without a category reads as `verify`, and a ledger written by the previous code keeps every entry and settled cost after a host reservation (test).
   - done: impl-1742 · 2026-11-07T16:09:40.704Z
+  - verified: rev-37 [reviewer] · run rev-37-1742-evidence-1 · 2026-11-07T17:03:09.868Z · commit 4ba7d890269459f1840a99ac8bf9586b32caac15
 - [x] C2. A host reservation is refused when it would pass the hosts cap, or the verification cap with verify spend included, and an executor reservation counts `hosts` entries toward the shared cap (test).
   - done: impl-1742 · 2026-11-07T16:16:18.285Z
+  - verified: rev-37 [reviewer] · run rev-37-1742-evidence-1 · 2026-11-07T17:03:09.868Z · commit 4ba7d890269459f1840a99ac8bf9586b32caac15
 - [x] C3. A renewal raises a host's reservation to its new deadline, and settlement records the cost of the real lifetime with the provider's billing minimum (test).
   - done: impl-1742 · 2026-11-07T16:09:41.798Z
+  - verified: rev-37 [reviewer] · run rev-37-1742-evidence-1 · 2026-11-07T17:03:09.868Z · commit 4ba7d890269459f1840a99ac8bf9586b32caac15
 - [x] C4. Today's and the month's totals are readable per category and per pool, as settled costs of the period (test).
   - done: impl-1742 · 2026-11-07T16:16:22.562Z
+  - verified: rev-37 [reviewer] · run rev-37-1742-evidence-1 · 2026-11-07T17:03:09.868Z · commit 4ba7d890269459f1840a99ac8bf9586b32caac15
 - [x] C5. The executor's spend test files pass with no test edited.
   - done: impl-1742 · 2026-11-07T16:09:45.660Z
+  - verified: rev-37 [reviewer] · run rev-37-1742-evidence-1 · 2026-11-07T17:03:09.868Z · commit 4ba7d890269459f1840a99ac8bf9586b32caac15
 
 ## Blocked by
 
@@ -155,3 +161,55 @@ Standards0; Spec0 findings.
 
 
 A-17502: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17502-t-1742-corrected-source-clear-at-4ba7d8902.md
+
+### rev-37 · 2026-11-07T17:03:09.868Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1742-evidence-1
+commit: 4ba7d890269459f1840a99ac8bf9586b32caac15
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1742 final exact-head evidence
+
+Head4ba7d890269459f1840a99ac8bf9586b32caac15, unchanged branch independently checked.
+Run rev-37-1742-evidence-1; scope evidence; clear; findings[]; verifiedC1-C5.
+Source clear rev-37-1742-source-2/A-17502 remains applicable.
+
+Configured run4c17da30-e737-4166-945b-20ae3f1051ba / A-17530: Finished exit0, aggregate5413pass, zero fail/cancel/skip/todo. Admitted head matches; canonical tree reconstructed read-only as0277ff0a4ec029d5086431b8ed192605b354a9e5, matching provenance. Uncached Linuxx64 6.8.0-147-generic droplet c-8lon1, Node24.21.0, Neovim0.12.5. Browser /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Google Chrome for Testing156.0.8078.4, isolated testing binary.
+T0/allT1/fallback-allT2/Web completed; T3 deferred merge batch and T4 unexecuted in this configured run. Lint/budget/ratchet notices report-only. Provenance skips[] and skipReasonCheck report/missing0. No total wall-time or load measurement inference from projections; droplet lifetime984s/cost$0.0683 is executor telemetry, not test wall time.
+
+## Named outcomes independently streamed
+
+Only finish records with type=test count as cases; file wrapper completions excluded.
+host-spend8unique cases,48passing records:8base +40load-gate, exactly5/5 for each new case. No nonpass records.
+executor-spend20unique/20base passes, unchanged source file.
+Other direct importers base passes: account-fixture-env5, executor-admission-lock11, executor-deletion-confirmation7, executor-lock-liveness9, executor-reap-confirmation9, executor-retirement-component2, state-paths2, suite-accounting15, suite-close-component14, suite-soak-component38.
+These12files total140base cases, not an additional suite count beyond5413.
+
+C1 verified: 'host reservation preserves previous v1 settlements and legacy reconciliation' passes base+five. Prior-format missing-category verify entry and conservative settled cost survive; durable version1/category/pool/legacy write-through assertions remain.
+C2 verified: combined caps case plus valid same-run/different-lease case pass base+five. Both 'native host lease conflict refuses admission without changing durable accounting' and 'shard host lease conflict refuses admission without changing durable accounting' pass base+five, retaining exact refusal, unchanged primary bytes and full four-dollar combined reservation after locked reconciliation. Source guards precede idempotency/append.
+C3 verified: renewal/minimum case passes base+five with rejected renewal preserving reservation, raised extended reservation, nondecreasing shorter retry, actual lifetime billing, minimum charge, identical settlement retry, contradictory settlement refusal and settled renewal refusal. Billing facts remain pinned in source.
+C4 verified: UTC day/month/two-pool case and offset settlement case pass base+five. Offset Oct31 23:30-02:00 correctly persists Nov1 01:30Z, category/pool/shared cap include its two-dollar cost and exact-instant retry remains idempotent. Pending reservations remain excluded from settled totals and retained for admission across midnight.
+C5 verified: all20unchanged executor-spend cases pass at the reviewed head. Named native preservation supplements below also cover the direct T3 importer paths.
+
+## Supplemental native preservation
+
+A-17519 retains exact-head macOS local Node24.21.0 command:
+node --test --test-concurrency=1 hub/test/executor-safety.test.ts hub/test/suite-dry-run.test.ts
+Native exit0;21pass, zero fail/cancel/skip/todo, including nested shell/host deadline cases; signal not separately reported. Serial owner-checked preservation slot, inherited CLAND_* removed, scratch HOME/XDG, fake providers, no browser. Raw named output retained, targeted native driver duration48.991748083s; not a full verification duration or Linux execution. Samples4.02/4.53 one-minute host load are two observations, not continuous-load proof.
+Named safety receipts include shared reservation lock/dead holder recovery, both timed-out-run endings, periodic stray/watchdog/cleanup recovery, sentinel lifecycle, fake-provider child reaping for unfinished/failed/aborted, bounded missing finish exit124, held create drainage/fences and poller disposal. Dry-run receipts assert no spend reservation, wall-budget advisory behavior, placement projections and planned Neovim accounting.
+
+Initial red regressions A-17495 remain red historical evidence (5pass/3fail), not counted as final passes; source findings are resolved. No outstanding review findings. After-stage affected QA remains separate; final clear is review evidence, not a QA verdict. Reviewer performed read-only source/log checks only.
+
+
+A-17534: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17534-t-1742-final-accounting-evidence-at-4ba7d8902.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-07T18:03:17.594Z
+
+Merged f405478eb9b59fa4c59d0c6e618d69633a970ad2 onto dev.

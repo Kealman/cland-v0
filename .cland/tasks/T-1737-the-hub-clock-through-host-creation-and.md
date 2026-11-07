@@ -2,8 +2,8 @@
 id: T-1737
 kind: task
 title: The hub clock through host creation and readiness, and an in-hub create entry
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1426
 branch: t/T-1737-the-hub-clock-through-host-creation-and
 created: 2026-11-07T16:01:56.582Z
-updated: 2026-11-07T16:19:19.370Z
+updated: 2026-11-07T20:43:56.449Z
+closed: 2026-11-07T20:43:56.449Z
 ---
 
 ## Summary
@@ -29,12 +30,20 @@ A clock-driven create path that the hub's own scheduler can call, with no change
 
 - [x] C1. With a fake clock and a fake machine that never boots, the provisioning gate fails at 300 000 ms of clock time with no real wait, and the machine is released (test).
   - done: impl-1737 · 2026-11-07T16:12:22.186Z
+  - verified: rev-36 [reviewer] · run rev-36-1737-final-1 · 2026-11-07T17:03:13.930Z · commit 5d6e8a3ab7ad9b391f179cb44b8e125f8e3ae1a8
+  - verified: rev-36 [reviewer] · run rev-36-1737-merge-1 · 2026-11-07T17:22:44.071Z · commit 31aef1ec8f62071787e9869a78e086bd72435593
 - [x] C2. The registry's tunnel-readiness wait is bounded by the same injected clock (test).
   - done: impl-1737 · 2026-11-07T16:17:11.023Z
+  - verified: rev-36 [reviewer] · run rev-36-1737-final-1 · 2026-11-07T17:03:13.930Z · commit 5d6e8a3ab7ad9b391f179cb44b8e125f8e3ae1a8
+  - verified: rev-36 [reviewer] · run rev-36-1737-merge-1 · 2026-11-07T17:22:44.071Z · commit 31aef1ec8f62071787e9869a78e086bd72435593
 - [x] C3. An in-hub caller of the create path receives the host id at the `creating` checkpoint, before the provider's acquire resolves (test).
   - done: impl-1737 · 2026-11-07T16:12:25.243Z
+  - verified: rev-36 [reviewer] · run rev-36-1737-final-1 · 2026-11-07T17:03:13.930Z · commit 5d6e8a3ab7ad9b391f179cb44b8e125f8e3ae1a8
+  - verified: rev-36 [reviewer] · run rev-36-1737-merge-1 · 2026-11-07T17:22:44.071Z · commit 31aef1ec8f62071787e9869a78e086bd72435593
 - [x] C4. The existing host create, destroy and provision-records test files pass with no test edited.
   - done: impl-1737 · 2026-11-07T16:12:25.983Z
+  - verified: rev-36 [reviewer] · run rev-36-1737-final-1 · 2026-11-07T17:03:13.930Z · commit 5d6e8a3ab7ad9b391f179cb44b8e125f8e3ae1a8
+  - verified: rev-36 [reviewer] · run rev-36-1737-merge-1 · 2026-11-07T17:22:44.071Z · commit 31aef1ec8f62071787e9869a78e086bd72435593
 
 ## Blocked by
 
@@ -121,3 +130,41 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-17504: corrected source clear. Prior A-17498 readiness owner cancellation/drain finding resolved: owner signal combined with caller, readiness tracked and joined after Host close; typed close/remove controls retain frozen clock and exact rejection-before-return/timer cleanup assertions. Clock/create/in-hub wiring source rechecked; existing required preservation files unchanged. C1–C4 remain unverified pending fresh current-head native preservation and mode-free configured receipt; predecessor runtime receipts cannot be relabeled. No Reviewer tests run; after-stage affected QA separate.
+
+### rev-36 · 2026-11-07T17:03:13.930Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1737-final-1
+commit: 5d6e8a3ab7ad9b391f179cb44b8e125f8e3ae1a8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17535 final evidence clear; C1–C4 verified. Fresh6befd5b6/A-17529 green5411/5411 with exact clock boundary/create checkpoint/entry identities; entry+close/remove15/15load passes; selected T3 3cases once. A-17518 retains all134 current-head native preservation outcomes including unchanged create/destroy/provision-record files. Corrected supplementA-17532 establishes exact16-file command/cwd/head/commit-tree/platform and wrapper exit0; native status/signal not separately captured, explicitly not asserted as a tuple. Configured provenance/branch identity checked. No Reviewer test execution; report-only advisories retained, remainingT3/T4 and affected after-stageQA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-36 · 2026-11-07T17:22:44.071Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1737-merge-1
+commit: 31aef1ec8f62071787e9869a78e086bd72435593
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17542 authorized merge delta clear; C1–C4 refreshed under Coordinator68ce70f6 rules6/7 no-rerun carry. Exact two-parent doc concatenation retained both sections; one-sided paths match their parents, index/tier unions preserve both lanes, no duplicate tier keys, T-1737 runtime/test bytes unchanged. Root merge-head typecheck0 documented fully in A-17541 (A-17540 summary). Previous green6befd5b6/A-17529 and134-outcome native A-17518/A-17532 remain original-head executions with capture limits, not new-head runs. RemainingT3/T4/after-stageQA separate; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-07T17:22:54.748Z
+
+Rule 6/7 carry (coord): enqueued at merge head 31aef1ec (parents 5d6e8a3a, dev d8750191). Verify passed at 5d6e8a3a. The merge brings only T-1740's new hub/src/host/scheduler.ts (not imported by T-1737's closure) and a docs-only conflict resolution in docs/hub/host-providers.md. Delta review clear; root typecheck exit 0 at the merge head.
+
+### coord · 2026-11-07T20:43:56.449Z
+
+Merged bbdf693e6a2a25d8cfa5609da516470e5a0f9db7 onto dev.

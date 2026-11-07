@@ -2,8 +2,8 @@
 id: T-1739
 kind: task
 title: "Role placement: `[<role>.launch] pool` in `roles.toml`"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1429
 branch: t/T-1739-role-placement-role-launch-pool-in-roles
 created: 2026-11-07T16:01:57.008Z
-updated: 2026-11-07T16:16:26.688Z
+updated: 2026-11-07T18:03:01.113Z
+closed: 2026-11-07T18:03:01.113Z
 ---
 
 ## Summary
@@ -29,12 +30,16 @@ Parse and validate the `pool` launch key with the pool-name syntax of `parsePool
 
 - [x] C1. `[implementer.launch] pool = "agents"` parses into the role's launch defaults, and a role without the key reads `local` (test).
   - done: impl-1739 · 2026-11-07T16:14:56.406Z
+  - verified: rev-36 [reviewer] · run rev-36-1739-final-1 · 2026-11-07T16:59:57.115Z · commit 5d25fee857bf8322a7c70b6c28aeac38324afe8e
 - [x] C2. `cland role launch implementer --pool agents` writes the key, and `cland role launch --help` names `--pool` (test).
   - done: impl-1739 · 2026-11-07T16:08:26.695Z
+  - verified: rev-36 [reviewer] · run rev-36-1739-final-1 · 2026-11-07T16:59:57.115Z · commit 5d25fee857bf8322a7c70b6c28aeac38324afe8e
 - [x] C3. A `roles.toml` with `[coordinator.launch] pool = "agents"` or `[aide.launch] pool = "agents"` is refused at load naming that the Coordinator and the Aide run only on `local`, and the last good roles stay in force (test).
-  - done: impl-1739 · 2026-11-07T16:08:27.132Z
+  - done: impl-1739 · 2026-11-07T16:38:04.143Z
+  - verified: rev-36 [reviewer] · run rev-36-1739-final-1 · 2026-11-07T16:59:57.115Z · commit 5d25fee857bf8322a7c70b6c28aeac38324afe8e
 - [x] C4. `cland role launch coordinator --pool agents` is refused with the same reason and leaves the file unchanged (test).
   - done: impl-1739 · 2026-11-07T16:08:28.725Z
+  - verified: rev-36 [reviewer] · run rev-36-1739-final-1 · 2026-11-07T16:59:57.115Z · commit 5d25fee857bf8322a7c70b6c28aeac38324afe8e
 
 ## Blocked by
 
@@ -79,3 +84,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear, A-17499. Prior whole-launch finding resolved without weakened assertions; role-list expectations, Coordinator clause reserve and README reference inclusion corrected. A-17493 original failures preserved; A-17497 named 44/44 corrected outcomes read with candidate/provenance limits. C1–C4 remain unverified until unchanged-head configured evidence plus directed native importer preservation. No Reviewer tests executed; affected after-stage QA separate.
+
+### rev-36 · 2026-11-07T16:36:44.107Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1739-evidence-1
+commit: dfa66b8609a89231b04ec03f9c525b69edd2ea86
+scope: evidence
+findings: [{"severity":"medium","text":"Configured base execution of the new last-good snapshot case fails: file.launchError() is null after a forbidden pool edit, so assert.match fails. Five passing load repetitions do not clear the base failure. Reproduce/classify fresh-read behavior and retain red/corrected proof without weakening assertions.","file":"hub/test/roles-snapshot.test.ts","line":312}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-17513 records failed run3deab93a/A-17512 at reviewed dfa66b860. T0/T1 green, T2/overall red; later T3/Web not run, no browser runtime receipt. Cause unclassified; no current readiness or criterion pass asserted. Reproduce before retry/source changes; rereview changed bytes. Prior source clear retained as history, current evidence not clear.
+
+Criteria: C3 failed (Configured snapshot policy case failed at line312: expected local-only rejection reason, actual file.launchError() null.).
+
+### rev-36 · 2026-11-07T16:38:48.136Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1739-source-3
+commit: 5d25fee857bf8322a7c70b6c28aeac38324afe8e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17515: fixture-only corrected source clear, no findings. Sibling write+rename positively changes inode for fresh() admission; every local-only/last-good/log/recovery assertion remains. Production unchanged. Original Linux failure A-17512/A-17513 remains red; native timestamp collision remains inferred, not reproduced. C1–C4 unverified pending fresh configured run and directed importer native preservation; no Reviewer tests executed. After-stage affected QA separate.
+
+### rev-36 · 2026-11-07T16:59:57.115Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1739-final-1
+commit: 5d25fee857bf8322a7c70b6c28aeac38324afe8e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17528 final evidence clear; C1–C4 verified at unchanged source-clear5d25fee857. Independently matched six new pool base cases +30/30 load passes, all40 non-T3 importer base file completions/488 timing identities in fresh green179b968d/A-17526, and exact-head12-file133/133 native importer commands/code0/signalnull in A-17520. Configured5415/5415,T0/T1/fallbackT2/mapped rolesT3/Web green; remainingT3/T4/full-stageQA not claimed. Uncached Linuxx64/Node24.21/CfT156 provenance checked; report-only advisories retained. Original red remains red and timestamp cause inferred. No Reviewer tests executed; affected after-stageQA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-07T18:03:01.113Z
+
+Merged 69cdf36a690e14056890dfa49cae9adc28c2c115 onto dev.

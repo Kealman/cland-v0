@@ -3,7 +3,7 @@ id: T-1738
 kind: task
 title: Pool configuration in `[hosts]` and `[hosts.<pool>]`, hot-reloaded and set with `cland config set`
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 8
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1428
 branch: t/T-1738-pool-configuration-in-hosts-and-hosts
 created: 2026-11-07T16:01:56.769Z
-updated: 2026-11-07T16:20:05.724Z
+updated: 2026-11-07T17:19:36.796Z
 ---
 
 ## Summary
@@ -35,20 +35,36 @@ One parser for the whole hosts table, with refusals that name the key. The defau
 
 - [x] C1. `[hosts]` `daily_spend_usd`, `lease` and `weights`, and `[hosts.<pool>]` `size`, `region`, `slots`, `min_hosts`, `max_hosts`, `idle_stop`, `spread` and `transport` parse with the defaults above, and each invalid value is refused naming its key (test).
   - done: impl-1738 · 2026-11-07T16:18:59.556Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.558Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C2. A pool without `provider` is refused at config read naming `provider`, and `cland config set hosts.qa.provider fake` on a project without that pool writes a valid pool with every other key at its default (test).
   - done: impl-1738 · 2026-11-07T16:19:00.752Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.558Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C3. `slots` defaults to 4 for `s-2vcpu-4gb` and 8 for `s-4vcpu-8gb`, `agents` defaults to `min_hosts = 1` and any other pool to 0, and a pool of a size outside the table without `slots` is refused naming `slots` (test).
   - done: impl-1738 · 2026-11-07T16:10:09.119Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.558Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C4. A `lease` shorter than 30 s is refused naming `hosts.lease` (test).
   - done: impl-1738 · 2026-11-07T16:19:01.966Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C5. `cland init` writes `[hosts]` with `daily_spend_usd = 3` and `lease = "12h"` and no pool, and `cland update` adds it to a managed config that lacks it, keeping existing pools and harness pins (test).
   - done: impl-1738 · 2026-11-07T16:10:11.195Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C6. On a running hub, `cland config set hosts.agents.max_hosts 4` answers "applies now" and the hub's published pool configuration holds 4 without a restart (test).
   - done: impl-1738 · 2026-11-07T16:10:12.987Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.348Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C7. `cland config set` refuses an unknown pool key and an invalid pool name, naming the allowed keys and characters (test).
   - done: impl-1738 · 2026-11-07T16:10:13.269Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.348Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 - [x] C8. `cland host prepare` and `cland host create` give unchanged results on their existing tests.
   - done: impl-1738 · 2026-11-07T16:10:14.219Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.348Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
 
 ## Blocked by
 
@@ -93,3 +109,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at e3c911e0, resolving all3 medium findings from source-1. Shared HostConfigurationError now survives readProjectConfig instead of whole-config fallback; daemon no longer duplicates hosts classification. Config-set renders edited candidate source, keeping removed weights/pins absent; new CLI persisted/readback and live-owner subset/empty regressions cover it. Provider example has slots, superseded text replaced, and5 prior QA briefs explicitly confined to historical pre-T-1738 builds/current migration requirements. Standards/Spec0 findings; full corrected review A-17505 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17505-t-1738-corrected-source-review-at-e3c911e0.md). No criteria verified: C1-C8 require corrected-head runtime evidence. Ongoing mixed-head native sweep and suite-cancel failure are partial/failed evidence, not a green aggregate; keep authorized diagnosis/retry labelled. No Reviewer execution. Verification may run at this head.
+
+### impl-1738 · 2026-11-07T16:25:28.301Z
+
+Review correction consumer sweep: new HostConfigurationError changes readProjectConfig startup refusal behavior for its two production consumers, hub/daemon.ts and init/provision.ts. daemon.ts direct test importers: account-fixture-isolation (T4), fake-harness (T2), journal-async (T3), orphan-servers (T3), suite-coverage (T3), startup-cleanup (T2), territory-lock (T3), tracker-ready-native (T3). T2 pair passed 10/10 at corrected head e3c911e0; native/T4 six queued for follow-up preservation slot. QA retained-consumer disposition: completed-epic E-1533, E-1533-stage-2/-3 and E-1538-stage-1/-2 briefs now explicitly historical pre-T-1738 build only; current setup must edit generated hosts table and supply provider/custom-size slots. Provider docs example migrated.
+
+### rev-38 · 2026-11-07T16:33:09.306Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1738-source-3
+commit: 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at3716f1fc8 with retained full product review. Only frozen CONFIG_USAGE gains exact3 intentional hosts lines, plus CLI-help guide note; other command blocks/assertions unchanged. Resolves A-17509 failed help-fixture consumer; prior startup/table/doc corrections unchanged. A-17511 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17511-t-1738-help-fixture-source-review-at-3716f1fc8.md). Standards/Spec0findings. Criteria marks:none; C1-C8 unverified pending same-head configured and directed native/importer evidence. Old A-17509 remains failed T1; attempted old-head evidence verdict returned error and was not retried/recorded (assessment retained A-17510 and lead report). No Reviewer execution. Source is clear for verify at this new head.
+
+### rev-38 · 2026-11-07T16:54:52.559Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1738-evidence-2
+commit: 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged source-reviewed3716f1fc8; no findings; C1-C8 verified. A-17522 configured92ca0213 passes5426/5426,0fail/cancel/skip/todo,T0/allT1/fallback-allT2/Web; exact task.verify/branch/provenance match,uncached tree609c919c8c3b43905877f5c27bcf00e4f26fdd93. Linuxx64droplet c-8lon1 Node24.21/Nvim0.12.5,isolated HeadlessShell1248/CfT156.0.8078.4. Independently checked required parser/default/invalid-field,provider-first CLI,lease,startup refusal,managed init/update,live publication,grammar and table-replacement base/load facts plus corrected help fixture. C8 existing prepare/create-admission pass configured; original native create-ready11/11 at e3c911e0 has identical host runtime/test bytes across final help-only delta. A-17524 originals verify final9native importers78/78,exit0; linkage/tier/carry limits in A-17525 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17525-t-1738-final-evidence-review-at-3716f1fc8.md). Original mixed-head suite-cancel7/8 remains failed; solo8/8 and Coordinatorffc6b69d explicit nonblocking T-1758 decision retained. Old configured A-17509 remains failed. T3 merge-batch/fullT4 and after-stage affectedQA separate; advisories report-only. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-38 · 2026-11-07T17:19:36.348Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1738-delta-1
+commit: 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear at08960ab54,parents3716f1fc8/d87501912. Coordinator da51daf6 explicitly authorized merge after T-1740, two docs conflict resolutions, root typecheck and carrying92ca0213 without rerun. Compared both parent diffs: README retains one Host providers line naming both pool/scheduler; host-providers retains complete config and milli-slot placement sections/custom-size example. Task runtime modules identical to3716; incoming pure scheduler/test/docs unchanged vs dev parent and not wired into production callers yet. Tier/index union retained. A-17538 root merged-head typecheck completed exit0 per native receipt,macOSarm64Node24.21; no Reviewer execution. C1-C8 refreshed via unchanged reviewed task source +explicit Coordinator carried A-17522/A-17525/A-17524 evidence;92ca0213 actually ran at3716f1fc8,not merge head. No new configured pass claimed. T-1758 exception/failures retained; after-stageQA/fullT3/T4 separate. Findings:none. A-17539 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17539-t-1738-authorized-merge-delta-at-08960ab54.md).
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.

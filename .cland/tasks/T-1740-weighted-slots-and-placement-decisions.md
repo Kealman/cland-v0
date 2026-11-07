@@ -2,8 +2,8 @@
 id: T-1740
 kind: task
 title: Weighted slots and placement decisions
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1427
 branch: t/T-1740-weighted-slots-and-placement-decisions
 created: 2026-11-07T16:01:57.178Z
-updated: 2026-11-07T16:18:49.724Z
+updated: 2026-11-07T17:17:42.108Z
+closed: 2026-11-07T17:17:42.108Z
 ---
 
 ## Summary
@@ -29,14 +30,19 @@ A side-effect-free module with its own input types: hosts with state, used weigh
 
 - [x] C1. With the default weights and `slots = 8`, eight Claude Code sessions fill a host, seven Claude Code and two Codex sessions fill it, and seven Claude Code and one Codex session leave no room for an OpenCode session (test).
   - done: impl-1740 · 2026-11-07T16:17:59.728Z
+  - verified: rev-35 [reviewer] · run rev-35-1740-final-1 · 2026-11-07T16:40:49.732Z · commit 4c6b42617c9936ee397793926c0e7430f7d30558
 - [x] C2. Dense packing chooses the fullest host with enough free weight, and `spread = true` chooses the emptiest (test).
   - done: impl-1740 · 2026-11-07T16:07:53.374Z
+  - verified: rev-35 [reviewer] · run rev-35-1740-final-1 · 2026-11-07T16:40:49.732Z · commit 4c6b42617c9936ee397793926c0e7430f7d30558
 - [x] C3. A `[hosts] weights` override changes the weight the decision uses (test).
   - done: impl-1740 · 2026-11-07T16:15:24.326Z
+  - verified: rev-35 [reviewer] · run rev-35-1740-final-1 · 2026-11-07T16:40:49.732Z · commit 4c6b42617c9936ee397793926c0e7430f7d30558
 - [x] C4. A host whose verdict for the harness is not "serves" is skipped, and the default hook answers "serves" for every harness (test).
   - done: impl-1740 · 2026-11-07T16:07:54.860Z
+  - verified: rev-35 [reviewer] · run rev-35-1740-final-1 · 2026-11-07T16:40:49.732Z · commit 4c6b42617c9936ee397793926c0e7430f7d30558
 - [x] C5. With no room, the decision is "create" while ready plus booting hosts are below `max_hosts`, "waiting for host <id> to boot" when a booting host has room, and "waiting for a host" otherwise (test).
   - done: impl-1740 · 2026-11-07T16:15:27.145Z
+  - verified: rev-35 [reviewer] · run rev-35-1740-final-1 · 2026-11-07T16:40:49.732Z · commit 4c6b42617c9936ee397793926c0e7430f7d30558
 
 ## Blocked by
 
@@ -119,3 +125,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, A-17503. Final mixed-boundary migration corrected: default conversions1000/500/750 asserted and seven-Claude/two-Codex derived at exact8000. Independent diff confirms production unchanged from reviewed integer repair d7a507719, implementing Coordinator6e81c6b7 usedMilli/promisedMilli/rounded conversion contract without epsilon. No remaining Standards/Spec findings; C1–C5 runtime-unverified. Candidate9/9 and predecessor root T0/static evidence retain their source limits; exact-head configured evidence still required. Proceed mode-free verify at4c6b42617 and return same-head receipt. No heavy/provenance-only rerun or dev merge requested. After-stage affected QA separate.
+
+### rev-35 · 2026-11-07T16:40:49.732Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1740-final-1
+commit: 4c6b42617c9936ee397793926c0e7430f7d30558
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear, A-17517. Independently inspected run03991e3e/A-17516: exact reviewed head and reconstructed execution treef82a08d6a3819eb233e3a1cba5b622169bdcdfab match. All9 scheduler cases pass base+5 distinct load repetitions each (45/45), max0.003661555s. C1 exact default/mixed boundary, C2 dense/spread, C3 rounded integer overrides, C4 per-host/harness verdicts and C5 boot/reservation/max/accumulated-capacity decisions all verified. Hub5414/5414; parsed base5277 pass/four empty failure arrays. T0/T1/all fallbackT2/Web completed Linuxx64 Node24.21 isolated Shell1248/CfT156; T3/T4 unexecuted here. Prior candidate/predecessor tool evidence retains source limits. No remaining findings. This proves the pure core, not later runtime/reservation/min-floor/login wiring; after-stage affected QA remains separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-07T17:17:42.108Z
+
+Merged d875019127a99729ef1ead76f4bdebc602b36dc4 onto dev.
