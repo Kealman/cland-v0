@@ -2,7 +2,8 @@
 id: E-1533
 kind: epic
 title: Host providers, images and DigitalOcean
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.4
@@ -16,7 +17,8 @@ follows:
 topic: topic-1409
 branch: null
 created: 2026-10-31T18:22:03.678Z
-updated: 2026-11-07T14:48:51.469Z
+updated: 2026-11-07T15:41:54.831Z
+closed: 2026-11-07T15:41:54.831Z
 ---
 
 ## Goal
@@ -53,13 +55,21 @@ QA runs the demo below on `dev` through the `cland` CLI and the hub's frame prot
 In a scratch project QA configures a pool on the fake provider, runs `cland host prepare` twice and reads `prepared` then `current`, changes a harness version and reads `prepared` again. It creates a host, reads it in `cland host list` with its declared price, launches a session on it, then destroys it and reads the confirming reads in the log. Against the fake DigitalOcean API it makes a create answer 429 and reads the retry, makes a DELETE answer 404 while a GET answers 200 and reads the provider refusing to call it deleted, and reaps by tag. It reads the rendered recipe for x86_64 and arm64, the user-data, and this project's provisioning hook, and checks the latest droplet suite run on `dev` is green with the new snapshot.
 
 - [ ] C1. The host provider interface mirrors the executor's operations plus the transport and volume operations, and the fake provider passes its contract tests.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.087Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C2. Each provider declares live and idle prices, whether stopped machines bill, billing minimum, token confinement, pacing, machine limit, architecture and extra addresses, and `idle_stop` respects the minimum.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.087Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C3. The DigitalOcean provider tags hosts with `cland`, the project and the pool, reaps by tag, paces its API calls, and retries a refused create without a cascade.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.087Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C4. Every deletion is confirmed by a GET, and a DELETE 404 with a live GET is reported as not deleted.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.088Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C5. One image recipe with an architecture parameter holds only cland's needs, and Neovim and the Chromium libraries are installed by this project's `[verification] provision` hook.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.088Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C6. `cland host prepare` builds a pool image keyed from Node, the lockfile, the harness versions and the hook, and reports `current` when nothing changed.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.088Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C7. The host prelude pins the host key, sets sshd's socket and keepalive settings, removes the provider's volume automount and installs the login-disk helper, with no hub secret or stray API key on the host.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.088Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 - [ ] C8. A host goes from create to ready on its pool image and runs a session, and `cland host destroy` removes it and its key.
+  - verified: qa-678 [qa] · run qa-dod-2026-11-07-qa678-1 · 2026-11-07T15:40:54.088Z · commit 79b350ec536cda3404c346fec0e9f8318e14369d
 
 ## Constraints
 
@@ -473,3 +483,113 @@ Evidence contains only declared captures, inventories, helper/source probes, bri
 
 
 Evidence artifact A-17467: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17467-e-1533-stage-3-qa-54-scoped-checks-clear-scratch-launch-deferred-at-093f851b/report.md
+
+### hub · 2026-11-07T15:01:08.557Z
+
+demo ebd3b9ce-430e-4e57-9dcb-e67997e9743f created: droplet cland-v0-ebd3b9ce, commit 79b350ec536cda3404c346fec0e9f8318e14369d, deadline 2026-11-07T16:14:47.210Z.
+
+### hub · 2026-11-07T15:08:39.511Z
+
+demo ebd3b9ce-430e-4e57-9dcb-e67997e9743f destroyed: lifetime 517215 ms; cost $0.0359.
+
+### qa-678 · 2026-11-07T15:40:54.088Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-dod-2026-11-07-qa678-1
+commit: 79b350ec536cda3404c346fec0e9f8318e14369d
+findings: [{"severity":"low","text":"S0 kit3 pin was stale after a prose-only correction commit. Original wanted 8db55d9d, observed 997909c0. Coord-approved pin correction: one eight-line prose hunk; all eight heredocs byte-identical. Brief defect, no product finding.","file":"qa/briefs/E-1533.md","line":142},{"severity":"low","text":"E1533D-03 P_GATE printed credential-shaped names 2; authorized names-only observation showed SSH_CLIENT SSH_CONNECTION. Original BLOCKED retained; coord-approved metadata-only exclusions produced 0 on -gate-correction run. Brief filter defect.","file":"qa/briefs/E-1533.md","line":296},{"severity":"low","text":"E1533D-23 dx sh -c P_IMAGE printed 13 blank package lines because the shell expanded dpkg format placeholders. Original INCONCLUSIVE retained; coord-approved literal-quote read-only retry on -image-correction proved all 13 install ok installed, pinned Neovim, disabled timer and runner user. Brief quoting defect.","file":"qa/briefs/E-1533.md","line":295}]
+finding_counts: {"high":0,"medium":0,"low":3}
+
+Evidence A-17472: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17472-e-1533-dod-qa-clear-at-79b350ec-30-cases-255-targeted-tests-epic-suite/report.md
+Primary epic suite A-17468, supporting stage cover A-17460.
+
+# E-1533 Definition-of-done QA
+
+**QA assessment: clear. C1–C8 established under the brief’s stated scope.** All 30 scoped cases have passing final evidence; the two original setup/probe attempts remain BLOCKED/INCONCLUSIVE beside their approved correction runs. Final freshness is current; dev remains the requested SHA.
+
+Tested commit: `79b350ec536cda3404c346fec0e9f8318e14369d`. Run: `qa-dod-2026-11-07-qa678-1`; correction runs `-gate-correction` and `-image-correction` retain the original attempts. QA: `qa-678`.
+
+The scoped product checks passed: 255 tests across 22 serial targeted files on Linux x64, all 253 generated top-level names matched against source, two nested tests included in the total, zero failed/cancelled/skipped/todo tests. Native tests proved host creation, OpenCode running, and destruction settlement. The separate local fake-provider lifecycle also proved a live OpenCode session on the created host through the brief's relay, followed by session exit, key removal and confirming machine/key reads. No product finding arose in these checks.
+
+## Platforms and execution
+
+- Local: macOS 27.0.1, Darwin 27.0.0 arm64, Node v24.21.0. Clean detached worktree at the requested head. Fresh shared-builder seal per fixture command, scratch HOME/XDG/Git, credential gate zero, quiet/local-load gate at most 10. No browser, GUI, real harness or real provider API used. The local OpenCode was the scripted fake; the relay is test infrastructure standing in for SSH direct-tcpip.
+- Demo: Linux x64, Node v24.21.0, lease `ebd3b9ce-430e-4e57-9dcb-e67997e9743f`, original deadline `2026-11-07T16:14:47.210Z`. Released after the remote checks; final lifetime **517215 ms**, cost **$0.03591770833333333**. Lifetime includes provision/idle/control time; it is not test wall time. Recorded native-file durations are targeted Node tests with no suite duration enforcement or resource preload.
+- Epic suite: `a047adea-1b6a-4380-ba9c-8429ceff2068`, submitted through the hub from integrated root dev after fresh origin fetch and HEAD/dev/origin/dev equality. Result **exit 0** (hub receipt and A-17468). The hub aggregate reports **7485 tests: 7476 pass, 9 skipped, 0 fail/cancelled/todo**. T0, T1, T2, T3, T4 base and Web completed; **T4 repetitions did not run** under the load gate (17 files base only). No cache hit. Stage cover A-17460 is supporting evidence only.
+
+## Case evidence
+
+| Case | Result | Observation |
+| --- | --- | --- |
+| S0 | PASS | sealed setup and kit identity; corrected pin verified byte-for-byte |
+| E1533D-00 | PASS | requested head, clean worktree, three closed stages and all 22 landings |
+| E1533D-01 | PASS | QA hold |
+| E1533D-02 | PASS | active demo lease at requested head |
+| E1533D-03 | PASS after labelled correction | original BLOCKED: 2 SSH metadata names; corrected gate PASS, zero credentials |
+| E1533D-11 | PASS | 50 tests / 3 serial files; exact names and counters checked |
+| E1533D-12 | PASS | 82 tests / 4 serial files; exact names and counters checked |
+| E1533D-13 | PASS | 42 tests / 5 serial files; exact names and counters checked |
+| E1533D-14 | PASS | 23 tests / 2 serial files; exact names and counters checked |
+| E1533D-15 | PASS | 12 tests / 2 serial files; exact names and counters checked |
+| E1533D-16 | PASS | 32 tests / 4 serial files; exact names and counters checked |
+| E1533D-17 | PASS | 14 tests / 2 serial files; exact names and counters checked |
+| E1533D-20 | PASS | both recipe architectures, generic package boundary and unsupported architecture fence |
+| E1533D-21 | PASS | project hook owns Chromium libraries and pinned Neovim |
+| E1533D-22 | PASS | prelude settings present; credential names absent |
+| E1533D-23 | PASS after labelled correction | original INCONCLUSIVE: blank package output; corrected quoting PASS, all 13 installed |
+| E1533D-29 | PASS | demo released with final lifetime/cost |
+| E1533D-24 | PASS | all source probes ok, no mismatches |
+| E1533D-30 | PASS | A-17468 suite exit0 at S; tree and snapshot digests match; both shard reuse receipts |
+| E1533D-40 | PASS | isolated init and config preserves both pools |
+| E1533D-41 | PASS | prepare then current |
+| E1533D-42 | PASS | pin change invalidates harness key then current |
+| E1533D-43 | PASS | created host ready; clone and delivered runtime present |
+| E1533D-44 | PASS | listed host facts, nonnegative uptime, declared price 0 |
+| E1533D-45 | PASS | OpenCode running on created host via relay; host id matches |
+| E1533D-46 | PASS | destroyed/released; session exited; keys absent; both confirming reads; relay stopped |
+| E1533D-47 | PASS | DigitalOcean production admission refuses before provider use |
+| E1533D-48 | PASS | expected supervisor/agent drained by identity, census 2 to 0, no OpenCode survivor |
+| E1533D-49 | PASS | alias gone, TMPDIR empty, no lock; clean worktree and unchanged root |
+| E1533D-50 | PASS | freshness.current true; dev unchanged |
+
+
+
+## Epic suite provenance and cost
+
+Primary artifact **A-17468**, `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17468-suite-a047adea-1b6a-4380-ba9c-8429ceff2068-all-at-79b350e.log`. Head equals S; verification tree `471472e70c87508550ea63f7f2691e2f5bd0d406`. Both shard logs report dependencies and Neovim pin matching the snapshot; the snapshot provision hash equals `hub/bin/verify-provision.sh` at S and the recipe hash equals `provision.sh` at S.
+
+Linux x64 6.8.0-147-generic, Node v24.21.0, Neovim v0.12.5, 2 workers. Browser: Google Chrome for Testing 156.0.8078.4, `/home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell` (shard 1; shard 2 had no browser work).
+
+| Shard / machine | Recorded lifetime | Recorded cost | State |
+| --- | --- | --- | --- |
+| a047adea…-shard-1 / cland-v0-9fc3be8f, c-8 lon1 | 2215983 ms | $0.15388770833333335 | released |
+| a047adea…-shard-2 / cland-v0-116d5816, c-8 lon1 | 1622681 ms | $0.11268618055555556 | released |
+
+Total recorded suite cost **$0.2665738888888889**. Wall interval from hub admission 15:00:29.659Z to finished receipt 15:38:30.785Z is **2281.126 s (38m 1.126s)**. This includes post-admission queue, local T0, provision, delivery, tests and release; it excludes submission preparation. It is neither summed test durations nor the runner’s projected wall estimates. Demo cost is separate: $0.03591770833333333.
+
+Duration budgets, T3 ratchet, test lint and skip-reason check ran in **report mode**; five duration baselines were missing. T3/Web projected wall budgets were exceeded in report mode; lint reported 122 findings in 59 files. This is no claim of enforced timing-budget compliance. The nine skips are explicitly enumerated in `epic-suite-evidence.json`: seven macOS-only sandbox/caffeinate checks and two real-OpenCode-unavailable checks. All skipped tests and T4 repetitions remain unexecuted evidence, not passes. No known-flake rerun was used.
+
+## Corrections and limitations
+
+All changes were confined to the QA controller/run copies. Product code and assertions were unchanged. Original captures remain alongside corrected attempts; `corrections.txt` has decision ids and details.
+
+- Low, brief pin defect: the stage-3 blob had gained eight prose lines after the DoD pin was written. Coordinator authorized the new blob only after a one-hunk comparison and byte-identical extraction of all eight heredocs.
+- Low, brief gate defect (E1533D-03): `SSH_CLIENT` and `SSH_CONNECTION` matched a credential prefix. The original attempt is BLOCKED; a names-only diagnostic and an exclusion limited to the three authorized SSH connection-metadata names produced zero. Corrected run suffix `-gate-correction`.
+- Low, brief quoting defect (E1533D-23): the shell expanded dpkg format placeholders and produced blank package lines. The original attempt is INCONCLUSIVE; one authorized read-only retry with literal quoting proved all thirteen packages installed. Corrected suffix `-image-correction`.
+- Own setup disclosure: valid zero-match grep stopped the initial controller before saving its state. A subsequent invocation lacked variables; macOS refused all root-path writes. All targets were checked absent, no fixture/test started, and state was recovered from the run's JSON. Original evidence retained. During cleanup, an overly narrow controller identity check expected the wrong agent basename and stopped before signalling that agent; the captured `cland.ts host serve` identity was checked and the owned agent was then drained. Neither incident is a product finding.
+- C2 proves provider `earliestStop` and declared prices. The `idle_stop` scheduler and `host status` belong to E-1534 and were not exercised. The fake provider's declared price is 0; no claim about real-provider prices follows.
+- No browser binary ran in the QA demo or local cases. The separate suite's browser and exact phases are reported with its receipt. No real provider operation, account credential or live-project configuration mutation was part of the demo.
+- No known-flake retry was used for the 22 targeted files. No T-1676 residue occurred in this local scratch TMPDIR. The fake host supervisor and agent were the two survivors anticipated by the brief and were identity-checked and drained; final census 0.
+- A-17460's candidate tree differs from the requested tree, so it is supporting evidence only; its hook and recipe digests match S, both shard snapshot-reuse checks are present, and both shards ended 0. The epic suite at S is required as primary evidence.
+
+## Cleanup
+
+Demo lease released. Scratch hub, host supervisor, host agent, OpenCode and relay stopped; final process census zero. Alias removed after exact path/target verification. TMPDIR empty; preservation lock absent; root non-tracker status unchanged; detached worktree clean. Q/T/worktree remain until the verdict as the brief requires, then will be removed by their literal checked paths.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-11-07T15:41:54.831Z
+
+Closed on QA clear for the Definition of done: run qa-dod-2026-11-07-qa678-1 at 79b350ec, C1–C8 verified, evidence A-17472. Epic suite a047adea is green (A-17468). The three stages are closed: A-17199, A-17366 and A-17467. Scope notes: C2's idle_stop minimum is proven by earliestStop, because the scheduler is E-1534; host status is E-1534 too.

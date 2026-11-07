@@ -13,10 +13,10 @@ blocked_by:
   - E-1533
 follows:
   - E-1533
-topic: null
+topic: topic-1425
 branch: null
 created: 2026-10-31T18:22:03.811Z
-updated: 2026-10-31T18:22:55.451Z
+updated: 2026-11-07T16:02:38.365Z
 ---
 
 ## Goal
@@ -50,7 +50,7 @@ Not in this epic: logins, their capacity rule and the "create one?" card ("Login
 
 ## Definition of done
 
-QA runs the demo below on `dev` through the `cland` CLI and the hub's frame protocol, with the fake host provider and fake transport in the suite and shortened timeouts set in the scratch project's config, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. No real droplet is created.
+QA runs the demo below on `dev` through the `cland` CLI and the hub's frame protocol, with the fake host provider and fake transport in the suite , the spec's fixed 5-, 3- and 15-minute timeouts shortened only through the test-only `CLAND_TEST_HOST_BOOT_MS`, `CLAND_TEST_HOST_UNREACHABLE_MS` and `CLAND_TEST_HOST_LOST_MS` environment knobs, honoured inside the fake-host fence (`CLAND_FAKE_HOST_ROOT`) alone, and `idle_stop` and `lease` shortened in the scratch project's `config.toml`, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. No real droplet is created.
 
 In a scratch project with an `agents` pool of `max_hosts = 1` and `min_hosts = 1`, QA launches Implementers until the host is full by weight and reads the next launch waiting with its reason in `cland session list`, the inbox and Agents; raises `max_hosts` with `cland config set` and reads a second host start and the launch placed. It sets `spread = true` and reads the next placements. It empties the second host and reads it stop after `idle_stop` while the first stays. It makes a fake host report 1.2 GB free and reads the refusal. It stops the hub with a short lease and reads the watchdog's deletion, restarts the hub with one host deleted meanwhile and reads its sessions exited. It runs the boot-timeout, unreachable and 15-minute cases and reads the General lines and the red state in `cland host status`. With a tiny sub-cap it reads the 80 % line once, a refused host at 100 % and the running host untouched, then reads `cland host status` with the spend and a ledger entry of category `hosts`. Finally it binds the Coordinator to a pool and reads the refusal.
 
@@ -83,3 +83,44 @@ In a scratch project with an `agents` pool of `max_hosts = 1` and `min_hosts = 1
 - Prototype, on `prototype/agent-host` at 7f7ecb0f: `hub/src/host/README.md` ("How many fit", survival, spend and teardown), `hosts.ts`, `watchdog.ts`.
 - Code: `hub/src/init/config.ts`, `hub/src/roles/config.ts`, `hub/src/adapters/sessions.ts`, `hub/src/executor/droplet/{spend,spend-hubs,lease,deadline,watchdog}.ts`, `hub/src/hub/clock.ts`, `hub/src/hub/inbox.ts`, `hub/src/hub/agents-topic.ts`.
 - GLOSSARY: Host pool, Slot, Waiting launch (added for v0.4); Lease (amended); Pool (the crew's, distinct).
+
+## Plan
+
+```yaml
+stages:
+  - name: pool config, role placement, placement core, memory floor and ledger categories
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1738
+      - - T-1739
+      - - T-1740
+      - - T-1737
+        - T-1741
+      - - T-1742
+  - name: placement on pool hosts, waiting launches, scale up, lease and watchdog
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1743
+        - T-1744
+        - T-1745
+        - T-1746
+      - - T-1747
+        - T-1748
+  - name: idle stop, failures, restart, money, host status and DigitalOcean
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-1749
+        - T-1750
+        - T-1751
+      - - T-1752
+        - T-1753
+        - T-1756
+      - - T-1754
+      - - T-1755
+```
