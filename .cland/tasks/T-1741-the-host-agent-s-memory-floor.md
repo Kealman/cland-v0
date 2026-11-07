@@ -2,8 +2,8 @@
 id: T-1741
 kind: task
 title: The host agent's memory floor
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1431
 branch: t/T-1741-the-host-agent-s-memory-floor
 created: 2026-11-07T16:01:57.416Z
-updated: 2026-11-07T18:14:53.106Z
+updated: 2026-11-07T22:08:53.345Z
+closed: 2026-11-07T22:08:53.345Z
 ---
 
 ## Summary
@@ -30,15 +31,19 @@ One reading of available memory: `MemAvailable` on Linux, and on a fake host an 
 - [x] C1. The host agent refuses a spawn with code `memory-floor` when available memory is below 1.3 GB and spawns when it is at or above it (test).
   - done: impl-1741 · 2026-11-07T17:40:41.536Z
   - verified: rev-35 [reviewer] · run rev-35-1741-final-1 · 2026-11-07T18:14:52.851Z · commit 0b2a3f8f759baca1a9c5d60102a378bf1d4021ab
+  - verified: rev-35 [reviewer] · run rev-35-1741-merge-1 · 2026-11-07T21:31:53.071Z · commit 042be2f5770d864c3ae90687ea5745a80c9d8acc
 - [x] C2. A fake host set to report 1.2 GB free refuses the spawn, and its `memory` event reports that amount (test).
   - done: impl-1741 · 2026-11-07T17:40:41.896Z
   - verified: rev-35 [reviewer] · run rev-35-1741-final-1 · 2026-11-07T18:14:52.851Z · commit 0b2a3f8f759baca1a9c5d60102a378bf1d4021ab
+  - verified: rev-35 [reviewer] · run rev-35-1741-merge-1 · 2026-11-07T21:31:53.071Z · commit 042be2f5770d864c3ae90687ea5745a80c9d8acc
 - [x] C3. The ssh Host raises a typed memory-floor refusal that names the host and the free memory, distinct from a spawn failure (test).
   - done: impl-1741 · 2026-11-07T17:40:42.123Z
   - verified: rev-35 [reviewer] · run rev-35-1741-final-1 · 2026-11-07T18:14:52.851Z · commit 0b2a3f8f759baca1a9c5d60102a378bf1d4021ab
+  - verified: rev-35 [reviewer] · run rev-35-1741-merge-1 · 2026-11-07T21:31:53.071Z · commit 042be2f5770d864c3ae90687ea5745a80c9d8acc
 - [x] C4. The memory override file is ignored by an agent without the fake-host marker (test).
   - done: impl-1741 · 2026-11-07T17:29:05.129Z
   - verified: rev-35 [reviewer] · run rev-35-1741-final-1 · 2026-11-07T18:14:52.851Z · commit 0b2a3f8f759baca1a9c5d60102a378bf1d4021ab
+  - verified: rev-35 [reviewer] · run rev-35-1741-merge-1 · 2026-11-07T21:31:53.071Z · commit 042be2f5770d864c3ae90687ea5745a80c9d8acc
 
 ## Blocked by
 
@@ -119,3 +124,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-17587 final evidence audit:18088b31/A-17584 exact reviewed head and independently matching projectionfc0d3f73780c37385018aaea84f2ec117c4ae0d8. Hub5481/5481; parsed5344 base passes, five empty failure arrays. Actual direct/prepared/event/typedSSH/marker/invalidJSON/setup-owner/Claude below+exact-floor case records pass; injected policy base+5 distinct load passes. C1–C4 verified. T0/allT1/fallbackallT2/two changedT3 files66identities once/Web complete; remainingT3 deferred,T4 unrun. Linuxx64 .147 Node24.21/Nvim0.12.5/Shell1248 CfT156, uncached,skips[]. New max3.065s<4s so no allowance. A-17559 remains52green commands+1T-1735 failure at3d predecessor; A-17560 solo same signature also failed. Coordinator47a54e7b's explicit known-T-1735 nonblocking disposition retained, neither called green. All new cases/unedited supervisor/standalone SSH contract passed locally. After-stage affected QA separate. No reviewer tests/native probes.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-35 · 2026-11-07T21:31:53.071Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1741-merge-1
+commit: 042be2f5770d864c3ae90687ea5745a80c9d8acc
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17631 merge delta clear. Parents prior-final0b2a3f8f7/dev5a359016d; combined docs preserve memory+role-pool+spend lanes.13 critical memory source/test/fixture blobs unchanged;33 closure hashes match. Factory retains T-1735 self-ignore and JSON8GiB seed. Semantic pool/slots integration checked: directed valid custom pools slots8 and injected HostPool uses shared parser. A-17629 two native0/null commands: provision-gate3/3/create-ready11/11,14reported passes/no skips; A-17630 root typecheck complete0 per original completion. Both labelled identical merge-candidate contents, not embedded commit receipts. Coordinator2038642b/db297c43 expressly carries A-17584/18088b31 at0b2a3f8f7 across this integration, no new configured run claimed. Renew C1–C4 under that carry plus directed checks. HistoricalT-1735/remaining-tier limits preserved, after-stage affected QA separate. Worktree clean; no reviewer tests/native probes.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-07T21:32:09.066Z
+
+Rule 6/7 carry (coord): enqueued at merge head 042be2f5 (parents 0b2a3f8f and dev 5a359016). Verify 18088b31/A-17584 passed at 0b2a3f8f. The merge resolved two docs conflicts only and changed no fixture or production code. Semantic HostPool/slots sweep is clean. Typecheck exit 0 (A-17630); host-provision-gate 3/3 and host-create-ready 11/11 alone under the lock (A-17629); delta review clear A-17631.
+
+### coord · 2026-11-07T22:08:53.345Z
+
+Merged 1a9e4ea6e687d28cdab60cd72bdaf6aa8212127c onto dev.

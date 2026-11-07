@@ -2,8 +2,8 @@
 id: T-1738
 kind: task
 title: Pool configuration in `[hosts]` and `[hosts.<pool>]`, hot-reloaded and set with `cland config set`
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1428
 branch: t/T-1738-pool-configuration-in-hosts-and-hosts
 created: 2026-11-07T16:01:56.769Z
-updated: 2026-11-07T17:19:36.796Z
+updated: 2026-11-07T21:28:16.544Z
+closed: 2026-11-07T21:28:16.544Z
 ---
 
 ## Summary
@@ -37,34 +38,40 @@ One parser for the whole hosts table, with refusals that name the key. The defau
   - done: impl-1738 · 2026-11-07T16:18:59.556Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.558Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.244Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C2. A pool without `provider` is refused at config read naming `provider`, and `cland config set hosts.qa.provider fake` on a project without that pool writes a valid pool with every other key at its default (test).
   - done: impl-1738 · 2026-11-07T16:19:00.752Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.558Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.245Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C3. `slots` defaults to 4 for `s-2vcpu-4gb` and 8 for `s-4vcpu-8gb`, `agents` defaults to `min_hosts = 1` and any other pool to 0, and a pool of a size outside the table without `slots` is refused naming `slots` (test).
   - done: impl-1738 · 2026-11-07T16:10:09.119Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.558Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.245Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C4. A `lease` shorter than 30 s is refused naming `hosts.lease` (test).
   - done: impl-1738 · 2026-11-07T16:19:01.966Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.245Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C5. `cland init` writes `[hosts]` with `daily_spend_usd = 3` and `lease = "12h"` and no pool, and `cland update` adds it to a managed config that lacks it, keeping existing pools and harness pins (test).
   - done: impl-1738 · 2026-11-07T16:10:11.195Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.347Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.245Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C6. On a running hub, `cland config set hosts.agents.max_hosts 4` answers "applies now" and the hub's published pool configuration holds 4 without a restart (test).
   - done: impl-1738 · 2026-11-07T16:10:12.987Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.348Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.245Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C7. `cland config set` refuses an unknown pool key and an invalid pool name, naming the allowed keys and characters (test).
   - done: impl-1738 · 2026-11-07T16:10:13.269Z
   - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
   - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.348Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.245Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 - [x] C8. `cland host prepare` and `cland host create` give unchanged results on their existing tests.
-  - done: impl-1738 · 2026-11-07T16:10:14.219Z
-  - verified: rev-38 [reviewer] · run rev-38-1738-evidence-2 · 2026-11-07T16:54:52.559Z · commit 3716f1fc8e8db52f6f0ebe3235c7e2b67d86de1c
-  - verified: rev-38 [reviewer] · run rev-38-1738-delta-1 · 2026-11-07T17:19:36.348Z · commit 08960ab54cc5e723b9c8bd27daf7d02596077f0a
+  - done: impl-1738 · 2026-11-07T20:47:44.160Z
+  - verified: rev-38 [reviewer] · run rev-38-1738-delta-3 · 2026-11-07T20:49:10.246Z · commit 72d21ebc6d370c426006ec0570838cd3599b3412
 
 ## Blocked by
 
@@ -156,3 +163,41 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear at08960ab54,parents3716f1fc8/d87501912. Coordinator da51daf6 explicitly authorized merge after T-1740, two docs conflict resolutions, root typecheck and carrying92ca0213 without rerun. Compared both parent diffs: README retains one Host providers line naming both pool/scheduler; host-providers retains complete config and milli-slot placement sections/custom-size example. Task runtime modules identical to3716; incoming pure scheduler/test/docs unchanged vs dev parent and not wired into production callers yet. Tier/index union retained. A-17538 root merged-head typecheck completed exit0 per native receipt,macOSarm64Node24.21; no Reviewer execution. C1-C8 refreshed via unchanged reviewed task source +explicit Coordinator carried A-17522/A-17525/A-17524 evidence;92ca0213 actually ran at3716f1fc8,not merge head. No new configured pass claimed. T-1758 exception/failures retained; after-stageQA/fullT3/T4 separate. Findings:none. A-17539 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17539-t-1738-authorized-merge-delta-at-08960ab54.md).
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-38 · 2026-11-07T20:47:07.331Z
+
+verdict: review
+result: not clear
+by: rev-38 [reviewer]
+run: rev-38-1738-delta-2
+commit: 0207f7e045a3ba5ab380fcac986c17e829464151
+scope: delta
+findings: [{"severity":"medium","text":"Incoming settings literal has only4fields but expanded HostPool requires slots,minHosts,maxHosts,idleStop,idleStopMs,spread; merged-head typecheck reports TS2740. Migrate through shared readHostPools with explicit custom-size slots, keep assertions, review new head and pass required checks before evidence carry.","file":"hub/test/host-provision-gate.test.ts","line":68}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Final merge delta not clear at0207f7e0,parents08960ab54/10b63fc8. Manual docs retain both lanes; parsed help fixture CONFIG_USAGE equals ours,ROLE_USAGE equals dev,other blocks equal dev. Incoming runtime merge automatic, but one medium missed consumer: host-provision-gate.test.ts:68 HostPool literal lacks6new fields; reported root typecheck TS2740 independently confirmed by source shape. C8 failed; C1-C7 unrefreshed. Coordinator54fe5ab7 carries prior92ca0213 only with docs/fixture conditions and successful required merge checks; typecheck red does not satisfy them. Reported help8/8 and lease1/1 do not override failure. Full delta A-17624 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17624-t-1738-final-merge-delta-blocked-by-hostpool-fixture.md). No Reviewer execution/new configured pass.
+
+Criteria: C8 failed (Integrated host-create settings consumer host-provision-gate.test.ts:68 fails root typecheck TS2740 at merged head; shared-parser fixture migration required.).
+
+### rev-38 · 2026-11-07T20:49:10.246Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1738-delta-3
+commit: 72d21ebc6d370c426006ec0570838cd3599b3412
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integration delta clear at72d21ebc6; resolves delta-2,findings[]. Both manual docs retain all lanes; independent fixture parse confirms CONFIG_USAGE matches own parent,ROLE_USAGE incomingdev,all other blocks incomingdev. Runtime merge automatic; task parser/settings code unchanged. Sole fixture commit supplies first custom-size slots8 and third-case settings via shared readHostPools; all assertions/bounds retained. A-17625 originals checked: final-head root typecheck exit0;help+compatibility8/8 exit0;targeted host-provision-gate alone3/3 exit0 under preservation lock;zero fail/cancel/skip/todo. Lease29s command exit1 key-specific at0207,identical production code finalhead. Prior0207 TS2740/pre-fix2/3 retained red. Coordinator54fe5ab7/bea2cada/3f776206 explicitly authorize semantic fixture correction and prior92ca0213 carry with these checks. C1-C8 refreshed via retained reviewed evidence A-17525/A-17524 +new integration receipts;92ca0213 actually ran3716f1fc8,not finalhead,no new fullverify claimed. macOSarm64Node24.21 local/no browser for new checks;configured Linux provenance remains priorhead. Full delta A-17626 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17626-t-1738-final-integration-delta-clear-at-72d21ebc6.md). No Reviewer execution;after-stageQA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-11-07T20:49:40.915Z
+
+Rule 6/7 carry (coord): enqueued at integration head 72d21ebc. Verify 92ca0213 passed at 3716f1fc. Since then: a docs-only merge (08960ab5), then a final dev merge 0207f7e0. That merge resolved two docs conflicts and auto-merged README and the CONFIG_USAGE/ROLE_USAGE fixture; cli-help and cli-usage-compatibility pass 8/8. The integration fixture fix at 72d21ebc touches only hub/test/host-provision-gate.test.ts (T-1737's new test, to the new HostPool type and required slots), with assertions unchanged: red before the fix at 0207f7e0, then 3/3 alone under the preservation lock. Delta review clear at 72d21ebc; coord ran typecheck exit 0 at 72d21ebc.
+
+### coord · 2026-11-07T21:28:16.544Z
+
+Merged 5a359016d2860395373f840759aec83baa67bbde onto dev.
