@@ -328,6 +328,7 @@
     "hub/test/host-scheduler.test.ts": "T1",
     "hub/test/host-secret-admission.test.ts": "T2",
     "hub/test/host-settlement.test.ts": "T1",
+    "hub/test/host-spend.test.ts": "T1",
     "hub/test/host-ssh-contract.test.ts": {
       "tier": "T3",
       "scenario": "ssh-host"

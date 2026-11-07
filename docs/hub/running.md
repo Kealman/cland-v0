@@ -631,6 +631,25 @@ before creation. This is an estimate from hourly price and lifetime, not an
 invoice; provider billing may differ (see costs above).
 `cland executor status` prints the path and today's spent + reserved / cap.
 
+The version-1 ledger also supports host reservations through `reserveHostSpend`,
+`renewHostSpend`, `settleHostSpend` and `inspectHostSpend` in
+`executor/droplet/spend.ts`. New entries carry `category = verify` or `hosts`;
+missing categories mean `verify`. Host entries also retain pool, hourly rate and
+billing minimum. The caller supplies the shared verification daily cap and hosts
+sub-cap: both include today's settled costs plus outstanding reservations, and
+executor admission counts both categories. Renewals reserve the extended lifetime
+before the caller publishes its deadline. Settlement requires confirmed absence
+and the real lifetime end, and bills at least the persisted provider minimum.
+Settlement timestamps are stored in canonical UTC; identical-instant retries are
+safe and conflicting final settlements are refused. Executor admission refuses
+lease keys already owned by hosts before idempotency or shard reservation.
+Inspection reports UTC today's/month's settled totals per category and host pool,
+excluding reservations. This additive accounting API does not enable automatic
+host creation; host lifecycle callers must perform admission before provider work.
+Older hubs retain the additional fields and count hosts against the shared cap;
+legacy reconciliation and write-through keep their existing version and locks.
+
+
 #### Retiring legacy spend write-through
 
 The human or Coordinator can run

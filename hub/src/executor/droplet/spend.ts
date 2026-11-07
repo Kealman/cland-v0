@@ -1,3 +1,4 @@
+import { parsePoolName } from '../../host/pool-name.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 // The first per-user cland state: all project hubs reserve against the same ledger.
 import { mkdir, readFile, realpath, stat } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type Loc
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
 import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
 
-type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
+type Entry = { category?: 'verify' | 'hosts'; pool?: string; priceHourly?: number; billingMinimumMs?: number; project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
 type MissingProject = { project: string; since: string; pruned?: true };
 type Ledger = { version: 1; entries: Entry[]; projects?: string[]; missingProjects?: MissingProject[]; legacyRetired?: true };
 export const spendPath = (env: NodeJS.ProcessEnv = process.env): string => join(userStateDirectory(env), 'spend.json');
@@ -42,8 +43,8 @@ function reconcile(current: Ledger, legacy: Ledger): Ledger {
   }
   // A real lease replaces its shard reservation. Retained legacy bytes must
   // not resurrect the group after reserveSpend consumed it in the new ledger.
-  const actualRuns = new Set([...entries.values()].filter(e => e.lease !== `reserved:${e.run}`).map(e => JSON.stringify([e.project, e.run])));
-  const result: Ledger = { version: 1, entries: [...entries.values()].filter(e => e.lease !== `reserved:${e.run}` || e.cost !== null || !actualRuns.has(JSON.stringify([e.project, e.run]))) };
+  const actualRuns = new Set([...entries.values()].filter(e => category(e) === 'verify' && e.lease !== `reserved:${e.run}`).map(e => JSON.stringify([e.project, e.run])));
+  const result: Ledger = { version: 1, entries: [...entries.values()].filter(e => category(e) === 'hosts' || e.lease !== `reserved:${e.run}` || e.cost !== null || !actualRuns.has(JSON.stringify([e.project, e.run]))) };
   if (current.projects || legacy.projects) result.projects = [...new Set([...(current.projects ?? []), ...(legacy.projects ?? [])])];
   const missing = new Map([...(legacy.missingProjects ?? []), ...(current.missingProjects ?? [])].map(record => [record.project, record]));
   if (missing.size) {
@@ -144,13 +145,14 @@ export async function retireLegacySpend(confirmed: boolean, env: NodeJS.ProcessE
 }
 export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait?: (ms: number) => Promise<void>, processes?: LockProcessTable, signal?: AbortSignal): Promise<void> {
   await locked(ledger => {
+    if (ledger.entries.some(e => e.lease === lease.lease && category(e) === 'hosts')) throw new Error('spend reservation identity conflict');
     if (ledger.entries.some(e => e.lease === lease.lease)) return;
     const reservation = Math.max(60000, Date.parse(lease.deadline) - Date.parse(lease.created)) / 3600000 * lease.priceHourly;
-    const group = ledger.entries.find(e => e.project === project && e.run === lease.run && e.lease === `reserved:${lease.run}` && e.cost === null);
+    const group = ledger.entries.find(e => category(e) === 'verify' && e.project === project && e.run === lease.run && e.lease === `reserved:${lease.run}` && e.cost === null);
     const { spent, reserved } = totals(ledger, clock);
     if (spent + reserved - (group?.reservation ?? 0) + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
     if (group) ledger.entries.splice(ledger.entries.indexOf(group), 1);
-    ledger.entries.push({ project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
+    ledger.entries.push({ category: 'verify', project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
   }, env, { clock, wait, signal, ...(processes ? { processes } : {}) });
 }
 /** Recovery settles retained history in one ledger transaction, independent of
@@ -161,11 +163,11 @@ export async function settleSpend(input: DropletLease | DropletLease[], env: Nod
   if (!released.size) return;
   // Final costs never become reservations again. Skip settled history without
   // taking either lock; revalidate pending entries inside the transaction.
-  if (!(await observe(env)).entries.some(entry => entry.cost === null && released.has(entry.lease))) return;
+  if (!(await observe(env)).entries.some(entry => category(entry) === 'verify' && entry.cost === null && released.has(entry.lease))) return;
   await locked(ledger => {
     for (const entry of ledger.entries) {
       const lease = released.get(entry.lease);
-      if (lease && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
+      if (lease && category(entry) === 'verify' && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
     }
   }, env, processes ? { processes } : undefined, 1000);
 }
@@ -250,18 +252,105 @@ export async function hostLeases(project: string, env: NodeJS.ProcessEnv = proce
 /** Atomic group admission: no provider resources exist when this can refuse. */
 export async function reserveShardSpend(project: string, runs: string[], size: string, priceHourly: number, lifetimeMs: number, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, timing?: Pick<LockRetryTiming, 'signal' | 'wait'>): Promise<void> {
   await locked(ledger => {
-    const missing = runs.filter(run => !ledger.entries.some(e => e.project === project && e.run === run));
+    if (runs.some(run => ledger.entries.some(e => e.project === project && e.lease === `reserved:${run}` && category(e) === 'hosts'))) throw new Error('spend reservation identity conflict');
+    const missing = runs.filter(run => !ledger.entries.some(e => category(e) === 'verify' && e.project === project && e.run === run));
     const reservation = Math.max(60000, lifetimeMs) / 3600000 * priceHourly;
     const { spent, reserved } = totals(ledger, clock);
     if (spent + reserved + missing.length * reservation > cap) throw new Error(`daily spend cap $${cap} would be exceeded`);
     const created = clock.now().toISOString(), deadline = new Date(clock.now().getTime() + lifetimeMs).toISOString();
-    for (const run of missing) ledger.entries.push({ project, lease: `reserved:${run}`, run, size, reservation, cost: null, created, deadline });
+    for (const run of missing) ledger.entries.push({ category: 'verify', project, lease: `reserved:${run}`, run, size, reservation, cost: null, created, deadline });
   }, env, { ...timing, clock, ...(processes ? { processes } : {}) });
 }
 export async function releaseShardSpend(project: string, runs: string[], env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, timing?: Pick<LockRetryTiming, 'signal' | 'wait'>): Promise<void> {
   await locked(ledger => {
-    for (const e of ledger.entries) if (e.project === project && runs.includes(e.run) && e.lease === `reserved:${e.run}` && e.cost === null) {
+    for (const e of ledger.entries) if (category(e) === 'verify' && e.project === project && runs.includes(e.run) && e.lease === `reserved:${e.run}` && e.cost === null) {
       e.cost = 0; e.released = clock.now().toISOString();
     }
   }, env, { ...timing, clock, ...(processes ? { processes } : {}) });
+}
+
+
+export type HostSpendReservation = {
+  project: string; lease: string; pool: string; size: string;
+  priceHourly: number; billingMinimumMs: number; created: string; deadline: string;
+};
+export type HostSpendCaps = { shared: number; hosts: number };
+const category = (entry: Entry): 'verify' | 'hosts' => entry.category ?? 'verify';
+function hostCost(input: Pick<HostSpendReservation, 'created' | 'priceHourly' | 'billingMinimumMs'>, end: string): number {
+  const lifetime = Date.parse(end) - Date.parse(input.created);
+  if (!Number.isFinite(lifetime) || lifetime < 0 || !Number.isFinite(input.priceHourly) || input.priceHourly < 0 || !Number.isFinite(input.billingMinimumMs) || input.billingMinimumMs < 0) throw new Error('invalid host spend lifetime or billing');
+  const cost = Math.max(input.billingMinimumMs, lifetime) / 3600000 * input.priceHourly;
+  if (!Number.isFinite(cost)) throw new Error('invalid host spend cost');
+  return cost;
+}
+function admitHostSpend(ledger: Ledger, reservation: number, caps: HostSpendCaps, clock: Clock, replacing = 0): void {
+  if (![caps.shared, caps.hosts].every(value => Number.isFinite(value) && value >= 0)) throw new Error('invalid host spend cap');
+  const all = totals(ledger, clock);
+  const hosts = totals({ version: 1, entries: ledger.entries.filter(e => category(e) === 'hosts') }, clock);
+  if (all.spent + all.reserved - replacing + reservation > caps.shared) throw new Error(`daily spend cap $${caps.shared} would be exceeded`);
+  if (hosts.spent + hosts.reserved - replacing + reservation > caps.hosts) throw new Error(`hosts daily spend cap $${caps.hosts} would be exceeded`);
+}
+/** Persist before provider create. The caller retains this reservation until confirmed absence. */
+export async function reserveHostSpend(input: HostSpendReservation, caps: HostSpendCaps, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
+  parsePoolName(input.pool);
+  const reservation = hostCost(input, input.deadline);
+  await locked(ledger => {
+    const existing = ledger.entries.find(e => e.project === input.project && e.lease === input.lease);
+    if (existing) {
+      if (category(existing) !== 'hosts' || existing.pool !== input.pool || existing.created !== input.created || existing.priceHourly !== input.priceHourly || existing.billingMinimumMs !== input.billingMinimumMs || existing.size !== input.size || existing.deadline !== input.deadline) throw new Error('host spend reservation identity conflict');
+      return;
+    }
+    admitHostSpend(ledger, reservation, caps, timing.clock ?? realClock);
+    ledger.entries.push({ ...input, category: 'hosts', run: input.lease, reservation, cost: null });
+  }, env, timing);
+}
+/** Settled period totals use UTC settlement dates, excluding pending reservations. */
+export async function inspectHostSpend(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock) {
+  const ledger = await observe(env);
+  const day = clock.now().toISOString().slice(0, 10), month = day.slice(0, 7);
+  type Period = { today: number; month: number };
+  const categories: Record<'verify' | 'hosts', Period> = { verify: { today: 0, month: 0 }, hosts: { today: 0, month: 0 } };
+  const pools: Record<string, Period> = Object.create(null);
+  for (const entry of ledger.entries) {
+    const bucket = categories[category(entry)];
+    const pool = category(entry) === 'hosts' && entry.pool ? pools[entry.pool] ??= { today: 0, month: 0 } : undefined;
+    if (entry.cost === null || !entry.released) continue;
+    for (const target of [bucket, pool]) if (target) {
+      if (entry.released.slice(0, 10) === day) target.today += entry.cost;
+      if (entry.released.slice(0, 7) === month) target.month += entry.cost;
+    }
+  }
+  return { day, month, categories, pools };
+}
+
+function pendingHostEntry(ledger: Ledger, project: string, lease: string): Entry & { priceHourly: number; billingMinimumMs: number } {
+  const entry = ledger.entries.find(e => e.project === project && e.lease === lease && category(e) === 'hosts');
+  if (!entry || entry.priceHourly === undefined || entry.billingMinimumMs === undefined) throw new Error('host spend reservation not found or missing billing metadata');
+  return entry as Entry & { priceHourly: number; billingMinimumMs: number };
+}
+/** Reserve the whole extended lifetime before publishing the new lease deadline. */
+export async function renewHostSpend(project: string, lease: string, deadline: string, caps: HostSpendCaps, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
+  await locked(ledger => {
+    const entry = pendingHostEntry(ledger, project, lease);
+    if (entry.cost !== null) throw new Error('host spend reservation already settled');
+    const reservation = hostCost(entry, deadline);
+    if (Date.parse(deadline) <= Date.parse(entry.deadline)) return;
+    admitHostSpend(ledger, reservation, caps, timing.clock ?? realClock, entry.reservation);
+    entry.reservation = Math.max(entry.reservation, reservation);
+    entry.deadline = deadline;
+  }, env, timing);
+}
+/** Only call with confirmed provider absence and the observed real lifetime end. */
+export async function settleHostSpend(project: string, lease: string, released: string, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
+  await locked(ledger => {
+    const entry = pendingHostEntry(ledger, project, lease);
+    const cost = hostCost(entry, released);
+    released = new Date(released).toISOString();
+    if (entry.cost !== null) {
+      if (entry.cost !== cost || entry.released !== released) throw new Error('host spend settlement conflict');
+      return;
+    }
+    entry.cost = cost;
+    entry.released = released;
+  }, env, timing);
 }
