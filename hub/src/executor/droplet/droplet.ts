@@ -14,7 +14,7 @@ import { DigitalOceanApi, DigitalOceanError, DeletionUnconfirmed, apiTimeoutMs, 
 import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
-import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
+import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnapshots } from './snapshot-recovery.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
@@ -38,6 +38,7 @@ export class DropletExecutor implements Executor {
   readonly logger: LogFn;
   #prepareJob: PrepareJob | null = null;
   #prepareWork: Promise<void> | null = null;
+  readonly #poolWork = new Set<Promise<Prepared>>();
   #prepareAbort: AbortController | null = null;
   #closing = false;
   readonly #abort = new AbortController();
@@ -314,10 +315,62 @@ export class DropletExecutor implements Executor {
       builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(this.clock.now().getTime() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }, config), release: lease => this.release(lease) });
   }
 
+  /** Pool builds share executor admission, watchdog and spend, but never its image pointer. */
+  preparePool(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey): Promise<Prepared> {
+    const work = this.#preparePoolOwned(pool, key).finally(() => { this.#poolWork.delete(work); });
+    this.#poolWork.add(work);
+    return work;
+  }
+  async #preparePoolOwned(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey): Promise<Prepared> {
+    const { poolSnapshotStorage } = await import('../../host/provider/pool-image.ts');
+    const release = claimSnapshotStorage(poolSnapshotStorage(this.root, pool));
+    if (!release) throw new Error('pool snapshot operation running');
+    try { return await this.#preparePool(pool, key); }
+    finally { release(); }
+  }
+  async #preparePool(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey): Promise<Prepared> {
+    const { parse } = await import('smol-toml');
+    const { readHostPools } = await import('../../host/transport-config.ts');
+    const { samePoolImageKey, poolSnapshotStorage } = await import('../../host/provider/pool-image.ts');
+    const { renderRecipe } = await import('../../image/recipe.ts');
+    const { recoverSnapshot } = await import('./snapshot-recovery.ts');
+    const config = await this.#config();
+    const text = await readFile(join(this.root, '.cland/config.toml'), 'utf8');
+    const selected = readHostPools(parse(text).hosts).pools[pool];
+    if (!selected || selected.provider !== 'digitalocean') throw new Error('DigitalOcean pool unavailable');
+    const storage = poolSnapshotStorage(this.root, pool);
+    for (const record of await readRecoveries(this.root, storage)) {
+      if (!await recoverSnapshot(this.root, record, undefined, this.#env, this.dependencies.api, storage)) throw new Error('pool snapshot recovery pending');
+    }
+    const { prepare_size, image } = config.verification.droplet;
+    const current = await readSnapshot(this.root, storage);
+    let baseRef = 'refs/heads/dev';
+    let maxDiskSize: number | undefined;
+    if (!current || !samePoolImageKey(current.key, key)) {
+      const source = await this.#key(config.verification.provision);
+      if (source.lock !== key.lock || source.provision !== key.provision || source.provisionPath !== key.provisionPath) throw new Error('pool inputs differ from committed builder source');
+      baseRef = source.base;
+      const sizes = await this.dependencies.api!.sizes();
+      const builder = sizes.find(size => size.slug === prepare_size && size.available);
+      const target = sizes.find(size => size.slug === selected.size && size.available);
+      maxDiskSize = target?.disk;
+      if (!builder || !target || !Number.isFinite(builder.disk) || !Number.isFinite(target.disk) || builder.disk! > target.disk!) throw new Error('pool builder disk exceeds host disk or size unavailable');
+    }
+    return prepareSnapshot({ root: this.root, env: this.#env, dependencies: this.dependencies, storage,
+      ...(maxDiskSize === undefined ? {} : { maxDiskSize }), recipe: renderRecipe({ arch: 'x86_64', node: key.node, harnesses: key.harnesses }), baseRef, keysEqual: samePoolImageKey,
+      provision: config.verification.provision, prepare: config.verification.prepare, key,
+      project: `${projectName(config.name)}-pool-${pool}`, regions: [selected.region],
+      tags: ['cland', projectTag(this.root, config.name), `cland-pool-${pool}`], log: this.logger, signal: this.#abort.signal, step: () => {},
+      builder: user_data => this.#acquire({ id: `host-prepare-${pool}` }, new Date(this.clock.now().getTime() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions: config.verification.droplet.regions, image, user_data }, config),
+      release: lease => this.release(lease),
+    });
+  }
+
   async close(): Promise<void> {
     this.#closing = true; this.#prepareAbort?.abort();
     this.#abort.abort(new Error('hub is stopping; executor lease retained for reconciliation'));
     await this.#prepareWork;
+    await Promise.allSettled(this.#poolWork);
     await Promise.allSettled(this.#reaps);
   }
 
@@ -466,6 +519,7 @@ export class DropletExecutor implements Executor {
       if (lease.state === 'releasing' || Date.parse(lease.deadline) <= this.clock.now().getTime() || restart && (lease.state === 'active' && !lease.execution && !lease.demo && !owned.has(lease.run) || lease.state === 'creating' && lease.resource === null)) await this.release(lease, deadline);
     }
     if (!this.#closing && this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.logger, this.#env, boundedProvider(this.dependencies.api!, this.clock, 15000, deadline));
+    if (!this.#closing) await recoverPoolSnapshots(this.root, this.logger, this.#env, boundedProvider(this.dependencies.api!, this.clock, 15000, deadline));
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
   }
   async sweep(restart = false): Promise<void> {

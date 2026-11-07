@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { VERSION } from '../src/version.ts';
 test('runtime manifest carries the hub lock, CLI, spoke and Claude mod with verified digests', async()=>{
  const bundle=await runtimeBundle(VERSION);
- for(const path of ['package.json','package-lock.json','hub/package.json','hub/bin/cland.ts','hub/bin/cland-spoke.ts','hub/mod/cland/.claude-plugin/plugin.json'])assert.ok(bundle.files.some(f=>f.path===path),path);
+ for(const path of ['package.json','package-lock.json','hub/package.json','hub/bin/cland.ts','hub/bin/cland-spoke.ts','hub/mod/cland/.claude-plugin/plugin.json','hub/src/host/cland-auth.sh'])assert.ok(bundle.files.some(f=>f.path===path),path);
  assert.equal(new Set(bundle.files.map(f=>f.path)).size,bundle.files.length);
  for(const f of bundle.files){
   assert.equal(f.sha256,createHash('sha256').update(await readFile(new URL('../../'+f.path,import.meta.url))).digest('hex'));

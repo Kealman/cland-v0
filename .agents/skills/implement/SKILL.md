@@ -285,3 +285,9 @@ retains the old checkout/ref-watch as a named settlement obligation. Missing
 receipts stay fenced. Report unresolved obligations to the item lead; never resume
 the old native generation or discard retained ownership. Successful publication commits the native
 row, ready checkout, restart warning and intent completion atomically.
+
+DigitalOcean pool image preparation uses the executor builder lease, watchdog and
+spend with pool-specific image/recovery records. Host creation remains refused
+outside sealed tests pending E-1534 host admission; image preparation is allowed.
+Use the scripted pool preparation tests and preserve executor preparation tests
+unchanged. See [pool preparation](../../../docs/hub/host-providers.md#pool-images).

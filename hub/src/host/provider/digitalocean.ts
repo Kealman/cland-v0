@@ -1,4 +1,9 @@
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { renderPrelude } from '../prelude.ts';
+import { poolImageKey, samePoolImageKey, poolSnapshotStorage } from './pool-image.ts';
+import { readSnapshot } from '../../executor/droplet/prepare.ts';
+import { DropletExecutor } from '../../executor/droplet/droplet.ts';
+import type { DropletDependencies } from '../../executor/droplet/dependencies.ts';
+import { generateKeyPairSync, randomUUID, randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DigitalOceanApi, DigitalOceanError, RateLimited, type BlockVolume, type Action } from '../../executor/droplet/api.ts';
@@ -11,6 +16,7 @@ import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatu
 export type ReapTarget = { machineId?: string | undefined; keyName?: string | undefined };
 export type DigitalOceanHostProviderOptions = {
   root: string; env: NodeJS.ProcessEnv; api?: DigitalOceanApi; clock?: Clock;
+  dependencies?: DropletDependencies;
   size?: string; image?: string | number; pool?: string;
   /** Owner holds its admission lock, checks the exact target and either skips
    * (undefined) or joins remove() before releasing the lock. No host ownership
@@ -23,11 +29,10 @@ export type DigitalOceanHostProviderOptions = {
   /** Compatibility only: a snapshot without admitReap cannot authorize reap. */
   ownedMachineIds?: () => Promise<ReadonlySet<string>>;
 };
-type Record = { region?: string; name: string; project: string; pool: string; tags: string[]; keyName: string; keyId?: number; dropletId?: number; machine?: Machine; privateKey: string; retiring?: boolean };
+type Record = { region?: string; name: string; project: string; pool: string; tags: string[]; keyName: string; keyId?: number; dropletId?: number; machine?: Machine; privateKey: string; userData?: string; retiring?: boolean };
 /** Machine and volume provisioning. One registry owns a state root; operations serialize.
  * intent-*.json persists name/tags/key before POST; unknown creates stay recoverable.
- * image.json contains only { image }, a configured-image receipt. T-1719 replaces
- * this file with pool recipe preparation; it is not the executor snapshot record. */
+ * Pool images and recovery records live separately under .cland/run/hosts. */
 export class DigitalOceanHostProvider implements HostProvider {
   readonly transport = 'ssh' as const;
   #declarations: HostProviderDeclarationState = Object.freeze({ state: 'unavailable', reason: 'DigitalOcean declarations not loaded' });
@@ -87,7 +92,14 @@ export class DigitalOceanHostProvider implements HostProvider {
     if (this.#options.pool !== undefined && this.#options.pool !== options.pool) return { state: 'failed', reason: 'machine pool mismatch' };
     if (options.architecture !== 'x86_64' || !options.project || !/^[a-zA-Z0-9-]+$/.test(options.pool)) return { state: 'failed', reason: 'machine options unsupported' };
     // No project setting can enable production host.create before pool admission.
-    if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host acquisition is test-only', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
+    if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host.create requires E-1534 host lease, watchdog and spend', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
+    let image: number;
+    try {
+      const storage = poolSnapshotStorage(this.#options.root, options.pool);
+      const snapshot = await readSnapshot(this.#options.root, storage);
+      if (!snapshot || !samePoolImageKey(snapshot.key, await poolImageKey(this.#options.root, this.#options.env, 'digitalocean')) || !snapshot.regions.includes(options.region ?? 'lon1')) throw new Error('pool image missing or stale');
+      image = snapshot.image;
+    } catch { return { state: 'refused', reason: 'run cland host prepare: pool image missing or stale', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() }; }
     if (this.#clock.now().getTime() < this.#createRetryAt) return this.#paused();
     if ('state' in this.#declarations) {
       await this.refreshDeclarations();
@@ -101,10 +113,11 @@ export class DigitalOceanHostProvider implements HostProvider {
       const publicBytes = Buffer.from(pair.publicKey.export({ format: 'jwk' }).x!, 'base64url');
       const prefix = Buffer.from('0000000b7373682d6564323535313900000020', 'hex');
       const record: Record = { name: `cland-host-${id}`, project: options.project, pool: options.pool, region: options.region ?? 'lon1', tags: ['cland', tag, `cland-pool-${options.pool}`, `cland-host-${id}`], keyName: `${tag}-pool-${options.pool}-host-${id}`, privateKey: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() };
+      record.userData = digitalOceanPrelude();
       await this.#save(record);
       const key = await this.#api.importKey(record.keyName, `ssh-ed25519 ${Buffer.concat([prefix, publicBytes]).toString('base64')}`);
       record.keyId = key.id; await this.#save(record);
-      const droplet = await this.#api.create({ name: record.name, tags: record.tags, region: options.region ?? 'lon1', size: this.#options.size ?? 's-2vcpu-4gb', image: this.#options.image ?? 'ubuntu-24-04-x64', ssh_keys: [key.id] });
+      const droplet = await this.#api.create({ name: record.name, tags: record.tags, region: options.region ?? 'lon1', size: this.#options.size ?? 's-2vcpu-4gb', image, ssh_keys: [key.id], user_data: record.userData });
       accepted = true;
       record.dropletId = droplet.id; await this.#save(record);
       // GET is the address observation, never the launch reply.
@@ -227,13 +240,17 @@ export class DigitalOceanHostProvider implements HostProvider {
     } catch { return { state: 'failed', reason: 'DigitalOcean reap inventory failed' }; }
   }); }
   prepare(options?: Parameters<HostProvider['prepare']>[0]): Promise<PrepareResult> { return this.#serial(async () => {
-    if (options !== undefined) return { state: 'failed', reason: 'DigitalOcean pool image preparation unsupported' };
+    if (!options) {
+      try { options = { pool: this.#options.pool ?? 'agents', key: await poolImageKey(this.#options.root, this.#options.env, 'digitalocean') }; }
+      catch { return { state: 'failed', reason: 'run cland host prepare with a configured pool' }; }
+    }
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(options.pool)) return { state: 'failed', reason: 'run cland host prepare with a configured pool' };
+    const executor = new DropletExecutor(this.#options.root, undefined, () => {}, this.#options.env, undefined, { ...this.#options.dependencies, api: this.#api, clock: this.#clock });
     try {
-      const image = this.#options.image ?? 'ubuntu-24-04-x64';
-      await this.#api.image(image);
-      try { if (JSON.parse(await readFile(join(this.#directory, 'image.json'), 'utf8')).image === image) return { state: 'current', summary: 'configured image current' }; } catch (e) { if (!missing(e)) throw e; }
-      await this.#write('image.json', { image }); return { state: 'prepared', summary: 'configured image recorded' };
-    } catch { return { state: 'failed', reason: 'configured image unavailable' }; }
+      const result = await executor.preparePool(options.pool, options.key);
+      return { state: result.state, summary: result.summary };
+    } catch { return { state: 'failed', reason: 'DigitalOcean pool image preparation failed; recovery retained' }; }
+    finally { await executor.close(); }
   }); }
   // Volume creates share the machine creation pause: account-wide 429s must
   // not cascade through a second resource type. Snapshot window refusals keep
@@ -320,4 +337,24 @@ function keyIdentity(name: string, project: string): { pool: string; intent: str
   if (!name.startsWith(prefix)) return;
   const match = /^([a-zA-Z0-9-]+)-host-([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.exec(name.slice(prefix.length));
   return match ? { pool: match[1]!, intent: match[2]! } : undefined;
+}
+
+function digitalOceanPrelude(): string {
+  const pair = generateKeyPairSync('ed25519');
+  const publicBytes = Buffer.from(pair.publicKey.export({ format: 'jwk' }).x!, 'base64url');
+  const prefix = Buffer.from('0000000b7373682d6564323535313900000020', 'hex');
+  return renderPrelude({ hostKey: openSshPrivateKey(pair.privateKey.export({ format: 'jwk' }), publicBytes), hostPublicKey: `ssh-ed25519 ${Buffer.concat([prefix, publicBytes]).toString('base64')}`, providerSteps: 'rm -f /etc/udev/rules.d/99-digitalocean-automount.rules' });
+}
+
+/** OpenSSH's unencrypted ed25519 container; PKCS8 is not an sshd host key. */
+function openSshPrivateKey(jwk: { d?: string }, publicKey: Buffer): string {
+  const uint = (n: number) => { const value = Buffer.alloc(4); value.writeUInt32BE(n); return value; };
+  const field = (value: Buffer | string) => { const bytes = Buffer.from(value); return Buffer.concat([uint(bytes.length), bytes]); };
+  const publicBlob = Buffer.concat([field('ssh-ed25519'), field(publicKey)]);
+  const check = randomBytes(4);
+  let privateBlob = Buffer.concat([check, check, field('ssh-ed25519'), field(publicKey), field(Buffer.concat([Buffer.from(jwk.d!, 'base64url'), publicKey])), field('')]);
+  const padding = 8 - privateBlob.length % 8;
+  privateBlob = Buffer.concat([privateBlob, Buffer.from(Array.from({ length: padding }, (_, i) => i + 1))]);
+  const bytes = Buffer.concat([Buffer.from('openssh-key-v1\0'), field('none'), field('none'), field(''), uint(1), field(publicBlob), field(privateBlob)]);
+  return `-----BEGIN OPENSSH PRIVATE KEY-----\n${bytes.toString('base64').match(/.{1,70}/g)!.join('\n')}\n-----END OPENSSH PRIVATE KEY-----\n`;
 }

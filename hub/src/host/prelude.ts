@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-const authHelper = readFileSync(new URL('./cland-auth.sh', import.meta.url), 'utf8');
+let authHelper: string | undefined;
 
 /** Render only explicit host bootstrap inputs; never inherit the hub environment.
  * providerSteps is trusted provider-owned shell, not user configuration.
@@ -8,6 +8,7 @@ const authHelper = readFileSync(new URL('./cland-auth.sh', import.meta.url), 'ut
 export function renderPrelude({ hostKey, hostPublicKey, providerSteps }: {
   hostKey: string; hostPublicKey: string; providerSteps: string;
 }): string {
+  authHelper ??= readFileSync(new URL('./cland-auth.sh', import.meta.url), 'utf8');
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
   return `#!/bin/bash
 set -eu

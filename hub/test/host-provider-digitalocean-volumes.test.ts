@@ -1,3 +1,4 @@
+import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted provider boundary; disposable records, no native processes or sockets.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,6 +13,7 @@ async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => 
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('volume-sentinel', { machine: 'scripted', clock });
   t.after(async () => { await beforeClose?.(); await api.close(); });
+  await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
   api.faults.allocateAddressEarly = true;
   api.faults.activeAfter = 0;

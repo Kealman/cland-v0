@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile, realpath, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawn, type ExecFileOptionsWithStringEncoding } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
@@ -70,6 +71,9 @@ test('C1-C3 whole runtime delivery verifies files, reuses digest and atomically 
   const result=await exec(t,process.execPath,[join(target,'hub/bin',entry),'--version'],{cwd:root,env,encoding:'utf8',timeout:CLI_VERSION_EXIT_MS});
   assert.equal(result.stdout.trim(),VERSION);
  }
+ const prelude=await exec(t,process.execPath,['--input-type=module','-e',`import {renderPrelude} from ${JSON.stringify(pathToFileURL(join(target,'hub/src/host/prelude.ts')).href)}; process.stdout.write(renderPrelude({hostKey:'fixture-private',hostPublicKey:'ssh-ed25519 fixture-public',providerSteps:''}));`],{cwd:root,env,encoding:'utf8',timeout:CLI_VERSION_EXIT_MS});
+ assert.ok(prelude.stdout.includes('CLAND_AUTH_HELPER'));
+ assert.ok(prelude.stdout.includes(await readFile(join(target,'hub/src/host/cland-auth.sh'),'utf8')),'delivered helper is rendered from bundled tree');
  assert.equal((await readFile(join(root,'npm-calls'),'utf8')).trim(),'ci -w hub --omit=dev --ignore-scripts');
  await deliverRuntime({transport,codeRoot,node:process.execPath,version:VERSION,bundle});
  assert.equal(copies,1); assert.equal(await realpath(target),first);

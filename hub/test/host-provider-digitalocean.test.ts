@@ -1,3 +1,4 @@
+import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted DigitalOcean boundary and disposable provider records; no sockets or processes.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,6 +18,7 @@ async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', be
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('provider-sentinel-secret', { machine: 'scripted', clock });
   t.after(async () => { await beforeClose?.(); await api.close(); });
+  await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
   api.faults.allocateAddressEarly = true;
   api.faults.activeAfter = scenario === 'delayed-boot' ? 3 : 0;
@@ -36,7 +38,7 @@ test('digitalocean create carries configured inputs, isolated key and project/po
   const created = await provider.acquire({ ...request, region: 'fra1' });
   assert.equal(created.state, 'created');
   const body = api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!;
-  assert.equal(body.region, 'fra1'); assert.equal(body.size, 's-2vcpu-4gb'); assert.equal(body.image, 'ubuntu-24-04-x64');
+  assert.equal(body.region, 'fra1'); assert.equal(body.size, 's-2vcpu-4gb'); assert.equal(body.image, 9001);
   assert.deepEqual((body.tags as string[]).slice(0, 3), ['cland', projectTag(api.stateRoot, 'contract'), 'cland-pool-agents']);
   assert.equal(api.keys.length, 1);
   assert.deepEqual(body.ssh_keys, [api.keys[0]!.id]);
@@ -47,7 +49,7 @@ hostProviderContract('digitalocean', async (t, scenario) => {
   f.api.faults.rateLimits = 0;
   await f.provider.refreshDeclarations();
   if (scenario === 'refused') f.api.faults.rateLimits = 1;
-  return { provider: f.provider, ready: async () => {
+  return { provider: f.provider, prepared: true, ready: async () => {
     f.api.faults.activeAfter = 0;
     for (const d of f.api.droplets) await f.api.provider.droplet(d.id);
   } };
@@ -94,10 +96,10 @@ test('digitalocean owned host and its key survive reap while an unowned host is 
   assert.deepEqual(await p.reap(request), { state: 'reaped', released: [orphan.machine.id], incomplete: [] });
   assert.equal(api.keys.length, 1); assert.equal(api.droplets[0]!.id, Number(owned.machine.id));
 });
-test('digitalocean missing configured image fails without a preparation receipt', async t => {
+test('digitalocean configured base image does not override a prepared pool image', async t => {
   const { api, clock } = await fixture(t);
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env: {}, api: api.provider, clock, image: 'unknown' });
-  assert.equal((await provider.prepare()).state, 'failed');
+  assert.equal((await provider.prepare()).state, 'current');
 });
 test('digitalocean provider keeps sentinel out of output, errors and user-data, and launches no child', async t => {
   const { api, provider } = await fixture(t);
@@ -290,33 +292,6 @@ test('digitalocean pending retirement survives a lost owner settlement acknowled
   p = new DigitalOceanHostProvider({ root: api.stateRoot, env: {}, api: api.provider, clock, admitReap: admit });
   assert.deepEqual(await p.reap(request), { state: 'reaped', released: [acquired.machine.id], incomplete: [] });
   assert.equal(await readFile(path, 'utf8'), 'settled');
-});
-test('digitalocean keyed pool preparation refuses through preparePools and registry without publishing a recipe receipt', async t => {
-  const { api } = await fixture(t);
-  const { mkdir, readFile, writeFile } = await import('node:fs/promises');
-  const { preparePools } = await import('../src/host/provider/pool-image.ts');
-  const { DigitalOceanApi } = await import('../src/executor/droplet/api.ts');
-  // Keep the real composed pool caller and registry; route the external image
-  // boundary to the scripted API, never the real DigitalOcean service.
-  const image = api.provider.image.bind(api.provider);
-  t.mock.method(DigitalOceanApi.prototype, 'image', image);
-  await mkdir(`${api.stateRoot}/.cland`, { recursive: true });
-  const config = '[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider="digitalocean"\nsize="s-2vcpu-4gb"\nregion="lon1"\n';
-  await writeFile(`${api.stateRoot}/.cland/config.toml`, config);
-  const env = fixtureEnvironment(api.stateRoot, {}, { CLAND_FAKE_HOST_ROOT: api.stateRoot });
-  const receipt = `${api.stateRoot}/.cland/run/hosts/agents-image.json`;
-  await assert.rejects(preparePools(api.stateRoot, 'agents', env), /DigitalOcean pool image preparation unsupported/);
-  await assert.rejects(readFile(receipt), { code: 'ENOENT' });
-  await assert.rejects(readFile(`${api.stateRoot}/.cland/host-provider/digitalocean/image.json`), { code: 'ENOENT' });
-  // Changing the requested recipe key must not claim current or overwrite an
-  // earlier caller receipt either.
-  await mkdir(`${api.stateRoot}/.cland/run/hosts`, { recursive: true });
-  const previous = JSON.stringify({ key: { harnesses: { codex: '0.9.0' } }, diagnostic: 'previous-receipt' });
-  await writeFile(receipt, previous);
-  await writeFile(`${api.stateRoot}/.cland/config.toml`, config.replace('1.0.0', '2.0.0'));
-  await assert.rejects(preparePools(api.stateRoot, 'agents', env), /DigitalOcean pool image preparation unsupported/);
-  assert.equal(await readFile(receipt, 'utf8'), previous);
-  assert.equal(api.requests.length, 0, 'unsupported keyed prepare refuses before any provider call');
 });
 
 test('digitalocean declarations load API prices and limit atomically and retain the last good read', async t => {

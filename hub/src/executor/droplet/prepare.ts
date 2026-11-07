@@ -6,7 +6,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
@@ -54,9 +54,10 @@ export async function prepareBundle(root: string, dir: string, env: NodeJS.Proce
   return bundle;
 }
 
-export async function readSnapshot(root: string): Promise<Snapshot | null> {
+export type SnapshotStorage = { recordPath: string; recoveryRoot: string };
+export async function readSnapshot(root: string, storage?: SnapshotStorage): Promise<Snapshot | null> {
   try {
-    const snapshot = JSON.parse(await readFile(snapshotPath(root), 'utf8')) as Snapshot;
+    const snapshot = JSON.parse(await readFile(storage?.recordPath ?? snapshotPath(root), 'utf8')) as Snapshot;
     if (!Number.isSafeInteger(snapshot.image) || snapshot.image <= 0 || !snapshot.name || !Array.isArray(snapshot.regions) || !snapshot.regions.length || !snapshot.key || !snapshot.key.node || !snapshot.key.base || snapshot.keyHash !== keyHash(snapshot.key)) throw new Error('invalid prepared snapshot record');
     return snapshot;
   }
@@ -98,6 +99,7 @@ export async function pollAction(api: Provider, action: Action, limit: number, s
 export type Prepared = { state: 'current' | 'prepared'; snapshot: Snapshot; durationMs: number; lifetimeMs: number | null; costUsd: number | null; summary: string };
 type PrepareOptions = {
   dependencies?: DropletDependencies;
+  storage?: SnapshotStorage; recipe?: string; baseRef?: string; keysEqual?: (a: PrepareKey, b: PrepareKey) => boolean;
   env?: NodeJS.ProcessEnv;
   root: string; provision?: string; prepare?: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
   builder: (userData: string) => Promise<DropletLease>; release: (lease: DropletLease) => Promise<Released>; step: (step: string) => void;
@@ -114,20 +116,30 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
   let stage = 'key';
   const step = (value: string) => { stage = value; options.step(value); };
   const started = clock.now().getTime();
-  const old = await readSnapshot(root);
-  if (old && sameKey(old.key, key)) return prepared('current', old, started, { lifetimeMs: 0, costUsd: 0 }, clock);
+  const old = await readSnapshot(root, options.storage);
+  if (old && (options.keysEqual ?? sameKey)(old.key, key)) {
+    if (!options.storage || options.regions.every(region => old.regions.includes(region))) return prepared('current', old, started, { lifetimeMs: 0, costUsd: 0 }, clock);
+    const api = dependencies.api ?? new DigitalOceanApi(env, clock);
+    // A region is placement, not image content: transfer the retained image.
+    const limit = clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_ACTION_MS', 1200000, env);
+    await ensureRegions(api, old.image, old.regions, options.regions, limit, options.signal, env, clock, wait);
+    const snapshot = { ...old, regions: [...new Set([...old.regions, ...options.regions])] };
+    await durableJson(options.storage?.recordPath ?? snapshotPath(root), snapshot);
+    options.store?.setMeta('executor-snapshot', JSON.stringify(snapshot));
+    return prepared('prepared', snapshot, started, { lifetimeMs: 0, costUsd: 0 }, clock);
+  }
   const api = dependencies.api ?? new DigitalOceanApi(env, clock);
   const name = `cland-${options.project}-${keyHash(key)}`;
   const recovery: SnapshotRecovery = { id: randomUUID(), name, started: clock.now().toISOString(), phase: 'build', previous: old, requested: false, seen: [] };
-  await saveRecovery(root, recovery);
+  await saveRecovery(root, recovery, options.storage);
   let builder: DropletLease | undefined;
   let image: SnapshotImage | undefined;
   let committed = false;
   let released: Released = { lifetimeMs: null, costUsd: null };
   try {
     step('builder');
-    builder = await options.builder(renderRecipe({ arch: 'x86_64', node: key.node }));
-    recovery.builder = builder.resource!; await saveRecovery(root, recovery);
+    builder = await options.builder(options.recipe ?? renderRecipe({ arch: 'x86_64', node: key.node }));
+    recovery.builder = builder.resource!; await saveRecovery(root, recovery, options.storage);
     await waitForMachine(root, builder, undefined, 900000, options.signal, env, dependencies);
     const machine = dependencies.machine ?? new Machine(root, env);
     const dir = leaseDir(root, builder);
@@ -135,7 +147,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     step('deliver');
     const bundle = await (dependencies.prepareBundle ?? prepareBundle)(root, dir, env);
     await machine.put(builder, bundle, 'base.bundle', { timeoutMs: timeout(), signal: options.signal });
-    await machine.exec(builder, `set -eu; git init --bare "$HOME/mirror.git"; git --git-dir="$HOME/mirror.git" fetch "$HOME/base.bundle" '+refs/heads/dev:refs/heads/dev'; git clone --no-hardlinks "$HOME/mirror.git" "$HOME/cland"; git -C "$HOME/cland" remote remove origin; git -C "$HOME/cland" checkout --detach ${shellQuote(key.base)}; rm "$HOME/base.bundle"`, { timeoutMs: timeout(), signal: options.signal });
+    await machine.exec(builder, `set -eu; git init --bare "$HOME/mirror.git"; git --git-dir="$HOME/mirror.git" fetch "$HOME/base.bundle" '+refs/heads/dev:refs/heads/dev'; git clone --no-hardlinks "$HOME/mirror.git" "$HOME/cland"; git -C "$HOME/cland" remote remove origin; git -C "$HOME/cland" checkout --detach ${shellQuote(options.baseRef ?? key.base)}; rm "$HOME/base.bundle"`, { timeoutMs: timeout(), signal: options.signal });
     await rm(bundle, { force: true });
     step('install');
     let installOutput = options.prepare || options.provision ? '' : 'prepare: not set\n';
@@ -165,57 +177,47 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     step('power off');
     await pollAction(api, await api.dropletAction(builder.resource!, 'power_off', undefined, limit), limit, options.signal, env, clock, dependencies.wait);
     step('snapshot');
-    recovery.phase = 'snapshot'; recovery.requested = true; await saveRecovery(root, recovery);
+    recovery.phase = 'snapshot'; recovery.requested = true; await saveRecovery(root, recovery, options.storage);
     let action: Action;
     try { action = await api.dropletAction(builder.resource!, 'snapshot', name, limit); }
     catch (error) {
-      if (error instanceof DigitalOceanError && error.status >= 400 && error.status < 500) { recovery.requested = false; await saveRecovery(root, recovery); }
+      if (error instanceof DigitalOceanError && error.status >= 400 && error.status < 500) { recovery.requested = false; await saveRecovery(root, recovery, options.storage); }
       throw error;
     }
-    recovery.action = action.id; await saveRecovery(root, recovery);
+    recovery.action = action.id; await saveRecovery(root, recovery, options.storage);
     await pollAction(api, action, limit, options.signal, env, clock, dependencies.wait);
-    recovery.actionState = 'completed'; await saveRecovery(root, recovery);
+    recovery.actionState = 'completed'; await saveRecovery(root, recovery, options.storage);
     image = (await api.snapshots(limit)).find(candidate => candidate.name === name);
     if (!image) throw new Error('completed snapshot image missing');
     step('transfer');
-    for (const region of options.regions) if (!image.regions.includes(region)) await pollAction(api, await api.transferImage(image.id, region, limit), limit, options.signal, env, clock, dependencies.wait);
-    for (const tag of options.tags) await api.tagImage(image.id, tag);
-    const imageId = image.id;
-    for (;;) {
-      options.signal?.throwIfAborted();
-      image = (await api.snapshots(limit)).find(candidate => candidate.id === imageId);
-      if (image && options.regions.every(region => image!.regions.includes(region))) break;
-      // An action can complete before the snapshot catalogue reflects the copy.
-      if (clock.now().getTime() >= limit) throw new Error('snapshot regions visibility deadline reached');
-      await wait(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - clock.now().getTime())));
-    }
+    image = await ensureRegions(api, image.id, image.regions, options.regions, limit, options.signal, env, clock, wait, options.tags);
     if (options.maxDiskSize !== undefined && image.min_disk_size > options.maxDiskSize) throw new Error('snapshot minimum disk exceeds run size');
     step('release');
     released = await options.release(builder);
     // A prepared image remains usable while the durable releasing lease is
     // retried by the hub and watchdog. Its lifetime and cost stay unconfirmed.
     const snapshot: Snapshot = { image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: image.size_gigabytes, minDiskSize: image.min_disk_size, created: image.created_at };
-    await mkdir(join(root, '.cland/run/executor'), { recursive: true, mode: 0o700 });
-    recovery.candidate = snapshot; recovery.phase = 'retire'; recovery.retirement = 'unstarted'; await saveRecovery(root, recovery);
-    await durableJson(snapshotPath(root), snapshot);
+    await mkdir(dirname(options.storage?.recordPath ?? snapshotPath(root)), { recursive: true, mode: 0o700 });
+    recovery.candidate = snapshot; recovery.phase = 'retire'; recovery.retirement = 'unstarted'; await saveRecovery(root, recovery, options.storage);
+    await durableJson(options.storage?.recordPath ?? snapshotPath(root), snapshot);
     options.store?.setMeta('executor-snapshot', JSON.stringify(snapshot));
     if (old) {
       step('retire');
-      recovery.retirement = 'submitted'; await saveRecovery(root, recovery);
+      recovery.retirement = 'submitted'; await saveRecovery(root, recovery, options.storage);
       try { await api.deleteSnapshot(old.image); }
       catch (error) {
         // Only a definite rejection permits rollback. A timeout plus old presence
         // does not establish the fate of an accepted, still-running DELETE.
         if (error instanceof DigitalOceanError && [400, 401, 403, 422, 429].includes(error.status)) {
-          recovery.retirement = 'rejected'; await saveRecovery(root, recovery);
+          recovery.retirement = 'rejected'; await saveRecovery(root, recovery, options.storage);
         }
         throw error;
       }
-      recovery.retirement = 'accepted'; await saveRecovery(root, recovery);
+      recovery.retirement = 'accepted'; await saveRecovery(root, recovery, options.storage);
     }
     committed = true;
     // Retain ownership until retirement has a by-id GET404 receipt.
-    await recoverSnapshot(root, recovery, options.store, env, dependencies.api);
+    await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage);
     const result = prepared('prepared', snapshot, started, released, clock);
     result.summary += `\n${installOutput.trimEnd()}`;
     log({ event: 'executor-prepared', key, image: image.id, regions: snapshot.regions, durationMs: result.durationMs, ...released });
@@ -225,12 +227,23 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     if (!committed) {
       // Retiring uncertainty must be resolved before restoring either pointer.
       // Every other failure becomes durable cleanup of this builder's image.
-      if (recovery.phase !== 'retire') { recovery.phase = 'cleanup'; await saveRecovery(root, recovery); }
-      try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api); } catch { /* retained for restart/timer retries */ }
+      if (recovery.phase !== 'retire') { recovery.phase = 'cleanup'; await saveRecovery(root, recovery, options.storage); }
+      try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage); } catch { /* retained for restart/timer retries */ }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;
     log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: clock.now().getTime() - started, ...released, cause });
     throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`);
+  }
+}
+async function ensureRegions(api: Provider, id: number, known: string[], requested: string[], limit: number, signal: AbortSignal | undefined, env: NodeJS.ProcessEnv, clock: Clock, wait: (ms: number) => Promise<void>, tags: string[] = []): Promise<SnapshotImage> {
+  for (const region of requested) if (!known.includes(region)) await pollAction(api, await api.transferImage(id, region, limit), limit, signal, env, clock, wait);
+  for (const tag of tags) await api.tagImage(id, tag);
+  for (;;) {
+    signal?.throwIfAborted();
+    const image = (await api.snapshots(limit)).find(candidate => candidate.id === id);
+    if (image && requested.every(region => image.regions.includes(region))) return image;
+    if (clock.now().getTime() >= limit) throw new Error('snapshot regions visibility deadline reached');
+    await wait(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - clock.now().getTime())));
   }
 }
 function prepared(state: Prepared['state'], snapshot: Snapshot, started: number, released: Released, clock: Clock): Prepared {

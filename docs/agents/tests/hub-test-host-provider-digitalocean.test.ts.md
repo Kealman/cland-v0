@@ -40,11 +40,10 @@ The empty-inventory recovery case injects a transient final key GET failure,
 recreates the owner/provider and proves both positive absence GETs settle the
 persisted pending target even when neither inventory lists a resource.
 
-The composed keyed-preparation regression uses the real preparePools and registry
-with only the public external image GET boundary routed to the scripted API.
-DigitalOcean rejects keyed preparation without API calls, a new recipe receipt or
-changes to an existing receipt after harness pins change. No-argument contract
-preparation remains covered; fake keyed preparation stays in host-prepare tests.
+Machine fixtures seed prepared pool image records. Configured base images never
+override those records. Pool builds, keyed reuse and retirement now run in
+[the pool preparation entry](hub-test-host-provider-digitalocean-prepare.test.ts.md).
+The common contract starts at current for this already-prepared fixture.
 
 T-1715 declaration and pause cases (exact generated names):
 

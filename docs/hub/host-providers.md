@@ -184,13 +184,35 @@ Release confirms both droplet and key absence; an incomplete deletion retains
 its intent and keys for reconciliation. A lost create response remains findable
 by tags on the next reap, including after provider recreation.
 
-No-argument machine preparation only GETs the configured image and records `{image}` in the private
-`image.json`: first observation returns prepared, matching subsequent observations
-return current, and missing images fail. It builds no image. Recipe preparation
-replaces that receipt in its own item. Keyed pool requests from `host.prepare`
-return a typed unsupported failure before any API call or receipt write until
-DigitalOcean recipe preparation is implemented. They never claim a base image
-satisfies a pool recipe key. See the [machine test guide](../agents/tests/hub-test-host-provider-digitalocean.test.ts.md).
+`cland host prepare [pool]` builds DigitalOcean pool images through the executor's
+builder admission, lease, watchdog and spend accounting. The agent-host recipe
+uses the configured harness pins, then runs `[verification] provision` as root
+and `prepare` as runner against the committed territory source. Local lock and
+provision inputs must match that source. Preparation transfers the snapshot to
+the pool region and tags it `cland`, project and pool. Records and recovery
+ownership live under `.cland/run/hosts`, separate from executor snapshots.
+The pool recipe key covers the complete rendered agent recipe and effective
+harness defaults; the executor retains its legacy recipe digest. An unchanged
+pool key in the required region returns current without creating resources.
+A region change transfers and republishes the same image after region visibility
+is observed. Replacement
+publishes the new record before retiring the previous image; retirement stays
+recorded until its by-id GET confirms absence, including split DELETE404 replies.
+Restart and periodic executor reconciliation retry pool recoveries, including
+removed pools, without another prepare command. Active pool preparations own
+their snapshot storage through completion; reconciliation skips those owners.
+
+The SSH prelude loads its packaged `cland-auth.sh` only when rendering, so CLI
+imports do not require render-only assets. Runtime bundles include that helper;
+the source-release installer preserves the tracked source tree.
+
+DigitalOcean host creation requires a current pool image and sends that image id
+with the provider-rendered SSH prelude, automount removal, auth helper/sudoers and
+Codex file credential store. Missing or stale images name `cland host prepare`.
+Outside the sealed test environment, host creation refuses before API access:
+E-1534 host lease, watchdog and spend admission are required. Image preparation
+remains available through the executor's existing builder controls. A legacy
+configured-image receipt does not satisfy a pool recipe key.
 
 The advertised API budget uses the shared production endpoint default. An explicit
 test endpoint declaration may change transport pacing; it does not change the

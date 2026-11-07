@@ -9,16 +9,16 @@ import type { HostArchitecture, HostProvider } from '../src/host/provider/provid
  * the provider's bounded readiness receipt. No provider-specific assertions here. */
 export type ProviderScenario = 'normal' | 'refused' | 'failed-acquire' | 'delayed-boot' | 'never-boot' | 'ignored-delete';
 export function hostProviderContract(name: string, factory: (t: TestContext, scenario: ProviderScenario) => Promise<{
-  provider: HostProvider; ready: () => Promise<void>;
+  provider: HostProvider; prepared?: boolean; ready: () => Promise<void>;
 }>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown) {
   register(`${name}: provider declares sane prices, billing and capabilities`, async t => {
     const { provider } = await factory(t, 'normal');
     validateHostProviderDeclarations(provider.declarations);
   });
   register(`${name}: provider contract creates, prepares, observes and confirms release`, async t => {
-    const { provider, ready } = await factory(t, 'normal');
+    const { provider, ready, prepared } = await factory(t, 'normal');
     assert.equal(provider.transport, 'ssh');
-    assert.equal((await provider.prepare()).state, 'prepared');
+    assert.equal((await provider.prepare()).state, prepared ? 'current' : 'prepared');
     assert.equal((await provider.prepare()).state, 'current');
     const acquired = await provider.acquire({ project: 'contract', pool: 'agents', architecture: declaredArchitecture(provider) });
     assert.equal(acquired.state, 'created');

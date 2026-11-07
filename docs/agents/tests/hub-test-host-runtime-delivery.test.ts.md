@@ -16,6 +16,7 @@ fixture deletion. No browser, provider, real SSH host or credentials are used.
 
 Assertions read every delivered file against its manifest digest, run both bins
 with `--version`, derive supervisor/code paths through the published version link,
+render the prelude from the delivered runtime (including its packaged cland-auth.sh),
 and check unchanged delivery copies no bundle. A deliberately bad changed digest
 must fail while the original complete tree remains selected; valid replacement
 switches the pointer and leaves the old reader's tree intact.
