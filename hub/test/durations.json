@@ -124,9 +124,10 @@
       "A-17180",
       "A-17195",
       "A-17332",
-      "A-17334"
+      "A-17334",
+      "A-17358"
     ],
-    "commit": "3c80255e0713f2fe08c5abe516b255516fa7ddf3"
+    "commit": "7ae000516192338cee64ed6fc8a6500fc4ab1d98"
   },
   "budget": {
     "testSeconds": 5,
@@ -10798,7 +10799,9 @@
     "hub/test/tcp-listener-census.test.ts::listener attribution stays unavailable when native birth observation 1 is missing": 0.000252,
     "hub/test/tcp-listener-census.test.ts::listener attribution stays unavailable when native birth observation 2 is missing": 0.000196,
     "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during description": 0.00032,
-    "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during listeners": 0.000398
+    "hub/test/tcp-listener-census.test.ts::listener attribution suppresses replacement metadata when birth changes during listeners": 0.000398,
+    "hub/test/init-config.test.ts::auth mode writer preserves the complete config document": 0.003215,
+    "hub/test/init-config.test.ts::managed provisioning preserves hosts and unknown keys across every section": 0.004259
   },
   "allow": {
     "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire same-name retry": {
