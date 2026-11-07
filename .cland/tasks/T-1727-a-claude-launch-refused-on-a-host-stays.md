@@ -2,8 +2,8 @@
 id: T-1727
 kind: task
 title: A Claude launch refused on a host stays "still supervised; cleanup is pending" with no generation receipt, blocking a relaunch of that name
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: qa
 topic: topic-1414
 branch: t/T-1727-a-claude-launch-refused-on-a-host-stays
 created: 2026-11-06T16:38:40.126Z
-updated: 2026-11-06T22:10:59.528Z
+updated: 2026-11-07T00:14:57.653Z
+closed: 2026-11-07T00:14:57.653Z
 ---
 
 ## Summary
@@ -145,3 +146,17 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-17270: final same-head clear,C1/C2verified. Independently parsed A-17269 exit0 hub5361/base5210, five empty failure arrays, matching reconstructed projectiondcaaca699c65e036c47d00e06c5a99620d218f70. All12same/other-name and4native-owner identities pass; both rootrefusals immediately retry, lost/sent outcomes retain exact fences.12new component identities each base+5distinct loadpass; closure4pass. T0/T1/allT2/changedT3twofiles67identities once/Web complete; remainingT3deferred,T4unrun. Linuxx64Node24.21/Shell1248CfT156 provenance checked; lifetime/cost unavailable in retainedlog, notzero. Qualified prior native/source evidence remains separately labelled; failedA-17252retained. Affected after-stageQA separate.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-06T23:05:13.112Z
+
+coord: re-enqueued fa013de2 once, under the flaky-rerun rule.
+
+Batch 4152adf9 failed only `transport-forwards` C1: two unexplained `MainThrea` loopback listeners, the T-1670 signature. The same symptom occurred first in batch 3fb8c70b with T-1604 alone (A-16451), before T-1727 existed.
+
+At fa013de2, impl-1727 ran the file 5 times sequentially, 30/30 passing, at load 2.3–2.8 (A-17282). The file's static import closure reaches `ssh-host.ts`, `agent/command.ts` and `agent/server.ts`, but the C1 case exercises `SshTransport`, `serveAgent` and the hello probe. It does not exercise `Host.run`, `launchClaude` or `run-host`, which are the paths T-1727 changes. No source change of T-1727 opens a TCP listener.
+
+T-1670 is promoted into E-1533 stage 2 and is being worked by impl-1670. If the re-enqueued batch fails on the same signature again, it is T-1670's.
+
+### coord · 2026-11-07T00:14:57.653Z
+
+Merged a03310d3c6562b590d94fdcf8683d2de0147dd94 onto dev.

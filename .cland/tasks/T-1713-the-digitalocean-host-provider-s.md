@@ -2,8 +2,8 @@
 id: T-1713
 kind: task
 title: The DigitalOcean host provider's machines
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1410
 branch: t/T-1713-the-digitalocean-host-provider-s
 created: 2026-11-06T10:48:21.140Z
-updated: 2026-11-06T22:28:46.189Z
+updated: 2026-11-06T23:36:10.296Z
+closed: 2026-11-06T23:36:10.296Z
 ---
 
 ## Summary
@@ -203,3 +204,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at37b1176c; C1-C6 verified. Source clear A-17267 unchanged. Independently streamed all24 provider base passes and120 passing load test receipts (five per exact name), including eight generated reusable contract outcomes and keyed real preparePools→registry refusal; fake34, host-prepare7, host-secret17, web-authority47 and deadline6 base controls pass. Fresh configured1638d60f/A-17271 overall0,5299pass/0fail/cancel/skip/todo; T0/T1/fallback allT2/Web0; T3/T4 unexecuted. Uncached Linuxx64 kernel6.8.0-147 droplet c8lon1 Node24.21/Nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4; capturetree4097ab78 is the matching T0 host gate, not repeated remotely. Read all36 fresh original named executor outcomes in A-17268 at exact37b, macOSarm64/Node24.21, per-file native close0/signalnull; no prior-head carry used. Report-only budget/lint/ratchet/skip findings retained. Full evidence A-17276: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17276-t-1713-final-evidence-with-corrected-contract-count.md; supersedes A-17275 only to correct contract generated-outcome count (eight including declarations). No findings; affected after-stage QA/merge coverage separate. Reviewer reads only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-06T23:36:10.296Z
+
+Merged 30145b7c67b135268befec8f352dd603673c5c71 onto dev.

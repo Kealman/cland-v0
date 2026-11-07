@@ -2,8 +2,8 @@
 id: T-1723
 kind: task
 title: A ready host receives cland's whole code tree for its version (CLI, spoke and the Claude Code mod)
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1413
 branch: t/T-1723-a-ready-host-receives-cland-s-whole-code
 created: 2026-11-06T11:10:54.543Z
-updated: 2026-11-06T22:30:16.870Z
+updated: 2026-11-06T23:36:54.071Z
+closed: 2026-11-06T23:36:54.071Z
 ---
 
 ## Summary
@@ -34,15 +35,19 @@ The version handoff (hub/src/host/code-delivery.ts) ships only the host agent's 
 - [x] C1. Delivering to a fake host's scratch home installs `<code>/<version>` with `hub/bin/cland.ts`, `hub/bin/cland-spoke.ts` and `hub/mod/cland`, each file matching the manifest digest (test).
   - verified: rev-37 [reviewer] · run rev-37-1723-evidence-1 · 2026-11-06T21:56:40.140Z · commit cf52670f7b6dc3749b4bf1e97851415a58f1db99
   - done: impl-1723 · 2026-11-06T22:29:56.324Z
+  - verified: rev-37 [reviewer] · run rev-37-1723-delta-1 · 2026-11-06T22:33:14.377Z · commit b2f4f7394aff1c3b1102b43489cb12ace9e2c4a7
 - [x] C2. A second delivery of the same version and digest copies nothing, and a changed digest replaces the tree atomically, never leaving a half-written version directory (test).
   - verified: rev-37 [reviewer] · run rev-37-1723-evidence-1 · 2026-11-06T21:56:40.140Z · commit cf52670f7b6dc3749b4bf1e97851415a58f1db99
   - done: impl-1723 · 2026-11-06T22:29:56.626Z
+  - verified: rev-37 [reviewer] · run rev-37-1723-delta-1 · 2026-11-06T22:33:14.377Z · commit b2f4f7394aff1c3b1102b43489cb12ace9e2c4a7
 - [x] C3. The delivered spoke and CLI start from that tree on the fake host and answer `--version` with the hub's version (test).
   - verified: rev-37 [reviewer] · run rev-37-1723-evidence-1 · 2026-11-06T21:56:40.140Z · commit cf52670f7b6dc3749b4bf1e97851415a58f1db99
   - done: impl-1723 · 2026-11-06T22:29:56.838Z
+  - verified: rev-37 [reviewer] · run rev-37-1723-delta-1 · 2026-11-06T22:33:14.377Z · commit b2f4f7394aff1c3b1102b43489cb12ace9e2c4a7
 - [x] C4. The agent bundle tests (host-agent-restart, host-agent-closure and the version-handoff cases) pass with no test edited.
   - verified: rev-37 [reviewer] · run rev-37-1723-evidence-1 · 2026-11-06T21:56:40.140Z · commit cf52670f7b6dc3749b4bf1e97851415a58f1db99
   - done: impl-1723 · 2026-11-06T22:29:57.169Z
+  - verified: rev-37 [reviewer] · run rev-37-1723-delta-1 · 2026-11-06T22:33:14.377Z · commit b2f4f7394aff1c3b1102b43489cb12ace9e2c4a7
 
 ## Comments
 
@@ -187,3 +192,37 @@ Reviewer performed source/log reads only, no tests/typecheck/browser, edits, mer
 A-17263: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17263-t-1723-final-runtime-evidence-at-cf52670f.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-37 · 2026-11-06T22:33:14.377Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1723-delta-1
+commit: b2f4f7394aff1c3b1102b43489cb12ace9e2c4a7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+No findings. Authorized dev merge reviewed against both parents: both duration allowances occur exactly once with unchanged values; report mode remains unchanged. Runtime delivery implementation, native assertions and agent preservation paths/tests are unchanged. A-17278 records the review and evidence limits. Exact-head native A-17277: 3/3 pass (two top-level plus nested held fixture), macOS arm64 Node24.21.0, producer exit0; merged-head full typecheck reported exit0. Coordinator decisions 82967aef/facdefd7 explicitly carry configured 53b160ab/A-17258 (5273 passes at parent cf52670f7, Linux x64 droplet, Headless Shell1248) under rule6; no merged-head configured run claimed. T0/allT1/fallback allT2/changed runtime T3 once/Web completed in that carried run; remaining T3 deferred, T4 unexecuted, budgets/lint/ratchet report-only. C1-C3 refreshed with current native evidence plus authorized carry; C4 unchanged-path predecessor preservation carry A-17217/A-17261 as assessed in A-17263. C1-C4 verified. T-1730 and after-stage QA remain separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-06T22:33:36.146Z
+
+coord: rule 6/7 carry, enqueued at b2f4f739.
+
+Verify 53b160ab passed at the reviewed cf52670f (A-17258). b2f4f739 is a merge of dev at e6e7fb44 (T-1716, T-1704, T-1714) on top of it. The combined diff (`git show --cc`) shows manual resolution in only two files:
+- `hub/test/durations.json`, where both allowance entries are kept and each key appears once;
+- `hub/README.md`, where both paragraphs are kept.
+
+No product or test line of T-1723 changed. At the merged head:
+- the delta review is clear;
+- C1–C4 are verified;
+- `npm run typecheck` passes;
+- `host-runtime-delivery` passes 3/3 native.
+The verify carries over, and the batch runs T1+T3 on the integrated tree.
+
+### coord · 2026-11-06T23:36:54.071Z
+
+Merged e4328d076885584ecbce2d4334306a434ac4bd25 onto dev.
