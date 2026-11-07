@@ -38,7 +38,7 @@ node=${CLAND_HOST_NODE:-node}
 agent_birth() {
     "$1" --input-type=module -e 'const {pathToFileURL}=await import("node:url");const {observeProcesses}=await import(pathToFileURL(process.argv[1]).href);const row=(await observeProcesses([Number(process.argv[2])],process.env)).get(Number(process.argv[2]));if(row?.identity&&!row.ended)process.stdout.write(row.identity);' "$(dirname "$verifier")/native.ts" "$2"
 }
-selected_version=$("$node" -e 'try{const p=require("node:path"),f=process.argv[1];if(f.endsWith("/entry.ts"))process.stdout.write(JSON.parse(require("node:fs").readFileSync(p.resolve(p.dirname(f),"../../../../agent-manifest.json"),"utf8")).version);}catch{}' -- "${2:-}")
+selected_version=$("$node" --input-type=module -e 'try{const {pathToFileURL}=await import("node:url"),p=await import("node:path");const {readAgentManifest}=await import(pathToFileURL(process.argv[1]).href);const f=process.argv[2];if(f.endsWith("/entry.ts"))process.stdout.write((await readAgentManifest(p.resolve(p.dirname(f),"../../../.."))).version);}catch{}' "$verifier" "${2:-}")
 while :; do
     "$@" </dev/null &
     agent=$!
@@ -54,15 +54,15 @@ while :; do
                 rm -f "$code/restart"
                 continue
             fi
-            if [ -n "$version" ] && "$node" --input-type=module -e 'const {pathToFileURL}=await import("node:url");const {verifyAgentPackage}=await import(pathToFileURL(process.argv[1]).href);await verifyAgentPackage(process.argv[2],process.argv[3]);' "$verifier" "$code/$version" "$version"; then
+            if [ -n "$version" ] && generation=$("$node" --input-type=module -e 'const {pathToFileURL}=await import("node:url");const {verifyAgentPackage}=await import(pathToFileURL(process.argv[1]).href);process.stdout.write(await verifyAgentPackage(process.argv[2],process.argv[3]));' "$verifier" "$code/$version" "$version"); then
                 if ! "$node" --input-type=module -e 'const {pathToFileURL}=await import("node:url");const {signalAgentChild}=await import(pathToFileURL(process.argv[1]).href);if(!await signalAgentChild(Number(process.argv[2]),process.argv[3],process.env))process.exit(1);' "$(dirname "$verifier")/restart.ts" "$agent" "$birth"; then
                     echo 'agent restart birth unavailable or changed; nothing signalled' >&2
                     sleep 0.2
                     continue
                 fi
                 selected_version=$version
-                verifier=$code/$version/hub/src/host/agent/package.ts
-                set -- "$node" "$code/$version/hub/src/host/agent/entry.ts"
+                verifier=$generation/hub/src/host/agent/package.ts
+                set -- "$node" "$generation/hub/src/host/agent/entry.ts"
                 rm -f "$code/restart"
                 break
             fi

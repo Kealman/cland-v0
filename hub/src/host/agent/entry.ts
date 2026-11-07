@@ -3,11 +3,10 @@ import './restart.ts';
 import { observeProcesses } from './native.ts';
 import { checkpoint } from './storage.ts';
 export const supervisorSource = new URL('./supervisor.sh',import.meta.url);
-import { readFile } from 'node:fs/promises';
-import { verifyAgentPackage } from './package.ts';
+import { verifyAgentPackage, readAgentManifest } from './package.ts';
 import { fileURLToPath } from 'node:url';
 import { serveAgent } from './server.ts';
-const manifest = JSON.parse(await readFile(new URL('../../../../agent-manifest.json', import.meta.url), 'utf8'));
+const manifest = await readAgentManifest(fileURLToPath(new URL('../../../../',import.meta.url)));
 if(process.argv[2]==='--verify') {await verifyAgentPackage(fileURLToPath(new URL('../../../../',import.meta.url)).replace(/\/$/,''),process.argv[3]!);process.exit(0);}
 const secret = process.env.CLAND_HOST_SECRET, runDir = process.env.CLAND_HOST_RUN_DIR;
 if (!secret || !runDir) throw new Error('host agent environment required');

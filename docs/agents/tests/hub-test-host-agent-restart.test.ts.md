@@ -55,3 +55,17 @@ without signalling. A live unowned asynchronous SessionEnd writer instead keeps
 that generation's private files and explicit incomplete report; the writer stays
 alive and no recovery signal is sent. The original null result is checked for a
 restore request without report options.
+
+T-1730 migrates only whole-runtime handoff assumptions, each marked in source:
+offline npm installation, whole bundle and runtime manifest, digest-reuse copy
+count under lost replies, replay/consecutive upgrades and adopted-worker handoff.
+Standalone corrupt/escape, close/join and legacy-directory tests remain intact.
+The closure test retains its committed graph and prior hello-shape regressions.
+
+`T-1730 supervisor launches verified generation after version pointer changes`
+starts current-source V1, verifies V2, then the scripted Node system boundary
+atomically swaps V2's pointer immediately before the old child's signal helper.
+A positive swap receipt and changed canonical pointer prove the injection. The
+replacement must publish V2 readiness and authenticate while the deliberately
+unverified entry's launch receipt stays absent. This guards the v0.4-onward
+composition boundary; no released version before v0.4 contained hosts.

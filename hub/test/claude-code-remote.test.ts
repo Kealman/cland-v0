@@ -3,7 +3,7 @@
 import test, {type TestContext} from 'node:test';
 import assert from 'node:assert/strict';
 import { testWaitMs } from './until.ts';
-import { readFile, symlink, readdir, stat, chmod } from 'node:fs/promises';
+import { readFile, symlink, readdir, stat, chmod, mkdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { projectHub, connectUi, fakeClaude, eventually, startDaemon, killDaemon } from './harness.ts';
@@ -18,8 +18,11 @@ import { AgentClient } from '../src/host/agent-client.ts';
 import { FakeClock } from './fake-clock.ts';
 import { observeProcesses } from '../src/host/agent/native.ts';
 import { systemProcesses } from '../src/system-processes.ts';
+import { spawn } from 'node:child_process';
+import { ownProcess } from './process-cleanup.ts';
+import { deliverRuntime, agentVersionHandoff } from '../src/host/code-delivery.ts';
 
-async function remoteClaudeFixture(t:TestContext, options:{nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
+async function remoteClaudeFixture(t:TestContext, options:{upgrade?:boolean;nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
  let replySocket:import('node:net').Socket|undefined,nativeAbortHeld=false;
  const f=await sshHostFixture(t,{startTransport:false,...(options.nativeRefusal==='aborted'?{beforeRun:async(signal:AbortSignal)=>{
    if(nativeAbortHeld)return;nativeAbortHeld=true;
@@ -28,7 +31,27 @@ async function remoteClaudeFixture(t:TestContext, options:{nativeRefusal?:'abort
  }}:{}),...(options.sentAbort?{afterOperation:(op:string,socket:import('node:net').Socket)=>{if(op==='run-host'&&!replySocket){replySocket=socket;socket.cork();}}}:{}),...(options.signals||options.stopHooks?{processHooks:{...options.stopHooks,...(options.signals?{beforeSignals:async(targets:readonly {pid:number;identity:string}[])=>{options.signals!.push(...targets);await options.stopHooks?.beforeSignals?.(targets);}}:{})}}:{})});
  const fake=await fakeClaude(t,{awaitSignals:options.awaitSignals??true,stopCrash:options.stopCrash??false});
  await options.setup?.(f,fake);
- const code=join(f.fake.home,'code');await symlink(new URL('../../',import.meta.url).pathname,code);
+ let code=join(f.fake.home,'code');
+ if(options.upgrade){
+  await f.transport.start();await eventually('upgrade carrier up',()=>f.transport.status().state==='up'||undefined,testWaitMs());
+  const codeRoot=join(f.fake.home,'.cland-host/code'),bin=join(f.root,'offline-bin');await mkdir(bin);
+  await writeFile(join(bin,'npm'),`#!/bin/sh\nln -s '${new URL('../../node_modules',import.meta.url).pathname}' node_modules\n`,{mode:0o700});
+  const execute=f.transport.execute.bind(f.transport);
+  f.transport.execute=script=>execute(`export PATH='${bin}':"$PATH"\n`+script);
+  f.env.CLAND_SCP_BIN=new URL('./fakes/fake-scp.ts',import.meta.url).pathname;
+  await deliverRuntime({transport:f.transport,codeRoot,node:process.execPath,version:'V1'});
+  await f.host.close();await f.agent.close();
+  const child=spawn('sh',[join(codeRoot,'V1/hub/src/host/agent/supervisor.sh'),f.fake.run,process.execPath,join(codeRoot,'V1/hub/src/host/agent/entry.ts')],{cwd:f.fake.home,env:fixtureEnvironment(f.root,process.env,{...f.env,CLAND_HOST_RUN_DIR:f.fake.run,CLAND_HOST_SECRET:f.secrets.readSecret('f1')}),stdio:'ignore'});
+  f.addCleanup(ownProcess(undefined,child.pid));
+  await eventually('V1 supervised readiness',async()=>{try{return JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8')).version==='V1'||undefined;}catch{return undefined;}},testWaitMs());
+  const handoff=agentVersionHandoff({transport:f.transport,codeRoot,node:process.execPath,version:'V2'});
+  await handoff.update('V1',new AbortController().signal);
+  await eventually('V2 durable agent readiness',async()=>{try{return JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8')).version==='V2'||undefined;}catch{return undefined;}},testWaitMs());
+  const upgraded=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'));
+  assert.equal(upgraded.hello.version,'V2');await upgraded.close();await handoff.ready();
+  await f.transport.stop();
+  code=join(codeRoot,'V2');
+ }else await symlink(new URL('../../',import.meta.url).pathname,code);
  const remote={...f.layout,node:process.execPath,cli:join(code,'hub/bin/cland.ts'),spoke:join(code,'hub/bin/cland-spoke.ts'),modDir:join(code,'hub/mod/cland')};
  let carrier:SshTransport,launchedAdapter:ClaudeCodeAdapter;let credential='';let pruneFaultInjected=false;let releaseClaude:(()=>Promise<void>)|undefined;
  const machine=sshHost({name:'f1',layout:remote,transport:{status:()=>carrier.status(),forward:(...args)=>carrier.forward(...args),unforward:(...args)=>carrier.unforward(...args)},connect:()=>AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'))});
@@ -138,6 +161,14 @@ async function joinInitialHookWriters(d:Awaited<ReturnType<typeof remoteClaudeFi
  },timeoutMs);
  assert.ok(pids.every(pid=>exits.get(pid)?.ended||!!pins.get(pid)?.identity&&!!exits.get(pid)?.identity&&exits.get(pid)!.identity!==pins.get(pid)!.identity),'every captured initial hook birth has a positive exit receipt');
 }
+
+test('T-1730 C2 upgraded runtime launches Claude with connected mod bridge',{timeout:8 * testWaitMs() + 120000},async t=>{
+ const {ui,fake,row}=await remoteClaudeFixture(t,{upgrade:true});
+ await ui.request({type:'topic.send',topic:'general',text:'@worker upgraded hello',to:['worker']});
+ await eventually('upgraded Claude bridge delivers answer',()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong:'))||undefined,testWaitMs());
+ await eventually('upgraded native turn completed',async()=>(await fake.log(row.harnessId)).includes('session.measure done')||undefined,testWaitMs());
+ assert.ok(ui.frames.some(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong:')));
+});
 
 test('remote Claude frame launch adopts its worker and delivers through host hooks and bridge', {timeout:8 * testWaitMs() + 120000},async t=>{
  const {f,fake,machine,remote,clock,ui,hub,row,nativeAlive,aliveReceipts,releaseClaude}=await remoteClaudeFixture(t);

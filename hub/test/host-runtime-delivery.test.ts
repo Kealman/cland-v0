@@ -9,7 +9,7 @@ import { spawn, type ExecFileOptionsWithStringEncoding } from 'node:child_proces
 import { createHash } from 'node:crypto';
 import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { runtimeBundle, deliverRuntime } from '../src/host/code-delivery.ts';
+import { runtimeBundle, deliverRuntime, agentVersionHandoff } from '../src/host/code-delivery.ts';
 import { remoteHostLayout, remoteCodeDirectory, remoteSupervisor } from '../src/host/remote-layout.ts';
 import { eventually } from './harness.ts';
 import { testWaitMs } from './until.ts';
@@ -86,6 +86,21 @@ test('C1-C3 whole runtime delivery verifies files, reuses digest and atomically 
  assert.notEqual(await realpath(target),first);
  assert.equal(await readFile(join(target,'shared/delivery-marker.ts'),'utf8'),'// changed runtime\n');
  assert.equal(await readFile(join(first,'hub/bin/cland.ts'),'utf8'),await readFile(join(target,'hub/bin/cland.ts'),'utf8'),'old readers retain complete tree');
+ // T-1730 C1/C3: ready V1 followed by the production handoff, with an open V1 reader.
+ const reader=await (await import('node:fs/promises')).open(join(first,'hub/bin/cland.ts'),'r');
+ try {
+  const handoff=agentVersionHandoff({transport,codeRoot,node:process.execPath,version:'V2'});
+  await handoff.update(VERSION,new AbortController().signal);
+  const v2=await runtimeBundle('V2');
+  for(const path of ['hub/bin/cland.ts','hub/bin/cland-spoke.ts','hub/mod/cland/.claude-plugin/plugin.json']){
+   const expected=v2.files.find(file=>file.path===path)!;
+   assert.equal(createHash('sha256').update(await readFile(join(codeRoot,'V2',path))).digest('hex'),expected.sha256,path);
+  }
+  for(const file of v2.files) assert.equal(createHash('sha256').update(await readFile(join(codeRoot,'V2',file.path))).digest('hex'),file.sha256,file.path);
+  await handoff.ready();
+  assert.equal(await reader.readFile('utf8'),await readFile(join(first,'hub/bin/cland.ts'),'utf8'),'V1 open reader retains its immutable generation');
+ }finally{await reader.close();}
+
 });
 
 test('held installer fixture teardown joins writer before removing its root',{timeout:testWaitMs(60000)},async t=>{

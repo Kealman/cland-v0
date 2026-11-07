@@ -89,7 +89,7 @@ the executor uses the unchanged x86_64 base. See the prepared snapshot reference
 
 Host image bootstrap: [host prelude and login-disk helper](../docs/agents/host-agent.md#host-bootstrap-and-login-disks) describes explicit user-data inputs, provider steps and the runner sudoers boundary.
 
-Whole host code delivery at ready uses `deliverRuntime` from
+Whole host code delivery at ready and version handoff uses `deliverRuntime` from
 `src/host/code-delivery.ts`: sources, CLI, spoke, Claude mod and the hub lockfile
 are verified in a sibling generation before the version symlink switches. Hosts
 need Node/npm and registry access or a prefilled cache; dependency installation

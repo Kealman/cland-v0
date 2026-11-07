@@ -3,7 +3,7 @@ import { agentDeliveryStagingPrefix } from '../state-paths.ts';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
-import { runtimePath, agentVersion } from './agent/package.ts';
+import { runtimePath, runtimeTreePath, agentVersion } from './agent/package.ts';
 import type { SshTransport } from '../transport/ssh.ts';
 export const AGENT_ENTRY = 'hub/src/host/agent/entry.ts';
 export type AgentBundle = { version: string; files: Array<{path:string;sha256:string;bytes:string}> };
@@ -82,7 +82,9 @@ export async function retainAgentVersions(o:{transport:Pick<SshTransport,'execut
   await o.transport.execute(`${quote(o.node)} -e ${quote(script)} ${quote(o.codeRoot)} ${quote(o.version)} ${quote(o.previous)}\n`);
 }
 
-/** Shared handoff owner: successful publication fences redelivery while the
+/** Whole-runtime compatibility begins at v0.4.0, the first host release; its
+ * ready flow installs the whole runtime. Earlier dev-only agents are unsupported.
+ * Shared handoff owner: successful publication fences redelivery while the
  * supervisor is still replacing its child. Retention follows the matching hello. */
 export function agentVersionHandoff(o:{transport:Partial<Pick<SshTransport,'copyFile'|'execute'>>;codeRoot:string;node:string;version:string;bundle?:AgentBundle}) {
   let delivered=false,previousVersion:string|undefined;
@@ -91,7 +93,9 @@ export function agentVersionHandoff(o:{transport:Partial<Pick<SshTransport,'copy
       if(delivered)return;
       if(!o.transport.copyFile||!o.transport.execute)throw new Error('host code delivery unavailable');
       previousVersion??=previous;
-      await deliverAgent({...o,transport:o.transport as Pick<SshTransport,'copyFile'|'execute'>,signal});
+      await deliverRuntime({...o,transport:o.transport as Pick<SshTransport,'copyFile'|'execute'>,signal});
+      signal.throwIfAborted();
+      await o.transport.execute(`set -eu\numask 077\nprintf '%s' ${quote(o.version)} > ${quote(join(o.codeRoot,'restart.new'))}\nmv ${quote(join(o.codeRoot,'restart.new'))} ${quote(join(o.codeRoot,'restart'))}\n`);
       delivered=true;
     },
     ready:async()=>{
@@ -106,9 +110,7 @@ export function agentVersionHandoff(o:{transport:Partial<Pick<SshTransport,'copy
 
 const digest = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 /** Only shipped source/assets, never account files or arbitrary source-root files. */
-export function runtimeTreePath(p:string):boolean {
- return !p.split('/').some(s=>s==='..'||s==='.'||s==='') && /^(?:hub\/bin\/cland|package(?:-lock)?\.json|hub\/package\.json|(?:hub\/(?:src|bin|mod\/cland)|shared)\/[A-Za-z0-9_./-]+\.(?:ts|js|json|sh|md))$/.test(p);
-}
+export { runtimeTreePath } from './agent/package.ts';
 export async function runtimeBundle(version:string, root=fileURLToPath(new URL('../../..',import.meta.url))):Promise<AgentBundle> {
  agentVersion(version);
  const paths=['package.json','package-lock.json','hub/package.json'];

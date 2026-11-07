@@ -10888,6 +10888,20 @@
       "expires": "2026-11-13",
       "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [4.535327, 5.671381792]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 9.074211s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 7.733943333s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction."
     },
+    "hub/test/host-agent-restart.test.ts::T-1730 supervisor launches verified generation after version pointer changes": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1730: macOS arm64 local Node24.21.0 green sample4.518385208s for current-source V1 ready, V2 install and verified-generation selection under controlled pointer swap at native signal boundary. Includes fixture/assertions/joined cleanup; excludes driver startup. ceil(1.5 x1.6 x4.518385208)=11s projects Linux, no Linux sample claimed. No browser/provider/network; scripted offline npm. Report-mode policy unchanged."
+    },
+    "hub/test/claude-code-remote.test.ts::T-1730 C2 upgraded runtime launches Claude with connected mod bridge": {
+      "seconds": 13,
+      "owner": "C-216",
+      "added": "2026-11-07",
+      "expires": "2026-11-13",
+      "reason": "T-1730: macOS arm64 local Node24.21.0 passing sample 5.292036375s, includes fake SSH ready V1/handoff V2, supervised agent restart, Claude frame launch and connected mod bridge answer, joined fixture cleanup. ceil(1.5 x1.6 x5.292036375)=13s uses Linux projection, no Linux execution claimed. No browser/provider/network; npm seam scripted offline. Duration policy report mode."
+    },
     "hub/test/host-runtime-delivery.test.ts::C1-C3 whole runtime delivery verifies files, reuses digest and atomically replaces CLI and spoke": {
       "seconds": 10,
       "owner": "C-216",

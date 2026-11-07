@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { mkdir, readFile, writeFile, readdir, unlink, rmdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, unlink, rmdir, realpath } from 'node:fs/promises';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownProcess } from './process-cleanup.ts';
@@ -13,7 +13,7 @@ import { eventually, fakeClaude } from './harness.ts';
 import { testWaitMs } from './until.ts';
 import { AgentClient, restoreAdoptedWorkers } from '../src/host/agent-client.ts';
 import { sshHost } from '../src/host/ssh-host.ts';
-import { agentBundle, deliverAgent, retainAgentVersions, INSTALL_AGENT, agentVersionHandoff } from '../src/host/code-delivery.ts';
+import { deliverRuntime, runtimeBundle, agentBundle, deliverAgent, retainAgentVersions, INSTALL_AGENT, agentVersionHandoff } from '../src/host/code-delivery.ts';
 import { verifyAgentPackage } from '../src/host/agent/package.ts';
 import { hostControl } from './fakes/fake-host.ts';
 const supervisor=new URL('../src/host/agent/supervisor.sh',import.meta.url).pathname;
@@ -22,12 +22,21 @@ const cli=new URL('../bin/cland.ts',import.meta.url).pathname;
 // native installations, replay controls and upgrades, each with setup receipts.
 const KILL_TO_RECONCILED_TABLE_MS=5000;
 const VERSION_DELIVERY_TIMEOUT_MS=testWaitMs(90_000);
+// T-1730 migration: whole-runtime handoffs need installed production dependencies.
+// The native installer boundary is offline; no registry/network is exercised.
+async function offlineRuntime(f:Awaited<ReturnType<typeof sshHostFixture>>) {
+ const bin=join(f.root,'offline-bin');await mkdir(bin);
+ await writeFile(join(bin,'npm'),`#!/bin/sh\nln -s '${new URL('../../node_modules',import.meta.url).pathname}' node_modules\n`,{mode:0o700});
+ const execute=f.transport.execute.bind(f.transport);
+ f.transport.execute=script=>execute(`export PATH='${bin}':"$PATH"\n`+script);
+}
+
 for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'kill-agent'} reconnect reads retained table without signalling harness`,{timeout:mismatch?VERSION_DELIVERY_TIMEOUT_MS:20000},async t=>{
  const f=await sshHostFixture(t);await f.host.close();
  f.env.CLAND_SCP_BIN=new URL('./fakes/fake-scp.ts',import.meta.url).pathname;
  const env=fixtureEnvironment(f.root,process.env,{...f.env,CLAND_HOST_RUN_DIR:f.fake.run,CLAND_HOST_SECRET:f.secrets.readSecret('f1'),CLAND_VERSION_OVERRIDE:'old'});
  const codeRoot=join(f.fake.home,'.cland-host/code');
- if(mismatch){await deliverAgent({transport:f.transport,node:process.execPath,codeRoot,version:'old'});await unlink(join(codeRoot,'restart'));}
+ if(mismatch){await offlineRuntime(f);await deliverAgent({transport:f.transport,node:process.execPath,codeRoot,version:'old'});await unlink(join(codeRoot,'restart'));}
  await f.agent.close();
  const initial=mismatch?[join(codeRoot,'old/hub/src/host/agent/supervisor.sh'),f.fake.run,process.execPath,join(codeRoot,'old/hub/src/host/agent/entry.ts')]:[supervisor,f.fake.run,process.execPath,cli,'host','serve'];
  const child=spawn('sh',initial,{cwd:f.fake.home,env:fixtureEnvironment(f.root,process.env,env),stdio:['ignore','ignore','pipe']});
@@ -49,14 +58,20 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
  await writeFile(join(sourceRoot,'.env'),planted);await writeFile(join(sourceRoot,'hub/src/host/agent/account.json'),planted);
  assert.equal(await readFile(join(sourceRoot,'.env'),'utf8'),planted,'planted source-tree positive control');
  await writeFile(join(sourceRoot,'hub/src/host/agent/closure.json'),await readFile(new URL('../src/host/agent/closure.json',import.meta.url)));
- const bundle=await agentBundle('new',sourceRoot);
+ const closureBundle=await agentBundle('new',sourceRoot);
+ // T-1730 migration: handoff sources use the whole runtime; closure secret-exclusion control stays legacy.
+ const bundle=mismatch?await runtimeBundle('new'):closureBundle;
  assert.ok(bundle.files.length>10);assert.ok(bundle.files.some(file=>file.path.endsWith('/bootstrap.ts')));
- for(const file of bundle.files)assert.ok(!Buffer.from(file.bytes,'base64').includes(Buffer.from(planted)));
- let injected=false,lostInstallReply=false,lostPublicationReply=false,commands=0;
+ for(const file of closureBundle.files)assert.ok(!Buffer.from(file.bytes,'base64').includes(Buffer.from(planted)));
+ let injected=false,lostInstallReply=false,lostPublicationReply=false;
  const transport={copyFile:async(source:string,destination:string)=>{deliveries++;await f.transport.copyFile(source,destination);},execute:async(script:string)=>{
   if(!injected&&script.includes('restart.new')){injected=true;throw new Error('injected publication interruption after install');}
   await f.transport.execute(script);
-  if(++commands===2&&!lostInstallReply){lostInstallReply=true;throw new Error('injected lost accepted install reply');}
+  // T-1730 migration: drop the actual successful runtime installer reply, never a reuse probe.
+  if(script.includes('runtime manifest hash')&&script.includes('.runtime-input-')&&!lostInstallReply){
+   assert.equal(JSON.parse(await readFile(join(codeRoot,'new/runtime-manifest.json'),'utf8')).version,'new');
+   lostInstallReply=true;throw new Error('injected lost accepted install reply');
+  }
   if(!lostPublicationReply&&script.includes('restart.new')){
    await eventually('accepted replacement durable readiness before lost publication reply',async()=>{try{return JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8')).version==='new'||undefined;}catch{return undefined;}},testWaitMs());
    lostPublicationReply=true;throw new Error('injected lost accepted restart-publication reply');
@@ -73,10 +88,12 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
   assert.ok(performance.now()-start<KILL_TO_RECONCILED_TABLE_MS); // lint-allow-wall-clock: C1 measures kill-to-reconciled running table, not hello.
  } else {
   await eventually('new version retained table',()=>tables.find(rows=>rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive)),testWaitMs());
-  assert.equal(deliveries,3);assert.equal(lostInstallReply,true);assert.equal(injected,true);assert.equal(lostPublicationReply,true);
+  assert.equal(deliveries,1); // T-1730 migration: digest reuse avoids repeated whole-runtime upload.
+  assert.equal(lostInstallReply,true);assert.equal(injected,true);assert.equal(lostPublicationReply,true);
   await verifyAgentPackage(join(codeRoot,'new'),'new');
-  const installedManifest=await readFile(join(codeRoot,'new/agent-manifest.json'),'utf8');assert.ok(!installedManifest.includes(planted));
-  assert.ok(!(await readdir(join(codeRoot,'new'))).includes('node_modules'),'standalone runtime needs no repository dependencies');
+  // T-1730 migration: handoff persists runtime-manifest rather than agent-manifest.
+  const installedManifest=await readFile(join(codeRoot,'new/runtime-manifest.json'),'utf8');assert.ok(!installedManifest.includes(planted));
+  assert.ok((await readdir(join(codeRoot,'new'))).includes('node_modules'),'T-1730 migration: whole runtime installs dependencies');
   await retainAgentVersions({transport:f.transport,node:process.execPath,codeRoot,version:'new',previous:'old'});
  }
  await direct.close();direct=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'));
@@ -84,7 +101,7 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
  if(mismatch){
    const applied=JSON.parse(await readFile(join(codeRoot,'applied.json'),'utf8'));
    assert.equal(applied.pid,direct.hello.pid);
-   await deliverAgent({transport:f.transport,node:process.execPath,codeRoot,version:'new',bundle});
+   await agentVersionHandoff({transport:f.transport,node:process.execPath,codeRoot,version:'new',bundle}).update('old',new AbortController().signal); // T-1730 migration: replay the whole-runtime selection
    const replay=await eventually('duplicate selection durable no-replay receipt',async()=>{try{const result=JSON.parse(await readFile(join(codeRoot,'restart-result.json'),'utf8'));return result.version==='new'&&result.outcome==='already-selected'?result:undefined;}catch{return undefined;}},testWaitMs());
    assert.equal(replay.pid,applied.pid);assert.equal(replay.identity,applied.identity);
    assert.equal((await direct.request('hello',{protocol:1,secret:f.secrets.readSecret('f1')}) as {pid:number}).pid,applied.pid);
@@ -101,7 +118,7 @@ for(const mismatch of [false,true])test(`C1-C3 ${mismatch?'version delivery':'ki
   let previous='new';
   for(const version of ['third','fourth']){
    await direct.close();
-   await deliverAgent({transport:f.transport,node:process.execPath,codeRoot,version});
+   await agentVersionHandoff({transport:f.transport,node:process.execPath,codeRoot,version}).update(previous,new AbortController().signal); // T-1730 migration: consecutive runtime versions
    direct=await eventually('consecutive upgrade hello '+version,async()=>{const next=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);if(next&&next.hello.version!==version){await next.close();return undefined;}return next;},testWaitMs());
    const rows=await direct.request('processes',{}) as Array<{pid:number;identity:string;alive:boolean}>;
    assert.ok(rows.some(row=>row.pid===worker.pid&&row.identity===worker.identity&&row.alive));
@@ -184,6 +201,7 @@ test('registry loads in scratch runtime with development packages unavailable',{
 
 test('C3 adopted Claude worker survives version replacement with receipt authority and no signal',{timeout:20000},async t=>{
  const f=await sshHostFixture(t),fake=await fakeClaude(t,{awaitSignals:true,ignoreTerm:true});
+ await offlineRuntime(f); // T-1730 migration: adopted-worker handoff now installs whole runtime
  f.env.CLAND_SCP_BIN=new URL('./fakes/fake-scp.ts',import.meta.url).pathname;
  const generation=randomUUID(),settings=join(f.fake.run,'sessions','a'.repeat(64),generation,'settings.json');
  await mkdir(dirname(settings),{recursive:true,mode:0o700});
@@ -271,4 +289,37 @@ for(const withOrphan of [false,true])test(`Claude exit during agent downtime kee
  const proof=join(f.fake.home,'healthy-mutation');await recovered.writeFile(proof,Buffer.from('available'));
  assert.equal(await readFile(proof,'utf8'),'available');
  assert.deepEqual(signals,[]);
+});
+
+// v0.4 is the first host release: V1 deliberately uses this item's ready sources.
+test('T-1730 supervisor launches verified generation after version pointer changes',{timeout:testWaitMs(30000)},async t=>{
+ const f=await sshHostFixture(t);await f.host.close();await offlineRuntime(f);
+ f.env.CLAND_SCP_BIN=new URL('./fakes/fake-scp.ts',import.meta.url).pathname;
+ const codeRoot=join(f.fake.home,'.cland-host/code');
+ for(const version of ['V1','V2'])await deliverRuntime({transport:f.transport,codeRoot,node:process.execPath,version});
+ const verified=await realpath(join(codeRoot,'V2'));
+ const unverified=join(codeRoot,'.runtime-V2-unverified'),bad=join(f.root,'unverified-launched'),swapped=join(f.root,'pointer-swapped');
+ await mkdir(join(unverified,'hub/src/host/agent'),{recursive:true});
+ await writeFile(join(unverified,'hub/src/host/agent/entry.ts'),`import fs from 'node:fs';fs.writeFileSync(${JSON.stringify(bad)},'launched');setInterval(()=>{},1000);`);
+ const wrapper=join(f.root,'node-wrapper');
+ const swap=`const fs=require('node:fs');const target=${JSON.stringify(join(codeRoot,'V2'))};fs.symlinkSync(${JSON.stringify(unverified)},target+'.next');fs.renameSync(target+'.next',target);fs.writeFileSync(${JSON.stringify(swapped)},'swapped');`;
+ const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
+ await writeFile(wrapper,`#!/bin/sh\ncase "$*" in *signalAgentChild*) '${process.execPath}' -e ${quote(swap)} ;; esac\nexec '${process.execPath}' "$@"\n`,{mode:0o700});
+ await f.agent.close();
+ const child=spawn('sh',[join(codeRoot,'V1/hub/src/host/agent/supervisor.sh'),f.fake.run,process.execPath,join(codeRoot,'V1/hub/src/host/agent/entry.ts')],{cwd:f.fake.home,env:fixtureEnvironment(f.root,process.env,{...f.env,CLAND_HOST_NODE:wrapper,CLAND_HOST_RUN_DIR:f.fake.run,CLAND_HOST_SECRET:f.secrets.readSecret('f1')}),stdio:'ignore'});
+ f.addCleanup(ownProcess(undefined,child.pid));
+ const applied=join(codeRoot,'applied.json');
+ await eventually('V1 durable readiness before pointer race',async()=>{try{return JSON.parse(await readFile(applied,'utf8')).version==='V1'||undefined;}catch{return undefined;}},testWaitMs());
+ await agentVersionHandoff({transport:f.transport,codeRoot,node:process.execPath,version:'V2'}).update('V1',new AbortController().signal);
+ const result=await eventually('verified generation readiness or unverified launch receipt',async()=>{
+  if(await readFile(bad,'utf8').catch(()=>''))return 'unverified';
+  try{if(JSON.parse(await readFile(applied,'utf8')).version==='V2')return 'verified';}catch{}
+ },testWaitMs());
+ assert.equal(await readFile(swapped,'utf8'),'swapped','positive pointer-swap receipt');
+ assert.equal(await realpath(join(codeRoot,'V2')),await realpath(unverified));
+ assert.equal(result,'verified','supervisor must launch the generation verified before the signal');
+ const client=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'));f.addCleanup(()=>client.close());
+ assert.equal(client.hello.version,'V2');
+ assert.ok(await readFile(join(verified,'hub/src/host/agent/entry.ts'))); // original verified generation remains readable
+ await assert.rejects(readFile(bad),{code:'ENOENT'});
 });

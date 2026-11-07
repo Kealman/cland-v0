@@ -33,3 +33,8 @@ shared cleanup owner uses SIGKILL, so the test does not rely on a TERM handler. 
 Native command owners bind to TestContext immediately, and `beforeDirectories`
 joins close receipts before `ownDirectory` removes fixture roots, including on
 cancellation. Commands use sealed environments; npm remains fully scripted/offline.
+
+T-1730 extends the same case through `agentVersionHandoff`: ready V1 then V2
+checks CLI/spoke/mod explicitly and every source against V2 bundle hashes. An open
+V1 file reader spans handoff and ready retention and reads the original generation
+before it closes. The production handoff uses the identical installer seam.

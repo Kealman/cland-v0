@@ -253,9 +253,9 @@ Each source file is verified against its SHA-256 digest before and after npm.
 A complete immutable sibling generation is selected by atomically renaming a
 version symlink. Failed staging leaves the old pointer intact. Old generations
 are retained for running readers. Existing non-symlink version directories refuse
-replacement; migration requires a new version name. The standalone agent handoff
-below keeps its own immutable-directory/manifest protocol unchanged. Later version
-handoffs remain closure-only until the whole-runtime upgrade integration in T-1730. Fake registry
+replacement; migration requires a new version name. Version handoffs use the same whole-runtime delivery, dependency installation and
+atomic pointer mechanism. Legacy closure packages remain readable; a new handoff
+uses a new version name when the old version occupies a directory. Fake registry
 hosts continue to use the hub's installed tree; scratch delivery tests separately
 prove the whole-tree path. See the [delivery test guide](tests/hub-test-host-runtime-delivery.test.ts.md).
 
@@ -264,13 +264,22 @@ runtime tree; it prints the same version as `cland --version` and exits.
 
 ## Agent package and version replacement
 
+Whole-runtime handoff compatibility starts at v0.4.0, the first release with
+host agents. The first v0.4 host is made ready with the whole runtime by the
+provider ready flow. Earlier unreleased dev-agent supervisors are outside this
+compatibility boundary. `git ls-tree v0.3.2` has neither agent supervisor nor
+package verifier. The current-source V1→V2 composition guard installs V1 from
+the shipped source, then proves its supervisor/verifier accept V2's symlinked
+runtime and Claude's mod bridge connects through that upgraded tree.
+
+
 `hub/bin/generate-host-agent-closure.ts` derives the runtime from
 `host/agent/entry.ts` through literal import/export, dynamic-import and native
 bootstrap/supervisor URL edges. It writes the committed `host/agent/closure.json`
 projection (paths and SHA-256 hashes). A T1 regeneration test rejects stale
 projections. Runtime delivery reads that projection and verifies its source
 hashes; it loads no compiler. Run `node hub/bin/generate-host-agent-closure.ts`
-after changing the runtime. The standalone agent handoff uses this committed graph. Only
+after changing the runtime. The legacy standalone agent installer uses this committed graph; production version handoffs use the whole runtime. Only
 Node built-ins, agent source modules and the credential-filter leaf are admitted.
 There are currently no npm dependencies in this closure; a package import refuses
 delivery until it is explicitly vendored. The standalone runtime requires Node
@@ -286,18 +295,19 @@ On a mismatched hello, the registry copies the bundle over the existing SSH
 ControlMaster with pinned known-hosts and no independent-connection fallback.
 The shared `agentVersionHandoff` owner fences a successful publication while the
 supervisor replaces its child; a matching hello also settles a lost publication
-reply. The host checks paths and hashes, writes a private staging directory under
-`code`, verifies the written package and atomically renames it to VERSION.
-Failed or partial staging directories cannot be selected. Existing version
-directories are immutable: an occupied version is verified against every incoming
-manifest path/hash and reused only when identical. A retry after installation or
-restart-publication interruption can therefore complete without replacing code.
+reply. The host checks the whole runtime manifest and source digests, installs production
+dependencies, then atomically selects its immutable generation through VERSION.
+The agent and supervisor accept `runtime-manifest.json` and the sibling version
+symlink; legacy `agent-manifest.json` directories remain supported. A matching
+whole-runtime digest is reused after installation or publication interruption.
 
 Only after installation does a private `code/restart` request select VERSION.
 The supervisor uses `CLAND_HOST_NODE` for its Node helpers and replacement
 entrypoint, defaulting to `node` on PATH. SSH bootstrap sets it to the layout's
 pinned Node runtime; the initial agent command may independently use an exec
-wrapper. The supervisor validates the manifest, rechecks its directly launched agent's
+wrapper. Verification returns the canonical generation; the supervisor captures
+that identity before effects and uses it for the entrypoint and future verifier,
+even if the version pointer changes in between. The supervisor validates the manifest, rechecks its directly launched agent's
 native birth and sends SIGTERM to that child alone, waits for it, then starts
 the selected standalone entrypoint. Before launching it, the supervisor advances
 its verifier path to that selected package, so later retention can remove its
@@ -307,8 +317,10 @@ not signal it again. The standalone agent checkpoints `code/applied.json` only
 after socket/process-table readiness, with version and its native PID/birth.
 Shutdown joins that readiness checkpoint. Harnesses have independent lifetimes.
 After the new authenticated hello and retained-table read, retention keeps the
-current version and the previous hello's version. Older manifested packages
-are pruned; unknown directories are preserved.
+current version and the previous hello's version. Older legacy manifested directories
+are pruned; runtime symlinks and immutable generations remain for running readers,
+as do unknown directories. The supervisor pins its selected entrypoint and verifier
+to the resolved generation so later pointer replacement cannot change those readers.
 
 SSH Host owns one reconnect driver, retrying every 500 ms while active. Each recovery
 acquisition reads `processes` and exact native completion receipts before it

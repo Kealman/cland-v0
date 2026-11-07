@@ -210,3 +210,11 @@ cannot race the later cancel frame. The one-shot hold is absent from retries.
 The missing-executable path deliberately contains `cleanup incomplete`: typed
 no-process proof must outrank those incidental diagnostic words when prepared
 results are persisted. Untyped and truly incomplete controls stay fenced.
+
+`T-1730 C2 upgraded runtime launches Claude with connected mod bridge` installs
+whole runtime V1 with scripted offline npm, starts its native supervisor, hands
+off V2, and waits separately for each durable applied version receipt. It checks
+the authenticated V2 hello before launching Claude through the delivered CLI,
+spoke and mod paths. A routed message must return a `pong:` message over the
+mod bridge and a completed native turn receipt. It uses no browser or real Claude.
+The fixture owns the supervisor and joins all writers before root removal.
