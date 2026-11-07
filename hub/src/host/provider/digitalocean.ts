@@ -1,17 +1,17 @@
 import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DigitalOceanApi, DigitalOceanError, RateLimited } from '../../executor/droplet/api.ts';
+import { DigitalOceanApi, DigitalOceanError, RateLimited, type BlockVolume, type Action } from '../../executor/droplet/api.ts';
 import { digitalOceanRequestsPerMinute } from '../../executor/droplet/endpoint.ts';
 import { projectTag } from '../../executor/droplet/droplet.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import { declareHostProvider, type HostProviderDeclarations, type HostProviderDeclarationState } from './declarations.ts';
-import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult } from './provider.ts';
+import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult, DeleteVolumeResult } from './provider.ts';
 
 export type ReapTarget = { machineId?: string | undefined; keyName?: string | undefined };
 export type DigitalOceanHostProviderOptions = {
   root: string; env: NodeJS.ProcessEnv; api?: DigitalOceanApi; clock?: Clock;
-  size?: string; image?: string | number;
+  size?: string; image?: string | number; pool?: string;
   /** Owner holds its admission lock, checks the exact target and either skips
    * (undefined) or joins remove() before releasing the lock. No host ownership
    * can be published for this target while remove is in flight. Before calling
@@ -23,8 +23,8 @@ export type DigitalOceanHostProviderOptions = {
   /** Compatibility only: a snapshot without admitReap cannot authorize reap. */
   ownedMachineIds?: () => Promise<ReadonlySet<string>>;
 };
-type Record = { name: string; project: string; pool: string; tags: string[]; keyName: string; keyId?: number; dropletId?: number; machine?: Machine; privateKey: string; retiring?: boolean };
-/** Machine provisioning only. One registry owns a state root; operations serialize.
+type Record = { region?: string; name: string; project: string; pool: string; tags: string[]; keyName: string; keyId?: number; dropletId?: number; machine?: Machine; privateKey: string; retiring?: boolean };
+/** Machine and volume provisioning. One registry owns a state root; operations serialize.
  * intent-*.json persists name/tags/key before POST; unknown creates stay recoverable.
  * image.json contains only { image }, a configured-image receipt. T-1719 replaces
  * this file with pool recipe preparation; it is not the executor snapshot record. */
@@ -60,6 +60,7 @@ export class DigitalOceanHostProvider implements HostProvider {
   readonly #clock: Clock;
   readonly #directory: string;
   #createRetryAt = 0;
+  readonly #snapshotRefusals = new Map<string, { identity: string; retryAt: number }>();
   #tail: Promise<unknown> = Promise.resolve();
   constructor(options: DigitalOceanHostProviderOptions) {
     this.#options = options; this.#clock = options.clock ?? realClock;
@@ -83,6 +84,7 @@ export class DigitalOceanHostProvider implements HostProvider {
   #save(record: Record): Promise<void> { return this.#write(`intent-${record.name.slice('cland-host-'.length)}.json`, record); }
   acquire(options: AcquireOptions): Promise<AcquireResult> { return this.#serial(async () => {
     if (!['lon1', 'fra1', 'ams3'].includes(options.region ?? 'lon1')) return { state: 'failed', reason: 'region unsupported' };
+    if (this.#options.pool !== undefined && this.#options.pool !== options.pool) return { state: 'failed', reason: 'machine pool mismatch' };
     if (options.architecture !== 'x86_64' || !options.project || !/^[a-zA-Z0-9-]+$/.test(options.pool)) return { state: 'failed', reason: 'machine options unsupported' };
     // No project setting can enable production host.create before pool admission.
     if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean host acquisition is test-only', retryAt: new Date(this.#clock.now().getTime() + 60_000).toISOString() };
@@ -98,7 +100,7 @@ export class DigitalOceanHostProvider implements HostProvider {
       const pair = generateKeyPairSync('ed25519');
       const publicBytes = Buffer.from(pair.publicKey.export({ format: 'jwk' }).x!, 'base64url');
       const prefix = Buffer.from('0000000b7373682d6564323535313900000020', 'hex');
-      const record: Record = { name: `cland-host-${id}`, project: options.project, pool: options.pool, tags: ['cland', tag, `cland-pool-${options.pool}`, `cland-host-${id}`], keyName: `${tag}-pool-${options.pool}-host-${id}`, privateKey: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() };
+      const record: Record = { name: `cland-host-${id}`, project: options.project, pool: options.pool, region: options.region ?? 'lon1', tags: ['cland', tag, `cland-pool-${options.pool}`, `cland-host-${id}`], keyName: `${tag}-pool-${options.pool}-host-${id}`, privateKey: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() };
       await this.#save(record);
       const key = await this.#api.importKey(record.keyName, `ssh-ed25519 ${Buffer.concat([prefix, publicBytes]).toString('base64')}`);
       record.keyId = key.id; await this.#save(record);
@@ -233,12 +235,82 @@ export class DigitalOceanHostProvider implements HostProvider {
       await this.#write('image.json', { image }); return { state: 'prepared', summary: 'configured image recorded' };
     } catch { return { state: 'failed', reason: 'configured image unavailable' }; }
   }); }
-  async createVolume() { return { state: 'failed' as const, reason: 'DigitalOcean volumes unsupported' }; }
-  async listVolumes() { return { state: 'failed' as const, reason: 'DigitalOcean volumes unsupported' }; }
-  async attachVolume() { return { state: 'failed' as const, reason: 'DigitalOcean volumes unsupported' }; }
-  async detachVolume() { return { state: 'failed' as const, reason: 'DigitalOcean volumes unsupported' }; }
-  async snapshotVolume() { return { state: 'failed' as const, reason: 'DigitalOcean volumes unsupported' }; }
-  async deleteVolume() { return { state: 'incomplete' as const, reason: 'DigitalOcean volumes unsupported' }; }
+  // Volume creates share the machine creation pause: account-wide 429s must
+  // not cascade through a second resource type. Snapshot window refusals keep
+  // their native retry time; the API also applies its shared token budget.
+  createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult> { return this.#serial(async () => {
+    try {
+      const pools = new Set((await this.#records()).filter(r => r.project === options.project).map(r => r.pool));
+      const pool = this.#options.pool ?? (pools.size === 1 ? [...pools][0] : undefined);
+      if (!pool) return { state: 'refused', reason: 'volume pool unavailable' };
+      if (!/^[a-zA-Z0-9-]+$/.test(pool) || !options.project || options.sizeGiB !== 1 || !['lon1', 'fra1', 'ams3'].includes(options.region)) return { state: 'failed', reason: 'volume options unsupported' };
+      if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean volume acquisition is test-only' };
+      if (this.#clock.now().getTime() < this.#createRetryAt) return { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(this.#createRetryAt).toISOString() };
+      const volume = await this.#api.createVolume({ name: options.name, region: options.region, size_gigabytes: 1, tags: ['cland', projectTag(this.#options.root, options.project), `cland-pool-${pool}`] });
+      return { state: 'created', volume: this.#volume(volume, options.project) };
+    } catch (e) {
+      if (e instanceof RateLimited) { this.#pauseUntil(e.retryAt); return { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(this.#createRetryAt).toISOString() }; }
+      return { state: 'failed', reason: 'DigitalOcean volume create unconfirmed' };
+    }
+  }); }
+  #volume(v: BlockVolume, project: string): Volume { return { id: v.id, name: v.name, project, region: v.region.slug, sizeGiB: v.size_gigabytes, created: v.created_at, attachedTo: v.droplet_ids[0] === undefined ? null : String(v.droplet_ids[0]) }; }
+  async #ownedVolume(volume: Volume): Promise<BlockVolume> {
+    const v = await this.#api.volume(volume.id);
+    if (!v.tags.includes('cland') || !v.tags.includes(projectTag(this.#options.root, volume.project)) || v.name !== volume.name || v.region.slug !== volume.region || v.created_at !== volume.created || v.size_gigabytes !== volume.sizeGiB) throw new Error('volume identity mismatch');
+    return v;
+  }
+  listVolumes(options: { project: string }): Promise<ListVolumesResult> { return this.#serial(async () => {
+    try { const tag = projectTag(this.#options.root, options.project); return { state: 'listed', volumes: (await this.#api.volumes(tag)).filter(v => v.tags.includes('cland') && v.tags.includes(tag)).map(v => this.#volume(v, options.project)) }; }
+    catch { return { state: 'failed', reason: 'DigitalOcean volume inventory failed' }; }
+  }); }
+  async #awaitVolumeAction(action: Action): Promise<void> {
+    const deadline = this.#clock.now().getTime() + 60000;
+    while (action.status === 'in-progress') {
+      action = await this.#api.action(action.id, deadline);
+      if (action.status === 'in-progress') await new Promise<void>(resolve => this.#clock.setTimeout(resolve, 100));
+    }
+    if (action.status !== 'completed') throw new Error('volume action failed');
+  }
+  attachVolume(volume: Volume, machine: Machine): Promise<AttachVolumeResult> { return this.#serial(async () => await this.#attachment(volume, machine, 'attach') as AttachVolumeResult); }
+  detachVolume(volume: Volume, machine: Machine): Promise<DetachVolumeResult> { return this.#serial(async () => await this.#attachment(volume, machine, 'detach') as DetachVolumeResult); }
+  async #attachment(volume: Volume, machine: Machine, type: 'attach' | 'detach'): Promise<AttachVolumeResult | DetachVolumeResult> {
+    try {
+      const record = await this.#record(machine), v = await this.#ownedVolume(volume);
+      if (record.project !== volume.project) return { state: 'refused', reason: 'project mismatch' };
+      const created = this.#options.pool && this.#options.pool !== record.pool;
+      if (created) return { state: 'failed', reason: 'machine pool mismatch' };
+      const observed = await this.#api.droplet(Number(machine.id));
+      if (observed.id !== Number(machine.id) || observed.status !== 'active') return { state: 'refused', reason: 'machine unavailable' };
+      if (!v.tags.includes(`cland-pool-${record.pool}`)) return { state: 'failed', reason: 'volume pool mismatch' };
+      // The admitted create intent supplies the region independently of caller data.
+      if (record.region !== volume.region) return { state: 'refused', reason: 'region mismatch' };
+      if (v.droplet_ids.some(id => String(id) !== machine.id)) return { state: 'refused', reason: 'attached elsewhere' };
+      if (type === 'attach' ? v.droplet_ids.length === 0 : v.droplet_ids.length > 0) await this.#awaitVolumeAction(await this.#api.volumeAction(v.id, type, Number(machine.id), volume.region));
+      return type === 'attach' ? { state: 'attached' } : { state: 'detached' };
+    } catch { return { state: 'failed', reason: 'DigitalOcean volume action unconfirmed' }; }
+  }
+  snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
+    const identity = JSON.stringify([volume.id, volume.project, volume.name, volume.region, volume.sizeGiB, volume.created]);
+    const known = this.#snapshotRefusals.get(volume.id);
+    if (known?.identity === identity && this.#clock.now().getTime() < known.retryAt) return { state: 'refused', reason: 'rate limited', retryAt: new Date(known.retryAt).toISOString() };
+    let validated = false;
+    try { await this.#ownedVolume(volume); validated = true; const snapshot = await this.#api.volumeSnapshot(volume.id, `cland-${randomUUID()}`); return { state: 'snapshotted', snapshot: { id: snapshot.id, volumeId: volume.id, created: snapshot.created_at } }; }
+    catch (e) {
+      if (e instanceof RateLimited && e.retryAt !== undefined) {
+        if (validated) this.#snapshotRefusals.set(volume.id, { identity, retryAt: e.retryAt });
+        return { state: 'refused', reason: 'rate limited', retryAt: new Date(e.retryAt).toISOString() };
+      }
+      return { state: 'failed', reason: 'DigitalOcean volume snapshot unconfirmed' };
+    }
+  }); }
+  deleteVolume(volume: Volume): Promise<DeleteVolumeResult> { return this.#serial(async () => {
+    try {
+      try { const v = await this.#ownedVolume(volume); if (v.droplet_ids.length) return { state: 'refused', reason: 'attached' }; }
+      catch (e) { if (!(e instanceof DigitalOceanError && e.status === 404)) throw e; }
+      await this.#api.deleteVolume(volume.id); return { state: 'deleted' };
+    } catch { return { state: 'incomplete', reason: 'DigitalOcean volume not deleted' }; }
+  }); }
+
 }
 function missing(e: unknown): boolean { return (e as NodeJS.ErrnoException).code === 'ENOENT'; }
 

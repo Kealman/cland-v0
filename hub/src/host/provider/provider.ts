@@ -33,7 +33,7 @@ export interface HostProvider {
 
 export type Volume = { id: string; project: string; name: string; region: string; sizeGiB: number; created: string; attachedTo: string | null };
 export type CreateVolumeOptions = { project: string; name: string; region: string; sizeGiB: number };
-export type CreateVolumeResult = { state: 'created'; volume: Volume } | Failed;
+export type CreateVolumeResult = { state: 'created'; volume: Volume } | { state: 'refused'; reason: string; retryAt?: string } | Failed;
 export type DeleteVolumeResult = { state: 'deleted' } | { state: 'incomplete'; reason: string } | { state: 'refused'; reason: 'attached' };
 export type ListVolumesResult = { state: 'listed'; volumes: Volume[] } | Failed;
 

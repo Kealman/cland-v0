@@ -13,7 +13,7 @@ import { createServer } from 'node:http';
 import { cp, mkdir, mkdtemp, writeFile, rm, readFile, copyFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
+import type { BlockVolume, Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
 
 /** Provider boundary: never retains Authorization in its request log. */
 export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock; requestsPerMinute?: number } = {}) {
@@ -51,6 +51,8 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const actions = new Map<number, { action: Action; type: string; polls: number; complete: () => Promise<void> }>();
   const droplets: Droplet[] = [];
   const keys: Key[] = [];
+  const volumes: BlockVolume[] = [];
+  const volumeSnapshotAt = new Map<string, number>();
   const sizes: Size[] = [{ slug: 'c-8', available: true, price_hourly: 0.25, disk: 50, regions: ['lon1', 'nyc1'] }];
   const regions: Region[] = [{ slug: 'lon1', available: true, sizes: ['c-8'] }, { slug: 'nyc1', available: true, sizes: ['c-8'] }];
   const requests: { method: string; path: string; body: Record<string, unknown> | null }[] = [];
@@ -90,7 +92,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { volumeDelete404Reads: 0, loseVolumeCreateResponse: 0, loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
@@ -110,6 +112,41 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
     if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await wait(faults.getDelayMs);
     const answer = (status: number, value?: unknown) => ({ status, value });
+    if (path === '/volumes' && method === 'POST') {
+      const volume: BlockVolume = { id: `volume-${nextId++}`, name: String(body!.name), tags: body!.tags as string[], region: { slug: String(body!.region) }, size_gigabytes: Number(body!.size_gigabytes), created_at: clock.now().toISOString(), droplet_ids: [] };
+      volumes.push(volume);
+      if (faults.loseVolumeCreateResponse > 0) { faults.loseVolumeCreateResponse--; throw new DigitalOceanError(0, 'transport', 'volume create reply lost'); }
+      return answer(201, { volume });
+    }
+    if (path === '/volumes' && method === 'GET') return answer(200, { volumes: volumes.filter(v => !url.searchParams.get('tag_name') || v.tags.includes(url.searchParams.get('tag_name')!)) });
+    const volumePath = /^\/volumes\/([^/]+)(?:\/(actions|snapshots))?$/.exec(path);
+    if (volumePath) {
+      const index = volumes.findIndex(v => v.id === volumePath[1]);
+      if (index < 0) return answer(404, { id: 'not_found', message: 'absent' });
+      const volume = volumes[index]!;
+      if (!volumePath[2] && method === 'GET') return answer(200, { volume });
+      if (!volumePath[2] && method === 'DELETE') {
+        if (faults.volumeDelete404Reads > 0) { faults.volumeDelete404Reads--; return answer(404, { id: 'not_found', message: 'split answer' }); }
+        if (volume.droplet_ids.length) return answer(422, { id: 'attached', message: 'attached' });
+        volumes.splice(index, 1); return answer(204);
+      }
+      if (volumePath[2] === 'snapshots' && method === 'POST') {
+        const now = clock.now().getTime(), previous = volumeSnapshotAt.get(volume.id);
+        if (previous !== undefined && now < previous + 600000) return { status: 429, value: { id: 'snapshot_rate_limited', message: 'snapshot window' }, headers: { 'Retry-After': String((previous + 600000 - now) / 1000) } };
+        const snapshot = { id: `volume-snapshot-${nextId++}`, created_at: clock.now().toISOString() };
+        volumeSnapshotAt.set(volume.id, now);
+        return answer(201, { snapshot });
+      }
+      if (volumePath[2] === 'actions' && method === 'POST') {
+        const type = String(body!.type), droplet = Number(body!.droplet_id);
+        if (!droplets.some(d => d.id === droplet)) return answer(404, { id: 'not_found', message: 'machine absent' });
+        const pending = [...actions.values()].some(a => a.action.status === 'in-progress' && a.action.resource_id === undefined && a.type === `volume:${volume.id}`);
+        if (pending || volume.droplet_ids.some(id => id !== droplet)) return answer(422, { id: 'attached_elsewhere', message: 'attached elsewhere' });
+        const action: Action = { id: nextId++, status: 'in-progress' };
+        actions.set(action.id, { action, type: `volume:${volume.id}`, polls: 0, complete: async () => { volume.droplet_ids = type === 'attach' ? [droplet] : []; } });
+        return answer(202, { action });
+      }
+    }
     if (method === 'GET' && /^\/images\/[^/]+$/.test(path)) { const id = path.split('/').at(-1)!; const image = id === 'ubuntu-24-04-x64' ? { id } : images.find(i => String(i.id) === id); return image ? answer(200, { image }) : answer(404, { id: 'not_found', message: 'absent' }); }
     if (method === 'GET' && path === '/account') return answer(200, { account });
     if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
@@ -319,7 +356,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   });
 
   let closing: Promise<void> | undefined;
-  return { provider, url, account, droplets, keys, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot: (image: SnapshotImage, key: unknown) => admit(() => seedSnapshot(image, key)),
+  return { provider, url, account, droplets, keys, volumes, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot: (image: SnapshotImage, key: unknown) => admit(() => seedSnapshot(image, key)),
     setMachineFaults: (value: Partial<typeof machineFaults>) => admit(async () => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); }),
     beforeDropletRead: (check: (id: number) => Promise<void>) => { beforeDropletRead = check; },
     beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },

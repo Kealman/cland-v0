@@ -5,6 +5,8 @@ export type Size = { slug: string; available: boolean; price_hourly: number; reg
 export type Region = { slug: string; available: boolean; sizes: string[] };
 export type Key = { id: number; name: string; public_key: string };
 export type Droplet = { id: number; name: string; tags: string[]; created_at: string; status: string; networks: { v4: { type: string; ip_address: string }[] } };
+export type BlockVolume = { id: string; name: string; tags: string[]; region: { slug: string }; size_gigabytes: number; created_at: string; droplet_ids: number[] };
+export type BlockVolumeSnapshot = { id: string; created_at: string };
 export type CreateDroplet = { name: string; tags: string[]; size: string; region: string; image: string | number; ssh_keys: number[]; user_data?: string };
 
 export type Action = { id: number; status: 'in-progress' | 'completed' | 'errored'; resource_id?: number; type?: string };
@@ -147,6 +149,12 @@ export class DigitalOceanApi {
       if (++page > 10000) throw new DigitalOceanError(0, 'response', 'pagination limit reached');
     }
   }
+  volumes(tag: string, deadline?: number): Promise<BlockVolume[]> { return this.#list(`/volumes?tag_name=${encodeURIComponent(tag)}`, 'volumes', deadline); }
+  async volume(id: string, deadline?: number): Promise<BlockVolume> { return (await this.#call<{ volume: BlockVolume }>('GET', `/volumes/${encodeURIComponent(id)}`, undefined, deadline)).volume; }
+  async createVolume(input: { name: string; region: string; size_gigabytes: number; tags: string[] }, deadline?: number): Promise<BlockVolume> { return (await this.#call<{ volume: BlockVolume }>('POST', '/volumes', input, deadline)).volume; }
+  async volumeAction(id: string, type: 'attach' | 'detach', dropletId: number, region: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/volumes/${encodeURIComponent(id)}/actions`, { type, droplet_id: dropletId, region }, deadline)).action; }
+  async volumeSnapshot(id: string, name: string, deadline?: number): Promise<BlockVolumeSnapshot> { return (await this.#call<{ snapshot: BlockVolumeSnapshot }>('POST', `/volumes/${encodeURIComponent(id)}/snapshots`, { name }, deadline)).snapshot; }
+  deleteVolume(id: string, deadline?: number): Promise<void> { return this.#confirmedDelete(`/volumes/${encodeURIComponent(id)}`, deadline); }
   async image(id: string | number, deadline?: number): Promise<unknown> { return (await this.#call<{ image: unknown }>('GET', `/images/${encodeURIComponent(id)}`, undefined, deadline)).image; }
   async account(deadline?: number): Promise<unknown> { return (await this.#call<{ account: unknown }>('GET', '/account', undefined, deadline)).account; }
   sizes(deadline?: number): Promise<Size[]> { return this.#list('/sizes', 'sizes', deadline); }

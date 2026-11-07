@@ -49,7 +49,7 @@ attachedTo machine id. Acquire accepts an optional region; existing fake request
 without it use `fake-1`. The fake stores the machine region privately, preserving
 the existing Machine shape and requests.
 
-Create returns created or failed. Attach/detach return attached/detached, failed,
+Create returns created, failed, or a typed refusal with a reason and optional ISO retryAt. Attach/detach return attached/detached, failed,
 or a typed refusal (attached elsewhere, region mismatch, project mismatch or
 machine unavailable). Attachment requires a ready machine in the same project
 and region. Same-machine attach and already-detached detach are idempotent;
@@ -190,8 +190,7 @@ return current, and missing images fail. It builds no image. Recipe preparation
 replaces that receipt in its own item. Keyed pool requests from `host.prepare`
 return a typed unsupported failure before any API call or receipt write until
 DigitalOcean recipe preparation is implemented. They never claim a base image
-satisfies a pool recipe key. Volume operations currently return typed
-unsupported outcomes. See the [machine test guide](../agents/tests/hub-test-host-provider-digitalocean.test.ts.md).
+satisfies a pool recipe key. See the [machine test guide](../agents/tests/hub-test-host-provider-digitalocean.test.ts.md).
 
 The advertised API budget uses the shared production endpoint default. An explicit
 test endpoint declaration may change transport pacing; it does not change the
@@ -201,6 +200,32 @@ Provider intents checkpoint pending retirement before deletion and remain pendin
 until the owner callback returns its durable settlement acknowledgement. Pending
 intents reconcile independently of droplet/key inventories, including after both
 resources have disappeared or the owner acknowledgement was lost.
+
+### DigitalOcean volumes
+
+Volume creation uses the same injected-API and disposable-root fence as machine
+acquisition. It creates 1 GiB in lon1, fra1 or ams3 with cland, project and pool
+tags. The provider's configured `pool` also constrains machine acquire inputs;
+without it, volume creation resolves one unambiguous pool from that project's
+persisted acquire intents. Missing or ambiguous pool context refuses before API
+calls. No default pool is invented. CreateVolumeOptions remains unchanged.
+Machine and volume creates share the provider creation pause. All volume calls
+use DigitalOceanApi's endpoint/token pacing budget. The provider holds the raw
+API: only action polling passes an explicit deadline. The additive volume
+argument map also keeps the executor's bounded-provider wrapper compatible.
+
+Attach and detach observe machine readiness, project, pool and region identity,
+refuse another attachment as `attached elsewhere`, and await the DigitalOcean
+action's `completed` receipt with a 60 second deadline. An errored action or
+unknown response fails conservatively. List filters by project tag; delete
+confirms absence with GET even when DELETE returns 404. Snapshot's 429 returns
+`rate limited` and the API header's retryAt. Repeated calls for that exact
+volume identity return the cached refusal before any wire call until expiry;
+expiry permits an explicit caller retry and never automatically replays it. The fake models a 10 minute snapshot
+window, a single attachment and opt-in split-delete/lost-reply faults, all off
+by default. The lost-create reply occurs after the fake volume is stored.
+No cloud operation or disk contents are exercised by the tests; see the
+[DigitalOcean volume cases](../agents/tests/hub-test-host-provider-digitalocean-volumes.test.ts.md).
 
 ## Pool images
 

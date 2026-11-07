@@ -11,7 +11,7 @@ The runnable entry calls `hostProviderVolumeContract('fake', factory,
 `.test.ts` file so standalone load repetitions resolve native test identities.
 The contract module is provider-generic; the factory supplies region names,
 readiness, a snapshot-window clock advance and normal/ignored-volume-delete
-fault scenarios. T-1717 can reuse it with the fake DigitalOcean API.
+fault scenarios. The DigitalOcean volume entry also invokes it with the scripted fake API.
 
 Required generated names:
 
