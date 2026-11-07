@@ -2,8 +2,8 @@
 id: T-1715
 kind: task
 title: DigitalOcean declarations and refused creates
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1417
 branch: t/T-1715-digitalocean-declarations-and-refused
 created: 2026-11-06T10:48:33.314Z
-updated: 2026-11-07T00:18:06.943Z
+updated: 2026-11-07T00:57:09.056Z
+closed: 2026-11-07T00:57:09.056Z
 ---
 
 ## Summary
@@ -33,12 +34,16 @@ Declarations read through the API, and a per-provider pause that holds every cre
 
 - [x] C1. The declared live price per size equals the fake API's `price_hourly`, the machine limit equals its `/account` `droplet_limit`, and the declarations pass the contract suite (test).
   - done: impl-1715 · 2026-11-06T23:41:53.230Z
+  - verified: rev-35 [reviewer] · run rev-35-1715-final-1 · 2026-11-07T00:19:53.205Z · commit d8989d02ea3f9f6955ad76658cdd184a32653470
 - [x] C2. A create answered 429 is reported `refused` with its retry time and succeeds on one retry after it (test).
   - done: impl-1715 · 2026-11-06T23:41:54.018Z
+  - verified: rev-35 [reviewer] · run rev-35-1715-final-1 · 2026-11-07T00:19:53.205Z · commit d8989d02ea3f9f6955ad76658cdd184a32653470
 - [x] C3. While the pause holds, a second and a third create send no POST, and after it exactly one POST per create is sent (test).
   - done: impl-1715 · 2026-11-06T23:56:58.252Z
+  - verified: rev-35 [reviewer] · run rev-35-1715-final-1 · 2026-11-07T00:19:53.205Z · commit d8989d02ea3f9f6955ad76658cdd184a32653470
 - [x] C4. A 422 droplet-limit refusal is paused and retried the same way, and the refusal text never carries the token (test).
   - done: impl-1715 · 2026-11-06T23:41:55.658Z
+  - verified: rev-35 [reviewer] · run rev-35-1715-final-1 · 2026-11-07T00:19:53.205Z · commit d8989d02ea3f9f6955ad76658cdd184a32653470
 
 ## Comments
 
@@ -86,3 +91,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-17306: corrected cumulative source clear. Prearmed beforeClose fences new admission/releases/joins latest acquire ahead of API/root disposal, plus finally joins typed initial receipt. Shared explicit2x setup and default34s derived watchdog resolve A-17304; assertions/product unchanged. Prior accepted-ID/monotonic-pause production findings remain resolved. A-17305 corrected32pass/Hubtypecheck0 source/signal limits inspected; intermediate typecheck failure and mixed-head lint remain labelled. Current historical C3failed/donefalse should be restored by claimant after implementation validation; C1–C4 unverified pending exact-head directed preservation +configured evidence. Obey Coordinator slot; affected after-stageQA separate.
+
+### rev-35 · 2026-11-07T00:19:53.205Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1715-final-1
+commit: d8989d02ea3f9f6955ad76658cdd184a32653470
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-17318: final same-head clear,C1–C4verified. A-17313 exit0 hub5315/base5179passes, four empty failure arrays, all32provider cases and8new identities eachbase+5distinctloadpass. APIdeclarations/last-good,429/422exactretry, held second/thirdnoAPI, acceptedGET429ownedfailure/reap and monotonic concurrentpause positive. Independently reconstructed matchingprojection0764e4d0f81b03eaea9bf833b4bcc54abe6d0169. T0/T1/allT2/Webcomplete; remainingT3batch/T4unrun. A-17307 exact-head unchangedexecutor36/36 raw logs+propagatedexit0 inspected, perchildsignalsunknown. Qualified earlier source/intermediate failures retained. No livecloud/after-stageQAclaim; QAseparate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-07T00:57:09.056Z
+
+Merged 7d88dbc0d43e97a7a2ba9aeed37a3487d21d7753 onto dev.

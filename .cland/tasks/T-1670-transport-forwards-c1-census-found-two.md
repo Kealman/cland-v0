@@ -2,8 +2,8 @@
 id: T-1670
 kind: task
 title: transport-forwards C1 census found two unexplained 127.0.0.1 TCP listeners once on a Linux droplet and names no owner
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1416
 branch: t/T-1670-transport-forwards-c1-census-found-two
 created: 2026-11-04T02:14:08.309Z
-updated: 2026-11-07T00:18:54.992Z
+updated: 2026-11-07T00:57:23.967Z
+closed: 2026-11-07T00:57:23.967Z
 ---
 
 ## Summary
@@ -32,9 +33,11 @@ On a census mismatch, the test reports each censused PID's command line and nati
 - [x] C1. A census failure in this file names each offending PID's command and start identity and the reason it was censused (test with a planted listener).
   - done: impl-1670 · 2026-11-06T23:41:50.038Z
   - verified: rev-36 [reviewer] · run rev-36-1670-final-1 · 2026-11-07T00:17:02.296Z · commit 9213d98e4729f6bcc74d8c786ea0681e29be768e
+  - verified: rev-36 [reviewer] · run rev-36-1670-merge-1 · 2026-11-07T00:20:42.011Z · commit 80cf1151a375e98c8cd612aca2d22c0e6b580b06
 - [x] C2. The C1 case passes 20/20 next to its observed neighbour `tracker-ready-native` in a Linux `--init` container at load 8–12, and a configured droplet verify at the head is green; or the cause is identified and fixed with its own regression test (evidence).
   - done: impl-1670 · 2026-11-07T00:15:04.891Z
   - verified: rev-36 [reviewer] · run rev-36-1670-final-1 · 2026-11-07T00:17:02.296Z · commit 9213d98e4729f6bcc74d8c786ea0681e29be768e
+  - verified: rev-36 [reviewer] · run rev-36-1670-merge-1 · 2026-11-07T00:20:42.011Z · commit 80cf1151a375e98c8cd612aca2d22c0e6b580b06
 
 ## Comments
 
@@ -130,3 +133,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, C1/C2verified at9213d98e. Source A-17303 current. Independently read fresh59cf32ad/A-17308 overall0,5296pass/0fail/cancel/skip/todo; T0/T1/fallbackallT2/changedT3sixnativecases/Web0. Exact C1 planted-control/zeroTCP/forward/cancel case pass2.30747232s; seven deterministic cases each base+5pass; docs membership4pass. Independently reconstructed A-17294 raw20C1/120selectedpasses: each C1 strictly overlaps an actual tracker-ready-native generated case, complete measured Linux8.12..11.25 (meter8.51..11.25), host independent2.3081..9.1143. Driver --init/4CPUs/networknone checks each Node exit, joins burners, finalDocker0/signalnull; source/helper snapshots SHA match reviewed bytes and only index changed after. Original58Mac preservation named outcomes read with qualified close transcriptions. Fresh uncachedLinuxx64 c8lon1 Node24.21/Nvim.12.5, Headless1248/CfT156.0.8078.4; T0capture692e897e not repeated remotely. Report-only advisories retained; remainingT3/T4/affected afterstageQA separate. Prior75d5b7b2 remains red, original cause unresolvedT1732. Full details A-17312: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17312-t-1670-final-attribution-and-loaded-overlap-evidence.md. Reviewer reads only.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-36 · 2026-11-07T00:20:42.011Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1670-merge-1
+commit: 80cf1151a375e98c8cd612aca2d22c0e6b580b06
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear, C1/C2 refreshed under independently retrieved Coordinator b6d7494f waiver. Correct parents9213/a033. Strict duplicate-aware JSON comparison independently confirms base420/ours421/dev433/merged434, exact parent allowance union with every value preserved and all other sections identical. Native/helper SHA and task assertions unchanged; guide/tier additions retained. Read original merged-head typecheck producer A-17317 ending0/signalnull. Incoming dev has42changedpaths; durations-only refers to conflict resolution, not entire merge. Previous final A-17312/green59cf32ad/A-17308 at9213 plus source-linked campaign carry explicitly, not new80cf executions/cache. No item-specific integration finding. Full details A-17319: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17319-t-1670-authorized-merge-allowance-union-and-carried-criteria.md. RemainingT3/T4/affectedafterstageQA separate; prior red preserved/originalcauseT1732. Reviewer reads only.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-07T00:20:52.761Z
+
+coord: rule 6/7 carry, enqueued at 80cf1151. Verify 59cf32ad passed at the reviewed head 9213d98e (A-17308). 80cf1151 is a merge of dev after T-1727 landed, and its combined diff resolves only `hub/test/durations.json`, keeping every allowance key once. The delta review is clear and C1–C2 are verified at the merged head, so the verify carries. For C2, the evidence is the 20/20 container run next to `tracker-ready-native` at load 8–12 (A-17294) plus the green droplet verify. The open root cause is tracked as T-1732.
+
+### coord · 2026-11-07T00:57:23.967Z
+
+Merged 73bd6d4f2f1d49a116c3dd989e1cda60e030f39c onto dev.
