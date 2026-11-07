@@ -1,4 +1,4 @@
-import { validateHostTransports } from '../host/transport-config.ts';
+import { readHostPools, hostPoolsDocument, HostConfigurationError, type HostPools } from '../host/pools.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { canonicalAddress } from '../web-address.ts';
 import { isIP } from 'node:net';
@@ -19,6 +19,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 import type { HarnessId } from '../doctor/ranges.ts';
 
 export type ProjectConfig = {
+  hosts: HostPools;
   auth: { mode: 'single' | 'users' };
   name: string;
   publish: { allowPaths: string[] };
@@ -42,6 +43,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
+  hosts: readHostPools(undefined),
   auth: { mode: 'single' },
   publish: { allowPaths: ['site/**', 'docs/brand/**', 'README.md', 'LICENSE', '.github/workflows/pages.yml'] },
   release: { webBundle: false, homebrew: { tap: '' } },
@@ -86,6 +88,8 @@ export function renderConfig(c: ProjectConfig, source?: string | null): string {
   const h = c.hygiene;
   return `${MANAGED_MARK} ${VERSION} — cland update rewrites this file and keeps the values below; remove this line to take it over.
 # The project's cland settings (spec 4.9). Committed.
+
+${stringify({ hosts: hostPoolsDocument(c.hosts) })}
 
 [project]
 name = ${JSON.stringify(c.name)}
@@ -277,8 +281,8 @@ const positive = (v: unknown): number | undefined => (typeof v === 'number' && N
 /** The file's values over the defaults. Legacy wrong types are ignored unless strict validation is requested. */
 export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env, { strict = false }: { strict?: boolean } = {}): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
-  validateHostTransports(doc.hosts);
   const c = defaultConfig(fallbackName);
+  c.hosts = readHostPools(doc.hosts);
   const table = (value: unknown, key: string): Record<string, unknown> => {
     if (value === undefined) return {};
     if (!value || typeof value !== 'object' || Array.isArray(value) || value instanceof Date) throw new Error(`${key} must be a table`);
@@ -532,13 +536,14 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   return c;
 }
 
-/** What the hub runs with: the file's values, or null (the built-in defaults) when it is missing or unreadable. */
+/** Missing/unreadable legacy config falls back; invalid host policy is fatal to every reader. */
 export function readProjectConfig(path: string, root: string, refused: (error: string) => void = () => {}, env: NodeJS.ProcessEnv = process.env): ProjectConfig | null {
   const text = readText(path);
   if (text === null) return null;
   try {
     return parseConfig(text, basename(root), env);
   } catch (err) {
+    if (err instanceof HostConfigurationError) throw err;
     refused(err instanceof Error ? err.message : String(err));
     return null;
   }

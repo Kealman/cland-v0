@@ -15,3 +15,6 @@ requests, factory settings, active messenger receipts and held reload ownership.
 
 Run `node --test hub/test/init-config.test.ts` on supported Node with inherited
 `CLAND_*` variables stripped. These T1/T2 cases need no native host or browser.
+
+
+T-1738: managed init and update add daily_spend_usd 3 and lease 12h without a pool, retaining existing qa provider and harness pin on update. Preservation fixtures carry explicit slots for custom sizes.

@@ -126,7 +126,7 @@ test('setup keeps an installer open when a role requires the missing harness', a
 
 test('a declined installer persists across setup runs until an explicit install', async t => {
   const root = scratch(t);
-  let config = renderConfig(defaultConfig('project')) + preservedConfig;
+  let config = renderConfig(defaultConfig('project')).replace(/\[hosts\][\s\S]*?(?=\[project\])/, '') + preservedConfig;
   let runs = 0;
   const m: SetupMachine = {
     ...machine,

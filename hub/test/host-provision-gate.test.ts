@@ -12,11 +12,12 @@ import { FakeClock } from './fake-clock.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
 import { poolImageKey } from '../src/host/provider/pool-image.ts';
 import { createHost } from '../src/host/provision-host.ts';
+import { readHostPools } from '../src/host/pools.ts';
 
 test('never-booting creation releases at exactly 300000 ms on the hub clock', {timeout:3*testWaitMs()}, async t=>{
  const root=await tempProject(t,'pg-','/tmp'),clock=new FakeClock(new Date()),env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
  await mkdir(join(root,'.cland/run/hosts'),{recursive:true});
- await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n');
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
  await writeFile(join(root,'.cland/run/hosts/agents-image.json'),JSON.stringify({key:await poolImageKey(root,env,'fake')}));
  const store=new Store(join(root,'hub.db')),abort=new AbortController();
  const provider=new FakeHostProvider({env,neverBoot:true,now:()=>clock.now().getTime()});
@@ -65,7 +66,7 @@ test('settings entry publishes durable creating id before held acquisition compl
  const store=new Store(join(root,'hub.db')),provider=new FakeHostProvider({env}),release=Promise.withResolvers<void>();
  let id:string|undefined,acquired=false,settled=false;
  t.mock.method(provider,'acquire',async()=>{acquired=true;await release.promise;return {state:'failed' as const,reason:'held fixture acquisition'};});
- const creating=createHost({root,pool:'selected',settings:{provider:'fake',size:'fake',region:'fake-1',transport:'ssh'},clock,env,provider,records:store.hosts,owner:{} as Parameters<typeof createHost>[0]['owner'],onCreating:value=>{
+ const creating=createHost({root,pool:'selected',settings:readHostPools({selected:{provider:'fake',size:'fake',region:'fake-1',slots:8}}).pools.selected!,clock,env,provider,records:store.hosts,owner:{} as Parameters<typeof createHost>[0]['owner'],onCreating:value=>{
   assert.equal(store.hosts.provisions.get(value)?.state,'creating');id=value;
  }}).finally(()=>{settled=true;});
  onCleanup(t,async()=>{release.resolve();await creating.catch(()=>{});store.close();});

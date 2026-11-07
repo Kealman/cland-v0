@@ -10043,7 +10043,6 @@
     "hub/test/transport-config.test.ts::host transport \"tcp\" refuses start and CLI reload": 0.605688,
     "hub/test/transport-config.test.ts::host transport false refuses start and CLI reload": 0.594391,
     "hub/test/transport-config.test.ts::quoted empty pool transport is refused at startup": 0.007108,
-    "hub/test/transport-config.test.ts::ssh, omitted transport and malformed non-transport hosts keys preserve config behavior": 0.386129,
     "hub/test/transport-kind.test.ts::transport parser accepts ssh and reserves outbound for 0.4.x": 0.001306,
     "hub/test/transport-records.test.ts::host get and list reject invalid persisted transport kinds without changing ssh rows": 0.004032,
     "hub/test/user-invites.test.ts::all auth and user commands refuse authenticated session shells before mutation": 1.934039,

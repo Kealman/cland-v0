@@ -1,5 +1,8 @@
 # Stage QA brief: E-1538 stage 2 — secure cookie and the transport contract
 
+> Historical build scope (T-1738): this completed epic's brief records the pre-pool-configuration build identified in its Build section and evidence. Its host-template counts and append-hosts snippets apply only to that historical build, not current dev. Current init writes one [hosts] table; edit that existing table, require provider on every pool, and specify slots for custom sizes such as fake/c-8. Current pool config coverage and after-stage QA use docs/agents/tests/hub-test-host-pools-config.test.ts.md and E-1534's stage brief. Do not replay this brief against a post-T-1738 build without migrating its setup and expectations.
+
+
 Everything the run needs is in this file or in the files it names: whoever runs it cannot ask. Commands are for bash (zsh reads `$S:q` or `$B:h` as a modifier). The run is local, on macOS (BSD `sed -i ''`, Node 24 with `node:sqlite`, the pinned Neovim of `node nvim/bin/nvim-path.ts`). It starts real scratch hubs of the tested build on this machine with the fake `claude`, `codex` and `opencode` of `hub/test/fakes/` as their only harnesses (no session is launched), a scratch HTTPS tunnel on 127.0.0.1 with a run-made test certificate, and isolated Chrome Headless Shell instances. No real browser, no GUI, no computer use, no remote host, no droplet, no real ssh.
 
 ## Changes since the last run

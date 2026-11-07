@@ -29,3 +29,6 @@ full-help template. Adding an export requires both an exports.json mapping and a
 help.txt marker when it appears in top-level help; every older block stays frozen.
 
 T-1588 adds real `host serve --help` and `host serve -h` launches against the same sealed project. They compare the independent frozen HOST_USAGE block and retain the unchanged-project assertion; aggregate help also includes its explicit fixture placeholder.
+
+
+T-1738 updates only the frozen CONFIG_USAGE block for provider-first pool settings, defaults, lease bound and pool name/transport grammar; the CLI compatibility and top-level composition assertions remain intact.

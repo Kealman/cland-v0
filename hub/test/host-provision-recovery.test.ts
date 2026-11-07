@@ -14,7 +14,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { tempProject,projectHub,connectUi } from './harness.ts';
 for(const state of ['creating','booting','connecting','cloning'] as const)test(`restart retains interrupted ${state} as failed incomplete without replay or release`,async t=>{
  const root=await tempProject(t);await mkdir(join(root,'.cland'),{recursive:true});
- await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n');
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
  const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root}),provider=new FakeHostProvider({env});
  const acquired=await provider.acquire({project:root,pool:'agents',architecture:'arm64'});assert.equal(acquired.state,'created');if(acquired.state!=='created')return;
  const store=new Store(join(root,'.cland/hub.db'));

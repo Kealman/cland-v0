@@ -274,8 +274,7 @@ orphan recovery use the same parser.
 
 Each command reads `[hosts.<pool>]` provider, size, region and transport (`ssh`
 by default), and the exact `x.y.z` version strings in `[hosts] harnesses` (keys
-`claude-code`, `codex`, `opencode`; omitted pins are left to the renderer defaults). The remaining pool
-settings belong to the scheduler. For example:
+`claude-code`, `codex`, `opencode`; omitted pins are left to the renderer defaults). Pool capacity and lifecycle settings are described under [pool configuration](#pool-configuration). For example:
 
 ```toml
 [hosts]
@@ -283,6 +282,7 @@ harnesses = { codex = "0.50.0", claude-code = "2.0.0" }
 [hosts.agents]
 provider = "fake"
 size = "fake"
+slots = 8
 region = "fake-1"
 transport = "ssh"
 ```
@@ -403,6 +403,29 @@ admission without native creation. No wire reply or provision-record shape chang
 Readiness belongs to the host runtime owner as well as its optional caller.
 Quiesce aborts down-tunnel polling even on a frozen clock; close/remove join
 active readiness after closing the Host client and before reporting completion.
+
+
+## Pool configuration
+
+`cland init` writes `[hosts] daily_spend_usd = 3` and `lease = "12h"`
+without a pool. Managed `cland update` adds these defaults while retaining pools,
+harness pins and unknown fields. Existing unmanaged files stay unchanged.
+Start a pool with `cland config set hosts.qa.provider fake` (or `digitalocean`).
+Provider is required. Other defaults are size `s-4vcpu-8gb`, region `lon1`,
+transport `ssh`, max_hosts 2, idle_stop `20m`, spread false. Slots default to 4
+for `s-2vcpu-4gb`, 8 for `s-4vcpu-8gb`; other sizes require explicit positive
+slots. The agents pool defaults min_hosts to 1; other pools to 0. Host counts
+are nonnegative integers with min_hosts no greater than max_hosts.
+
+`hosts.lease` is a positive integer duration with s/m/h/d suffix, at least 30s;
+idle_stop uses the same duration syntax. Spend is finite and nonnegative.
+Optional `hosts.weights` overrides positive finite weights for claude-code,
+codex and opencode; scheduler owns the defaults. `hosts.harnesses` keeps exact
+x.y.z pins. Pool names use 1–64 ASCII letters, digits and hyphens, starting with
+a letter or digit. `outbound` remains refused. Pool settings validate through
+the same parser on startup, reload and config set; config set publishes them
+immediately to the running configuration owner. This configuration alone does
+not enable production DigitalOcean creation or network access.
 
 ## Placement decision core
 

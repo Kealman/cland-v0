@@ -29,7 +29,7 @@ export async function fixture(t:test.TestContext) {
  await writeFile(join(bin,'npm'),`#!/bin/sh\nln -s '${repo}node_modules' node_modules\n`,{mode:0o700});
  const env=fixtureEnvironment(root,process.env,{PATH:bin+':'+process.env.PATH,CLAND_FAKE_HOST_ROOT:root,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_SCP_BIN:new URL('./fakes/fake-scp.ts',import.meta.url).pathname});
  await mkdir(join(root,'.cland'),{recursive:true});
- await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n');
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
  const git=async(...args:string[])=>promisify(execFile)('git',args,{cwd:root,env:fixtureEnvironment(root,env)});
  await git('init','--initial-branch=main');
  await writeFile(join(root,'seed'),'territory seed\n');await git('add','seed');await git('commit','-m','seed');

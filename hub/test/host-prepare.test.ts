@@ -17,7 +17,7 @@ import { tempProject, projectHub, cland } from './harness.ts';
 test('pool prepare CLI publishes an image and then reports current', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider = "fake"\nsize = "fake"\nregion = "fake-1"\ntransport = "ssh"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider = "fake"\nsize = "fake"\nslots=8\nregion = "fake-1"\ntransport = "ssh"\n');
   await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
   const first = await cland(root, 'host', 'prepare');
   assert.equal(first.code, 0, first.stderr);
@@ -34,7 +34,7 @@ for (const [part, change] of [
 ] as const) test(`pool prepare invalidates ${part} and names the changed part`, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  const text = '[verification]\nprovision = "setup.sh"\n[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider = "fake"\nsize = "fake"\nregion = "fake-1"\n';
+  const text = '[verification]\nprovision = "setup.sh"\n[hosts]\nharnesses = { codex = "1.0.0" }\n[hosts.agents]\nprovider = "fake"\nsize = "fake"\nslots=8\nregion = "fake-1"\n';
   await writeFile(join(root, '.cland/config.toml'), text);
   await writeFile(join(root, 'setup.sh'), '# original hook\n');
   await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
@@ -49,7 +49,7 @@ for (const [part, change] of [
 test('pool prepare selects all configured pools and unknown pool names the choices', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[hosts.first]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n[hosts.second]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[hosts.first]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n[hosts.second]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
   await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
   const all = await cland(root, 'host', 'prepare');
   assert.equal(all.code, 0, all.stderr);
@@ -96,7 +96,7 @@ test('config set preserves SSH hosts and both pools before host prepare', async 
   const path = join(root, '.cland/config.toml');
   const config = defaultConfig('preservation');
   config.verification.lockPath = join(root, 'suite.lock');
-  const original = renderConfig(config) + preservedConfig;
+  const original = renderConfig(config).replace(/\[hosts\][\s\S]*?(?=\[project\])/, '') + preservedConfig;
   await writeFile(path, original);
   await writeFile(join(root, 'setup.sh'), '# fixture provision\n');
   await projectHub(t, root, { CLAND_FAKE_HOST_ROOT: root });
@@ -120,7 +120,7 @@ for (const name of ['agents_1', '-agents', '', 'a'.repeat(65), 'agents.dot', 'ag
 });
 
 test('project config read refuses underscore pool before any host command', () => {
-  assert.throws(() => parseConfig('[hosts.agents_1]\nprovider="fake"\nsize="fake"\nregion="fake-1"\n', 'fixture', {}), /letters, digits and hyphens/);
+  assert.throws(() => parseConfig('[hosts.agents_1]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n', 'fixture', {}), /letters, digits and hyphens/);
 });
 
 test('host prepare decoder shares pool grammar and preserves omitted and valid legacy frames', () => {

@@ -6,6 +6,9 @@ import { DEFAULT_VISIBILITY } from '../hub/visibility.ts';
 import { defaultConfig, parseConfig, renderConfig } from './config.ts';
 import { isManagedFile, symlinkNote, symlinkOnPath, writeAtomic } from './files.ts';
 
+import { POOL_KEYS } from '../host/pools.ts';
+import { parsePoolName } from '../host/pool-name.ts';
+
 type Table = Record<string, unknown>;
 
 export function configKeys(): string[] {
@@ -20,7 +23,7 @@ export function configKeys(): string[] {
     const assignment = /^([\w.]+)\s*=/.exec(line);
     if (assignment) keys.push(`${section}.${assignment[1]}`);
   }
-  return keys;
+  return [...keys, 'hosts.harnesses', 'hosts.weights', ...POOL_KEYS.map(key => `hosts.<pool>.${key}`)];
 }
 
 function tableAt(doc: Table, parts: string[]): Table {
@@ -50,7 +53,16 @@ function writeConfigValue(root: string, path: string, key: string, value: unknow
 
 function prepareConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): () => unknown {
   const known = configKeys();
-  if (!known.includes(key)) {
+  let poolKey = false;
+  if (key.startsWith('hosts.') && key.split('.').length >= 3) {
+    const parts = key.split('.');
+    const field = parts.pop()!;
+    const pool = parts.slice(1).join('.');
+    parsePoolName(pool);
+    if (!POOL_KEYS.some(allowed => allowed === field)) throw new Error(`unknown config key ${key}; allowed pool keys: ${POOL_KEYS.join(', ')}`);
+    poolKey = true;
+  }
+  if (!poolKey && !known.includes(key)) {
     const section = key.split('.').slice(0, -1).join('.');
     const keys = known.filter(k => k.startsWith(`${section}.`));
     throw new Error(`unknown config key ${key}; known keys${section && keys.length ? ` in ${section}` : ''}: ${(keys.length ? keys : known).join(', ')}`);
@@ -65,7 +77,7 @@ function prepareConfigValue(root: string, path: string, key: string, value: unkn
   const field = parts.pop()!;
   tableAt(doc, parts)[field] = value;
   const candidate = parseConfig(stringify(doc), name, env, { strict: true });
-  const text = renderConfig(candidate, original);
+  const text = renderConfig(candidate, stringify(doc));
   // Validate the rendered candidate too, before publishing any bytes.
   parseConfig(text, name, env, { strict: true });
   const readback = tableAt(parse(text) as Table, parts)[field];

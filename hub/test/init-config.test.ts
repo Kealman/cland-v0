@@ -282,7 +282,7 @@ test('managed provisioning preserves hosts and unknown keys across every section
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
   const path = join(root, '.cland/config.toml');
-  const original = renderConfig(defaultConfig('preserved')) + preservedConfig;
+  const original = renderConfig(defaultConfig('preserved')).replace(/\[hosts\][\s\S]*?(?=\[project\])/, '') + preservedConfig;
   const doc = parse(original);
   for (const [key, value] of Object.entries(doc)) {
     if (key !== 'hosts' && key !== 'visibility' && value && typeof value === 'object' && !Array.isArray(value)) Reflect.set(value, 'future_key', { values: ['kept'] });
@@ -300,10 +300,26 @@ test('auth mode writer preserves the complete config document', t => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
   const path = join(root, '.cland/config.toml');
-  const original = renderConfig(defaultConfig('preserved')) + preservedConfig;
+  const original = renderConfig(defaultConfig('preserved')).replace(/\[hosts\][\s\S]*?(?=\[project\])/, '') + preservedConfig;
   writeFileSync(path, original);
   const expected = parse(original);
   (expected.auth as Record<string, unknown>).mode = 'users';
   prepareAuthMode(root, path, 'users', {})();
   assert.deepEqual(parse(readFileSync(path, 'utf8')), expected);
+});
+
+test('managed init and update add hosts defaults without a pool and keep pins', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-host-defaults-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  provisionConfig(new Report(root), path, root);
+  assert.deepEqual({ ...parse(readFileSync(path, 'utf8')).hosts as object }, { daily_spend_usd: 3, lease: '12h' });
+  writeFileSync(path, '# managed by cland\n[hosts]\nharnesses={codex="1.2.3"}\n[hosts.qa]\nprovider="fake"\n');
+  provisionConfig(new Report(root), path, root);
+  const hosts = parseConfig(readFileSync(path, 'utf8'), '', {}).hosts;
+  assert.equal(hosts.dailySpendUsd, 3);
+  assert.equal(hosts.lease, '12h');
+  assert.equal(hosts.pools.qa!.provider, 'fake');
+  assert.deepEqual(hosts.harnesses, { codex: '1.2.3' });
 });

@@ -14,7 +14,7 @@ import { scriptedPrompter } from './setup-prompter.ts';
 function fixture(t: test.TestContext) {
   const root = mkdtempSync(join(tmpdir(), 'cland-accounts-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  let config = renderConfig(defaultConfig('accounts')) + preservedConfig;
+  let config = renderConfig(defaultConfig('accounts')).replace(/\[hosts\][\s\S]*?(?=\[project\])/, '') + preservedConfig;
   const options: SetupOptions = { root, env: { HOME: root }, interactive: true, yes: false, prompter: scriptedPrompter([]), machine: {
     projectExists: async () => true, requiredHarnesses: async () => [], onPath: async () => true,
     run: async () => { throw new Error('unexpected run'); },

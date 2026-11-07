@@ -646,6 +646,12 @@ these through sealed disposable fixtures. The [provider reference](../hub/host-p
 names current provider prerequisites, lifecycle receipts and retained failures.
 
 
+Pool configuration is now modeled by `host/pools.ts`; the transport-config entry
+point remains compatible for provider callers. Managed init/update add the hosts
+spend and lease defaults with no pool. Settings writers validate full pools and
+publish them immediately; custom sizes need slots. See
+[pool configuration](../hub/host-providers.md#pool-configuration).
+
 Role placement intent is stored in `[<role>.launch] pool` in `roles.toml`,
 defaulting to `local`. `cland role launch <role> --pool <pool>` edits it;
 Coordinator and Aide accept only `local`. Syntax is checked when loading roles,

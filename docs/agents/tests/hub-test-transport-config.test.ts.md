@@ -13,3 +13,6 @@ transport-records checks invalid persisted rows and the unchanged previous shape
 
 T-1734: quoted-empty pool startup now reports the pool grammar before transport
 validation; invalid pool names are fatal startup configuration errors.
+
+
+T-1738: whole hosts validation now requires provider; transport refusals still name hosts.second.transport and retain the last-good publication. Malformed size is refused rather than ignored.

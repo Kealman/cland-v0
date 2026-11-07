@@ -427,3 +427,59 @@ test('artifact upload limit stays startup-only and reload refuses the pending ed
   assert.match(reload.stderr, /artifacts changed: restart required/);
   assert.equal(parseConfig(await readFile(path, 'utf8'), root).artifacts.maxUploadMb, 1);
 });
+
+test('config set creates pools through provider and publishes capacity immediately', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Pools');
+  config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  const hub = await projectHub(t, root);
+  const ui = await connectUi(t, hub.discovery);
+  for (const pool of ['qa', 'agents']) {
+    const result = await cland(root, 'config', 'set', `hosts.${pool}.provider`, 'fake');
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /applies now/);
+  }
+  const result = await cland(root, 'config', 'set', 'hosts.agents.max_hosts', '4');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /applies now/);
+  const saved = parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), '', {});
+  assert.equal(saved.hosts.pools.agents!.maxHosts, 4);
+  assert.equal(saved.hosts.pools.qa!.slots, 8);
+  for (const [key, message] of [['hosts.qa.typo', /provider.*size.*slots/], ['hosts.bad_name.provider', /letters, digits and hyphens/]] as const) {
+    const refused = await cland(root, 'config', 'set', key, 'fake');
+    assert.notEqual(refused.code, 0);
+    assert.match(refused.stderr, message);
+  }
+});
+
+test('host policy errors refuse startup rather than loading whole-config defaults', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  for (const [text, key] of [['[hosts.qa]\nregion="lon1"', 'hosts.qa.provider'], ['[hosts]\nlease="29s"', 'hosts.lease'], ['[hosts.qa]\nprovider="fake"\nslots=0', 'hosts.qa.slots'], ['[hosts]\ndaily_spend_usd=-1', 'hosts.daily_spend_usd']] as const) {
+    await writeFile(join(root, '.cland/config.toml'), text);
+    await assert.rejects(projectHub(t, root), error => String(error).includes(key));
+  }
+});
+
+test('config set replaces subset and empty host weights and harness pin tables', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Tables');
+  config.verification.lockPath = join(root, 'suite.lock');
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  await projectHub(t, root);
+  for (const [field, first, subset] of [['weights', '{codex=2,opencode=3}', '{codex=1}'], ['harnesses', '{codex="1.2.3",opencode="2.3.4"}', '{codex="3.4.5"}']] as const) {
+    for (const value of [first, subset, '{}']) {
+      const result = await cland(root, 'config', 'set', `hosts.${field}`, value, '--json');
+      assert.equal(result.code, 0, `${field} ${value}: ${result.stderr}; file prefix ${JSON.stringify((await readFile(join(root, '.cland/config.toml'), 'utf8')).slice(0,160))}`);
+      const readback = JSON.parse(result.stdout) as {value: object; applies: string};
+      assert.equal(readback.applies, 'now');
+      const expected = value === '{}' ? {} : value === subset ? {codex: field === 'weights' ? 1 : '3.4.5'} : field === 'weights' ? {codex:2,opencode:3} : {codex:'1.2.3',opencode:'2.3.4'};
+      assert.deepEqual(readback.value, expected);
+      const saved = parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), '', {});
+      assert.deepEqual(saved.hosts[field], expected);
+    }
+  }
+});

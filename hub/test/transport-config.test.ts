@@ -13,7 +13,7 @@ for (const [value, message] of [['"outbound"', /0\.4\.x/], ['"tcp"', /ssh.*only.
     const config = defaultConfig('Transport test');
     config.verification.lockPath = join(root, 'suite.lock');
     const valid = renderConfig(config);
-    const invalid = `${valid}\n[hosts.first]\ntransport="ssh"\n[hosts.second]\ntransport=${value}\n`;
+    const invalid = `${valid}\n[hosts.first]\nprovider="fake"\ntransport="ssh"\n[hosts.second]\nprovider="fake"\ntransport=${value}\n`;
     const path = join(root, '.cland/config.toml');
     await writeFile(path, invalid);
     await assert.rejects(projectHub(t, root), message);
@@ -34,17 +34,8 @@ for (const [value, message] of [['"outbound"', /0\.4\.x/], ['"tcp"', /ssh.*only.
   });
 }
 
-test('ssh, omitted transport and malformed non-transport hosts keys preserve config behavior', async t => {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.cland'), { recursive: true });
-  const config = defaultConfig('Preserved');
-  config.verification.lockPath = join(root, 'suite.lock');
-  const text = `${renderConfig(config)}\n[hosts.one]\ntransport="ssh"\nsize=false\n[hosts.two]\nprovider=42\n[hosts]\nmalformed=17\n`;
-  assert.deepEqual(parseConfig(text, 'fallback', {}), config);
-  await writeFile(join(root, '.cland/config.toml'), text);
-  const hub = await projectHub(t, root);
-  assert.equal((await cland(root, 'hub', 'reload')).code, 0);
-  await hub.stop();
+test('malformed non-transport hosts keys are refused by project config', () => {
+  assert.throws(() => parseConfig('[hosts.one]\nprovider="fake"\nsize=false', 'fallback', {}), /hosts.one.size/);
 });
 
 test('quoted empty pool transport is refused at startup', async t => {

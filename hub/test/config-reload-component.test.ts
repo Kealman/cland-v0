@@ -251,3 +251,29 @@ for (const owner of ['project configuration', 'roles file']) test(`${owner} read
   await eventually('removed skills published', () => source.availableSkills().size === 0 ? true : undefined);
   assert.deepEqual([...source.availableSkills()], []);
 });
+
+
+test('pool settings publish the new capacity on the running configuration owner', async t => {
+  const root = await tempProject(t);
+  const files = layout(root);
+  await mkdir(files.dir, { recursive: true });
+  await writeFile(files.config, '# managed by cland\n[hosts.agents]\nprovider="fake"\n');
+  await writeFile(files.roles, roles('stable'));
+  const published: number[] = [];
+  const source = new ProjectConfiguration(files, null, () => {}, {}, work => work(), config => { published.push(config.hosts.pools.agents!.maxHosts); }, async () => null);
+  t.after(() => source.stop());
+  await source.start();
+  await source.reload();
+  const before = source.config();
+  const result = await source.set('hosts.agents.max_hosts', 4, work => work(), () => {});
+  assert.equal(result.applies, 'now');
+  assert.equal(source.config().hosts.pools.agents!.maxHosts, 4);
+  assert.equal(before.hosts.pools.agents!.maxHosts, 2);
+  assert.deepEqual(published, [2, 4]);
+  for (const [field, values] of [['weights', [{codex: 2, opencode: 3}, {codex: 1}, {}]], ['harnesses', [{codex: '1.2.3', opencode: '2.3.4'}, {codex: '3.4.5'}, {}]]] as const) {
+    for (const value of values) {
+      await source.set(`hosts.${field}`, value, work => work(), () => {});
+      assert.deepEqual(source.config().hosts[field], value);
+    }
+  }
+});

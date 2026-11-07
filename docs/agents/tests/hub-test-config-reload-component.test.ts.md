@@ -24,3 +24,9 @@ then retain the startup inventory, unchanged snapshot before refresh, added-skil
 and removed-directory assertions after publication. Drain the previous refresh
 before the next edit/tick. These are T2 filesystem receipts without native
 processes; no source-commit Git query runs in the configuration fixture.
+
+
+T-1738: pool settings publish capacity through ProjectConfiguration.config(). The apply callback sees 2 then 4 and a retained prior snapshot remains 2. Await set completion before checking publication; no wall-clock wait.
+
+
+Pool publication also checks subset and empty weights/pin replacements through the running configuration owner, after set completion.

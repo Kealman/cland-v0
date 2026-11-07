@@ -33,7 +33,7 @@ async function fixture(t: TestContext) {
   api.account.droplet_limit = 10;
   const root = api.stateRoot;
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), 'name="contract"\n[verification]\nprepare="prepare-agent"\nprovision="setup.sh"\n[verification.droplet]\nsize="c-8"\nprepare_size="c-8"\nregions=["lon1"]\n[hosts]\nharnesses={codex="1.2.3"}\n[hosts.agents]\nprovider="digitalocean"\nsize="c-8"\nregion="fra1"\n');
+  await writeFile(join(root, '.cland/config.toml'), 'name="contract"\n[verification]\nprepare="prepare-agent"\nprovision="setup.sh"\n[verification.droplet]\nsize="c-8"\nprepare_size="c-8"\nslots=8\nregions=["lon1"]\n[hosts]\nharnesses={codex="1.2.3"}\n[hosts.agents]\nprovider="digitalocean"\nsize="c-8"\nslots=8\nregion="fra1"\n');
   await writeFile(join(root, 'setup.sh'), 'echo provision');
   const key = await poolImageKey(root, {}, 'digitalocean');
   const machine = scriptedMachine(root, clock, key);

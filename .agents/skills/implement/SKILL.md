@@ -131,6 +131,9 @@ Empty/missing speech commands keep audio and name command setup.
 
 ## Host admission
 
+Pool settings use the shared `host/pools.ts` parser; config set publishes them
+immediately. Start a pool by setting provider; custom sizes require slots.
+See [pool configuration](../../../docs/hub/host-providers.md#pool-configuration).
 Pool names use `host/pool-name.ts`: 1–64 ASCII letters, digits and hyphens,
 starting with a letter or digit; config reading rejects underscores.
 

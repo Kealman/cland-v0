@@ -49,3 +49,9 @@ migration and writer validation. Existing frame requests and replies retain thei
 previous wire shape; reload's applied list gains names.
 Run `hub/test/cli-imports.test.ts` (T3) when changing daemon secret loading;
 the lightweight CLI must not import secret resolution.
+
+
+T-1738: config set creates qa and agents through provider, answers applies now, saves max_hosts 4, and refuses unknown keys and invalid names. Uses projectHub with scratch roots; no provider calls.
+
+
+Host policy startup errors are fatal with their key. Table edits replace weights and harnesses, including subsets and empty tables, through CLI readback and persisted config.
