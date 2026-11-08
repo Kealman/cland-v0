@@ -1,3 +1,4 @@
+import { parseConfig } from '../init/config.ts';
 import { parsePoolName } from './pool-name.ts';
 import { hostSettlementComplete } from './settle.ts';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -7,10 +8,9 @@ import { machineEnv } from '../executor/droplet/machine.ts';
 import { spawn } from 'node:child_process';
 import { realClock, type Clock } from '../hub/clock.ts';
 import { clockDelay } from './clock-delay.ts';
-import { parse } from 'smol-toml';
 import { poolImageKey, samePoolImageKey } from './provider/pool-image.ts';
 import { HostProviderRegistry } from './provider/registry.ts';
-import { readHostPools, type HostPool } from './transport-config.ts';
+import { type HostPool } from './transport-config.ts';
 import { renderPrelude } from './prelude.ts';
 import { HostSecretStore } from './records.ts';
 import type { HostRecords } from './records.ts';
@@ -46,9 +46,12 @@ async function command(binary:string,args:string[],env:NodeJS.ProcessEnv,input='
  });
 }
 export type CreateHost = typeof createHost;
-export async function createHost(o:{clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
+export async function createHost(o:{inUse?:(id:string)=>boolean; clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
  const clock=o.clock??realClock;
- const pools=o.settings ? {[o.pool??'agents']:o.settings} : readHostPools(parse(await readFile(join(o.root,'.cland/config.toml'),'utf8')).hosts).pools;
+ const source=await readFile(join(o.root,'.cland/config.toml'),'utf8').catch(error=>{if(error.code==='ENOENT'&&o.settings)return '';throw error;});
+ const projectConfig=parseConfig(source,'host',o.env);
+ const hostConfig=projectConfig.hosts;
+ const pools=o.settings ? {[o.pool??'agents']:o.settings} : hostConfig.pools;
  const names=Object.keys(pools).sort();
  const pool=o.pool??(names.includes('agents')?'agents':names.length===1?names[0]:undefined);
  if(!pool||!Object.hasOwn(pools,pool))throw Error(`choose a configured pool: ${names.join(', ')||'none'}`);
@@ -61,15 +64,23 @@ export async function createHost(o:{clock?:Clock; settings?:HostPool; onCreating
  let prepared;
  try {prepared=JSON.parse(await readFile(join(o.root,'.cland/run/hosts',pool+'-image.json'),'utf8'));}catch{}
  if(!prepared?.key||!samePoolImageKey(prepared.key,key))throw Error(`pool ${pool} image is not current; run cland host prepare ${pool}`);
- const record:ProvisionRecord={id:'host-'+randomUUID(),...config,pool,created:clock.now().toISOString(),state:'creating'};
+ const record:ProvisionRecord={id:'host-'+randomUUID(),...config,pool,created:clock.now().toISOString(),state:'creating',nonAcquisition:{kind:'not-called',at:clock.now().toISOString()}};
+ const declarations=provider.declarations;
+ if('state' in declarations||!declarations.prices[config.size])throw Error('host billing declaration unavailable');
+ const leaseOptions={root:o.root,env:o.env,clock,leaseMs:hostConfig.leaseMs,caps:{shared:projectConfig.verification.dailySpendUsd,hosts:hostConfig.dailySpendUsd},pool,size:config.size,priceHourly:declarations.prices[config.size]!.livePerHour+declarations.extraAddressPerHour,billingMinimumMs:declarations.billingMinimumMs};
  o.records.provisions.save(record);
  const completion=Promise.withResolvers<void>(),abort=new AbortController();
  const signal=o.signal?AbortSignal.any([o.signal,abort.signal]):abort.signal;
  const creationKey=join(o.root,record.id);
  creations.set(creationKey,{abort,done:completion.promise});
- let registered=false,acquiring=false;
+ let registered=false,acquiring=false,admitted=false;
  try {
+  await o.records.leases.create(record.id,leaseOptions);admitted=true;
+  signal.throwIfAborted();
+  if(o.records.leases.effective(record.id,o.root,clock)?.expired)throw Error('host lease expired before acquisition');
+  o.records.leases.arm(record.id,leaseOptions,()=>o.records.provisions.get(record.id)?.state==='ready'&&(o.inUse?.(record.id)??o.records.provisions.heldByMinimum(record.id,pool,config.minHosts)),error=>{console.error(error);},async()=>{await destroyHost({clock,root:o.root,id:record.id,env:o.env,records:o.records,owner:o.owner,provider,log:()=>{}});});
   o.onCreating?.(record.id);
+  signal.throwIfAborted();
   // An actual OpenSSH key, never a key inferred from a responding machine.
   await mkdir(directory(o.root),{recursive:true,mode:0o700});
   const privateDirectory=join(directory(o.root),record.id);
@@ -79,10 +90,13 @@ export async function createHost(o:{clock?:Clock; settings?:HostPool; onCreating
   const publicKey=(await readFile(hostKey+'.pub','utf8')).trim().split(/\s+/).slice(0,2).join(' ');
   const userData=renderPrelude({hostKey:await readFile(hostKey,'utf8'),hostPublicKey:publicKey,providerSteps:''});
   signal?.throwIfAborted();
+  if(o.records.leases.effective(record.id,o.root,clock)?.expired)throw Error('host lease expired before acquisition');
+  const noCall=record.nonAcquisition!;delete record.nonAcquisition;record.acquisition='pending';
+  try{o.records.provisions.save(record);}catch(error){delete record.acquisition;record.nonAcquisition=noCall;throw error;}
   acquiring=true;
   const acquired=await provider.acquire({project:o.root,pool,architecture:process.arch==='arm64'?'arm64':'x86_64',region:config.region,userData,image:key});
-  if(acquired.state!=='created')throw Error(acquired.reason);
-  record.machine=acquired.machine;record.state='booting';o.records.provisions.save(record);
+  if(acquired.state!=='created'){if(acquired.state==='refused'){acquiring=false;delete record.acquisition;record.nonAcquisition={kind:'provider-refused',at:clock.now().toISOString()};o.records.provisions.save(record);}throw Error(acquired.reason);}
+  record.acquisition='acquired';record.machine=acquired.machine;record.state='booting';o.records.provisions.save(record);
   signal?.throwIfAborted();
   const fake=hostDirectory(o.env.CLAND_FAKE_HOST_ROOT!,acquired.machine.id);
   const provisioningEnv={...o.env,CLAND_FAKE_HOSTS:[o.env.CLAND_FAKE_HOSTS,acquired.machine.address].filter(Boolean).join(',')};
@@ -115,15 +129,18 @@ export async function createHost(o:{clock?:Clock; settings?:HostPool; onCreating
   record.state='failed';record.reason=error instanceof Error?error.message:String(error);
   // A runtime owner must close before its machine can be released.
   try {
-   if(error instanceof RuntimeDeliveryIncomplete)record.release='incomplete';
+   if(record.nonAcquisition){await o.records.leases.cancel(record.id,leaseOptions);record.release='released';}
+   else if(error instanceof RuntimeDeliveryIncomplete)record.release='incomplete';
    else {
     const settled=!registered||hostSettlementComplete(await o.owner.remove(record.id));
     if(!settled)record.release='incomplete';
-    else if(record.machine)record.release=(await provider.release(record.machine)).state;
+    else if(record.machine){const confirmed=new Set<string>();const result=await provider.release(record.machine,r=>confirmed.add(r.resource));record.release=result.state==='released'&&confirmed.has('machine')&&confirmed.has('key')?'released':'incomplete';}
     else if(acquiring)record.release='incomplete';
    }
   }catch {record.release='incomplete';}
+  if(record.release==='released'&&!record.nonAcquisition){await o.records.leases.release(record.id,leaseOptions);}
   o.records.provisions.save(record);
+  if(!admitted)throw error;
  } finally {creations.delete(creationKey);completion.resolve();}
  return record;
 }
@@ -157,7 +174,7 @@ export async function restoreProvisionedFakeHosts(records:HostRecords,env:NodeJS
 
 /** Explicit destruction remains available when the transport cannot answer.
  * remove joins the existing revoke owner before provider deletion. */
-export async function destroyHost(o:{root:string;id:string;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>;provider?:HostProvider;settleDeleted?:(id:string,read:string)=>void|Promise<void>;log:(event:{event:string;host:string;resource:string;read:string})=>void}) {
+export async function destroyHost(o:{clock?:Clock;root:string;id:string;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>;provider?:HostProvider;settleDeleted?:(id:string,read:string)=>void|Promise<void>;log:(event:{event:string;host:string;resource:string;read:string})=>void}) {
  const initial=o.records.provisions.get(o.id);
  if(!initial)throw Error('unknown host');
  let record:ProvisionRecord=initial;
@@ -170,11 +187,11 @@ export async function destroyHost(o:{root:string;id:string;env:NodeJS.ProcessEnv
   if(o.records.get(record.id))await o.owner.remove(record.id);
   const provider=o.provider??new HostProviderRegistry({env:o.env}).resolve(record);
   const confirmed=new Set<string>();
-  if(!record.machine)throw Error('acquisition outcome unknown');
+  if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return record;}throw Error('acquisition outcome unknown');}
   const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
   if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
   record.release=result.state;
-  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){record.state='destroyed';delete record.reason;}
+  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){await o.records.leases.release(record.id,{root:o.root,env:o.env,clock:o.clock??realClock});record.state='destroyed';delete record.reason;}
   else {record.release='incomplete';record.reason='deletion not confirmed'+(result.state==='incomplete'?': '+result.reason:': confirming reads missing');}
  }catch{record.release='incomplete';record.reason='deletion not confirmed';}
  o.records.provisions.save(record);

@@ -133,3 +133,23 @@ test('offset settlement instants count in the UTC day and month and shared cap',
   const stored = JSON.parse(await readFile(spendPath(machine.env), 'utf8'));
   assert.equal(stored.entries[0].released, '2026-11-01T01:30:00.000Z');
 });
+
+test('never-acquired receipts cancel at zero while unknown outcomes retain reservation and acquired lifetimes keep minimum',async t=>{
+ const f=await scratchMachine(t,{identity:false}),clock=new FakeClock();
+ const {cancelHostSpend}=await import('../src/executor/droplet/spend.ts');
+ for(const kind of ['not-called','provider-refused'] as const){
+  const input={...host,lease:kind};await reserveHostSpend(input,caps,f.env,{clock,processes});
+  await cancelHostSpend({project:host.project,lease:kind},{kind,at:host.created},f.env,{clock,processes});
+  assert.equal((await inspectSpend(10,f.env,clock,processes)).reserved,0);
+  const stored=JSON.parse(await readFile(spendPath(f.env),'utf8')).entries.find((e:{lease:string})=>e.lease===kind);
+  assert.equal(stored.cost,0);
+ }
+ await reserveHostSpend({...host,lease:'unknown'},caps,f.env,{clock,processes});
+ await assert.rejects(cancelHostSpend({project:host.project,lease:'unknown'},{kind:'unknown',at:host.created} as never,f.env,{clock,processes}),/non-acquisition receipt/);
+ assert.equal((await inspectSpend(10,f.env,clock,processes)).reserved,2);
+ await reserveHostSpend({...host,lease:'acquired',billingMinimumMs:3600000},caps,f.env,{clock,processes});
+ await settleHostSpend(host.project,'acquired','2026-10-16T12:00:01Z',f.env,{clock,processes});
+ const stored=JSON.parse(await readFile(spendPath(f.env),'utf8')).entries;
+ assert.equal(stored.find((e:{lease:string})=>e.lease==='acquired').cost,2);
+ assert.equal(stored.find((e:{lease:string})=>e.lease==='unknown').cost,null);
+});

@@ -282,6 +282,7 @@
     "hub/test/host-git-daemon.test.ts": "T3",
     "hub/test/host-launch-layout.test.ts": "T2",
     "hub/test/host-lease-lock.test.ts": "T2",
+    "hub/test/host-lease.test.ts": "T2",
     "hub/test/host-limit-poller.test.ts": "T1",
     "hub/test/host-local-contract.test.ts": {
       "tier": "T3",

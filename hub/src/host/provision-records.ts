@@ -1,13 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Machine } from './provider/provider.ts';
 export type ProvisionState = 'creating'|'booting'|'connecting'|'cloning'|'ready'|'failed'|'destroying'|'destroyed';
-export type ProvisionRecord = { id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
+export type ProvisionRecord = { acquisition?:'pending'|'acquired'; nonAcquisition?:import('../executor/droplet/spend.ts').HostNonAcquisitionReceipt; id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
 /** Shares the registration database: final readiness and revocation serialize in SQLite. */
 export class ProvisionRecords {
  readonly #db:DatabaseSync;
  constructor(db:DatabaseSync) {
   this.#db=db;
   db.exec(`create table if not exists provisioned_hosts (id text primary key, record text not null);
+   create index if not exists provisioned_pool_ready on provisioned_hosts(json_extract(record,'$.state'),json_extract(record,'$.pool'),id);
    create index if not exists provisioned_host_states on provisioned_hosts(json_extract(record,'$.state'));
    create index if not exists host_registration_states on hosts(state,id);
    create index if not exists provisioned_fake_addresses on provisioned_hosts(json_extract(record,'$.provider'),json_extract(record,'$.machine.address'));
@@ -28,6 +29,10 @@ export class ProvisionRecords {
  *registered():Iterable<ProvisionRecord> {
   for(const row of this.#db.prepare(`select p.record from hosts h join provisioned_hosts p on p.id=h.id
    where h.state='registered'`).iterate())yield JSON.parse(String(row.record)) as ProvisionRecord;
+ }
+ /** Bounded current-pool selection for manual creates held by min_hosts. */
+ heldByMinimum(id:string,pool:string,count:number):boolean {
+  return this.#db.prepare(`select id from provisioned_hosts where json_extract(record,'$.state')='ready' and json_extract(record,'$.pool')=? order by id limit ?`).all(pool,count).some(row=>row.id===id);
  }
  get(id:string):ProvisionRecord|null {
   const row=this.#db.prepare('select record from provisioned_hosts where id=?').get(id);

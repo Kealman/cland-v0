@@ -35,3 +35,13 @@ test('startup inventory streams only current registrations while retaining faile
  assert.deepEqual([...f.provisions.registered()],[]);
  assert.equal(f.provisions.list().length,2,'explicit inventory still retains both records');
 });
+
+test('minimum holding selects only the configured number of ready hosts in that pool',t=>{
+ const f=fixture(t);f.provisions.ready({...record,state:'ready'});
+ f.hosts.insert({id:'host-two',address:'fake-two',user:'agent',clientKeyPath:'unused',knownHosts:'unused'},'synthetic-two');
+ f.provisions.ready({...record,id:'host-two',state:'ready',machine:{...record.machine!,address:'fake-two'}});
+ assert.equal(f.provisions.heldByMinimum('host-one','agents',1),true);
+ assert.equal(f.provisions.heldByMinimum('host-two','agents',1),false);
+ assert.equal(f.provisions.heldByMinimum('host-one','other',1),false);
+ assert.equal(f.provisions.heldByMinimum('host-one','agents',0),false);
+});

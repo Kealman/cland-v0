@@ -354,3 +354,18 @@ export async function settleHostSpend(project: string, lease: string, released: 
     entry.released = released;
   }, env, timing);
 }
+
+export type HostNonAcquisitionReceipt = {kind:'not-called'|'provider-refused';at:string};
+/** The caller pins this positive receipt before requesting cancellation. Unknown
+ * acquire outcomes must retain their reservation for provider reconciliation. */
+export async function cancelHostSpend(identity:{project:string;lease:string},receipt:HostNonAcquisitionReceipt,env:NodeJS.ProcessEnv=process.env,timing:LockRetryTiming={}):Promise<void>{
+ if(!receipt||!['not-called','provider-refused'].includes(receipt.kind)||!Number.isFinite(Date.parse(receipt.at)))throw Error('positive non-acquisition receipt required');
+ const released=new Date(receipt.at).toISOString();
+ await locked(ledger=>{
+  const entry=ledger.entries.find(e=>e.project===identity.project&&e.lease===identity.lease&&category(e)==='hosts');
+  // A cap refusal did not reserve anything. Its durable no-call receipt is still valid.
+  if(!entry)return;
+  if(entry.cost!==null){if(entry.cost!==0||entry.released!==released)throw Error('host spend cancellation conflict');return;}
+  entry.cost=0;entry.released=released;
+ },env,timing);
+}

@@ -106,3 +106,5 @@ Host and verification accounting share the version-1 per-user spend ledger. Host
 reservations and renewals obey both the shared daily cap and hosts sub-cap; UTC
 settled totals are available per category and pool. See [spend accounting](../docs/hub/running.md#leases-cleanup-and-spend)
 for the additive API and confirmed-absence settlement boundary.
+
+- [Host leases and renewal ownership](../docs/hub/host-leases.md)

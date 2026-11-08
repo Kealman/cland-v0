@@ -2075,7 +2075,7 @@ export class Dispatcher {
               if(!root)throw Error('project root unavailable');
               const env=this.#options.env??process.env;
               if(!this.hostOwner)throw Error('host runtime unavailable');
-              const work=frame.type==='host.destroy'?destroyHost({root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):(this.#options.createHost??createHost)({clock:core.clock,root,pool:frame.pool,env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets?{registerSecrets:this.#options.registerHostSecrets}:{}),records:core.store.hosts,owner:this.hostOwner});
+              const work=frame.type==='host.destroy'?destroyHost({clock:core.clock,root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):(this.#options.createHost??createHost)({clock:core.clock,root,pool:frame.pool,env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets?{registerSecrets:this.#options.registerHostSecrets}:{}),records:core.store.hosts,owner:this.hostOwner});
               this.#poolPrepares.add(work);
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));

@@ -1,3 +1,4 @@
+import { HostLeases } from './host-leases.ts';
 import { ProvisionRecords } from './provision-records.ts';
 // Host persistence and private bootstrap material. Admission belongs to the socket edge.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -17,6 +18,7 @@ function hostId(id: string): void {
 }
 export class HostRecords {
   readonly provisions:ProvisionRecords;
+  readonly leases:HostLeases;
   readonly #db: DatabaseSync;
   constructor(db: DatabaseSync) {
     this.#db = db;
@@ -25,6 +27,7 @@ export class HostRecords {
       user text not null, state text not null, secret_digest text not null
     )`);
     this.provisions=new ProvisionRecords(db);
+    this.leases=new HostLeases(db);
     db.exec(`create trigger if not exists revoke_host_provision after update of state on hosts when new.state='revoked' begin
       update provisioned_hosts set record=json_set(record,'$.state','failed','$.reason','host revoked','$.release',case when json_extract(record,'$.release')='released' then 'released' else 'incomplete' end) where id=new.id;
     end;`);

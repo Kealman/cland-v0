@@ -36,7 +36,7 @@ export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: H
   };
   const closeOwners = async () => { const errors: unknown[]=[]; for (const owner of [...owners.values()].reverse()) {try {await owner.close();} catch(error) {errors.push(error);}} if(errors.length) throw new AggregateError(errors,'SSH hosts cleanup failed'); };
   const quiesce = () => { stopped = true; for (const owner of owners.values()) owner.quiesce(); };
-  const close = () => { quiesce(); return serial(closeOwners); };
+  const close = async () => { quiesce();const errors:unknown[]=[];try{await options.records.leases.close();}catch(error){errors.push(error);}try{await serial(closeOwners);}catch(error){errors.push(error);}if(errors.length)throw new AggregateError(errors,'SSH hosts cleanup failed'); };
   const secrets = new HostSecretStore(options.root,options.records);
   const open = async (record: HostRecord) => {
       if (stopped) throw new Error('SSH hosts owner stopped');

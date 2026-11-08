@@ -23,10 +23,12 @@ test('never-booting creation releases at exactly 300000 ms on the hub clock', {t
  const provider=new FakeHostProvider({env,neverBoot:true,now:()=>clock.now().getTime()});
  await provider.prepare({pool:'agents',key:await poolImageKey(root,env,'fake')});
  let probed=false,settled=false;
+ const acquire=provider.acquire.bind(provider);
+ t.mock.method(provider,'acquire',async(input:Parameters<typeof provider.acquire>[0])=>{const lease=store.hosts.leases.get(store.hosts.provisions.list()[0]!.id);assert.equal(lease?.deadline,new Date(clock.now().getTime()+43200000).toISOString());return acquire(input);});
  const status=provider.status.bind(provider);
  t.mock.method(provider,'status',async (machine:Parameters<typeof provider.status>[0])=>{const result=await status(machine);probed=true;return result;});
  const creating=createHost({root,pool:'agents',clock,env,records:store.hosts,provider,signal:abort.signal,owner:{} as Parameters<typeof createHost>[0]['owner']}).finally(()=>{settled=true;});
- onCleanup(t,async()=>{abort.abort();await creating;store.close();});
+ onCleanup(t,async()=>{abort.abort();await creating;await store.hosts.leases.close();store.close();});
  await eventually('machine boot status observed',()=>probed||settled?true:undefined,testWaitMs());
  if(settled)assert.fail(JSON.stringify(await creating));
  await clock.advance(299999);assert.equal(settled,false);
@@ -75,4 +77,21 @@ test('settings entry publishes durable creating id before held acquisition compl
  assert.equal(store.hosts.provisions.get(id)?.pool,'selected');
  assert.equal(store.hosts.provisions.get(id)?.created,clock.now().toISOString());
  release.resolve();assert.equal((await creating).id,id);
+});
+
+for(const outcome of ['refused','unknown'] as const)test(`acquire ${outcome} pins cancellation authority without confusing an unknown outcome`,async t=>{
+ const root=await tempProject(t),clock=new FakeClock(),env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
+ await mkdir(join(root,'.cland/run/hosts'),{recursive:true});
+ await writeFile(join(root,'.cland/config.toml'),'[hosts]\nlease="30s"\n[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\n');
+ await writeFile(join(root,'.cland/run/hosts/agents-image.json'),JSON.stringify({key:await poolImageKey(root,env,'fake')}));
+ const store=new Store(join(root,'hub.db')),fake=new FakeHostProvider({env});
+ onCleanup(t,async()=>{await store.hosts.leases.close();store.close();});
+ let calls=0;
+ const provider={...fake,declarations:{...fake.declarations,prices:{fake:{livePerHour:2,idleComputePerHour:0,idlePerHour:0}}},createAdmission:()=>({state:'allowed' as const}),acquire:async()=>{calls++;if(outcome==='unknown')throw Error('lost provider reply');return {state:'refused',reason:'no machine admitted',retryAt:clock.now().toISOString()};}} as unknown as NonNullable<Parameters<typeof createHost>[0]['provider']>;
+ const result=await createHost({root,clock,env,provider,records:store.hosts,owner:{} as Parameters<typeof createHost>[0]['owner']});
+ assert.equal(calls,1);assert.equal(result.state,'failed');
+ const {spendPath}=await import('../src/executor/droplet/spend.ts');
+ const ledger=JSON.parse(await (await import('node:fs/promises')).readFile(spendPath(env),'utf8'));
+ if(outcome==='refused'){assert.equal(result.nonAcquisition?.kind,'provider-refused');assert.equal(result.release,'released');assert.equal(store.hosts.leases.get(result.id),null);assert.equal(ledger.entries[0].cost,0);}
+ else {assert.equal(result.acquisition,'pending');assert.equal(result.release,'incomplete');assert.ok(store.hosts.leases.get(result.id));assert.equal(ledger.entries[0].cost,null);await assert.rejects(store.hosts.leases.cancel(result.id,{root,env,clock}),/non-acquisition receipt/);}
 });
