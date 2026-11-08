@@ -2,8 +2,8 @@
 id: T-1752
 kind: task
 title: Hub restart with hosts, and gone hosts' sessions exited
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1444
 branch: t/T-1752-hub-restart-with-hosts-and-gone-hosts
 created: 2026-11-07T16:01:59.635Z
-updated: 2026-11-08T16:30:15.426Z
+updated: 2026-11-08T17:37:27.653Z
+closed: 2026-11-08T17:37:27.653Z
 ---
 
 ## Summary
@@ -39,21 +40,27 @@ Start-time reconciliation over leases and provider status, with the `unknown hos
 - [x] C1. A restart with two fake hosts, one deleted while the hub was stopped, keeps the live host's session running and ends the deleted host's session as exited, with its role vacated (test).
   - done: impl-1752 · 2026-11-08T15:07:02.340Z
   - verified: rev-38 [reviewer] · run rev-38-1752-evidence-2 · 2026-11-08T16:30:15.188Z · commit 53f4e43854455f5ccb6a0dd54e76dea19afa9260
+  - verified: rev-38 [reviewer] · run rev-38-1752-delta-1 · 2026-11-08T16:59:23.481Z · commit 80fb4f940c6c435ace2e207ca70154d0f1c699dd
 - [x] C2. That deleted host's lease is released and its spend settled (test).
   - done: impl-1752 · 2026-11-08T15:07:03.003Z
   - verified: rev-38 [reviewer] · run rev-38-1752-evidence-2 · 2026-11-08T16:30:15.188Z · commit 53f4e43854455f5ccb6a0dd54e76dea19afa9260
+  - verified: rev-38 [reviewer] · run rev-38-1752-delta-1 · 2026-11-08T16:59:23.481Z · commit 80fb4f940c6c435ace2e207ca70154d0f1c699dd
 - [x] C3. A session row whose host is unknown to the restarted hub reads exited, never running (test).
   - done: impl-1752 · 2026-11-08T15:07:03.646Z
   - verified: rev-38 [reviewer] · run rev-38-1752-evidence-2 · 2026-11-08T16:30:15.188Z · commit 53f4e43854455f5ccb6a0dd54e76dea19afa9260
+  - verified: rev-38 [reviewer] · run rev-38-1752-delta-1 · 2026-11-08T16:59:23.481Z · commit 80fb4f940c6c435ace2e207ca70154d0f1c699dd
 - [x] C4. After a restart with `min_hosts = 1` and one live host, no further host is created (test).
   - done: impl-1752 · 2026-11-08T15:21:49.617Z
   - verified: rev-38 [reviewer] · run rev-38-1752-evidence-2 · 2026-11-08T16:30:15.188Z · commit 53f4e43854455f5ccb6a0dd54e76dea19afa9260
+  - verified: rev-38 [reviewer] · run rev-38-1752-delta-1 · 2026-11-08T16:59:23.481Z · commit 80fb4f940c6c435ace2e207ca70154d0f1c699dd
 - [x] C5. At start, a lease whose watchdog is gone is re-armed, and a lease whose watchdog lives is not given a second one (test).
   - done: impl-1752 · 2026-11-08T15:21:50.141Z
   - verified: rev-38 [reviewer] · run rev-38-1752-evidence-2 · 2026-11-08T16:30:15.188Z · commit 53f4e43854455f5ccb6a0dd54e76dea19afa9260
+  - verified: rev-38 [reviewer] · run rev-38-1752-delta-1 · 2026-11-08T16:59:23.481Z · commit 80fb4f940c6c435ace2e207ca70154d0f1c699dd
 - [x] C6. After a restart, a live host in use is renewed on the min(1 h, lease / 4) cadence (test).
   - done: impl-1752 · 2026-11-08T16:03:54.231Z
   - verified: rev-38 [reviewer] · run rev-38-1752-evidence-2 · 2026-11-08T16:30:15.188Z · commit 53f4e43854455f5ccb6a0dd54e76dea19afa9260
+  - verified: rev-38 [reviewer] · run rev-38-1752-delta-1 · 2026-11-08T16:59:23.482Z · commit 80fb4f940c6c435ace2e207ca70154d0f1c699dd
 
 ## Blocked by
 
@@ -192,3 +199,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear. Source rev-38-1752-source-5 matches exact current branch head53f4e43854455f5ccb6a0dd54e76dea19afa9260. task.verify+original A-17904 agree runb1058fba finished/passed uncached,5600/5600,0fail/cancel/skip/todo. Independently parsed all12 reconciliation case finish identities: each1base+5/5load, including no-native control; zero restart-file tier-mismatch events with prior positive/mutation control. Native restart case1pass7.024881624s, unknown-host casepass; C1–C6 verified. A-17905 maps exact names/assertions/provenance and historical carry limits. Linuxx64 droplet Node24.21, Headless Shell1248/CfT156.0.8078.4; T0/T1/allT2/Web complete, changedT3+mappedT4 once, remainingT3 deferred/noT3T4repeats; report-only notices retained. Supplemental native3files/6tests at3b2dccf1 and14importers at168179565 retain reviewed authorized carry, not new-head executions. Full after-stage QA remains separate on dev. No Reviewer tests/browser run.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1752 · 2026-11-08T16:58:10.634Z
+
+Coordinator-authorized dev merge/carry:53f4e43854455f5ccb6a0dd54e76dea19afa9260 →80fb4f940c6c435ace2e207ca70154d0f1c699dd, parents53f4e4385 and origin/dev2adf388c3 (T-1755 100937ae6,T-1754 ee0e19117). Only manual resolution README, both pointers retained; remerge diff names only README. Full prior-head diff is42 inherited files, explicitly preserved in new merge-proof artifact. T-1752 core restart/lease/provision/process helpers and tests byte-identical; Sessions/dispatch inherit landed usage/status/stop additions. npm run check passed; targeted T2 56/56 including12 restart cases under enforced tier bootstrap with0events. Requested evidence carry A-17904/b1058fba and A-17905 plus authorized native carries across this merge per Coordinator dcb30ea6; no fresh full suite/browser/native claim. Fresh delta review requested before ready/enqueue.
+
+### rev-38 · 2026-11-08T16:59:23.482Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1752-delta-1
+commit: 80fb4f940c6c435ace2e207ca70154d0f1c699dd
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear at80fb4f940c6c435ace2e207ca70154d0f1c699dd; C1–C6 refreshed by reviewed carry. Confirmed parents53f4e4385/2adf388c3; full prior-head delta42inherited files, only manual README resolution keeps both pointers. Core T-1752 helpers/daemon/tests unchanged; shared Sessions/dispatch/pool/spend/provision-record integration retains restart behavior and inherited status/stop additions. T-1754/T-1755 have landed clear finals. A-17910 reports merge-head root check and56targeted T2 passes(restart12enforce/0events,lease18,registry5,provision13,status4,stop4) on macOSarm64 Node24.21. Accept Coordinator dcb30ea6 carry of prior b1058fba/A-17904 and A-17905 plus existing native carries; no same-head configured/cache/full/native/browser run claimed. Prior Linux5600pass phase/provenance/unexecutedT3 limits retained. No findings; after-stage full QA separate. Reviewer ran no tests/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-08T17:37:27.653Z
+
+Merged d57dd0205a64631c1fde43bf1d8acf5ed105ff23 onto dev.

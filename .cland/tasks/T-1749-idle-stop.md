@@ -2,8 +2,8 @@
 id: T-1749
 kind: task
 title: Idle stop
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1443
 branch: t/T-1749-idle-stop
 created: 2026-11-07T16:01:59.051Z
-updated: 2026-11-08T15:47:22.774Z
+updated: 2026-11-08T18:40:19.957Z
+closed: 2026-11-08T18:40:19.957Z
 ---
 
 ## Summary
@@ -31,15 +32,19 @@ The scale-down half of the scheduler. It uses `earliestStop` from `hub/src/host/
 - [x] C1. With `idle_stop = "1m"` on the hub clock, an emptied host above `min_hosts` is destroyed after one minute, and the pool's last host at `min_hosts` stays (test).
   - done: impl-1749 · 2026-11-08T15:12:22.885Z
   - verified: rev-37 [reviewer] · run rev-37-1749-evidence-1 · 2026-11-08T15:47:22.569Z · commit a204b43732e99caf5ecce1e22b436d758fa43ff7
+  - verified: rev-37 [reviewer] · run rev-37-1749-evidence-2 · 2026-11-08T18:02:33.288Z · commit 9a7a11116fdf76efb95066ca1f66dc344dd9e9d8
 - [x] C2. A host whose provider billing minimum has not passed is not stopped before `earliestStop` (test).
   - done: impl-1749 · 2026-11-08T15:06:57.552Z
   - verified: rev-37 [reviewer] · run rev-37-1749-evidence-1 · 2026-11-08T15:47:22.569Z · commit a204b43732e99caf5ecce1e22b436d758fa43ff7
+  - verified: rev-37 [reviewer] · run rev-37-1749-evidence-2 · 2026-11-08T18:02:33.289Z · commit 9a7a11116fdf76efb95066ca1f66dc344dd9e9d8
 - [x] C3. A host with a session is never stopped by idle stop, however long it runs (test).
   - done: impl-1749 · 2026-11-08T15:06:58.301Z
   - verified: rev-37 [reviewer] · run rev-37-1749-evidence-1 · 2026-11-08T15:47:22.569Z · commit a204b43732e99caf5ecce1e22b436d758fa43ff7
+  - verified: rev-37 [reviewer] · run rev-37-1749-evidence-2 · 2026-11-08T18:02:33.289Z · commit 9a7a11116fdf76efb95066ca1f66dc344dd9e9d8
 - [x] C4. A host that gains a session during its idle wait is not stopped at the old time (test).
   - done: impl-1749 · 2026-11-08T15:06:59.003Z
   - verified: rev-37 [reviewer] · run rev-37-1749-evidence-1 · 2026-11-08T15:47:22.569Z · commit a204b43732e99caf5ecce1e22b436d758fa43ff7
+  - verified: rev-37 [reviewer] · run rev-37-1749-evidence-2 · 2026-11-08T18:02:33.289Z · commit 9a7a11116fdf76efb95066ca1f66dc344dd9e9d8
 
 ## Blocked by
 
@@ -220,3 +225,108 @@ Both source findings are resolved, no outstanding findings. No Reviewer test/typ
 A-17895: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17895-t-1749-final-idle-stop-evidence-at-a204b4373.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-1749 · 2026-11-08T17:39:10.465Z
+
+Coordinator-authorized merge of origin/dev d57dd0205 (includes T-1755 100937ae and T-1752) committed/pushed at 9a7a11116. Conflicts resolved retaining usage(host)/shared #used helper; lifecycle callbacks moved into Dispatcher.#startPoolScaling; restoreSessions keeps attach → restoreHosts → scale; configurePools(config) pass-through retained; README contains all 3 pointers; durations parsed with duplicate-key rejection and preserves both allowances once. No further dev merge planned. Prior a204b4373 receipts are predecessor evidence, not current-head verification. Revalidation includes 29 T1/T2 direct importers/explicit requested cases and 10 T3 (host-restart plus 9 Sessions/Dispatcher importers); T0 underway. Delta review and fresh verify follow.
+
+### rev-37 · 2026-11-08T17:40:56.082Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1749-delta-1
+commit: 9a7a11116fdf76efb95066ca1f66dc344dd9e9d8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1749 authorized merge delta source review
+
+Head9a7a11116fdf76efb95066ca1f66dc344dd9e9d8.
+Parents a204b43732e99caf5ecce1e22b436d758fa43ff7 (prior final clear A-17895) and d57dd0205a64631c1fde43bf1d8acf5ed105ff23 (authorized dev with T-1755/T-1752 and earlier landings).
+Run rev-37-1749-delta-1; scope delta; source clear; findings[].
+Coordinator authorization verified directly: 5a13e91c resolution plan and e50eb2bc merge-dev instruction in topic-1443. This requires fresh verify; no configured carry waiver.
+
+## Standards
+
+No findings. Reviewed both parent comparisons, all merged task-owned runtime hunks, configuration/startup owners, incoming capacity extraction, docs/index and duration metadata. PoolRuntime.usage/#used, Sessions.hostUsage and the used/promised accounting helper remain intact; reserve uses exactly that helper with its existing credit parameter. Idle fences/minimum handling coexist with these methods rather than replacing them.
+
+The complete merged duration allow map equals the two-parent union, values intact; no duplicate JSON object keys anywhere in either parent or merged durations file. Budget mode stays report. README retains idle-stop, restart-recovery and host-status pointers. All task-specific tests and guide-index row remain.
+
+## Spec
+
+No findings. Dispatcher idle callback body is moved from useSessions into T-1752's #startPoolScaling helper with the same hub clock/provider declarations/confirmed destroy callback. restoreSessions still calls useSessions(sessions,false), awaits restoreHosts(), then starts scaling. The daemon and host-restart module are byte-identical to incoming dev, preserving attach -> restore lease owners -> scale. Synchronous declaration throw normalization and shared60s retry are retained. Explicit incoming configurePools(config) -> PoolRuntime.configure(config.hosts) is retained, so the apply-before-publish fix is not lost.
+
+pool-idle-stop.test.ts is byte-identical to prior reviewed final head. No additional feature or policy change introduced by this resolution. Incoming host status/stop, retained-generation recovery and UI work keep their dev behavior; their original reviews/evidence remain predecessor context, not newly executed checks here.
+
+## Evidence and remaining criteria
+
+C1-C4 remain runtime-unverified at this new head; old verified marks are stale. Prior a204b4373 configured cfcc1efa/A-17890 and final A-17895 remain historical exact-head evidence, not a merged-head pass.
+Lead reports full typecheck/static/tier checks green, final test lint finishing;29lower-tier/importer+explicit T2 files and10T3 files (host-restart plus merged Sessions/Dispatcher runtime importers) are running in Coordinator-approved parallel review/native slot. No complete merged-head aggregate or configured receipt was supplied or claimed at this source pass.
+
+Finish those authorized checks, retain exact-head commands/native exit/signal and named outcomes, then submit fresh mode-free cland verify at9a7a11116. Final evidence review follows its result and merged-head preservation. Any source/head change needs source review first. QA policy remains full/after-stage.
+Reviewer read only; no tests/typecheck/browser/edits/merge.
+Standards0; Spec0 findings.
+
+
+A-17916: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17916-t-1749-authorized-merge-source-delta-at-9a7a11116.md
+
+### impl-1749 · 2026-11-08T17:42:22.209Z
+
+Merged-head 9a7a11116 supplemental receipts complete. T0: root typecheck, test:static, lint-tiers and lint-tests exit 0; known report-only notices, zero refusals. T1/T2 direct-importer census plus requested files: 29 files, 452/452 pass (A-17917). Adds pool-scale, session-pool-placement, waiting-launch, host-restart-reconcile, host-status and host-stop to prior 23-file inventory; pool-idle-stop retained. T3: 10 files, 157/157 pass (A-17918): host-restart 1; adapter-generation-forward 2; host-flush-native 4; request-guard 12; session-brief 2; session-events 2; system-processes 57; territory-task-branch 16; tracker-native-boundary 29; worktree-host 32. Serial native execution under approved preservation slot; owner-checked release after cleanup. All supplemental runtime evidence macOS arm64 Node v24.21.0, no browser/Linux claim. Captures secret-scanned before artifact publication. Delta source clear A-17916. Fresh mode-free configured verification submitted at unchanged head; older a204b4373 suite is predecessor evidence only.
+
+### rev-37 · 2026-11-08T18:02:33.289Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1749-evidence-2
+commit: 9a7a11116fdf76efb95066ca1f66dc344dd9e9d8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-1749 merged-head final evidence
+
+Head9a7a11116fdf76efb95066ca1f66dc344dd9e9d8, branch independently unchanged.
+Run rev-37-1749-evidence-2; scope evidence; clear; findings[]; verifiedC1-C4.
+Delta source clear rev-37-1749-delta-1 / A-17916 remains applicable. This is fresh merged-head evidence, not carry of a204b4373/A-17895.
+
+Configured run7320897b-bf30-46b0-a657-4924792dc74c / A-17922 Finished exit0;5627pass, zero fail/cancel/skip/todo. Canonical tree independently reconstructed read-only as0afd511a053b1d0273a0819768983b0a7266826d, matching exact admitted head/tree.
+Uncached droplet c-8lon1 Linuxx64 6.8.0-147-generic, Node24.21.0, Neovim0.12.5.
+Isolated Headless Shell1248 binary /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell; Google Chrome for Testing156.0.8078.4.
+T0/allT1/fallback-allT2/Web completed, mapped host-restart T3 once, mapped inbox-verifier-load T4 base-only/no repetitions. Other T3 and T4 unexecuted here; no all-T3 or all-T4 claim. Budget/lint/ratchet notices report-only; skips[] and skipReasonCheck report/missing0. Executor lifetime1066s/cost$0.0740 is telemetry, not test wall time.
+
+## Recorded outcomes apart from exit status
+
+Independently streamed finish records with type=test, excluding file wrappers:
+- pool-idle-stop10unique generated names,60passing records:10base+50load, exactly5/5 per case, no nonpass.
+- host-restart1base pass: 'restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership',7.226962471s.
+- host-restart-reconcile12unique,72pass records:12base+60load.
+- host-status4base, host-stop4base, host-spend10base, host-registry5base+5load, pool-scale19base, session-pool-placement21base, waiting-launch20base, test-docs4base, inbox-verifier-load1base; all outcomes pass.
+
+C1 verified: exact60s excess-host confirmed destruction/minimum retention passes base+five, including simultaneous raised minimum and the single quiet throw-once provider's clock-only60s recovery.
+C2 verified: billing minimum180s control passes base+five; source still calls shared earliestStop with creation/idle/billing facts.
+C3 verified: running reverse-lexical host retained beyond idle/minimum duration passes base+five, with idle peer alone destroyed; placement-promise protection remains separately green.
+C4 verified: gaining a session invalidates the old deadline and restarts a full interval after exit, base+five. Placement promise short interval case also base+five.
+Both real hub config.set hot-apply tests pass base+five with applies:now and confirmed destroyed/released receipt; async declarations sharing and index membership pass. All new idle-stop observations under0.639s Linux; existing8s allowance remains prior measured macOS metadata/report policy.
+
+## Current merged-head local preservation
+
+A-17917 raw lower-tier/requested integration output:452pass, zero fail/cancel/skip/todo across29T1/T2 files; final reported producer exit0, local macOS arm64 Node24.21.0. Source head unchanged per lead; raw output is aggregate, not a separate per-file exit ledger.
+A-17918 raw native capture names head9a7a11116 and platform, with10FILE EXIT0 receipts and157passes, each native summary zero fail/cancel/skip/todo:
+adapter-generation-forward2, host-flush-native4, host-restart1, request-guard12, session-brief2, session-events2, system-processes57, territory-task-branch16, tracker-native-boundary29, worktree-host32.
+Serial assigned preservation lock; lead reports joined cleanup and owner-checked release. Signal not separately recorded. These local receipts are supplemental, not added to5627, not Linux/browser/provider/network evidence, and not predecessor substitution.
+
+The fresh configured restart/idle/status outcomes cover the merged attach→restore→scale wiring and preserved shared capacity helper after delta review. No outstanding source/review findings. Prior source reds remain historical; no ignored failed current-head run. Full after-stage QA remains required separately.
+Reviewer performed source/log reads only, no tests/typecheck/browser, edits or merge.
+
+
+A-17924: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17924-t-1749-final-merged-head-evidence-at-9a7a11116.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-08T18:40:19.957Z
+
+Merged ba3e6e17f65aea30a39aab5c71fad284b62d7a27 onto dev.
