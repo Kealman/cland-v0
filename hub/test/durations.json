@@ -128,9 +128,10 @@
       "A-17358",
       "A-17457",
       "A-17633",
-      "A-17809"
+      "A-17809",
+      "A-17830"
     ],
-    "commit": "550799f042218fde94b0eaf98c5ef27f959018ab"
+    "commit": "78453eaf7f01251b835ac21778f8d9e60f7b0a66"
   },
   "budget": {
     "testSeconds": 5,
@@ -10949,7 +10950,14 @@
     "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": 30.095509,
     "hub/test/host-watchdog.test.ts::host create arms a watchdog which deletes its machine after the hub stops": 31.048915,
     "hub/test/waiting-launch-store.test.ts::process publication and wait removal commit together before observers": 0.004751,
-    "hub/test/waiting-launches-owner.test.ts::an add in the completed-pass finalizer window receives its own placement pass": 0.002326
+    "hub/test/waiting-launches-owner.test.ts::an add in the completed-pass finalizer window receives its own placement pass": 0.002326,
+    "hub/test/literal-rm.test.ts::literal-rm leaves quoted and escaped glob literals and non-rm data alone": 0.000344,
+    "hub/test/literal-rm.test.ts::literal-rm preserves quoted separator arguments as data": 0.00034,
+    "hub/test/literal-rm.test.ts::literal-rm refuses glob after literal separator or in bracket class: rm ';' fence*.sh": 0.000232,
+    "hub/test/literal-rm.test.ts::literal-rm refuses glob after literal separator or in bracket class: rm []a]": 0.000151,
+    "hub/test/literal-rm.test.ts::literal-rm refuses glob after literal separator or in bracket class: rm [a\"b\"]": 0.000171,
+    "hub/test/literal-rm.test.ts::literal-rm refuses glob after literal separator or in bracket class: rmdir [!]]": 0.000136,
+    "hub/test/literal-rm.test.ts::literal-rm refuses unquoted glob targets including shell script strings": 0.000611
   },
   "allow": {
     "hub/test/host-watchdog.test.ts": {
