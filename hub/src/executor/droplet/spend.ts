@@ -1,3 +1,5 @@
+import { positiveNonAcquisition, type HostNonAcquisitionReceipt } from '../../host/acquisition-receipt.ts';
+export type { HostNonAcquisitionReceipt } from '../../host/acquisition-receipt.ts';
 import { parsePoolName } from '../../host/pool-name.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 // The first per-user cland state: all project hubs reserve against the same ledger.
@@ -355,11 +357,10 @@ export async function settleHostSpend(project: string, lease: string, released: 
   }, env, timing);
 }
 
-export type HostNonAcquisitionReceipt = {kind:'not-called'|'provider-refused';at:string};
 /** The caller pins this positive receipt before requesting cancellation. Unknown
  * acquire outcomes must retain their reservation for provider reconciliation. */
 export async function cancelHostSpend(identity:{project:string;lease:string},receipt:HostNonAcquisitionReceipt,env:NodeJS.ProcessEnv=process.env,timing:LockRetryTiming={}):Promise<void>{
- if(!receipt||!['not-called','provider-refused'].includes(receipt.kind)||!Number.isFinite(Date.parse(receipt.at)))throw Error('positive non-acquisition receipt required');
+ if(!positiveNonAcquisition(receipt))throw Error('positive non-acquisition receipt required');
  const released=new Date(receipt.at).toISOString();
  await locked(ledger=>{
   const entry=ledger.entries.find(e=>e.project===identity.project&&e.lease===identity.lease&&category(e)==='hosts');

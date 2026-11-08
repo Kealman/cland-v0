@@ -60,7 +60,7 @@ const waitingPublication = Symbol('waiting publication');
 const waitingRetry = Symbol('waiting retry');
 const waitingPool = Symbol('waiting pool');
 class WaitingPoolRemoved extends Error {}
-const waitingReason = (cause: PoolCapacityUnavailable | HostMemoryFloorRefusal) => cause instanceof HostMemoryFloorRefusal ? `waiting for a host: host ${cause.host}, available memory ${cause.availableBytes} bytes` : 'waiting for a host';
+const waitingReason = (cause: PoolCapacityUnavailable | HostMemoryFloorRefusal) => cause instanceof HostMemoryFloorRefusal ? `waiting for a host: host ${cause.host}, available memory ${cause.availableBytes} bytes` : cause.reason;
 export type LaunchRequest = {
   [waitingPublication]?: WaitingPublication; [waitingPool]?: string; [waitingRetry]?: boolean; [placedLaunch]?: { active: boolean; validate?: () => void; reuse?: string }; name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
@@ -126,8 +126,12 @@ export class Sessions {
     this.#log({ event: 'session-waiting', session: row.name, role: row.role, pool: row.pool, reason: row.reason, since: row.since, ...(end ? { end } : {}) });
     this.#core.inbox.refresh();
   });
+  #waitAdmission: (request: LaunchRequest, authorize: () => void) => Promise<() => void> = async (_request,authorize) => authorize;
+  waitingAdmission(admit: (request: LaunchRequest, authorize: () => void) => Promise<() => void>): void { this.#waitAdmission = admit; }
   waitingLaunches(): WaitingLaunch[] { return this.#waiting.list(); }
-  capacityChanged(): void { this.#waiting.capacityChanged(); }
+  startPoolScaling(create: (pool: string, authorize: () => void) => Promise<unknown>): void { this.#poolRuntime?.start(create); }
+  configurePools(): void { this.#poolRuntime?.configure(); this.capacityChanged(); }
+  capacityChanged(): void { this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }
   async cancelWaiting(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<WaitingLaunch | null> {
     const row = await this.#waiting.cancel(name);
     if (row && this.#table.get(name)?.status === 'running') await this.stop(name, resumed, authorize);
@@ -145,6 +149,9 @@ export class Sessions {
     catch (error) {
       if (request.host !== undefined || !(error instanceof PoolCapacityUnavailable || error instanceof HostMemoryFloorRefusal)) throw error;
       authorize();
+      const admittedRole = request.role ?? this.#core.store.roleOf(request.name);
+      const validate = await this.#waitAdmission({...request,role:admittedRole}, authorize);
+      validate(); authorize(); this.#checkRolesLaunch(admittedRole); this.#launchRequestRole({...request,role:admittedRole});
       const reserved = this.#core.nameReservation(request.name);
       if (reserved) throw new Error(reserved);
       const existing = this.#table.get(request.name);
@@ -189,7 +196,8 @@ export class Sessions {
         guard(); authorize();
         if (!this.#poolRuntime || !Object.hasOwn(this.#poolRuntime.settings().pools, pool)) throw new WaitingPoolRemoved(`pool ${pool} removed`);
       };
-      try { await this.#attemptWaiting({ ...request, role, [waitingRetry]: true, [waitingPool]: pool, [waitingPublication]: {name:row.name,id:record.id} }, operation, auth); }
+      let validate = auth;
+      try { validate = await this.#waitAdmission(request,auth); validate(); this.#launchRequestRole({...request,role}); await this.#attemptWaiting({ ...request, role, [waitingRetry]: true, [waitingPool]: pool, [waitingPublication]: {name:row.name,id:record.id} }, operation, auth); }
       catch (cause) {
         guard();
         if (cause instanceof WaitingPoolRemoved) { this.#waiting.drop(request.name, cause.message); this.#log({ event: 'waiting-launch-refused', session: request.name, error: cause.message }); }
@@ -198,6 +206,12 @@ export class Sessions {
           const current = this.#table.waitingLaunch(row.name);
           if (current?.id === record.id) this.#table.saveWaitingLaunch({ ...current, row: {...current.row,reason:waitingReason(cause)}, memory: cause instanceof HostMemoryFloorRefusal ? this.#waitingMemory(cause) : undefined });
           this.#waiting.reason(request.name, waitingReason(cause));
+          if (cause instanceof PoolCapacityUnavailable) this.#poolRuntime?.demand(cause, () => {
+            auth(); validate(); this.#checkRolesLaunch(role); this.#launchRequestRole({...request,role});
+            const reserved=this.#core.nameReservation(row.name,undefined,undefined,true);
+            if(reserved)throw new Error(reserved);
+            if (this.#table.waitingLaunch(row.name)?.id !== record.id || this.#table.get(row.name)?.status === 'running') throw new Error('waiting demand changed');
+          });
         }
         else { this.#waiting.drop(request.name, 'refused'); this.#log({ event: 'waiting-launch-refused', session: request.name, error: String(cause) }); }
         throw cause;
@@ -1564,18 +1578,22 @@ export class Sessions {
     } finally { resumed(() => { marker.active = false; reservation?.release(); releaseAdmission(); if (marker.reuse) this.#reusing.delete(marker.reuse); }); }
   }
 
+  #launchRequestRole(request: LaunchRequest): string | null {
+    const refusal = nameRefusal(request.name, new Set(['human']));
+    if (refusal) throw new Error(refusal);
+    const role = request.role ?? this.#core.store.roleOf(request.name);
+    if (role !== null && !this.#core.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.#core.roleNames().join(', ')})`);
+    if (role === 'lead' && !request.item) throw new Error('a Lead launch needs `item` naming an open configured container');
+    return role;
+  }
+
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
     if (this.#poolRuntime && !request[placedLaunch]?.active) return this.withLaunchPlacement(request, placed => this.launch(placed, resumed, authorize), resumed, authorize);
     const role = resumed(() => {
       authorize();
       request[placedLaunch]?.validate?.();
       this.validateLaunchHost(request);
-      const refusal = nameRefusal(request.name, new Set(['human']));
-      if (refusal) throw new Error(refusal);
-      const role = request.role ?? this.#core.store.roleOf(request.name);
-      if (role !== null && !this.#core.roleNames().includes(role)) throw new Error(`unknown role "${role}" (roles: ${this.#core.roleNames().join(', ')})`);
-      if (role === 'lead' && !request.item) throw new Error('a Lead launch needs `item` naming an open configured container');
-      return role;
+      return this.#launchRequestRole(request);
     });
     // Keep synchronous admission ahead of fresh I/O for new launches. Pool selection needs
     // fresh role/account defaults before choosing an idle member.
@@ -3000,6 +3018,7 @@ export class Sessions {
   close(): void | Promise<void> {
     this.#closed = true;
     const waitingDrain = this.#waiting.close();
+    const poolDrain = this.#poolRuntime?.close();
     this.#core.waitingNames(null);
     this.#forcedQueued.clear();
     for (const held of this.#heldDeliveries.values()) this.#transportClock.clearTimeout(held.timer);
@@ -3022,7 +3041,7 @@ export class Sessions {
     this.#stopRetry = null;
     const failures: unknown[] = [];
     // Preserve synchronous construction rollback when no retry owns asynchronous work.
-    const adapterDrains: Promise<void>[] = waitingDrain ? [waitingDrain] : [];
+    const adapterDrains: Promise<void>[] = [...(waitingDrain ? [waitingDrain] : []), ...(poolDrain ? [poolDrain] : [])];
     for (const adapter of this.#adapters.values()) {
       try {
         const drain = adapter.close();

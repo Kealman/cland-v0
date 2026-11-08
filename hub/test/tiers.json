@@ -475,6 +475,7 @@
     "hub/test/plan-gate.test.ts": "T2",
     "hub/test/planned-stage.test.ts": "T2",
     "hub/test/poller-lease.test.ts": "T1",
+    "hub/test/pool-scale.test.ts": "T2",
     "hub/test/prepare-key.test.ts": "T1",
     "hub/test/prepared-project.test.ts": "T4",
     "hub/test/prerequisite-guards.test.ts": "T2",

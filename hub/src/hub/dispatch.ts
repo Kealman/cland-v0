@@ -1,3 +1,4 @@
+import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
@@ -522,7 +523,7 @@ export class Dispatcher {
 
   useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.core.useAccountPoller(poller); }
 
-  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); this.#sessions?.capacityChanged(); }
+  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); this.#sessions?.configurePools(); }
 
   #validateSessionCaller(frame: { type: string; name?: unknown } & Record<string, unknown>, original: {name:string;sessionId:string} | null, current: Caller | null, peer: Peer, inferredRole?: string | null): void {
     if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
@@ -544,8 +545,30 @@ export class Dispatcher {
     });
   }
 
+  #createPoolHost(pool?: string, authorize: () => void = () => {}): ReturnType<typeof createHost> {
+    if (this.#closed || !this.hostOwner || !this.#options.control) return Promise.reject(new Error('host runtime unavailable'));
+    const work = (this.#options.createHost ?? createHost)({clock:this.core.clock,root:this.#options.control.status().root,pool,env:this.#options.env ?? process.env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets ? {registerSecrets:this.#options.registerHostSecrets} : {}),records:this.core.store.hosts,owner:this.hostOwner,admit:(name,prepared)=>{
+      try { authorize();
+      if(this.#closed)throw new Error('host provisioning stopped');
+      const pool=this.#options.projectConfig?.().hosts.pools[name];
+      if(!pool)throw new Error(`unknown host pool ${name}`);
+      for(const key of ['provider','size','region','transport','slots'] as const)if(pool[key]!==prepared[key])throw new Error(`pool ${name} changed during host preparation`);
+      if(this.core.store.hosts.provisions.occupied(name)>=pool.maxHosts)throw new Error(`pool ${name} reached max_hosts ${pool.maxHosts}`);
+      } catch(error) { throw new PoolCreationNotAdmitted((error as Error).message,{cause:error}); }
+    }});
+    this.#poolPrepares.add(work);
+    void work.finally(() => this.#poolPrepares.delete(work)).catch(() => {});
+    return work;
+  }
+
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+    sessions?.waitingAdmission(async (request,authorize) => {
+      if (!request.item) return authorize;
+      if (!this.#worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
+      return this.#worktrees.admitWaiting({...request,item:request.item},authorize);
+    });
+    if (sessions && this.hostOwner && this.#options.control) sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize));
     this.core.useSessionRows(() => this.#sessions?.list() ?? []);
     this.#processWork.clear();
     for (const process of sessions?.list() ?? []) this.#processWork.set(process.sessionId, JSON.stringify([process.holds ?? [], process.pending ?? null]));
@@ -2098,7 +2121,7 @@ export class Dispatcher {
               if(!root)throw Error('project root unavailable');
               const env=this.#options.env??process.env;
               if(!this.hostOwner)throw Error('host runtime unavailable');
-              const work=frame.type==='host.destroy'?destroyHost({clock:core.clock,root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):(this.#options.createHost??createHost)({clock:core.clock,root,pool:frame.pool,env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets?{registerSecrets:this.#options.registerHostSecrets}:{}),records:core.store.hosts,owner:this.hostOwner});
+              const work=frame.type==='host.destroy'?destroyHost({clock:core.clock,root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):this.#createPoolHost(frame.pool);
               this.#poolPrepares.add(work);
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));

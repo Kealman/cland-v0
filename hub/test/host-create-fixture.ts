@@ -13,9 +13,10 @@ import { Store } from '../src/hub/store.ts';
 import { watchdogStopped } from '../src/executor/droplet/watchdog.ts';
 import { drainFixtureOwners } from './host-watchdog-drain.ts';
 import { stopHostWatchdog, type HostWatchdogIdentity } from '../src/host/host-watchdog.ts';
+import { fakeHarness } from './fakes/harness.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 const SETUP_MS=testWaitMs(60000);
-export async function fixture(t:test.TestContext,options:{lease?:string}={}) {
+export async function fixture(t:test.TestContext,options:{lease?:string; fakeCodex?:boolean}={}) {
  const root=await tempProject(t,'hc-','/tmp');
  const beforeStop:Array<()=>Promise<void>>=[],handles:Array<()=>unknown>=[];
  onCleanup(t,async()=>{
@@ -33,13 +34,13 @@ export async function fixture(t:test.TestContext,options:{lease?:string}={}) {
  await writeFile(join(bin,'npm'),`#!/bin/sh\nln -s '${repo}node_modules' node_modules\n`,{mode:0o700});
  const env=fixtureEnvironment(root,process.env,{PATH:bin+':'+process.env.PATH,CLAND_FAKE_HOST_ROOT:root,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_SCP_BIN:new URL('./fakes/fake-scp.ts',import.meta.url).pathname});
  await mkdir(join(root,'.cland'),{recursive:true});
- await writeFile(join(root,'.cland/config.toml'),(options.lease?'[hosts]\nlease="'+options.lease+'"\n':'')+'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
+ await writeFile(join(root,'.cland/config.toml'),(options.lease?'[hosts]\nlease="'+options.lease+'"\n':'')+'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nmin_hosts=0\nregion="fake-1"\n');
  const git=async(...args:string[])=>promisify(execFile)('git',args,{cwd:root,env:fixtureEnvironment(root,env)});
  await git('init','--initial-branch=main');
  await writeFile(join(root,'seed'),'territory seed\n');await git('add','seed');await git('commit','-m','seed');
  await git('clone','--bare',root,join(root,'.cland/territory.git'));
  await git('--git-dir='+join(root,'.cland/territory.git'),'config','cland.managed','true');
- const hub=await projectHub(t,root,env as Record<string,string>,{adapters:[boundary=>new OpenCodeAdapter(boundary,{bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,env:fixtureEnvironment(root,env),stopGraceMs:50})]});
+ const hub=await projectHub(t,root,env as Record<string,string>,{adapters:[...(options.fakeCodex ? [((host:import('../src/adapters/contract.ts').AdapterHost,clock:import('../src/hub/clock.ts').Clock)=>fakeHarness('codex',{host,clock}))] : []),boundary=>new OpenCodeAdapter(boundary,{bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,env:fixtureEnvironment(root,env),stopGraceMs:50})]});
  const stops=[()=>hub.stop()];
  let safeToRemove=false;
  guardDirectoryRemoval(root,()=>{if(!safeToRemove)throw Error('fixture writer closure unconfirmed; root retained');});

@@ -181,11 +181,11 @@ test('a ready host leaving capacity changes a memory wait without polling', asyn
   adapter.spawn = async () => { throw new HostMemoryFloorRefusal('a', { code: 'memory-floor', availableBytes: 1, floorBytes: 1300000000 }); };
   f.cleanup(() => { adapter.spawn = spawn; });
   await f.launch('queued');
-  const changed = observe(f.cleanup, 'departure reason observed', () => events.find(e => e.event === 'session-waiting' && e.reason === 'waiting for a host'));
+  const changed = observe(f.cleanup, 'departure reason observed', () => events.find(e => e.event === 'session-waiting' && e.reason === 'waiting for host b to boot'));
   f.records.provisions.save({ ...f.records.provisions.get('a')!, state: 'destroying' });
   await changed;
   const list = (await f.ui.request({ type: 'session.list' })).value as { waiting: Array<{reason:string}> };
-  assert.equal(list.waiting[0]?.reason, 'waiting for a host');
+  assert.equal(list.waiting[0]?.reason, 'waiting for host b to boot');
   assert.equal(adapter.spawns.length, 0);
 });
 

@@ -44,3 +44,19 @@ test('DigitalOcean create names missing E-1534 admission before image checks or 
  assert.equal(result.code,1);assert.match(result.stderr,/E-1534.*lease.*watchdog.*spend/);
  assert.equal(calls,0,'refusal precedes every provider API call');
 });
+
+test('pre-row admission refusal acquires nothing and publishes no provision record',async t=>{
+ const {createHost}=await import('../src/host/provision-host.ts');
+ const {FakeHostProvider}=await import('../src/host/provider/fake.ts');
+ const {Store}=await import('../src/hub/store.ts');
+ const {onCleanup}=await import('./process-cleanup.ts');
+ const root=await tempProject(t);await mkdir(join(root,'.cland'),{recursive:true});
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=1\nmin_hosts=0\nregion="fake-1"\n');
+ const hub=await projectHub(t,root,{CLAND_FAKE_HOST_ROOT:root});
+ const prepared=await cland(root,'host','prepare','agents');assert.equal(prepared.code,0,prepared.stderr);
+ const store=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>store.close());
+ const provider=new FakeHostProvider({env:hub.hostEnvironment});let admitted=0,acquired=0;
+ t.mock.method(provider,'acquire',async()=>{acquired++;throw Error('acquisition must not run');});
+ await assert.rejects(createHost({root,pool:'agents',env:hub.hostEnvironment,records:store.hosts,owner:hub.hostOwner!,provider,admit:()=>{admitted++;throw Error('latest admission refused');}}),/latest admission refused/);
+ assert.equal(admitted,1);assert.equal(acquired,0);assert.deepEqual(store.hosts.provisions.list(),[]);
+});

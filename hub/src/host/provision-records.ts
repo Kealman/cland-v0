@@ -1,7 +1,11 @@
+import { positiveNonAcquisition } from './acquisition-receipt.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Machine } from './provider/provider.ts';
 export type ProvisionState = 'creating'|'booting'|'connecting'|'cloning'|'ready'|'failed'|'destroying'|'destroyed';
+export const ACTIVE_PROVISION_STATES: readonly ProvisionState[] = ['creating','booting','connecting','cloning','ready','destroying'];
 export type ProvisionRecord = { acquisition?:'pending'|'acquired'; nonAcquisition?:import('../executor/droplet/spend.ts').HostNonAcquisitionReceipt; id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
+// This partial index narrows to acquisition anomalies, never parsing receipt dates.
+const unresolvedSql = "json_extract(record,'$.state')='failed' and coalesce(json_extract(record,'$.release'),'')!='released'";
 /** Shares the registration database: final readiness and revocation serialize in SQLite. */
 export class ProvisionRecords {
  readonly #listeners = new Set<(id:string, previous:ProvisionState|null, state:ProvisionState)=>void>();
@@ -16,6 +20,8 @@ export class ProvisionRecords {
  constructor(db:DatabaseSync) {
   this.#db=db;
   db.exec(`create table if not exists provisioned_hosts (id text primary key, record text not null);
+   drop index if exists provisioned_occupied_pool;
+   create index if not exists provisioned_unreleased_failed_pool on provisioned_hosts(json_extract(record,'$.pool')) where ${unresolvedSql};
    create index if not exists provisioned_pool_ready on provisioned_hosts(json_extract(record,'$.state'),json_extract(record,'$.pool'),id);
    create index if not exists provisioned_host_states on provisioned_hosts(json_extract(record,'$.state'));
    create index if not exists host_registration_states on hosts(state,id);
@@ -33,6 +39,19 @@ export class ProvisionRecords {
   this.#db.prepare(`update provisioned_hosts set record=json_set(record,'$.state','failed','$.release','incomplete',
    '$.reason','provision interrupted during '||json_extract(record,'$.state')||'; machine retained for reconciliation')
    where json_extract(record,'$.state') in ('creating','booting','connecting','cloning')`).run();
+ }
+ /** Billable or unresolved ownership, separate from placeable inventory. */
+ occupied(pool:string):number {
+  let count=Number(this.#db.prepare(`select count(*) as count from provisioned_hosts where json_extract(record,'$.pool')=? and json_extract(record,'$.state') in (${ACTIVE_PROVISION_STATES.map(()=>'?').join(',')})`).get(pool,...ACTIVE_PROVISION_STATES)!.count);
+  for(const row of this.#db.prepare(`select record from provisioned_hosts where json_extract(record,'$.pool')=? and ${unresolvedSql}`).iterate(pool)) {
+   const record=JSON.parse(String(row.record)) as ProvisionRecord;
+   if(record.machine||record.acquisition||!record.nonAcquisition||!positiveNonAcquisition(record.nonAcquisition))count++;
+  }
+  return count;
+ }
+ /** Indexed current inventory; terminal history is never read or decoded. */
+ *active():Iterable<ProvisionRecord> {
+  for(const row of this.#db.prepare(`select record from provisioned_hosts where json_extract(record,'$.state') in (${ACTIVE_PROVISION_STATES.map(()=>'?').join(',')}) order by id`).iterate(...ACTIVE_PROVISION_STATES))yield JSON.parse(String(row.record)) as ProvisionRecord;
  }
  *registered():Iterable<ProvisionRecord> {
   for(const row of this.#db.prepare(`select p.record from hosts h join provisioned_hosts p on p.id=h.id

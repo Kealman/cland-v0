@@ -656,3 +656,11 @@ Role placement intent is stored in `[<role>.launch] pool` in `roles.toml`,
 defaulting to `local`. `cland role launch <role> --pool <pool>` edits it;
 Coordinator and Aide accept only `local`. Syntax is checked when loading roles,
 independently of the pool configuration. See [role pool defaults](../hub/roles.md#role-host-pool-defaults).
+
+## Automatic pool scale-up
+
+Hub startup maintains configured minimums and waiting pool launches can create
+hosts below the configured maximum. Live `max_hosts` writes retry placement.
+The same prepared-image, spend, lease, watchdog and fake-provider admission
+conditions apply as manual create; see [pool scale-up](../hub/pool-scaling.md).
+No agent role gains a host-create permission: this is the hub's lifecycle owner.

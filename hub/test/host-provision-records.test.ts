@@ -56,3 +56,62 @@ test('state observers see committed readiness and departure, isolate failures an
  unsubscribe();f.provisions.save({...record,state:'destroyed'});
  assert.equal(seen.length,2);
 });
+
+test('active inventory reads only non-terminal rows despite retained history',t=>{
+ const f=fixture(t);
+ for(let i=0;i<10000;i++)f.provisions.save({...record,id:`history-${i}`,state:i%2?'failed':'destroyed',release:'released'});
+ const states=['creating','booting','connecting','cloning','ready','destroying'] as const;
+ for(const state of states) {
+  const row={...record,id:state,state};
+  if(state==='ready') {f.hosts.insert({id:state,address:'fake-one',user:'agent',clientKeyPath:'unused',knownHosts:'unused'},'synthetic');f.provisions.ready(row);}
+  else f.provisions.save(row);
+ }
+ let reads=0;
+ const parse=JSON.parse;
+ t.mock.method(JSON,'parse',(...args:Parameters<typeof JSON.parse>)=>{reads++;return parse(...args);});
+ const rows=[...f.provisions.active()];
+ assert.deepEqual(rows.map(row=>row.state).sort(),[...states,'cloning'].sort());
+ assert.equal(f.provisions.occupied('agents'),7);
+ assert.equal(reads,7,'retained terminal rows are never decoded by active or occupied');
+});
+
+test('occupied keeps unresolved failed acquisitions and frees only positive receipts',t=>{
+ const f=fixture(t);const {machine:_machine,...bare}=record;f.provisions.save({...bare,state:'failed',acquisition:'pending'});
+ assert.equal(f.provisions.occupied('agents'),1);
+ f.provisions.save({...record,state:'failed',release:'incomplete'});
+ assert.equal(f.provisions.occupied('agents'),1);
+ f.provisions.save({...record,state:'failed',release:'released'});
+ assert.equal(f.provisions.occupied('agents'),0);
+ for(const kind of ['not-called','provider-refused'] as const){
+  f.provisions.save({...bare,state:'failed',nonAcquisition:{kind,at:record.created}});
+  assert.equal(f.provisions.occupied('agents'),0);
+ }
+ f.provisions.save({...record,state:'failed',acquisition:'pending',nonAcquisition:{kind:'not-called',at:record.created}});
+ assert.equal(f.provisions.occupied('agents'),1,'contradictory receipt cannot free a live machine or pending acquire');
+});
+
+test('idle pool close stays synchronous for construction rollback',async t=>{
+ const {PoolRuntime}=await import('../src/host/pool-runtime.ts');
+ const {readHostPools}=await import('../src/host/pools.ts');
+ const f=fixture(t);
+ const runtime=new PoolRuntime(()=>readHostPools(undefined),f.hosts,()=>false,()=>[]);
+ assert.equal(runtime.close(),undefined);
+});
+
+test('occupied rejects relative receipt dates exactly like host spend',t=>{
+ const f=fixture(t);const {machine:_machine,...bare}=record;
+ f.provisions.save({...bare,state:'failed',nonAcquisition:{kind:'not-called',at:'now'}});
+ assert.equal(f.provisions.occupied('agents'),1);
+});
+
+test('occupied decodes only unreleased anomalies after 10000 released or destroyed records',t=>{
+ const f=fixture(t);const {machine:_machine,...bare}=record;
+ for(let i=0;i<10000;i++)f.provisions.save({...record,id:`old-${i}`,state:i%2?'failed':'destroyed',release:'released'});
+ f.provisions.save({...bare,id:'pending',state:'failed',acquisition:'pending'});
+ f.provisions.save({...record,id:'retained',state:'failed',release:'incomplete'});
+ f.provisions.save({...bare,id:'positive',state:'failed',nonAcquisition:{kind:'provider-refused',at:record.created}});
+ let reads=0;const parse=JSON.parse;
+ t.mock.method(JSON,'parse',(...args:Parameters<typeof JSON.parse>)=>{reads++;return parse(...args);});
+ assert.equal(f.provisions.occupied('agents'),3,'fixture cloning plus two unresolved anomalies');
+ assert.equal(reads,3,'only pending, retained and positive unreleased candidates are decoded');
+});

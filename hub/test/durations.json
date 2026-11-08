@@ -14050,6 +14050,13 @@
       "added": "2026-11-08",
       "expires": "2026-11-15",
       "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy.; renewed 2026-11-08 from samples linux max 8.674 s (n=12), macOS max 7.218 s (n=2)"
+    },
+    "hub/test/host-create-ready.test.ts::T-1746 waiting pool launch creates a leased watchdog host and is placed": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-13",
+      "reason": "T-1746 macOS arm64 local Node24.21.0 green samples [2.960478458, 2.349970333, 3.092895792]s, includes scratch setup, native fake SSH/provider creation, clone, watchdog, fake Codex placement and joined cleanup; excludes driver startup. Linux 4.9486332672s is an unexecuted 1.6x projection; 8s exceeds 1.5x projection. No browser or real provider. Report-mode duration gate. Invalid sandbox fixture runs excluded."
     }
   }
 }

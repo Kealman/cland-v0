@@ -14,3 +14,8 @@ a request, then the public create CLI must name E-1534's lease, watchdog and spe
 requirements with zero provider calls. The interceptor prevents external network
 access even if admission regresses. This is refusal-ordering evidence, not a
 DigitalOcean creation or image-preparation run.
+
+The pre-row admission refusal case prepares a fake image, injects a refusal into
+the real create path after asynchronous image checks, and asserts the callback
+ran once, provider.acquire never ran, and no provision record was published.
+It does not start SSH or a harness and stays at T2.

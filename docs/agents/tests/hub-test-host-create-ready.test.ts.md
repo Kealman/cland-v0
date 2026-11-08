@@ -50,3 +50,11 @@ agents pool after creation, launches without an explicit host and asserts the
 same created Host in the persisted process row. All native stop, liveness,
 restart and registration assertions remain. It proves the create-to-pool-launch
 seam without a second native fixture or real provider access.
+
+T-1746 adds `T-1746 waiting pool launch creates a leased watchdog host and is
+placed`: arm the persisted-process observer before launching; wait through the
+real create/readiness path, then assert ready inventory and a durable watchdog
+identity. Codex is an in-process fake; its fixture role explicitly uses
+`danger-full-access` because sandbox directory validation is outside this case.
+The fixture sets min_hosts=0 so manual-create scenarios do not race startup
+maintenance before their image preparation. Scaling startup is covered at T2.

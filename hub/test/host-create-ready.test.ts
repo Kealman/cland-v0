@@ -152,3 +152,26 @@ test('forced fixture body failure joins held creation before storage and root di
  assert.equal(closedBeforeFallback,true,'registered cleanup closes storage after that receipt');
  await assert.rejects(access(root!),{code:'ENOENT'});
 });
+
+test('T-1746 waiting pool launch creates a leased watchdog host and is placed',{timeout:SETUP_MS*3},async t=>{
+ const f=await fixture(t,{fakeCodex:true}),store=fixtureStore(t,f);
+ await writeFile(join(f.root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\nsandbox="danger-full-access"\n');
+ const ui=await connectUi(t,f.hub.discovery,'cli');
+ const table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
+ let cancelled=false;
+ const observed=eventually('automatic host launch process persisted',()=>{
+  if(cancelled)return null;
+  const row=table.get('auto-worker');return row?.status==='running'&&row.host?row:undefined;
+ },SETUP_MS);
+ void observed.catch(()=>{});
+ f.beforeStop(async()=>{cancelled=true;await observed.catch(()=>null);});
+ const launched=await ui.request({type:'session.launch',name:'auto-worker',role:'implementer',harness:'codex'},SETUP_MS);
+ assert.equal(launched.ok,true,launched.error);
+ assert.ok((launched.value as {waiting?:unknown}).waiting);
+ const placed=await observed;assert.ok(placed);
+ const host=store.hosts.provisions.get(placed.host!)!;
+ assert.equal(host.state,'ready');assert.equal(host.pool,'agents');
+ assert.ok(store.hosts.leases.get(host.id)?.watchdog?.pidIdentity);
+ const list=(await ui.request({type:'session.list'})).value as {waiting:unknown[]};assert.deepEqual(list.waiting,[]);
+ assert.equal((await ui.request({type:'session.stop',session:'auto-worker'},SETUP_MS)).ok,true);
+});

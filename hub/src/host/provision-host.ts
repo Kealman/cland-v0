@@ -47,7 +47,7 @@ async function command(binary:string,args:string[],env:NodeJS.ProcessEnv,input='
  });
 }
 export type CreateHost = typeof createHost;
-export async function createHost(o:{inUse?:(id:string)=>boolean; clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
+export async function createHost(o:{admit?:(pool:string,settings:HostPool)=>void;inUse?:(id:string)=>boolean; clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
  const clock=o.clock??realClock;
  const source=await readFile(join(o.root,'.cland/config.toml'),'utf8').catch(error=>{if(error.code==='ENOENT'&&o.settings)return '';throw error;});
  const projectConfig=parseConfig(source,'host',o.env);
@@ -69,6 +69,9 @@ export async function createHost(o:{inUse?:(id:string)=>boolean; clock?:Clock; s
  const declarations=provider.declarations;
  if('state' in declarations||!declarations.prices[config.size])throw Error('host billing declaration unavailable');
  const leaseOptions={root:o.root,env:o.env,clock,leaseMs:hostConfig.leaseMs,caps:{shared:projectConfig.verification.dailySpendUsd,hosts:hostConfig.dailySpendUsd},pool,size:config.size,priceHourly:declarations.prices[config.size]!.livePerHour+declarations.extraAddressPerHour,billingMinimumMs:declarations.billingMinimumMs};
+ o.signal?.throwIfAborted();
+ o.admit?.(pool,config);
+ // No await between admission and publication: all creators serialize at this checkpoint.
  o.records.provisions.save(record);
  const completion=Promise.withResolvers<void>(),abort=new AbortController();
  const signal=o.signal?AbortSignal.any([o.signal,abort.signal]):abort.signal;

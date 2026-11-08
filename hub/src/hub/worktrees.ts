@@ -185,28 +185,46 @@ export class TaskWorktrees {
    * the session just launched is stopped, the claim left with its holder. An item that gets no worktree launches at
    * the project root; a Lead records its node in process.item without a task worktree.
    */
-  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null; note?: string } & WorktreeOutcome> {
-    const launchHost = sessions.validateLaunchHost(request);
+  #claimYields(request: LaunchRequest, held: Claim | null): boolean {
+    return !held || (held.session === request.name && held.role === request.role) || held.role === 'coordinator' || held.sessionId === 'human';
+  }
+
+  #launchEligibility(request: LaunchRequest & {item:string}, view: Pick<ItemView,'id'|'state'|'kind'|'claim'>): void {
     if (request.role !== 'implementer' && request.role !== 'lead' && request.role !== 'reviewer' && request.role !== 'qa' && !isCustomRole(request.role)) throw new Error('`item` is for an Implementer, custom worker, Lead, Reviewer or QA');
     if (request.cwd !== undefined) throw new Error('give `item` or `cwd`, not both: an item launches in its own worktree');
-    const view = await this.#tracker.viewAsync(request.item, resumed);
-    resumed(() => authorize?.());
     const verifier = request.role === 'reviewer' || request.role === 'qa';
     if (verifier && view.state !== 'open') throw new Error(`${view.id} is closed: no verifier launch`);
-    if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.ladder.canLead(view.kind))) {
-      throw new Error('a Lead needs an open configured container');
-    }
-    if (request.role === 'implementer' || isCustomRole(request.role)) resumed(() => this.#tracker.assertPlanLaunch(view.id));
+    if (request.role === 'lead' && (view.state !== 'open' || !this.#tracker.ladder.canLead(view.kind))) throw new Error('a Lead needs an open configured container');
+    if (request.role === 'implementer' || isCustomRole(request.role)) this.#tracker.assertPlanLaunch(view.id);
+    const held=view.claim;
+    if (!verifier && held && !this.#claimYields(request,held)) throw new Error(`${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}: release it before launching another session for it`);
+  }
+
+  /** Validated read-only demand; recheck cached current ownership at the synchronous create checkpoint. */
+  async admitWaiting(request: LaunchRequest & {item:string}, authorize: () => void): Promise<() => void> {
+    const view=await this.#tracker.viewAsync(request.item);
+    const validate=()=>{
+      authorize();
+      const current=this.#tracker.summary(view.id);
+      if(!current)throw new Error(`no item ${view.id}`);
+      this.#launchEligibility(request,{...current,claim:this.#tracker.claimOf(view.id)});
+      if(this.#launching.has(view.id))throw new Error(`${view.id}: another session is being launched for it`);
+    };
+    validate();return validate;
+  }
+
+  async launch(sessions: Sessions, request: LaunchRequest & { item: string }, resumed: Resumed = untimed, authorize?: () => void): Promise<{ process: HarnessProcessView; claim: Claim | null; note?: string } & WorktreeOutcome> {
+    const launchHost = sessions.validateLaunchHost(request);
+    const view = await this.#tracker.viewAsync(request.item, resumed);
+    resumed(() => { authorize?.(); this.#launchEligibility(request,view); });
+    const verifier = request.role === 'reviewer' || request.role === 'qa';
     const originalAuthorize = authorize;
     authorize = () => resumed(() => {
       originalAuthorize?.();
       if (request.role === 'implementer' || isCustomRole(request.role)) this.#tracker.assertPlanLaunch(view.id);
     });
-    // A matching offline claimant can launch onto its own node; Sessions.launch still refuses a live name.
-    // Other claims yield only from the Coordinator or human, as before.
-    const yields = (held: Claim | null): boolean => !held || (held.session === request.name && held.role === request.role) || held.role === 'coordinator' || held.sessionId === 'human';
+    const yields = (held: Claim | null): boolean => this.#claimYields(request,held);
     const other = (held: Claim) => `${view.id} is claimed by ${held.session}${held.role ? ` (${held.role})` : ''}`;
-    if (!verifier && !yields(view.claim)) throw new Error(`${other(view.claim as Claim)}: release it before launching another session for it`);
     const token = Symbol(request.name);
     const release = () => {
       if (this.#launching.get(view.id) === token) this.#launching.delete(view.id);

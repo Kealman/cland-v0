@@ -113,3 +113,5 @@ for the additive API and confirmed-absence settlement boundary.
 - [Detached host watchdog](../docs/hub/host-watchdog.md): lease-file expiry, confirmed provider release and spend receipts.
 
 Waiting-launch restart ownership: [durable waits](../docs/hub/waiting-launches.md#restart-settlement).
+
+- [Pool scale-up](../docs/hub/pool-scaling.md): minimum maintenance, waiting launches and live limits.
