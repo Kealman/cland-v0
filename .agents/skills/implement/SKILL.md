@@ -20,9 +20,9 @@ verification under rule 11; existing patch-id carry-over stays unchanged. See
 or additional permissions are needed.
 
 Claude Code's managed Bash `PreToolUse` guard refuses computed rm/rmdir targets
-(command substitutions, named variables and xargs) before native approval stalls
+(command substitutions, named variables, xargs and unquoted globs) before native approval stalls
 the session. Read its reason, print the path if needed, and retry with every path
-written literally. Init/update install it for hand-started sessions when `cland`
+written literally, or leave a fresh `mktemp -d` directory in place. Init/update install it for hand-started sessions when `cland`
 is on PATH; hub launches/relaunches inject it. Literal paths, `git rm` and heredoc
 bodies pass; the guard needs no running hub.
 

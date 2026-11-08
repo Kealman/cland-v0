@@ -101,7 +101,7 @@ On every launch and relaunch, the adapter reads `.claude/settings.json` and `.cl
 `cland init` and `cland update` install one managed Bash `PreToolUse` hook calling
 `cland hook literal-rm`; launches and relaunches inject the same synchronous guard
 through private `--settings`. It refuses the prototype's command-substitution,
-backtick, named-variable and xargs rm/rmdir patterns with exit 2 and a literal-path
+backtick, named-variable, xargs and unquoted-glob rm/rmdir patterns with exit 2 and a literal-path
 retry, preventing Claude Code's statically-unresolvable-target approval stall even
 under bypass permissions. Literal paths, `git rm` and here-document bodies pass.
 This conservative pattern check is not a shell parser or a security boundary.
@@ -427,7 +427,7 @@ name starts a new total; a reconnect keeps the row's totals until the adapter re
 | `cland hook <event> --session <name> [--launch <id>] --hub-file <path>` | Posts one signal, stamped with the process's start time (or the payload's `at`), with the harness's JSON payload from stdin. Only the fields the hub reads are kept, and a prompt is reduced to the message ids it carries. Signal handlers always exit 0; synchronous refusal handlers are listed separately. |
 | `cland hook worktree-create --session <name> --worktree <path> [--launch <id>] --hub-file <path>` | Claude Code's `WorktreeCreate` hook in a session launched with an item: names the session's own worktree on stderr, tells the hub, exits 2. A synchronous refusal hook. |
 | `cland worktree list` / `prune [--yes]` | Task branches and worktrees, under Local git territory. |
-| `cland hook literal-rm` | Local Claude Code Bash `PreToolUse` guard: reads stdin, refuses computed rm/rmdir targets with stderr guidance and exit 2; literal paths, `git rm` and heredoc bodies pass. No hub or network needed. |
+| `cland hook literal-rm` | Local Claude Code Bash `PreToolUse` guard: reads stdin, refuses computed or unquoted-glob rm/rmdir targets with stderr guidance and exit 2; literal paths, `git rm` and heredoc bodies pass. No hub or network needed. |
 | `cland hook bridge --session <name> --hub-file <path>` | The mod's connection to the hub. It prints each `inject` frame as a JSON line, reconnects through `hub.json` after a hub restart, and ends with its parent. |
 
 `CLAND_CLAUDE_BIN` names the `claude` executable, `CLAND_INJECT_TIMEOUT_MS` (60 s) how long an inject waits for its confirmation.

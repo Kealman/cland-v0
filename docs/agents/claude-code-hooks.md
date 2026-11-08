@@ -5,8 +5,9 @@ hook. Hub launches and relaunches inject the same `cland hook literal-rm`
 handler through private settings. Existing sessions receive it on relaunch.
 
 The guard refuses rm/rmdir targets using command substitutions, backticks,
-named variables or xargs. Its exit 2 gives the model a reason and a retry:
-print the path first if needed, then write every path literally. This avoids
+named variables, xargs or unquoted globs (`*`, `?`, `[...]`), including inside
+`bash -c` and `sh -c` scripts. Its exit 2 gives the model a reason and a retry:
+print the path first if needed, then write every path literally, or leave a fresh `mktemp -d` directory in place. This avoids
 Claude Code's statically-unresolvable-target approval stall under bypass
 permissions. Literal paths, `git rm` and here-document bodies pass.
 

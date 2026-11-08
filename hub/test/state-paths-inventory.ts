@@ -298,8 +298,8 @@ export const PATH_EXCEPTIONS = [
   },
   {
     "file": "cli/literal-rm.ts",
-    "expression": "}. Claude Code stops such an rm for human approval even under bypass permissions, which stalls this session. Print the path first if you need it, then run rm again with every path written out literally, for example \\`rm -rf /private/tmp/qa-example.AbC123\\`.\\n`",
-    "context": "fed ? 'xargs' : 'a command substitution or variable'}. Claude Code stops such an rm for human approval even under bypass permissions, which stalls this session. Print the path first if you need it, then run rm again with every path written out literally, for example \\`rm -rf /private/tmp/qa-example.AbC123\\`.\\n`",
+    "expression": "}. Claude Code stops such an rm for human approval even under bypass permissions, which stalls this session. Print the path first if you need it, then run rm again with every path written out literally, for example \\`rm -rf /private/tmp/qa-example.AbC123\\`, or leave a fresh \\`mktemp -d\\` directory in place.\\n`",
+    "context": "source}. Claude Code stops such an rm for human approval even under bypass permissions, which stalls this session. Print the path first if you need it, then run rm again with every path written out literally, for example \\`rm -rf /private/tmp/qa-example.AbC123\\`, or leave a fresh \\`mktemp -d\\` directory in place.\\n`",
     "reason": "Diagnostic example printed to the user; it performs no filesystem operation."
   },
   {
