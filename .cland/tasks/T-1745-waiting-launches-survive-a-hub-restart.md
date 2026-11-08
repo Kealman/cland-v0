@@ -3,7 +3,7 @@ id: T-1745
 kind: task
 title: Waiting launches survive a hub restart
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1534
 blocked_by:
   - T-1744
 topic: null
-branch: null
+branch: t/T-1745-waiting-launches-survive-a-hub-restart
 created: 2026-11-07T16:01:58.235Z
-updated: 2026-11-08T00:38:56.159Z
+updated: 2026-11-08T07:13:08.897Z
 ---
 
 ## Summary
