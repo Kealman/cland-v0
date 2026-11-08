@@ -38,7 +38,7 @@ export class HostRecords {
   }
   list(): HostRecord[] { return this.#db.prepare('select id,transport,address,user,state from hosts order by id').all().map(row => ({ ...row, transport: parseTransportKind(row.transport) })) as HostRecord[]; }
   /** Storage primitive; callers own admission and connection revocation. */
-  revoke(id: string): void { this.#db.prepare("update hosts set state='revoked' where id=?").run(id); }
+  revoke(id: string): void { const previous=this.provisions.get(id)?.state??null; this.#db.prepare("update hosts set state='revoked' where id=?").run(id); this.provisions.changed(id,previous); }
   insert(input: HostRegistration, secret: string): HostRecord {
     hostId(input.id);
     this.#db.prepare("insert into hosts (id,transport,address,user,state,secret_digest) values (?,'ssh',?,?,'registered',?)").run(input.id, input.address, input.user, digest(secret));

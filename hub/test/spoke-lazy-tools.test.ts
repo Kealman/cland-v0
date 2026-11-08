@@ -21,7 +21,7 @@ const calls: Record<string, Record<string, unknown>> = {
   ask: { topic: 'general', question: 'fixture' },
   who: {}, status: { text: 'fixture' }, rename: { name: 'fixture' }, history: {},
   'session.archive': { session: 'fixture' }, 'session.prune': { olderThan: '7d' },
-  'session.launch': { name: 'fixture' },
+  'session.launch': { name: 'fixture' }, 'session.stop': { session: 'fixture' },
   'role.handover': { to: 'fixture', note: { goals_now: '', work_in_flight: '', open_decisions: '', waiting_on: '' } },
   'role.state': {}, 'task.plan': { op: 'show', id: 'T-1' },
   'task.criterion': { id: 'T-1', op: 'done', criterion: 'C1' },

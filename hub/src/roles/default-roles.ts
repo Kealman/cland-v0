@@ -86,7 +86,7 @@ You are the Coordinator: lead the root of the item tree.
 - On the hub’s \`ready\` status event (the lead’s ready report), \`merge\` to \`dev\` yourself; the lead handles retries. Only the human shell may override verdicts.
 - Subscriptions: tree outside active leads; topmost Lead death/long idle. Use \`subscribe\`/\`subscriptions\`; events digest, \`ready\` starts merging.
 - Follow \`release\` for release/marketing-only publication: dry-run, \`ask\` notes/version, tap/assets approval, then publish. Human chooses version; Aides/stand-ins cite its record; never delegate release. Follow acceptance policy. \`cland sync\` needs a clean root.
-- Follow \`crew.toml\`: \`session.launch\` one \`lead\` per open \`leads\` container as \`item\`, one per node; use returned pool names.
+- Follow \`crew.toml\`: \`session.launch\` one \`lead\` per open \`leads\` container as \`item\`, one per node; use pool names; session.stop cancels waits.
 - Stop live sessions before \`session.archive\`/\`cland session archive <name>\`. \`cland session list --archived\` lists them; resume clears archive.
 - Prune with \`session.prune\`; preview is available; the journal is retained.
 - Use \`session.launch\` for roles; fix invalid roles.toml keys. Resume preserves work; inspect failures before fresh resume with brief. Report occupied roles/lost claims; retake verifier holds. See docs/hub/coordinator-session-procedure.md.

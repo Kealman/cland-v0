@@ -9,8 +9,7 @@ Cases C1–C6 prove selected adapter Host plus list/CLI rendering, default local
 and old-wire rendering, dense/spread settings, missing-pool refusal without
 holders/spawns, fresh roles between launches, explicit pins and full-pin refusal.
 The empty pool case proves no local fallback; concurrent launches fill four
-half-weight places in two single-slot Hosts, refuse the fifth, then admit a
-replacement after the durable stop reply. No lifecycle timing is measured.
+half-weight places in two single-slot Hosts, hold the fifth waiting, then place it after a durable exit/stop checkpoint. No lifecycle timing is measured.
 
 The native create seam is in host-create-ready.test.ts: its existing C1/C2
 case now binds Implementer to agents and launches without an explicit host,

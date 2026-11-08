@@ -92,6 +92,8 @@ export class InboxBoard {
   #count: { value: number; until: number } | null = null;
   readonly #deafProcesses = new Map<string, InboxMessage>();
   readonly #approvalProcesses = new Set<string>();
+  #waitingLaunches: (() => import('../protocol.ts').WaitingLaunch[]) | null = null;
+  useWaitingLaunches(list: (() => import('../protocol.ts').WaitingLaunch[]) | null): void { this.#waitingLaunches = list; this.#changed(); }
   #closed = false;
 
   constructor(port: InboxPort) {
@@ -378,6 +380,7 @@ export class InboxBoard {
     this.#count = { value: needsYou, until };
     today.setHours(0, 0, 0, 0);
     return { asks, approvals: placedApprovals, plans, requests, messages, waiting, needsYou, pairings,
+      ...(this.#waitingLaunches ? { waitingLaunches: this.#waitingLaunches() } : {}),
       archiveToday: p.store.inboxDeparturesToday(today.toISOString()),
       ...(archive ? { archive: p.store.inboxDepartures(new Date(now.getTime() - 7 * 86400_000).toISOString()) } : {}) };
   }

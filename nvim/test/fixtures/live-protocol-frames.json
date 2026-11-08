@@ -151,6 +151,7 @@
     "waiting": [],
     "needsYou": 0,
     "pairings": [],
+    "waitingLaunches": [],
     "archiveToday": 0
   }
 }

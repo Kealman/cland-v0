@@ -522,7 +522,7 @@ export class Dispatcher {
 
   useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.core.useAccountPoller(poller); }
 
-  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); }
+  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); this.#sessions?.capacityChanged(); }
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
@@ -537,6 +537,7 @@ export class Dispatcher {
     }
     // the inbox's approvals are the launched sessions waiting for approval, with their attach commands (#33)
     this.#options.core.inbox.useProcesses(sessions ? () => sessions.list() : null);
+    this.#options.core.inbox.useWaitingLaunches(sessions ? () => sessions.waitingLaunches() : null);
   }
 
   /** Where the sessions stand: the connected spokes' cwds and the running launched harnesses'. */
@@ -778,6 +779,8 @@ export class Dispatcher {
       return false;
     };
     if (type === 'session.stop') {
+      const waiting = this.#sessions?.waitingLaunches().find(row => row.name === frame.session);
+      if (waiting) return !['coordinator', 'lead', 'aide'].includes(waiting.role ?? '') && inside(waiting.item) ? null : reason(`waiting session ${waiting.name}`);
       const process = this.#sessions?.list().find(p => p.name === frame.session);
       const role = process ? this.core.store.roleOf(process.name) ?? process.role : null;
       if (!process || ['coordinator', 'lead', 'aide'].includes(role ?? '')) return reason(`session ${String(frame.session)} (root or node role)`);
@@ -1530,13 +1533,15 @@ export class Dispatcher {
       const inferred = frame.type === 'session.launch' && frame.item !== undefined && frame.role === undefined;
       const inferredRole = inferred ? core.store.roleOf(frame.name) : null;
       const launchFrame = inferred && inferredRole !== null ? { ...frame, role: inferredRole } : frame;
-      const authorize = () => {
-        const current = kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame);
+      const validateCaller = (current: Caller | null) => {
         if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
         if (current) this.#requirePermission(current, frame, peer);
         if (frame.type === 'session.launch' && core.store.users.list().some(user => user.name === frame.name)) throw new Error(`session name is a user name: ${frame.name}`);
         if (inferred && core.store.roleOf(frame.name) !== inferredRole) throw new Error(`session "${frame.name}" changed role while launching; retry the launch`);
       };
+      const authorize = () => validateCaller(kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame));
+      // The accepted wait belongs to the admitted identity, independently of its original transport.
+      const retainedAuthorize = () => validateCaller(original ? this.#asSession({ as: { name: original.name, sessionId: original.sessionId, shell: true } }) : null);
       void answerSession(
         this.#sessions,
         launchFrame,
@@ -1545,6 +1550,7 @@ export class Dispatcher {
         (write) => this.#guard.measure(frame.type, kind === 'spoke' ? (name ?? '?') : client, write, 'resumed'),
         authorize,
         original?.name ?? 'human',
+        retainedAuthorize,
       ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);

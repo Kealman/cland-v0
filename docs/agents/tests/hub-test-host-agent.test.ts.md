@@ -43,3 +43,14 @@ Run `node --test hub/test/host-agent.test.ts` under the stage preservation lock.
 `host-agent-client.test.ts` retains old hello and fieldless error compatibility.
 See also `host-memory.test.ts` for injected-reader T2 policy and
 `claude-code-remote.test.ts` for actual Claude launch admission.
+
+The memory-floor case also runs `optionalCapacityHostContract` after the first
+SSH refusal has connected its agent client. The fixture publishes 1,200,000,111
+and 1,200,000,222 available bytes. The helper observes the first through Host,
+unsubscribes it, then observes the second through a new subscriber before
+asserting that the first received nothing further. Its observations and raw
+agent requests receive only the remaining MEMORY_BEHAVIOUR_MS budget from one
+realClock deadline started after setup. Memory writes and spawn authorization
+check that same deadline; the final assertion checks the whole phase after
+native completion. Any remaining subscriptions close in finally.
+The fixture resets the memory floor before continuing prepared/native admission.

@@ -280,7 +280,9 @@ export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' 
 
 // hub/src/protocol.ts
 export type InboxPairing = { users?: Array<{ name: string; displayName: string }>; id: string; messenger: RemoteVia; code: string; userId: string; chatId: string; guildId: string | null; name: string; text: string; command: string; since: string; expires: string; layer: 'now' };
-export type Inbox = { asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; pairings?: InboxPairing[]; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
+export type WaitingLaunch = { item?: string | null; name: string; role: string | null; pool: string; reason: string; since: string };
+
+export type Inbox = { waitingLaunches?: WaitingLaunch[]; asks: InboxAsk[]; approvals: InboxApproval[]; plans: InboxPlan[]; requests: InboxRequest[]; messages: InboxMessage[]; waiting: Topic[]; needsYou: number; pairings?: InboxPairing[]; archiveToday?: number; archive?: InboxDeparture[]; departures?: InboxDeparture[] };
 
 // hub/src/protocol.ts
 export type EventKind = typeof EVENT_KINDS[number];

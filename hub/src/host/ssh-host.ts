@@ -51,7 +51,9 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   const completions = new Map<string, (value: {code: number | null; signal: string | null}) => void>();
   const receipts = new Map<string, AgentEvent & {event:'process-exited'}>();
   const key = (pid: number, identity: string) => `${pid}:${identity}`;
+  const capacityListeners = new Set<(availableBytes: number) => void>();
   const event = (frame: AgentEvent) => {
+    if(frame.event==='memory'){for(const listener of capacityListeners) { try {listener(frame.availableBytes);} catch {} } return;}
     if(frame.event==='ref-watch-status'){o.watchStatus?.(frame.watches);return;}
     if (frame.event === 'ref-moved') { o.log?.(frame); return; }
     if (frame.event !== 'process-exited') return;
@@ -175,6 +177,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
+    onCapacityChanged(listener) { capacityListeners.add(listener); return () => { capacityListeners.delete(listener); }; },
     name:o.name, ...(o.terminalAttachCommand ? {terminalAttachCommand:o.terminalAttachCommand} : {}), limitPolls:false, layout: () => Object.freeze({...o.layout}),
     flushBranch: async (path,branch) => {
       mutation();

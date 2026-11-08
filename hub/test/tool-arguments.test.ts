@@ -76,7 +76,7 @@ test('available spoke tools reject unknown fields, missing fields, wrong types a
     'ask.forward': { ask: 'fixture' }, 'ask.answer': { ask: 'fixture', text: 'Fixture' },
     ask: { topic: 'general', question: 'Which?', options: [] }, who: {}, status: { text: 'Fixture' },
     rename: { name: 'next' }, 'session.archive': { session: 'next' },
-    'session.prune': { olderThan: '1d' }, 'session.launch': { name: 'next' }, history: {},
+    'session.stop': { session: 'fixture-session' }, 'session.prune': { olderThan: '1d' }, 'session.launch': { name: 'next' }, history: {},
     'role.handover': { to: 'next', note: 'Fixture' }, 'role.state': {},
     'task.plan': { id: 'T-1', op: 'show' }, 'task.criterion': { id: 'T-1', op: 'done', criterion: 'C1' },
     'task.hold': { id: 'T-1' }, 'task.create': { title: 'Fixture', size: 'S' },

@@ -45,3 +45,14 @@ test('minimum holding selects only the configured number of ready hosts in that 
  assert.equal(f.provisions.heldByMinimum('host-one','other',1),false);
  assert.equal(f.provisions.heldByMinimum('host-one','agents',0),false);
 });
+
+test('state observers see committed readiness and departure, isolate failures and unsubscribe', t => {
+ const f=fixture(t), seen:unknown[]=[];
+ f.provisions.onChange(()=>{throw Error('observer fault');});
+ const unsubscribe=f.provisions.onChange((id,previous,state)=>seen.push([id,previous,state,f.provisions.get(id)?.state]));
+ f.provisions.ready({...record,state:'ready'});
+ f.provisions.save({...record,state:'destroying'});
+ assert.deepEqual(seen,[[record.id,'cloning','ready','ready'],[record.id,'ready','destroying','destroying']]);
+ unsubscribe();f.provisions.save({...record,state:'destroyed'});
+ assert.equal(seen.length,2);
+});

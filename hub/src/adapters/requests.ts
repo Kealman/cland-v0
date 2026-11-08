@@ -35,8 +35,8 @@ export type SessionRequest =
   | { type: 'session.signal'; id: string; session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> }
   | { type: 'session.bridge'; id: string; session: string; launch?: string };
 
-/** Spoke session requests are still checked by the role permission table; stop/resume remain shell-only. */
-export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.list', 'session.archive', 'session.prune']);
+/** Spoke session requests are still checked by the role permission table; resume remains shell-only. */
+export const SPOKE_SESSION_REQUESTS: ReadonlySet<string> = new Set(['session.launch', 'session.stop', 'session.list', 'session.archive', 'session.prune']);
 
 const optString = (v: unknown) => v === undefined || typeof v === 'string';
 
@@ -78,7 +78,7 @@ export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolea
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
 /** `resumed` times the synchronous lifecycle work after adapter or Git awaits: the hub's guard. */
-export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void, actor = 'human'): Promise<HubFrame> {
+export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void, actor = 'human', retainedAuthorize?: () => void): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
   try {
@@ -95,15 +95,15 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
           ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
           ...(frame.brief !== undefined ? { brief: frame.brief } : {}),
         };
-        return await sessions.withLaunchPlacement({ ...request, ...(frame.item !== undefined ? { item: frame.item } : {}) }, async placed => {
-          if (frame.item === undefined) return ok({ process: await sessions.launch(placed, resumed, authorize) });
+        return ok(await sessions.launchOrWait({ ...request, ...(frame.item !== undefined ? { item: frame.item } : {}) }, (candidate, admitted) => sessions.withLaunchPlacement(candidate, async placed => {
+          if (frame.item === undefined) return { process: await sessions.launch(placed, resumed, admitted) };
           if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
-          return ok(await worktrees.launch(sessions, { ...placed, item: frame.item }, resumed, authorize));
-        }, resumed, authorize);
+          return await worktrees.launch(sessions, { ...placed, item: frame.item }, resumed, admitted);
+        }, resumed, admitted), authorize, retainedAuthorize));
       }
       case 'session.list': {
         const { processes, rows } = sessions.listRows(frame.archived ?? false);
-        return ok({ processes, archived: sessions.archivedCount(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator(), rows });
+        return ok({ processes, waiting: frame.archived ? [] : sessions.waitingLaunches(), archived: sessions.archivedCount(), pendingStops: sessions.pendingStops(), adapters: sessions.capabilities(), coordinator: sessions.coordinator(), rows });
       }
       case 'session.attach':
         return ok({ command: sessions.attachCommand(frame.session) });
@@ -112,8 +112,12 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
       case 'session.prune':
         authorize?.();
         return ok(sessions.prune(frame.olderThan, frame.dryRun ?? false));
-      case 'session.stop':
+      case 'session.stop': {
+        authorize?.();
+        const cancelled = await sessions.cancelWaiting(frame.session, resumed, authorize);
+        if (cancelled) return ok({ cancelled });
         return ok({ process: await sessions.stop(frame.session, resumed, authorize) });
+      }
       case 'session.resume':
         return ok(await sessions.resume(frame.session, frame.relaunch ?? false, resumed, authorize, frame.fresh ?? false, frame.host, worktrees));
       case 'session.retry':

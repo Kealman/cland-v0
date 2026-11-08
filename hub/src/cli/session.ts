@@ -44,14 +44,15 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
         d,
         { type: 'session.launch', name, ...(role ? { role } : {}), ...(model ? { model } : {}), ...(harness ? { harness } : {}), ...(account !== undefined ? { account } : {}), ...(dir ? { cwd: dir } : {}), ...(effort ? { effort } : {}), ...(item ? { item } : {}), ...(brief !== undefined ? { brief } : {}) },
         60_000,
-      )) as { process: HarnessProcessView; claim?: { session: string } | null; worktree?: { path: string; branch: string } | null; reason?: string };
+      )) as { waiting?: import('../protocol.ts').WaitingLaunch; process: HarnessProcessView; claim?: { session: string } | null; worktree?: { path: string; branch: string } | null; reason?: string };
+      if (v.waiting) { out(v, `waiting: ${v.waiting.reason}`); return 0; }
       const where = item ? `\n    ${item}: ${v.worktree ? `worktree ${v.worktree.path} on ${v.worktree.branch}` : (v.reason ?? 'no worktree')}; claimed by ${v.claim?.session ?? '-'}` : '';
       out(v, `${v.process.warning ? `warning: ${v.process.warning}\n` : ''}launched ${sessionLine(v.process)}${where}`);
       return 0;
     }
     case 'list': {
-      const v = (await askHubFrame(d, { type: 'session.list', archived: rest.includes('--archived') })) as { processes: HarnessProcessView[]; coordinator?: string | null; archived: number };
-      out(v, `${v.processes.length ? v.processes.map(sessionLine).join('\n') : 'no sessions launched'}\n${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}\narchived: ${v.archived}`);
+      const v = (await askHubFrame(d, { type: 'session.list', archived: rest.includes('--archived') })) as { processes: HarnessProcessView[]; waiting?: import('../protocol.ts').WaitingLaunch[]; coordinator?: string | null; archived: number };
+      out(v, `${v.processes.length ? v.processes.map(sessionLine).join('\n') : 'no sessions launched'}\n${(v.waiting ?? []).map(w => `${w.name} [${w.role ?? 'no role'}] pool ${w.pool}: ${w.reason}`).join('\n')}${v.waiting?.length ? '\n' : ''}${v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator'}\narchived: ${v.archived}`);
       return 0;
     }
     case 'attach': {
@@ -75,7 +76,8 @@ export async function runSession(args: string[], cwd: string = process.cwd()): P
     }
     case 'stop': {
       if (!name) throw new Error('usage: cland session stop <name>');
-      const v = (await askHubFrame(d, { type: 'session.stop', session: name }, 30_000)) as { process: HarnessProcessView };
+      const v = (await askHubFrame(d, { type: 'session.stop', session: name }, 30_000)) as { process: HarnessProcessView; cancelled?: import('../protocol.ts').WaitingLaunch };
+      if (v.cancelled) { out(v, `cancelled ${v.cancelled.name}: ${v.cancelled.reason}`); return 0; }
       out(v, `stopped ${sessionLine(v.process)}`);
       return 0;
     }

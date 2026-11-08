@@ -311,6 +311,11 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
           const value = await hub.request({ type: 'session.prune', olderThan: args.olderThan, ...(typeof args.dryRun === 'boolean' ? { dryRun: args.dryRun } : {}) });
           return text({ ok: true, ...(value as Record<string, unknown>) });
         }
+        case 'session.stop': {
+          if (typeof args.session !== 'string') return text({ ok: false, error: 'session.stop needs `session`' }, true);
+          const value = await hub.request({ type: 'session.stop', session: args.session }, 30_000);
+          return text({ ok: true, ...value as Record<string, unknown> });
+        }
         case 'session.launch': {
           if (typeof args.name !== 'string') return text({ ok: false, error: 'session.launch needs `name`' }, true);
           const value = (await hub.request(

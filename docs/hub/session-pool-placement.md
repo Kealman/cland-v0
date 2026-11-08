@@ -10,8 +10,9 @@ emptiest. Pool settings changed through `cland config set` apply immediately;
 hand edits to config use `cland hub reload`. Role-file changes apply on launch.
 
 A missing pool refuses with its name and the configured pools before role
-reservation or spawn. If no ready Host has room, admission refuses with
-`no host in pool <pool>`. This path does not create machines or queue launches.
+reservation or spawn. If no ready Host has room, an unpinned launch waits without a process;
+see [waiting launches](waiting-launches.md) for replies, recovery and cancellation.
+Placement itself does not create machines.
 An explicit `host` in the launch frame bypasses pool selection. A provisioned
 pin still checks its pool's slot capacity and refuses when full; manually
 registered Hosts have no declared pool capacity. Coordinator and Aide remain

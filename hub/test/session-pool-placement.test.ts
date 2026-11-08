@@ -99,24 +99,26 @@ test('C6 explicit host bypasses missing role pool but refuses a full pinned host
   assert.equal((await f.launch('third', 'local')).ok, true);
 });
 
-test('pool with no ready member refuses without spawning', async t => {
+test('pool with no ready member waits without spawning', async t => {
   const f = await fixture(t);
   for (const id of ['a', 'b']) f.store.hosts.revoke(id);
   const result = await f.launch('worker');
-  assert.equal(result.ok, false);
-  assert.match(String(result.error), /no host in pool agents/);
+  assert.equal(result.ok, true, result.error);
+  assert.equal((result.value as { waiting: { reason: string } }).waiting.reason, 'waiting for a host');
   assert.equal(f.hub.fakes.codex!.spawns.length, 0);
 });
 
 test('concurrent launches promise capacity and stop releases used weight', async t => {
   const f = await fixture(t);
   const results = await Promise.all(['one', 'two', 'three', 'four', 'five'].map(name => f.launch(name)));
-  assert.equal(results.filter(r => r.ok).length, 4);
-  assert.equal(results.filter(r => !r.ok).length, 1);
-  assert.match(String(results.find(r => !r.ok)!.error), /no host in pool agents/);
+  assert.equal(results.filter(r => r.ok).length, 5);
+  assert.equal(results.filter(r => (r.value as { waiting?: unknown }).waiting).length, 1);
   const stopped = await f.ui.request({ type: 'session.stop', session: 'one' });
   assert.equal(stopped.ok, true, stopped.error);
-  assert.equal((await f.launch('replacement')).ok, true);
+  await eventually('waiting fifth launch placed', async () => {
+    const list = (await f.ui.request({ type: 'session.list' })).value as { waiting: unknown[] };
+    return list.waiting.length === 0 ? true : undefined;
+  });
   assert.equal(f.hub.fakes.codex!.spawns.at(-1)!.host, 'a');
 });
 

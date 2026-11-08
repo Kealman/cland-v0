@@ -2,6 +2,11 @@ import { decidePlacement, harnessWeightMilli, type PlacementHost } from './sched
 import type { HostPools } from './pools.ts';
 import type { HostRecords } from './records.ts';
 
+export class PoolCapacityUnavailable extends Error {
+  readonly pool: string;
+  constructor(pool: string) { super(`no host in pool ${pool}`); this.pool = pool; }
+}
+
 /** Launch promises bridge selection to process publication. Lifecycle owners supply live inventory. */
 export class PoolRuntime {
   readonly #promised = new Map<string, number>();
@@ -9,9 +14,10 @@ export class PoolRuntime {
   readonly settings: () => HostPools;
   readonly records: HostRecords;
   readonly available: (id: string) => boolean;
+  readonly onCapacityChanged: () => void;
   readonly processes: () => readonly { key: string; host?: string; harness: string }[];
-  constructor(settings: () => HostPools, records: HostRecords, available: (id: string) => boolean, processes: () => readonly { key: string; host?: string; harness: string }[]) {
-    this.settings = settings; this.records = records; this.available = available; this.processes = processes;
+  constructor(settings: () => HostPools, records: HostRecords, available: (id: string) => boolean, processes: () => readonly { key: string; host?: string; harness: string }[], onCapacityChanged: () => void = () => {}) {
+    this.onCapacityChanged = onCapacityChanged; this.settings = settings; this.records = records; this.available = available; this.processes = processes;
   }
 
   member(host: string, pool: string): boolean {
@@ -38,7 +44,7 @@ export class PoolRuntime {
       hosts.push({ id: row.id, slots: pool.slots, state: row.state === 'ready' && this.available(row.id) ? 'ready' : 'unavailable', usedMilli: used.get(row.id) ?? 0, promisedMilli: this.#promised.get(row.id) ?? 0 });
     }
     const decision = decidePlacement({ hosts, harness, ...(settings.weights ? { weights: settings.weights } : {}), pool: { min_hosts: pool.minHosts, max_hosts: pool.maxHosts, spread: pool.spread } });
-    if (decision.kind !== 'place') throw new Error(pinned ? `host ${pinned} has no room` : `no host in pool ${name}`);
+    if (decision.kind !== 'place') throw pinned ? new Error(`host ${pinned} has no room`) : new PoolCapacityUnavailable(name);
     const host = decision.host;
     const identity = () => {
       const provision = this.records.provisions.get(host), registration = this.records.get(host);
@@ -51,6 +57,6 @@ export class PoolRuntime {
     if (credit) this.#credits.set(token, credit);
     this.#promised.set(host, (this.#promised.get(host) ?? 0) + weight);
     let released = false;
-    return { host, validate, release: () => { if (released) return; released = true; this.#credits.delete(token); const left = this.#promised.get(host)! - weight; if (left) this.#promised.set(host, left); else this.#promised.delete(host); } };
+    return { host, validate, release: () => { if (released) return; released = true; this.#credits.delete(token); const left = this.#promised.get(host)! - weight; if (left) this.#promised.set(host, left); else this.#promised.delete(host); try { this.onCapacityChanged(); } catch { /* Notification cannot undo a release. */ } } };
   }
 }

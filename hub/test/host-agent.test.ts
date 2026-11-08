@@ -10,6 +10,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { VERSION } from '../src/version.ts';
 import { AgentClient } from '../src/host/agent-client.ts';
+import { realClock } from '../src/hub/clock.ts';
 
 test('agent authenticates hello, negotiates protocol and retains connection after unknown op', { timeout: 15000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'agent-'));
@@ -474,33 +475,47 @@ const MEMORY_SETUP_MS = 60_000;
 const MEMORY_BEHAVIOUR_MS = 60_000;
 const MEMORY_CLEANUP_MS = 60_000;
 test('memory floor refuses direct and prepared spawn, reports fake bytes and admits the exact floor', { timeout: MEMORY_SETUP_MS + MEMORY_BEHAVIOUR_MS + MEMORY_CLEANUP_MS }, async t => {
+  const setupStarted = realClock.now().getTime();
   const { writeFile } = await import('node:fs/promises');
   const { until } = await import('./until.ts');
   const { sshHostFixture } = await import('./ssh-host-fixture.ts');
   const f = await sshHostFixture(t, {memoryIntervalMs:20});
   const client = await AgentClient.connect(f.paths.agentSocket, f.secrets.readSecret('f1'));
   f.addCleanup(() => client.close());
+  assert.ok(realClock.now().getTime() - setupStarted <= MEMORY_SETUP_MS, 'memory fixture setup exceeded its allocation');
+  const behaviourDeadline = realClock.now().getTime() + MEMORY_BEHAVIOUR_MS;
+  const remainingBehaviourMs = () => {
+    const remaining = behaviourDeadline - realClock.now().getTime();
+    assert.ok(remaining > 0, 'memory behaviour deadline exhausted');
+    return remaining;
+  };
+  const observed = (condition: () => boolean, what: string) => until(condition, { what, clock: realClock, timeoutMs: remainingBehaviourMs(), loadFactor: 1 });
+  const request = (operation: string, args: Record<string, unknown>) => client.request(operation, args, remainingBehaviourMs());
+  const spawn = (value: Parameters<typeof f.host.spawn>[0]) => { remainingBehaviourMs(); return f.host.spawn(value, { authorize: () => { remainingBehaviourMs(); } }); };
   const memoryFile = join(f.fake.directory, 'available-memory');
-  const setMemory = (availableBytes:number) => writeFile(memoryFile, JSON.stringify({availableBytes}));
+  const setMemory = async (availableBytes:number) => { remainingBehaviourMs(); await writeFile(memoryFile, JSON.stringify({availableBytes})); };
   await setMemory(1200000000);
   const command = { command: process.execPath, args: ['-e', 'process.exit(0)'], cwd: f.fake.home, env: f.env };
   const samples: number[] = [];
   client.on('event', event => { if (event.event === 'memory') samples.push(event.availableBytes); });
-  await assert.rejects(client.request('spawn', command), (error: any) => error.code === 'memory-floor' && error.availableBytes === 1200000000);
-  assert.deepEqual(await client.request('processes', {}), []);
-  await until(() => samples.includes(1200000000), { what: 'fake memory event' });
-  await assert.rejects(f.host.spawn(command), (error: any) => error.name === 'HostMemoryFloorRefusal' && error.code === 'memory-floor' && error.host === 'f1' && error.availableBytes === 1200000000);
+  await assert.rejects(request('spawn', command), (error: any) => error.code === 'memory-floor' && error.availableBytes === 1200000000);
+  assert.deepEqual(await request('processes', {}), []);
+  await observed(() => samples.includes(1200000000), 'fake memory event');
+  await assert.rejects(spawn(command), (error: any) => error.name === 'HostMemoryFloorRefusal' && error.code === 'memory-floor' && error.host === 'f1' && error.availableBytes === 1200000000);
+  const { optionalCapacityHostContract } = await import('./host-contract.ts');
+  await optionalCapacityHostContract(f.host, { publish: setMemory, observed });
   await setMemory(1300000000);
-  const prepared = await client.request('prepare-spawn', { ...command, operationId: '11111111-1111-1111-1111-111111111111', recoveryKey: 'test-key' }) as {token:string};
+  const prepared = await request('prepare-spawn', { ...command, operationId: '11111111-1111-1111-1111-111111111111', recoveryKey: 'test-key' }) as {token:string};
   await setMemory(1299999999);
-  await assert.rejects(client.request('commit-prepared', prepared), (error: any) => error.code === 'memory-floor');
-  const outcome = await client.request('settle-prepared', {token:prepared.token,recoveryKey:'test-key'}) as any;
+  await assert.rejects(request('commit-prepared', prepared), (error: any) => error.code === 'memory-floor');
+  const outcome = await request('settle-prepared', {token:prepared.token,recoveryKey:'test-key'}) as any;
   assert.equal(outcome.code, 'memory-floor'); assert.equal(outcome.availableBytes, 1299999999);
   await setMemory(1300000000);
-  assert.deepEqual(await (await f.host.spawn(command)).exited, {code:0,signal:null});
+  assert.deepEqual(await (await spawn(command)).exited, {code:0,signal:null});
   await setMemory(1400000000);
-  assert.deepEqual(await (await f.host.spawn(command)).exited, {code:0,signal:null});
-  await assert.rejects(f.host.spawn({...command,command:'/missing-command'}), error => (error as any).code !== 'memory-floor');
+  assert.deepEqual(await (await spawn(command)).exited, {code:0,signal:null});
+  await assert.rejects(spawn({...command,command:'/missing-command'}), error => (error as any).code !== 'memory-floor');
+  assert.ok(realClock.now().getTime() <= behaviourDeadline, 'memory behaviour exceeded its shared allocation');
 });
 
 test('memory fixture drains accepted server after failed client setup before removing its root', {timeout: MEMORY_SETUP_MS + MEMORY_CLEANUP_MS}, async t => {

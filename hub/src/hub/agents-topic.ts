@@ -21,7 +21,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
+export const LIFECYCLE_KINDS = ['session-waiting', 'session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -64,6 +64,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       const name = str(entry.name);
       return name ? { kind: 'spoke-joined', text: `${label(name)}: another spoke of the session connected (${Number(entry.spokes) || 2} now); each is answered, and deliveries go to the newest`, detail: { session: name, spokes: Number(entry.spokes) || 2 } } : null;
     }
+    case 'session-waiting':
+      return session ? { kind: 'session-waiting', text: `${label(session)}: ${entry.end ? `wait ended (${String(entry.end)})` : String(entry.reason)}`, detail: { session, pool: entry.pool, reason: entry.reason, since: entry.since, ...(entry.end ? { end: entry.end } : {}) } } : null;
     case 'session-launched':
       // the role it was launched for: its spoke has not said hello yet
       return session ? { kind: 'session-start', text: `${str(entry.role) ? withRole(session, entry.role as string) : label(session)} started (${str(entry.harness) ?? 'harness'}${str(entry.model) ? `, ${String(entry.model)}` : ''})`, detail: { session, harness: entry.harness ?? null } } : null;

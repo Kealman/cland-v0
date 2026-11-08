@@ -446,3 +446,29 @@ export async function optionalFlushHostContract(host:Pick<Host,'flushBranch'>,ex
   if(expected.refusal)await assert.rejects(host.flushBranch!(expected.path,expected.branch),expected.refusal);
   else await host.flushBranch!(expected.path,expected.branch);
 }
+
+/** Optional locally; reports reach a live subscriber and cease after unsubscribe. */
+export async function optionalCapacityHostContract(host: Pick<Host, 'onCapacityChanged'>, source?: {
+  publish: (availableBytes: number) => void | Promise<void>;
+  observed: (condition: () => boolean, what: string) => void | Promise<void>;
+}): Promise<void> {
+  if (!source) { assert.equal(host.onCapacityChanged, undefined); return; }
+  assert.equal(typeof host.onCapacityChanged, 'function');
+  const first = 1_200_000_111, second = 1_200_000_222;
+  const samples: number[] = [], later: number[] = [];
+  const unsubscribe = host.onCapacityChanged!(bytes => samples.push(bytes));
+  let active = true, unsubscribeLater: (() => void) | undefined;
+  try {
+    await source.publish(first);
+    await source.observed(() => samples.includes(first), 'first capacity report');
+    assert.ok(samples.includes(first), 'first capacity report preserves available bytes');
+    unsubscribe(); active = false;
+    const before = samples.length;
+    // The second subscriber is a positive delivery receipt after the first unsubscribes.
+    unsubscribeLater = host.onCapacityChanged!(bytes => later.push(bytes));
+    await source.publish(second);
+    await source.observed(() => later.includes(second), 'later capacity report');
+    assert.ok(later.includes(second), 'later capacity report preserves available bytes');
+    assert.equal(samples.length, before, 'unsubscribed capacity listener received a later report');
+  } finally { try { if (active) unsubscribe(); } finally { unsubscribeLater?.(); } }
+}

@@ -143,14 +143,19 @@ const BASE_TOOLS = [
     inputSchema: { type: 'object', properties: { olderThan: { type: 'string' }, dryRun: { type: 'boolean' } }, required: ['olderThan'] },
   },
   {
+    name: 'session.stop',
+    description: 'Cancel a waiting launch or stop a launched session. Requires the caller role’s session.stop grant and item scope.',
+    inputSchema: { type: 'object', properties: { session: { type: 'string' } }, required: ['session'] },
+  },
+  {
     name: 'session.launch',
     description:
-      'Launch a new harness session through the hub (its process runs in the background; the human attaches to it from the UI). Returns the session with its state and the command that attaches a terminal to it.',
+      'Launch a new harness session through the hub (its process runs in the background; the human attaches to it from the UI). Returns the session with its state and attach command, or {waiting: {reason, since, pool}} without a process when its role pool has no capacity. Stop cancels a wait. Accepted waits pin the admitted pool; stop and launch again to use a new pool. Explicit host pins refuse when full.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'The new session\'s name (lowercase letters, digits, hyphens)' },
-        host: { type: 'string', description: 'Registered Host name; local by default. Coordinator and Aide run only on local' },
+        host: { type: 'string', description: 'Explicit registered Host pin; otherwise the role pool selects (default local). Coordinator and Aide run only on local' },
         role: { type: 'string', description: 'The role it runs under (coordinator, lead, implementer, reviewer, qa, aide); its launch defaults in .cland/roles.toml fill the harness, model, effort and account not given' },
         model: { type: 'string', description: "The model; the role's default, else the harness's, when absent" },
         harness: { type: 'string', description: "The harness (`claude-code`, `opencode`, `codex`); the role's default, else `claude-code`, when absent" },

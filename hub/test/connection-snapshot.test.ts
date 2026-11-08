@@ -42,20 +42,20 @@ test('session.list adds snapshot-shaped archived rows without changing compatibi
   const ui = await client(t, discovery, ['snapshot']);
   await ui.waitFor(f => f.type === 'snapshot.end');
   const snapshot = ui.frames.find(f => f.type === 'snapshot' && f.domain === 'sessions')!.value as import('../src/protocol.ts').SnapshotValues['sessions'];
-  type List = { rows: import('../src/protocol.ts').SessionRow[]; processes: import('../src/protocol.ts').HarnessProcessView[]; archived: number; pendingStops: unknown[]; adapters: unknown; coordinator: string | null };
+  type List = { rows: import('../src/protocol.ts').SessionRow[]; processes: import('../src/protocol.ts').HarnessProcessView[]; waiting: import('../src/protocol.ts').WaitingLaunch[]; archived: number; pendingStops: unknown[]; adapters: unknown; coordinator: string | null };
   const before = (await ui.request({ type: 'session.list' })).value as List;
   const { rows, ...legacy } = before;
   assert.deepEqual(rows, snapshot.rows);
   assert.deepEqual(snapshot.remotes?.map(row => [row.messenger, row.enabled, row.connection]),
     [['telegram', false, 'disabled'], ['discord', false, 'disabled']]);
-  assert.equal(JSON.stringify(legacy), JSON.stringify({ processes: snapshot.processes, archived: 0, pendingStops: [], adapters: before.adapters, coordinator: null }));
+  assert.equal(JSON.stringify(legacy), JSON.stringify({ processes: snapshot.processes, waiting: [], archived: 0, pendingStops: [], adapters: before.adapters, coordinator: null }));
   const empty = (await ui.request({ type: 'session.list', archived: true })).value as List;
   assert.deepEqual(empty.rows, [], 'unmanaged presence does not leak into archived rows');
   const archived = await ui.request({ type: 'session.archive', session: 'worker' });
   assert.equal(archived.ok, true, archived.error);
   const after = (await ui.request({ type: 'session.list', archived: true })).value as List;
   const { rows: archivedRows, ...archivedLegacy } = after;
-  assert.equal(JSON.stringify(archivedLegacy), JSON.stringify({ processes: [(archived.value as { process: unknown }).process], archived: 1, pendingStops: [], adapters: before.adapters, coordinator: null }));
+  assert.equal(JSON.stringify(archivedLegacy), JSON.stringify({ processes: [(archived.value as { process: unknown }).process], waiting: [], archived: 1, pendingStops: [], adapters: before.adapters, coordinator: null }));
   assert.deepEqual(archivedRows, [{ ...snapshot.rows.find(row => row.name === 'worker')!, archived: true, archivedAt: at, archivedBy: 'hand', layer: 'archive' }]);
   const active = (await ui.request({ type: 'session.list' })).value as List;
   assert.deepEqual(active.rows, snapshot.rows.filter(row => row.name !== 'worker'));

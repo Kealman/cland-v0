@@ -4,6 +4,14 @@ export type ProvisionState = 'creating'|'booting'|'connecting'|'cloning'|'ready'
 export type ProvisionRecord = { acquisition?:'pending'|'acquired'; nonAcquisition?:import('../executor/droplet/spend.ts').HostNonAcquisitionReceipt; id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
 /** Shares the registration database: final readiness and revocation serialize in SQLite. */
 export class ProvisionRecords {
+ readonly #listeners = new Set<(id:string, previous:ProvisionState|null, state:ProvisionState)=>void>();
+ onChange(listener:(id:string, previous:ProvisionState|null, state:ProvisionState)=>void):()=>void { this.#listeners.add(listener); return ()=>{this.#listeners.delete(listener);}; }
+ /** Call only after the owning SQL write commits. Observer failures cannot undo it. */
+ changed(id:string,previous:ProvisionState|null):void {
+  const state=this.get(id)?.state;
+  if(!state||state===previous)return;
+  for(const listener of this.#listeners) { try {listener(id,previous,state);} catch {} }
+ }
  readonly #db:DatabaseSync;
  constructor(db:DatabaseSync) {
   this.#db=db;
@@ -43,13 +51,17 @@ export class ProvisionRecords {
  }
  save(record:ProvisionRecord):void {
   if(record.state==='ready')throw Error('ready requires the registration checkpoint');
+  const previous=this.get(record.id)?.state??null;
   this.#db.prepare('insert into provisioned_hosts(id,record) values(?,?) on conflict(id) do update set record=excluded.record').run(record.id,JSON.stringify(record));
+  this.changed(record.id,previous);
  }
  ready(record:ProvisionRecord):void {
   if(record.state!=='ready'||!record.machine)throw Error('ready requires a machine registration');
+  const previous=this.get(record.id)?.state??null;
   const result=this.#db.prepare(`insert into provisioned_hosts(id,record)
    select ?,? where exists(select 1 from hosts where id=? and address=? and state='registered')
    on conflict(id) do update set record=excluded.record`).run(record.id,JSON.stringify(record),record.id,record.machine.address);
   if(result.changes!==1)throw Error('host registration revoked or changed before readiness');
+  this.changed(record.id,previous);
  }
 }

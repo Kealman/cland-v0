@@ -95,3 +95,20 @@ test('optional terminal printer contract covers absence and its exact session co
   optionalTerminalHostContract(supplied, 'ssh fixture');
   assert.throws(() => optionalTerminalHostContract(supplied, 'wrong command'), /ssh fixture/);
 });
+
+test('optional capacity contract covers absence, report delivery and unsubscribe with positive controls', async () => {
+  const { optionalCapacityHostContract } = await import('./host-contract.ts');
+  const { localHost } = await import('../src/host/local.ts');
+  await optionalCapacityHostContract(localHost());
+  const listeners = new Set<(bytes: number) => void>();
+  const publish = (bytes: number) => { for (const listener of listeners) listener(bytes); };
+  const observed = (condition: () => boolean, what: string) => { assert.ok(condition(), what); };
+  const host = { onCapacityChanged(listener: (bytes: number) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; } };
+  await optionalCapacityHostContract(host, { publish, observed });
+  assert.equal(listeners.size, 0);
+  await assert.rejects(optionalCapacityHostContract(host, { publish: () => {}, observed }), /first capacity report/);
+  assert.equal(listeners.size, 0);
+  const leaky = { onCapacityChanged(listener: (bytes: number) => void) { listeners.add(listener); return () => {}; } };
+  try { await assert.rejects(optionalCapacityHostContract(leaky, { publish, observed }), /unsubscribed capacity listener/); }
+  finally { listeners.clear(); }
+});

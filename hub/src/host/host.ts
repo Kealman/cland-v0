@@ -31,6 +31,8 @@ export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: 
 
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
+  /** A fresh host capacity observation, including agent memory reports. */
+  onCapacityChanged?(listener: (availableBytes: number) => void): () => void;
   readonly name: string;
   /** Drain the existing leased agent ref-push owner; absent agents refuse admission. */
   flushBranch?(path: string, branch: string): Promise<void>;
