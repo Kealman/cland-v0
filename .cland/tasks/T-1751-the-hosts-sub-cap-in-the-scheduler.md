@@ -3,7 +3,7 @@ id: T-1751
 kind: task
 title: The hosts sub-cap in the scheduler
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:59.458Z
-updated: 2026-11-07T16:02:07.194Z
+updated: 2026-11-08T14:50:05.420Z
 ---
 
 ## Summary

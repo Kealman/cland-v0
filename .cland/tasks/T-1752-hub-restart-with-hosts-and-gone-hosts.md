@@ -3,7 +3,7 @@ id: T-1752
 kind: task
 title: Hub restart with hosts, and gone hosts' sessions exited
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:59.635Z
-updated: 2026-11-07T16:02:07.363Z
+updated: 2026-11-08T14:50:05.823Z
 ---
 
 ## Summary

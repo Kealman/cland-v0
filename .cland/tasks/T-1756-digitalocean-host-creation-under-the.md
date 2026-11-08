@@ -3,7 +3,7 @@ id: T-1756
 kind: task
 title: DigitalOcean host creation under the lease, the watchdog and the spend
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:02:00.451Z
-updated: 2026-11-07T16:02:08.171Z
+updated: 2026-11-08T14:50:06.526Z
 ---
 
 ## Summary

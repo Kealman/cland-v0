@@ -3,7 +3,7 @@ id: T-1754
 kind: task
 title: Waiting launches in the Neovim and web inboxes
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:02:00.048Z
-updated: 2026-11-07T16:02:07.767Z
+updated: 2026-11-08T14:50:06.802Z
 ---
 
 ## Summary

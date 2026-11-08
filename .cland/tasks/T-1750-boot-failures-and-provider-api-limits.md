@@ -3,7 +3,7 @@ id: T-1750
 kind: task
 title: Boot failures and provider API limits
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:59.219Z
-updated: 2026-11-07T16:02:06.941Z
+updated: 2026-11-08T14:50:05.010Z
 ---
 
 ## Summary

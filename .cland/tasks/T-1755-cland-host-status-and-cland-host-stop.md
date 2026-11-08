@@ -3,7 +3,7 @@ id: T-1755
 kind: task
 title: "`cland host status` and `cland host stop`"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:02:00.281Z
-updated: 2026-11-07T16:02:08.004Z
+updated: 2026-11-08T14:50:07.207Z
 ---
 
 ## Summary

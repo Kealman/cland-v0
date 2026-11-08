@@ -3,7 +3,7 @@ id: T-1753
 kind: task
 title: "Unreachable hosts: 3 and 15 minutes, and hosts destroyed by anyone"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:59.872Z
-updated: 2026-11-07T16:02:07.601Z
+updated: 2026-11-08T14:50:06.108Z
 ---
 
 ## Summary
