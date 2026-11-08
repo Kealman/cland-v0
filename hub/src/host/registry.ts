@@ -1,3 +1,4 @@
+import type { HostTunnelStatus } from '../transport/transport.ts';
 import { realClock, type Clock } from '../hub/clock.ts';
 import { clockDelay } from './clock-delay.ts';
 import { updateHostWatches } from '../transport/transport.ts';
@@ -27,7 +28,30 @@ export type HostConfiguration = { home?: string; layout?: Partial<HostLaunchLayo
 /** Carrier and Host share one lifecycle owner; sessions close before this owner. */
 export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: Host) => void; settle?: (id: string) => Promise<unknown>; onRemove?: (id: string) => void; onReady?: (host: string, bootId: string) => void; createTransport?: (options:SshOptions)=>Carrier; gitDaemon?: (options:GitDaemonOptions)=>Promise<{close():Promise<void>}>; root:string; records:HostRecords; hubSocket:string; spokeSocket:string; env:NodeJS.ProcessEnv; configurations?: Readonly<Record<string,HostConfiguration>>; log:(entry:Record<string,unknown>)=>void; provided?:readonly Host[]}) {
   const clock = options.clock ?? realClock;
+  const startedAt=clock.now();
   const hosts: Host[] = [];
+  const carriers=new Map<string,Carrier>();
+  const tunnelStates=new Map<string,{up:boolean;at:Date}>();
+  const statusListeners=new Set<(id:string,up:boolean,at:Date)=>void>();
+  const publishStatus=(id:string,status:HostTunnelStatus)=>{
+    if(stopped)return;
+    const up=status.state==='up',previous=tunnelStates.get(id);
+    const at=previous?.up===up?previous.at:previous?clock.now():up?clock.now():startedAt;
+    tunnelStates.set(id,{up,at});
+    for(const listener of statusListeners)listener(id,up,at);
+  };
+  const subscribeStatus=(listener:(id:string,up:boolean,at:Date)=>void)=>{
+    statusListeners.add(listener);
+    for(const record of options.records.provisions.registered()) {
+      if(!['ready','unreachable'].includes(record.state))continue;
+      // Provided Hosts own their transport elsewhere. Missing carrier is no
+      // observation, not evidence of a tunnel outage this registry can monitor.
+      const carrier=carriers.get(record.id);if(!carrier)continue;
+      const current=tunnelStates.get(record.id)??{up:carrier.status().state==='up',at:startedAt};
+      listener(record.id,current.up,current.at);
+    }
+    return ()=>{statusListeners.delete(listener);};
+  };
   const readiness = new Map<string, (signal?:AbortSignal) => Promise<void>>();
   const owners = new Map<string, {quiesce: () => void; close: () => Promise<void>}>();
   let stopped = false, pending = Promise.resolve();
@@ -35,7 +59,7 @@ export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: H
     const result = pending.then(work); pending = result.then(() => {}, () => {}); return result;
   };
   const closeOwners = async () => { const errors: unknown[]=[]; for (const owner of [...owners.values()].reverse()) {try {await owner.close();} catch(error) {errors.push(error);}} if(errors.length) throw new AggregateError(errors,'SSH hosts cleanup failed'); };
-  const quiesce = () => { stopped = true; for (const owner of owners.values()) owner.quiesce(); };
+  const quiesce = () => { stopped = true; statusListeners.clear(); for (const owner of owners.values()) owner.quiesce(); };
   const close = async () => { quiesce();const errors:unknown[]=[];try{await options.records.leases.close();}catch(error){errors.push(error);}try{await serial(closeOwners);}catch(error){errors.push(error);}if(errors.length)throw new AggregateError(errors,'SSH hosts cleanup failed'); };
   const secrets = new HostSecretStore(options.root,options.records);
   const open = async (record: HostRecord) => {
@@ -49,12 +73,13 @@ export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: H
       const installed = fileURLToPath(new URL('../../..',import.meta.url));
       const layout = remoteHostLayout(home, { ...(fake && !record.id.startsWith('host-') ? {modDir:join(installed,'hub/mod/cland'),node:process.execPath,cli:join(installed,'hub/bin/cland.ts'),spoke:join(installed,'hub/bin/cland-spoke.ts')} : {}), ...(fake && record.id.startsWith('host-') ? {node:process.execPath} : {}), ...config?.layout });
       const code = remoteCodeDirectory(layout);
-      const carrier = (options.createTransport ?? (o=>new SshTransport(o)))({ beforeReady:async(signal)=>{
+      const carrier = (options.createTransport ?? (o=>new SshTransport(o)))({ onStatus:status=>publishStatus(record.id,status), beforeReady:async(signal)=>{
         const client = await AgentClient.connect(hostPaths(options.root,record.id).agentSocket,secrets.readSecret(record.id));
         try {
           await publishRemoteDiscovery(client,layout.discoveryFile,remoteDiscovery(layout.runDirectory,secrets.readSecret(record.id)),signal);
         } finally { await client.close(); }
       }, root:options.root,record,secrets,hubSocket:options.hubSocket,spokeSocket:options.spokeSocket,remoteRun:layout.runDirectory,supervisor:config?.supervisor ?? remoteSupervisor(layout),agentCommand:[layout.node,layout.cli,'host','serve'],agentNode:layout.node,env:options.env,log:message=>options.log({event:'host-tunnel',host:record.id,message}) });
+      carriers.set(record.id,carrier);
       const handoff=agentVersionHandoff({transport:carrier,codeRoot:join(layout.runDirectory,'..','code'),node:layout.node,version:VERSION});
       const host = sshHost({ watchStatus:rows=>updateHostWatches(options.root,record.id,rows), onTable:(_rows,bootId)=>options.onReady?.(record.id,bootId), ...(fake ? {} : {expectedVersion:VERSION}), agentReady:handoff.ready,updateAgent:handoff.update,restoreAdoptedWorkers:client=>restoreAdoptedWorkers(client,outcome=>{try{options.log({event:'host-claude-restore',host:record.id,state:outcome?(outcome.incomplete.length?'incomplete':'complete'):'unknown',incomplete:outcome?.incomplete??null});}catch{/* Diagnostics do not discard restored ownership. */}}),...(fake ? {} : {codeDirectory:code}),terminalAttachCommand: name => {
         if (options.records.get(record.id)?.state !== 'registered') throw new Error('host is revoked');
@@ -141,7 +166,7 @@ export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: H
     const settlement = await options.settle(id);
     await owners.get(id)?.close();
     options.onRemove?.(id);
-    owners.delete(id);readiness.delete(id);
+    owners.delete(id);readiness.delete(id);carriers.delete(id);tunnelStates.delete(id);
     const index = hosts.findIndex(host => host.name === id); if (index >= 0) hosts.splice(index, 1);
     return settlement;
   });
@@ -152,6 +177,6 @@ export async function projectSshHosts(options: { clock?: Clock; onAdd?: (host: H
       }
       if (record.state === 'registered' && !options.provided?.some(host => host.name === record.id)) await add(record);
     }
-    return {hosts,add,remove,close,quiesce,ready: async (id:string, signal?:AbortSignal) => { const ready=readiness.get(id); if(!ready)throw Error('host not open');await ready(signal); }};
+    return {hosts,add,remove,close,quiesce,subscribeStatus,ready: async (id:string, signal?:AbortSignal) => { const ready=readiness.get(id); if(!ready)throw Error('host not open');await ready(signal); }};
   } catch(error) {await close();throw error;}
 }

@@ -131,6 +131,8 @@ export class Sessions {
   waitingLaunches(): WaitingLaunch[] { return this.#waiting.list(); }
   startPoolScaling(create: (pool: string, authorize: () => void) => Promise<unknown>, idle?: Omit<import('../host/pool-runtime.ts').PoolIdleLifecycle, 'clock'>): void { this.#poolRuntime?.start(create, idle ? { ...idle, clock: this.#core.clock } : undefined); }
   hostUsage(id: string): {usedMilli:number;promisedMilli:number} { return this.#poolRuntime?.usage(id)??{usedMilli:0,promisedMilli:0}; }
+  #outageHold:(host:string)=>boolean=()=>false;
+  hostOutageHold(held:(host:string)=>boolean):void {this.#outageHold=held;}
   hostInUse(id: string): boolean { return this.#poolRuntime?.inUse(id) ?? false; }
   configurePools(config?: import('../init/config.ts').ProjectConfig): void { this.#poolRuntime?.configure(config?.hosts); this.capacityChanged(); }
   capacityChanged(): void { this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }
@@ -732,7 +734,7 @@ export class Sessions {
     this.#table = options.table;
     this.#core.waitingNames(name => this.#waiting.has(name));
     this.#unprovision = this.#core.store.hosts.provisions.onChange((id, _previous, state) => { if (state !== 'ready') this.#memoryBlocked.delete(id); this.capacityChanged(); });
-    this.#poolRuntime = options.hostPools ? new PoolRuntime(options.hostPools, this.#core.store.hosts, id => !this.#memoryBlocked.has(id) && this.#hosts.has(id) && !this.#settlingHosts.has(id) && !this.#cutHosts.has(id), () => this.#capacityProcesses(), () => this.capacityChanged()) : null;
+    this.#poolRuntime = options.hostPools ? new PoolRuntime(options.hostPools, this.#core.store.hosts, id => !this.#outageHold(id) && !this.#memoryBlocked.has(id) && this.#hosts.has(id) && !this.#settlingHosts.has(id) && !this.#cutHosts.has(id), () => this.#capacityProcesses(), () => this.capacityChanged(), id=>this.#outageHold(id)) : null;
 
     this.#core.useSessionHost(name => this.#table.get(name)?.host);
     this.#root = options.root;

@@ -1,3 +1,4 @@
+import { hostLeaseRenewable } from './provision-records.ts';
 import type { LockProcessTable } from '../hub/lock.ts';
 import { armHostWatchdog, stopHostWatchdog, retireHostWatchdog, recordHostAbsence } from './host-watchdog.ts';
 import { parseConfig } from '../init/config.ts';
@@ -84,7 +85,7 @@ export async function createHost(o:{admit?:(pool:string,settings:HostPool)=>void
   await o.records.leases.create(record.id,leaseOptions);admitted=true;
   signal.throwIfAborted();
   if(o.records.leases.effective(record.id,o.root,clock)?.expired)throw Error('host lease expired before acquisition');
-  o.records.leases.arm(record.id,leaseOptions,()=>o.records.provisions.get(record.id)?.state==='ready'&&(o.inUse?.(record.id)??o.records.provisions.heldByMinimum(record.id,pool,config.minHosts)),error=>{console.error(error);},async()=>{await destroyHost({clock,root:o.root,id:record.id,env:o.env,records:o.records,owner:o.owner,provider,log:()=>{}});});
+  o.records.leases.arm(record.id,leaseOptions,()=>hostLeaseRenewable(o.records.provisions.get(record.id)?.state)&&(o.inUse?.(record.id)??o.records.provisions.heldByMinimum(record.id,pool,config.minHosts)),error=>{console.error(error);},async()=>{await destroyHost({clock,root:o.root,id:record.id,env:o.env,records:o.records,owner:o.owner,provider,log:()=>{}});});
   o.onCreating?.(record.id);
   signal.throwIfAborted();
   // An actual OpenSSH key, never a key inferred from a responding machine.

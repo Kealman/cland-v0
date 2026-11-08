@@ -32,6 +32,7 @@ async function controlEndpointAbsent(path: string): Promise<boolean> {
   });
 }
 export type SshOptions = {
+  onStatus?: (status: HostTunnelStatus) => void;
   /** Joined before up and during stop; caller bounds its agent operations. */
   beforeReady?: (signal: AbortSignal) => Promise<void>;
   beforeReadyTimeoutMs?: number;
@@ -164,7 +165,7 @@ export class SshTransport implements Transport {
   }
   status(): HostTunnelStatus { return structuredClone(this.#state); }
   #now(): string { return this.#clock.now().toISOString(); }
-  #stateTo(state: HostTunnelStatus['state']): void { if (state !== this.#state.state || this.#state.since === null) { this.#state.state = state; this.#state.since = this.#now(); } }
+  #stateTo(state: HostTunnelStatus['state']): void { if (state !== this.#state.state || this.#state.since === null) { this.#state.state = state; this.#state.since = this.#now(); this.#o.onStatus?.(this.status()); } }
   async start(): Promise<void> {
     if (this.#running) return;
     this.#forwardAbort = new AbortController();

@@ -1,3 +1,4 @@
+import { hostLeaseRenewable } from './provision-records.ts';
 import type { LockProcessTable } from '../hub/lock.ts';
 import type { HostRecords } from './records.ts';
 import type { Clock } from '../hub/clock.ts';
@@ -42,7 +43,7 @@ export async function restoreHostLeaseOwners(o:Recovery & {armWatchdog?:typeof a
    }
    const declarations=providers.resolve(record).declarations;
    if('state' in declarations||!declarations.prices[record.size])throw Error('host billing declaration unavailable');
-   o.records.leases.arm(record.id,{root:o.root,env:o.env,clock:o.clock,...(o.processes?{processes:o.processes}:{}),leaseMs:o.config.hosts.leaseMs,caps:{shared:o.config.verification.dailySpendUsd,hosts:o.config.hosts.dailySpendUsd},pool:record.pool,size:record.size,priceHourly:declarations.prices[record.size]!.livePerHour+declarations.extraAddressPerHour,billingMinimumMs:declarations.billingMinimumMs},()=>o.records.provisions.get(record.id)?.state==='ready'&&o.inUse(record.id),error=>o.log({event:'host-renewal-failed',host:record.id,error:String(error)}),async()=>{await o.destroy(record.id);});
+   o.records.leases.arm(record.id,{root:o.root,env:o.env,clock:o.clock,...(o.processes?{processes:o.processes}:{}),leaseMs:o.config.hosts.leaseMs,caps:{shared:o.config.verification.dailySpendUsd,hosts:o.config.hosts.dailySpendUsd},pool:record.pool,size:record.size,priceHourly:declarations.prices[record.size]!.livePerHour+declarations.extraAddressPerHour,billingMinimumMs:declarations.billingMinimumMs},()=>hostLeaseRenewable(o.records.provisions.get(record.id)?.state)&&o.inUse(record.id),error=>o.log({event:'host-renewal-failed',host:record.id,error:String(error)}),async()=>{await o.destroy(record.id);});
   }catch(error){o.log({event:'host-restart-pending',host:lease.id,error:String(error)});}
  }
 }

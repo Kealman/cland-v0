@@ -1,3 +1,5 @@
+import { HostHealth, loseHost } from '../host/host-health.ts';
+import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { reconcileHostLeases, restoreHostLeaseOwners } from '../host/host-restart.ts';
 import { destroyHost } from '../host/provision-host.ts';
 import { restoreProvisionedFakeHosts } from '../host/provision-host.ts';
@@ -271,6 +273,8 @@ export async function serveProject(root: string, options: { createHost?: import(
     void adapters.sessions.resumeHost(host, bootId).catch(error => log({ event: 'session-restore-failed', host, error: String(error) }));
   };
   let sshHosts: Awaited<ReturnType<typeof projectSshHosts>> | null = null;
+  let hostHealth: HostHealth | null = null;
+  let unsubscribeHostStatus:(()=>void)|undefined;
   let accountPoller: AccountPoller | null = null;
   let web: WebEdge | null = null;
   let store: Store;
@@ -573,6 +577,8 @@ export async function serveProject(root: string, options: { createHost?: import(
         await attempt(() => web?.close());
         await attempt(() => sweep);
         await attempt(() => accountPoller?.close());
+        unsubscribeHostStatus?.();
+        await attempt(() => hostHealth?.close());
         // Both journal and session projections depend on the adapters' open table.
         await attempt(() => hub.core.close());
         await attempt(() => hub.dispatcher.close());
@@ -685,6 +691,15 @@ export async function serveProject(root: string, options: { createHost?: import(
     adapters = projectSessions({ hostPools: () => roles.config().hosts, hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.hostOwner = sshHosts;
     await hub.dispatcher.restoreSessions(adapters.sessions, () => restoreHostLeaseOwners({root,records:store.hosts,env,clock,log,config:roles.config(),inUse:id=>adapters!.sessions.hostInUse(id),destroy:id=>destroyHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log})}));
+    const healthProviders=new HostProviderRegistry({env,digitalocean:{root},now:()=>clock.now().getTime()});
+    hostHealth=new HostHealth({records:store.hosts,clock,env,
+      notice:text=>{hub.core.noticeInTopic('general',{kind:'report',text});},
+      error:error=>log({event:'host-health-failed',error:String(error)}),
+      status:async id=>{const row=store.hosts.provisions.get(id);if(!row?.machine)return {state:'failed',reason:'host machine unavailable'};return healthProviders.resolve(row).status(row.machine);},
+      lost:async id=>{await loseHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,inUse:host=>adapters!.sessions.hostInUse(host),settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log});}});
+    adapters.sessions.hostOutageHold(id=>hostHealth!.holds(id));
+    unsubscribeHostStatus=sshHosts.subscribeStatus((id,up,at)=>{hostHealth!.transition(id,up,at);adapters!.sessions.capacityChanged();});
+
     hub.dispatcher.restoreWaitingLaunches();
     await adapters.sessions.sweepArchive();
     await startGateway();

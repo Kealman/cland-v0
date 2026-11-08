@@ -119,3 +119,5 @@ Waiting-launch restart ownership: [durable waits](../docs/hub/waiting-launches.m
 - [Pool idle stop](../docs/hub/pool-idle-stop.md): idle deadlines, billing floors and confirmed destruction.
 - [Host restart recovery](../docs/hub/host-restart.md): provider reconciliation, restored renewal and watchdog ownership, and missing-host session exits.
 - [Host status and explicit stop](../docs/hub/host-status-stop.md): weighted slots, UTC spend and confirmed deletion.
+
+Host tunnel loss, unreachable state and confirmed teardown: [Host health](../docs/hub/host-health.md).

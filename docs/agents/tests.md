@@ -2354,3 +2354,5 @@ Queued landings report their item, commit and batch to the requester and
 pre-closure claimant in the item topic, with Agents as the unbound fallback.
 This follows landing, separately from the earlier batch suite result.
 See [the merge queue fixture guide](tests/hub-test-merge-queue.test.ts.md).
+
+Host outage lifecycle cases: [host-unreachable](tests/hub-test-host-unreachable.test.ts.md).

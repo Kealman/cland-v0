@@ -305,7 +305,7 @@ admitted preparations before storage closes.
 
 ## Create to ready
 
-`cland host create [pool]` and `cland host list` (`host.create`, `host.list`)
+`cland host create [pool]` and `cland host list [--json]` (`host.create`, `host.list`)
 require the local human CLI or Neovim. Sessions, host-secret connections, web
 and messenger remotes are refused. Creation currently supports the directory-only
 fake provider under its explicit fake-host environment; DigitalOcean acquisition

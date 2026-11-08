@@ -348,6 +348,7 @@
     "hub/test/host-supervisor.test.ts": "T3",
     "hub/test/host-survival-native.test.ts": "T3",
     "hub/test/host-survival.test.ts": "T2",
+    "hub/test/host-unreachable.test.ts": "T2",
     "hub/test/host-watchdog-drain.test.ts": "T1",
     "hub/test/host-watchdog-identity.test.ts": "T1",
     "hub/test/host-watchdog-loop.test.ts": "T2",

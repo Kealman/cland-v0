@@ -69,6 +69,27 @@ export class HostLeases {
   };
   this.#owners.set(id,owner);schedule();
  }
+ /** Join renewal before shortening the authoritative lease and its watchdog mirror. */
+ async expireNow(id:string,root:string,clock:Clock):Promise<void>{
+  await this.stop(id);const row=this.get(id);if(!row)return;
+  const deadline=new Date(Math.min(Date.parse(row.deadline),clock.now().getTime())).toISOString();
+  this.#db.prepare('update host_leases set deadline=? where id=?').run(deadline,id);
+  try{this.#mirror(root,{...row,deadline});}
+  catch(error){
+   // A failed shortening must not prevent primary deletion. Keep its mirror
+   // retry owned until publication, release or shutdown; never renew here.
+   let stopped=false,timer:ClockTimer|undefined;
+   const owner={stop:()=>{stopped=true;clock.clearTimeout(timer);},done:Promise.resolve()};
+   const schedule=()=>{if(stopped)return;timer=clock.setTimeout(()=>{
+    if(stopped)return;
+    const current=this.get(id);
+    if(!current){owner.stop();this.#owners.delete(id);return;}
+    try{this.#mirror(root,current);owner.stop();this.#owners.delete(id);}
+    catch{schedule();}
+   },1000);timer.unref();};
+   this.#owners.set(id,owner);schedule();throw error;
+  }
+ }
  async stop(id:string):Promise<void>{const owner=this.#owners.get(id);if(!owner)return;owner.stop();await owner.done;this.#owners.delete(id);}
  async close():Promise<void>{for(const owner of this.#owners.values())owner.stop();await Promise.all([...this.#owners.values()].map(owner=>owner.done));this.#owners.clear();await Promise.all([...this.#expiries]);}
  /** Cancellation authority comes from the durable admission checkpoint, never a timer or caller flag. */

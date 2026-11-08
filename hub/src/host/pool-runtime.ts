@@ -1,6 +1,6 @@
+import { hostLeaseRenewable, type ProvisionRecord } from './provision-records.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
 import { earliestStop, type HostProviderDeclarationState } from './provider/declarations.ts';
-import type { ProvisionRecord } from './provision-records.ts';
 import { decidePlacement, harnessWeightMilli, type PlacementHost } from './scheduler.ts';
 import type { HostPools } from './pools.ts';
 import type { HostRecords } from './records.ts';
@@ -28,9 +28,11 @@ export class PoolRuntime {
   #configuredSettings: HostPools | undefined;
   readonly records: HostRecords;
   readonly available: (id: string) => boolean;
+  readonly outageHold:(host:string)=>boolean;
   readonly onCapacityChanged: () => void;
   readonly processes: () => readonly { key: string; host?: string; harness: string }[];
-  constructor(settings: () => HostPools, records: HostRecords, available: (id: string) => boolean, processes: () => readonly { key: string; host?: string; harness: string }[], onCapacityChanged: () => void = () => {}) {
+  constructor(settings: () => HostPools, records: HostRecords, available: (id: string) => boolean, processes: () => readonly { key: string; host?: string; harness: string }[], onCapacityChanged: () => void = () => {}, outageHold:(host:string)=>boolean=()=>false) {
+    this.outageHold=outageHold;
     this.onCapacityChanged = onCapacityChanged; this.settings = () => this.#configuredSettings ?? settings(); this.records = records; this.available = available; this.processes = processes;
   }
 
@@ -131,13 +133,14 @@ export class PoolRuntime {
 
   /** One lease policy for manual, minimum and demand-created hosts. */
   inUse(host: string): boolean {
+    if(this.outageHold(host))return true;
     const busy = new Set(this.processes().map(p => p.host ?? 'local'));
     for (const [id, weight] of this.#promised) if (weight > 0) busy.add(id);
     if (busy.has(host)) return true;
     const row = this.records.provisions.get(host);
-    if (!row || row.state !== 'ready') return false;
+    if (!row || !hostLeaseRenewable(row.state)) return false;
     const minimum = this.settings().pools[row.pool]?.minHosts ?? 0;
-    const candidates = [...this.records.provisions.active()].filter(r => r.pool === row.pool && r.state === 'ready' && !this.#stopping.has(r.id));
+    const candidates = [...this.records.provisions.active()].filter(r => r.pool === row.pool && hostLeaseRenewable(r.state) && !this.#stopping.has(r.id));
     candidates.sort((a, b) => Number(busy.has(b.id)) - Number(busy.has(a.id)) || a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
     return candidates.slice(0, minimum).some(r => r.id === host);
   }
