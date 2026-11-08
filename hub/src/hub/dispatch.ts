@@ -1,3 +1,5 @@
+import { DigitalOceanHostProvider } from '../host/provider/digitalocean.ts';
+import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
@@ -524,7 +526,7 @@ export class Dispatcher {
 
   useAccountPoller(poller: AccountPoller): void { this.#accountPoller = poller; this.core.useAccountPoller(poller); }
 
-  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); this.#sessions?.configurePools(); }
+  configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); this.#sessions?.configurePools(config); }
 
   #validateSessionCaller(frame: { type: string; name?: unknown } & Record<string, unknown>, original: {name:string;sessionId:string} | null, current: Caller | null, peer: Peer, inferredRole?: string | null): void {
     if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
@@ -570,7 +572,17 @@ export class Dispatcher {
 
   #startPoolScaling(): void {
     const sessions=this.#sessions;
-    if (sessions && this.hostOwner && this.#options.control) sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize));
+    if (sessions && this.hostOwner && this.#options.control) {
+      const env = this.#options.env ?? process.env;
+      const providers = new HostProviderRegistry({ env, now: () => this.core.clock.now().getTime(), digitalocean: { root: this.#options.control.status().root, clock: this.core.clock } });
+      sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize), {
+        declarations: record => {
+          const provider = providers.resolve(record);
+          return provider instanceof DigitalOceanHostProvider ? provider.refreshDeclarations() : provider.declarations;
+        },
+        destroy: id => destroyHost({clock:this.core.clock,root:this.#options.control!.status().root,id,env,records:this.core.store.hosts,provider:providers.resolve(this.core.store.hosts.provisions.get(id)!),owner:this.hostOwner!,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}),
+      });
+    }
   }
 
   useSessions(sessions: Sessions | undefined, startScaling = true): void {

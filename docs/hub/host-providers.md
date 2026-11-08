@@ -153,8 +153,7 @@ remains test-only; endpoint configuration and credentials do not enable it.
 `earliestStop({created, idleSince, idleStopMs, declarations})` returns epoch
 milliseconds: the later of `created + billingMinimumMs` and
 `idleSince + idleStopMs`. Times and durations are safe nonnegative integers;
-idleSince cannot precede created, and overflowing deadlines refuse. E-1534's
-scheduler must call this policy when implementing `idle_stop`.
+idleSince cannot precede created, and overflowing deadlines refuse. The [pool idle-stop scheduler](pool-idle-stop.md) calls this policy.
 
 The reusable contract includes `provider declares sane prices, billing and
 capabilities`, using `validateHostProviderDeclarations` on the normal factory

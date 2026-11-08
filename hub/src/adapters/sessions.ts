@@ -129,10 +129,10 @@ export class Sessions {
   #waitAdmission: (request: LaunchRequest, authorize: () => void) => Promise<() => void> = async (_request,authorize) => authorize;
   waitingAdmission(admit: (request: LaunchRequest, authorize: () => void) => Promise<() => void>): void { this.#waitAdmission = admit; }
   waitingLaunches(): WaitingLaunch[] { return this.#waiting.list(); }
-  startPoolScaling(create: (pool: string, authorize: () => void) => Promise<unknown>): void { this.#poolRuntime?.start(create); }
+  startPoolScaling(create: (pool: string, authorize: () => void) => Promise<unknown>, idle?: Omit<import('../host/pool-runtime.ts').PoolIdleLifecycle, 'clock'>): void { this.#poolRuntime?.start(create, idle ? { ...idle, clock: this.#core.clock } : undefined); }
   hostUsage(id: string): {usedMilli:number;promisedMilli:number} { return this.#poolRuntime?.usage(id)??{usedMilli:0,promisedMilli:0}; }
   hostInUse(id: string): boolean { return this.#poolRuntime?.inUse(id) ?? false; }
-  configurePools(): void { this.#poolRuntime?.configure(); this.capacityChanged(); }
+  configurePools(config?: import('../init/config.ts').ProjectConfig): void { this.#poolRuntime?.configure(config?.hosts); this.capacityChanged(); }
   capacityChanged(): void { this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }
   async cancelWaiting(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<WaitingLaunch | null> {
     const row = await this.#waiting.cancel(name);

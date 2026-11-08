@@ -11187,6 +11187,13 @@
     "hub/test/waiting-launch.test.ts::waiting inbox status is outside needs-you and cancellation frees the reserved name": 0.144835
   },
   "allow": {
+    "hub/test/pool-idle-stop.test.ts::C1 idle host is destroyed at one minute while min_hosts stays": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-15",
+      "reason": "T-1749 fake-clock T2 with directory fake provider and confirmed destroy. macOS arm64 Node v24.21.0 samples 0.097s, 0.171s, 4.950s (last sample concurrent with T0 source lints; host load below 20). Ceil(1.5 x worst measured sample)=8s. Includes fixture setup and joined cleanup, no real clock idle wait, browser or provider network. Linux unexecuted; report mode."
+    },
     "hub/test/host-restart.test.ts::restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership": {
       "seconds": 31,
       "owner": "C-216",
