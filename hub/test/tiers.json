@@ -340,7 +340,9 @@
       "scenario": "ssh-host"
     },
     "hub/test/host-ssh-registry.test.ts": "T2",
+    "hub/test/host-status.test.ts": "T2",
     "hub/test/host-stop-observation.test.ts": "T1",
+    "hub/test/host-stop.test.ts": "T2",
     "hub/test/host-supervisor.test.ts": "T3",
     "hub/test/host-survival-native.test.ts": "T3",
     "hub/test/host-survival.test.ts": "T2",

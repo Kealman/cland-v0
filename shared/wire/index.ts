@@ -925,6 +925,8 @@ export type ClientRequest =
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'host.list'; id: string }
+  | { type: 'host.status'; id: string }
+  | { type: 'host.stop'; id: string; host: string }
   | { type: 'host.prepare'; id: string; pool?: string }
   | { type: 'host.destroy'; id: string; host: string }
   | { type: 'host.revoke'; id: string; host: string }

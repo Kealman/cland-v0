@@ -43,6 +43,8 @@ export const SUBSCRIPTIONS_USAGE = SUBSCRIBE_USAGE + UNSUBSCRIBE_USAGE + SUBSCRI
 export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
 
 export const HOST_USAGE = `  host create [pool] human-only local CLI: create a fake-provider host from a current pool image to ready
+  host status [--json] human-only local CLI: pool slots and settled plus accrued UTC spend; host details
+  host stop <id> human-only local CLI: stop renewal and destroy host with confirming reads
   host list       human-only local CLI: id, pool, provider, size, region, state, uptime, USD/hour
   host prepare [pool] human-only local CLI: prepare one or all configured pool images
                   pool: 1–64 letters, digits and hyphens; first character letter or digit

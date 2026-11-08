@@ -115,3 +115,26 @@ test('occupied decodes only unreleased anomalies after 10000 released or destroy
  assert.equal(f.provisions.occupied('agents'),3,'fixture cloning plus two unresolved anomalies');
  assert.equal(reads,3,'only pending, retained and positive unreleased candidates are decoded');
 });
+
+test('current inventory matches occupied including acquired failures and excluding positive non-acquisition',t=>{
+ const f=fixture(t);
+ f.provisions.save({...record,id:'failed-acquired',state:'failed',release:'incomplete'});
+ f.provisions.save({id:'not-acquired',pool:'agents',provider:'fake',size:'fake',region:'fake',created:record.created,state:'failed',nonAcquisition:{kind:'not-called',at:record.created}});
+ f.provisions.save({...record,id:'released',state:'destroyed',release:'released'});
+ const rows=[...f.provisions.currentInventory()].filter(row=>row.pool==='agents');
+ assert.deepEqual(rows.map(row=>row.id).sort(),['failed-acquired','host-one']);
+ assert.equal(rows.length,f.provisions.occupied('agents'));
+});
+
+test('usage and reserve share retained-generation and placement-promise capacity',async t=>{
+ const {PoolRuntime}=await import('../src/host/pool-runtime.ts');
+ const {readHostPools}=await import('../src/host/pools.ts');
+ const f=fixture(t);f.provisions.ready({...record,state:'ready'});
+ const runtime=new PoolRuntime(()=>readHostPools({agents:{provider:'fake',slots:1,min_hosts:0,max_hosts:1}}),f.hosts,()=>true,()=>[{key:'retained',host:record.id,harness:'codex'}]);
+ const promise=runtime.reserve('agents','codex');
+ try {
+  assert.deepEqual(runtime.usage(record.id),{usedMilli:500,promisedMilli:500});
+  assert.throws(()=>runtime.reserve('agents','codex'),/no host/);
+ } finally {promise.release();}
+ assert.deepEqual(runtime.usage(record.id),{usedMilli:500,promisedMilli:0});
+});

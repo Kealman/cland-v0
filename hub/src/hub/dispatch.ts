@@ -1,3 +1,4 @@
+import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
@@ -2105,6 +2106,8 @@ export class Dispatcher {
             if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
             return answer(this.#options.control.remoteStatus());
           }
+          case 'host.status':
+          case 'host.stop':
           case 'host.create':
           case 'host.list':
           case 'host.prepare':
@@ -2115,13 +2118,20 @@ export class Dispatcher {
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
-            if (frame.type === 'host.list' || frame.type === 'host.create' || frame.type === 'host.destroy') {
+            if (frame.type === 'host.status') {
+              if(this.#closed)throw Error('host status stopped');
+              const work=hostStatus(core.store.hosts,this.#options.projectConfig!().hosts,this.#sessions?.list()??[],this.#options.env??process.env,core.clock,this.#options.control?.status().root,id=>this.#sessions?.hostUsage(id)??{usedMilli:0,promisedMilli:0});
+              this.#poolPrepares.add(work);
+              void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
+              return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
+            }
+            if (frame.type === 'host.stop' || frame.type === 'host.list' || frame.type === 'host.create' || frame.type === 'host.destroy') {
               if(this.#closed)throw Error('host provisioning stopped');
               const root=this.#options.control?.status().root;
               if(!root)throw Error('project root unavailable');
               const env=this.#options.env??process.env;
               if(!this.hostOwner)throw Error('host runtime unavailable');
-              const work=frame.type==='host.destroy'?destroyHost({clock:core.clock,root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):this.#createPoolHost(frame.pool);
+              const work=frame.type==='host.stop'?(async()=>{await core.store.hosts.leases.stop(frame.host);return destroyHost({clock:core.clock,root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner!,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)});})():frame.type==='host.destroy'?destroyHost({clock:core.clock,root,id:frame.host,env,records:core.store.hosts,owner:this.hostOwner,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}):frame.type==='host.list'?listHosts(core.store.hosts,env):this.#createPoolHost(frame.pool);
               this.#poolPrepares.add(work);
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));

@@ -45,9 +45,21 @@ export class ProvisionRecords {
   let count=Number(this.#db.prepare(`select count(*) as count from provisioned_hosts where json_extract(record,'$.pool')=? and json_extract(record,'$.state') in (${ACTIVE_PROVISION_STATES.map(()=>'?').join(',')})`).get(pool,...ACTIVE_PROVISION_STATES)!.count);
   for(const row of this.#db.prepare(`select record from provisioned_hosts where json_extract(record,'$.pool')=? and ${unresolvedSql}`).iterate(pool)) {
    const record=JSON.parse(String(row.record)) as ProvisionRecord;
-   if(record.machine||record.acquisition||!record.nonAcquisition||!positiveNonAcquisition(record.nonAcquisition))count++;
+   if(this.#occupiedFailure(record))count++;
   }
   return count;
+ }
+ /** Same anomalous-failure policy for max_hosts and status. */
+ #occupiedFailure(record:ProvisionRecord):boolean {
+  return Boolean(record.machine||record.acquisition||!record.nonAcquisition||!positiveNonAcquisition(record.nonAcquisition));
+ }
+ /** Billable current inventory, with terminal released history excluded by indexes. */
+ *currentInventory():Iterable<ProvisionRecord> {
+  yield* this.active();
+  for(const row of this.#db.prepare(`select record from provisioned_hosts where ${unresolvedSql}`).iterate()) {
+   const record=JSON.parse(String(row.record)) as ProvisionRecord;
+   if(this.#occupiedFailure(record))yield record;
+  }
  }
  /** Indexed current inventory; terminal history is never read or decoded. */
  *active():Iterable<ProvisionRecord> {

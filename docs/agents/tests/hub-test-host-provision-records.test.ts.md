@@ -24,3 +24,12 @@ of relative dates such as `now`. The indexed occupied query counts active rows
 in SQL, then decodes only unreleased failed anomalies: with 10,000 released or
 destroyed history rows, exactly three anomaly candidates are decoded. Valid
 non-acquisition without a machine/acquisition contributes no occupied slot.
+
+T-1755 adds `current inventory matches occupied including acquired failures and excluding positive non-acquisition`:
+it checks the indexed status inventory against the same occupied count with a
+failed acquired but unregistered machine, a positive not-called receipt and a
+released terminal record. Existing retained-history work-budget cases remain.
+
+`usage and reserve share retained-generation and placement-promise capacity`
+checks one 0.5-slot retained generation plus a 0.5-slot promise fills a 1-slot
+host, so another reservation refuses; releasing the promise retains 0.5 used.

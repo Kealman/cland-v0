@@ -70,3 +70,9 @@ for (const flag of ['--help', '-h']) test(`cland host serve ${flag} exits withou
   }));
   assert.equal(actual.stdout, frozenUsage().HOST_USAGE); assert.equal(actual.stderr, ''); assert.deepEqual(fixture.snapshot(), before);
 });
+
+for (const command of ['status','stop']) test(`cland host ${command} --help exits without a hub`, async t => {
+ const fixture=sealedHelpProject(t);const before=fixture.snapshot();
+ const actual=await clandCliLaunch(()=>execCli(process.execPath,[entry,'host',command,'--help'],{cwd:fixture.project,env:fixtureEnvironment(fixture.root,process.env),timeout:5000}));
+ assert.equal(actual.stdout,frozenUsage().HOST_USAGE);assert.equal(actual.stderr,'');assert.deepEqual(fixture.snapshot(),before);
+});

@@ -130,6 +130,7 @@ export class Sessions {
   waitingAdmission(admit: (request: LaunchRequest, authorize: () => void) => Promise<() => void>): void { this.#waitAdmission = admit; }
   waitingLaunches(): WaitingLaunch[] { return this.#waiting.list(); }
   startPoolScaling(create: (pool: string, authorize: () => void) => Promise<unknown>): void { this.#poolRuntime?.start(create); }
+  hostUsage(id: string): {usedMilli:number;promisedMilli:number} { return this.#poolRuntime?.usage(id)??{usedMilli:0,promisedMilli:0}; }
   hostInUse(id: string): boolean { return this.#poolRuntime?.inUse(id) ?? false; }
   configurePools(): void { this.#poolRuntime?.configure(); this.capacityChanged(); }
   capacityChanged(): void { this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }

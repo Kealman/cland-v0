@@ -78,6 +78,19 @@ export class PoolRuntime {
     return row?.pool === pool && row.state === 'ready' && this.records.get(host)?.state === 'registered' && this.available(host);
   }
 
+  #used(weights: ReturnType<PoolRuntime['settings']>['weights'], credit?: string): Map<string,number> {
+    const used = new Map<string, number>();
+    const credited = new Set(this.#credits.values());
+    if (credit) credited.add(credit);
+    for (const p of this.processes()) if (!credited.has(p.key)) used.set(p.host ?? 'local', (used.get(p.host ?? 'local') ?? 0) + harnessWeightMilli(p.harness, weights));
+    return used;
+  }
+
+  /** Occupied placement capacity, including retained generations and promises. */
+  usage(host: string): {usedMilli:number;promisedMilli:number} {
+    return {usedMilli:this.#used(this.settings().weights).get(host)??0,promisedMilli:this.#promised.get(host)??0};
+  }
+
   reserve(poolName: string, harness: string, pinned?: string, credit?: string): { host: string; validate(): void; release(): void } {
     const settings = this.settings();
     const record = pinned ? this.records.provisions.get(pinned) : null;
@@ -87,10 +100,7 @@ export class PoolRuntime {
     if (!Object.hasOwn(settings.pools, name)) throw new Error(`unknown host pool ${name}; configured pools: local, ${Object.keys(settings.pools).join(', ')}`);
     const pool = settings.pools[name]!;
     const weight = harnessWeightMilli(harness, settings.weights);
-    const used = new Map<string, number>();
-    const credited = new Set(this.#credits.values());
-    if (credit) credited.add(credit);
-    for (const p of this.processes()) if (!credited.has(p.key)) used.set(p.host ?? 'local', (used.get(p.host ?? 'local') ?? 0) + harnessWeightMilli(p.harness, settings.weights));
+    const used = this.#used(settings.weights, credit);
     const hosts: PlacementHost[] = [];
     for (const row of this.records.provisions.active()) {
       if (row.pool !== name || (pinned && row.id !== pinned)) continue;

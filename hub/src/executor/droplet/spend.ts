@@ -308,12 +308,18 @@ export async function reserveHostSpend(input: HostSpendReservation, caps: HostSp
 }
 /** Settled period totals use UTC settlement dates, excluding pending reservations. */
 export async function inspectHostSpend(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock) {
+  return (await inspectHostSpendSnapshot(env,clock)).totals;
+}
+
+/** One ledger observation for settled totals and exact admitted host billing. */
+export async function inspectHostSpendSnapshot(env: NodeJS.ProcessEnv, clock: Clock, project?:string) {
   const ledger = await observe(env);
   const day = clock.now().toISOString().slice(0, 10), month = day.slice(0, 7);
   type Period = { today: number; month: number };
   const categories: Record<'verify' | 'hosts', Period> = { verify: { today: 0, month: 0 }, hosts: { today: 0, month: 0 } };
   const pools: Record<string, Period> = Object.create(null);
   for (const entry of ledger.entries) {
+    if(project!==undefined&&entry.project!==project)continue;
     const bucket = categories[category(entry)];
     const pool = category(entry) === 'hosts' && entry.pool ? pools[entry.pool] ??= { today: 0, month: 0 } : undefined;
     if (entry.cost === null || !entry.released) continue;
@@ -322,7 +328,9 @@ export async function inspectHostSpend(env: NodeJS.ProcessEnv = process.env, clo
       if (entry.released.slice(0, 7) === month) target.month += entry.cost;
     }
   }
-  return { day, month, categories, pools };
+  const billing:Record<string,number>=Object.create(null);
+  for(const entry of ledger.entries)if(category(entry)==='hosts'&&entry.project===project&&entry.priceHourly!==undefined)billing[entry.lease]=entry.priceHourly;
+  return {totals:{day,month,categories,pools},billing};
 }
 
 function pendingHostEntry(ledger: Ledger, project: string, lease: string): Entry & { priceHourly: number; billingMinimumMs: number } {

@@ -710,6 +710,8 @@ export type ClientRequest =
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'host.list'; id: string }
+  | { type: 'host.status'; id: string }
+  | { type: 'host.stop'; id: string; host: string }
   | { type: 'host.prepare'; id: string; pool?: string }
   | { type: 'host.destroy'; id: string; host: string }
   | { type: 'host.revoke'; id: string; host: string }
@@ -1130,12 +1132,14 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'remote.test':
     case 'remote.unpair':
       return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
+    case 'host.status':
     case 'host.list': return true;
     case 'host.create':
     case 'host.prepare':
       if (f.pool === undefined) return true;
       if (typeof f.pool !== 'string') return false;
       try { parsePoolName(f.pool); return true; } catch { return false; }
+    case 'host.stop':
     case 'host.destroy':
     case 'host.revoke':
       return typeof f.host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.host) && f.host !== 'local';

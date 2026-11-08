@@ -153,3 +153,17 @@ test('never-acquired receipts cancel at zero while unknown outcomes retain reser
  assert.equal(stored.find((e:{lease:string})=>e.lease==='acquired').cost,2);
  assert.equal(stored.find((e:{lease:string})=>e.lease==='unknown').cost,null);
 });
+
+test('host status snapshot pins billing by exact project and lease without changing totals shape',async t=>{
+ const {inspectHostSpendSnapshot}=await import('../src/executor/droplet/spend.ts');
+ const machine=await scratchMachine(t,{identity:false}),clock=new FakeClock();
+ await reserveHostSpend(host,{shared:100,hosts:100},machine.env,{clock,processes});
+ await reserveHostSpend({...host,project:'/other/project',priceHourly:7},{shared:100,hosts:100},machine.env,{clock,processes});
+ clock.block(3600000);
+ await settleHostSpend(host.project,host.lease,host.deadline,machine.env,{clock,processes});
+ await settleHostSpend('/other/project',host.lease,host.deadline,machine.env,{clock,processes});
+ const status=await inspectHostSpendSnapshot(machine.env,clock,host.project);
+ assert.deepEqual({...status.billing},{'host-1':2});
+ assert.deepEqual(status.totals.pools.agents,{today:2,month:2});
+ assert.deepEqual((await inspectHostSpend(machine.env,clock)).pools.agents,{today:9,month:9});
+});

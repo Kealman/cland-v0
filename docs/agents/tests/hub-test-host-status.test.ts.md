@@ -1,0 +1,20 @@
+# hub/test/host-status.test.ts
+
+T2, in-process projectHub, fake clock and provided test Hosts; CLI subprocesses
+only exercise the status command. Run `node --test hub/test/host-status.test.ts`
+under supported Node after targeted admission. No provider network or browser.
+
+- `C1 status includes configured empty pools and zero settled spend`: frame,
+  human CLI output and `--json`, including a configured pool with no inventory.
+- `C1/C2 status weights sessions and clips live accrual to UTC day/month, excluding reservations`:
+  reverse lexical host ids, one codex session (0.5 slots), two 4-slot hosts,
+  two USD/hour, an October start with November clock, settled cost and a pending
+  reservation. Expected day/month costs are 6/102 USD. Preserves unreachable
+  state from a stored provision. Pinned ledger prices for both fake and DigitalOcean provision rows; no native
+  transport or provider API. Unknown legacy billing makes pool totals unknown.
+  A held placement promise counts before a running session is published.
+
+`status ledger read drains before storage closes; setup failure=false/true` holds the spend-file
+read, closes an in-process base hub and asserts the positive completion order:
+inventory read before the close receipt. It also keeps the closed admission fence. The injected setup-failure case proves
+the prearmed release/join/close owner completes before root disposal.

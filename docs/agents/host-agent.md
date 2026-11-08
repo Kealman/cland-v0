@@ -664,3 +664,9 @@ hosts below the configured maximum. Live `max_hosts` writes retry placement.
 The same prepared-image, spend, lease, watchdog and fake-provider admission
 conditions apply as manual create; see [pool scale-up](../hub/pool-scaling.md).
 No agent role gains a host-create permission: this is the hub's lifecycle owner.
+
+## Host status and explicit stop
+
+Local-human status and stop commands, their lease and failure semantics, are in
+[host status and stop](../hub/host-status-stop.md). Agent sessions retain the
+human-only admission boundary and exercise these commands in sealed fixtures.

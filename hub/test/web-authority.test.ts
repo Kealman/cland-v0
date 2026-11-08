@@ -468,3 +468,9 @@ test('web user commands name users mode in single mode and admit an authenticate
     assert.equal(reply.ok, false); assert.equal(reply.code, 'cli-neovim-only');
   }
  });
+
+for (const type of ['host.status','host.stop']) test(`web refuses ${type} even from authenticated human`,async t=>{
+ const {web}=await clients(t);
+ const result=await web.request({type,host:'z-host'});
+ assert.equal(result.ok,false);assert.match(result.error!,/local human CLI or Neovim/);
+});
