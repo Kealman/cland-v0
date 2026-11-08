@@ -2,8 +2,8 @@
 id: T-1762
 kind: task
 title: literal-rm hook allows glob targets, so Claude Code stalls on an approval prompt
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1181
 topic: topic-1441
 branch: t/T-1762-literal-rm-hook-allows-glob-targets-so
 created: 2026-11-08T10:06:14.486Z
-updated: 2026-11-08T10:20:50.699Z
+updated: 2026-11-08T12:40:39.316Z
+closed: 2026-11-08T12:40:39.316Z
 ---
 
 ## Summary
@@ -30,13 +31,17 @@ A probe of `literalRmRefusal` at dev 50f0529d allows all of these: `rm -f fence*
 
 - [x] C1. An `rm` or `rmdir` with an unquoted glob character (`*`, `?`, or a `[...]` class) in any target is refused with a message that says to list every path literally or to leave a fresh `mktemp -d` directory in place.
   - done: impl-1762 · 2026-11-08T10:14:14.897Z
+  - verified: rev-35 [reviewer] · run rev-35-1762-final-1 · 2026-11-08T10:41:04.593Z · commit 11ad52710c97c0f6121e2883742446dea6f04c29
 - [x] C2. The same refusal applies inside `bash -c`/`sh -c` script strings and after `;`, `&&`, `||`, `then` or `do`, as the existing invocation patterns do. Glob characters inside here-document bodies and inside quoted non-rm arguments are not refused.
   - done: impl-1762 · 2026-11-08T10:14:15.073Z
+  - verified: rev-35 [reviewer] · run rev-35-1762-final-1 · 2026-11-08T10:41:04.593Z · commit 11ad52710c97c0f6121e2883742446dea6f04c29
 - [x] C3. Literal targets, including quoted paths that contain no glob, stay allowed. Tests cover each refused form and each allowed one, red first against the current hook.
   - done: impl-1762 · 2026-11-08T10:09:26.973Z
+  - verified: rev-35 [reviewer] · run rev-35-1762-final-1 · 2026-11-08T10:41:04.593Z · commit 11ad52710c97c0f6121e2883742446dea6f04c29
 - [x] C4. The refusal message and docs/agents guidance name globs alongside variables, substitution and xargs.
   - done: impl-1762 · 2026-11-08T10:20:15.075Z
   - verified: rev-35 [reviewer] · run rev-35-1762-source-3 · 2026-11-08T10:20:50.699Z · commit 11ad52710c97c0f6121e2883742446dea6f04c29
+  - verified: rev-35 [reviewer] · run rev-35-1762-final-1 · 2026-11-08T10:41:04.593Z · commit 11ad52710c97c0f6121e2883742446dea6f04c29
 
 ## Comments
 
@@ -103,3 +108,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-17807 source3 clear. Only two exact diagnostic inventory strings migrated to current template tail/immediate source interpolation; file+expression+context matching, diagnostic-only reason, planted controls and full production inventory assertion retained. No production/source2 behavior change or dev merge. Clean exact head/diffcheck0 confirmed. A-17805 candidate6/6 native status-propagating tool excerpt inspected with precommit/full-stream limits; predecessor A-17804 remains failed, later phases unexecuted. C4 source-verified; C1–C3 pending new exact-head mode-free configured result. No Reviewer runtime/probe/edit/delegation or additional native/fullsuite/provenance repeat. QA none.
 
 Criteria: C4 verified.
+
+### rev-35 · 2026-11-08T10:41:04.593Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1762-final-1
+commit: 11ad52710c97c0f6121e2883742446dea6f04c29
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final A-17813 audits exact-head A-17812/eb6ceeba: clean unchanged11ad52710 and reconstructed export1f63e187c920daa174ea3f2ac3cbe642e52466b6 match. All9policy base identities, all7new×5load=35pass, CLI stdin/exit/stderr/no-hub contract, six inventory controls and frozen rendered help pass. C1–C4 verified; Standards0/Spec0. Hub5560/5560, base5422/5422, four empty failure arrays; T0/allT1/fallbackallT2/Web nativeuncachedLinuxx64Node24.21Nvim0.12.5 green, zero fail/cancel/skip/todo; Shell1248/CfT156.0.8078.4. NoT3/T4 task execution, T3 deferred batch. Report-only duration/lint/ratchet notices and prior red/candidate provenance limits retained. No Reviewer execution/edit/delegation or further rerun/devmerge requested. QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-08T12:40:39.316Z
+
+Merged ee65d6d5bafeebf8db9ddf9b3a41a2493b449784 onto dev.

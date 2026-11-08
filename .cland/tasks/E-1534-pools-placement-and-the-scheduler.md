@@ -16,7 +16,7 @@ follows:
 topic: topic-1425
 branch: null
 created: 2026-10-31T18:22:03.811Z
-updated: 2026-11-08T00:38:54.816Z
+updated: 2026-11-08T11:58:55.868Z
 ---
 
 ## Goal
@@ -110,6 +110,7 @@ stages:
         - T-1746
       - - T-1747
         - T-1748
+      - - T-1763
   - name: idle stop, failures, restart, money, host status and DigitalOcean
     qa:
       scope: full
@@ -223,3 +224,71 @@ Final read: HEAD=dev=request, worktree clean, root non-tracker status unchanged,
 
 
 QA clear: 49 scoped checks, 45 targeted files, 515 tests, no skip/fail/cancel/todo; local macOS only. Full report/evidence A-17643: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17643-e-1534-stage-1-qa-clear-at-c130bac4-49-checks-515-tests/report.md. No epic or child criterion marks.
+
+### qa-678 · 2026-11-08T11:58:15.507Z
+
+verdict: qa
+result: not clear
+by: qa-678 [qa]
+run: qa-e1534s2-2026-11-08-qa678-1
+commit: 4688f9566449a15bb2b170b0c7468046df4d3cef
+stage: placement on pool hosts, waiting launches, scale up, lease and watchdog
+stage_hash: 69777b2affd4d9d0e661a116003041b75c44cc1239b67519663f359bbab7fbaa
+findings: [{"severity":"high","text":"E1534S2-55: H1 created for min_hosts lost its lease and was deleted with w1 still recorded running after H2 scaled up; one mirror instead of two. Source omits inUse callback and falls back to min_hosts selection by id. E1534S2-56 dependent two-host proof inconclusive.","file":"hub/src/hub/dispatch.ts","line":550},{"severity":"low","text":"T-1676 found aside: 37 dead/unopened owner receipts after row26; producing tests and ownership helpers unchanged from 4360256ac. Inventoried and removed under carried cleanup rule.","file":"nvim/test/stub-hub.ts","line":45}]
+finding_counts: {"high":1,"medium":0,"low":1}
+
+| case | surface | result | evidence |
+| --- | --- | --- | --- |
+| S0 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/S0-env.txt |
+| E1534S2-00 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-00.txt |
+| E1534S2-01 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-01.txt |
+| E1534S2-02 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-02.txt |
+| E1534S2-03 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-03.txt |
+| E1534S2-10 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-10.log |
+| E1534S2-11 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-11.log |
+| E1534S2-12 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-12.log |
+| E1534S2-14 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-14.log |
+| E1534S2-15 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-15.log |
+| E1534S2-16 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-16.log |
+| E1534S2-17 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-17.log |
+| E1534S2-20 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-20.log |
+| E1534S2-21 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-21.log |
+| E1534S2-22 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-22.log |
+| E1534S2-23 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-23.log |
+| E1534S2-24 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-24.log |
+| E1534S2-25 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-25.log |
+| E1534S2-26 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-26.log |
+| E1534S2-30 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-30.log |
+| E1534S2-31 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-31.log |
+| E1534S2-32 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-32.log |
+| E1534S2-34 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-34.log |
+| E1534S2-35 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-35.log |
+| E1534S2-36 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-36.log |
+| E1534S2-40 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-40.log |
+| E1534S2-41 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-41.log |
+| E1534S2-42 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-42.log |
+| E1534S2-43 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-43.log |
+| E1534S2-45 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-45.log |
+| E1534S2-50 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-50.txt |
+| E1534S2-51 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-51.txt |
+| E1534S2-52 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-52.txt |
+| E1534S2-53 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-53.txt |
+| E1534S2-54 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-54.txt |
+| E1534S2-55 | hub-api | FAIL | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-55.txt |
+| E1534S2-56 | hub-api | INCONCLUSIVE | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-56.txt |
+| E1534S2-57 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-57.txt |
+| E1534S2-59 | hub-api | PASS | /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/E1534S2-59.txt |
+
+Not clear: E1534S2-55 failed (one lease mirror, expected two); E1534S2-56 is inconclusive for its two-host after-hub-stop proof because H1 was already destroyed at PRE. 37 other checks pass. A-17820 report: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17820-e-1534-stage-2-qa-not-clear-at-4688f956-active-host-lease-expiry/report.md
+
+HIGH: Row55's H1, created by row51 min_hosts startup at 11:49:23.670Z, was deleted at 11:51:01.339Z while w1's process row remained running. H2 was created by row53 max_hosts scaling at 11:50:30.805Z and renewed normally. H1 later had no DB lease, mirror, or watchdog and a confirmed absence receipt; w1's final stored row was running/stopped_at=null/host_retired=0 though its PID was absent. Pool min_hosts=1/max_hosts=2. No host-lease-publication failure found. Read-only source: dispatch.ts:550–558 omits inUse; provision-host.ts:86 falls back to heldByMinimum; provision-records.ts:61–63 selects minimum by id. H1's last renewal/deadline is unavailable, not inferred; no atomic process census was taken at receipt time. H2's after-stop deletion, both absence receipts and 2/2 spend settlements passed, but cannot clear the missing two-host proof.
+
+LOW found aside: T-1676, 37 dead fixture-owner receipts from row26. Every PID absent, no open handle, temporary roots gone; producing tests/helpers byte-identical against 4360256ac (SHA-256 evidence). Per-file directory listings do not pinpoint each receipt to a test; attribution is row26's unchanged producer group. Removed literal directory after drain under brief's carried rule.
+
+Corrections: casing correction (coord, ask 7199f474; decision d9b1c31c) accepts existing [Implementer] display label in row52, with original capture and no retry. Census correction (coord, ask b9c53ce3; decision 0dcf424b) includes spoke95315 in verified fake OpenCode→agent→supervisor ancestry for row57; unchanged TERM drain reaches zero. No product/kit/test/assertion code changed. A supplementary census first matched its ancestor shell; a separate ancestry-filtered observation resolves that diagnostic artifact. Interactive wrapper setpgid warning disclosed in report; row53 facts passed.
+
+Executed locally: macOS arm64 Darwin27.0.0, Node24.21.0, pinned Neovim0.12.5, 51 named files/603 tests, zero fail/cancel/skip/todo, no retries, typecheck and 34 source checks passed. Fresh seals/streaming redaction; positive-control publication scan clean. Serial targeted node --test, no new suite, no duration/resource enforcement, no browser/GUI/provider/harness network or load stress. Cover-quiet/load<=10 gates and preservation lock observed.
+
+Supporting covers at this SHA/tree54908b0b: Linux679622a2/A-17814 (2 shards) and macOS2fffc4ad/A-17818, exit0, T0–T4/Web; T4 repetitions skipped, base17 only; timing/lint report-only, Linux9 skips/macOS1. Chrome Headless Shell1248, Chrome for Testing156.0.8078.4; full binaries/platforms in provenance. Linux shard1 cland-v0-ea5e1185 lifetime2330s/$0.1618, shard2 cland-v0-1404e382 lifetime1730s/$0.1202; total$0.2820. These are supporting cover facts, not this local run's wall time. Local droplet cost not applicable.
+
+Final HEAD=dev=request, clean worktree, root non-tracker unchanged; hub/relay stopped, owned survivors zero, alias removed, only node compile cache remains in TMPDIR. Q/T/worktree cleanup follows verdict. Stage verdict only: no epic or child criterion marks.
