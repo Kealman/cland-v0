@@ -2,8 +2,8 @@
 id: T-1753
 kind: task
 title: "Unreachable hosts: 3 and 15 minutes, and hosts destroyed by anyone"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1447
 branch: t/T-1753-unreachable-hosts-3-and-15-minutes-and
 created: 2026-11-07T16:01:59.872Z
-updated: 2026-11-08T18:02:33.064Z
+updated: 2026-11-08T20:38:28.357Z
+closed: 2026-11-08T20:38:28.357Z
 ---
 
 ## Summary
@@ -28,18 +29,24 @@ Per-host outage timers on the hub clock fed by tunnel status, once-per-outage li
 
 ## Acceptance criteria
 
-- [ ] C1. A tunnel down for 3 minutes of hub-clock time posts exactly one General line "host <id> unreachable", and the host reads `unreachable` in `cland host list --json` (test).
-  - failed: rev-35 [reviewer] · 2026-11-08T18:02:33.064Z · note Outage replay can warn early; required host list --json is rejected.
-- [ ] C2. A tunnel back within 15 minutes clears the state, keeps the sessions running, and posts no second line for that outage (test).
-  - failed: rev-35 [reviewer] · 2026-11-08T18:02:33.064Z · note Idle outage-grace hosts can lose their lease before the 15m recovery boundary.
-- [ ] C3. A tunnel down for 15 minutes ends the host's sessions as exited, vacates their roles, destroys the host with a confirmed deletion, and moves its lease file deadline to that moment (test).
-  - failed: rev-35 [reviewer] · 2026-11-08T18:02:33.064Z · note Premature lease expiry or mirror-publication failure defeats the terminal loss policy.
-- [ ] C4. A machine the provider reports gone while its tunnel is down ends its sessions as exited without waiting for the 15 minutes (test).
-  - failed: rev-35 [reviewer] · 2026-11-08T18:02:33.064Z · note Mirror-publication failure can block the positive-provider-gone confirmed-destruction path.
+- [x] C1. A tunnel down for 3 minutes of hub-clock time posts exactly one General line "host <id> unreachable", and the host reads `unreachable` in `cland host list --json` (test).
+  - done: impl-1753 · 2026-11-08T19:18:19.870Z
+  - verified: rev-35 [reviewer] · run rev-35-1753-final-1 · 2026-11-08T19:54:11.997Z · commit 2621bbcdbe154cecc4e290c94c20758b146774db
+- [x] C2. A tunnel back within 15 minutes clears the state, keeps the sessions running, and posts no second line for that outage (test).
+  - done: impl-1753 · 2026-11-08T19:18:20.011Z
+  - verified: rev-35 [reviewer] · run rev-35-1753-final-1 · 2026-11-08T19:54:11.997Z · commit 2621bbcdbe154cecc4e290c94c20758b146774db
+- [x] C3. A tunnel down for 15 minutes ends the host's sessions as exited, vacates their roles, destroys the host with a confirmed deletion, and moves its lease file deadline to that moment (test).
+  - done: impl-1753 · 2026-11-08T19:18:20.296Z
+  - verified: rev-35 [reviewer] · run rev-35-1753-final-1 · 2026-11-08T19:54:11.997Z · commit 2621bbcdbe154cecc4e290c94c20758b146774db
+- [x] C4. A machine the provider reports gone while its tunnel is down ends its sessions as exited without waiting for the 15 minutes (test).
+  - done: impl-1753 · 2026-11-08T19:18:20.424Z
+  - verified: rev-35 [reviewer] · run rev-35-1753-final-1 · 2026-11-08T19:54:11.997Z · commit 2621bbcdbe154cecc4e290c94c20758b146774db
 - [x] C5. A host whose tunnel cannot be re-opened at hub start starts its outage clock from the start time (test).
-  - done: impl-1753 · 2026-11-08T17:52:50.617Z
+  - done: impl-1753 · 2026-11-08T19:18:20.554Z
+  - verified: rev-35 [reviewer] · run rev-35-1753-final-1 · 2026-11-08T19:54:11.997Z · commit 2621bbcdbe154cecc4e290c94c20758b146774db
 - [x] C6. `CLAND_TEST_HOST_UNREACHABLE_MS` and `CLAND_TEST_HOST_LOST_MS` shorten the clocks inside the fake-host fence and are ignored without `CLAND_FAKE_HOST_ROOT` (test).
-  - done: impl-1753 · 2026-11-08T17:52:50.776Z
+  - done: impl-1753 · 2026-11-08T19:18:20.816Z
+  - verified: rev-35 [reviewer] · run rev-35-1753-final-1 · 2026-11-08T19:54:11.997Z · commit 2621bbcdbe154cecc4e290c94c20758b146774db
 
 ## Blocked by
 
@@ -79,3 +86,63 @@ finding_counts: {"high":2,"medium":3,"low":0}
 Full pinned Standards/Spec review: NOT CLEAR, five findings (2 high, 3 medium), detailed A-17925. C5/C6 remain runtime-unverified; no reviewer runtime execution. Qualified pre-review targeted receipts A-17920 and development excerpts A-17921 retained; no final configured receipt claimed. Implementer confirmed all gaps; Coordinator grace/shared-owner and CLI/loss handling decisions apply. Correct together and request fresh source review before verification. Full after-stage QA remains separate.
 
 Criteria: C1 failed (Outage replay can warn early; required host list --json is rejected.), C2 failed (Idle outage-grace hosts can lose their lease before the 15m recovery boundary.), C3 failed (Premature lease expiry or mirror-publication failure defeats the terminal loss policy.), C4 failed (Mirror-publication failure can block the positive-provider-gone confirmed-destruction path.).
+
+### rev-35 · 2026-11-08T18:45:50.723Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1753-source-2
+commit: 7459c7c59cd4c95a9873d7483803e994d76947f7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear: Standards 0, Spec 0. All five A-17925 findings corrected; authorized T-1749 merge retains idle stopping/configuration and actual idle-lifecycle grace controls. Detailed audit A-17933. A-17932's 44 candidate component outputs report 564/564 with explicit final-assertion/source-linkage limits. C1–C6 remain runtime-unverified pending the authorized 29 direct T3 + extra host-restart serial preservation and mode-free same-head configured verification. No reviewer execution or final Linux/browser claim; full after-stage QA remains separate.
+
+### rev-35 · 2026-11-08T19:14:11.384Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1753-evidence-1
+commit: 7459c7c59cd4c95a9873d7483803e994d76947f7
+scope: evidence
+findings: [{"severity":"medium","text":"Spec/compatibility: subscribeStatus invents a down observation when a registered provisioned Host is supplied through options.provided and has no registry-owned carrier. Health then holds its capacity indefinitely with no up feed, preventing restored placement, typed-memory recovery and retained-generation closure release. Only replay actual carrier observations or provide an explicit status contract for supplied Hosts; absence of a registry carrier is not tunnel-down evidence. A-17941 reproduces three existing T2 failures.","file":"hub/src/host/registry.ts","line":48}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+NOT CLEAR: configured f76240a8/A-17941 exit1, three actual T2 compatibility failures. One medium task-local absent-carrier/down-inference finding, confirmed by author f85fe0c7; A-17943 traces each failure to the provided-Host Health hold. T0/T1 pass, T2 fails; mapped T4/Web unexecuted. All20 health base +100 load receipts pass but do not erase compatibility failures. A-17937 native preservation independently reconciles30 files/368pass/code0/signalnull to29 direct T3 +host-restart. Receipt censuses/provenance limits retained separately; no final criteria verification. Fix and request fresh source review before retry; preserve existing assertions. Full after-stage QA separate.
+
+Criteria: C1 failed (Initial status replay fabricates an outage for a provided Host with no registry carrier.), C2 failed (The fabricated outage hold blocks existing restored placement and memory-recovery/reuse cases.).
+
+### rev-35 · 2026-11-08T19:19:18.097Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1753-source-3
+commit: 2621bbcdbe154cecc4e290c94c20758b146774db
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, Standards 0 / Spec 0. Missing-carrier replay now skips unmonitored supplied Hosts, preserving real owned-carrier outage replay and all existing assertions. A-17945 incorporates prior source reviews and A-17944 red/green/source-linkage/consumer-selection limits. All C1–C6 runtime-unverified pending fresh authorized30-file native preservation and mode-free same-head configured verification. Reconcile published401 lower-tier consumers against actual final records, especially the two restart files. Old A-17941 stays red; no native carry/narrower delta accepted. Full after-stage QA separate.
+
+### rev-35 · 2026-11-08T19:54:11.997Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1753-final-1
+commit: 2621bbcdbe154cecc4e290c94c20758b146774db
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+FINAL CLEAR, C1–C6 verified. Source A-17945 plus same-head configured5dd8080c/A-17953 exit0,5647/5647,0fail/cancel/skip/todo. Independent Git export projection matches4eb050b08b70efad8c2c94faf2816dbfdfa37e66. All401 required lower-tier consumers have passing base identities and successful file completion; old three failures now pass. Health20base+100load, CLI alias base+5load; five empty failure arrays. Fresh native A-17946 independently reconciles30files/368passes/code0/signalnull at corrected head. Full audit A-17954. Linux droplet Node24.21.0/Nvim0.12.5, Shell1248 Chrome156.0.8078.4; T0/allT1/fallbackallT2/mappedT4base/Web complete. WiderT3 deferred to batch/integrated, noT4 repetition/full-stage claim. Budgets/lints report-only; full after-stage QA separate. Head unchanged/clean.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-08T20:38:28.357Z
+
+Merged 241992ac135564728c7952c31f771af63b1c3037 onto dev.
