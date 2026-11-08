@@ -2,8 +2,8 @@
 id: T-1750
 kind: task
 title: Boot failures and provider API limits
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1448
 branch: t/T-1750-boot-failures-and-provider-api-limits
 created: 2026-11-07T16:01:59.219Z
-updated: 2026-11-08T19:57:35.260Z
+updated: 2026-11-08T22:12:51.978Z
+closed: 2026-11-08T22:12:51.978Z
 ---
 
 ## Summary
@@ -34,14 +35,19 @@ The failure handling around the create seam, and the backoff. The line to the Co
 
 - [x] C1. A fake host that never boots is destroyed with a confirmed deletion at 5 minutes of hub-clock time, its launch stays waiting, and the Coordinator gets exactly one Agents line naming the host (test).
   - done: impl-1750 · 2026-11-08T19:55:45.574Z
+  - verified: rev-35 [reviewer] · run rev-35-1750-final-1 · 2026-11-08T21:27:19.494Z · commit a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
 - [x] C2. A fake machine whose pinned key never answers within the gate is handled the same way (test).
   - done: impl-1750 · 2026-11-08T19:06:26.643Z
+  - verified: rev-35 [reviewer] · run rev-35-1750-final-1 · 2026-11-08T21:27:19.494Z · commit a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
 - [x] C3. A provider refusal with a retry time makes no further acquire call before that time, keeps the launch waiting, and allows one create after it (test).
   - done: impl-1750 · 2026-11-08T19:07:48.050Z
+  - verified: rev-35 [reviewer] · run rev-35-1750-final-1 · 2026-11-08T21:27:19.494Z · commit a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
 - [x] C4. After a boot failure the pool's next create waits 1 minute, the wait doubles per consecutive failure up to 30 minutes, and a host reaching `ready` resets it (test).
   - done: impl-1750 · 2026-11-08T19:55:46.895Z
+  - verified: rev-35 [reviewer] · run rev-35-1750-final-1 · 2026-11-08T21:27:19.494Z · commit a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
 - [x] C5. `CLAND_TEST_HOST_BOOT_MS` shortens the gate inside the fake-host fence and is ignored without `CLAND_FAKE_HOST_ROOT` (test).
   - done: impl-1750 · 2026-11-08T19:07:48.400Z
+  - verified: rev-35 [reviewer] · run rev-35-1750-final-1 · 2026-11-08T21:27:19.494Z · commit a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
 
 ## Blocked by
 
@@ -150,3 +156,43 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, Standards0/Spec0. A-17957 incorporates prior audits: streak survives cleanup failure; captured identity/state/release fence preserves newer terminal/ready/replacement checkpoints without stale notice/retry. Candidate red4/green32 transcript limits A-17956 retained; all C1–C5 runtime-unverified. Per Coordinator d7a99417, no intermediate native/verify: wait explicit merge-dev after T-1753, then merged-head delta review before20-file local preservation and configured verify. Coverage split cec50c89 and transitive A-17951 remain, full after-stage QA separate. Head clean; no reviewer execution.
+
+### impl-1750 · 2026-11-08T20:50:37.751Z
+
+Coordinator classification8566ba32: project-probes direct node --test census mismatch(execFileSync:1;1pass/2fail) is invocation-dependent, not task-caused or a suite dev regression. Same direct failure on dev5e0ba307,241992ac,4668f181,d57dd020,7c032082,966f6fef, including env-i; macOS stage cover a4a59a7c at966f6fef passed via run-suite. Local no-isolation332 collector stopped at191attempted; no standard suite coverage credited. Default-isolation standalone control also failed. Linux mode-free verify remains authoritative T2 evidence. Proceed authorized delta review→20-file native slot→verify at merged a8fc0982. Coordinator files low census-outside-run-suite bug.
+
+### rev-35 · 2026-11-08T20:52:05.549Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1750-delta-1
+commit: a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged source clear, Standards0/Spec0; detailed A-17966. Combined conflict/parent checks preserve both lanes; retry/scale/close identical task-parent bytes, outageHold/unreachable/stopping retained, HOST_USAGE equals merged frozen fixture. A-17964 five children exit0/signalnull incl54contract cases; incorrect nonexistent argument not health coverage. Coordinator8566ba32 standalone project-probes classification/controls retained; no standardT2 credit to stopped collector. All C1–C5 runtime-unverified; proceed20-file local slot then mode-free same-head verify. Graph A-17963 reconciled in final receipts; broadT3 fullLinux batch before landing, broaderT4 later occasions. Full after-stage QA separate; no reviewer execution.
+
+### impl-1750 · 2026-11-08T21:26:47.845Z
+
+Final same-head evidence: a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8(tree d23d087d95a9d1aac250fbb691ed74324dba089c), delta source A-17966; configured Linux droplet run de4df578/A-17972 exit0,5676pass/0fail/cancelled/skipped. T0,T1,allT2 fallback,changedT3 gate8,Web complete; Node24.21.0,Neovim0.12.5,HeadlessShell1248 Google Chrome for Testing156.0.8078.4; budgets/ratchet report-only. Named T2 waiting-launch-restart11/11,session-pool-placement21/21,project-probes2/2 through run-suite; pool-failures21,pacing24 all pass. A-17974 lists every shared-graph consumer/tier/fact/disposition(79T1,332T2,230T3,14T4,52Web;15unknowns reached;0missing configured T1/T2/Web file facts). Local macOS native A-17968:20files384pass,0skip,all exit0/signalnull. Full LinuxT3 is merge-batch coverage before landing; otherT4/after-stageQA remain separate. Standalone census collector earns no suite coverage. Runtime criteria pending Reviewer final settlement; no source changes after reviewed head.
+
+### rev-35 · 2026-11-08T21:27:19.494Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1750-final-1
+commit: a8fc098225d954a2a1fe5aa209bd47bdd7b6d6a8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final CLEAR; C1–C5 verified. A-17975 independently reconciles exact-head configured de4df578/A-17972 (5676/5676, zero fail/cancel/skip), reconstructed export tree d23d087d95a9d1aac250fbb691ed74324dba089c, clean branch, all 411 T1/T2 +52 Web consumer paths with positive cases/file completion, all 21 pool cases base+5 distinct load passes, eight changed gate cases, prior stalled restart file now 11/11 and complete, and same-head local A-17968 native 20 files/384 passes with captured child exits. Standards/spec: no outstanding findings. Report-only diagnostics remain qualified. Full Linux T3 merge batch still required before landing under Coordinator split; broader T4 later ordinary occasions and full after-stage QA remain separate. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-08T22:12:51.978Z
+
+Merged a5673acf5daa022b0cc76052d373992afad23fc6 onto dev.
