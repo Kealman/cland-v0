@@ -70,6 +70,15 @@ From `qa/briefs/E-1533-stage-2.md`, "Probes that mislead", verbatim:
 - **Exact strings** are counted by `src.mjs` with `String.split`, never by shell `grep`.
 - **The preservation lock** is the directory `/tmp/cland-preserve.lock`, taken with `mkdir`, an owner file naming this run and row, and an owner-checked removal by literal path. A held lock makes the row BLOCKED for now (retry later; never remove another owner's lock).
 
+## Corrections from this brief's own run (qa-678, A-17643)
+
+The stage-1 run at `c130bac4` (run qa-e1534s1-2026-11-08-qa678-1, clear) applied four Coordinator-approved run-copy corrections. A brief that copies this kit carries them as written here:
+
+- **Kit pin (ask 9de5178b).** `qa/briefs/E-1533-stage-3.md` moved again, from blob `997909c0…` to `3e85f49d…`, when T-1738 added three historical-scope prose lines. Every heredoc stayed byte-identical. A blob pin on a brief that later items may edit goes stale, so extract the kit from a fixed commit (`git show <sha>:qa/briefs/E-1533-stage-3.md`) and pin that commit, not the blob.
+- **Landing delta from another fix (ask ccf550e7).** T-1741 landed from merge head 042be2f5, which auto-merged T-1735's self-ignore into `shared/fake-host-machine.ts` (`mkdir(directory, 0o700)` plus a `.gitignore` of `*`). A landing check that compares a member's files to its reviewed head names any delta that comes from a separately landed fix, with its commit. The member's own lines must still match.
+- **Counter scope (ask 5f1dfe6d).** `cnt` counts a key across the whole config file, so in E1534S1-51 it also counts `[verification].daily_spend_usd`, which `init` writes. Count keys inside the `[hosts]` table only.
+- **Fake-host census (ask 76d4b23b).** In E1534S1-60, the at-floor OpenCode launch fails its forward because the scratch `pm` helper never calls `ports()`. `ports.json` is then absent, `fake-ssh.ts` refuses the forward and `ssh.ts` retires the master before cleanup. Its OpenCode process survives under the fake host's agent. A fake-provider destroy releases the record and never kills the fake machine's local processes, so an agent-descendant survivor joins the supervisor and agent in the census and is ended by pid. The hub settled every row (no session, process, pending stop, reservation or lease; two confirming reads). Call `ports()` in `pm` before launching through a created host.
+
 ## Stage
 
 - Epic: E-1534 (Pools, placement and the scheduler, under R-1530; after E-1533, closed with DoD A-17472).
