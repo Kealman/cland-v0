@@ -1,3 +1,4 @@
+import { WAITING_LAUNCH_SCHEMA } from './waiting-launches.ts';
 import { hostRelaunchWarningKey, type HostRelaunchCompletion, type HostRelaunchIntent } from '../host/relaunch-state.ts';
 import { createHash } from 'node:crypto';
 import { realClock, type Clock } from '../hub/clock.ts';
@@ -7,6 +8,7 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import type { HarnessProcess } from './contract.ts';
+import type { WaitingLaunchRecord, WaitingPublication } from './waiting-launches.ts';
 import type { SessionUsage } from '../protocol.ts';
 import { hostBootChanged } from '../host/process-host.ts';
 import type { LaunchFilesState } from './launch-files.ts';
@@ -53,6 +55,7 @@ export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted' 
 }
 
 const SCHEMA = `
+${WAITING_LAUNCH_SCHEMA}
 create table if not exists harness_processes (
   name text primary key,
   host text not null default 'local',
@@ -204,9 +207,21 @@ export class ProcessTable {
     this.retainHostGeneration(p,'unknown');
   }
 
+  waitingLaunches(): WaitingLaunchRecord[] {
+    return this.#db.prepare('select value from waiting_launches order by rowid').all().map(row => JSON.parse(String(row.value)) as WaitingLaunchRecord);
+  }
+  waitingLaunch(name: string): WaitingLaunchRecord | null {
+    const row = this.#db.prepare('select value from waiting_launches where name=?').get(name);
+    return row ? JSON.parse(String(row.value)) as WaitingLaunchRecord : null;
+  }
+  saveWaitingLaunch(record: WaitingLaunchRecord): void {
+    this.#db.prepare('insert into waiting_launches(name,value) values(?,?) on conflict(name) do update set value=excluded.value').run(record.row.name, JSON.stringify(record));
+  }
+  deleteWaitingLaunch(name: string): void { this.#db.prepare('delete from waiting_launches where name=?').run(name); }
+
   /** Record a launched process; a name launched again replaces its old row (the old process is gone or stopped). */
-  put(p: HarnessProcess, relaunch?: HostRelaunchCompletion): void {
-    if (relaunch) this.#db.exec('begin immediate');
+  put(p: HarnessProcess, relaunch?: HostRelaunchCompletion, waiting?: WaitingPublication): void {
+    this.#db.exec('begin immediate');
     try {
     const previous=this.get(p.name);
     if(previous&&hostGenerationKey(previous)!==hostGenerationKey(p))this.#preserveTerminalHostGeneration(previous);
@@ -229,9 +244,13 @@ export class ProcessTable {
       this.#db.prepare('insert or replace into host_worktrees(item,value) values(?,?)').run(relaunch.tree.item, JSON.stringify({...relaunch.tree,phase:'ready'}));
       this.#db.prepare('insert into meta(key,value) values(?,?) on conflict(key) do update set value=excluded.value').run(hostRelaunchWarningKey(hostGenerationKey(p)),relaunch.note);
       this.#db.prepare('delete from meta where key=?').run(relaunch.intentKey);
-      this.#db.exec('commit');
     }
-    } catch (error) { if (relaunch) this.#db.exec('rollback'); throw error; }
+    if (waiting) {
+      if (this.waitingLaunch(waiting.name)?.id !== waiting.id) throw new Error('waiting launch publication lost its admitted identity');
+      this.deleteWaitingLaunch(waiting.name);
+    }
+    this.#db.exec('commit');
+    } catch (error) { this.#db.exec('rollback'); throw error; }
     this.#changed(p.name);
   }
 

@@ -682,6 +682,7 @@ export async function serveProject(root: string, options: { createHost?: import(
     adapters = projectSessions({ hostPools: () => roles.config().hosts, hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.hostOwner = sshHosts;
     hub.dispatcher.useSessions(adapters.sessions);
+    hub.dispatcher.restoreWaitingLaunches();
     await adapters.sessions.sweepArchive();
     await startGateway();
   } catch (error) {

@@ -111,3 +111,5 @@ for the additive API and confirmed-absence settlement boundary.
 - [Host leases and renewal ownership](../docs/hub/host-leases.md)
 - [Waiting launches](../docs/hub/waiting-launches.md): no-process replies, status records, cancellation and capacity wake-ups.
 - [Detached host watchdog](../docs/hub/host-watchdog.md): lease-file expiry, confirmed provider release and spend receipts.
+
+Waiting-launch restart ownership: [durable waits](../docs/hub/waiting-launches.md#restart-settlement).

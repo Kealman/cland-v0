@@ -1,3 +1,4 @@
+import { WAITING_LAUNCH_SCHEMA } from '../adapters/waiting-launches.ts';
 import type { HostWorktreeRecord } from '../host/task-worktrees.ts';
 import { HostRecords } from '../host/records.ts';
 import { Users } from './users.ts';
@@ -31,6 +32,7 @@ export type ReleasedDigest = { trigger: string; session: string; notes: string[]
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+${WAITING_LAUNCH_SCHEMA}
 create table if not exists host_worktrees (item text primary key, value text not null);
 create table if not exists suite_job_summaries (key text primary key, value text not null);
 create table if not exists session_credentials (
@@ -890,6 +892,9 @@ export class Store implements HygieneMemory {
     if (role.startsWith('lead:')) role = `lead:${itemKey(role.slice(5))}`;
     this.#prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
   }
+
+  /** Used inside the notice transaction so a restart cannot lose or repeat a dropped wait. */
+  deleteWaitingLaunch(name: string): void { this.#db.prepare('delete from waiting_launches where name=?').run(name); }
 
   /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does, the messages it records
    *  included. */

@@ -1,4 +1,4 @@
-import { WaitingLaunches } from './waiting-launches.ts';
+import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
 import { HostMemoryFloorRefusal } from '../host/ssh-host.ts';
 import type { WaitingLaunch } from '../protocol.ts';
 import { PoolCapacityUnavailable, PoolRuntime } from '../host/pool-runtime.ts';
@@ -56,11 +56,13 @@ export type SignalFrame = { session?: string; sessionId?: string; launch?: strin
 
 /** `item`: the Lead’s node, or the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
 const placedLaunch = Symbol('placed launch');
+const waitingPublication = Symbol('waiting publication');
 const waitingRetry = Symbol('waiting retry');
 const waitingPool = Symbol('waiting pool');
 class WaitingPoolRemoved extends Error {}
+const waitingReason = (cause: PoolCapacityUnavailable | HostMemoryFloorRefusal) => cause instanceof HostMemoryFloorRefusal ? `waiting for a host: host ${cause.host}, available memory ${cause.availableBytes} bytes` : 'waiting for a host';
 export type LaunchRequest = {
-  [waitingPool]?: string; [waitingRetry]?: boolean; [placedLaunch]?: { active: boolean; validate?: () => void; reuse?: string }; name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
+  [waitingPublication]?: WaitingPublication; [waitingPool]?: string; [waitingRetry]?: boolean; [placedLaunch]?: { active: boolean; validate?: () => void; reuse?: string }; name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
 type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection };
 
@@ -119,6 +121,8 @@ export class Sessions {
   readonly #unprovision: () => void;
   readonly #poolRuntime: PoolRuntime | null;
   readonly #waiting = new WaitingLaunches((row, end) => {
+    if (end) this.#table.deleteWaitingLaunch(row.name);
+    else { const record = this.#table.waitingLaunch(row.name); if (record) this.#table.saveWaitingLaunch({ ...record, row }); }
     this.#log({ event: 'session-waiting', session: row.name, role: row.role, pool: row.pool, reason: row.reason, since: row.since, ...(end ? { end } : {}) });
     this.#core.inbox.refresh();
   });
@@ -130,33 +134,14 @@ export class Sessions {
     return row;
   }
 
-  async launchOrWait<T>(request: LaunchRequest, operation: (request: LaunchRequest, authorize: () => void) => Promise<T>, authorize: () => void = () => {}, retainedAuthorize: () => void = authorize): Promise<T | { waiting: WaitingLaunch }> {
+  async launchOrWait<T>(request: LaunchRequest, operation: (request: LaunchRequest, authorize: () => void) => Promise<T>, authorize: () => void = () => {}, retainedAuthorize: () => void = authorize, actor: WaitingActor = null, inferredRole?: string | null): Promise<T | { waiting: WaitingLaunch }> {
     authorize();
     if (!request.item) {
       const invalidName = nameRefusal(request.name, new Set(['human']));
       if (invalidName) throw new Error(invalidName);
     }
     if (this.#waiting.has(request.name)) throw new Error(`session "${request.name}" is waiting for a host`);
-    const attempt = async (candidate: LaunchRequest, auth: () => void): Promise<T> => {
-      let memory: HostMemoryFloorRefusal | undefined;
-      const refused = new Set<string>();
-      while (true) {
-        try { return await operation(candidate, auth); }
-        catch (error) {
-          if (candidate.host !== undefined) throw error;
-          if (error instanceof HostMemoryFloorRefusal) { this.#memoryBlocked.set(error.host, error); if (refused.has(error.host)) throw error; refused.add(error.host); memory = error; continue; }
-          if (error instanceof PoolCapacityUnavailable) {
-            memory ??= [...this.#memoryBlocked.values()].find(cause => {
-              const provision = this.#core.store.hosts.provisions.get(cause.host);
-              return provision?.pool === error.pool && provision.state === 'ready' && this.#core.store.hosts.get(cause.host)?.state === 'registered' && this.#hosts.has(cause.host) && !this.#cutHosts.has(cause.host) && !this.#settlingHosts.has(cause.host);
-            });
-            if (memory) throw memory;
-          }
-          throw error;
-        }
-      }
-    };
-    try { return await attempt(request, authorize); }
+    try { return await this.#attemptWaiting(request, operation, authorize); }
     catch (error) {
       if (request.host !== undefined || !(error instanceof PoolCapacityUnavailable || error instanceof HostMemoryFloorRefusal)) throw error;
       authorize();
@@ -167,24 +152,79 @@ export class Sessions {
       const role = request.role ?? this.#core.store.roleOf(request.name);
       const pool = error instanceof PoolCapacityUnavailable ? error.pool : this.#core.store.hosts.provisions.get(error.host)?.pool;
       if (!pool) throw error;
-      const reason = (cause: PoolCapacityUnavailable | HostMemoryFloorRefusal) => cause instanceof HostMemoryFloorRefusal ? `waiting for a host: host ${cause.host}, available memory ${cause.availableBytes} bytes` : 'waiting for a host';
-      const row = { name: request.name, role, item: request.item ?? null, pool, reason: reason(error), since: this.#core.clock.now().toISOString() };
-      this.#waiting.add(row, async guard => {
-        const auth = () => {
-          guard(); retainedAuthorize();
-          if (!this.#poolRuntime || !Object.hasOwn(this.#poolRuntime.settings().pools, pool)) throw new WaitingPoolRemoved(`pool ${pool} removed`);
-        };
-        try { await attempt({ ...request, role, [waitingRetry]: true, [waitingPool]: pool }, auth); }
-        catch (cause) {
-          guard();
-          if (cause instanceof WaitingPoolRemoved) { this.#waiting.drop(request.name, cause.message); this.#log({ event: 'waiting-launch-refused', session: request.name, error: cause.message }); }
-          else if (cause instanceof PoolCapacityUnavailable || cause instanceof HostMemoryFloorRefusal) this.#waiting.reason(request.name, reason(cause));
-          else { this.#waiting.drop(request.name, 'refused'); this.#log({ event: 'waiting-launch-refused', session: request.name, error: String(cause) }); }
-          throw cause;
-        }
-      });
+      const row = { name: request.name, role, item: request.item ?? null, pool, reason: waitingReason(error), since: this.#core.clock.now().toISOString() };
+      const record: WaitingLaunchRecord = { id: randomUUID(), row, request: { ...request, role }, actor, ...(inferredRole !== undefined ? { inferredRole } : {}), ...(error instanceof HostMemoryFloorRefusal ? { memory: this.#waitingMemory(error) } : {}) };
+      this.#table.saveWaitingLaunch(record);
+      this.#addWaiting(record, operation, retainedAuthorize);
       return { waiting: row };
     }
+  }
+  async #attemptWaiting<T>(candidate: LaunchRequest, operation: (request: LaunchRequest, authorize: () => void) => Promise<T>, auth: () => void): Promise<T> {
+    let memory: HostMemoryFloorRefusal | undefined;
+    const refused = new Set<string>();
+    while (true) {
+      try { return await operation(candidate, auth); }
+      catch (error) {
+        if (candidate.host !== undefined) throw error;
+        if (error instanceof HostMemoryFloorRefusal) { this.#memoryBlocked.set(error.host, error); if (refused.has(error.host)) throw error; refused.add(error.host); memory = error; continue; }
+        if (error instanceof PoolCapacityUnavailable) {
+          memory ??= [...this.#memoryBlocked.values()].find(cause => {
+            const provision = this.#core.store.hosts.provisions.get(cause.host);
+            return provision?.pool === error.pool && provision.state === 'ready' && this.#core.store.hosts.get(cause.host)?.state === 'registered' && this.#hosts.has(cause.host) && !this.#cutHosts.has(cause.host) && !this.#settlingHosts.has(cause.host);
+          });
+          if (memory) throw memory;
+        }
+        throw error;
+      }
+    }
+  }
+  #waitingMemory(cause: HostMemoryFloorRefusal): WaitingMemory {
+    return { host: cause.host, availableBytes: cause.availableBytes, floorBytes: cause.floorBytes, created: this.#core.store.hosts.provisions.get(cause.host)?.created };
+  }
+  #addWaiting(record: WaitingLaunchRecord, operation: (request: LaunchRequest, authorize: () => void) => Promise<unknown>, authorize: () => void, restored = false): void {
+    const { row, request } = record;
+    const { pool, role } = row;
+    this.#waiting.add(row, async guard => {
+      const auth = () => {
+        guard(); authorize();
+        if (!this.#poolRuntime || !Object.hasOwn(this.#poolRuntime.settings().pools, pool)) throw new WaitingPoolRemoved(`pool ${pool} removed`);
+      };
+      try { await this.#attemptWaiting({ ...request, role, [waitingRetry]: true, [waitingPool]: pool, [waitingPublication]: {name:row.name,id:record.id} }, operation, auth); }
+      catch (cause) {
+        guard();
+        if (cause instanceof WaitingPoolRemoved) { this.#waiting.drop(request.name, cause.message); this.#log({ event: 'waiting-launch-refused', session: request.name, error: cause.message }); }
+        else if (cause instanceof PoolCapacityUnavailable || cause instanceof HostMemoryFloorRefusal) {
+          if (cause instanceof HostMemoryFloorRefusal) this.#memoryBlocked.set(cause.host, cause);
+          const current = this.#table.waitingLaunch(row.name);
+          if (current?.id === record.id) this.#table.saveWaitingLaunch({ ...current, row: {...current.row,reason:waitingReason(cause)}, memory: cause instanceof HostMemoryFloorRefusal ? this.#waitingMemory(cause) : undefined });
+          this.#waiting.reason(request.name, waitingReason(cause));
+        }
+        else { this.#waiting.drop(request.name, 'refused'); this.#log({ event: 'waiting-launch-refused', session: request.name, error: String(cause) }); }
+        throw cause;
+      }
+    }, restored);
+  }
+
+  restoreWaitingLaunches(operation: (request: LaunchRequest, authorize: () => void) => Promise<unknown>, authorize: (record: WaitingLaunchRecord) => void): void {
+    for (const record of this.#table.waitingLaunches()) {
+      const { row, request } = record;
+      const removed = row.role && !this.#core.roles?.get().has(row.role) ? `role ${row.role} removed`
+        : !this.#poolRuntime || !Object.hasOwn(this.#poolRuntime.settings().pools, row.pool) ? `pool ${row.pool} removed` : null;
+      if (removed) {
+        this.#core.store.transaction(() => {
+          const receipt = this.#core.noticeTo('agents', {kind:'session-waiting', to:['coordinator'], text:`${row.name}: wait ended (${removed})`, detail:{session:row.name,pool:row.pool,end:removed}});
+          if (!receipt) throw new Error(`waiting launch ${row.name}: drop notice was not retained`);
+          this.#core.store.deleteWaitingLaunch(row.name);
+        });
+        continue;
+      }
+      if (record.memory) {
+        const memory = record.memory, provision = this.#core.store.hosts.provisions.get(memory.host);
+        if (provision?.state === 'ready' && provision.created === memory.created && this.#core.store.hosts.get(memory.host)?.state === 'registered' && this.#hosts.has(memory.host)) this.#memoryBlocked.set(memory.host, new HostMemoryFloorRefusal(memory.host, {code:'memory-floor',availableBytes:memory.availableBytes,floorBytes:memory.floorBytes}));
+      }
+      this.#addWaiting(record, operation, () => authorize(record), true);
+    }
+    this.#core.inbox.refresh();
   }
   readonly #placementAdmissions = new Set<string>();
   readonly #cutHosts = new Set<string>();
@@ -530,7 +570,7 @@ export class Sessions {
         const current = this.#table.bySessionId(candidate.sessionId);
         if (!current || !this.retainedPool(role) || !this.#reuseEligible(current, role, cwd)) throw new Error('idle pool member changed during admission; retry');
         this.#core.checkAccountLimit(current.account ?? `default:${current.harness}`);
-        this.#table.put({ ...current, item: request.item ?? null });
+        this.#table.put({ ...current, item: request.item ?? null }, undefined, request[waitingPublication]);
         // Reserve the handoff even when the caller sends the review request separately.
         if (!brief) this.#core.store.setMeta(`pool-handoff:${current.sessionId}`, request.item!);
         this.#setObservedState(current.sessionId, current.name, 'busy', 'crew reuse');
@@ -1712,7 +1752,7 @@ export class Sessions {
         const refusal = this.#core.nameReservation(request.name, p.sessionId, undefined, request[waitingRetry]);
         if (refusal) { conflict = true; throw new Error(refusal); }
         if (this.#core.roles) p.role = this.#core.store.roleOf(p.name);
-        try { this.#table.put(p, completion); }
+        try { this.#table.put(p, completion, request[waitingPublication]); }
         finally {
           // An observer may throw after the row commits. Publish the binding for that
           // owned row too, but leave the prior binding intact on an unpublished failure.

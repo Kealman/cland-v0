@@ -851,6 +851,8 @@
     "hub/test/visibility-component.test.ts": "T2",
     "hub/test/visibility-volume.test.ts": "T4",
     "hub/test/visibility.test.ts": "T3",
+    "hub/test/waiting-launch-restart.test.ts": "T2",
+    "hub/test/waiting-launch-store.test.ts": "T1",
     "hub/test/waiting-launch.test.ts": "T2",
     "hub/test/waiting-launches-owner.test.ts": "T1",
     "hub/test/web-accounts.test.ts": "T1",

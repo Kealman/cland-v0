@@ -1,6 +1,14 @@
 import type { WaitingLaunch } from '../protocol.ts';
 
-/** In-memory ownership seam. The durable successor can store records independently of retry closures. */
+export const WAITING_LAUNCH_SCHEMA = 'create table if not exists waiting_launches (name text primary key, value text not null);';
+
+import type { LaunchRequest } from './sessions.ts';
+export type WaitingActor = { name: string; sessionId: string } | null;
+export type WaitingPublication = { name: string; id: string };
+export type WaitingMemory = { host: string; availableBytes: number; floorBytes: number; created?: string | undefined };
+export type WaitingLaunchRecord = { id: string; inferredRole?: string | null; memory?: WaitingMemory | undefined; row: WaitingLaunch; request: LaunchRequest; actor: WaitingActor };
+
+/** Retry ownership for durable requests; closures and in-flight cancellation stay local to this hub. */
 export class WaitingLaunches {
   readonly #rows = new Map<string, { row: WaitingLaunch; retry: (authorize: () => void) => Promise<void>; cancelled: boolean; flight: Promise<void> | null }>();
   #work: Promise<void> | null = null;
@@ -10,10 +18,10 @@ export class WaitingLaunches {
   constructor(changed: (row: WaitingLaunch, end?: string) => void) { this.changed = changed; }
   list(): WaitingLaunch[] { return [...this.#rows.values()].map(entry => ({ ...entry.row })); }
   has(name: string): boolean { return this.#rows.has(name); }
-  add(row: WaitingLaunch, retry: (authorize: () => void) => Promise<void>): void {
+  add(row: WaitingLaunch, retry: (authorize: () => void) => Promise<void>, restored = false): void {
     if (this.has(row.name)) throw new Error(`session "${row.name}" is waiting: ${this.#rows.get(row.name)!.row.reason}`);
     this.#rows.set(row.name, { row: { ...row }, retry, cancelled: false, flight: null });
-    this.changed(row);
+    if (!restored) this.changed(row);
     void this.capacityChanged();
   }
   reason(name: string, reason: string): void {

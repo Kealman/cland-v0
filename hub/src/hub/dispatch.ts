@@ -524,6 +524,26 @@ export class Dispatcher {
 
   configure(config: import('../init/config.ts').ProjectConfig): void { this.#suites?.configure(config); this.#sessions?.capacityChanged(); }
 
+  #validateSessionCaller(frame: { type: string; name?: unknown } & Record<string, unknown>, original: {name:string;sessionId:string} | null, current: Caller | null, peer: Peer, inferredRole?: string | null): void {
+    if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
+    if (current) this.#requirePermission(current, frame, peer);
+    if (frame.type === 'session.launch' && this.core.store.users.list().some(user => user.name === frame.name)) throw new Error(`session name is a user name: ${String(frame.name)}`);
+    if (inferredRole !== undefined && this.core.store.roleOf(String(frame.name)) !== inferredRole) throw new Error(`session "${String(frame.name)}" changed role while launching; retry the launch`);
+  }
+
+  restoreWaitingLaunches(): void {
+    const sessions = this.#sessions;
+    if (!sessions) return;
+    sessions.restoreWaitingLaunches((request, authorize) => sessions.withLaunchPlacement<unknown>(request, placed => {
+      if (!request.item) return sessions.launch(placed, undefined, authorize);
+      if (!this.#worktrees) throw new Error('waiting item launch needs tracker');
+      return this.#worktrees.launch(sessions, { ...placed, item: request.item }, undefined, authorize);
+    }, undefined, authorize), record => {
+      const caller = record.actor ? this.#asSession({as:{...record.actor,shell:true}}) : null;
+      this.#validateSessionCaller({type:'session.launch',id:'waiting-recovery',...record.request}, record.actor, caller, {send:()=>{},close:()=>{},isOpen:()=>true}, record.inferredRole);
+    });
+  }
+
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
     this.core.useSessionRows(() => this.#sessions?.list() ?? []);
@@ -1533,12 +1553,7 @@ export class Dispatcher {
       const inferred = frame.type === 'session.launch' && frame.item !== undefined && frame.role === undefined;
       const inferredRole = inferred ? core.store.roleOf(frame.name) : null;
       const launchFrame = inferred && inferredRole !== null ? { ...frame, role: inferredRole } : frame;
-      const validateCaller = (current: Caller | null) => {
-        if (original && (!current || current.sessionId !== original.sessionId)) throw new ToolForbidden(null, frame.type, 'the session is no longer current');
-        if (current) this.#requirePermission(current, frame, peer);
-        if (frame.type === 'session.launch' && core.store.users.list().some(user => user.name === frame.name)) throw new Error(`session name is a user name: ${frame.name}`);
-        if (inferred && core.store.roleOf(frame.name) !== inferredRole) throw new Error(`session "${frame.name}" changed role while launching; retry the launch`);
-      };
+      const validateCaller = (current: Caller | null) => this.#validateSessionCaller(frame, original, current, peer, inferred ? inferredRole : undefined);
       const authorize = () => validateCaller(kind === 'spoke' ? (connection && core.isCurrent(connection) ? connection : null) : this.#asSession(frame));
       // The accepted wait belongs to the admitted identity, independently of its original transport.
       const retainedAuthorize = () => validateCaller(original ? this.#asSession({ as: { name: original.name, sessionId: original.sessionId, shell: true } }) : null);
@@ -1551,6 +1566,8 @@ export class Dispatcher {
         authorize,
         original?.name ?? 'human',
         retainedAuthorize,
+        original ? { name: original.name, sessionId: original.sessionId } : null,
+        inferred ? inferredRole : undefined,
       ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);

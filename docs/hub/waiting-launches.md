@@ -12,7 +12,11 @@ Clients meeting an older hub treat absent waiting arrays as empty.
 `session.stop` cancels a wait and returns `{cancelled: <waiting record>}`;
 the CLI prints the cancellation. A waiting name remains reserved. Status records may carry the pinned item; Lead stop admission checks that item against the claimed subtree.
 
-Waits are in memory for this implementation; stopping the hub drops them.
+Waits are durable in `hub.db`; stopping the hub retains their request, admitted
+actor identity, pinned pool, reason and original `since`. Startup restores them
+before the first retry pass, without repeating the start notice. Typed memory
+refusal evidence is retained while its recorded host remains ready and registered;
+a fresh agent memory report releases that host for admission.
 They retry serially on positive process exit/stop checkpoints, committed
 provision-state changes, pool config publication and agent memory reports.
 Only ready registered hosts can place. A typed memory-floor refusal excludes
@@ -44,8 +48,8 @@ An accepted session request retains its admitted actor identity independently
 of the originating spoke connection. Placement retries resolve that session id
 through the existing dispatcher actor resolver and recheck current role grants
 and item scope. Disconnect alone does not cancel a wait; revoked authority
-ends it without spawning. The durable successor must retain that actor identity
-alongside its request rather than serialize a transport or a display name.
+ends it without spawning. Restart recovery retains that actor identity alongside its request and rechecks
+the current grant, target username and captured inferred role; it never serializes a transport.
 
 An accepted wait pins the pool it was admitted to. Changing the role's pool
 changes new launches; retries continue in the pinned pool. If the human wants
@@ -57,3 +61,14 @@ checks that the pinned pool still exists before publication.
 
 The queue finalizer re-arms a pending capacity notification received after its
 last loop check, so neither an add nor a wake is stranded during job handoff.
+
+
+## Restart settlement
+
+The process-table connection deletes a wait in the transaction that publishes
+its session row, using the exact admitted wait id even when an idle worker
+keeps a different name. Ordinary process writes do not consume waits. A cancelled wait is deleted before cancellation returns.
+Startup drops waits whose role or pinned pool was removed, recording one Agents
+notice addressed to the Coordinator in the same transaction as deletion.
+Shutdown joins retries but retains unplaced durable rows. This queue does not
+claim authority over native launches whose cleanup is still pending.
