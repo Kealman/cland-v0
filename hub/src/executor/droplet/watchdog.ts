@@ -53,15 +53,20 @@ async function stoppedWithin(watchdog: NonNullable<DropletLease['watchdog']>, ow
   // After a hub restart there is no ChildProcess receipt. Observe the persisted
   // identity disappearing; an unavailable native probe alone is not proof of exit.
   const clock = options.clock ?? realClock;
-  const processes = options.processes ?? nativeProcesses;
   const deadline = clock.now().getTime() + ms;
   while (clock.now().getTime() < deadline) {
-    if (!processes.alive(watchdog.pid)) return true;
-    const identity = await processes.identity(watchdog.pid, env, Math.max(1, Math.min(1000, deadline - clock.now().getTime())));
-    if (identity !== null && identity !== watchdog.pidIdentity) return true;
+    if (await watchdogStopped(watchdog,env,options,Math.max(1,Math.min(1000,deadline-clock.now().getTime())))) return true;
     await pause(Math.min(25, Math.max(0, deadline - clock.now().getTime())), clock);
   }
   return false;
+}
+/** Positive retirement proof; an unreadable birth on a live PID is unknown. */
+export async function watchdogStopped(watchdog:NonNullable<DropletLease['watchdog']>,env:NodeJS.ProcessEnv=process.env,options:WatchdogOptions={},timeoutMs?:number):Promise<boolean> {
+ const processes=options.processes??nativeProcesses;
+ if(!processes.alive(watchdog.pid))return true;
+ if(!watchdog.pidIdentity)return false;
+ const identity=await processes.identity(watchdog.pid,env,timeoutMs);
+ return identity!==null&&identity!==watchdog.pidIdentity;
 }
 export async function watchdogAlive(lease: DropletLease, env: NodeJS.ProcessEnv = process.env, options: WatchdogOptions = {}): Promise<boolean> {
   if (!lease.watchdog) return false;

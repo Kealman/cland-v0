@@ -5,7 +5,7 @@ import type { Clock, ClockTimer } from '../hub/clock.ts';
 import { cancelHostSpend, reserveHostSpend, renewHostSpend, settleHostSpend, type HostSpendCaps } from '../executor/droplet/spend.ts';
 
 export class HostLeasePublicationError extends Error { readonly code='host-lease-publication'; constructor(id:string,cause:unknown){super(`host ${id} lease publication failed`,{cause});} }
-export type HostLease = { id:string; pool:string; created:string; deadline:string };
+export type HostLease = { id:string; pool:string; created:string; deadline:string; watchdog?:import('./host-watchdog.ts').HostWatchdogIdentity };
 export const hostLeasePath=(root:string,id:string)=>{
  if(!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(id))throw Error('invalid host lease id');
  return join(root,'.cland/run/host-leases',id+'.json');
@@ -25,8 +25,9 @@ export class HostLeases {
  readonly #db:DatabaseSync;
  readonly #expiries=new Set<Promise<void>>();
  readonly #owners=new Map<string,{stop():void;done:Promise<void>}>();
- constructor(db:DatabaseSync){this.#db=db;db.exec('create table if not exists host_leases(id text primary key,pool text not null,created text not null,deadline text not null,released text)');}
- get(id:string):HostLease|null{return this.#db.prepare('select id,pool,created,deadline from host_leases where id=?').get(id) as HostLease|undefined??null;}
+ constructor(db:DatabaseSync){this.#db=db;db.exec('create table if not exists host_leases(id text primary key,pool text not null,created text not null,deadline text not null,released text); create table if not exists host_lease_watchdogs(id text primary key, identity text not null)');}
+ get(id:string):HostLease|null{const row=this.#db.prepare('select id,pool,created,deadline from host_leases where id=?').get(id) as HostLease|undefined;if(!row)return null;const identity=this.#db.prepare('select identity from host_lease_watchdogs where id=?').get(id);return identity?{...row,watchdog:JSON.parse(String(identity.identity))}:row;}
+ checkpointWatchdog(id:string,root:string,watchdog:NonNullable<HostLease['watchdog']>):void{if(!this.get(id))throw Error('unknown host lease');this.#db.prepare('insert into host_lease_watchdogs(id,identity) values(?,?)').run(id,JSON.stringify(watchdog));this.#mirror(root,this.get(id)!);}
  #mirror(root:string,row:HostLease){try {const path=hostLeasePath(root,row.id);mkdirSync(dirname(path),{recursive:true,mode:0o700});writeFileSync(path+'.next',JSON.stringify(row),{mode:0o600});renameSync(path+'.next',path);}catch(error){throw new HostLeasePublicationError(row.id,error);}}
  effective(id:string,root:string,clock:Clock):{deadline:string;expired:boolean;failure?:HostLeasePublicationError}|null {
   const row=this.get(id);if(!row)return null;
@@ -76,16 +77,18 @@ export class HostLeases {
   if(!record?.nonAcquisition||record.machine||record.acquisition)throw Error('durable non-acquisition receipt required');
   await cancelHostSpend({project:o.root,lease:id},record.nonAcquisition,o.env,{clock:o.clock});
   try {rmSync(hostLeasePath(o.root,id),{force:true});}catch(error){if(!['ENOENT','ENOTDIR'].includes((error as NodeJS.ErrnoException).code??''))throw error;}
+  this.#db.prepare('delete from host_lease_watchdogs where id=?').run(id);
   this.#db.prepare('delete from host_leases where id=?').run(id);
  }
  /** Caller supplies a positive absence receipt; unknown outcomes must never call this. */
- async release(id:string,o:Pick<LeaseOptions,'root'|'env'|'clock'>):Promise<void>{
-  const released=o.clock.now().toISOString();
+ async release(id:string,o:Pick<LeaseOptions,'root'|'env'|'clock'>,confirmedAt?:string):Promise<void>{
+  const released=confirmedAt??o.clock.now().toISOString();
   await this.stop(id);const row=this.get(id);if(!row)return;
   this.#db.prepare('update host_leases set released=coalesce(released,?) where id=?').run(released,id);
   const receipt=this.#db.prepare('select released from host_leases where id=?').get(id)!;
   await settleHostSpend(o.root,id,String(receipt.released),o.env,{clock:o.clock});
   rmSync(hostLeasePath(o.root,id),{force:true});
+  this.#db.prepare('delete from host_lease_watchdogs where id=?').run(id);
   this.#db.prepare('delete from host_leases where id=?').run(id);
  }
 }

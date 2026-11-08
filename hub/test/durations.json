@@ -10897,6 +10897,28 @@
     "hub/test/transport-forwards.test.ts::cleanup rejection still joins fixture and decoy before removing their roots": 0.709921
   },
   "allow": {
+    "hub/test/host-watchdog.test.ts": {
+      "file": true,
+      "seconds": 92,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-13",
+      "reason": "T-1748 requires two sequential real 30s detached-worker lifecycle cases. File budget sums top-level test seconds: Linux droplet run 2da31d7d at 88db047a (A-17708) measured 61.276673082s (30.075034811 + 31.201638271); same-head local macOS arm64 (A-17706) measured 60.937449125s (30.102411542 + 30.835037583). Allowance ceil(1.5 x worst measured aggregate) = 92s. Includes fixture setup, assertions and joined native cleanup; fake provider/transports, no browser or live-provider latency claim. Individual test allowances remain separate."
+    },
+    "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": {
+      "seconds": 73,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-13",
+      "reason": "T-1748 requires the real 30s minimum lease with a detached native worker. macOS arm64 Node24.21.0 samples 30.052s, 30.124s, 30.130s; Linux 48.208s is an unexecuted 1.6x projection; 1.5x projection rounded up. Includes setup and joined native cleanup; fake provider, no browser or network. Report mode."
+    },
+    "hub/test/host-watchdog.test.ts::host create arms a watchdog which deletes its machine after the hub stops": {
+      "seconds": 75,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-13",
+      "reason": "T-1748 real 30s lease with full fake-host provisioning and hub shutdown. macOS arm64 Node24.21.0 sample 31.007s, including fixture setup and teardown. Linux 49.611s is an unexecuted 1.6x projection; allowance ceil(1.5 x projection). No live provider or browser; report mode."
+    },
     "hub/test/host-create-ready.test.ts::forced fixture body failure joins held creation before storage and root disposal": {
       "seconds": 7.8,
       "owner": "C-216",

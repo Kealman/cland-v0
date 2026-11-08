@@ -109,3 +109,5 @@ for the additive API and confirmed-absence settlement boundary.
 
 - [Session pool placement](../docs/hub/session-pool-placement.md): role pool selection, capacity promises, explicit pins and session Host facts.
 - [Host leases and renewal ownership](../docs/hub/host-leases.md)
+
+- [Detached host watchdog](../docs/hub/host-watchdog.md): lease-file expiry, confirmed provider release and spend receipts.

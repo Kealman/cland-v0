@@ -4,6 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { writeFile, access } from 'node:fs/promises';
+import { readHostLeaseFile } from '../src/host/host-leases.ts';
+import { watchdogAlive } from '../src/executor/droplet/watchdog.ts';
+import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import { fixture } from './host-create-fixture.ts';
 import { cland, connectUi, eventually, testWaitMs, flushProjectLogs } from './harness.ts';
 import { hostDirectory } from '../../shared/fake-host-directory.ts';
@@ -17,6 +20,8 @@ for(const down of [false,true])test(`C1/C2/C3 destroy settles native session aft
  const f=await fixture(t);
  const created=await cland(f.root,'host','create','agents');assert.equal(created.code,0,created.stderr);
  const record=JSON.parse(created.stdout);assert.equal(record.state,'ready');
+ const leaseFile=JSON.parse(await (await import('node:fs/promises')).readFile((await import('../src/host/host-leases.ts')).hostLeasePath(f.root,record.id),'utf8'));
+ assert.ok(leaseFile.watchdog?.pidIdentity);assert.equal(await watchdogAlive(leaseFile as DropletLease,f.env),true);
  const fake=hostDirectory(f.root,record.machine.id),home=join(fake,'home');
  const host=f.hub.hostOwner!.hosts.find(h=>h.name===record.id)!;
  await writeFile(join(fake,'ports.json'),JSON.stringify({'12345':join(home,'session.sock')}));
@@ -49,6 +54,8 @@ for(const down of [false,true])test(`C1/C2/C3 destroy settles native session aft
  }
  const destroyed=await cland(f.root,'host','destroy',record.id);assert.equal(destroyed.code,0,destroyed.stderr);assert.equal(JSON.parse(destroyed.stdout).state,'destroyed');
  assert.equal(table.get('destroy-worker')?.status,'exited');
+ assert.equal(await watchdogAlive(leaseFile as DropletLease,f.env),false,'confirmed destroy joins the watchdog');
+ assert.equal(readHostLeaseFile(f.root,record.id),null);
  await assert.rejects(access(join(fake,'client-key')),{code:'ENOENT'});
  await flushProjectLogs(t,f.root);
  const {readFile}=await import('node:fs/promises');

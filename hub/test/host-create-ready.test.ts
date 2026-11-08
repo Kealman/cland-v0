@@ -9,6 +9,9 @@ import { cleanupOwnedProcesses, fixtureProcessCensus, onCleanup, guardDirectoryR
 import { hostCloneRoot } from '../src/host/clone.ts';
 import { hostDirectory } from '../../shared/fake-host-directory.ts';
 import { createHost, listHosts } from '../src/host/provision-host.ts';
+import { hostWatchdogPaths, type HostWatchdogIdentity } from '../src/host/host-watchdog.ts';
+import { watchdogAlive } from '../src/executor/droplet/watchdog.ts';
+import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Store } from '../src/hub/store.ts';
@@ -89,12 +92,21 @@ for(const [name,receipt] of [
 ] as const)test(`failed readiness releases only after positive settlement: ${name}`,{timeout:SETUP_MS},async t=>{
  const f=await fixture(t),store=fixtureStore(t,f);
  const owner=f.hub.hostOwner!,provider=new FakeHostProvider({env:f.hub.hostEnvironment});
- const runtime={...owner,ready:async(id:string,signal?:AbortSignal)=>{await owner.ready(id,signal);throw Error('held readiness failure');},remove:async(id:string)=>{await owner.remove(id);return receipt;}};
+ let watchdog:HostWatchdogIdentity|undefined;
+ const runtime={...owner,ready:async(id:string,signal?:AbortSignal)=>{await owner.ready(id,signal);watchdog=store.hosts.leases.get(id)?.watchdog;throw Error('held readiness failure');},remove:async(id:string)=>{await owner.remove(id);return receipt;}};
  const record=await createHost({root:f.root,pool:'agents',env:f.hub.hostEnvironment,records:store.hosts,owner:runtime,provider});
  assert.equal(record.state,'failed');assert.match(record.reason!,/held readiness failure/);
  assert.equal(record.release,name==='complete'?'released':'incomplete');
  assert.equal((await provider.status(record.machine!)).state,name==='complete'?'gone':'ready');
  assert.equal(store.hosts.provisions.get(record.id)?.release,record.release);
+ assert.ok(watchdog?.pidIdentity);
+ if(name==='complete'){
+  assert.equal(await watchdogAlive({watchdog} as DropletLease,f.env),false,'rollback joins its captured watchdog');
+  await assert.rejects(access(hostWatchdogPaths(f.root,record.id).input),{code:'ENOENT'});
+  assert.equal(store.hosts.leases.get(record.id),null);
+ }else{
+  assert.equal(await watchdogAlive({watchdog} as DropletLease,f.env),true,'incomplete rollback keeps its live deletion backstop');
+ }
 });
 
 for(const action of ['revoke','shutdown'] as const)test(`held final readiness cannot publish ready after ${action}`,{timeout:SETUP_MS},async t=>{

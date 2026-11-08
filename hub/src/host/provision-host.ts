@@ -1,3 +1,4 @@
+import { armHostWatchdog, stopHostWatchdog, retireHostWatchdog, recordHostAbsence } from './host-watchdog.ts';
 import { parseConfig } from '../init/config.ts';
 import { parsePoolName } from './pool-name.ts';
 import { hostSettlementComplete } from './settle.ts';
@@ -14,7 +15,7 @@ import { type HostPool } from './transport-config.ts';
 import { renderPrelude } from './prelude.ts';
 import { HostSecretStore } from './records.ts';
 import type { HostRecords } from './records.ts';
-import type { HostProvider, Machine } from './provider/provider.ts';
+import type { HostProvider, Machine, ReleaseRead } from './provider/provider.ts';
 import { hostDirectory } from '../../../shared/fake-host-directory.ts';
 import { deliverRuntime, RuntimeDeliveryIncomplete } from './code-delivery.ts';
 import { remoteRedactor } from './agent/redact.ts';
@@ -74,6 +75,7 @@ export async function createHost(o:{inUse?:(id:string)=>boolean; clock?:Clock; s
  const creationKey=join(o.root,record.id);
  creations.set(creationKey,{abort,done:completion.promise});
  let registered=false,acquiring=false,admitted=false;
+ const releaseReads:ReleaseRead[]=[];
  try {
   await o.records.leases.create(record.id,leaseOptions);admitted=true;
   signal.throwIfAborted();
@@ -97,6 +99,8 @@ export async function createHost(o:{inUse?:(id:string)=>boolean; clock?:Clock; s
   const acquired=await provider.acquire({project:o.root,pool,architecture:process.arch==='arm64'?'arm64':'x86_64',region:config.region,userData,image:key});
   if(acquired.state!=='created'){if(acquired.state==='refused'){acquiring=false;delete record.acquisition;record.nonAcquisition={kind:'provider-refused',at:clock.now().toISOString()};o.records.provisions.save(record);}throw Error(acquired.reason);}
   record.acquisition='acquired';record.machine=acquired.machine;record.state='booting';o.records.provisions.save(record);
+  const watchdog=await armHostWatchdog({root:o.root,id:record.id,provider:record.provider,machine:acquired.machine},o.env,{clock});
+  try{o.records.leases.checkpointWatchdog(record.id,o.root,watchdog);}catch(error){await stopHostWatchdog(watchdog,o.env,{clock});throw error;}
   signal?.throwIfAborted();
   const fake=hostDirectory(o.env.CLAND_FAKE_HOST_ROOT!,acquired.machine.id);
   const provisioningEnv={...o.env,CLAND_FAKE_HOSTS:[o.env.CLAND_FAKE_HOSTS,acquired.machine.address].filter(Boolean).join(',')};
@@ -134,11 +138,11 @@ export async function createHost(o:{inUse?:(id:string)=>boolean; clock?:Clock; s
    else {
     const settled=!registered||hostSettlementComplete(await o.owner.remove(record.id));
     if(!settled)record.release='incomplete';
-    else if(record.machine){const confirmed=new Set<string>();const result=await provider.release(record.machine,r=>confirmed.add(r.resource));record.release=result.state==='released'&&confirmed.has('machine')&&confirmed.has('key')?'released':'incomplete';}
+    else if(record.machine){const confirmed=new Set<string>();const result=await provider.release(record.machine,r=>{confirmed.add(r.resource);releaseReads.push(r);});record.release=result.state==='released'&&confirmed.has('machine')&&confirmed.has('key')?'released':'incomplete';}
     else if(acquiring)record.release='incomplete';
    }
   }catch {record.release='incomplete';}
-  if(record.release==='released'&&!record.nonAcquisition){await o.records.leases.release(record.id,leaseOptions);}
+  if(record.release==='released'&&!record.nonAcquisition){const receipt=await recordHostAbsence({root:o.root,id:record.id,provider:record.provider,machine:record.machine!},clock,releaseReads);await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,{clock});await o.records.leases.release(record.id,leaseOptions,receipt.confirmedAt);}
   o.records.provisions.save(record);
   if(!admitted)throw error;
  } finally {creations.delete(creationKey);completion.resolve();}
@@ -186,12 +190,12 @@ export async function destroyHost(o:{clock?:Clock;root:string;id:string;env:Node
   // A failed provisioning attempt may never have published a registration.
   if(o.records.get(record.id))await o.owner.remove(record.id);
   const provider=o.provider??new HostProviderRegistry({env:o.env}).resolve(record);
-  const confirmed=new Set<string>();
+  const confirmed=new Set<string>();const releaseReads:ReleaseRead[]=[];
   if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return record;}throw Error('acquisition outcome unknown');}
-  const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
+  const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);releaseReads.push(receipt);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
   if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
   record.release=result.state;
-  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){await o.records.leases.release(record.id,{root:o.root,env:o.env,clock:o.clock??realClock});record.state='destroyed';delete record.reason;}
+  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){const clock=o.clock??realClock;const receipt=await recordHostAbsence({root:o.root,id:record.id,provider:record.provider,machine:record.machine!},clock,releaseReads);await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,{clock});await o.records.leases.release(record.id,{root:o.root,env:o.env,clock},receipt.confirmedAt);record.state='destroyed';delete record.reason;}
   else {record.release='incomplete';record.reason='deletion not confirmed'+(result.state==='incomplete'?': '+result.reason:': confirming reads missing');}
  }catch{record.release='incomplete';record.reason='deletion not confirmed';}
  o.records.provisions.save(record);
