@@ -87,6 +87,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'session-usage',
   'account-limits',
   'account-limited',
+  'host-boot-failed',
   'account-limit-lifted',
   'account-polled',
   'account-poll-failed',

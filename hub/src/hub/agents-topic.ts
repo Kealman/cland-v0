@@ -21,7 +21,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['session-waiting', 'session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
+export const LIFECYCLE_KINDS = ['host-boot-failed', 'session-waiting', 'session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -48,6 +48,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return { kind: 'refusal', text: `${String(entry.file)}: config refused: ${String(entry.error)}; keeping the defaults`, detail: { file: entry.file } };
     case 'task-ready-paused':
       return { kind: 'ready-paused', text: `${String(entry.id)}: ready check paused after ${String(entry.attempts)} failed attempts: ${String(entry.error)}. The next item or branch event retries it.`, detail: { item: entry.id, error: entry.error, attempts: entry.attempts } };
+    case 'host-boot-failed':
+      return {kind:'host-boot-failed',to:['coordinator'],text:`host ${String(entry.host)} in pool ${String(entry.pool)} failed to boot: ${String(entry.reason)}`,detail:{host:entry.host,pool:entry.pool}};
     case 'account-limited':
       return { kind: 'account-limited', to: ['coordinator'], text: `account ${String(entry.account)} hit its limit (${String(entry.reason)}); launches on it are refused until ${limitUntil(str(entry.resetsAt))}`, detail: { account: entry.account, reason: entry.reason, resetsAt: entry.resetsAt ?? null, session: entry.session } };
     case 'claude-signed-out':
@@ -157,7 +159,7 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
       // this notice's id, so a cancelled projection is replayed on restart.
       if (core !== target) return;
       if (target.store.message(notice.id as string) !== null) return;
-      try { if (notice.kind === 'account-limited') target.noticeTo(AGENTS.id, notice); else target.noticeInTopic(AGENTS.id, notice); }
+      try { if ((notice.kind === 'account-limited' || notice.kind === 'host-boot-failed')) target.noticeTo(AGENTS.id, notice); else target.noticeInTopic(AGENTS.id, notice); }
       catch (err) { log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) }); }
     });
   };
@@ -215,7 +217,7 @@ export function replayAgentsRecord(core: HubCore, records: ReadonlyArray<Record<
     if (!notice) continue;
     try {
       const replay = { ...notice, id: r.agentsNotice as string };
-      if (notice.kind === 'account-limited') core.noticeTo(AGENTS.id, replay); else core.noticeInTopic(AGENTS.id, replay);
+      if ((notice.kind === 'account-limited' || notice.kind === 'host-boot-failed')) core.noticeTo(AGENTS.id, replay); else core.noticeInTopic(AGENTS.id, replay);
       replayed++;
     } catch (err) {
       log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) });

@@ -217,3 +217,15 @@ test('the real DigitalOcean endpoint ignores a high-rate fragment and still pace
     assert.ok(!JSON.stringify(logs).includes('requests-per-minute'));
   } finally { await clock.advance(60000); await settled; }
 });
+
+test('aborted scoped droplet GET joins the fake request before returning',async t=>{
+ const clock=new FakeClock(),fake=await fakeDigitalOcean('cland-test-abort-get',{machine:'scripted',clock});
+ const abort=new AbortController();let request:Promise<void>|undefined;
+ t.after(async()=>{abort.abort();try{await request;}finally{await fake.close();}});
+ fake.faults.getDelayMs=300000;fake.faults.getDelayPath='/droplets/999';
+ let outcome='pending';
+ request=fake.provider.droplet(999,clock.now().getTime()+300000,abort.signal).then(()=>{outcome='resolved';},error=>{outcome=error.name;});
+ await until(()=>fake.requests.some(r=>r.method==='GET'&&r.path==='/v2/droplets/999'),{what:'GET entered'});
+ abort.abort();await request;assert.equal(outcome,'AbortError');
+ await fake.close(); // close drains the cancelled request; no clock advance is needed.
+});

@@ -120,4 +120,5 @@ Waiting-launch restart ownership: [durable waits](../docs/hub/waiting-launches.m
 - [Host restart recovery](../docs/hub/host-restart.md): provider reconciliation, restored renewal and watchdog ownership, and missing-host session exits.
 - [Host status and explicit stop](../docs/hub/host-status-stop.md): weighted slots, UTC spend and confirmed deletion.
 
+- [Pool boot failures and provider limits](../docs/hub/pool-failures.md): fixed boot gate, retry backoff and unknown acquisition ownership.
 Host tunnel loss, unreachable state and confirmed teardown: [Host health](../docs/hub/host-health.md).

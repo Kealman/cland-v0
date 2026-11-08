@@ -150,16 +150,18 @@ export class DigitalOceanHostProvider implements HostProvider {
     if (!record?.machine || (['id', 'address', 'created', 'architecture'] as const).some(k => record.machine![k] !== machine[k])) throw new Error('machine identity mismatch');
     return record;
   }
-  status(machine: Machine): Promise<MachineStatus> { return this.#serial(async () => {
+  status(machine: Machine, scope?:import('./provider.ts').StatusReadScope): Promise<MachineStatus> { const read=async ():Promise<MachineStatus> => {
     try {
+      scope?.signal?.throwIfAborted();
       await this.#record(machine);
-      const d = await this.#api.droplet(Number(machine.id));
+      scope?.signal?.throwIfAborted();
+      const d = await this.#api.droplet(Number(machine.id),scope?.deadline,scope?.signal);
       if (d.id !== Number(machine.id)) return { state: 'failed', reason: 'machine identity mismatch' };
       if (d.status === 'active') return { state: 'ready' };
       if (d.status === 'new') return { state: 'booting' };
       return { state: 'failed', reason: 'machine unavailable' };
-    } catch (e) { return e instanceof DigitalOceanError && e.status === 404 ? { state: 'gone' } : { state: 'failed', reason: 'DigitalOcean status failed' }; }
-  }); }
+    } catch (e) { scope?.signal?.throwIfAborted(); return e instanceof DigitalOceanError && e.status === 404 ? { state: 'gone' } : { state: 'failed', reason: 'DigitalOcean status failed' }; }
+  }; return scope?read():this.#serial(read); }
   async #delete(id: number, keyIds: number[], confirm?:ReleaseObserver): Promise<ReleaseResult> {
     try { await this.#api.deleteDroplet(id); confirm?.({resource:'machine',read:`GET /droplets/${id}: 404`}); for (const keyId of keyIds) { await this.#api.deleteKey(keyId); confirm?.({resource:'key',read:`GET /account/keys/${keyId}: 404`}); } return { state: 'released' }; }
     catch { return { state: 'incomplete', reason: 'DigitalOcean deletion unconfirmed' }; }

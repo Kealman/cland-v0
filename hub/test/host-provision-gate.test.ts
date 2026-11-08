@@ -95,3 +95,62 @@ for(const outcome of ['refused','unknown'] as const)test(`acquire ${outcome} pin
  if(outcome==='refused'){assert.equal(result.nonAcquisition?.kind,'provider-refused');assert.equal(result.release,'released');assert.equal(store.hosts.leases.get(result.id),null);assert.equal(ledger.entries[0].cost,0);}
  else {assert.equal(result.acquisition,'pending');assert.equal(result.release,'incomplete');assert.ok(store.hosts.leases.get(result.id));assert.equal(ledger.entries[0].cost,null);await assert.rejects(store.hosts.leases.cancel(result.id,{root,env,clock}),/non-acquisition receipt/);}
 });
+
+test('pending acquire checkpoints unknown at five minutes and destroys a late identity', {timeout:3*testWaitMs()},async t=>{
+ const root=await tempProject(t,'pg-','/tmp'),clock=new FakeClock(new Date()),env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
+ await mkdir(join(root,'.cland/run/hosts'),{recursive:true});
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
+ const key=await poolImageKey(root,env,'fake');
+ await writeFile(join(root,'.cland/run/hosts/agents-image.json'),JSON.stringify({key}));
+ const store=new Store(join(root,'hub.db')),provider=new FakeHostProvider({env,now:()=>clock.now().getTime()}),release=Promise.withResolvers<void>();
+ await provider.prepare({pool:'agents',key});
+ const acquire=provider.acquire.bind(provider);let called=false,done=false;const notices:string[]=[];
+ t.mock.method(provider,'acquire',async (input:Parameters<typeof provider.acquire>[0])=>{called=true;await release.promise;return acquire(input);});
+ let creating:ReturnType<typeof createHost>|undefined;
+ onCleanup(t,async()=>{release.resolve();try{await creating;}finally{try{await store.hosts.leases.close();}finally{store.close();}}});
+ creating=createHost({root,clock,env,records:store.hosts,provider,owner:{} as Parameters<typeof createHost>[0]['owner'],onBootFailure:row=>notices.push(row.id)}).finally(()=>{done=true;});
+ void creating.catch(()=>{});
+ await eventually('acquire entered',()=>called?true:undefined);
+ const id=store.hosts.provisions.list()[0]!.id;
+ await clock.advance(299999);assert.deepEqual(notices,[]);assert.equal(done,false);
+ await clock.advance(1);
+ assert.equal(store.hosts.provisions.get(id)?.state,'failed');assert.equal(store.hosts.provisions.get(id)?.acquisition,'pending');
+ assert.equal(store.hosts.provisions.occupied('agents'),1);assert.deepEqual(notices,[id]);assert.equal(done,false);
+ await clock.advance(60000);assert.equal(store.hosts.provisions.occupied('agents'),1);assert.deepEqual(notices,[id]);
+ release.resolve();const row=await creating;
+ assert.equal(row.release,'released');assert.equal((await provider.status(row.machine!)).state,'gone');assert.deepEqual(notices,[id]);
+ const {destroyHost}=await import('../src/host/provision-host.ts');
+ const destroyed=await destroyHost({root,id,clock,env,records:store.hosts,provider,owner:{} as Parameters<typeof destroyHost>[0]['owner'],log:()=>{}});
+ assert.equal(destroyed.state,'destroyed');assert.ok(destroyed.machineDeletionRead);assert.equal(store.hosts.provisions.occupied('agents'),0);
+});
+
+for(const phase of ['status','ssh'] as const)test(`identified machine ${phase} is cancelled at its boot deadline and deletion confirmed`,{timeout:3*testWaitMs()},async t=>{
+ const root=await tempProject(t,'pg-','/tmp'),clock=new FakeClock(new Date()),ssh=join(root,'held-ssh'),marker=join(root,'ssh-entered');
+ const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root,CLAND_TEST_HOST_BOOT_MS:'1000',CLAND_SSH_BIN:ssh});
+ await mkdir(join(root,'.cland/run/hosts'),{recursive:true});
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nsize="fake"\nslots=8\nregion="fake-1"\n');
+ const key=await poolImageKey(root,env,'fake');await writeFile(join(root,'.cland/run/hosts/agents-image.json'),JSON.stringify({key}));
+ await writeFile(ssh,`#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)},'entered');setInterval(()=>{},1000);\n`,{mode:0o700});
+ const store=new Store(join(root,'hub.db')),provider=new FakeHostProvider({env,now:()=>clock.now().getTime()}),abort=new AbortController();
+ let creating:ReturnType<typeof createHost>|undefined,entered=false,joined=false;
+ onCleanup(t,async()=>{abort.abort();try{await creating;}finally{try{await store.hosts.leases.close();}finally{store.close();}}});
+ await provider.prepare({pool:'agents',key});
+ const originalStatus=provider.status.bind(provider);
+ if(phase==='status')t.mock.method(provider,'status',async (_machine:Parameters<typeof provider.status>[0],scope:Parameters<typeof provider.status>[1])=>{
+  assert.ok(scope?.signal);entered=true;
+  try{await new Promise<void>((_resolve,reject)=>scope.signal!.addEventListener('abort',()=>reject(scope.signal!.reason),{once:true}));}
+  finally{joined=true;}
+  return {state:'ready' as const};
+ });
+ creating=createHost({root,clock,env,records:store.hosts,provider,signal:abort.signal,owner:{} as Parameters<typeof createHost>[0]['owner']});void creating.catch(()=>{});
+ await eventually('known-machine probe entered',async()=>{
+  const observed=phase==='status'?entered:await import('node:fs/promises').then(fs=>fs.readFile(marker,'utf8').then(value=>value==='entered',()=>false));
+  return observed?true:undefined;
+ });
+ // The probe may begin after acquisition I/O, but the same clock has not advanced.
+ await clock.advance(999);assert.equal(store.hosts.provisions.list()[0]!.state,'booting');
+ await clock.advance(1);const row=await creating;
+ assert.equal(row.release,'released');assert.equal((await originalStatus(row.machine!)).state,'gone');
+ if(phase==='status')assert.equal(joined,true);
+ else assert.match(row.reason!,/SIGKILL|timed out/);
+});

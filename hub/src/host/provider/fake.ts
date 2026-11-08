@@ -209,7 +209,10 @@ export class FakeHostProvider implements HostProvider {
       return { state: this.#now() < record.readyAt ? 'booting' : 'ready' };
     } catch (e) { return { state: 'failed', reason: 'fake machine read failed' }; }
   }
-  status(machine: Machine): Promise<MachineStatus> { return this.#serial(() => this.#status(machine)); }
+  status(machine: Machine, scope?:import('./provider.ts').StatusReadScope): Promise<MachineStatus> {
+    const read=async()=>{scope?.signal?.throwIfAborted();const result=await this.#status(machine);scope?.signal?.throwIfAborted();return result;};
+    return scope?read():this.#serial(read);
+  }
   async #release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult> {
     try {
       await this.#record(machine);

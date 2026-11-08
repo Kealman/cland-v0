@@ -1,3 +1,4 @@
+import { clockDelay } from '../../../src/host/clock-delay.ts';
 import { declareDigitalOceanEndpoint } from '../../../src/executor/droplet/endpoint.ts';
 import assert from 'node:assert/strict';
 import { testWaitMs } from '../../until.ts';
@@ -102,7 +103,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   let beforeImport: (() => Promise<void>) | undefined;
   let beforeSnapshotDelete: ((id: number) => Promise<void>) | undefined;
   let nextId = 100;
-  const handle = async (method: string, url: URL, body: Record<string, unknown> | null): Promise<{ status: number; value?: unknown; headers?: Record<string, string> }> => {
+  const handle = async (method: string, url: URL, body: Record<string, unknown> | null, signal?:AbortSignal): Promise<{ status: number; value?: unknown; headers?: Record<string, string> }> => {
     const path = url.pathname.replace(/^\/v2/, '');
     requests.push({ method, path: `${url.pathname}${url.search}`, body });
     if (faults.rateLimits > 0) {
@@ -110,7 +111,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       return { status: 429, value: { id: 'rate_limited', message: 'try later' }, headers: { 'Retry-After': faults.retryAfter, 'ratelimit-reset': faults.rateLimitReset } };
     }
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
-    if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await wait(faults.getDelayMs);
+    if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await (signal?clockDelay(clock,faults.getDelayMs,signal):wait(faults.getDelayMs));
     const answer = (status: number, value?: unknown) => ({ status, value });
     if (path === '/volumes' && method === 'POST') {
       const volume: BlockVolume = { id: `volume-${nextId++}`, name: String(body!.name), tags: body!.tags as string[], region: { slug: String(body!.region) }, size_gigabytes: Number(body!.size_gigabytes), created_at: clock.now().toISOString(), droplet_ids: [] };
@@ -330,7 +331,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const address = server?.address();
   const url = address && typeof address !== 'string' ? declareDigitalOceanEndpoint(`http://127.0.0.1:${address.port}/v2`, limit) : '';
   const endpoint = url || declareDigitalOceanEndpoint(`http://127.0.0.1/${stateRoot.split('/').at(-1)}/v2`, limit);
-  const provider = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: endpoint }, clock, async (method, path, body, deadline) => {
+  const provider = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: endpoint }, clock, async (method, path, body, deadline, signal) => {
     const request = async () => {
       const remaining = (deadline ?? Infinity) - clock.now().getTime();
       if (remaining <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
@@ -338,7 +339,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       let timer: ReturnType<Clock['setTimeout']> | undefined;
       try {
         const result = await Promise.race([
-          admit(() => handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>)),
+          admit(() => handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>,signal)),
           new Promise<never>((_, reject) => { timer = clock.setTimeout(() => reject(new DigitalOceanError(0, remaining <= 15000 ? 'deadline' : 'transport', 'request failed or exceeded its time bound')), bound); }),
         ]);
         if (result.status === 429) {

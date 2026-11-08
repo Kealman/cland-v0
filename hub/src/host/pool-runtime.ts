@@ -1,3 +1,4 @@
+import { HostProviderRetry } from './boot-gate.ts';
 import { hostLeaseRenewable, type ProvisionRecord } from './provision-records.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
 import { earliestStop, type HostProviderDeclarationState } from './provider/declarations.ts';
@@ -5,8 +6,12 @@ import { decidePlacement, harnessWeightMilli, type PlacementHost } from './sched
 import type { HostPools } from './pools.ts';
 import type { HostRecords } from './records.ts';
 
+// Acquisition ownership excludes mutable settlement/readiness checkpoints.
+const provisionOwnership = (row:ProvisionRecord):string => JSON.stringify([row.id,row.pool,row.provider,row.size,row.region,row.created,row.machine,row.acquisition]);
+
 export type PoolIdleLifecycle = {
   clock: Clock;
+  failed?(record: ProvisionRecord): void;
   declarations(record: ProvisionRecord): HostProviderDeclarationState | Promise<HostProviderDeclarationState>;
   destroy(id: string): Promise<unknown>;
 };
@@ -39,14 +44,26 @@ export class PoolRuntime {
   #create: ((pool: string, authorize: () => void) => Promise<unknown>) | undefined;
   #flights = new Map<string, Promise<void>>();
   #failed = new Set<string>();
+  #retries = new Map<string, { count: number; until: number; timer: ClockTimer }>();
+  #providerRetries = new Map<string, {until:number;timer:ClockTimer}>();
   #closed = false;
+  #poolSettings = new Map<string,string>();
+  #unsubscribeReady: (() => void) | undefined;
   #idleLifecycle: PoolIdleLifecycle | undefined;
   #idle = new Map<string, { since: number; created: string }>();
   #idleTimer: ClockTimer | undefined;
   #declarations = new Map<string, { value?: HostProviderDeclarationState; retry: number }>();
   #declarationReads = new Map<string, Promise<void>>();
   #stopping = new Map<string, Promise<unknown>>();
-  start(create: (pool: string, authorize: () => void) => Promise<unknown>, idle?: PoolIdleLifecycle): void { this.#create = create; this.#idleLifecycle = idle; this.reconcile(); }
+  start(create: (pool: string, authorize: () => void) => Promise<unknown>, idle?: PoolIdleLifecycle): void { this.#create = create; this.#idleLifecycle = idle;
+    this.#poolSettings = new Map(Object.entries(this.settings().pools).map(([name,pool])=>[name,JSON.stringify(pool)]));
+    this.#unsubscribeReady?.();
+    this.#unsubscribeReady = this.records.provisions.onChange((id,_previous,state)=>{
+      if(state!=='ready')return;
+      const pool=this.records.provisions.get(id)?.pool;
+      if(pool){this.#idleLifecycle?.clock.clearTimeout(this.#retries.get(pool)?.timer);this.#retries.delete(pool);this.#failed.delete(pool);}
+    });
+    this.reconcile(); }
 
   #reconcileIdle(): void {
     const lifecycle = this.#idleLifecycle;
@@ -99,7 +116,37 @@ export class PoolRuntime {
       this.#idleTimer.unref();
     }
   }
-  configure(settings?: HostPools): void { this.#configuredSettings = settings; this.#failed.clear(); this.reconcile(); }
+  configure(settings?: HostPools): void {
+    this.#configuredSettings = settings;
+    for (const [name, retry] of this.#retries) {
+      if (this.#poolSettings.get(name) === JSON.stringify(this.settings().pools[name])) continue;
+      this.#idleLifecycle?.clock.clearTimeout(retry.timer); this.#retries.delete(name);
+    }
+    this.#poolSettings = new Map(Object.entries(this.settings().pools).map(([name,pool])=>[name,JSON.stringify(pool)]));
+    this.#failed.clear(); this.reconcile();
+  }
+  #retry(name: string, retryAt?: string): void {
+    const clock = this.#idleLifecycle?.clock;
+    if (!clock) { this.#failed.add(name); return; }
+    if (retryAt && Number.isFinite(Date.parse(retryAt))) {
+      clock.clearTimeout(this.#providerRetries.get(name)?.timer);
+      const until=Math.max(clock.now().getTime()+1,Date.parse(retryAt));
+      const wake=()=>{
+        const remaining=until-clock.now().getTime();
+        if(remaining>0){const timer=clock.setTimeout(wake,Math.min(2**31-1,remaining));timer.unref();this.#providerRetries.set(name,{until,timer});return;}
+        this.#providerRetries.delete(name);
+        if(!this.#closed){this.reconcile();this.onCapacityChanged();}
+      };
+      const timer=clock.setTimeout(wake,Math.min(2**31-1,until-clock.now().getTime()));timer.unref();
+      this.#providerRetries.set(name,{until,timer});return;
+    }
+    const previous = this.#retries.get(name);
+    clock.clearTimeout(previous?.timer);
+    const count = (previous?.count ?? 0) + 1;
+    const until = clock.now().getTime() + Math.min(1800000, 60000 * 2 ** Math.min(5, count - 1));
+    const timer = clock.setTimeout(() => { if (!this.#closed) { this.reconcile(); this.onCapacityChanged(); } }, Math.min(2 ** 31 - 1, until - clock.now().getTime()));
+    timer.unref(); this.#retries.set(name, {count, until, timer});
+  }
   reconcile(): void {
     if (this.#closed || !this.#create) return;
     this.#reconcileIdle();
@@ -115,21 +162,49 @@ export class PoolRuntime {
   #scale(name: string, authorize?: () => void): void {
     if (this.#closed || !this.#create || this.#flights.has(name) || this.#failed.has(name)) return;
     const pool = this.settings().pools[name];
+    if (Math.max(this.#retries.get(name)?.until ?? 0,this.#providerRetries.get(name)?.until ?? 0) > (this.#idleLifecycle?.clock.now().getTime() ?? 0)) return;
     if (!pool || this.records.provisions.occupied(name) >= pool.maxHosts) return;
     // Capture admission before calling a creator which can synchronously publish records.
     const work = Promise.resolve().then(() => this.#create!(name, authorize ?? (() => {
       const pool = this.settings().pools[name];
       const capacity = [...this.records.provisions.active()].filter(row => row.pool === name && row.state !== 'destroying').length;
       if (!pool || capacity >= pool.minHosts) throw new Error(`pool ${name} minimum demand ended`);
-    }))).then(result => {
-      if ((result as {state?:string})?.state !== 'ready') this.#failed.add(name);
-    }, error => { if (!(error instanceof PoolCreationNotAdmitted)) this.#failed.add(name); }).finally(() => {
+    }))).then(async result => {
+      if (this.#closed) return;
+      const row = result as ProvisionRecord & { retryAt?: string };
+      if (row?.state === 'ready') {
+        this.#idleLifecycle?.clock.clearTimeout(this.#retries.get(name)?.timer); this.#retries.delete(name);
+      } else if (row?.state === 'failed' || row?.retryAt) {
+        if (row?.machine && !row.retryAt) {
+          let notice:ProvisionRecord|undefined=row;
+          let retry=true;
+          const ownership=provisionOwnership(row);
+          try {
+            if(!this.#idleLifecycle)throw Error('host cleanup owner unavailable');
+            const deleted=await this.#idleLifecycle.destroy(row.id) as ProvisionRecord|undefined;
+            if(deleted?.state!=='destroyed')throw Error('host deletion not confirmed');
+          } catch {
+            // A cleanup refusal retains this record; other slots still follow backoff.
+            const current=this.records.provisions.get(row.id);
+            const owned=current && provisionOwnership(current)===ownership;
+            if(!owned || current.state==='ready')retry=false;
+            if(owned && (current.state==='failed'||current.state==='destroying') && current.release!=='released'){
+              const retained:ProvisionRecord={...current,state:'failed',release:'incomplete',failure:{code:'cleanup-unavailable'},reason:'host cleanup unavailable; machine retained'};
+              this.records.provisions.save(retained);
+              notice=current.failure?.code==='cleanup-unavailable'?undefined:retained;
+            } else notice=undefined;
+          }
+          if(retry)this.#retry(name);
+          if(notice)this.#idleLifecycle?.failed?.(notice);
+        } else this.#retry(name,row?.retryAt);
+      } else this.#failed.add(name);
+    }, error => { if (!(error instanceof PoolCreationNotAdmitted)) this.#retry(name, error instanceof HostProviderRetry ? error.retryAt : undefined); }).catch(error => { if (!this.#failed.has(name) && !(error instanceof PoolCreationNotAdmitted)) this.#retry(name); }).finally(() => {
       this.#flights.delete(name);
       if (!this.#closed) { this.reconcile(); this.onCapacityChanged(); }
     });
     this.#flights.set(name, work);
   }
-  close(): void | Promise<void> { this.#closed = true; this.#idleLifecycle?.clock.clearTimeout(this.#idleTimer); if (this.#flights.size || this.#stopping.size || this.#declarationReads.size) return Promise.all([...this.#flights.values(), ...this.#stopping.values(), ...this.#declarationReads.values()]).then(() => {}); }
+  close(): void | Promise<void> { this.#closed = true; this.#unsubscribeReady?.(); for(const retry of this.#providerRetries.values()) this.#idleLifecycle?.clock.clearTimeout(retry.timer); for (const retry of this.#retries.values()) this.#idleLifecycle?.clock.clearTimeout(retry.timer); this.#idleLifecycle?.clock.clearTimeout(this.#idleTimer); if (this.#flights.size || this.#stopping.size || this.#declarationReads.size) return Promise.all([...this.#flights.values(), ...this.#stopping.values(), ...this.#declarationReads.values()]).then(() => {}); }
 
   /** One lease policy for manual, minimum and demand-created hosts. */
   inUse(host: string): boolean {

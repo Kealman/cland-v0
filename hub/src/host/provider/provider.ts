@@ -8,6 +8,7 @@ export type AcquireOptions = { project: string; pool: string; architecture: Host
 export type CreateAdmission = { state:'allowed' } | { state:'refused'; reason:string; retryAt?:string };
 export type Failed = { state: 'failed'; reason: string };
 export type AcquireResult = { state: 'created'; machine: Machine } | { state: 'refused'; reason: string; retryAt: string } | Failed;
+export type StatusReadScope = {signal?:AbortSignal;deadline?:number};
 export type MachineStatus = { state: 'booting' | 'ready' | 'gone' } | Failed;
 export type ReleaseRead = {resource:'machine'|'key';read:string};
 export type ReleaseObserver = (receipt:ReleaseRead)=>void;
@@ -22,7 +23,8 @@ export interface HostProvider {
   createAdmission(): CreateAdmission;
   acquire(options: AcquireOptions): Promise<AcquireResult>;
   prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult>;
-  status(machine: Machine): Promise<MachineStatus>;
+  /** Scoped reads must join cancellation before rejecting, freeing the provider for release. */
+  status(machine: Machine, scope?:StatusReadScope): Promise<MachineStatus>;
   /** Caller first drains sessions and host transports. Success requires a
    * positive read of native absence, including every associated key. */
   release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult>;

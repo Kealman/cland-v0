@@ -61,7 +61,7 @@ export class DeletionUnconfirmed extends DigitalOceanError {
   constructor(path: string, accepted: boolean, cause?: unknown) { super(409, 'deletion-unconfirmed', `deletion not confirmed for ${path}`); this.path = path; this.accepted = accepted; if (cause !== undefined) this.cause = cause; }
 }
 
-export type ProviderCall = (method: string, path: string, body: unknown, deadline?: number) => Promise<unknown>;
+export type ProviderCall = (method: string, path: string, body: unknown, deadline?: number, signal?:AbortSignal) => Promise<unknown>;
 
 /** Only this call scope holds the token. Transport failures never expose fetch's request. */
 export class DigitalOceanApi {
@@ -97,7 +97,7 @@ export class DigitalOceanApi {
   async #send<T>(token: string, budget: Budget, base: string, method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
     this.#signal?.throwIfAborted();
     if (this.#callProvider) {
-      try { return await this.#callProvider(method, path, body, deadline) as T; }
+      try { return await this.#callProvider(method, path, body, deadline,this.#signal) as T; }
       catch (error) { if (error instanceof RateLimited && error.retryAt !== undefined) budget.retryAt = Math.max(budget.retryAt, error.retryAt); throw error; }
     }
     const url = new URL(`${base}${path}`);
@@ -162,7 +162,7 @@ export class DigitalOceanApi {
   droplets(tag: string, deadline?: number): Promise<Droplet[]> { return this.#list(`/droplets?tag_name=${encodeURIComponent(tag)}`, 'droplets', deadline); }
   keys(deadline?: number): Promise<Key[]> { return this.#list('/account/keys', 'ssh_keys', deadline); }
   async create(input: CreateDroplet, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('POST', '/droplets', input, deadline)).droplet; }
-  async droplet(id: number, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('GET', `/droplets/${id}`, undefined, deadline)).droplet; }
+  async droplet(id: number, deadline?: number, signal?:AbortSignal): Promise<Droplet> { if(signal){const scoped=this.#signal?AbortSignal.any([signal,this.#signal]):signal;return new DigitalOceanApi(this.#env,this.#clock,this.#callProvider,scoped).droplet(id,deadline);} return (await this.#call<{ droplet: Droplet }>('GET', `/droplets/${id}`, undefined, deadline)).droplet; }
   async key(id: number, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('GET', `/account/keys/${id}`, undefined, deadline)).ssh_key; }
   async importKey(name: string, publicKey: string, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey }, deadline)).ssh_key; }
   async deleteDroplet(id: number, deadline?: number, accepted?: () => Promise<void>): Promise<void> { await this.#confirmedDelete(`/droplets/${id}`, deadline, accepted); }

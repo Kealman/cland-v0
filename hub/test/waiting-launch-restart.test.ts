@@ -107,13 +107,23 @@ test('restored wait places once on capacity commit and placed launches never res
   const { onCleanup } = await import('./process-cleanup.ts');
   const store = new Store(join(f.root,'.cland/hub.db'));
   onCleanup(t,()=>store.close());
-  new HostSecretStore(f.root,store.hosts,()=>{}).register({id:'a',address:'a',user:'fixture',clientKeyPath:'',knownHosts:''});
+  const {FakeHostProvider}=await import('../src/host/provider/fake.ts');
+  const env=fixtureEnvironment(f.root,process.env,{CLAND_FAKE_HOST_ROOT:f.root});
+  const provider=new FakeHostProvider({env});
+  const acquired=await provider.acquire({project:f.root,pool:'agents',architecture:'x86_64'});
+  assert.equal(acquired.state,'created');if(acquired.state!=='created')throw Error('fixture acquisition failed');
+  onCleanup(t,()=>provider.release(acquired.machine));
+  new HostSecretStore(f.root,store.hosts,()=>{}).register({id:'a',address:acquired.machine.address,user:'fixture',clientKeyPath:'',knownHosts:''});
   const now = new Date().toISOString();
-  store.hosts.provisions.save({id:'a',pool:'agents',provider:'provided-fixture',size:'fake',region:'fake',created:now,state:'cloning',machine:{id:'a',address:'a',architecture:'x86_64',created:now}});
+  store.hosts.provisions.save({id:'a',pool:'agents',provider:'fake',size:'fake',region:'fake',created:now,state:'cloning',machine:acquired.machine});
   const local = localHost(fixtureEnvironment(f.root,process.env));
   const hosts = [{...testHost('a',()=>{}),realpath:local.realpath,statDirectory:async()=>({refusal:null,identity:null})}];
   let records: import('../src/host/records.ts').HostRecords | undefined;
-  const hub = await projectHub(t,f.root,{}, {hosts,createHost:async options=>{records=options.records;return records.provisions.get('a')!;}});
+  const hub = await projectHub(t,f.root,{CLAND_FAKE_HOST_ROOT:f.root}, {hosts,createHost:async options=>{
+    records=options.records;
+    const creating={...records.provisions.get('a')!,state:'cloning' as const};
+    records.provisions.save(creating);return creating;
+  }});
   const ui = await sessionUi(t,hub.discovery,'cli');
   assert.equal(((await ui.request({type:'session.list'})).value as {waiting:unknown[]}).waiting.length,1);
   // A new role default does not migrate an admitted wait.
@@ -131,7 +141,7 @@ test('restored wait places once on capacity commit and placed launches never res
   assert.equal(hub.fakes.codex!.spawns.filter(p=>p.name==='queued').length,1);
   assert.equal((await ui.request({type:'session.stop',session:'queued'})).ok,true);
   await ui.close(); await hub.stop();
-  const restarted = await projectHub(t,f.root,{}, {hosts});
+  const restarted = await projectHub(t,f.root,{CLAND_FAKE_HOST_ROOT:f.root}, {hosts});
   const next = await sessionUi(t,restarted.discovery,'cli');
   assert.deepEqual(((await next.request({type:'session.list'})).value as {waiting:unknown[]}).waiting,[]);
   assert.equal(restarted.fakes.codex!.spawns.length,0);

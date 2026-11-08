@@ -5,7 +5,7 @@ export type ProvisionState = 'creating'|'booting'|'connecting'|'cloning'|'ready'
 /** An outage retains running work until the health owner expires its lease. */
 export const hostLeaseRenewable=(state:ProvisionState|undefined)=>state==='ready'||state==='unreachable';
 export const ACTIVE_PROVISION_STATES: readonly ProvisionState[] = ['creating','booting','connecting','cloning','ready','unreachable','destroying'];
-export type ProvisionRecord = { acquisition?:'pending'|'acquired'; nonAcquisition?:import('../executor/droplet/spend.ts').HostNonAcquisitionReceipt; id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
+export type ProvisionRecord = { failure?:{code:'cleanup-unavailable'}; retryAt?:string; bootFailureAt?:string; acquisition?:'pending'|'acquired'; nonAcquisition?:import('../executor/droplet/spend.ts').HostNonAcquisitionReceipt; id:string; pool:string; provider:string; size:string; region:string; created:string; state:ProvisionState; machine?:Machine; reason?:string; machineDeletionRead?:string; release?:'released'|'incomplete' };
 // This partial index narrows to acquisition anomalies, never parsing receipt dates.
 const unresolvedSql = "json_extract(record,'$.state')='failed' and coalesce(json_extract(record,'$.release'),'')!='released'";
 /** Shares the registration database: final readiness and revocation serialize in SQLite. */
