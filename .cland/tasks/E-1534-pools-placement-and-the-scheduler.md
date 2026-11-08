@@ -16,7 +16,7 @@ follows:
 topic: topic-1425
 branch: null
 created: 2026-10-31T18:22:03.811Z
-updated: 2026-11-07T16:02:38.365Z
+updated: 2026-11-08T00:38:54.816Z
 ---
 
 ## Goal
@@ -124,3 +124,102 @@ stages:
       - - T-1754
       - - T-1755
 ```
+
+## Comments
+
+### qa-678 · 2026-11-08T00:38:54.816Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-e1534s1-2026-11-08-qa678-1
+commit: c130bac414ae88d9e79f89000f10f97751cfe1d6
+stage: pool config, role placement, placement core, memory floor and ledger categories
+stage_hash: a2d72ccfee802271bcb54668eef0cec7b7e8ed5bb266db99b34721b189fe2b2c
+findings: [{"severity":"low","text":"Found aside T-1676: three dead ownership receipts from nvim QA and unchanged Claude CLI-hub producer. PIDs absent, no open listeners, test roots gone; removed by literal paths under carried brief clause.","file":"shared/fixture-ownership.ts","line":13},{"severity":"low","text":"Brief defects corrected with Coordinator decisions: stale kit3 pin (9de5178b); expected T-1735 landing delta (ccf550e7); whole-config daily_spend_usd counter (5f1dfe6d); fake-host OpenCode descendant omitted from final census allowance (76d4b23b). Original captures, exact comparisons and supplemental-observation correction retained. No stage product defect.","file":"qa/briefs/E-1534-stage-1.md"}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Result | Tests | Observation and evidence |
+|---|---|---:|---|
+| E1534S1-10 | PASS | 9 | nt E1534S1-10 hub/test/host-scheduler.test.ts; native exit and TAP counts plus required names checked; [E1534S1-10.log](E1534S1-10.log); [E1534S1-10.check.txt](E1534S1-10.check.txt); [E1534S1-10-validation.json](E1534S1-10-validation.json) |
+| E1534S1-11 | PASS | 5 | nt E1534S1-11 hub/test/roles-harnesses.test.ts; native exit and TAP counts plus required names checked; [E1534S1-11.log](E1534S1-11.log); [E1534S1-11.check.txt](E1534S1-11.check.txt); [E1534S1-11-validation.json](E1534S1-11-validation.json) |
+| S0 | PASS | — | Fresh plain/hub shared-builder seals; zero credential names and HOME PATH extras; scratch roots and Node 24.21.0; kit3 pin correction coord ask 9de5178b with five identical heredocs; [S0-env.txt](S0-env.txt); [S0-node.txt](S0-node.txt); [S0-kit3-pin.diff](S0-kit3-pin.diff) |
+| E1534S1-00 | PASS | — | Brief s00; captured facts checked; [E1534S1-00.txt](E1534S1-00.txt) |
+| E1534S1-01 | PASS | — | Brief s01; captured facts checked; [E1534S1-01.txt](E1534S1-01.txt) |
+| E1534S1-02 | PASS | — | Brief s02; preserved files and package files unchanged; landing-delta correction coord ask ccf550e7: T-1735 self-ignore only, six T-1741 files identical and memory seed unchanged; [E1534S1-02.txt](E1534S1-02.txt) |
+| E1534S1-03 | PASS | — | Brief src.mjs: all 45 source/default checks match; 45 file registration lists checked against final source; [E1534S1-03.txt](E1534S1-03.txt) |
+| E1534S1-12 | PASS | 12 | nt E1534S1-12 hub/test/roles-snapshot.test.ts; native exit and TAP counts plus required names checked; [E1534S1-12.log](E1534S1-12.log); [E1534S1-12.check.txt](E1534S1-12.check.txt); [E1534S1-12-validation.json](E1534S1-12-validation.json) |
+| E1534S1-13 | PASS | 16 | nt E1534S1-13 hub/test/role-launch.test.ts; native exit and TAP counts plus required names checked; [E1534S1-13.log](E1534S1-13.log); [E1534S1-13.check.txt](E1534S1-13.check.txt); [E1534S1-13-validation.json](E1534S1-13-validation.json) |
+| E1534S1-14 | PASS | 14 | nt E1534S1-14 hub/test/roles-component.test.ts hub/test/cli.test.ts; native exit and TAP counts plus required names checked; [E1534S1-14.log](E1534S1-14.log); [E1534S1-14.check.txt](E1534S1-14.check.txt); [E1534S1-14-validation.json](E1534S1-14-validation.json) |
+| E1534S1-15 | PASS | 43 | nt E1534S1-15 hub/test/session-host-placement.test.ts hub/test/roles-editor.test.ts hub/test/roles-template.test.ts hub/test/roles-launch-permissions.test.ts; native exit and TAP counts plus required names checked; [E1534S1-15.log](E1534S1-15.log); [E1534S1-15.check.txt](E1534S1-15.check.txt); [E1534S1-15-validation.json](E1534S1-15-validation.json) |
+| E1534S1-16 | PASS | 25 | pl E1534S1-16 nvim/test/qa.test.ts; native exit and TAP counts plus required names checked; [E1534S1-16.log](E1534S1-16.log); [E1534S1-16.check.txt](E1534S1-16.check.txt); [E1534S1-16-validation.json](E1534S1-16-validation.json) |
+| E1534S1-17 | PASS | 21 | pl E1534S1-17 hub/test/host-agent.test.ts; native exit and TAP counts plus required names checked; [E1534S1-17.log](E1534S1-17.log); [E1534S1-17.check.txt](E1534S1-17.check.txt); [E1534S1-17-validation.json](E1534S1-17-validation.json) |
+| E1534S1-18 | PASS | 45 | pl E1534S1-18 hub/test/claude-code-remote.test.ts; native exit and TAP counts plus required names checked; [E1534S1-18.log](E1534S1-18.log); [E1534S1-18.check.txt](E1534S1-18.check.txt); [E1534S1-18-validation.json](E1534S1-18-validation.json) |
+| E1534S1-19 | PASS | 1 | nt E1534S1-19 hub/test/host-agent-client.test.ts; native exit and TAP counts plus required names checked; [E1534S1-19.log](E1534S1-19.log); [E1534S1-19.check.txt](E1534S1-19.check.txt); [E1534S1-19-validation.json](E1534S1-19-validation.json) |
+| E1534S1-20 | PASS | 8 | nt E1534S1-20 hub/test/host-spend.test.ts; native exit and TAP counts plus required names checked; [E1534S1-20.log](E1534S1-20.log); [E1534S1-20.check.txt](E1534S1-20.check.txt); [E1534S1-20-validation.json](E1534S1-20-validation.json) |
+| E1534S1-21 | PASS | 20 | nt E1534S1-21 hub/test/executor-spend.test.ts; native exit and TAP counts plus required names checked; [E1534S1-21.log](E1534S1-21.log); [E1534S1-21.check.txt](E1534S1-21.check.txt); [E1534S1-21-validation.json](E1534S1-21-validation.json) |
+| E1534S1-22 | PASS | 17 | nt E1534S1-22 hub/test/suite-accounting.test.ts hub/test/state-paths.test.ts; native exit and TAP counts plus required names checked; [E1534S1-22.log](E1534S1-22.log); [E1534S1-22.check.txt](E1534S1-22.check.txt); [E1534S1-22-validation.json](E1534S1-22-validation.json) |
+| E1534S1-24 | PASS | 17 | pl E1534S1-24 hub/test/executor-safety.test.ts; native exit and TAP counts plus required names checked; [E1534S1-24.log](E1534S1-24.log); [E1534S1-24.check.txt](E1534S1-24.check.txt); [E1534S1-24-validation.json](E1534S1-24-validation.json) |
+| E1534S1-25 | PASS | 3 | pl E1534S1-25 hub/test/host-provision-gate.test.ts; native exit and TAP counts plus required names checked; [E1534S1-25.log](E1534S1-25.log); [E1534S1-25.check.txt](E1534S1-25.check.txt); [E1534S1-25-validation.json](E1534S1-25-validation.json) |
+| E1534S1-26 | PASS | 1 | nt E1534S1-26 hub/test/host-create-entry.test.ts; native exit and TAP counts plus required names checked; [E1534S1-26.log](E1534S1-26.log); [E1534S1-26.check.txt](E1534S1-26.check.txt); [E1534S1-26-validation.json](E1534S1-26-validation.json) |
+| E1534S1-27 | PASS | 2 | nt E1534S1-27 hub/test/host-readiness-owner.test.ts; native exit and TAP counts plus required names checked; [E1534S1-27.log](E1534S1-27.log); [E1534S1-27.check.txt](E1534S1-27.check.txt); [E1534S1-27-validation.json](E1534S1-27-validation.json) |
+| E1534S1-28 | PASS | 11 | pl E1534S1-28 hub/test/host-create-ready.test.ts; native exit and TAP counts plus required names checked; [E1534S1-28.log](E1534S1-28.log); [E1534S1-28.check.txt](E1534S1-28.check.txt); [E1534S1-28-validation.json](E1534S1-28-validation.json) |
+| E1534S1-29 | PASS | 15 | nt E1534S1-29 hub/test/host-destroy.test.ts hub/test/host-provision-records.test.ts; native exit and TAP counts plus required names checked; [E1534S1-29.log](E1534S1-29.log); [E1534S1-29.check.txt](E1534S1-29.check.txt); [E1534S1-29-validation.json](E1534S1-29-validation.json) |
+| E1534S1-31 | PASS | 3 | pl E1534S1-31 hub/test/host-destroy-native.test.ts; native exit and TAP counts plus required names checked; [E1534S1-31.log](E1534S1-31.log); [E1534S1-31.check.txt](E1534S1-31.check.txt); [E1534S1-31-validation.json](E1534S1-31-validation.json) |
+| E1534S1-32 | PASS | 8 | nt E1534S1-32 hub/test/host-runtime-owner.test.ts hub/test/host-ssh-registry.test.ts; native exit and TAP counts plus required names checked; [E1534S1-32.log](E1534S1-32.log); [E1534S1-32.check.txt](E1534S1-32.check.txt); [E1534S1-32-validation.json](E1534S1-32-validation.json) |
+| E1534S1-34 | PASS | 16 | nt E1534S1-34 hub/test/host-pools-config.test.ts; native exit and TAP counts plus required names checked; [E1534S1-34.log](E1534S1-34.log); [E1534S1-34.check.txt](E1534S1-34.check.txt); [E1534S1-34-validation.json](E1534S1-34-validation.json) |
+| E1534S1-35 | PASS | 23 | nt E1534S1-35 hub/test/config-set.test.ts; native exit and TAP counts plus required names checked; [E1534S1-35.log](E1534S1-35.log); [E1534S1-35.check.txt](E1534S1-35.check.txt); [E1534S1-35-validation.json](E1534S1-35-validation.json) |
+| E1534S1-36 | PASS | 13 | nt E1534S1-36 hub/test/config-reload-component.test.ts; native exit and TAP counts plus required names checked; [E1534S1-36.log](E1534S1-36.log); [E1534S1-36.check.txt](E1534S1-36.check.txt); [E1534S1-36-validation.json](E1534S1-36-validation.json) |
+| E1534S1-37 | PASS | 20 | nt E1534S1-37 hub/test/init-config.test.ts; native exit and TAP counts plus required names checked; [E1534S1-37.log](E1534S1-37.log); [E1534S1-37.check.txt](E1534S1-37.check.txt); [E1534S1-37-validation.json](E1534S1-37-validation.json) |
+| E1534S1-38 | PASS | 5 | nt E1534S1-38 hub/test/transport-config.test.ts; native exit and TAP counts plus required names checked; [E1534S1-38.log](E1534S1-38.log); [E1534S1-38.check.txt](E1534S1-38.check.txt); [E1534S1-38-validation.json](E1534S1-38-validation.json) |
+| E1534S1-39 | PASS | 20 | nt E1534S1-39 hub/test/host-prepare.test.ts hub/test/host-create-admission.test.ts; native exit and TAP counts plus required names checked; [E1534S1-39.log](E1534S1-39.log); [E1534S1-39.check.txt](E1534S1-39.check.txt); [E1534S1-39-validation.json](E1534S1-39-validation.json) |
+| E1534S1-41 | PASS | 20 | nt E1534S1-41 hub/test/host-provision-recovery.test.ts hub/test/host-provider-digitalocean-prepare.test.ts; native exit and TAP counts plus required names checked; [E1534S1-41.log](E1534S1-41.log); [E1534S1-41.check.txt](E1534S1-41.check.txt); [E1534S1-41-validation.json](E1534S1-41-validation.json) |
+| E1534S1-43 | PASS | 28 | nt E1534S1-43 hub/test/setup-accounts.test.ts hub/test/setup-flow.test.ts; native exit and TAP counts plus required names checked; [E1534S1-43.log](E1534S1-43.log); [E1534S1-43.check.txt](E1534S1-43.check.txt); [E1534S1-43-validation.json](E1534S1-43-validation.json) |
+| E1534S1-45 | PASS | 7 | nt E1534S1-45 hub/test/cli-help.test.ts; native exit and TAP counts plus required names checked; [E1534S1-45.log](E1534S1-45.log); [E1534S1-45.check.txt](E1534S1-45.check.txt); [E1534S1-45-validation.json](E1534S1-45-validation.json) |
+| E1534S1-46 | PASS | 39 | pl E1534S1-46 hub/test/host-ssh-contract.test.ts; native exit and TAP counts plus required names checked; [E1534S1-46.log](E1534S1-46.log); [E1534S1-46.check.txt](E1534S1-46.check.txt); [E1534S1-46-validation.json](E1534S1-46-validation.json) |
+| E1534S1-47 | PASS | 4 | nt E1534S1-47 hub/test/startup-cleanup.test.ts; native exit and TAP counts plus required names checked; [E1534S1-47.log](E1534S1-47.log); [E1534S1-47.check.txt](E1534S1-47.check.txt); [E1534S1-47-validation.json](E1534S1-47-validation.json) |
+| E1534S1-48 | PASS | 1 | nt E1534S1-48 hub/test/host-memory.test.ts; native exit and TAP counts plus required names checked; [E1534S1-48.log](E1534S1-48.log); [E1534S1-48.check.txt](E1534S1-48.check.txt); [E1534S1-48-validation.json](E1534S1-48-validation.json) |
+| E1534S1-49 | PASS | 23 | nt E1534S1-49 hub/test/test-docs.test.ts hub/test/suite-tiers.test.ts; native exit and TAP counts plus required names checked; [E1534S1-49.log](E1534S1-49.log); [E1534S1-49.check.txt](E1534S1-49.check.txt); [E1534S1-49-validation.json](E1534S1-49-validation.json) |
+| E1534S1-50 | PASS | — | mrow p50: empty scratch init writes one hosts table, defaults 3/12h, no pool; hub stopped; immediate isolation gate clean; [E1534S1-50.txt](E1534S1-50.txt) |
+| E1534S1-51 | PASS | — | p51 update: counter-scope correction coord ask 5f1dfe6d; exact hosts swap succeeded, verification daily_spend_usd stays init default 5 (config.ts:52); one hosts daily/lease restored, qa pool and codex pin retained; [E1534S1-51.txt](E1534S1-51.txt); [E1534S1-51-table-observation.json](E1534S1-51-table-observation.json) |
+| E1534S1-52 | PASS | — | p52 provider and max_hosts writes apply now on same running hub; default agents capacity and updated max_hosts 4 observed; published configuration separately passed row36; [E1534S1-52.txt](E1534S1-52.txt) |
+| E1534S1-53 | PASS | — | p53: unknown key, invalid name and short lease refused with exact expected text; empty stdout and unchanged config; [E1534S1-53.txt](E1534S1-53.txt) |
+| E1534S1-54 | PASS | — | p54: hub start refuses missing provider and 29s lease with key-specific output; remains down; exact config restore starts hub normally; [E1534S1-54.txt](E1534S1-54.txt) |
+| E1534S1-55 | PASS | — | p55: help names --pool (usage exit1 as captured); implementer pool set/list/JSON correct; coordinator remote pool refused and roles file unchanged; [E1534S1-55.txt](E1534S1-55.txt) |
+| E1534S1-56 | PASS | — | p56: invalid Coordinator pool reload refused with exact one-line stderr and no stdout; last good roles remain; restore reload succeeds; [E1534S1-56.txt](E1534S1-56.txt) |
+| E1534S1-60 | PASS | — | pm: fake ram host ready, 8GiB seed; 1.2GB launch typed memory refusal, exact 1.3GB no floor refusal; later session-forward/cleanup-incomplete error captured but not judged by row; destroy succeeds; [E1534S1-60.txt](E1534S1-60.txt) |
+| E1534S1-57 | PASS | — | p57 repeated after identity-checked drain; census correction coord ask 76d4b23b includes fake agent descendant OpenCode; all records settled, three owned processes ended, census0; [E1534S1-57.txt](E1534S1-57.txt); [E1534S1-57-initial.txt](E1534S1-57-initial.txt); [E1534S1-57-settlement.txt](E1534S1-57-settlement.txt); [E1534S1-57-drain.txt](E1534S1-57-drain.txt) |
+| E1534S1-58 | PASS | — | s58 after authorized literal alias and dead T-1676 receipt cleanup: head/dev/request match, clean worktree/root unchanged, no preservation lock or alias, TMPDIR only compile cache; [E1534S1-58.txt](E1534S1-58.txt); [cleanup-step1.txt](cleanup-step1.txt) |
+
+## Findings
+
+**Low — found aside, T-1676 (Bugs, existing).** Three dead fixture-owner receipts remained in TMPDIR: PIDs 25075 and 25189 from nvim/test/qa.test.ts (row 16), and PID 49095 from the CLI-started-hub block of hub/test/claude-code-remote.test.ts:660 (row 18). The census found every owner absent, no open receipt or Unix listener, and the per-test fixture roots removed; the shared tested worktree still existed by design. The Claude producer is byte-identical to d8750191 (SHA-256 c3168acf9cae1584c357acde75194a5f4e27ed975678faea3a7933e168c5fd3f); nvim dump producer is identical (3017699fcbe766ba034946596fed647f8929ed551f8454a2d888b5ea209e1fee). Nvim’s only later file change is the T-1759 pool-local expectation; hub CLI, receipt ownership and nvim QA lifecycle sources are unchanged. Under the brief’s carried T-1676 clause, only the three literal receipt paths and empty directory were removed. See [inventory](residue-inventory.json), [producer comparison](residue-producer-comparison.json), [nvim delta](residue-nvim-delta.diff), and [literal removal](cleanup-step1.txt).
+
+No stage product finding remains. Row 57’s live fake OpenCode descendant was classified by the Coordinator’s conditional census correction, then drained with its fake-host parent processes. The trace confirms destroy settled the hub records: no pending cleanup remains after destroy, despite the earlier intermediate error message. See [trace](E1534S1-57-trace.txt), [settlement](E1534S1-57-settlement.txt), [drain](E1534S1-57-drain.txt) and [zero census](E1534S1-57.txt).
+
+## Corrections and limitations
+
+- **kit3 pin correction (coord, ask 9de5178b)**, decision 9a9f12d0-0c87-4cf8-b47f-9997e7866f9c: accepted 3e85f49d635ff2d39ba36ea359e824a802ca65e7 instead of 997909c0c8ac8770cd879e0862816ca22743c939. The sole diff is three added historical-scope prose lines. All five reused heredocs are byte-identical. S0-kit3-pin.diff and S0-kit3-comparison.txt retain both checks. The original extraction block is retained beside the run script. No assertions changed.
+- **landing-delta correction (coord, ask ccf550e7)**, decision 063c0b63-e93b-4ab4-8fcf-7a6b4b7ea7e5: row 02 originally reports shared/fake-host-machine.ts differs from the T-1741 branch head 0b2a3f8f. The only difference is T-1735 self-ignore setup merged at 042be2f5: directory mkdir with mode 0700 and .gitignore containing *. Other six compared files are identical; the memory seed is unchanged. Original row and exact diff retained.
+
+Supplemental registration enumeration: the QA-only static parser was extended to expand Object.entries, negative numeric constants, and imported bindings. It executes no tests or source modules. All 45 planned files matched required names and every exact list; expect.json remained unchanged. TAP is checked separately after actual execution.
+
+- **counter-scope correction (coord, ask 5f1dfe6d)**, decision 2538ce2d-fc75-401b-b2d8-98e005fe0078: row 51 whole-file counter included verification.daily_spend_usd, so older-form count was 1 instead of 0. The exact hosts replacement succeeded, verification value stays generated default 5 (config.ts:52), and table-specific read-only observation after update shows exactly one hosts daily_spend_usd=3 and lease=12h, with qa pool and codex 1.0.0 pin retained. No rerun or config edit. Original count kept.
+
+- **census correction (coord, ask 76d4b23b)**, decision 4ff730e1-5563-4721-8fd3-6900418d84e7: row 57 initially saw supervisor 77991, agent 78032 and its fake OpenCode child 78160. The latter is another survivor of fake-machine deletion, under the conditional checks in the decision. Read-only checks confirmed its ancestry, cwd and HOME/XDG/TMPDIR ownership; no session/process/pending-stop/reservation/retirement row remained; host destroyed/released, registration revoked, two confirming reads, no live hub PID or fake SSH master. All three were identity-checked and drained; repeat census is zero. The at-floor launch's later forward refusal is recorded but unjudged as row 60 prescribes. No launch retry occurred.
+- Supplemental observation disclosure: the initial settlement probe compared environment paths only against Q/T and missed the validated alias, then tried to read hub.json after hub stop had removed it. Its output is retained in E1534S1-57-settlement-initial.txt. The corrected read-only probe includes exactly the validated alias and checks recorded PIDs/discovery absence; E1534S1-57-settlement.txt supersedes it. No assertions or product state were changed by either observation. The initial false path comparison is not evidence of real-HOME use.
+
+Row 60 proved the actual 1.2 GB typed memory refusal through a created fake host and no memory-floor refusal at 1.3 GB. The admitted launch then failed session forwarding because the kit had no ports.json; fake-ssh.ts:41 requires that map, and transport/ssh.ts:121 retires the master after forward refusal. This later launch outcome is captured, not counted as a successful OpenCode session, and is expressly unjudged by row 60. The native memory/Claude tests separately passed.
+
+## Supporting stage covers
+
+These are Coordinator-owned prior full-stage receipts at this same head and verification tree 88986b4b9377d1880fd57510dbee20808a731569; they are not new QA executions:
+
+- Linux droplet e8a3f44e-06cf-4914-96c9-ff7c9534ee22, A-17636: Finished exit 0, T0–T4 and Web. Linux x64 6.8.0-147-generic, Node v24.21.0, Neovim v0.12.5. Two c-8 lon1 shards: cland-v0-90583ffd, lifetime 2248 s, $0.1561; cland-v0-5d6aa688, lifetime 1675 s, $0.1163. Total $0.2724; measured admission-through-collection wall 2311.83 s. Browser Chrome for Testing 156.0.8078.4, chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell. Nine recorded platform/absent-real-OpenCode skips remain skips, not passes. [Receipt extract](A-17636-summary.txt).
+- macOS local 5f39f0a5-a04a-410e-913e-9c367ebd00e1, A-17641: Finished exit 0, T0–T4 and Web; Darwin arm64 27.0.0, same Node/Neovim. Browser binary and version are retained in [provenance](A-17641-summary.txt). Local cost not applicable. The earlier failed macOS A-17640 is not counted as green or waived: its suite-recovery admission failure was filed T-1761; this accepted successor is the supporting result.
+- Both covers ran 17 T4 files only in their base phase; T4 repetitions were skipped. Timing budgets/lint/ratchets reported findings in report mode, not enforcement. Projected tier walls are projections, not measured wall times. This QA did not re-run the whole suite or its skipped phases.
+
+Final read: HEAD=dev=request, worktree clean, root non-tracker status unchanged, no preservation lock, fixture alias gone, TMPDIR contains only Node compile cache. Q/T and worktree removal follows verdict as the brief requires. All evidence was scanned with a positive control before publication. Stage verdict carries no epic or child criterion marks.
+
+
+QA clear: 49 scoped checks, 45 targeted files, 515 tests, no skip/fail/cancel/todo; local macOS only. Full report/evidence A-17643: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17643-e-1534-stage-1-qa-clear-at-c130bac4-49-checks-515-tests/report.md. No epic or child criterion marks.

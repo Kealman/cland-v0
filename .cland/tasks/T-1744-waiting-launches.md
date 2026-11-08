@@ -3,7 +3,7 @@ id: T-1744
 kind: task
 title: Waiting launches
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:57.997Z
-updated: 2026-11-07T16:02:05.726Z
+updated: 2026-11-08T00:38:55.869Z
 ---
 
 ## Summary

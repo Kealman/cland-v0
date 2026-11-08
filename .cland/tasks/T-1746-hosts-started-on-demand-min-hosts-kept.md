@@ -3,7 +3,7 @@ id: T-1746
 kind: task
 title: Hosts started on demand, `min_hosts` kept, scaling with `cland config set`
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:58.402Z
-updated: 2026-11-07T16:02:06.130Z
+updated: 2026-11-08T00:38:56.312Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1745
 kind: task
 title: Waiting launches survive a hub restart
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:58.235Z
-updated: 2026-11-07T16:02:05.964Z
+updated: 2026-11-08T00:38:56.159Z
 ---
 
 ## Summary

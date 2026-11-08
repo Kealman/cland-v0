@@ -3,7 +3,7 @@ id: T-1747
 kind: task
 title: The host lease in `hub.db`, its renewal and its spend reservation
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,10 @@ blocked_by:
   - T-1737
   - T-1738
   - T-1742
-topic: null
-branch: null
+topic: topic-1435
+branch: t/T-1747-the-host-lease-in-hub-db-its-renewal-and
 created: 2026-11-07T16:01:58.643Z
-updated: 2026-11-07T16:02:06.370Z
+updated: 2026-11-08T00:40:10.789Z
 ---
 
 ## Summary
@@ -46,3 +46,9 @@ The lease table and a per-host renewal timer on the hub clock, armed at create, 
 - Hot files: `hub/src/host/host-leases.ts` (new), `hub/src/host/provision-host.ts` (lease and reservation before acquire, renewal timer, settle at confirmed release), `hub/src/host/provision-records.ts` (if the lease joins that store).
 - Tests: new `hub/test/host-lease.test.ts` (T2, fake clock, fake provider, isolated `XDG_STATE_HOME`).
 - Serves epic C5 and C7.
+
+## Comments
+
+### impl-1747 · 2026-11-08T00:40:10.789Z
+
+Rule-20 sweep before edits: createHost consumers hub/src/host/host-create-entry.ts, hub/src/cli/host.ts; destroyHost via hub/daemon.ts; persisted provisions via host/records.ts, provision-records.ts, provision-host.ts and store initialization. Runtime importing tests: host-create-ready (T3), host-provision-gate (T3), host-destroy (T3), host-destroy-native (T3), host-provision-recovery (T2); type-only host-create-entry (T1). New lease table/API and mirror are additive, no ProvisionRecord or wire-shape changes. host-provision-records (T1) exact record expectations remain unchanged; host-spend (T1) ledger contract remains unchanged. Broader field/function sweep found no web/nvim consumers of provision-host; will rerun listed files and T0. A-17473 decisions 9/10/14/17 bind lease ordering, cadence, shared manual admission, ledger compatibility.

@@ -3,7 +3,7 @@ id: T-1748
 kind: task
 title: The detached host watchdog
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:01:58.814Z
-updated: 2026-11-07T16:02:06.539Z
+updated: 2026-11-08T00:38:56.738Z
 ---
 
 ## Summary
