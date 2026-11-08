@@ -60,6 +60,19 @@ export class PoolRuntime {
   }
   close(): void | Promise<void> { this.#closed = true; if (this.#flights.size) return Promise.all(this.#flights.values()).then(() => {}); }
 
+  /** One lease policy for manual, minimum and demand-created hosts. */
+  inUse(host: string): boolean {
+    const busy = new Set(this.processes().map(p => p.host ?? 'local'));
+    for (const [id, weight] of this.#promised) if (weight > 0) busy.add(id);
+    if (busy.has(host)) return true;
+    const row = this.records.provisions.get(host);
+    if (!row || row.state !== 'ready') return false;
+    const minimum = this.settings().pools[row.pool]?.minHosts ?? 0;
+    const candidates = [...this.records.provisions.active()].filter(r => r.pool === row.pool && r.state === 'ready');
+    candidates.sort((a, b) => Number(busy.has(b.id)) - Number(busy.has(a.id)) || a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
+    return candidates.slice(0, minimum).some(r => r.id === host);
+  }
+
   member(host: string, pool: string): boolean {
     const row = this.records.provisions.get(host);
     return row?.pool === pool && row.state === 'ready' && this.records.get(host)?.state === 'registered' && this.available(host);

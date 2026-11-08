@@ -462,3 +462,15 @@ is `waiting for a host`. Unavailable hosts offer no room and do not count in
 that snapshot. `min_hosts` is carried in the pool policy for callers; maintaining
 the floor is a separate lifecycle operation, not an extra creation decision for
 one launch. This core alone does not enable automatic or production host creation.
+
+
+### Pool host lease usage
+
+Manual `host create`, startup `min_hosts` and demand scale-up share the hub's
+live usage predicate. A running or unresolved native generation, or a held
+placement promise, keeps its host renewing. Ready minimum hosts prefer those
+with live usage, then older creation timestamps (host id breaks ties). A newer
+idle host cannot displace an older minimum host. Idle hosts beyond this minimum
+stop renewing and follow the existing expiry and confirmed-destruction flow.
+The predicate reads current pool settings, so configuration changes apply to
+existing renewal owners too.

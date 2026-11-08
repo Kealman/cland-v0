@@ -10,13 +10,18 @@ import { localHost } from '../src/host/local.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { readHostPools } from '../src/host/pools.ts';
+import { FakeClock } from './fake-clock.ts';
+import { readHostLeaseFile } from '../src/host/host-leases.ts';
 import { HostSecretStore } from '../src/host/records.ts';
 
-async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof Promise.withResolvers<void>>) {
+async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof Promise.withResolvers<void>>, lease=false) {
  const root=await tempProject(t);
+ const clock=new FakeClock(Date.now());
+ const env=fixtureEnvironment(root,process.env);
+ const expired:string[]=[];
  await mkdir(join(root,'.cland'),{recursive:true});
  await writeFile(join(root,'.cland/config.toml'),`# managed by cland
-[hosts.agents]\nprovider="fake"\nslots=1\nmin_hosts=${min}\nmax_hosts=${max}\n`);
+[hosts]\nweights={codex=${lease?1:0.5}}\n[hosts.agents]\nprovider="fake"\nslots=1\nmin_hosts=${min}\nmax_hosts=${max}\n`);
  await writeFile(join(root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\n');
  const local=localHost(fixtureEnvironment(root,process.env));
  const hosts=['a','b'].map(name=>({...testHost(name,()=>{}),realpath:local.realpath,statDirectory:async()=>({refusal:null,identity:null})}));
@@ -24,13 +29,18 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
  let closing=false,completed=0;
  const creates:string[]=[],gates:Array<()=>void>=[];
  onCleanup(t,()=>{closing=true;prepare?.resolve();for(const release of gates)release();});
- const hub=await projectHub(t,root,{}, {hosts,createHost:options=>(async()=>{
+ const hub=await projectHub(t,root,{}, {...(lease?{clock}:{}),hosts,createHost:options=>(async()=>{
   records=options.records;
-  const id=['a','b'][creates.length]!;creates.push(id);
+  const id=(lease?['b','a']:['a','b'])[creates.length]!;creates.push(id);
   const row={id,pool:'agents',provider:'fake',size:'fake',region:'fake',created:options.clock!.now().toISOString(),state:'booting' as const,machine:{id,address:id,architecture:'x86_64' as const,created:options.clock!.now().toISOString()}};
   await prepare?.promise;
   options.admit?.('agents',readHostPools({agents:{provider:'fake',slots:1,min_hosts:min,max_hosts:max}}).pools.agents!);
   options.records.provisions.save(row);
+  if(lease){
+   const o={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:60000};
+   await records.leases.create(id,o);
+   records.leases.arm(id,o,()=>records.provisions.get(id)?.state==='ready'&&(options.inUse?.(id)??records.provisions.heldByMinimum(id,'agents',min)),error=>{throw error;},async()=>{expired.push(id);});
+  }
   await new Promise<void>(resolve=>{gates.push(resolve);if(closing)resolve();options.signal?.addEventListener('abort',()=>resolve(),{once:true});});
   if(options.signal?.aborted)return {...row,state:'failed' as const};
   new HostSecretStore(root,options.records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
@@ -38,9 +48,9 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
  })().finally(()=>{completed++;})});
  await writeFile(join(root,'.cland/config.toml'),'# managed by cland\n'+await readFile(join(root,'.cland/config.toml'),'utf8'));
  const ui=await sessionUi(t,hub.discovery,'cli');
- const launch=(name:string)=>ui.request({type:'session.launch',name,role:'implementer',harness:'codex'});
+ const launch=(name:string,host?:string)=>ui.request({type:'session.launch',name,role:'implementer',harness:'codex',...(host?{host}:{})});
  const waiting=async()=>((await ui.request({type:'session.list'})).value as {waiting:Array<{reason:string}>}).waiting;
- return {root,hub,ui,creates,gates,launch,waiting,completed:()=>completed,inventory:()=>records.provisions.list(),destroying:()=>records.provisions.save({...records.provisions.get('a')!,state:'destroying'})};
+ return {hosts,clock,expired,deadline:(id:string)=>readHostLeaseFile(root,id)!.deadline,root,hub,ui,creates,gates,launch,waiting,completed:()=>completed,inventory:()=>records.provisions.list(),destroying:()=>records.provisions.save({...records.provisions.get('a')!,state:'destroying'})};
 }
 test('C1 startup maintains min_hosts without a launch',async t=>{
  const f=await fixture(t,1);
@@ -49,7 +59,7 @@ test('C1 startup maintains min_hosts without a launch',async t=>{
 });
 test('C2/C4 booting counts toward max and two launches share one new host',async t=>{
  const f=await fixture(t);
- await Promise.all(['one','two'].map(f.launch));
+ await Promise.all(['one','two'].map(name=>f.launch(name)));
  await eventually('both waits name durable booting host',async()=>{const rows=await f.waiting();return rows.length===2&&rows.every(row=>row.reason==='waiting for host a to boot')?true:undefined;});
  assert.deepEqual(f.creates,['a']);
  f.gates[0]!();
@@ -73,7 +83,7 @@ test('C3 raising max_hosts places a waiting launch without restart',async t=>{
 });
 test('C5 overflow never exceeds max_hosts',async t=>{
  const f=await fixture(t);
- await Promise.all(['one','two','three','four','five'].map(f.launch));
+ await Promise.all(['one','two','three','four','five'].map(name=>f.launch(name)));
  await eventually('booting receipt',async()=>{const rows=await f.waiting();return rows.length===5&&rows.every(row=>row.reason==='waiting for host a to boot')?true:undefined;});
  assert.deepEqual(f.creates,['a']);f.gates[0]!();
  await eventually('capacity used and overflow retained',async()=>f.hub.fakes.codex!.spawns.length===2&&(await f.waiting()).every(row=>row.reason==='waiting for a host')?true:undefined);
@@ -201,4 +211,78 @@ test('memory-refused ready host with spare weight does not create another host',
  const reload=await f.ui.request({type:'config.set',key:'hosts.agents.max_hosts',value:2});assert.equal(reload.ok,true,reload.error);
  const rows=await f.waiting();assert.equal(rows.length,1);assert.match(rows[0]!.reason,/host a, available memory 1 bytes/);
  assert.deepEqual(f.creates,['a']);
+});
+
+
+test('T-1763 startup and demand hosts renew running sessions after scale-up',async t=>{
+ const f=await fixture(t,1,2,undefined,true);
+ await eventually('startup create waiting at readiness gate',()=>f.gates.length===1?true:undefined);
+ f.gates[0]!();
+ await eventually('startup host ready',()=>f.inventory().some(r=>r.id==='b'&&r.state==='ready')?true:undefined);
+ assert.equal((await f.launch('w1')).ok,true);
+ await eventually('w1 running on H1',()=>f.hub.fakes.codex!.spawns.length===1?true:undefined);
+ await f.clock.advance(1);
+ assert.equal((await f.launch('w2')).ok,true);
+ await eventually('demand create at readiness gate',()=>f.gates.length===2?true:undefined);f.gates[1]!();
+ await eventually('w2 running on H2',()=>f.hub.fakes.codex!.spawns.length===2?true:undefined);
+ assert.deepEqual(f.hub.fakes.codex!.spawns.map(r=>r.host),['b','a']);
+ const before=['b','a'].map(f.deadline);
+ await f.clock.advance(7500);
+ await eventually('both lease mirrors renewed',()=>['b','a'].every((id,i)=>f.deadline(id)>before[i]!)?true:undefined);
+ for(let tick=0;tick<4;tick++){
+  const previous=['b','a'].map(f.deadline);
+  await f.clock.advance(7500);
+  await eventually('successive renewals persisted',()=>['b','a'].every((id,i)=>f.deadline(id)>previous[i]!)?true:undefined);
+ }
+ assert.deepEqual(f.expired,[]);
+ assert.ok(['b','a'].every(id=>Date.parse(f.deadline(id))>f.clock.now().getTime()));
+ assert.equal((await f.ui.request({type:'session.stop',session:'w1'})).ok,true);
+ const idle=f.deadline('b');
+ for(let tick=0;tick<4;tick++){
+  const previous=f.deadline('a');await f.clock.advance(7500);
+  await eventually('busy newer host keeps minimum',()=>f.deadline('a')>previous?true:undefined);
+ }
+ assert.equal(f.deadline('b'),idle);assert.deepEqual(f.expired,['b']);
+});
+
+
+test('T-1763 manual host placement promise renews until failed launch releases it',async t=>{
+ const f=await fixture(t,0,2,undefined,true);
+ const creating=f.ui.request({type:'host.create',pool:'agents'});
+ onCleanup(t,async()=>{for(const release of f.gates)release();await creating;});
+ await eventually('manual host readiness gate',()=>f.gates.length===1?true:undefined);f.gates[0]!();
+ assert.equal((await creating).ok,true);
+ const held=Promise.withResolvers<void>();let entered=false;
+ f.hosts[1]!.statDirectory=async()=>{entered=true;await held.promise;throw new Error('fixture launch refused');};
+ let launching:ReturnType<typeof f.launch>|undefined;
+ onCleanup(t,async()=>{held.resolve();await launching;});
+ launching=f.launch('held','b');
+ await eventually('launch holds host preparation',()=>entered?true:undefined);
+ assert.equal(f.hub.fakes.codex!.spawns.length,0);
+ const before=f.deadline('b');await f.clock.advance(7500);
+ await eventually('promise lease renewed',()=>f.deadline('b')>before?true:undefined);
+ held.resolve();assert.equal((await launching).ok,false);
+ const released=f.deadline('b');
+ await f.clock.advance(7500);
+ assert.equal(f.deadline('b'),released);
+ await f.clock.advance(22500);
+ assert.deepEqual(f.expired,['b']);
+});
+
+test('T-1763 minimum keeps older idle startup host when manual host appears',async t=>{
+ const f=await fixture(t,1,2,undefined,true);
+ await eventually('startup readiness gate',()=>f.gates.length===1?true:undefined);f.gates[0]!();
+ await eventually('startup ready',()=>f.inventory().some(r=>r.id==='b'&&r.state==='ready')?true:undefined);
+ await f.clock.advance(1);
+ const creating=f.ui.request({type:'host.create',pool:'agents'});
+ onCleanup(t,async()=>{for(const release of f.gates)release();await creating;});
+ await eventually('manual readiness gate',()=>f.gates.length===2?true:undefined);f.gates[1]!();
+ assert.equal((await creating).ok,true);
+ const before=f.deadline('b'),idle=f.deadline('a');
+ for(let tick=0;tick<4;tick++){
+  const previous=f.deadline('b');await f.clock.advance(7500);
+  await eventually('minimum lease renewed',()=>f.deadline('b')>previous?true:undefined);
+ }
+ assert.ok(f.deadline('b')>before);assert.equal(f.deadline('a'),idle);
+ assert.deepEqual(f.expired,['a']);
 });

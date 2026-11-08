@@ -32,3 +32,22 @@ otherwise valid item, and retain no wait or create. Role-removal preparation is
 held through reload and must leave no row. The memory-floor case preserves the
 Coordinator's policy: a ready host with spare weight and a memory refusal keeps
 its diagnostic wait and does not create another host, even below max_hosts.
+
+
+T-1763 adds three T2 regressions using the hub clock and real lease database,
+ledger and mirror with an injected fake-provider creator (no native acquisition):
+
+- `T-1763 startup and demand hosts renew running sessions after scale-up`: min=1,
+  max=2, w1 on H1=b, then w2 on H2=a. Reverse lexical ids reproduce QA row
+  E1534S2-55. Each 7.5s clock tick awaits both persisted lease mirrors. Stopping
+  w1 leaves newer busy H2 preferred over idle H1, whose expiry is observed.
+- `T-1763 manual host placement promise renews until failed launch releases it`:
+  min=0 manual create, hold directory preparation before adapter spawn; renewal
+  persists while held, then stops after the refused launch releases its promise.
+- `T-1763 minimum keeps older idle startup host when manual host appears`:
+  older H1=b keeps renewing while excess idle manual H2=a expires.
+
+Expiry callbacks in these component cases record the renewal owner's terminal
+boundary; provider deletion itself remains covered by `host-lease.test.ts` and
+native `host-watchdog.test.ts`. Run the latter under the stage preservation lock.
+All new successful cases are below 3s on macOS; no duration allowance is needed.
