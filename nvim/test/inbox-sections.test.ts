@@ -97,3 +97,53 @@ test('a rejected control projection reports the operation and leaves the control
   const reply = await stubControl(path, { requests: true });
   assert.ok(Array.isArray(reply.requests), 'a projection failure must not abandon the control connection or kill the peer');
 });
+
+test('waiting launches render facts and replace reasons without needs-you or departure rows', { skip }, async t => {
+  const root = await tempProject(t);
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {} }) });
+  await waitInitialSnapshots(c);
+  await c.input('<Esc> N');
+  const since = new Date().toISOString();
+  const launch = { name: 'impl-wait', role: 'implementer', pool: 'agents', reason: 'no room', since };
+  const render = async (waitingLaunches?: unknown[]) => c.lua("require('cland.state').set_inbox(...)", { asks: [], approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 0, ...(waitingLaunches ? { waitingLaunches } : {}) });
+  await render([launch, { ...launch, name: 'qa-wait', role: null }]);
+  const lines = await c.waitScreen(s => s.includes('impl-wait') && s.includes('no room'), 'waiting launch facts');
+  assert.match(lines, /impl-wait.*implementer.*agents.*no room/);
+  assert.match(lines, /nothing needs you/);
+  assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
+  const row = await c.lua<number>("for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('impl-wait',1,true) then return i end end");
+  await render([{ ...launch, reason: 'host booting' }, { ...launch, name: 'qa-wait', role: null }]);
+  await c.waitScreen(s => s.includes('host booting'), 'reason replaced');
+  const updated = await c.lua<string[]>("return vim.api.nvim_buf_get_lines(0,0,-1,false)");
+  assert.match(updated[row - 1]!, /impl-wait.*host booting/);
+  assert.match(updated[row - 1]!, new RegExp(since.replaceAll('.', '\\.')));
+  assert.equal(updated.filter(line => line.includes('impl-wait')).length, 1);
+  const booting = { ...launch, reason: 'waiting for host 12345678-1234-1234-1234-123456789abc to boot' };
+  await c.lua("local l=require('cland.layout'); l.right_panel('inbox'); vim.api.nvim_set_current_win(l.win.right); vim.api.nvim_win_set_width(l.win.right,64)");
+  await render([booting]);
+  await c.waitScreen(s => s.includes('impl-wait') && s.includes('…'), 'narrow waiting line');
+  const panelLine = await c.lua<string>("for _,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('impl-wait',1,true) then return l end end");
+  const compact = await c.lua<string>("return require('cland.thread').clock(...)", since);
+  assert.match(panelLine, /impl-wait · implementer/);
+  assert.match(panelLine, /waiting for host.*…/);
+  assert.ok(panelLine.trimEnd().endsWith(compact), panelLine);
+  const yesterday = new Date(Date.parse(since) - 86400000).toISOString();
+  await render([{ ...booting, since: yesterday }]);
+  const dated = await c.lua<string>("local e=require('cland.thread').epoch(...); return os.date('%Y-%m-%d %H:%M',e)", yesterday);
+  await c.waitScreen(s => s.includes(dated), 'older waiting date and time');
+  const maxName = 'n'.repeat(24), maxRole = 'r'.repeat(24);
+  await render([{ ...booting, name: maxName, role: maxRole, since: yesterday }]);
+  await c.waitScreen(s => s.includes(maxName) && s.includes(dated), 'maximum identity with visible since');
+  const bounds = await c.lua<{ line: string; cells: number; width: number }>("local name=...; for _,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find(name,1,true) then return {line=l,cells=vim.api.nvim_strwidth(l),width=vim.api.nvim_win_get_width(0)} end end", maxName);
+  assert.ok(bounds.cells <= bounds.width, JSON.stringify(bounds));
+  assert.ok(bounds.line.trimEnd().endsWith(dated), bounds.line);
+  assert.match(bounds.line.slice(0, bounds.line.indexOf(dated)).trimEnd(), /…$/);
+  assert.ok(bounds.line.includes(maxName), bounds.line);
+
+  await render([{ ...launch, name: 'qa-wait', role: null }]);
+  await c.waitScreen(s => s.includes('qa-wait') && !s.includes('impl-wait'), 'placed launch removed');
+  await render([]);
+  await c.waitScreen(s => s.includes('nothing needs you') && !s.includes('qa-wait'), 'cancelled launch removed');
+  await render(); // An older hub omits the additive field.
+  assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
+});

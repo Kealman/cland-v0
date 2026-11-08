@@ -20,6 +20,12 @@ function age(since: string, now: number) {
   if (!Number.isFinite(minutes)) return '?';
   return minutes < 60 ? `${minutes} m` : minutes < 1440 ? `${Math.floor(minutes / 60)} h ${minutes % 60} m` : `${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
 }
+function waitingSince(since: string, now: number) {
+  const date = new Date(since), today = new Date(now);
+  const day = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return day(date) === day(today) ? time : `${day(date)} ${time}`;
+}
 function facts(entry: Entry) {
   switch (entry.kind) {
     case 'ask': return { glyph: '?', subject: entry.row.topic.item ?? entry.row.topic.title, text: entry.row.question, sender: entry.row.from, role: entry.row.fromRole };
@@ -167,6 +173,11 @@ function InboxArea(props: AreaContentProps) {
             {expanded.has(section.id) ? '▾' : '▸'} {section.rows.length - 5} more · oldest {age(section.rows.at(-1)!.row.since, now)}
           </button>}
         </Fold>
+      </div>)}
+      {(props.connection.inbox?.waitingLaunches ?? []).map(launch => <div key={launch.name} className={s.waitingLaunch} data-waiting-launch={launch.name} title={`${launch.name}${launch.role ? ` · ${launch.role}` : ''} · ${launch.pool} · ${launch.reason} · since ${launch.since}`}>
+        <span className={s.waitingIdentity} data-waiting-identity>{launch.name}{launch.role ? ` · ${launch.role}` : ''}</span>
+        <span className={s.waitingReason} data-waiting-reason> · {launch.pool} · {launch.reason}</span>
+        <time dateTime={launch.since}><span className={s.waitingFull}>{launch.since}</span><span className={s.waitingCompact}>{waitingSince(launch.since, now)}</span></time>
       </div>)}
       <button className={s.events} data-inbox-events title={eventError || "Events newer than the human’s shared last look"} onClick={() => props.navigate?.('Events')}>△ {summary?.events ?? '—'} new events · ⚠ {summary?.warnings ?? '—'}</button>
       <InboxArchive connection={props.connection} now={now} />

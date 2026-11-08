@@ -8,7 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { seedItem } from './items-fixture.ts';
 import { until } from '../../hub/test/until.ts';
-import type { Inbox } from '../../shared/wire/index.ts';
+import type { Inbox, WaitingLaunch } from '../../shared/wire/index.ts';
 
 async function inboxFixture(t: Parameters<typeof webFixture>[0], prepare?: (root: string) => Promise<void>) {
   const clock = new FakeClock(new Date('2026-10-23T12:00:00Z'));
@@ -941,6 +941,86 @@ test('a held approval recovery cannot overwrite a newer same-id TUI authorizatio
         if (frame.type === 'result' && frame.id === recoveryId) releaseRecovery = () => route.send(message);
         else route.send(message);
       });
+    });
+  });
+});
+
+test('waiting launches update status facts in place without needs-you and disappear on placement or cancel', async t => {
+  const fixture = await webFixture(t);
+  const since = new Date().toISOString();
+  const launch = { name: 'impl-wait', role: 'implementer', pool: 'agents', reason: 'no room', since };
+  let currentLaunches: WaitingLaunch[] | undefined;
+  let publish: (rows?: WaitingLaunch[]) => void = () => { throw new Error('socket not ready'); };
+  await fixture.pageCase(t, async page => {
+    const inbox = page.getByRole('list', { name: 'Inbox objects', exact: true });
+    await inbox.waitFor();
+    const count = await page.getByRole('button', { name: 'Inbox', exact: true }).textContent();
+    publish([launch, { ...launch, name: 'qa-wait', role: null }]);
+    const row = inbox.locator('[data-waiting-launch="impl-wait"]');
+    await row.waitFor({ timeout: 3000 });
+    assert.match(await row.innerText(), /impl-wait.*implementer.*agents.*no room/s);
+    assert.equal(await row.locator('time').getAttribute('datetime'), since);
+    const original = await row.elementHandle();
+    publish([{ ...launch, reason: 'host booting' }, { ...launch, name: 'qa-wait' }]);
+    await pageUntil(page, () => !!document.querySelector('[data-waiting-launch="impl-wait"]')?.textContent?.includes('host booting'), 'updated waiting reason');
+    assert.equal(await original!.evaluate(node => node === document.querySelector('[data-waiting-launch="impl-wait"]')), true);
+    assert.equal(await row.count(), 1);
+    assert.equal(await row.locator('button, input, [data-object-id]').count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Inbox', exact: true }).textContent(), count);
+    const desktopSize = page.viewportSize()!;
+    await resizePage(page, { width: 360, height: 740 });
+    publish([{ ...launch, reason: 'waiting for host 12345678-1234-1234-1234-123456789abc to boot' }, { ...launch, name: 'qa-wait' }]);
+    const reason = row.locator('[data-waiting-reason]');
+    await pageUntil(page, () => !!document.querySelector('[data-waiting-reason]')?.textContent?.includes('to boot'), 'production boot reason');
+    assert.equal(await row.locator('[data-waiting-identity]').innerText(), 'impl-wait · implementer');
+    const clipping = await reason.evaluate(node => ({ overflow: getComputedStyle(node).textOverflow, clipped: node.scrollWidth > node.clientWidth }));
+    assert.deepEqual(clipping, { overflow: 'ellipsis', clipped: true });
+    const compact = await page.evaluate(value => new Date(value).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }), since);
+    assert.equal(await row.locator('time').innerText(), compact);
+    assert.match(await row.getAttribute('title') ?? '', /to boot.*since/s);
+    assert.ok((await row.getAttribute('title'))!.includes(since));
+    const yesterday = new Date(Date.parse(since) - 86400000).toISOString();
+    publish([{ ...launch, since: yesterday }]);
+    await pageUntil(page, () => !!document.querySelector('[data-waiting-launch="impl-wait"] time')?.getAttribute('datetime')?.includes(new Date(Date.now() - 86400000).toISOString().slice(0, 10)), 'previous day launch');
+    assert.match(await row.locator('time').innerText(), /\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
+    const maxName = 'n'.repeat(24), maxRole = 'r'.repeat(24);
+    publish([{ ...launch, name: maxName, role: maxRole, since: yesterday }]);
+    const maxRow = inbox.locator(`[data-waiting-launch="${maxName}"]`);
+    await maxRow.waitFor();
+    const identity = maxRow.locator('[data-waiting-identity]');
+    assert.deepEqual(await identity.evaluate(node => ({ overflow: getComputedStyle(node).textOverflow, clipped: node.scrollWidth > node.clientWidth })), { overflow: 'ellipsis', clipped: true });
+    const visible = await maxRow.evaluate(node => {
+      const row = node.getBoundingClientRect(), time = node.querySelector('time')!.getBoundingClientRect();
+      return { timeInside: time.left >= row.left && time.right <= row.right, noOverflow: node.scrollWidth <= node.clientWidth, viewportInside: row.left >= 0 && row.right <= innerWidth };
+    });
+    assert.deepEqual(visible, { timeInside: true, noOverflow: true, viewportInside: true });
+    assert.match(await maxRow.locator('time').innerText(), /\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
+    await resizePage(page, desktopSize);
+    publish([{ ...launch, name: 'qa-wait' }]);
+    await maxRow.waitFor({ state: 'detached', timeout: 3000 });
+    assert.equal(await maxRow.count(), 0);
+    assert.equal(await row.count(), 0);
+    assert.equal(await inbox.locator('[data-waiting-launch="qa-wait"]').count(), 1);
+    publish([]);
+    await inbox.locator('[data-waiting-launch="qa-wait"]').waitFor({ state: 'detached', timeout: 3000 });
+    publish(); // Previous hubs omit waitingLaunches.
+    assert.equal(await inbox.locator('[data-waiting-launch]').count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Inbox', exact: true }).textContent(), count);
+  }, async page => {
+    await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      // Keep delayed real startup inbox snapshots consistent with the scripted
+      // wire state; they must not erase a newer injected waiting launch.
+      server.onMessage(message => {
+        const frame = JSON.parse(String(message));
+        const inbox = frame.type === 'inbox' ? frame.inbox : frame.type === 'snapshot' && frame.domain === 'inbox' ? frame.value : undefined;
+        if (inbox && currentLaunches) inbox.waitingLaunches = currentLaunches;
+        route.send(JSON.stringify(frame));
+      });
+      publish = rows => {
+        currentLaunches = rows;
+        route.send(JSON.stringify({ type: 'inbox', inbox: { asks: [], approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 0, ...(rows ? { waitingLaunches: rows } : {}) } }));
+      };
     });
   });
 });

@@ -321,7 +321,7 @@ function M.set_inbox(inbox)
     return type(x) == 'table' and x or {}
   end
   local archive = type(inbox.archive) == 'table' and inbox.archive or M.S.inbox.archive
-  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), pairings = list(inbox.pairings), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), archive = archive, archiveToday = inbox.archiveToday or 0 }
+  M.S.inbox = { asks = list(inbox.asks), approvals = list(inbox.approvals), pairings = list(inbox.pairings), plans = list(inbox.plans), requests = list(inbox.requests), messages = list(inbox.messages), waiting = list(inbox.waiting), waitingLaunches = list(inbox.waitingLaunches), archive = archive, archiveToday = inbox.archiveToday or 0 }
   if type(inbox.needsYou) == 'number' then
     M.S.needs_you = inbox.needsYou
   end

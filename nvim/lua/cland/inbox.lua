@@ -220,6 +220,16 @@ end
 function M.render(c, full, buf)
   if state.needs_you() == 0 then c:add({ { ' ✓ nothing needs you', 'ClandGreen' } }) end
   M.render_sections(c, buf)
+  for _, launch in ipairs(state.S.inbox.waitingLaunches or {}) do
+    local role = type(launch.role) == 'string' and (' · ' .. launch.role) or ''
+    local since = launch.since
+    if c.width < 100 then
+      local epoch = require('cland.thread').epoch(since)
+      local today = os.date('%Y-%m-%d', math.floor(local_clock.now() / 1000))
+      since = epoch and os.date(os.date('%Y-%m-%d', epoch) == today and '%H:%M' or '%Y-%m-%d %H:%M', epoch) or '--:--'
+    end
+    c:add({ { ' ' .. launch.name .. role .. ' · ' .. launch.pool .. ' · ' .. launch.reason, 'ClandDim' } }, { { since .. ' ', 'ClandDim' } })
+  end
   c:add({ { require('cland.events').inbox_line(), 'ClandPlanChange' } }, nil, { events = true })
   c:add({ { ' ' .. (state.S.ui.inbox_archive and '▾' or '▸') .. ' archive · ' .. (state.S.inbox.archiveToday or 0) .. ' rows left today · A', 'ClandDim' } })
   if state.S.ui.inbox_archive then
@@ -306,6 +316,7 @@ function M.start_clock(clock)
     for _, kind in ipairs({ 'asks', 'approvals', 'pairings', 'plans', 'requests', 'messages' }) do
       for _, r in ipairs(state.S.inbox[kind] or {}) do signature[#signature + 1] = M.age(since(r)) end
     end
+    if #(state.S.inbox.waitingLaunches or {}) > 0 then signature[#signature + 1] = os.date('%Y-%m-%d', math.floor(local_clock.now() / 1000)) end
     local current = table.concat(signature, '|')
     if current ~= previous then previous = current; state.changed() end
   end))

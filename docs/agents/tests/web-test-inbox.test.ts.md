@@ -52,3 +52,21 @@ own action still shows `read` immediately, and the subsequent departure supplies
 the authoritative reason and timestamp. Retain both the native frame receipts
 and the final DOM time/archive assertions. Pause the browser clock before
 navigation so incidental thread read marks cannot remove the target first.
+
+T-1754's `waiting launches update status facts in place without needs-you and disappear on placement or cancel`
+case injects the existing public inbox frame at the WebSocket boundary in the
+sealed browser fixture. It checks session, role, pool, reason and since, keeps
+the identical DOM node on a reason update, preserves the Inbox count, and removes
+each departed launch without an outcome card. It also delivers an older frame
+without `waitingLaunches`. No provider or remote host is used.
+
+The waiting-launch case resizes through the shell's phone boundary to 360 pixels
+and sends a production-length UUID boot reason. With ordinary names the
+reason has actual overflow and CSS ellipsis, and the right time is HH:MM today
+or YYYY-MM-DD HH:MM on earlier days. Below 900 pixels of Inbox container width
+the compact time is used; wider containers show ISO. A second control uses
+maximum 24-character session and role names with a previous-day time. Pool/reason
+shrink first, then identity ellipsizes; actual row/time rectangles must remain
+inside the viewport with no horizontal overflow. The existing native title
+exposes the full facts. The test restores the original viewport before comparing
+the desktop Inbox count again.

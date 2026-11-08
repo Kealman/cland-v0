@@ -14347,6 +14347,20 @@
       "added": "2026-11-08",
       "expires": "2026-11-13",
       "reason": "T-1746 macOS arm64 local Node24.21.0 green samples [2.960478458, 2.349970333, 3.092895792]s, includes scratch setup, native fake SSH/provider creation, clone, watchdog, fake Codex placement and joined cleanup; excludes driver startup. Linux 4.9486332672s is an unexecuted 1.6x projection; 8s exceeds 1.5x projection. No browser or real provider. Report-mode duration gate. Invalid sandbox fixture runs excluded."
+    },
+    "web/test/inbox.test.ts::waiting launches update status facts in place without needs-you and disappear on placement or cancel": {
+      "seconds": 24,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-15",
+      "reason": "T-1754 narrow-panel rework: macOS Node24.21.0 isolated pinned Headless Shell green samples [3.120013833, 1.929955083, 9.907257709]s (last with max-length identity bounds), including fixture setup, desktop/narrow/desktop resize receipts, row/date assertions and joined browser/hub cleanup; excludes test-driver startup. Linux 15.8516123344s is an unexecuted 1.6x projection of worst macOS sample; 24s is about 1.5x that projection. No real provider or stress. Report-mode duration gate unchanged."
+    },
+    "nvim/test/inbox-sections.test.ts::waiting launches render facts and replace reasons without needs-you or departure rows": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-15",
+      "reason": "T-1754 maximum-identity narrow panel: macOS Node24.21.0 green samples [0.601381125, 3.689732875]s include isolated Neovim/stub setup, 64-column real panel assertions, previous-day date, max24-character name/role ellipsis and joined cleanup; exclude driver startup. Linux 5.9035726s is an unexecuted 1.6x projection; 9s is about 1.5x projection. Host load observed 9.59 after final sample, no artificial stress. Report-mode duration gate unchanged."
     }
   }
 }

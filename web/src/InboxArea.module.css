@@ -1,4 +1,4 @@
-.rows { padding: 8px 12px; }
+.rows { padding: 8px 12px; container-type: inline-size; }
 .row { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 4px; text-align: left; background: none; }
 .row:hover { background: var(--row-hover); }
 .row[aria-pressed="true"] { background: var(--selection); }
@@ -63,3 +63,13 @@
 .area[data-phone] [data-composer] { padding: 8px 0 0; margin-top: 8px; white-space: normal; }
 .area[data-phone] [data-composer] textarea { min-height: 44px; }
 .area[data-phone] .events, .area[data-phone] .archiveToggle { min-height: 44px; }
+
+.waitingLaunch { display: flex; align-items: baseline; gap: 6px; padding: 8px 12px; color: var(--muted); }
+.waitingIdentity { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.waitingLaunch time { flex: none; white-space: nowrap; }
+.waitingReason { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.waitingCompact { display: none; }
+@container (width < 900px) {
+  .waitingFull { display: none; }
+  .waitingCompact { display: inline; }
+}
