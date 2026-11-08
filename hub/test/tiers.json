@@ -613,6 +613,7 @@
     "hub/test/session-launch.test.ts": "T2",
     "hub/test/session-model.test.ts": "T2",
     "hub/test/session-native-lifecycle.test.ts": "T3",
+    "hub/test/session-pool-placement.test.ts": "T2",
     "hub/test/session-resume-component.test.ts": "T2",
     "hub/test/session-resume-lifecycle.test.ts": "T3",
     "hub/test/session-resume.test.ts": "T2",

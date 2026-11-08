@@ -42,12 +42,13 @@ test('C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list s
  host.freePort=async()=>12345;
  const spawn=host.spawn.bind(host);
  host.spawn=(command,options)=>spawn({...command,env:{...command.env,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,'session.sock'),FAKE_OPENCODE_TURN_MS:'30'}},options);
+ await writeFile(join(f.root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\n');
  const ui=await connectUi(t,f.hub.discovery,'cli');
  const table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
  let cancelObservation=false,observed:Promise<ReturnType<typeof table.get>>|undefined;
  f.beforeStop(async()=>{cancelObservation=true;await observed?.catch(()=>null);});
  observed=eventually('created OpenCode native receipt persisted',()=>{if(cancelObservation)return null;const row=table.get('created-worker');return row?.status==='running'&&row.pid&&row.harnessSessionId?row:undefined;},SETUP_MS);
- const [worker,launch]=await Promise.all([observed,ui.request({type:'session.launch',name:'created-worker',harness:'opencode',host:record.id,cwd:home,model:'opencode/fake-paid'},SETUP_MS)]);
+ const [worker,launch]=await Promise.all([observed,ui.request({type:'session.launch',name:'created-worker',harness:'opencode',role:'implementer',cwd:home,model:'opencode/fake-paid'},SETUP_MS)]);
  assert.equal(launch.ok,true,launch.error);assert.ok(worker);
  assert.equal(worker.host,record.id);assert.equal(await host.alive(worker),true);
  const listed=await cland(f.root,'host','list');assert.equal(listed.code,0,listed.stderr);

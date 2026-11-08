@@ -435,3 +435,6 @@ refused by the same policy used for explicit host placement, before a settings
 write. Invalid file edits keep the last good roles and block new role launches
 until corrected. Older hub role-list replies omit `pool`; the CLI displays
 `local` for those replies.
+
+Pool launch admission and capacity behavior are described in
+[Session pool placement](session-pool-placement.md).

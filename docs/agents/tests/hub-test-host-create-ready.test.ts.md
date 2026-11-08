@@ -44,3 +44,9 @@ The mismatched-key control also checks that gate-only fake membership never
 reaches the shared hub environment before registration. Gate and runtime-delivery
 commands receive private membership; runtime admission gets it only after the
 intended HostRecord is persisted.
+
+T-1743 extends C1/C2's existing native receipt case: it writes Implementer's
+agents pool after creation, launches without an explicit host and asserts the
+same created Host in the persisted process row. All native stop, liveness,
+restart and registration assertions remain. It proves the create-to-pool-launch
+seam without a second native fixture or real provider access.

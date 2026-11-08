@@ -14,7 +14,7 @@ const flag = (args: string[], name: string): string | undefined => {
 };
 
 export const sessionLine = (p: HarnessProcessView): string =>
-  `${withRole(p.name, p.role)}  ${p.harness}  ${p.status}  [${p.stateReason ?? p.state}]${p.model ? `  ${p.model}` : ''}${p.account ? `  account ${p.account}` : ''}  pid ${p.pid ?? '?'}${p.attach ? `\n    attach: ${p.attach}` : ''}`;
+  `${withRole(p.name, p.role)}  ${p.harness}  ${p.status}  [${p.stateReason ?? p.state}]${p.model ? `  ${p.model}` : ''}${p.account ? `  account ${p.account}` : ''}  pid ${p.pid ?? '?'}  host ${p.host ?? 'local'}${p.attach ? `\n    attach: ${p.attach}` : ''}`;
 
 export async function runSession(args: string[], cwd: string = process.cwd()): Promise<number> {
   const [sub, ...rest] = args;

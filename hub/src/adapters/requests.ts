@@ -95,10 +95,11 @@ export async function answerSession(sessions: Sessions | undefined, frame: Sessi
           ...(frame.effort !== undefined ? { effort: frame.effort } : {}),
           ...(frame.brief !== undefined ? { brief: frame.brief } : {}),
         };
-        sessions.validateLaunchHost(request);
-        if (frame.item === undefined) return ok({ process: await sessions.launch(request, resumed, authorize) });
-        if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
-        return ok(await worktrees.launch(sessions, { ...request, item: frame.item }, resumed, authorize));
+        return await sessions.withLaunchPlacement({ ...request, ...(frame.item !== undefined ? { item: frame.item } : {}) }, async placed => {
+          if (frame.item === undefined) return ok({ process: await sessions.launch(placed, resumed, authorize) });
+          if (!worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
+          return ok(await worktrees.launch(sessions, { ...placed, item: frame.item }, resumed, authorize));
+        }, resumed, authorize);
       }
       case 'session.list': {
         const { processes, rows } = sessions.listRows(frame.archived ?? false);

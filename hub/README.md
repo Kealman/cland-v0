@@ -107,4 +107,5 @@ reservations and renewals obey both the shared daily cap and hosts sub-cap; UTC
 settled totals are available per category and pool. See [spend accounting](../docs/hub/running.md#leases-cleanup-and-spend)
 for the additive API and confirmed-absence settlement boundary.
 
+- [Session pool placement](../docs/hub/session-pool-placement.md): role pool selection, capacity promises, explicit pins and session Host facts.
 - [Host leases and renewal ownership](../docs/hub/host-leases.md)

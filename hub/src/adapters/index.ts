@@ -33,12 +33,12 @@ export type AdapterFactory = (host: AdapterHost, clock: Clock) => HarnessAdapter
 
 export type ProjectSessions = { sessions: Sessions; close: () => void | Promise<void> };
 
-export function projectSessions(options: { hosts?: readonly Host[]; transportClock?: Clock; openDatabase?: (path: string) => DatabaseSync; core: HubCore; root: string; db?: string; adapters?: AdapterFactory[]; discoveryFile: string; log: LogFn; env?: NodeJS.ProcessEnv; tracker?: Tracker | undefined; cleanup?: ProjectConfig['sessions'] | undefined }): ProjectSessions {
+export function projectSessions(options: { hostPools?: () => import('../host/pools.ts').HostPools; hosts?: readonly Host[]; transportClock?: Clock; openDatabase?: (path: string) => DatabaseSync; core: HubCore; root: string; db?: string; adapters?: AdapterFactory[]; discoveryFile: string; log: LogFn; env?: NodeJS.ProcessEnv; tracker?: Tracker | undefined; cleanup?: ProjectConfig['sessions'] | undefined }): ProjectSessions {
   const env = options.env ?? process.env;
   const table = new ProcessTable(options.db, options.core.clock, options.openDatabase);
   const hosts = [...(options.hosts ?? []), ...(env.CLAND_TEST_HOSTS ?? '').split(',').map(name => name.trim()).filter(name => name && name !== 'local').map(name => testHost(name, options.log))];
   const pushTrustMs = positive(env.CLAND_PUSH_TRUST_MS);
-  const sessions = new Sessions({ ...(options.transportClock ? { transportClock: options.transportClock } : {}), env, hosts, core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
+  const sessions = new Sessions({ ...(options.transportClock ? { transportClock: options.transportClock } : {}), env, hosts, ...(options.hostPools ? { hostPools: options.hostPools } : {}), core: options.core, table, root: options.root, log: options.log, tracker: options.tracker, cleanup: options.cleanup, ...(pushTrustMs ? { pushTrustMs } : {}) });
   const host = sessions.host({ discoveryFile: options.discoveryFile, node: process.execPath, cli: CLI_ENTRY, spoke: SPOKE_ENTRY });
   // Factories may own resources before registration. Keep ownership through every failure boundary.
   const unregistered = new Set<HarnessAdapter>();

@@ -1,3 +1,5 @@
+import { PoolRuntime } from '../host/pool-runtime.ts';
+import type { HostPools } from '../host/pools.ts';
 import { hostRelaunchIntentKey, hostRelaunchWarningKey, type HostRelaunchIntent, type HostRelaunchCompletion } from '../host/relaunch-state.ts';
 import { tunnelStatuses, dropHostForwardsLocal, localForwardOwner } from '../transport/transport.ts';
 import { AGENT_LAUNCH_DIRECTORY } from '../host/agent/processes.ts';
@@ -50,7 +52,8 @@ import { durationMs } from '../duration.ts';
 export type SignalFrame = { session?: string; sessionId?: string; launch?: string; event: string; at?: number; payload?: Record<string, unknown> };
 
 /** `item`: the Lead’s node, or the item whose task worktree `cwd` is (set by `TaskWorktrees.launch`, `src/hub/worktrees.ts`). */
-export type LaunchRequest = { name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
+const placedLaunch = Symbol('placed launch');
+export type LaunchRequest = { [placedLaunch]?: { active: boolean; validate?: () => void; reuse?: string }; name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
 type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection };
 
@@ -74,6 +77,7 @@ export type SessionsOptions = {
   /** Native cleanup retries use real time by default; isolated fixtures can own their schedule. */
   recoveryClock?: Clock;
   hosts?: readonly Host[];
+  hostPools?: () => HostPools;
   env?: NodeJS.ProcessEnv;
   core: HubCore;
   table: ProcessTable;
@@ -103,6 +107,8 @@ export class Sessions {
   readonly #recoveryClock: Clock;
   readonly #transportClock: Clock;
   readonly #hosts: Map<string, Host>;
+  readonly #poolRuntime: PoolRuntime | null;
+  readonly #placementAdmissions = new Set<string>();
   readonly #cutHosts = new Set<string>();
   readonly #settlingHosts = new Map<string, Promise<HostSettlement>>();
 
@@ -415,16 +421,23 @@ export class Sessions {
     return role === 'implementer' && this.#core.crew?.get().crew[role]?.policy === 'pool';
   }
 
+  #reuseCandidate(request: AccountLaunchRequest, role: string | null, acceptsHost: (host: string) => boolean = host => host === (request.host ?? 'local')): HarnessProcess | undefined {
+    const implementer = this.#implementerPool(role);
+    if (!request.item || (!implementer && !this.retainedPool(role))) return undefined;
+    const cwd = resolve(this.#root, request.cwd ?? '.');
+    const planned = request[placedLaunch]?.reuse;
+    return this.#table.running().find(p => (!this.#reusing.has(p.sessionId) || planned === p.sessionId)
+      && (!planned || planned === p.sessionId) && acceptsHost(p.host ?? 'local')
+      && request.harness === p.harness && (p.account ?? null) === request.resolvedAccount.account
+      && this.#reuseEligible(p, role, implementer ? p.cwd : cwd));
+  }
+
   /** Verifiers keep their root process; Implementers restart in the next task worktree. */
   async #reuse(request: AccountLaunchRequest, role: string | null, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView | null> {
     const implementer = this.#implementerPool(role);
     if (!request.item || (!implementer && !this.retainedPool(role))) return null;
     const cwd = resolve(this.#root, request.cwd ?? '.');
-    const candidate = this.#table.running().find(p => !this.#reusing.has(p.sessionId)
-      && (p.host ?? 'local') === (request.host ?? 'local')
-      && request.harness === p.harness
-      && (p.account ?? null) === (request.resolvedAccount.account)
-      && this.#reuseEligible(p, role, implementer ? p.cwd : cwd));
+    const candidate = this.#reuseCandidate(request, role);
     if (!candidate) return null;
     this.#reusing.add(candidate.sessionId);
     try {
@@ -433,6 +446,7 @@ export class Sessions {
         return await this.#restartPool(candidate, request, role, cwd, brief, resumed, authorize);
       return resumed(() => {
         authorize();
+        request[placedLaunch]?.validate?.();
         this.#checkRolesLaunch(role);
         const current = this.#table.bySessionId(candidate.sessionId);
         if (!current || !this.retainedPool(role) || !this.#reuseEligible(current, role, cwd)) throw new Error('idle pool member changed during admission; retry');
@@ -488,6 +502,7 @@ export class Sessions {
 
   #reuseEligible(p: HarnessProcess, role: string | null, cwd: string, checkLifecycle = true): boolean {
     return this.#hosts.has(p.host ?? 'local') && p.status === 'running' && p.role === role && p.cwd === cwd
+      && !this.#placementAdmissions.has(p.name)
       && !!this.#core.connectionOf(p.sessionId) && this.#core.sessionState(p.sessionId) === 'idle'
       && !this.#core.sessionHolds(p).length && !this.#core.sessionPending(p)
       && (!checkLifecycle || !this.#lifecycle.has(p.sessionId))
@@ -539,7 +554,7 @@ export class Sessions {
   }
 
   /** The spawn-to-row gap is protected by these reservations, including relaunches. */
-  lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0 || this.#pendingStops.size > 0; }
+  lifecyclePending(): boolean { return this.#placementAdmissions.size > 0 || this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0 || this.#pendingStops.size > 0; }
 
   /** Register an opened Host with the same authority fence as startup Hosts. */
   addHost(host: Host): void {
@@ -558,6 +573,17 @@ export class Sessions {
     this.#hosts.delete(name);
   }
 
+  #capacityProcesses(): Array<{ key: string; host?: string; harness: string }> {
+    const generations = new Map<string, HarnessProcess>();
+    for (const p of this.#table.running()) generations.set(hostGenerationKey(p), p);
+    // The failed-launch owner survives quarantine and restart until native stop is confirmed.
+    for (const entry of this.#pendingStops.values()) if (!entry.stages.stopped && !entry.hostRebooted) generations.set(hostGenerationKey(entry.process), entry.process);
+    for (const host of this.#hosts.keys()) if (host !== 'local') {
+      for (const retained of this.#table.retainedHostGenerations(host)) if (retained.nativeClosure === 'unknown' && !retained.hostRebooted) generations.set(retained.generation, retained.process);
+    }
+    return [...generations].map(([key, p]) => ({ key, host: p.host ?? 'local', harness: p.harness }));
+  }
+
   constructor(options: SessionsOptions) {
     this.#recoveryClock = options.recoveryClock ?? realClock;
     this.#transportClock = options.transportClock ?? realClock;
@@ -567,6 +593,8 @@ export class Sessions {
     for (const host of options.hosts ?? []) this.addHost(host);
     this.#core = options.core;
     this.#table = options.table;
+    this.#poolRuntime = options.hostPools ? new PoolRuntime(options.hostPools, this.#core.store.hosts, id => this.#hosts.has(id) && !this.#settlingHosts.has(id) && !this.#cutHosts.has(id), () => this.#capacityProcesses()) : null;
+
     this.#core.useSessionHost(name => this.#table.get(name)?.host);
     this.#root = options.root;
     this.#pushTrustMs = options.pushTrustMs ?? 15_000;
@@ -882,6 +910,7 @@ export class Sessions {
     return {
       ...(relaunchWarning ? {warning:relaunchWarning} : {}),
       name: p.name,
+      ...((p.host ?? 'local') === 'local' ? {} : { host: p.host }),
       harness: p.harness,
       account: p.account ?? null,
       role: p.role,
@@ -1357,9 +1386,64 @@ export class Sessions {
     return resumed(() => ({ ...request, harness, resolvedAccount }));
   }
 
+  /** Place before checkout creation; nested launch calls retain this exact admission. */
+  async withLaunchPlacement<T>(request: LaunchRequest, operation: (placed: LaunchRequest) => Promise<T>, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<T> {
+    if (!this.#poolRuntime || request[placedLaunch]?.active) return operation(request);
+    const role = request.role ?? this.#core.store.roleOf(request.name);
+    const validateRole = () => {
+      if (request.role == null && this.#core.store.roleOf(request.name) !== role) throw new Error(`session "${request.name}" changed role while launching; retry the launch`);
+    };
+    const admission = resumed(() => {
+      authorize();
+      // Item ownership is checked by TaskWorktrees before session-name admission.
+      if (request.item) return null;
+      if (this.#placementAdmissions.has(request.name) || this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
+      const existing = this.#table.get(request.name);
+      if (this.#crewAdmissions.has(request.name) || (existing && this.#reusing.has(existing.sessionId))) throw new Error(`session "${request.name}" is reserved for a pool handoff`);
+      this.#checkCrew(request.name, role);
+      const ticket = role === null ? null : this.#core.admitRole(request.name, role);
+      this.#placementAdmissions.add(request.name);
+      if (role !== null) this.#crewAdmissions.set(request.name, role);
+      return ticket;
+    });
+    let earlyHeld = !request.item;
+    const releaseAdmission = () => {
+      admission?.release();
+      if (!earlyHeld) return;
+      earlyHeld = false;
+      this.#placementAdmissions.delete(request.name);
+      if (role !== null) this.#crewAdmissions.delete(request.name);
+    };
+    let reservation: { host: string; validate(): void; release(): void } | undefined;
+    const marker: { active: boolean; validate?: () => void; reuse?: string } = { active: true };
+    try {
+      if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+      resumed(() => { authorize(); validateRole(); admission?.validate(); this.#checkRolesLaunch(role); });
+      const effective = await this.#accountRequest(request, role, resumed);
+      const pool = resumed(() => role ? this.#core.roles?.get().get(role)?.launch.pool ?? 'local' : 'local');
+      reservation = resumed(() => {
+        authorize(); validateRole(); admission?.validate();
+        if (request.host !== undefined) this.validateLaunchHost(request);
+        if (request.host === 'local' || (request.host === undefined && pool === 'local')) return { host: 'local', validate() {}, release() {} };
+        const candidate = this.#reuseCandidate(effective, role, host => request.host !== undefined
+          ? host === request.host : this.#poolRuntime!.member(host, pool));
+        const held = this.#poolRuntime!.reserve(pool, effective.harness!, candidate?.host ?? request.host, candidate ? hostGenerationKey(candidate) : undefined);
+        if (candidate) { marker.reuse = candidate.sessionId; this.#reusing.add(candidate.sessionId); }
+        return held;
+      });
+      const validateHost = reservation.validate;
+      marker.validate = () => { validateRole(); validateHost(); };
+      const placed = { ...effective, role, host: reservation.host, [placedLaunch]: marker };
+      resumed(() => { this.validateLaunchHost(placed); releaseAdmission(); });
+      return await operation(placed);
+    } finally { resumed(() => { marker.active = false; reservation?.release(); releaseAdmission(); if (marker.reuse) this.#reusing.delete(marker.reuse); }); }
+  }
+
   async launch(request: LaunchRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcessView> {
+    if (this.#poolRuntime && !request[placedLaunch]?.active) return this.withLaunchPlacement(request, placed => this.launch(placed, resumed, authorize), resumed, authorize);
     const role = resumed(() => {
       authorize();
+      request[placedLaunch]?.validate?.();
       this.validateLaunchHost(request);
       const refusal = nameRefusal(request.name, new Set(['human']));
       if (refusal) throw new Error(refusal);
@@ -1377,7 +1461,10 @@ export class Sessions {
     const effective = await this.#accountRequest(request, role, resumed);
     resumed(() => this.#core.checkAccountLimit(effective.resolvedAccount.account ?? `default:${effective.harness}`));
     const reused = await resumed(() => this.#reuse(effective, role, resumed, authorize));
-    return resumed(() => reused ?? this.#launchNew(effective, role, resumed, authorize));
+    return resumed(() => {
+      if (!reused && request[placedLaunch]?.reuse) throw new Error('idle pool member changed during placement; retry');
+      return reused ?? this.#launchNew(effective, role, resumed, authorize);
+    });
   }
 
   /** heldSlot is used only after an exact cross-host release receipt, while its caller owns the session slot. */
@@ -1390,7 +1477,7 @@ export class Sessions {
     if ([...this.#pendingStops.values()].some(entry => entry.process.name === request.name)) throw new Error(`failed launch of "${request.name}" is still supervised; cleanup is pending`);
     const reserved = this.#core.nameReservation(request.name);
     if (reserved) throw new Error(reserved);
-    if (this.#launching.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
+    if (this.#launching.has(request.name) || this.#placementAdmissions.has(request.name)) throw new Error(`session "${request.name}" is being launched`);
     if (this.#crewAdmissions.has(request.name)) throw new Error(`session "${request.name}" is reserved for a pool handoff`);
     const existingIds = this.#knownLaunchIds();
     const defaults = role ? this.#core.roles?.get().get(role)?.launch : null;
@@ -1453,7 +1540,7 @@ export class Sessions {
           if (!info || info.refusal !== null) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role) : null;
           if (this.#env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
-          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); this.#checkRolesLaunch(role); this.#checkCrew(request.name, role); }, resumeConversation, retainedId, completion);
+          return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); request[placedLaunch]?.validate?.(); this.#checkRolesLaunch(role); this.#checkCrew(request.name, role); }, resumeConversation, retainedId, completion);
         } catch (err) { abort(); throw err; }
       });
     } catch (err) {
