@@ -127,9 +127,10 @@
       "A-17334",
       "A-17358",
       "A-17457",
-      "A-17633"
+      "A-17633",
+      "A-17809"
     ],
-    "commit": "6a533be22043e32dd1cbb7510c90b7dfefa380f8"
+    "commit": "550799f042218fde94b0eaf98c5ef27f959018ab"
   },
   "budget": {
     "testSeconds": 5,
@@ -3710,6 +3711,26 @@
     "hub/test/host-spend.test.ts": {
       "seconds": 0.158528,
       "tests": 8
+    },
+    "hub/test/host-watchdog-drain.test.ts": {
+      "seconds": 0.001789,
+      "tests": 2
+    },
+    "hub/test/host-watchdog-identity.test.ts": {
+      "seconds": 0.005441,
+      "tests": 16
+    },
+    "hub/test/host-watchdog.test.ts": {
+      "seconds": 61.144424,
+      "tests": 2
+    },
+    "hub/test/waiting-launch-store.test.ts": {
+      "seconds": 0.004751,
+      "tests": 1
+    },
+    "hub/test/waiting-launches-owner.test.ts": {
+      "seconds": 0.002326,
+      "tests": 1
     }
   },
   "tests": {
@@ -10894,7 +10915,41 @@
     "hub/test/roles-harnesses.test.ts::role pool validation shares pool-name syntax and the local-only role policy": 0.001205,
     "hub/test/roles-harnesses.test.ts::role pools default to local and accept named pools for built-in and custom workers": 0.000641,
     "hub/test/tcp-listener-census.test.ts::fixture census includes launch roots and every descendant but excludes sibling socket holders": 0.000913,
-    "hub/test/transport-forwards.test.ts::cleanup rejection still joins fixture and decoy before removing their roots": 0.709921
+    "hub/test/transport-forwards.test.ts::cleanup rejection still joins fixture and decoy before removing their roots": 0.709921,
+    "hub/test/host-contract-coverage.test.ts::optional capacity contract covers absence, report delivery and unsubscribe with positive controls": 0.000912,
+    "hub/test/host-create-ready.test.ts::T-1746 waiting pool launch creates a leased watchdog host and is placed": 3.22548,
+    "hub/test/host-provision-gate.test.ts::acquire refused pins cancellation authority without confusing an unknown outcome": 0.067892,
+    "hub/test/host-provision-gate.test.ts::acquire unknown pins cancellation authority without confusing an unknown outcome": 0.052452,
+    "hub/test/host-provision-records.test.ts::active inventory reads only non-terminal rows despite retained history": 0.657122,
+    "hub/test/host-provision-records.test.ts::idle pool close stays synchronous for construction rollback": 0.005853,
+    "hub/test/host-provision-records.test.ts::minimum holding selects only the configured number of ready hosts in that pool": 0.001571,
+    "hub/test/host-provision-records.test.ts::occupied decodes only unreleased anomalies after 10000 released or destroyed records": 0.679241,
+    "hub/test/host-provision-records.test.ts::occupied keeps unresolved failed acquisitions and frees only positive receipts": 0.002558,
+    "hub/test/host-provision-records.test.ts::occupied rejects relative receipt dates exactly like host spend": 0.001174,
+    "hub/test/host-provision-records.test.ts::state observers see committed readiness and departure, isolate failures and unsubscribe": 0.001485,
+    "hub/test/host-spend.test.ts::never-acquired receipts cancel at zero while unknown outcomes retain reservation and acquired lifetimes keep minimum": 0.018506,
+    "hub/test/host-watchdog-drain.test.ts::fixture drain accepts positive closure after fallback cleanup while preserving the original failure": 0.000232,
+    "hub/test/host-watchdog-drain.test.ts::fixture drain attempts later owners and census after a failed stop, retaining an unknown root": 0.001557,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured address": 0.000195,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured architecture": 0.000235,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured badDate": 0.000085,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured birth": 0.000759,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured blankRead": 0.000083,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured earlyDate": 0.000064,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured empty": 0.000145,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured host": 0.000173,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured machine": 0.000144,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured missingKey": 0.000177,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured provider": 0.00012,
+    "hub/test/host-watchdog-identity.test.ts::absence receipt fences invalid captured root": 0.000306,
+    "hub/test/host-watchdog-identity.test.ts::complete absence receipt retains the exact captured acquisition": 0.000111,
+    "hub/test/host-watchdog-identity.test.ts::host watchdog stop respects captured birth: null": 0.000467,
+    "hub/test/host-watchdog-identity.test.ts::host watchdog stop respects captured birth: original": 0.002162,
+    "hub/test/host-watchdog-identity.test.ts::host watchdog stop respects captured birth: reused": 0.000215,
+    "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": 30.095509,
+    "hub/test/host-watchdog.test.ts::host create arms a watchdog which deletes its machine after the hub stops": 31.048915,
+    "hub/test/waiting-launch-store.test.ts::process publication and wait removal commit together before observers": 0.004751,
+    "hub/test/waiting-launches-owner.test.ts::an add in the completed-pass finalizer window receives its own placement pass": 0.002326
   },
   "allow": {
     "hub/test/host-watchdog.test.ts": {
