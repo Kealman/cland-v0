@@ -116,4 +116,5 @@ Waiting-launch restart ownership: [durable waits](../docs/hub/waiting-launches.m
 
 - [Pool scale-up](../docs/hub/pool-scaling.md): minimum maintenance, waiting launches and live limits.
 
+- [Host restart recovery](../docs/hub/host-restart.md): provider reconciliation, restored renewal and watchdog ownership, and missing-host session exits.
 - [Host status and explicit stop](../docs/hub/host-status-stop.md): weighted slots, UTC spend and confirmed deletion.

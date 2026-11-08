@@ -9982,7 +9982,7 @@
     "hub/test/host-registry.test.ts::legacy process database migrates host in place and persists named hosts": 0.023544,
     "hub/test/host-registry.test.ts::real project hub registers only opted-in test hosts and keeps local session frames unchanged": 0.452829,
     "hub/test/host-registry.test.ts::test Host logs every operation, returns synthetic Linux identities and refuses native work": 0.001775,
-    "hub/test/host-registry.test.ts::without the test-host environment only local is registered; unknown rows stay unknown": 0.034061,
+    "hub/test/host-registry.test.ts::without the test-host environment only local is registered; unknown host rows exit without native authority": 0.034061,
     "hub/test/hub-lock-heartbeat.test.ts::heartbeat write failure logs and retries next beat without stopping": 0.118176,
     "hub/test/hub-lock-heartbeat.test.ts::replacement token logs lost lock and joins normal shutdown without removing successor": 0.125598,
     "hub/test/hub-lock-heartbeat.test.ts::serving hub replaces whole heartbeat each interval and fences foreign contenders across lapses": 0.450486,
@@ -11187,6 +11187,13 @@
     "hub/test/waiting-launch.test.ts::waiting inbox status is outside needs-you and cancellation frees the reserved name": 0.144835
   },
   "allow": {
+    "hub/test/host-restart.test.ts::restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership": {
+      "seconds": 31,
+      "owner": "C-216",
+      "added": "2026-11-08",
+      "expires": "2026-11-15",
+      "reason": "T-1752 two native fake SSH hosts, OpenCode sessions, provider deletion during hub downtime and two joined restarts. macOS arm64 Node24.21.0 local samples 7.354509917s at 731bced40 and 12.637017334s at 168179565, including fixture setup and cleanup. Linux 20.2192277344s is an unexecuted 1.6x projection of the worst macOS sample. Allowance ceil(1.5 x projection)=31s. No live provider or browser; report mode."
+    },
     "hub/test/host-watchdog.test.ts": {
       "file": true,
       "seconds": 92,

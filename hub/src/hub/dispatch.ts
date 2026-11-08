@@ -562,14 +562,25 @@ export class Dispatcher {
     return work;
   }
 
-  useSessions(sessions: Sessions | undefined): void {
+  async restoreSessions(sessions: Sessions, restoreHosts: () => Promise<void>): Promise<void> {
+    this.useSessions(sessions, false);
+    await restoreHosts();
+    this.#startPoolScaling();
+  }
+
+  #startPoolScaling(): void {
+    const sessions=this.#sessions;
+    if (sessions && this.hostOwner && this.#options.control) sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize));
+  }
+
+  useSessions(sessions: Sessions | undefined, startScaling = true): void {
     this.#sessions = sessions;
     sessions?.waitingAdmission(async (request,authorize) => {
       if (!request.item) return authorize;
       if (!this.#worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
       return this.#worktrees.admitWaiting({...request,item:request.item},authorize);
     });
-    if (sessions && this.hostOwner && this.#options.control) sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize));
+    if (startScaling) this.#startPoolScaling();
     this.core.useSessionRows(() => this.#sessions?.list() ?? []);
     this.#processWork.clear();
     for (const process of sessions?.list() ?? []) this.#processWork.set(process.sessionId, JSON.stringify([process.holds ?? [], process.pending ?? null]));

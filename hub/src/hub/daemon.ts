@@ -1,3 +1,5 @@
+import { reconcileHostLeases, restoreHostLeaseOwners } from '../host/host-restart.ts';
+import { destroyHost } from '../host/provision-host.ts';
 import { restoreProvisionedFakeHosts } from '../host/provision-host.ts';
 import { registerFakeHosts } from '../host/records.ts';
 import { userInfo } from 'node:os';
@@ -314,6 +316,7 @@ export async function serveProject(root: string, options: { createHost?: import(
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
     store = new Store(l.db, options.openDatabase);
     store.hosts.provisions.reconcileInterrupted();
+    await reconcileHostLeases({root,records:store.hosts,env,clock,log});
     await restoreProvisionedFakeHosts(store.hosts,env);
     registerFakeHosts(root, store.hosts, env, remoteOutput.register);
     store.users.validateMode(config?.auth.mode ?? 'single', l.config);
@@ -681,7 +684,7 @@ export async function serveProject(root: string, options: { createHost?: import(
     sshHosts = await projectSshHosts({clock,onAdd: host => adapters?.sessions.addHost(host), onRemove: id => adapters?.sessions.removeHost(id), settle: id => hub.dispatcher.revokeHost(id), onReady:hostReady,root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
     adapters = projectSessions({ hostPools: () => roles.config().hosts, hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.hostOwner = sshHosts;
-    hub.dispatcher.useSessions(adapters.sessions);
+    await hub.dispatcher.restoreSessions(adapters.sessions, () => restoreHostLeaseOwners({root,records:store.hosts,env,clock,log,config:roles.config(),inUse:id=>adapters!.sessions.hostInUse(id),destroy:id=>destroyHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log})}));
     hub.dispatcher.restoreWaitingLaunches();
     await adapters.sessions.sweepArchive();
     await startGateway();

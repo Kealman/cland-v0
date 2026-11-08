@@ -2387,6 +2387,23 @@ export class Sessions {
 
   /** At startup, recover native connections or retain live recorded processes for reconnect/stop. */
   async resumeAll(): Promise<void> {
+    const deleted = new Set<string>();
+    for (const p of this.#table.runningRows()) {
+      const host=p.host ?? 'local', provision=this.#core.store.hosts.provisions.get(host);
+      if (!deleted.has(host) && provision?.machineDeletionRead && this.#core.store.hosts.get(host)?.state === 'revoked') {
+        deleted.add(host); await this.hostDeleted(host, provision.machineDeletionRead);
+      }
+    }
+    // Missing transport is an outage. Only absent durable registration is gone.
+    for (const p of this.#table.runningRows()) {
+      const host = p.host ?? 'local';
+      if (p.status !== 'running' || host === 'local' || this.#hosts.has(host) || this.#core.store.hosts.get(host)) continue;
+      this.#table.retainHostGeneration(p, 'unknown');
+      this.#table.update(p.name, {status:'exited', cleanupItem:this.#stopItem(p)});
+      this.#setObservedState(p.sessionId, p.name, 'unknown', 'process');
+      this.#vacate(p, 'its host is no longer registered');
+      this.#log({event:'harness-exited', session:p.name, harness:p.harness, pid:p.pid, host, detail:'host registration missing; native obligations retained'});
+    }
     for (const host of this.#hosts.keys()) this.#retireRebootedHost(host);
     for (const entry of [...this.#pendingStops.values()]) {
       try { await this.#stopFailedLaunch(entry); }

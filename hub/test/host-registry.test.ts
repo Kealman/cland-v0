@@ -85,7 +85,7 @@ test('real project hub registers only opted-in test hosts and keeps local sessio
 });
 
 
-test('without the test-host environment only local is registered; unknown rows stay unknown', async t => {
+test('without the test-host environment only local is registered; unknown host rows exit without native authority', async t => {
   const { Sessions } = await import('../src/adapters/sessions.ts');
   const { HubCore } = await import('../src/hub/core.ts');
   const root = await tempProject(t);
@@ -105,6 +105,7 @@ test('without the test-host environment only local is registered; unknown rows s
   sessions.register(adapter);
   table.put({ ...row, host: 'missing', pid: process.pid });
   await sessions.resumeAll();
+  assert.equal(sessions.list()[0]?.status, 'exited');
   assert.equal(sessions.list()[0]?.state, 'unknown');
   assert.equal(sessions.list()[0]?.attach, null);
   await assert.rejects(sessions.stop('remote'), /unknown host missing/);
@@ -112,4 +113,20 @@ test('without the test-host environment only local is registered; unknown rows s
   assert.throws(() => sessions.attachCommand('remote'), /unknown host missing/);
   assert.equal(await sessions.readAccountLimits('default:codex'), null);
   assert.deepEqual(nativeCalls, []);
+});
+
+test('registered host without a transport remains running during restart recovery',async t=>{
+ const { Sessions }=await import('../src/adapters/sessions.ts');
+ const { HubCore }=await import('../src/hub/core.ts');
+ const root=await tempProject(t),core=new HubCore(),table=new ProcessTable();
+ const sessions=new Sessions({root,core,table});
+ t.after(async()=>{await sessions.close();table.close();core.close();core.store.close();});
+ core.store.hosts.insert({id:'offline',address:'offline',user:'agent',clientKeyPath:'unused',knownHosts:'unused'},'synthetic');
+ const adapter=fakeHarness('codex');sessions.register(adapter);
+ const row={...await adapter.spawn({name:'outage',cwd:root,role:null,model:null}),host:'offline'};
+ table.put(row);
+ await sessions.resumeAll();
+ assert.equal(table.get('outage')!.status,'running');
+ assert.deepEqual(adapter.stops,[]);
+ assert.deepEqual(adapter.resumes,[]);
 });

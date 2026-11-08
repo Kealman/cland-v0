@@ -166,7 +166,7 @@ export class ProcessTable {
     if (!columns.has('effort')) this.#db.exec('alter table harness_processes add column effort text');
     // Old stopped rows remain undated: no journal backfill on startup.
     for (const column of ['stopped_at', 'archived_at', 'archived_by']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
-    this.#db.exec("create index if not exists harness_processes_host on harness_processes(host, status, archived_at)");
+    this.#db.exec("create index if not exists harness_processes_host on harness_processes(host, status, archived_at); create index if not exists harness_processes_running on harness_processes(status) where status = 'running' and archived_at is null");
     this.#db.exec('create table if not exists harness_host_reboot_closures (generation text primary key, closure_json text not null)');
     this.#db.exec(`create table if not exists harness_host_retirements (
       session_id text primary key, host text not null, process_json text not null
@@ -414,6 +414,11 @@ export class ProcessTable {
   }
 
   archivedCount(): number { return Number(this.#db.prepare('select count(*) as n from harness_processes where archived_at is not null').get()!.n); }
+
+  /** Startup reconciliation reads only current rows, never decoded retained history. */
+  *runningRows(): Generator<HarnessProcess> {
+    for (const row of this.#db.prepare("select * from harness_processes where status = 'running' and archived_at is null").iterate()) yield toProcess(row as Row);
+  }
 
   running(): HarnessProcess[] {
     return this.all().filter((p) => p.status === 'running');

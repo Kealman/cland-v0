@@ -37,9 +37,9 @@ receipts are still required.
 
 `leases.stop(id)` and `leases.close()` cancel timers and join ledger writes.
 The SSH registry awaits close before returning from shutdown, before storage
-closes. Shutdown retains leases and reservations. Restart does not re-arm them;
-restart ownership belongs to T-1752. No daemon or store shutdown contract changes.
-The detached watchdog integration belongs to T-1748.
+closes. Shutdown retains leases and reservations. Restart restores these owners through
+[host restart recovery](host-restart.md). No daemon or store shutdown contract changes.
+See the [detached host watchdog](host-watchdog.md) for independent expiry.
 
 Explicit destruction releases the lease only after provider success and both
 machine and key absence receipts. Failed provisioning also retains unknown
