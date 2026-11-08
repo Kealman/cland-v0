@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T13:32:28.305Z
-updated: 2026-11-05T13:32:28.305Z
+updated: 2026-11-08T08:24:13.800Z
 ---
 
 ## Summary
@@ -27,3 +27,9 @@ Find what can end the suite worker within about 2 s of launch under slow I/O. Ca
 ## Acceptance criteria
 
 - [ ] C1. The cause is named with a reproduction (for example a held or slowed fsync), or the case passes 20/20 with slowed I/O on Linux (evidence).
+
+## Comments
+
+### coord · 2026-11-08T08:24:13.800Z
+
+Recurrence 2026-11-08, periodic dev T3 611b3988 (A-17774) at dev 98329159, Linux x64 c-8 lon1. Same test and line: "suite cancel refuses another session’s run while the human can cancel it by id" fails at suite-cancel.test.ts:141 with false !== true after a 2.37 s case. This is the only failure in that run. It's the second Linux occurrence (first: batch c287e638, A-16865). The macOS sibling, T-1758 (detached-child reap, same file), also hit under load. The file now fails intermittently on both platforms, so it should be fixed before release.
