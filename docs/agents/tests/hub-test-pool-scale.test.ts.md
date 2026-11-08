@@ -41,6 +41,7 @@ ledger and mirror with an injected fake-provider creator (no native acquisition)
   max=2, w1 on H1=b, then w2 on H2=a. Reverse lexical ids reproduce QA row
   E1534S2-55. Each 7.5s clock tick awaits both persisted lease mirrors. Stopping
   w1 leaves newer busy H2 preferred over idle H1, whose expiry is observed.
+<!-- cland-allow-closed-wording: literal test title, "until" describes the lease renewal, not the item -->
 - `T-1763 manual host placement promise renews until failed launch releases it`:
   min=0 manual create, hold directory preparation before adapter spawn; renewal
   persists while held, then stops after the refused launch releases its promise.
