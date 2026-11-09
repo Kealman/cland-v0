@@ -81,6 +81,7 @@ import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import WebSocket, { WebSocketServer } from 'ws';
+import { loginEnabled, signIn, loginTurn, deadLoginSignal, printTurn, logout } from '../fake-login.ts';
 import { fakeLogin, login, recordCall } from '../setup-profile.ts';
 import { answerableEnvelope } from '../codex-envelope.ts';
 
@@ -118,6 +119,8 @@ type ThreadFile = { id: string; cwd: string; model: string; turns: number };
 // ------------------------------------------------------------------ the CLI
 
 async function main(args: string[]): Promise<number> {
+  if (loginEnabled() && args[0] === 'exec') return printTurn('codex', args[1] ?? '', (flag(args, '--session-id') ?? flag(args, '--session')) ?? 'headless');
+  if (loginEnabled() && args[0] === 'logout') { if (loginEnabled()) logout('codex'); return 0; }
   if (args[0] === '--version' || args[0] === '-V') {
     appendFileSync(join(HOME, 'version-probes.jsonl'), JSON.stringify({ CODEX_HOME: process.env.CODEX_HOME ?? null }) + '\n');
     if (existsSync(join(HOME, 'hold-version'))) {
@@ -135,7 +138,7 @@ async function main(args: string[]): Promise<number> {
     process.stderr.write('Logged in using ChatGPT\n');
     return 0;
   }
-  if (args[0] === 'login') { login('codex'); return 0; }
+  if (args[0] === 'login') { if (loginEnabled()) return signIn('codex'); login('codex'); return 0; }
   if (args[0] === 'app-server') return appServer(args.slice(1));
   if (args[0] === 'resume') return resume(args.slice(1));
   process.stderr.write(`fake codex: unsupported invocation ${JSON.stringify(args)}\n`);
@@ -329,6 +332,7 @@ async function appServer(args: string[]): Promise<number> {
     let error: { message: string; codexErrorInfo?: string } | null = null;
     const record: TurnRecord = { id: turnId, status: 'inProgress', items: [] };
     (t.history ??= []).push(record);
+    let rotatedLogin = false;
     for (let item = t.queue.shift(); item; item = t.queue.shift()) {
       // Consumption receipts separate real harness inputs from RPC admission/debug echoes.
       appendFileSync(join(HOME, 'log', `${process.pid}.inputs.jsonl`), `${JSON.stringify({ turnId, text: item.text })}\n`);
@@ -351,6 +355,13 @@ async function appServer(args: string[]): Promise<number> {
         while (!existsSync(join(HOME, 'release-newer-turn'))) await sleep(5);
       }
       await sleep(TURN_MS);
+      const loginOk = loginTurn('codex', item.text, t.id, !rotatedLogin);
+      rotatedLogin = true;
+      if (!loginOk) {
+        error = deadLoginSignal('codex') as { message: string; codexErrorInfo: string };
+        toSubscribers(t.id, 'error', { threadId: t.id, turnId, error, willRetry: false });
+        t.queue.length = 0; break;
+      }
       const delivery = answerableEnvelope(item.text, t.turns === 1 && record.items.length === 1 && !item.tool);
       const body = delivery?.[2];
       if (body?.includes('spawn legacy subagent')) {
@@ -665,6 +676,7 @@ async function appServer(args: string[]): Promise<number> {
   if (!listen) {
     appendFileSync(join(HOME, 'polls.jsonl'), JSON.stringify({ at: Date.now(), pid: process.pid, args: ['app-server', ...args], cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('CLAND_') || key === 'CODEX_HOME')) }) + '\n');
     const c: Conn = { ws: { readyState: WebSocket.OPEN, send: data => { process.stdout.write(String(data) + '\n'); }, terminate: () => process.exit(0) }, initialized: false, subscribed: new Set() };
+    conns.add(c);
     const pending = new Set<Promise<void>>();
     createInterface({ input: process.stdin }).on('line', line => {
       const m = JSON.parse(line);

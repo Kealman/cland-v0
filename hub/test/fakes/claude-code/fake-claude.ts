@@ -57,6 +57,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { loginEnabled, signIn, loginTurn, printTurn, logout } from '../fake-login.ts';
 import { fakeLogin, login, recordCall } from '../setup-profile.ts';
 import { registerWriter } from './writers.ts';
 
@@ -110,6 +111,8 @@ const flag = (args: string[], ...names: string[]) => {
 // ------------------------------------------------------------------ the CLI
 
 async function main(args: string[]): Promise<number> {
+  if (loginEnabled() && args[0] === '-p' && args[1] !== '/usage') return printTurn('claude-code', args[1] ?? '', (flag(args, '--session-id') ?? flag(args, '--session')) ?? 'headless');
+  if (loginEnabled() && args[0] === 'auth' && args[1] === 'logout') { if (loginEnabled()) logout('claude-code'); return 0; }
   const [first] = args;
   if (first === '__session') return runSession(args[1] as string);
   const configDir = CONFIG_DIR;
@@ -146,7 +149,7 @@ async function main(args: string[]): Promise<number> {
     process.stdout.write(`${process.env.FAKE_CLAUDE_VERSION ?? '2.1.294'} (Claude Code)\n`);
     return 0;
   }
-  if (first === 'auth' && args[1] === 'login') { login('claude-code'); return 0; }
+  if (first === 'auth' && args[1] === 'login') { if (loginEnabled()) return signIn('claude-code'); login('claude-code'); return 0; }
   if (first === 'auth' && args[1] === 'status') {
     const identity = process.env.FAKE_CLAUDE_LOGGED_OUT === '1' ? null : fakeLogin('claude-code');
     const loggedIn = identity !== null;
@@ -527,9 +530,9 @@ async function runSession(id: string): Promise<number> {
       log(`turn released: ${turnId}`);
     } else await new Promise((r) => setTimeout(r, turnMs));
     if (stopping) return 0;
-    if (existsSync(join(HOME, 'logged-out')) || existsSync(join(job.configDir, 'logged-out'))) {
+    if (!loginTurn('claude-code', next.text, job.sessionId) || existsSync(join(HOME, 'logged-out')) || existsSync(join(job.configDir, 'logged-out'))) {
       setStatus('idle');
-      await runHooks('StopFailure', { error: 'authentication_failed', error_details: 'OAuth token has expired. Please run claude auth login.' });
+      await runHooks('StopFailure', { error: 'authentication_failed', error_details: loginEnabled() ? 'OAuth token revoked' : 'OAuth token has expired. Please run claude auth login.' });
       await dispatch('turn.complete', { turnId, isAborted: false, reason: 'error' }, () => ({}));
       continue;
     }

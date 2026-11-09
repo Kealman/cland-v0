@@ -54,6 +54,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { loginEnabled, signIn, loginTurn, deadLoginSignal, printTurn, logout } from '../fake-login.ts';
 import { fakeLogin, login, recordCall } from '../setup-profile.ts';
 
 const HOME = process.env.FAKE_OPENCODE_HOME ?? join(process.env.TMPDIR ?? '/tmp', 'fake-opencode-home');
@@ -84,11 +85,13 @@ const readJson = <T>(file: string): T | null => {
 };
 
 async function main(args: string[]): Promise<number> {
+  if (loginEnabled() && args[0] === 'run') return printTurn('opencode', args[1] ?? '', (flag(args, '--session-id') ?? flag(args, '--session')) ?? 'headless');
+  if (loginEnabled() && args[0] === 'auth' && args[1] === 'logout') { if (loginEnabled()) logout('opencode'); return 0; }
   if (args.includes('--version') || args.includes('-v')) {
     process.stdout.write(`opencode v${process.env.FAKE_OPENCODE_VERSION ?? '2.0.24-fake'}\n`);
     return 0;
   }
-  if (args[0] === 'auth' && args[1] === 'login' && args.includes('--standalone')) { login('opencode'); return 0; }
+  if (args[0] === 'auth' && args[1] === 'login' && (loginEnabled() || args.includes('--standalone'))) { if (loginEnabled()) return signIn('opencode'); login('opencode'); return 0; }
   if (args[0] === 'auth' && args[1] === 'list') {
     appendFileSync(join(HOME, 'auth-probes.jsonl'), JSON.stringify({ args, database: process.env.OPENCODE_DB, dataHome: process.env.XDG_DATA_HOME }) + '\n');
     const identity = process.env.FAKE_OPENCODE_NO_AUTH === '1' ? null : fakeLogin('opencode');
@@ -300,7 +303,10 @@ async function serve(args: string[]): Promise<number> {
     await sleep(Number(process.env.FAKE_OPENCODE_START_DELAY_MS ?? 0));
     emit('session.execution.started', { sessionID: session.id });
     try {
+      let rotatedLogin = false;
       for (let input = run.inputs.shift(); input !== undefined; input = run.inputs.shift()) {
+        if (!loginTurn('opencode', input.text, session.id, !rotatedLogin)) throw Object.assign(new Error('Login expired'), deadLoginSignal('opencode'));
+        rotatedLogin = true;
         emit('session.inbox.delivered', { sessionID: session.id, inboxID: input.id });
         await answer(session, input.text);
       }

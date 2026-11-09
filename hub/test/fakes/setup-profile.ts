@@ -1,5 +1,6 @@
 // Setup's fake-binary account seam. Opt-in preserves existing adapter fixtures' signed-in defaults.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { loginEnabled, readLogin } from './fake-login.ts';
 import { dirname, join } from 'node:path';
 
 export type SetupHarness = 'claude-code' | 'codex' | 'opencode';
@@ -22,6 +23,7 @@ export function setFakeLogin(harness: SetupHarness, signedIn: boolean, env: Node
 }
 
 export function fakeLogin(harness: SetupHarness): FakeIdentity | null {
+  if (loginEnabled()) { const value = readLogin(harness); return value && !value.dead ? fakeIdentity : null; }
   const marker = loginMarker(harness);
   if (existsSync(marker)) return JSON.parse(readFileSync(marker, 'utf8')) as FakeIdentity;
   if (process.env.FAKE_HARNESS_PROFILES === '1') return null;
