@@ -2,8 +2,8 @@
 id: T-1774
 kind: task
 title: Fake harness logins that rotate every turn
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1454
 branch: t/T-1774-fake-harness-logins-that-rotate-every
 created: 2026-11-09T12:44:08.653Z
-updated: 2026-11-09T13:07:58.143Z
+updated: 2026-11-09T15:19:45.935Z
+closed: 2026-11-09T15:19:45.935Z
 ---
 
 ## Summary
@@ -36,14 +37,19 @@ The dead-login signals are the real ones: Claude Code's `StopFailure` with `auth
 
 - [x] C1. Each fake's sign-in writes generation 0 in its harness home, and each turn raises the generation by one and records its host and session (test).
   - done: impl-1774 · 2026-11-09T13:05:30.499Z
+  - verified: rev-36 [reviewer] · run rev-36-1774-final-1 · 2026-11-09T13:35:23.579Z · commit afc246a6818b5fea10ed175334e9b6abaa90e07a
 - [x] C2. A turn containing `DEAD-LOGIN`, every later turn until the next sign-in, and a turn with no login file each report that harness's dead-login signal (test).
   - done: impl-1774 · 2026-11-09T12:55:52.797Z
+  - verified: rev-36 [reviewer] · run rev-36-1774-final-1 · 2026-11-09T13:35:23.579Z · commit afc246a6818b5fea10ed175334e9b6abaa90e07a
 - [x] C3. The fake Codex sign-in refuses a home holding a live login and writes nothing there, and signs in over a dead one (test).
   - done: impl-1774 · 2026-11-09T12:55:55.267Z
+  - verified: rev-36 [reviewer] · run rev-36-1774-final-1 · 2026-11-09T13:35:23.579Z · commit afc246a6818b5fea10ed175334e9b6abaa90e07a
 - [x] C4. Every logout form is recorded in the fake's calls file (test).
   - done: impl-1774 · 2026-11-09T12:55:56.917Z
+  - verified: rev-36 [reviewer] · run rev-36-1774-final-1 · 2026-11-09T13:35:23.579Z · commit afc246a6818b5fea10ed175334e9b6abaa90e07a
 - [x] C5. With `FAKE_LOGIN_HOLDER=1`, a sign-in leaves one detached process holding a file open in the home, with its pid recorded (test).
   - done: impl-1774 · 2026-11-09T13:05:30.920Z
+  - verified: rev-36 [reviewer] · run rev-36-1774-final-1 · 2026-11-09T13:35:23.579Z · commit afc246a6818b5fea10ed175334e9b6abaa90e07a
 
 ## Blocked by
 
@@ -92,3 +98,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear Standards0/Spec0; all A-18066 findings resolved. Prearmed fixture cleanup uses live socket-owned self-shutdown and OS exit observation, not serialized PID signals; stale/corrupt/crashed holder and uncommitted readiness failure controls inspected. Claude empty input refuses; disabled CLI parity restored while legacy standalone remains. All correction files/new holder client and retained login semantics/native handlers inspected, no other findings. T3 cd887413/explicit opt-in c98afa58 retained. A-18072 development21/21 is transcription/working-tree evidence with original capture limits; intermediate20/21 remains history. No runtime criteria verified. Next directed locked final native/legacy receipts then mode-free Linux exacthead; fullT3batch/affectedafter-stageQA separate. >=4s Linux newcase allowance bar retained; no provenance-only repeats. Reviewer read-only/no execution/delegation.
+
+### rev-36 · 2026-11-09T13:35:23.579Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1774-final-1
+commit: afc246a6818b5fea10ed175334e9b6abaa90e07a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, C1–C5 verified at unchanged source-clear head. A-18097 independently maps all 21 Linux named login outcomes in A-18095 (run 3203ce17-b652-4965-bdb6-61fc44262b32, exit0/5738 passed) to criteria and prior-source controls; retained same-head local native A-18079 has 21/21 and A-18080 has 10/10, each status0/signalnull. Longest new Linux case 2.292069442s, below Coordinator's >=4s allowance condition. T0/T1/fallback all T2/changed T3/Web complete; changed T3 once/no repetitions. Uncached droplet Linux x64 kernel147 Node24.21/Nvim0.12.5, Headless Shell1248/CfT156 provenance retained. Report-only advisories preserved; remaining T3 merge batch, broader T4 and affected after-stage QA remain separate. No new Standards/Spec findings; source-clear A-18076 remains applicable.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-09T15:19:45.935Z
+
+Merged 69ac4f556fc21b71824c7dc1a5d5b5ee2728f19a onto dev.

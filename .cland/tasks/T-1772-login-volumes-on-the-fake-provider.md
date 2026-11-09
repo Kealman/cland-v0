@@ -2,8 +2,8 @@
 id: T-1772
 kind: task
 title: "Login volumes on the fake provider: contents, snapshot history and volumes from a snapshot"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1452
 branch: t/T-1772-login-volumes-on-the-fake-provider
 created: 2026-11-09T12:44:08.217Z
-updated: 2026-11-09T13:02:18.793Z
+updated: 2026-11-09T14:43:27.557Z
+closed: 2026-11-09T14:43:27.557Z
 ---
 
 ## Summary
@@ -34,16 +35,22 @@ The fake keeps a contents directory beside each volume record, copies it into ea
 
 - [x] C1. A fake volume created from a snapshot starts with that snapshot's contents in the snapshot's region, and a volume created without one starts empty (test).
   - done: impl-1772 · 2026-11-09T12:49:53.981Z
+  - verified: rev-38 [reviewer] · run rev-38-1772-evidence-1 · 2026-11-09T13:27:17.072Z · commit b9187618229fd9eabc0d5826d5018de6d7bf99f2
 - [x] C2. `listSnapshots` returns every snapshot of a volume oldest first, and `deleteSnapshot` reports deleted only after a read confirms absence, else incomplete (test).
   - done: impl-1772 · 2026-11-09T13:01:27.415Z
+  - verified: rev-38 [reviewer] · run rev-38-1772-evidence-1 · 2026-11-09T13:27:17.072Z · commit b9187618229fd9eabc0d5826d5018de6d7bf99f2
 - [x] C3. The fake contents seam answers a volume's contents only for the machine it is attached to, and refuses another machine and a detached volume (test).
   - done: impl-1772 · 2026-11-09T12:50:14.007Z
+  - verified: rev-38 [reviewer] · run rev-38-1772-evidence-1 · 2026-11-09T13:27:17.072Z · commit b9187618229fd9eabc0d5826d5018de6d7bf99f2
 - [x] C4. Releasing a fake machine leaves its volumes detached with their contents intact (test).
   - done: impl-1772 · 2026-11-09T12:50:14.425Z
+  - verified: rev-38 [reviewer] · run rev-38-1772-evidence-1 · 2026-11-09T13:27:17.072Z · commit b9187618229fd9eabc0d5826d5018de6d7bf99f2
 - [x] C5. A fake volume record written by the previous code, with one snapshot receipt, still reads, and malformed retained state still reports failed or incomplete with its bytes untouched (test).
   - done: impl-1772 · 2026-11-09T12:50:14.701Z
+  - verified: rev-38 [reviewer] · run rev-38-1772-evidence-1 · 2026-11-09T13:27:17.072Z · commit b9187618229fd9eabc0d5826d5018de6d7bf99f2
 - [x] C6. The DigitalOcean provider answers each new operation `failed` naming it unsupported, with no API call, and the existing volume test files pass with no test edited (test).
   - done: impl-1772 · 2026-11-09T12:50:15.109Z
+  - verified: rev-38 [reviewer] · run rev-38-1772-evidence-1 · 2026-11-09T13:27:17.072Z · commit b9187618229fd9eabc0d5826d5018de6d7bf99f2
 
 ## Blocked by
 
@@ -107,3 +114,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at exactb9187618229fd9eabc0d5826d5018de6d7bf99f2. A-18062 C2 finding resolved: keep snapshot-owned recovery metadata until confirmed contents absence and durable live-history publication, then remove/read back directory absence. Recreated-provider ID-only retry regression retains final listing/lookup assertions; fake fault defaults off; no deleted-volume index. Coordinator6fb3741c typedvolume-gone/getSnapshot/IDclone/delete amendment retained, receipt compatibility and DO unsupported unchanged. Reviewed4-file correction with prior full source; C1–C6 remain runtime-unverified. Candidate62T2/typecheck A-18065 is not configured evidence. Proceed exact-head planned native preservation then mode-free verify; after-stage QA separate. Reviewer ran no tests/browser.
+
+### rev-38 · 2026-11-09T13:27:17.072Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1772-evidence-1
+commit: b9187618229fd9eabc0d5826d5018de6d7bf99f2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at exactb9187618229fd9eabc0d5826d5018de6d7bf99f2; C1–C6 verified. task.verify/original A-18088 agree uncachedcc47c7de,5723pass/0fail/cancel/skip/todo,T0/T1/allfallbackT2/Web complete. Independently checked all15fake+9unchangedDO volume generated base cases;6new names eachbase+5/5load, including survival and recreated-provider ID-delete repair;0target tier events. Reconciled429required lower/Web inventory paths with positive file+case receipts,no missing;227T3/14T4 deferred in configured run. Original native A-18075 same-head localmacOSarm64 Node24.21:3files23tests,allstatus0/signalnull,0skips. Linuxdropletc8lon1 Node24.21,HeadlessShell1248/CfT156.0.8078.4; lifetime1026s/$0.0712 not test wall. Report-only notices retained,not budget enforcement. No findings; affected after-stageQA separate. Reviewer ran no tests/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-09T14:43:27.557Z
+
+Merged f077f9397d3fc91ea390578acf1bded595505271 onto dev.
