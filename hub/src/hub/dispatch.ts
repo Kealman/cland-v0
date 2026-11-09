@@ -1,3 +1,4 @@
+import { onHostSpendChange } from '../executor/droplet/spend.ts';
 import { DigitalOceanHostProvider } from '../host/provider/digitalocean.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { hostStatus } from '../host/status.ts';
@@ -483,9 +484,11 @@ export class Dispatcher {
   stopWaitMetrics(): void { this.#suites?.stopWaitMetrics(); }
 
   #hostProvisionAbort = new AbortController();
+  #stopHostSpend: (() => void) | undefined;
   #poolPrepares = new Set<Promise<unknown>>();
   async close(): Promise<void> {
     this.#closed = true;
+    this.#stopHostSpend?.();
     this.#hostProvisionAbort.abort();
     await Promise.allSettled([...this.#poolPrepares]);
     // A startup failure can close the dispatcher before serving admits recovery.
@@ -575,6 +578,14 @@ export class Dispatcher {
     if (sessions && this.hostOwner && this.#options.control) {
       const env = this.#options.env ?? process.env;
       const providers = new HostProviderRegistry({ env, now: () => this.core.clock.now().getTime(), digitalocean: { root: this.#options.control.status().root, clock: this.core.clock } });
+      this.#stopHostSpend?.();
+      this.#stopHostSpend = onHostSpendChange(env, this.#options.control.status().root, spend => {
+        if (this.#closed) return;
+        const cap = this.#options.projectConfig?.().hosts.dailySpendUsd;
+        if (cap === undefined || cap <= 0 || spend.spent + spend.reserved < cap * 0.8 || this.core.store.meta('hosts-spend-warning-day') === spend.day) return;
+        const id = this.core.noticeInTopic('general', { id: `hosts-spend-warning:${spend.day}`, kind: 'report', text: `hosts daily spend and reservations reached 80% of $${cap}`, detail: { pools: spend.pools } });
+        if (id) this.core.store.setMeta('hosts-spend-warning-day', spend.day);
+      });
       sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize), {
         failed: record => {if(!record.bootFailureAt)this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'});},
         declarations: record => {

@@ -293,11 +293,43 @@ function admitHostSpend(ledger: Ledger, reservation: number, caps: HostSpendCaps
   if (all.spent + all.reserved - replacing + reservation > caps.shared) throw new Error(`daily spend cap $${caps.shared} would be exceeded`);
   if (hosts.spent + hosts.reserved - replacing + reservation > caps.hosts) throw new Error(`hosts daily spend cap $${caps.hosts} would be exceeded`);
 }
+export type HostSpendChange = { day: string; spent: number; reserved: number; pools: string[] };
+const hostSpendListeners = new Map<string, Set<{ project: string; changed(value: HostSpendChange): void }>>();
+/** Observe committed mutations in this owner; no ledger read or startup scan. */
+export function onHostSpendChange(env: NodeJS.ProcessEnv, project: string, changed: (value: HostSpendChange) => void): () => void {
+  const path = spendPath(env), listener = { project, changed };
+  let listeners = hostSpendListeners.get(path);
+  if (!listeners) hostSpendListeners.set(path, listeners = new Set());
+  listeners.add(listener);
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    listeners.delete(listener);
+    if (!listeners.size && hostSpendListeners.get(path) === listeners) hostSpendListeners.delete(path);
+  };
+}
+async function hostSpendMutation(project: string, work: (ledger: Ledger) => void, env: NodeJS.ProcessEnv, timing: LockRetryTiming): Promise<void> {
+  const value = await locked(ledger => {
+    work(ledger);
+    if (!hostSpendListeners.get(spendPath(env))?.size) return;
+    // Reuse the transaction's loaded ledger, including conservative legacy reconciliation.
+    const entries = ledger.entries.filter(entry => category(entry) === 'hosts');
+    const value = totals({ version: 1, entries }, timing.clock ?? realClock);
+    const pools = [...new Set(entries.filter(entry => entry.cost === null || entry.released?.startsWith(value.day)).flatMap(entry => entry.pool ? [entry.pool] : []))].sort();
+    return { ...value, pools };
+  }, env, timing);
+  // Durable publication and lock release precede the notice; a notice failure cannot undo spend.
+  if (value) for (const listener of hostSpendListeners.get(spendPath(env)) ?? []) {
+    if (listener.project !== project) continue;
+    try { listener.changed(value); } catch (error) { console.error(error); }
+  }
+}
 /** Persist before provider create. The caller retains this reservation until confirmed absence. */
 export async function reserveHostSpend(input: HostSpendReservation, caps: HostSpendCaps, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
   parsePoolName(input.pool);
   const reservation = hostCost(input, input.deadline);
-  await locked(ledger => {
+  await hostSpendMutation(input.project, ledger => {
     const existing = ledger.entries.find(e => e.project === input.project && e.lease === input.lease);
     if (existing) {
       if (category(existing) !== 'hosts' || existing.pool !== input.pool || existing.created !== input.created || existing.priceHourly !== input.priceHourly || existing.billingMinimumMs !== input.billingMinimumMs || existing.size !== input.size || existing.deadline !== input.deadline) throw new Error('host spend reservation identity conflict');
@@ -347,12 +379,13 @@ export async function hostSpendReservation(project:string,lease:string,env:NodeJ
 }
 /** Reserve the whole extended lifetime before publishing the new lease deadline. */
 export async function renewHostSpend(project: string, lease: string, deadline: string, caps: HostSpendCaps, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
-  await locked(ledger => {
+  await hostSpendMutation(project, ledger => {
     const entry = pendingHostEntry(ledger, project, lease);
     if (entry.cost !== null) throw new Error('host spend reservation already settled');
     const reservation = hostCost(entry, deadline);
     if (Date.parse(deadline) <= Date.parse(entry.deadline)) return;
-    admitHostSpend(ledger, reservation, caps, timing.clock ?? realClock, entry.reservation);
+    // Existing hosts keep renewing at the hosts sub-cap; the shared cap still applies.
+    admitHostSpend(ledger, reservation, { shared: caps.shared, hosts: Number.MAX_VALUE }, timing.clock ?? realClock, entry.reservation);
     entry.reservation = Math.max(entry.reservation, reservation);
     entry.deadline = deadline;
   }, env, timing);
@@ -360,7 +393,7 @@ export async function renewHostSpend(project: string, lease: string, deadline: s
 /** Only call with confirmed provider absence and the observed real lifetime end. */
 export async function settleHostSpend(project: string, lease: string, released: string, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
   invalidateHostAdmission(project,lease);
-  await locked(ledger => {
+  await hostSpendMutation(project, ledger => {
     const entry = pendingHostEntry(ledger, project, lease);
     const cost = hostCost(entry, released);
     released = new Date(released).toISOString();
@@ -379,7 +412,7 @@ export async function cancelHostSpend(identity:{project:string;lease:string},rec
  if(!positiveNonAcquisition(receipt))throw Error('positive non-acquisition receipt required');
  invalidateHostAdmission(identity.project,identity.lease);
  const released=new Date(receipt.at).toISOString();
- await locked(ledger=>{
+ await hostSpendMutation(identity.project, ledger=>{
   const entry=ledger.entries.find(e=>e.project===identity.project&&e.lease===identity.lease&&category(e)==='hosts');
   // A cap refusal did not reserve anything. Its durable no-call receipt is still valid.
   if(!entry)return;

@@ -54,7 +54,7 @@ test('renewal raises the held lifetime and settlement bills actual lifetime with
   const machine = await scratchMachine(t, { identity: false });
   const clock = new FakeClock();
   await reserveHostSpend(host, caps, machine.env, { clock, processes });
-  await assert.rejects(renewHostSpend(host.project, host.lease, '2026-10-16T15:00:00Z', caps, machine.env, { clock, processes }), /hosts daily spend cap/);
+  await assert.rejects(renewHostSpend(host.project, host.lease, '2026-10-16T18:00:00Z', caps, machine.env, { clock, processes }), /daily spend cap/);
   assert.equal((await inspectSpend(10, machine.env, clock, processes)).reserved, 2);
   await renewHostSpend(host.project, host.lease, '2026-10-16T14:00:00Z', caps, machine.env, { clock, processes });
   assert.equal((await inspectSpend(10, machine.env, clock, processes)).reserved, 4);
