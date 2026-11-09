@@ -18,6 +18,13 @@ async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
 }
 
 export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean; endpoints?: Parameters<Host['forward']>[1][]; forward?: (endpoint: Awaited<ReturnType<Host['forward']>>) => void; layout?: ReturnType<Host['layout']> }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
+  register('Host login disks preserve optional absence and refuse invalid paths', async()=>{
+    const root=await mkdtemp(join(tmpdir(),'host-login-contract-'));
+    try {
+      const host=factory(fixtureEnvironment(root,process.env));
+      await optionalLoginDiskHostContract(host,host.loginDisk?{input:{op:'mount',volume:'volume',path:'/tmp/invalid-login'},code:host.name==='local'?'wrong-volume':'bad-argument'}:undefined);
+    } finally {await rm(root,{recursive:true,force:true});}
+  });
   register('Host optional branch flush preserves local absence and names unregistered worktrees', async () => {
     const root=await mkdtemp(join(tmpdir(),'host-flush-contract-'));
     try{
@@ -425,6 +432,13 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
 }
 
 /** Optional native-launch seam inventory: local Hosts deliberately provide neither member. */
+export async function optionalLoginDiskHostContract(host:Pick<Host,'loginDisk'>, expected?:{input:import('../src/host/host.ts').LoginDisk;code?:string}):Promise<void> {
+  if(!expected){assert.equal(host.loginDisk,undefined);return;}
+  assert.equal(typeof host.loginDisk,'function');
+  if(expected.code)await assert.rejects(host.loginDisk!(expected.input),{code:expected.code});
+  else await host.loginDisk!(expected.input);
+}
+
 export function optionalClaudeHostContract(host: Host): void {
   assert.equal(typeof host.launchClaude, 'undefined');
   assert.equal(typeof host.adopt, 'undefined');

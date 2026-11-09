@@ -177,6 +177,16 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
+    loginDisk: async input => {
+      mutation();
+      const connection=await connected();
+      try { await request(connection,'login-disk',input,65_000); }
+      catch(error) {
+        if(['bad-argument','busy','writers-remain','wrong-volume'].includes(String((error as NodeJS.ErrnoException).code)))throw error;
+        // A lost reply never authorizes a retry or subsequent mutation.
+        const token=`login-disk:${randomUUID()}`;unknown.add(token);throw incomplete(token);
+      }
+    },
     onCapacityChanged(listener) { capacityListeners.add(listener); return () => { capacityListeners.delete(listener); }; },
     name:o.name, ...(o.terminalAttachCommand ? {terminalAttachCommand:o.terminalAttachCommand} : {}), limitPolls:false, layout: () => Object.freeze({...o.layout}),
     flushBranch: async (path,branch) => {

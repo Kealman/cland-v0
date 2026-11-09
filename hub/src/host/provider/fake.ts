@@ -1,3 +1,4 @@
+import { fakeVolumePath, fakeVolumeContentsDirectory, fakeVolumeContents, readFakeMachine, fakeMachineStatus, listFakeVolumes, readFakeVolume, type FakeMachineRecord } from '../agent/fake-volume-contents.ts';
 import { parsePoolName } from '../pool-name.ts';
 import { keyHash } from '../../executor/droplet/prepare.ts';
 import { durableJson } from '../../executor/droplet/lease.ts';
@@ -10,8 +11,8 @@ import { hostDirectory } from '../../../../shared/fake-host-directory.ts';
 import { createFakeHost } from '../../../../shared/fake-host-machine.ts';
 import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReleaseObserver, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, DeleteVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult } from './provider.ts';
 
-import { parseFakeVolumeRecord, isFakeVolumeId, type FakeVolumeRecord as VolumeRecord } from './fake-volume-record.ts';
-type Record = { region?: string; machine: Machine; project: string; pool: string; leaseId?:string|undefined; readyAt: number; neverBoot: boolean };
+import { parseFakeVolumeRecord, type FakeVolumeRecord as VolumeRecord } from './fake-volume-record.ts';
+type Record = FakeMachineRecord;
 export type FakeHostProviderOptions = {
   declarations?: HostProviderDeclarationInput;
   env: NodeJS.ProcessEnv; now?: () => number; bootDelayMs?: number;
@@ -55,21 +56,12 @@ export class FakeHostProvider implements HostProvider {
   #serial<T>(work: () => Promise<T>): Promise<T> {
     const result = this.#tail.then(work); this.#tail = result.catch(() => {}); return result;
   }
-  #volumePath(id: string): string {
-    if (!isFakeVolumeId(id)) throw new Error('invalid volume identity');
-    return join(this.#root, 'volumes', id + '.json');
-  }
-  async #volume(volume: Volume): Promise<VolumeRecord> {
-    const record = parseFakeVolumeRecord(await readFile(this.#volumePath(volume.id), 'utf8'), volume.id);
-    for (const key of ['id', 'project', 'name', 'region', 'sizeGiB', 'created'] as const) {
-      if (record.volume[key] !== volume[key]) throw new Error('volume identity mismatch');
-    }
-    return record;
-  }
+  #volumePath(id:string):string {return fakeVolumePath(this.#root,id);}
+  #volume(volume:Volume):Promise<VolumeRecord> {return readFakeVolume(this.#root,volume);}
   async #writeVolume(record: VolumeRecord): Promise<void> {
     await durableJson(this.#volumePath(record.volume.id), record);
   }
-  #contents(id: string): string { this.#volumePath(id); return join(this.#root, 'volumes', id + '.contents'); }
+  #contents(id:string):string {return fakeVolumeContentsDirectory(this.#root,id);}
   #snapshotContents(id: string): string {
     if (!/^snapshot-[a-f0-9-]+$/.test(id)) throw new Error('invalid snapshot identity');
     return join(this.#root, 'snapshots', id, 'contents');
@@ -84,15 +76,9 @@ export class FakeHostProvider implements HostProvider {
     return record;
   }
   /** Test-only login-disk seam. Caller drains file users before detach/release. */
-  volumeContents(volume: Volume, machine: Machine): Promise<{state:'ready'; directory:string} | import('./provider.ts').Failed> { return this.#serial(async () => {
-    try {
-      const record = await this.#volume(volume);
-      await this.#record(machine);
-      if (record.volume.attachedTo !== machine.id || (await this.#status(machine)).state !== 'ready') throw new Error('volume unavailable');
-      await mkdir(this.#contents(volume.id), { recursive: true, mode: 0o700 });
-      return { state: 'ready', directory: this.#contents(volume.id) };
-    } catch { return { state: 'failed', reason: 'fake volume contents unavailable' }; }
-  }); }
+  volumeContents(volume:Volume,machine:Machine):Promise<{state:'ready';directory:string}|import('./provider.ts').Failed> {
+    return this.#serial(async()=>{try{return await fakeVolumeContents(this.#root,hostDirectory(this.#root,machine.id),volume,machine,this.#now);}catch{return {state:'failed',reason:'fake volume contents unavailable'};}});
+  }
   getSnapshot(id: string): Promise<import('./provider.ts').GetSnapshotResult> { return this.#serial(async () => {
     try { return { state: 'found', snapshot: (await this.#snapshot(id)).snapshot! }; }
     catch { return { state: 'failed', reason: 'fake snapshot lookup failed' }; }
@@ -152,20 +138,7 @@ export class FakeHostProvider implements HostProvider {
       return { state: 'created', volume };
     } catch { return { state: 'failed', reason: 'fake volume create failed' }; }
   }); }
-  listVolumes(options: { project: string }): Promise<ListVolumesResult> { return this.#serial(async () => {
-    try {
-      let directory;
-      try { directory = await opendir(join(this.#root, 'volumes')); }
-      catch (e) { if (missing(e)) return { state: 'listed', volumes: [] }; throw e; }
-      const volumes: Volume[] = [];
-      for await (const entry of directory) {
-        if (entry.isDirectory()) continue;
-        const record = parseFakeVolumeRecord(await readFile(join(this.#root, 'volumes', entry.name), 'utf8'), entry.name.replace(/\.json$/, ''));
-        if (record.volume.project === options.project) volumes.push(record.volume);
-      }
-      return { state: 'listed', volumes: volumes.sort((a, b) => a.id.localeCompare(b.id)) };
-    } catch { return { state: 'failed', reason: 'fake volume list failed' }; }
-  }); }
+  listVolumes(options:{project:string}):Promise<ListVolumesResult> {return this.#serial(()=>listFakeVolumes(this.#root,options.project));}
   snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
     try {
       const record = await this.#volume(volume), now = this.#now();
@@ -277,31 +250,8 @@ export class FakeHostProvider implements HostProvider {
     }
     return matches.length===1?matches[0]:undefined;
   }
-  async #record(machine: Machine): Promise<Record> {
-    const record = JSON.parse(await readFile(join(hostDirectory(this.#root, machine.id), 'provider.json'), 'utf8')) as Record;
-    const captured = record.machine;
-    if (captured.id !== machine.id || captured.created !== machine.created || captured.address !== machine.address || captured.architecture !== machine.architecture) throw new Error('machine identity mismatch');
-    return record;
-  }
-  async #status(machine: Machine): Promise<MachineStatus> {
-    try {
-      const directory = hostDirectory(this.#root, machine.id);
-      try { await stat(directory); } catch (e) { if (missing(e)) return { state: 'gone' }; throw e; }
-      const record = await this.#record(machine);
-      try {
-        const marker = await readFile(join(directory, 'gone'), 'utf8');
-        if (marker !== 'deleted') return { state: 'failed', reason: 'fake machine unavailable' };
-        for (const key of ['host-key.pub', 'client-key', 'known_hosts']) {
-          try { await stat(join(directory, key)); return { state: 'failed', reason: 'fake machine key retained' }; }
-          catch (e) { if (!missing(e)) throw e; }
-        }
-        return { state: 'gone' };
-      }
-      catch (e) { if (!missing(e)) throw e; }
-      if (record.neverBoot) return { state: 'failed', reason: 'fake machine will not boot' };
-      return { state: this.#now() < record.readyAt ? 'booting' : 'ready' };
-    } catch (e) { return { state: 'failed', reason: 'fake machine read failed' }; }
-  }
+  async #record(machine:Machine):Promise<Record> {return readFakeMachine(hostDirectory(this.#root,machine.id),machine);}
+  async #status(machine:Machine):Promise<MachineStatus> {try{return await fakeMachineStatus(hostDirectory(this.#root,machine.id),machine,this.#now);}catch{return {state:'failed',reason:'fake machine read failed'};}}
   status(machine: Machine, scope?:import('./provider.ts').StatusReadScope): Promise<MachineStatus> {
     const read=async()=>{scope?.signal?.throwIfAborted();const result=await this.#status(machine);scope?.signal?.throwIfAborted();return result;};
     return scope?read():this.#serial(read);

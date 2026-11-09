@@ -88,7 +88,7 @@ committed hook digests; see [prepared snapshots](../docs/hub/running.md#controls
 The shared image recipe accepts x86_64 or arm64 and optional pinned agent harnesses;
 the executor uses the unchanged x86_64 base. See the prepared snapshot reference above.
 
-Host image bootstrap: [host prelude and login-disk helper](../docs/agents/host-agent.md#host-bootstrap-and-login-disks) describes explicit user-data inputs, provider steps and the runner sudoers boundary.
+Host image bootstrap: [host prelude and login-disk helper](../docs/agents/host-agent.md#host-bootstrap-and-login-disks) describes explicit user-data inputs, provider steps, the runner sudoers boundary and the authenticated Host login-disk operation.
 
 Whole host code delivery at ready and version handoff uses `deliverRuntime` from
 `src/host/code-delivery.ts`: sources, CLI, spoke, Claude mod and the hub lockfile
@@ -132,3 +132,5 @@ hosts spend reservation. The same path serves manual and automatic pool creation
 provider credentials and API access are required. SSH provisioning uses the
 persisted provider identity, and pre-checkpoint watchdog recovery requires the
 exact admitted lease tag and confirmed droplet/key absence reads.
+
+Host login disks: [Logins](../docs/hub/logins.md#host-login-disk-api) records the Host operation and typed refusal contract.

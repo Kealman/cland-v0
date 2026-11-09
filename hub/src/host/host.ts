@@ -2,6 +2,8 @@ import type { WorktreeAdd } from './agent/worktrees.ts';
 
 /** Host-local PIDs are meaningful only on the Host that returned them. */
 export type HostProcess = { pid: number | null; pidStarted?: string | null; pidIdentity?: string | null };
+export type { LoginDisk } from './agent/resource-types.ts';
+import type { LoginDisk } from './agent/resource-types.ts';
 export type HostCommand = {
   command: string; args: readonly string[]; cwd: string; env: NodeJS.ProcessEnv; timeoutMs?: number; signal?: AbortSignal;
   /** Host-side path; spawn appends stdout and stderr, otherwise ignoring both. */
@@ -31,6 +33,8 @@ export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: 
 
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
+  /** Older Hosts may lack the login-disk operation; callers must refuse then. */
+  loginDisk?(input: LoginDisk): Promise<void>;
   /** A fresh host capacity observation, including agent memory reports. */
   onCapacityChanged?(listener: (availableBytes: number) => void): () => void;
   readonly name: string;

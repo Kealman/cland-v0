@@ -172,8 +172,8 @@ not guess that the writer ended. Committed results live in a separate directory
 and are read by exact id; startup streams only unfinished plans, without scanning
 retained result history.
 
-The agent's dependency closure permits one external leaf,
-`shared/executor-credentials.ts`, imported only by its command-environment owner.
+The agent's dependency closure permits three exact shared leaves,
+`shared/executor-credentials.ts`, imported only by its command-environment owner, plus the exact neutral leaves `shared/clock.ts` and `shared/fake-layout.ts`, imported only by their same-named agent wrappers. The shared leaves have Node-only dependencies; this keeps Neovim fixture closures free of hub runtime while retaining one Clock/layout policy. The exact-path and importer policy lives in `agent/package.ts` and also governs serialized installation.
 That leaf must retain a Node-only import closure. Usage aggregation lives under
 `host/agent`; the local Host imports that owner. The source guard checks the
 closure and includes an allowlist-omission control.

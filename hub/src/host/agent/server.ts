@@ -1,4 +1,5 @@
 import { availableMemory, memoryFloorDetails, requireSpawnMemory } from './memory.ts';
+import { loginDiskOperation } from './login-disk.ts';
 import { refPushOwner } from './ref-push.ts';
 import { RefWatches, REF_FLUSH_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './watch.ts';
 import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY } from './claude.ts';
@@ -18,7 +19,7 @@ import { checkpoint } from './storage.ts';
 import { run as runCommand } from './command.ts';
 import { agentOperations, parseAgentRun } from './operations.ts';
 import { AGENT_PROTOCOL, PREPARED_HOST_CAPABILITY, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
-export type AgentOptions = { runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket, signal:AbortSignal) => void | Promise<void> };
+export type AgentOptions = { loginDiskCommand?: typeof runCommand; runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket, signal:AbortSignal) => void | Promise<void> };
 export async function serveAgent(options: AgentOptions) {
   if (!options.secret) throw new Error('host secret required');
   // Invalid fake-host configuration must not begin recovery or acquire resources.
@@ -62,6 +63,10 @@ export async function serveAgent(options: AgentOptions) {
   await processes.load();
   const prepared = new PreparedOperations(options.runDir, options.env ?? process.env, processes);
   await prepared.start();
+  const loginDisk = loginDiskOperation(options.env ?? process.env, processes, async(input,work)=>{
+    const token=randomUUID();
+    return prepared.runCommand(token,randomUUID(),{operation:'login-disk',...input},work);
+  },()=>prepared.assertMutable(),options.env?.CLAND_FAKE_HOSTS?options.loginDiskCommand:undefined);
   let memoryWork = Promise.resolve();
   let memoryTimer: NodeJS.Timeout | undefined;
   let recoveryTimer: NodeJS.Timeout | undefined;
@@ -116,7 +121,8 @@ export async function serveAgent(options: AgentOptions) {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
               if(['spawn','run','run-host','writeFile','publishFile','appendFile','makeDirectory','removePath','worktreeAdd','worktreeRemove'].includes(request.op))prepared.assertMutable();
-              switch (request.op) {
+              const releaseMutation=request.op==='login-disk'||['identity','alive','processes','native-receipts','processUsage','cancel-run','settle-prepared','watch-status'].includes(request.op)?()=>{}:loginDisk.enterMutation(['stop','signal','prepare-stop','abort-prepared','remove-claude','forget-claude','unwatch'].includes(request.op));
+              try { switch (request.op) {
                 case 'watch-status': result=watches.status();break;
                 case 'watch': await watches.watch(String(request.args.path),String(request.args.branch));result=null;break;
                 case 'worktreeRemove': result=await watches.remove(String(request.args.path),String(request.args.root),async()=>{await operations.worktreeRemove!(request.args);return null;});break;
@@ -132,6 +138,7 @@ export async function serveAgent(options: AgentOptions) {
                 case 'remove-claude': await claude.remove(String(request.args.generation),worker=>processes.releaseAdoption(worker),worker=>processes.confirmedClosed(worker));adoptedGenerations.delete(String(request.args.generation));result=null;break;
                 case 'native-receipts': result = processes.completionReceipts(); break;
                 case 'processUsage': result = await processUsage(options.env ?? process.env); break;
+                case 'login-disk': result = await loginDisk(request.args); break;
                 case 'cancel-run': cancelled.delete(String(request.args.token)); result = null; break;
                 case 'run-host': {
                   const token=typeof request.args.token==='string'?request.args.token:randomUUID();
@@ -171,6 +178,7 @@ export async function serveAgent(options: AgentOptions) {
                   result = await operation(request.args);
                 }
               }
+              } finally {releaseMutation();}
               if (request.op.startsWith('prepare-') && result && typeof result === 'object' && Object.hasOwn(result, 'token') && typeof (result as {token?:unknown}).token === 'string') { const token = (result as {token:string}).token; owned.add(token); if (request.op === 'prepare-publishFile' || request.op === 'prepare-appendFile') fileOwners.add(token); }
               options.afterOperation?.(request.op,connection);
               const reply = JSON.stringify({ id, ok: true, result });

@@ -17,7 +17,8 @@ function fixture() {
     writeFileSync(join(bin, command), `#!/bin/bash\nprintf '%s %s\\n' '${command}' "$*" >> "$COMMAND_LOG"\nexit 0\n`, { mode: 0o755 });
   }
   const helper = join(root, 'cland-auth');
-  writeFileSync(helper, readFileSync(new URL('../src/host/cland-auth.sh', import.meta.url), 'utf8').replace('/cland/auth/.operation.lock', join(root, 'operation.lock')));
+  writeFileSync(join(bin,'findmnt-source'), '#!/bin/bash\nexit 0\n', {mode:0o755});
+  writeFileSync(helper, readFileSync(new URL('../src/host/cland-auth.sh', import.meta.url), 'utf8').replace('/cland/auth/.operation.lock', join(root, 'operation.lock')).replace('findmnt -rn -S', 'findmnt-source -rn -S'));
   const env = fixtureEnvironment(root, process.env, { PATH: bin, COMMAND_LOG: log });
   return { root, bin, log, run: (args: string[]) => {
     const result = spawnSync('/bin/bash', [helper, ...args], { cwd: root, env, encoding: 'utf8', timeout: testWaitMs() });
@@ -37,6 +38,23 @@ test('C4: invalid helper arguments fail before any external command', () => {
       assert.equal(readFileSync(f.log, 'utf8'), '', 'no command on refused input');
     }
   } finally { rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('mount drains and unmounts the device automount before mounting the login path', () => {
+  const f=fixture();
+  try {
+    const devices=join(f.root,'devices');mkdirSync(devices);
+    const device=join(devices,'scsi-0DO_Volume_volume');writeFileSync(device,'');
+    const helper=join(f.root,'cland-auth');writeFileSync(helper,readFileSync(helper,'utf8').replace('/dev/disk/by-id',devices));
+    writeFileSync(join(f.bin,'findmnt-source'),'#!/bin/bash\nprintf "/mnt/volume\\n"\n',{mode:0o755});
+    writeFileSync(join(f.bin,'findmnt'),`#!/bin/bash\nprintf '%s\\n' '51 ${device}'\n`,{mode:0o755});
+    writeFileSync(join(f.bin,'fuser'),'#!/bin/bash\n[[ "$*" = "-s "*operation.lock ]] && exit 0\nprintf "fuser %s\\n" "$*" >> "$COMMAND_LOG"\nexit 1\n',{mode:0o755});
+    writeFileSync(join(f.bin,'mountpoint'),'#!/bin/bash\nexit 32\n',{mode:0o755});
+    const result=f.run(['mount','volume','/cland/auth/codex-work']);assert.equal(result.status,0,result.stderr);
+    const log=readFileSync(f.log,'utf8');
+    assert.match(log,/fuser -s -m -M \/mnt\/volume\nsync \numount \/mnt\/volume\n/);
+    assert.ok(log.indexOf('umount /mnt/volume')<log.indexOf('mount -o defaults'));
+  } finally {rmSync(f.root,{recursive:true,force:true});}
 });
 
 

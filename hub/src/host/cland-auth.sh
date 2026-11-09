@@ -8,6 +8,7 @@ case "$op" in mount|umount|freeze|thaw) ;; *) echo 'unknown operation' >&2; exit
 [[ "$vol" =~ ^[a-z][a-z0-9-]{0,63}$ ]] || { echo 'bad volume name' >&2; exit 2; }
 [[ "$dir" =~ ^/cland/auth/[a-z][a-z0-9]*-[a-z0-9][a-z0-9-]*$ ]] || { echo 'bad mount point' >&2; exit 2; }
 [[ ! -L "$dir" ]] || { echo 'symlink mount point' >&2; exit 2; }
+[[ ! -L /cland && ! -L /cland/auth ]] || { echo 'symlink mount ancestor' >&2; exit 2; }
 dev="/dev/disk/by-id/scsi-0DO_Volume_$vol"
 # All helper operations share one root-owned lock, including different aliases or volumes.
 # No caller can detach/rebind a mount while another operation owns it.
@@ -79,6 +80,24 @@ case "$op" in
   mount)
     for ((attempt=0; attempt<120; attempt++)); do [[ -e "$dev" ]] && break; sleep 0.25; done
     [[ -e "$dev" ]] || { echo 'volume device unavailable' >&2; exit 3; }
+    # Provider images may automount the device at /mnt/<volume>. Drain every
+    # observed mount through the same identity fence used by explicit umount.
+    target="$dir"
+    status=0
+    others=$(findmnt -rn -S "$dev" -o TARGET) || status=$?
+    [[ "$status" = 0 || ( "$status" = 1 && -z "$others" ) ]] || { echo 'device mount census failed' >&2; exit 3; }
+    while IFS= read -r other; do
+      [[ -n "$other" ]] || continue
+      [[ "$other" = /* && "$other" != *\\* ]] || { echo 'ambiguous mount path' >&2; exit 3; }
+      [[ "$other" != "$target" ]] || continue
+      dir="$other"
+      admit_mount
+      drain
+      sync
+      check_source
+      umount "$dir"
+    done <<< "$others"
+    dir="$target"
     mkdir -p "$dir"
     status=0; mountpoint -q "$dir" || status=$?
     case "$status" in

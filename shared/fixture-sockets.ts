@@ -3,7 +3,7 @@ import { lstatSync, mkdirSync, readlinkSync, realpathSync, symlinkSync, unlinkSy
 import { dirname, join } from 'node:path';
 import { opendir } from 'node:fs/promises';
 
-const socketDirectory = (root: string) => join(root, '.fixture-sockets');
+import { fakeStorageDirectory as socketDirectory } from './fake-layout.ts';
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 
 function privateDirectory(path: string): void {

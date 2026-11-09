@@ -280,7 +280,8 @@ projection (paths and SHA-256 hashes). A T1 regeneration test rejects stale
 projections. Runtime delivery reads that projection and verifies its source
 hashes; it loads no compiler. Run `node hub/bin/generate-host-agent-closure.ts`
 after changing the runtime. The legacy standalone agent installer uses this committed graph; production version handoffs use the whole runtime. Only
-Node built-ins, agent source modules and the credential-filter leaf are admitted.
+Node built-ins, agent source modules and three exact owner-bound shared leaves are admitted.
+The credential leaf is `shared/executor-credentials.ts`, owned by agent `command-environment.ts`. The Coordinator-approved neutral leaves `shared/clock.ts` and `shared/fake-layout.ts` are owned by their same-named agent wrappers. They keep one canonical Clock/layout policy shared with Neovim fixtures without making Neovim import hub runtime. Each leaf imports only Node built-ins, with no relative or package dependencies. `agent/package.ts` owns the exact paths and importer policy used by the generator, source boundary checker, package verifier and serialized installer; planted controls reject extra shared files and extra edges from these leaves. Login-disk resource types and fake attachment/readiness/parser owners remain agent-local; hub-side providers reuse them.
 There are currently no npm dependencies in this closure; a package import refuses
 delivery until it is explicitly vendored. The standalone runtime requires Node
 24 and does not resolve the project's node_modules. Host images supply Node; whole-tree ready delivery is described below.
@@ -629,6 +630,19 @@ Public cross-host relaunch admission uses the same checkout checkpoint policy be
 The root-owned helper accepts exactly `cland-auth mount|umount|freeze|thaw <volume-name> /cland/auth/<harness>-<login>`. Volume names match `[a-z][a-z0-9-]{0,63}`; the final path component matches `[a-z][a-z0-9]*-[a-z0-9][a-z0-9-]*`. `/cland/auth` stays root-owned and final symlinks are refused. Devices use DigitalOcean's `/dev/disk/by-id/scsi-0DO_Volume_<volume-name>` naming; another provider needs a matching helper device convention before using login disks. All operations hold one root-owned `/cland/auth/.operation.lock` with a 30 second acquisition bound. Existing mounted paths must belong to that volume; their mount ID and exact source are pinned and rechecked before each census, signal, freeze/thaw, permission change and unmount. Helper operations are the mount owner; concurrent administrative mount changes outside the helper are outside this ownership contract. Signals use fuser’s mountpoint-only `-M` safeguard. Missing, changed or ambiguous mount receipts refuse mutation, including unmount of an already absent mount. Mount waits at most 120 quarter-second device polls. Unmount first observes writers. If needed, it sends TERM, observes up to 20 quarter-second writer polls, then KILL and another 20 polls; remaining writers keep the disk mounted with a nonzero result. Freeze syncs before freezing; thaw unfreezes. A silent psmisc fuser census must first successfully detect the helper’s open lock file as a positive control; only a subsequent silent status 1 with no diagnostic counts as no users. Status 0 means users; other statuses, missing commands or census diagnostics fence the operation. Signal errors also fence it. Exit 2 means invalid arguments, 3 means missing/wrong/changed mount, 4 means persistent writers, 5 means lock contention and 6 means incomplete writer census or signal; the latter includes native status and bounded diagnostics. Other native command failures propagate their status.
 
 Stub-script and rendering checks are documented in [cland-auth tests](tests/hub-test-cland-auth.test.ts.md) and [prelude tests](tests/hub-test-host-prelude.test.ts.md).
+
+### Agent login-disk operation
+
+The Host API, typed refusals and fake-host mapping are documented in
+[the login-disk reference](../hub/logins.md#host-login-disk-api).
+
+Fake disk drainage retains the captured native owner when a child launched by
+this agent exits in the kernel before its close callback publishes completion.
+It joins that callback, its durable receipt and exit publication within the same
+four-second drainage deadline before unlinking the disk. An exit between the
+first observation and stop capture follows the same join. A recovered or foreign
+process gains no signal authority from this rule; missing completion retains the
+disk and refuses the operation.
 
 Pool images are prepared by the local human CLI or Neovim through `host.prepare`
 (`cland host prepare [pool]`); sessions and remote connections cannot submit it.

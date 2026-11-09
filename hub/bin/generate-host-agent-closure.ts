@@ -3,13 +3,14 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
+import { runtimePath, agentSourceImportAllowed } from '../src/host/agent/package.ts';
 const hash=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 export async function generateAgentClosure(root=fileURLToPath(new URL('../..',import.meta.url))) {
 
   const files:Array<{path:string;sha256:string}>=[], seen=new Set<string>();
   async function visit(path:string) {
     if(seen.has(path))return;seen.add(path);
-    if(!(path.startsWith('hub/src/host/agent/') || path==='shared/executor-credentials.ts'))throw new Error('agent source escapes runtime boundary');
+    if(!runtimePath(path))throw new Error('agent source escapes runtime boundary');
     const source=await readFile(join(root,path),'utf8');
     files.push({path,sha256:hash(Buffer.from(source))});
     if(!path.endsWith('.ts'))return;
@@ -29,7 +30,9 @@ export async function generateAgentClosure(root=fileURLToPath(new URL('../..',im
     for(const spec of imports) {
       if(spec.startsWith('node:'))continue;
       if(!spec.startsWith('.'))throw new Error('agent runtime package must be vendored before delivery');
-      await visit(relative(root,resolve(root,dirname(path),spec)));
+      const target=relative(root,resolve(root,dirname(path),spec));
+      if(!agentSourceImportAllowed(path,target))throw new Error('agent source escapes runtime boundary');
+      await visit(target);
     }
   }
   await visit('hub/src/host/agent/entry.ts');files.sort((a,b)=>a.path.localeCompare(b.path));return {files};

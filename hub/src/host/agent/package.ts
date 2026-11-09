@@ -2,7 +2,22 @@ import { readFile, realpath, lstat } from 'node:fs/promises';
 import { join, dirname, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 export function agentVersion(value:string):string { if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value))throw new Error('invalid agent version');return value; }
-export const runtimePath = (path: string) => /^(hub\/src\/host\/agent\/(?:[A-Za-z0-9_-]+\.ts|supervisor\.sh)|shared\/executor-credentials\.ts)$/.test(path);
+/** Exact shared leaves and the sole agent module allowed to import each one. */
+export function sharedAgentLeafOwner(path:string):string|null {
+  switch(path) {
+    case 'shared/executor-credentials.ts':return 'hub/src/host/agent/command-environment.ts';
+    case 'shared/clock.ts':return 'hub/src/host/agent/clock.ts';
+    case 'shared/fake-layout.ts':return 'hub/src/host/agent/fake-layout.ts';
+    default:return null;
+  }
+}
+export const runtimePath = (path:string) => /^hub\/src\/host\/agent\/(?:[A-Za-z0-9_-]+\.ts|supervisor\.sh)$/.test(path)||sharedAgentLeafOwner(path)!==null;
+/** Shared leaves have Node-only closure, including no relative edge back to agents. */
+export function agentSourceImportAllowed(importer:string,target:string):boolean {
+  if(target.startsWith('node:'))return true;
+  if(sharedAgentLeafOwner(importer)!==null)return false;
+  return importer.startsWith('hub/src/host/agent/')&&(target.startsWith('hub/src/host/agent/')||sharedAgentLeafOwner(target)===importer);
+}
 /** Whole runtime source policy is shared by installer and package verification. */
 export function runtimeTreePath(p:string):boolean {
  return !p.split('/').some(s=>s==='..'||s==='.'||s==='') && /^(?:hub\/bin\/cland|package(?:-lock)?\.json|hub\/package\.json|(?:hub\/(?:src|bin|mod\/cland)|shared)\/[A-Za-z0-9_./-]+\.(?:ts|js|json|sh|md))$/.test(p);

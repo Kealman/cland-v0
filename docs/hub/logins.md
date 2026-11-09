@@ -1,4 +1,4 @@
-# Project logins
+# Logins
 
 `cland login list [--json]` reads project login metadata from `hub.db`. It is
 available only through a local human CLI or Neovim connection. Sessions, web
@@ -55,3 +55,39 @@ volume, and a reader uses a different volume (a snapshot clone). Key bindings
 have a null volume id. Provider volume existence, attachment and whether a
 reader's volume came from this login's snapshot belong to the stage-2 native
 binding/release owners; this store enforces only metadata coherence.
+
+## Host login-disk API
+
+SSH Hosts expose optional `loginDisk({op, volume, path})`, with `op` one of
+`mount`, `umount`, `freeze`, `thaw`. Local Hosts refuse; callers encountering an
+older Host without the method must refuse too. The authenticated agent validates
+the helper grammar and existing path ancestors before launching exactly
+`sudo -n /usr/local/sbin/cland-auth <op> <volume> <path>`. No login bytes or
+provider keys are arguments. Refusals carry `bad-argument`, `busy`,
+`writers-remain` or `wrong-volume`; helper exits 4 and 6 retain writer ownership.
+Helper execution is checkpointed by the agent’s durable prepared-command owner before native launch. An incomplete native close retains that checkpoint and fences all new mutations across agent restart; recycling the host is required if native settlement cannot be proved. An unknown SSH outcome fences subsequent mutations on that Host; callers must
+reconcile the disk rather than blindly retrying.
+
+Mount discovers existing device mount targets, including `/mnt` automounts,
+and drains each through the mount-ID/source fence before unmounting it.
+Discovery failure retains the mounts. It then mounts at the requested login
+path and applies runner ownership and mode 0700.
+
+With both the fake-host marker and fake provider root configured, the agent
+uses the fake provider's `volumeContents` attachment check. The logical path
+maps beneath that exact machine directory and links to its attached volume's
+contents. An unrelated symlink is refused; the helper's exact volume link is
+admitted. Relocation drains and unlinks other login links for that volume.
+Unmount inspects working directories and open files of agent-owned process
+trees, signals only disk users with captured native identities, including retained descendants after their root exits, and confirms their native closure
+before unlinking. Uncertain observations retain the link. A restarted agent
+cannot acquire signal authority from retained process records: disk users it
+did not launch cause `writers-remain`. Fake freeze/thaw validate attachment and
+the link but do not emulate filesystem write blocking. These fixtures require
+no sudo, mounted device, provider API or real harness login. See
+[login-disk tests](../agents/tests/hub-test-host-login-disk.test.ts.md).
+
+
+The agent reserves writer admission before login-disk drainage, joins already admitted operations, and refuses new writer-capable requests from every connection through unlink. Native cancellation and observation remain available. Fake process drainage performs repeated captured censuses, signals only members actually using the disk, and refuses uncertain ownership. The native TERM escalation and final closure bounds use the shared Clock (2 s and 4 s respectively); no successful unlink is reported on exhaustion.
+
+A closed process row alone does not settle drainage. The agent joins any current-lifetime root completion that has observed native exit through its durable checkpoint and exit publication before unlinking. The same drainage deadline bounds that join; failure or missing completion retains the disk. A still-live unrelated root does not enter this completion join.

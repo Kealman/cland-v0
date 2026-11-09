@@ -82,6 +82,19 @@ test('local Host retains no optional Claude launch or adoption implementation', 
   optionalClaudeHostContract(localHost());
 });
 
+test('optional login-disk contract covers absence, refusal and exact input with planted failures',async()=>{
+  const {optionalLoginDiskHostContract}=await import('./host-contract.ts');
+  const {localHost}=await import('../src/host/local.ts');
+  const input={op:'mount' as const,volume:'volume',path:'/tmp/invalid-login'};
+  await optionalLoginDiskHostContract({});
+  await optionalLoginDiskHostContract(localHost(),{input,code:'wrong-volume'});
+  const recording={loginDisk:async(received:typeof input)=>{assert.deepEqual(received,input);}};
+  await optionalLoginDiskHostContract(recording,{input});
+  await assert.rejects(optionalLoginDiskHostContract(recording),/undefined/);
+  await assert.rejects(optionalLoginDiskHostContract(recording,{input,code:'wrong-volume'}),/Missing expected rejection/);
+  await assert.rejects(optionalLoginDiskHostContract({loginDisk:async()=>{throw Object.assign(new Error('planted'),{code:'wrong-code'});}},{input,code:'wrong-volume'}));
+});
+
 
 test('optional terminal printer contract covers absence and its exact session command', async () => {
   const { optionalTerminalHostContract } = await import('./host-contract.ts');

@@ -3,7 +3,7 @@ import { agentDeliveryStagingPrefix } from '../state-paths.ts';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
-import { runtimePath, runtimeTreePath, agentVersion } from './agent/package.ts';
+import { runtimePath, runtimeTreePath, agentVersion, sharedAgentLeafOwner } from './agent/package.ts';
 import type { SshTransport } from '../transport/ssh.ts';
 export const AGENT_ENTRY = 'hub/src/host/agent/entry.ts';
 export type AgentBundle = { version: string; files: Array<{path:string;sha256:string;bytes:string}> };
@@ -24,7 +24,7 @@ export async function agentBundle(version:string,root=fileURLToPath(new URL('../
 }
 const quote=(s:string)=>"'"+s.replaceAll("'","'\\''")+"'";
 /** Executed by the host's Node over the pinned master, independent of the old agent. */
-export const INSTALL_AGENT = `const runtimePath=${runtimePath.toString()};const agentVersion=${agentVersion.toString()};\n` + String.raw`
+export const INSTALL_AGENT = `const sharedAgentLeafOwner=${sharedAgentLeafOwner.toString()};const runtimePath=${runtimePath.toString()};const agentVersion=${agentVersion.toString()};\n` + String.raw`
 const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
 (async()=>{
  const [requested,input]=process.argv.slice(1);

@@ -1,9 +1,9 @@
+import type { HostArchitecture, Machine, Volume, VolumeSnapshot } from '../agent/resource-types.ts';
+export type { HostArchitecture, Machine, Volume, VolumeSnapshot } from '../agent/resource-types.ts';
 import type { PoolImageKey } from './pool-image.ts';
 import type { HostProviderDeclarationState } from './declarations.ts';
 /** Host provisioning is independent of verification's Executor. Provider tokens
  * and native resource details stay behind this interface, on the hub. */
-export type HostArchitecture = 'x86_64' | 'arm64';
-export type Machine = { id: string; address: string; architecture: HostArchitecture; created: string };
 export type HostCreateAdmission = { provider:string; root:string; project:string; lease?: import('../host-leases.ts').HostLease; watchdog?: import('../host-watchdog.ts').HostWatchdogIdentity; reservation?: {project:string;lease:string;pool:string;deadline:string} };
 export type HostSshIdentity = {environment?:{CLAND_FAKE_HOSTS:string};user?:string;clientKeyPath:string;knownHosts:string;home:string;node:string};
 export type AcquireOptions = { signal?:AbortSignal; admission?:HostCreateAdmission; size?:string; project: string; pool: string; architecture: HostArchitecture; region?: string; userData?: string; image?: PoolImageKey };
@@ -45,7 +45,6 @@ export interface HostProvider {
   deleteVolume(volume: Volume): Promise<DeleteVolumeResult>;
 }
 
-export type Volume = { id: string; project: string; name: string; region: string; sizeGiB: number; created: string; attachedTo: string | null };
 export type CreateVolumeOptions = { project: string; name: string; region: string; sizeGiB: number; fromSnapshot?: VolumeSnapshot | string };
 export type CreateVolumeResult = { state: 'created'; volume: Volume } | { state: 'refused'; reason: string; retryAt?: string } | Failed;
 export type DeleteVolumeResult = { state: 'deleted' } | { state: 'incomplete'; reason: string } | { state: 'refused'; reason: 'attached' };
@@ -55,7 +54,6 @@ export type VolumeRefusal = { state: 'refused'; reason: 'attached elsewhere' | '
 export type AttachVolumeResult = { state: 'attached' } | VolumeRefusal | Failed;
 export type DetachVolumeResult = { state: 'detached' } | VolumeRefusal | Failed;
 
-export type VolumeSnapshot = { id: string; volumeId: string; created: string };
 export type SnapshotVolumeResult = { state: 'snapshotted'; snapshot: VolumeSnapshot } | { state: 'refused'; reason: 'rate limited'; retryAt: string } | Failed;
 
 export type ListSnapshotsResult = { state: 'listed'; snapshots: VolumeSnapshot[] } | { state: 'volume-gone' } | Failed;

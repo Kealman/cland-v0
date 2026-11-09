@@ -16,6 +16,7 @@ import type { Host } from './host.ts';
 export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Record<string, unknown>) => void = () => {}): Host {
   return {
     name: 'local',
+    loginDisk: async () => { throw Object.assign(new Error('login-disk unavailable on local Host'), {code:'wrong-volume'}); },
     layout: input => Object.freeze({ ...input, modDir: LOCAL_MOD_DIR, runDirectory: join(dirname(input.discoveryFile), 'run'), logDirectory: join(dirname(input.discoveryFile), 'log') }),
     ...fileOperations,
     listFolder: path => folderFiles(path),

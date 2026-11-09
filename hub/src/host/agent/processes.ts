@@ -1,4 +1,6 @@
 import { requireSpawnMemory } from './memory.ts';
+import { realClock, type Clock } from './clock.ts';
+import { setImmediate as yieldIO } from 'node:timers/promises';
 import { CLAUDE_STOP_GRACE_MS, stopClaude, claudeProcessMembers, claudeDescendantCapture, claudePinnedTargets, claudeRootReplacement, observeClaudeProcesses, processTargetKey as targetKey } from './claude-stop.ts';
 import { spawn, execFile } from 'node:child_process';
 import { readFile, mkdir, readdir, rm, open, access } from 'node:fs/promises';
@@ -15,6 +17,9 @@ const exec = promisify(execFile);
 export type ProcessTarget = { pid: number; identity: string };
 export type ProcessRow = { adopted?: true; authority?: 'owned' | 'unknown' | 'closed'; targets?: ProcessTarget[]; rootExitObserved?: boolean; pid: number; identity: string; launchId?: string; ended?: boolean; code?: number | null; signal?: string | null };
 export type ProcessHooks = {
+  beforeNativeClose?: (pid:number,exit:{code:number|null;signal:string|null}) => Promise<void>;
+  beforeExitPublication?: (pid:number) => Promise<void>;
+  beforeCompletionJoin?: (pid:number) => Promise<void>;
   afterSpawn?: (pid: number, directory: string) => Promise<void>;
   beforeCheckpoint?: (phase: 'spawn' | 'exit' | 'recover') => Promise<void>;
   closeLog?: (close: () => Promise<void>) => Promise<void>;
@@ -25,8 +30,12 @@ export type ProcessHooks = {
   afterCapture?: () => Promise<void>;
 };
 export const AGENT_LAUNCH_DIRECTORY = 'launches';
+const DISK_DRAIN_WAIT_MS=4000;
+const DISK_DRAIN_TERM_MS=2000;
+type CompletionWait={clock:Clock;deadline:number};
 
 export class AgentProcesses {
+  #launchedHere = new WeakSet<ProcessRow>();
   #rows: ProcessRow[] = [];
   #adoptions = new Map<string,Promise<true|undefined>>();
   #adopted = new Set<ProcessRow>();
@@ -47,6 +56,7 @@ export class AgentProcesses {
   #settling = new Set<ProcessRow>();
   #stopping = new Set<ProcessRow>();
   #nativeCompletions = new Map<ProcessRow, Promise<void>>();
+  #nativeCompletionFailures = new WeakSet<ProcessRow>();
   #emit: (event: AgentEvent) => void;
   constructor(runDir: string, env: NodeJS.ProcessEnv, emit: (event: AgentEvent) => void, hooks: ProcessHooks = {}) {
     this.#runDir = runDir;
@@ -114,6 +124,10 @@ export class AgentProcesses {
       }
       if (!proof?.ended && !(proof?.identity && proof.identity !== row.identity)) continue;
       if (!row.rootExitObserved) {
+        // A fresh native child still has its captured close owner. Kernel exit
+        // can precede that callback; retain ownership while it publishes rather
+        // than treating this as an unobserved exit recovered from serialized data.
+        if(this.#launchedHere.has(row)&&this.#nativeCompletions.has(row))continue;
         if (row.code === undefined) Object.assign(row, { code: null, signal: null });
         row.authority = 'unknown'; row.ended = false;
         continue;
@@ -212,9 +226,10 @@ export class AgentProcesses {
         await new Promise(resolve => setTimeout(resolve, 20));
       }
       if (!birth || birth.pid !== child.pid || birth.launchId !== launchId || !await this.alive(birth)) throw new Error('child birth incomplete');
-      const row: ProcessRow = { ...birth, authority: 'owned', targets: [{ pid: birth.pid, identity: birth.identity }] }; this.#rows.push(row); await this.#persist('spawn');
+      const row: ProcessRow = { ...birth, authority: 'owned', targets: [{ pid: birth.pid, identity: birth.identity }] }; this.#launchedHere.add(row); this.#rows.push(row); await this.#persist('spawn');
       // Exactly one completion owner, installed before release. Exit cannot precede admission.
       const nativeCompletion = nativeClosed.then(async exit => {
+        if(this.#hooks.beforeNativeClose)await this.#hooks.beforeNativeClose(row.pid,exit);
         if (this.#closed) return;
         const completion = (async () => {
           this.#settling.add(row);
@@ -243,6 +258,7 @@ export class AgentProcesses {
           } catch { row.authority = 'unknown'; }
           if (row.ended) await checkpoint(join(directory, 'closed.json'), row);
           await this.#persist('exit');
+          await this.#hooks.beforeExitPublication?.(row.pid);
           this.#receipts.set(`${row.pid}:${row.identity}`,{event:'process-exited',pid:row.pid,identity:row.identity,...exit});
           this.#emit({ event: 'process-exited', pid: row.pid, identity: row.identity, ...exit, authority: row.authority, ended: row.ended === true });
           if (row.ended) await this.#removeAdmission(launchId);
@@ -252,7 +268,7 @@ export class AgentProcesses {
         try { await completion; } finally { this.#completions.delete(completion); this.#settling.delete(row); }
       });
       this.#nativeCompletions.set(row, nativeCompletion);
-      void nativeCompletion.then(() => this.#nativeCompletions.delete(row), () => this.#nativeCompletions.delete(row));
+      void nativeCompletion.then(() => this.#nativeCompletions.delete(row), () => {this.#nativeCompletionFailures.add(row);this.#nativeCompletions.delete(row);});
       await admission?.accepted({pid:row.pid,identity:row.identity});
       await checkpoint(join(directory, 'release.json'), { identity: row.identity }); accepted = true;
       child.unref(); acceptedResult = { pid: row.pid, identity: row.identity }; return acceptedResult;
@@ -303,10 +319,11 @@ export class AgentProcesses {
     }
     return await this.alive(row) ? [...targets.values()] : null;
   }
-  async #capture(args: Record<string, unknown>,retain=true) {
+  async #capture(args: Record<string, unknown>,retain=true,completionWait?:CompletionWait) {
     const row = this.#rows.find(row => row.pid === args.pid && row.identity === args.identity && !row.ended);
     if (!row) return null;
-    if (this.#settling.has(row)) await this.#nativeCompletions.get(row);
+    const wait=completionWait??{clock:realClock,deadline:realClock.now().getTime()+DISK_DRAIN_WAIT_MS};
+    if (this.#settling.has(row)&&!await this.#joinDiskCompletion(row,wait.clock,wait.deadline))return null;
     if (row.authority === 'unknown') throw new Error('process authority unknown; stop requires host reboot or recycling');
     if (row.ended) return null;
     let captured: ProcessTarget[];
@@ -328,6 +345,11 @@ export class AgentProcesses {
       }
     } else {
       if(row.adopted){const proof=(await observeClaudeProcesses([row.pid],this.#env)).get(row.pid);if(proof?.ended||proof?.identity&&proof.identity!==row.identity)row.rootExitObserved=true;}
+      if(!row.rootExitObserved&&this.#launchedHere.has(row)&&this.#nativeCompletions.has(row)) {
+        // The root can exit after the drain's first observation but before this
+        // capture. Its fresh close owner must settle that same window here too.
+        if(!await this.#joinDiskCompletion(row,wait.clock,wait.deadline))return null;
+      }
       if (!row.rootExitObserved) {
         row.authority = 'unknown'; await this.#persist('recover');
         throw new Error('process authority unknown; stop requires host reboot or recycling');
@@ -366,6 +388,59 @@ export class AgentProcesses {
     return sent||settleExited;
   }
   capture(args: Record<string, unknown>) { return this.#capture(args); }
+  async #joinDiskCompletion(row:ProcessRow,clock:Clock,deadline:number):Promise<boolean> {
+    if(!this.#launchedHere.has(row))return true;
+    if(!row.rootExitObserved) {
+      const observed=(await observeProcesses([row.pid],this.#env)).get(row.pid);
+      if(!observed?.ended&&!(observed?.identity&&observed.identity!==row.identity))return true;
+    }
+    if(this.#nativeCompletionFailures.has(row))return false;
+    const completion=this.#nativeCompletions.get(row);
+    if(!completion)return this.#receipts.has(`${row.pid}:${row.identity}`);
+    await this.#hooks.beforeCompletionJoin?.(row.pid);
+    const remaining=deadline-clock.now().getTime();
+    if(remaining<=0)return false;
+    const expired=Promise.withResolvers<boolean>();
+    const timer=clock.setTimeout(()=>expired.resolve(false),remaining);
+    try {return await Promise.race([completion.then(()=>true,()=>false),expired.promise]);}
+    finally {clock.clearTimeout(timer);}
+  }
+  /** The caller holds launch admission through the final unlink. Signal only
+   * current disk users, preserving outside parents/siblings and retained orphans. */
+  async drainDiskUsers(usesDisk: (pid:number)=>Promise<boolean>, clock:Clock=realClock):Promise<boolean> {
+    const deadline=clock.now().getTime()+DISK_DRAIN_WAIT_MS;
+    const escalate=clock.now().getTime()+DISK_DRAIN_TERM_MS;
+    while(clock.now().getTime()<deadline) {
+      await this.reconcile();
+      let users=false;
+      for(const row of [...this.#rows]) {
+        if(!await this.#joinDiskCompletion(row,clock,deadline))return false;
+        if(row.ended&&row.authority==='closed')continue;
+        const capture=await this.captureForStop(row,{clock,deadline});
+        if(!await this.#joinDiskCompletion(row,clock,deadline))return false;
+        if(capture.closed)continue;
+        if(!capture.targets)return false;
+        for(const target of capture.targets) {
+          const before=(await observeProcesses([target.pid],this.#env)).get(target.pid);
+          if(before?.ended||before?.identity&&before.identity!==target.identity)continue;
+          if(before?.identity!==target.identity)return false;
+          let uses:boolean;
+          try{uses=await usesDisk(target.pid);}catch{return false;}
+          if(!uses)continue;
+          users=true;
+          // A persisted birth is observation, never fresh native ownership.
+          if(!this.#launchedHere.has(row))return false;
+          const after=(await observeProcesses([target.pid],this.#env)).get(target.pid);
+          if(after?.ended||after?.identity&&after.identity!==target.identity)continue;
+          if(after?.identity!==target.identity)return false;
+          if(!await this.#signalTargets([target],clock.now().getTime()<escalate?'SIGTERM':'SIGKILL',true))return false;
+        }
+      }
+      if(!users)return true;
+      await yieldIO();
+    }
+    return false;
+  }
   completionReceipts() {return [...this.#receipts.values()];}
   /** Exact launch lookup without resource sampling or a wire-table scan. */
   async operationRecord(launchId:string):Promise<ProcessRow|undefined>{
@@ -379,7 +454,7 @@ export class AgentProcesses {
     if(this.#admissions.has(launchId))return {state:'pending',reason:'native admission birth incomplete'};
     return {state:'failed',error:'commit interrupted before native admission'};
   }
-  async captureForStop(args: Record<string, unknown>) {
+  async captureForStop(args: Record<string, unknown>,completionWait?:CompletionWait) {
     const owned=this.#rows.find(row=>row.pid===args.pid&&row.identity===args.identity&&!row.ended);
     if(owned&&owned.authority==='owned'&&this.#adopted.has(owned)&&!this.#stopping.has(owned)){
       await this.#save;
@@ -405,7 +480,7 @@ export class AgentProcesses {
     if (row?.ended && row.authority === 'closed') return { closed: true, targets: null };
     if (row) {
       const census=this.#adopted.has(row)?await claudeProcessMembers(this.#env):undefined;
-      const targets = await this.#capture(args);
+      const targets = await this.#capture(args,true,completionWait);
       if(targets&&census)this.#stopCaptures.set(row,{key:targetKey(targets),pids:new Set(census.map(member=>member.pid))});
       return { closed: row.ended === true && row.authority === 'closed', targets };
     }
