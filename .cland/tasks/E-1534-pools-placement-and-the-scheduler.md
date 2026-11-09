@@ -2,7 +2,8 @@
 id: E-1534
 kind: epic
 title: Pools, placement and the scheduler
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.4
@@ -16,7 +17,8 @@ follows:
 topic: topic-1425
 branch: null
 created: 2026-10-31T18:22:03.811Z
-updated: 2026-11-09T11:30:02.683Z
+updated: 2026-11-09T12:19:50.154Z
+closed: 2026-11-09T12:19:50.154Z
 ---
 
 ## Goal
@@ -55,13 +57,21 @@ QA runs the demo below on `dev` through the `cland` CLI and the hub's frame prot
 In a scratch project with an `agents` pool of `max_hosts = 1` and `min_hosts = 1`, QA launches Implementers until the host is full by weight and reads the next launch waiting with its reason in `cland session list`, the inbox and Agents; raises `max_hosts` with `cland config set` and reads a second host start and the launch placed. It sets `spread = true` and reads the next placements. It empties the second host and reads it stop after `idle_stop` while the first stays. It makes a fake host report 1.2 GB free and reads the refusal. It stops the hub with a short lease and reads the watchdog's deletion, restarts the hub with one host deleted meanwhile and reads its sessions exited. It runs the boot-timeout, unreachable and 15-minute cases and reads the General lines and the red state in `cland host status`. With a tiny sub-cap it reads the 80 % line once, a refused host at 100 % and the running host untouched, then reads `cland host status` with the spend and a ledger entry of category `hosts`. Finally it binds the Coordinator to a pool and reads the refusal.
 
 - [ ] C1. Pools are configured in `[hosts.<pool>]`, hot-reloaded and scaled with `cland config set`, and roles bind to them with `[<role>.launch] pool`, the Coordinator and the Aide only `local`.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.949Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C2. Placement packs densely by harness weight within `slots`, spreads with `spread = true`, and the host agent refuses a launch below 1.3 GB free memory.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.949Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C3. A launch that cannot be placed waits as a status line with its current reason in both inboxes, Agents and `cland session list`, never as an ask, and is placed when room appears.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.949Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C4. Pools keep `min_hosts`, start hosts on demand up to `max_hosts`, stop an empty host after `idle_stop`, and never stop a host with sessions except by `cland host stop`.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.949Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C5. Each host has a lease renewed while it works, and its detached watchdog deletes it at the deadline with the hub stopped.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.949Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C6. Boot and SSH failures after 5 minutes, unreachable hosts after 3 and 15 minutes, provider API limits and destroyed hosts each behave as spec §3.6 says.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.949Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C7. Agent hosts book under the ledger's `hosts` category, the sub-cap stops new hosts at 100 % with live ones untouched, and General gets one line at 80 %.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.950Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 - [ ] C8. `cland host status` shows per pool the hosts, slots, and today's and the month's spend, and per host its size, region, uptime, sessions and price.
+  - verified: qa-678 [qa] · run qa-e1534d-2026-11-09-qa678-1 · 2026-11-09T12:19:00.950Z · commit 94f4a8c6ac5d26091bde98477e744356d45748bb
 
 ## Constraints
 
@@ -466,3 +476,113 @@ Supporting Coordinator suites, not QA re-execution:
 All export files are declared in manifest.json and pass the unchanged publication scanner with a positive control. No HOME, environment snapshot, auth holder, cookie or one-use link is exported. Rule proposal sent to Coordinator: exact test lists must expand imported/generated registrars and match runtime TAP.
 
 Evidence artifact A-18029: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18029-e-1534-stage-3-qa-clear-at-1dcf4144/report.md
+
+### hub · 2026-11-09T11:41:55.014Z
+
+demo f5b70988-3d61-4a73-b47d-d39f1ba30d8e created: droplet cland-v0-f5b70988, commit 94f4a8c6ac5d26091bde98477e744356d45748bb, deadline 2026-11-09T12:55:28.033Z.
+
+### hub · 2026-11-09T11:48:31.232Z
+
+demo E-1534 lease f5b70988-3d61-4a73-b47d-d39f1ba30d8e droplet 617405454: operator attention required; deletion not confirmed. {"reason":"deletion-unconfirmed","fields":[],"expected":{"id":617405454,"name":"cland-v0-f5b70988","tags":["cland","cland-p-8a978a214ba5"]},"observed":{"id":617405454,"name":"cland-v0-f5b70988","tags":[],"status":"active"}}
+
+### hub · 2026-11-09T11:49:32.155Z
+
+demo f5b70988-3d61-4a73-b47d-d39f1ba30d8e destroyed: lifetime 465946 ms; cost $0.0324.
+
+### qa-678 · 2026-11-09T12:19:00.950Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-e1534d-2026-11-09-qa678-1
+commit: 94f4a8c6ac5d26091bde98477e744356d45748bb
+findings: [{"severity":"low","text":"Found aside, T-1676 (Bugs): D40 leaves 36 dead fixture-owner receipts from the unchanged producer. All owner PIDs absent, no open handles and temporary fixture roots gone. Inventoried and removed by literal paths under the brief's carried cleanup clause; final census zero. Per-file attribution is inferred and disclosed.","file":"shared/fixture-ownership.ts","line":13}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Where | Criteria | Result | Observation and evidence |
+| --- | --- | --- | --- | --- |
+| S0 | local macOS | all | PASS | Supported runtime; fixed K/K3 extraction and all syntax checks; both sealed modes zero credential names; correct scratch paths and no test host knobs; [S0-node.txt](S0-node.txt), [S0-env.txt](S0-env.txt), [S0-kits.txt](S0-kits.txt) |
+| E1534D-00 | local macOS | all | PASS | s00; requested clean SHA on dev, all3 stages closed, all21 member landings exactly1; [E1534D-00.txt](E1534D-00.txt), [plan.json](plan.json) |
+| E1534D-01 | local macOS | all | PASS | cl task hold; qa678 hold confirmed at requested source SHA; [E1534D-01.txt](E1534D-01.txt) |
+| E1534D-02 | droplet | all | PASS | demo start at requested SHA: active f5b70988-3d61-4a73-b47d-d39f1ba30d8e; deadline12:55:28.033Z; [E1534D-02.json](E1534D-02.json), [E1534D-02-exit.txt](E1534D-02-exit.txt) |
+| E1534D-03 | droplet | all | PASS | P_GATE zero credential-shaped names, supported Node, delivered Linux x64 tree; output redaction0; [E1534D-03.txt](E1534D-03.txt) |
+| E1534D-04 | local macOS | all | PASS | s01; supported Node, typecheck0 and dirty0; [E1534D-04.txt](E1534D-04.txt), [typecheck.log](typecheck.log) |
+| E1534D-05 | local macOS | C3 | PASS | fresh sealed npm run build exit0, web/dist current and Headless Shell available; [E1534D-05.txt](E1534D-05.txt), [browser-provenance.txt](browser-provenance.txt) |
+| E1534D-06 | local macOS | C1–C8 | PASS | Three fixed-commit source probes:43/45,34/39,46/46; only seven explicitly documented superseded lines mismatch; [E1534D-06-1.txt](E1534D-06-1.txt), [E1534D-06-2.txt](E1534D-06-2.txt), [E1534D-06-3.txt](E1534D-06-3.txt) |
+| E1534D-07 | local macOS | C5, C7 | PASS | refusal.mjs current source sweep0; generated lists rederived at requested SHA; [E1534D-07.txt](E1534D-07.txt) |
+| E1534D-08 | local macOS | all | PASS | 37 criterion-map ids/49 table rows; missing0; map checked against actual commands; [E1534D-08.txt](E1534D-08.txt) |
+| E1534D-10 | droplet | C1 | PASS | 3 named files, 52 tests; native exits, TAP counters and required generated names pass; [E1534D-10.log](E1534D-10.log), [E1534D-10.check.txt](E1534D-10.check.txt), [E1534D-10-validation.json](E1534D-10-validation.json) |
+| E1534D-11 | droplet | C1 | PASS | 3 named files, 33 tests; native exits, TAP counters and required generated names pass; [E1534D-11.log](E1534D-11.log), [E1534D-11.check.txt](E1534D-11.check.txt), [E1534D-11-validation.json](E1534D-11-validation.json) |
+| E1534D-12 | droplet | C1, C2 | PASS | 1 named files, 21 tests; native exits, TAP counters and required generated names pass; [E1534D-12.log](E1534D-12.log), [E1534D-12.check.txt](E1534D-12.check.txt), [E1534D-12-validation.json](E1534D-12-validation.json) |
+| E1534D-13 | droplet | C2 | PASS | 1 named files, 9 tests; native exits, TAP counters and required generated names pass; [E1534D-13.log](E1534D-13.log), [E1534D-13.check.txt](E1534D-13.check.txt), [E1534D-13-validation.json](E1534D-13-validation.json) |
+| E1534D-14 | droplet | C2 | PASS | 2 named files, 22 tests; native exits, TAP counters and required generated names pass; [E1534D-14.log](E1534D-14.log), [E1534D-14.check.txt](E1534D-14.check.txt), [E1534D-14-validation.json](E1534D-14-validation.json) |
+| E1534D-15 | droplet | C3 | PASS | 5 named files, 46 tests; native exits, TAP counters and required generated names pass; [E1534D-15.log](E1534D-15.log), [E1534D-15.check.txt](E1534D-15.check.txt), [E1534D-15-validation.json](E1534D-15-validation.json) |
+| E1534D-20 | droplet | C4 | PASS | 1 named files, 19 tests; native exits, TAP counters and required generated names pass; [E1534D-20.log](E1534D-20.log), [E1534D-20.check.txt](E1534D-20.check.txt), [E1534D-20-validation.json](E1534D-20-validation.json) |
+| E1534D-21 | droplet | C1, C4 | PASS | 1 named files, 10 tests; native exits, TAP counters and required generated names pass; [E1534D-21.log](E1534D-21.log), [E1534D-21.check.txt](E1534D-21.check.txt), [E1534D-21-validation.json](E1534D-21-validation.json) |
+| E1534D-22 | droplet | C4, C8 | PASS | 1 named files, 4 tests; native exits, TAP counters and required generated names pass; [E1534D-22.log](E1534D-22.log), [E1534D-22.check.txt](E1534D-22.check.txt), [E1534D-22-validation.json](E1534D-22-validation.json) |
+| E1534D-23 | droplet | C5 | PASS | 1 named files, 18 tests; native exits, TAP counters and required generated names pass; [E1534D-23.log](E1534D-23.log), [E1534D-23.check.txt](E1534D-23.check.txt), [E1534D-23-validation.json](E1534D-23-validation.json) |
+| E1534D-24 | droplet | C5 | PASS | 3 named files, 23 tests; native exits, TAP counters and required generated names pass; [E1534D-24.log](E1534D-24.log), [E1534D-24.check.txt](E1534D-24.check.txt), [E1534D-24-validation.json](E1534D-24-validation.json) |
+| E1534D-25 | droplet | C5, C6 | PASS | 2 named files, 13 tests; native exits, TAP counters and required generated names pass; [E1534D-25.log](E1534D-25.log), [E1534D-25.check.txt](E1534D-25.check.txt), [E1534D-25-validation.json](E1534D-25-validation.json) |
+| E1534D-26 | droplet | C6 | PASS | 1 named files, 21 tests; native exits, TAP counters and required generated names pass; [E1534D-26.log](E1534D-26.log), [E1534D-26.check.txt](E1534D-26.check.txt), [E1534D-26-validation.json](E1534D-26-validation.json) |
+| E1534D-27 | droplet | C6 | PASS | 1 named files, 8 tests; native exits, TAP counters and required generated names pass; [E1534D-27.log](E1534D-27.log), [E1534D-27.check.txt](E1534D-27.check.txt), [E1534D-27-validation.json](E1534D-27-validation.json) |
+| E1534D-28 | droplet | C6 | PASS | 2 named files, 22 tests; native exits, TAP counters and required generated names pass; [E1534D-28.log](E1534D-28.log), [E1534D-28.check.txt](E1534D-28.check.txt), [E1534D-28-validation.json](E1534D-28-validation.json) |
+| E1534D-29 | droplet | C6 | PASS | 1 named files, 24 tests; native exits, TAP counters and required generated names pass; [E1534D-29.log](E1534D-29.log), [E1534D-29.check.txt](E1534D-29.check.txt), [E1534D-29-validation.json](E1534D-29-validation.json) |
+| E1534D-30 | droplet | C6 | PASS | 1 named files, 5 tests; native exits, TAP counters and required generated names pass; [E1534D-30.log](E1534D-30.log), [E1534D-30.check.txt](E1534D-30.check.txt), [E1534D-30-validation.json](E1534D-30-validation.json) |
+| E1534D-31 | droplet | C7 | PASS | 2 named files, 30 tests; native exits, TAP counters and required generated names pass; [E1534D-31.log](E1534D-31.log), [E1534D-31.check.txt](E1534D-31.check.txt), [E1534D-31-validation.json](E1534D-31-validation.json) |
+| E1534D-32 | droplet | C7 | PASS | 1 named files, 5 tests; native exits, TAP counters and required generated names pass; [E1534D-32.log](E1534D-32.log), [E1534D-32.check.txt](E1534D-32.check.txt), [E1534D-32-validation.json](E1534D-32-validation.json) |
+| E1534D-33 | droplet | C8 | PASS | 4 named files, 75 tests; native exits, TAP counters and required generated names pass; [E1534D-33.log](E1534D-33.log), [E1534D-33.check.txt](E1534D-33.check.txt), [E1534D-33-validation.json](E1534D-33-validation.json) |
+| E1534D-34 | droplet | C5, C7 | PASS | 2 named files, 86 tests; native exits, TAP counters and required generated names pass; [E1534D-34.log](E1534D-34.log), [E1534D-34.check.txt](E1534D-34.check.txt), [E1534D-34-validation.json](E1534D-34-validation.json) |
+| E1534D-35 | droplet | all | PASS | 2 named files, 23 tests; native exits, TAP counters and required generated names pass; [E1534D-35.log](E1534D-35.log), [E1534D-35.check.txt](E1534D-35.check.txt), [E1534D-35-validation.json](E1534D-35-validation.json) |
+| E1534D-39 | droplet | all | PASS | Demo lease released; final lifetime 465946 ms, cost USD 0.032357361111111115; [E1534D-39.json](E1534D-39.json), [E1534D-39-after.json](E1534D-39-after.json) |
+| E1534D-40 | local macOS | C3 | PASS | 4 named files, 33 tests; native exits, TAP counters and required generated names pass; [E1534D-40.log](E1534D-40.log), [E1534D-40.check.txt](E1534D-40.check.txt), [E1534D-40-validation.json](E1534D-40-validation.json) |
+| E1534D-41 | local macOS | C3 | PASS | 2 named files, 29 tests; native exits, TAP counters and required generated names pass; [E1534D-41.log](E1534D-41.log), [E1534D-41.check.txt](E1534D-41.check.txt), [E1534D-41-validation.json](E1534D-41-validation.json) |
+| E1534D-50 | local macOS | all | PASS | Final demo freshness.current true at requested full SHA; intervening dev log retained; [E1534D-50.json](E1534D-50.json), [E1534D-50-dev.txt](E1534D-50-dev.txt) |
+| E1534D-60 | local macOS | C1 | PASS | r60: empty fixture, isolated init, 2m lease and agents pool prepared; Implementer bound; all expected facts captured; [E1534D-60.txt](E1534D-60.txt) |
+| E1534D-61 | local macOS | C4 | PASS | q51: min_hosts hot setup followed by fresh hub start created one ready host without a launch; alias captured; [E1534D-61.txt](E1534D-61.txt) |
+| E1534D-62 | local macOS | C1, C2 | PASS | q52: w1 launched on H1, running; session list names that host once; [E1534D-62.txt](E1534D-62.txt) |
+| E1534D-63 | local macOS | C1, C3, C4 | PASS | r63: w2 waiting fact without ask/needs-you; max_hosts hot increase placed w2 on H2; waiting cleared and hub PID unchanged; [E1534D-63.txt](E1534D-63.txt) |
+| E1534D-64 | local macOS | C2, C8 | PASS | r64: CLI and JSON agree: two hosts, 1.5/2 slots, 0 promised, zero fake spend and nonnegative uptime; [E1534D-64.txt](E1534D-64.txt) |
+| E1534D-65 | local macOS | C4 | PASS | r65: w2 stopped; idle-stop hot applied; H2 and keys deleted before captured lease deadline; H1/w1 remain ready/running; [E1534D-65.txt](E1534D-65.txt) |
+| E1534D-66 | local macOS | C5, C6 | PASS | r66: restart settles deleted H3/w3 and ledger, preserves H1/w1, resumes lease renewal, creates no extra host; [E1534D-66.txt](E1534D-66.txt) |
+| E1534D-67 | local macOS | C6 | PASS | r67: JSON array contains H1 ready and H2/H3 destroyed, zero unreachable; outage behavior separately covered by D28; [E1534D-67.txt](E1534D-67.txt) |
+| E1534D-68 | local macOS | C4, C8 | PASS | r68: min_hosts zero, explicit H1 stop exits w1, destroys machine and keys, status pool empty; [E1534D-68.txt](E1534D-68.txt) |
+| E1534D-69 | local macOS | C1 | PASS | d69: Coordinator pool refused with exact local-only reason, roles unchanged; spread hot applied once in hosts table; [E1534D-69.txt](E1534D-69.txt) |
+| E1534D-70 | local macOS | C4, C5 | PASS | d70: min_hosts zero on-demand H5 runs w5; one ready host; lease deadline advances and remains within two minutes; [E1534D-70.txt](E1534D-70.txt) |
+| E1534D-71 | local macOS | C5, C7 | PASS | d71: H5 ready/w5 running before hub stop; watchdog confirms machine and keys absent after stop; all four host ledger entries settled, H5 zero cost/released; [E1534D-71.txt](E1534D-71.txt) |
+| E1534D-72 | local macOS | all | PASS | rstop and q57: relay/hub stopped; owned hub PIDs absent; 12 expected fake-host processes identified by ancestry/cwd and drained to zero; [E1534D-72.txt](E1534D-72.txt), [pre-drain-census.txt](pre-drain-census.txt), [relay-stop.txt](relay-stop.txt) |
+| E1534D-79 | local macOS | all | PASS | s79: request/head/dev match; worktree clean; root non-tracker unchanged; no preservation lock, alias or non-cache TMPDIR residue; [E1534D-79.txt](E1534D-79.txt), [cleanup-step1.txt](cleanup-step1.txt) |
+
+**Clear** for the E-1534 Definition of done at 94f4a8c6ac5d26091bde98477e744356d45748bb, run qa-e1534d-2026-11-09-qa678-1. All 50 brief checks, including S0, passed. Verified criterion marks: C1,C2,C3,C4,C5,C6,C7,C8. The final freshness receipt is current. Request fca6928e-3506-43bc-872d-51ce7638c87b; all three stages closed and all 21 members landed, as retained in plan.json. No tracker-only hold commit changed the tested SHA.
+
+Findings, severity ranked:
+- **Low, found aside, T-1676 (Bugs):** the Neovim files left 36 dead fixture-owner receipts. All owner PIDs were absent, no open receipt handles remained, and every temporary fixture root was gone. References to the still-existing detached source tree are source references, not fixture residue. Seven of eight compared files, including the shared producer, are byte-identical to 7c0320829. The stage-edited inbox-sections entry invokes that unchanged producer. Per-file attribution of 5/24/1/6 is inferred from serial order, source launches, mtimes and three repeated root pairs; no independent receipt inventory per invocation was captured. The brief explicitly carries this cleanup clause. See residue-final-inventory.json, residue-attribution.json, residue-producer-comparison.json, residue-entry-diff.txt and cleanup-step1.txt.
+
+Execution and limits:
+- 47 distinct named files, serial execution, 631 tests passed; zero failed, cancelled, skipped or todo. No named-file rerun. Linux demo: 41 files/569 tests; local macOS: six files/62 tests. Classification: 11 T1, 30 T2, four T3 and two Web files (targeted-tier-inventory.json); no T4 in this targeted brief. Typecheck, current web build, source checks and every scratch row completed. Named-file runs do not preload the suite duration/resource enforcement, so they make no budget or suite wall-time claim.
+- Demo executor droplet, Linux x64, Node v24.21.0; lease f5b70988-3d61-4a73-b47d-d39f1ba30d8e, deadline 2026-11-09T12:55:28.033Z. Final released receipt: lifetime 465946 ms, cost USD 0.032357361111111115. Interim active/releasing estimates are retained; final released accounting is authoritative. Row39 is a local control command for that droplet lease, so its recorder executor is local while its table location and JSON identify the droplet.
+- Local macOS arm64 Darwin 27.0.0, Node v24.21.0 and pinned Neovim v0.12.5. Browser: pinned Chrome Headless Shell 1248, Google Chrome for Testing 156.0.8078.4; exact binary path and current build stamp in browser-provenance.txt. Web prerequisites report current web/dist and resolvable node_modules. No GUI or real-browser profile was used.
+- Each local command used the shared-builder seal and immediate credential-name gate, login:false, isolated HOME/XDG/Git/TMPDIR and fake-provider inputs. Files ran one at a time after cover-quiet/load<=10 admission. Droplet native cases used the run-owned lease. The real DigitalOcean API was used only by the hub to manage demo/suite infrastructure; product provider tests used fakes. No real product host, harness account or user ledger was tested.
+- Scratch integration: min_hosts created H1; w1 ran there. w2 waited without a needs-you/ask, then placed on H2 after hot max_hosts increase. Status showed two hosts and 1.5/2 slots. Idle stop removed H2 before its lease deadline while w1 survived. Restart settled externally deleted H3/w3 and spend, preserved H1/w1 and renewed H1. Explicit host stop settled w1 and removed keys. Coordinator remote-pool launch was refused without editing roles; spread hot-applied. With min_hosts=0, w5 created H5 on demand and its lease renewed while working. After the hub stopped, the detached watchdog confirmed machine/key deletion and settled host spend.
+- Boot/outage/backoff/cap thresholds are component-clock evidence in named files, not live production outages or spend events. Fake prices are zero. The 80% warning/sub-cap, memory floor, weights/dense/spread and DigitalOcean safeguards were checked by their mapped native tests. Cleanup records distinguish expected fake-host survivors from product state, then prove zero fixture processes and removal of alias/dead receipts; TMPDIR contains only Node compile cache before post-verdict removal.
+
+Corrections and disclosures:
+- No new brief assertion or expected-result correction was needed. Fixed-commit kit extraction carries the prior stage corrections, including successful stop status stopped and all 80 generated DigitalOcean registrations. Exact registration lists were compared against source expansion and runtime TAP. Source-check mismatches are exactly the seven landing deltas the brief names; stage counts are 43/45, 34/39 and 46/46. Retired-refusal zero-match observation has a historical positive control with four matches.
+- The standing QA clause required an epic occasion suite despite the brief listing it as supporting Coordinator evidence. Submitted from clean integrated root dev after fresh origin fetch; HEAD, dev and origin/dev matched S. Demo and fixtures stayed in the detached worktree. The hub result was awaited before this verdict.
+- The stage skill rule proposal remains applicable: expand imported/generated test registrations and compare exact runtime names. The current brief already carries that correction. No product source was edited.
+
+Epic occasion suite:
+- Run **939223e6-6c21-4080-bdd0-a41c0cce118a**, full integrated dev at the tested SHA/tree f3efd18e0e975f46fbf28306ab68e24f7f079cab, exit 0: **7,805 passed, zero failed/cancelled/todo, nine skipped** out of 7,814. Hub result received before verdict; this is an executed suite, not a cache hit. Source [A-18031](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18031-suite-939223e6-6c21-4080-bdd0-a41c0cce118a-all-at-94f4a8c.log); shard artifacts A-18032 and A-18033, coverage map A-18034. The 631 targeted tests above are separate evidence and are not added to this suite total.
+- T0 completed locally in 42.487 s; T1, T2, T3, T4 base and Web completed with exit 0 on both Linux shards. **T4 repetitions did not run**: 17 files ran in base phase only. Exact skip cases remain in A-18031; skip-reason checking is report-mode, zero missing reasons. No claim that skipped or unexecuted cases passed.
+- Linux x64 6.8.0-147-generic, Node v24.21.0, Neovim v0.12.5, two workers per shard. Browser Google Chrome for Testing 156.0.8078.4, pinned Headless Shell 1248 at `/home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell`. Phase and platform provenance are in [epic-suite-extract.txt](epic-suite-extract.txt).
+- Two c-8 lon1 machines: shard-1 `cland-v0-0e62bf19`, lifetime 1,912 s, cost $0.1328; shard-2 `cland-v0-8180305b`, lifetime 2,112 s, cost $0.1467. **Total suite cost $0.2795**. Admission-through-remote-finish durations were 1,946.87 s and 2,148.87 s; collection took 25.07 s and 24.77 s. **Overall measured wall time was 2,174.28 s (36 min 14.28 s), admission through collection**, excluding pre-submission preparation. These are not projected tier wall times or the demo lease lifetime.
+- Budget, lint and T3 ratchet diagnostics are **report-only**. Projected T3 and Web wall times exceeded their report budgets; ten listed budget exceedances, one missing duration baseline and 122 lint findings in 59 files are retained in A-18031. Exit 0 is not an enforced budget pass. Ten legacy allowances total 151.196 s, owner E-880.
+
+All exported files are declared in manifest.json and scanned with the unchanged publication scanner plus a positive control. Export contains no HOME, environment snapshot, auth holder, cookie or one-use link. Q/T/worktree removal follows the recorded verdict; the private control directory remains for audit.
+
+Durable evidence: A-18035, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18035-e-1534-definition-of-done-qa-clear-at-94f4a8c6/report.md. Relative evidence links in the table resolve within that bundle. Epic suite A-18031; shards A-18032/A-18033; coverage map A-18034.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-11-09T12:19:50.154Z
+
+Closed after the Definition-of-done demo was clear (qa-678, run qa-e1534d-2026-11-09-qa678-1, A-18035) at 94f4a8c6. C1–C8 were verified and freshness was current. Epic suite 939223e6 green: 7805 pass, 0 fail. Stages: 1 clear (A-17643), 2 clear on rerun (A-17843), 3 clear (A-18029). Follow-ups filed: T-1765 (provider reconciliation and key orphans), T-1766 and T-1768 (direct-run test env), T-1767 (digitalocean-pacing native cleanup), T-1769 (lock retry on FakeClock), T-1770 (DigitalOcean 422 concurrent-create flake), T-1771 (scanner false positive).
