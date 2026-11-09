@@ -1,3 +1,5 @@
+import { secretVoiceRefusal } from './cards.ts';
+import { answerTextDigest } from './redact.ts';
 import type { Inbox, InboxAsk } from '../protocol.ts';
 import type { RemoteIngress } from './gateway.ts';
 import type { RemoteStore } from './state.ts';
@@ -7,10 +9,10 @@ import type { TelegramUpdateHandler } from './telegram-polling.ts';
 import { TelegramError } from './telegram-api.ts';
 
 type Request = <T>(type: string, fields: Record<string, unknown>, ingress?: RemoteIngress) => Promise<T>;
-type Prompt = { ask: string; chat: string; card: number; question: string; topic: string; mode: 'other' | 'decline' };
-type Target = { ask: string; mode: Prompt['mode'] | 'card' | 'unverified'; prompt?: string }
-  | { approval: string; mode: 'approval' };
-type Answer = { fields?: { ask: string; text?: string; option?: number; declined?: true; reason?: string }; prompt?: string; note?: string; stored?: boolean };
+type Prompt = { ask: string; chat: string; card: number; question: string; topic: string; mode: 'other' | 'decline'; secret?: true };
+type Target = { ask: string; mode: Prompt['mode'] | 'card' | 'unverified'; prompt?: string; secret?: true }
+  | { approval: string; mode: 'approval'; secret?: true };
+type Answer = { fields?: { ask: string; text?: string; option?: number; declined?: true; reason?: string }; prompt?: string; note?: string; stored?: boolean; input?: { field: 'text' | 'reason'; digest: string } };
 
 /** Separate, immutable ForceReply messages; only cards belong in the editable ask map. */
 export class TelegramPrompts {
@@ -27,7 +29,7 @@ export class TelegramPrompts {
     const key = `telegram.prompt:${press}`;
     if (this.#store.get(key)) return;
     this.#store.transaction(() => {
-      this.#store.set(key, JSON.stringify({ ask: ask.id, chat, card, question: ask.question, topic: ask.topic.id, mode } satisfies Prompt));
+      this.#store.set(key, JSON.stringify({ ask: ask.id, chat, card, question: ask.question, topic: ask.topic.id, mode, ...(ask.secret ? { secret: true as const } : {}) } satisfies Prompt));
       this.#store.set(`telegram.prompt-wait:${chat}`, key);
     });
   }
@@ -78,8 +80,9 @@ export class TelegramPrompts {
     const key = `telegram.voice-target:${chat}:${message}`;
     const saved = this.#store.get(key);
     if (saved !== null) return JSON.parse(saved) as Target | null;
-    const target = late ? null : this.#target(chat, reply ? Number(reply) : undefined);
-    this.#store.set(key, JSON.stringify(target));
+    const candidate = this.#target(chat, reply ? Number(reply) : undefined);
+    const target = candidate?.secret ? candidate : late ? null : candidate;
+    if (!secretVoiceRefusal(target)) this.#store.set(key, JSON.stringify(target));
     return target;
   }
 
@@ -99,14 +102,21 @@ export class TelegramPrompts {
     const saved = this.#store.get(key);
     const target = !saved ? voiceTarget ?? this.#target(chat, message.reply_to_message?.message_id)! : undefined;
     let answer: Answer;
+    const persist = () => {
+      if (!answer.input || !answer.fields) { this.#store.set(key, JSON.stringify(answer)); return; }
+      const fields = { ...answer.fields };
+      delete fields.text;
+      delete fields.reason;
+      this.#store.set(key, JSON.stringify({ ...answer, fields }));
+    };
     if (saved) answer = JSON.parse(saved) as Answer;
     else if (target!.mode === 'unverified') {
       answer = { note: 'Prompt delivery is unconfirmed. Reply to the ask card or use /cancel.' };
-      this.#store.set(key, JSON.stringify(answer));
+      persist();
     } else if (target!.mode === 'approval') {
       answer = { note: this.#store.get(`telegram.approval-closure:${target!.approval}`)
         ? 'This approval is already closed.' : 'Use the approval card’s buttons to answer.' };
-      this.#store.set(key, JSON.stringify(answer));
+      persist();
     } else {
       const inbox = await this.#request<Inbox>('inbox.list', {});
       const ask = inbox.asks.find(ask => ask.id === target!.ask);
@@ -123,15 +133,24 @@ export class TelegramPrompts {
         if (option && option <= ask.options.length) answer.fields = { ask: ask.id, option };
         else answer.note = `Reply with an option number from 1 to ${ask.options.length}.`;
       } else answer.fields = { ask: ask.id, text: message.text! };
-      // Freeze routing and the exact fields before dispatch; a lost result
+      if (ask?.from === 'hub' && answer.fields) {
+        const field = answer.fields.reason !== undefined ? 'reason' : answer.fields.text !== undefined ? 'text' : undefined;
+        if (field) answer.input = { field, digest: answerTextDigest(answer.fields[field]!) };
+      }
+      // Hub cards freeze routing and a digest; plaintext remains in the native replay.
+      // Ordinary asks freeze the exact fields before dispatch; a lost result
       // retries the same gateway receipt even after the prompt wait clears.
-      this.#store.set(key, JSON.stringify(answer));
+      persist();
+    }
+    if (answer.input && answer.fields) {
+      if (answerTextDigest(message.text!) !== answer.input.digest) throw new Error('native answer identity conflict');
+      answer.fields[answer.input.field] = message.text!;
     }
     if (answer.fields) {
       try {
         await this.#answer(answer.fields, { chatId: chat, messageId: String(message.message_id) }, () => {
           answer.stored = true;
-          this.#store.set(key, JSON.stringify(answer));
+          persist();
         });
       } catch (error) {
         if (answer.stored) throw error;
@@ -140,7 +159,7 @@ export class TelegramPrompts {
         const current = await this.#request<Inbox>('inbox.list', {});
         if (current.asks.some(ask => ask.id === answer.fields!.ask)) throw error;
         answer = { ...(answer.prompt ? { prompt: answer.prompt } : {}), note: 'This ask is already closed.' };
-        this.#store.set(key, JSON.stringify(answer));
+        persist();
       }
     }
     if (voiceTarget) return answer;
@@ -161,7 +180,11 @@ export class TelegramPrompts {
   #target(chat: string, reply?: number): Target | null {
     if (reply !== undefined) {
       const mapped = this.#store.message(chat, String(reply));
-      if (mapped?.ask) return { ask: mapped.ask, mode: 'card' };
+      if (mapped?.ask) {
+        const raw = this.#store.get(`telegram.card-model:${mapped.ask}`);
+        const model = raw ? JSON.parse(raw) as InboxAsk : null;
+        return { ask: mapped.ask, mode: 'card', ...(model?.secret ? { secret: true } : {}) };
+      }
       if (mapped?.approval) return { approval: mapped.approval, mode: 'approval' };
       if (!mapped && (this.#store.get(`telegram.prompt-wait:${chat}`)
         || this.#store.entries('telegram.prompt-incomplete:').some(row => (JSON.parse(row.value) as { chat: string }).chat === chat)))
@@ -171,11 +194,11 @@ export class TelegramPrompts {
       if (!key?.startsWith('telegram.prompt:')) return null;
       const raw = this.#store.get(key);
       const prompt = raw ? JSON.parse(raw) as Prompt : null;
-      return prompt?.chat === chat ? { ask: prompt.ask, mode: prompt.mode, prompt: key } : null;
+      return prompt?.chat === chat ? { ask: prompt.ask, mode: prompt.mode, prompt: key, ...(prompt.secret ? { secret: true } : {}) } : null;
     }
     const key = this.#store.get(`telegram.prompt-wait:${chat}`);
     const raw = key && this.#store.get(key);
     const prompt = raw ? JSON.parse(raw) as Prompt : null;
-    return prompt?.chat === chat ? { ask: prompt.ask, mode: prompt.mode, prompt: key! } : null;
+    return prompt?.chat === chat ? { ask: prompt.ask, mode: prompt.mode, prompt: key!, ...(prompt.secret ? { secret: true } : {}) } : null;
   }
 }

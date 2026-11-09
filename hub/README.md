@@ -16,7 +16,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Identity and delivery](../docs/hub/identity-and-delivery.md)
 - [Topics](../docs/hub/topics.md)
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)
-- [Asks and the inbox](../docs/hub/asks-and-the-inbox.md)
+- [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
 - [Host providers](../docs/hub/host-providers.md): validated pool configuration and pure weighted placement decisions, provider contracts, pool image keys and local human `cland host prepare [pool]`, `host create [pool]`, `host list` and `host destroy <id>`; pool settings apply on reload or `cland config set`, init creates no pools; fake hosts create to ready, DigitalOcean prepares with executor builder controls and requires E-1534 admission for production creation.

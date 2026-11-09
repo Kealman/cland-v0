@@ -1046,7 +1046,14 @@ For Telegram voice admission and answers, use the telegram-voice fixtures in
 `docs/agents/tests/hub-test-telegram-voice-answers.test.ts.md`. Freeze the answer
 target before speech I/O, assert no native `getFile` after a durable refusal,
 keep MIME, name and caption, and keep the two-audio album regression. A matched
-answer keeps no audio; failed or unmatched notes upload to General.
+answer keeps no audio; failed or unmatched notes upload to General. Secret hub
+cards carry optional `InboxAsk.secret: true`: Telegram and Discord refuse voice
+replies to these cards before download, transcription or storage, replying
+“Use text to answer this card” without a transcript or echo. Non-secret hub
+cards, ordinary cards and General retain their voice behavior. Ordinary and older
+inbox rows omit the secret key. See
+`docs/agents/tests/hub-test-hub-cards-voice.test.ts.md` for native refusal and
+non-secret controls.
 
 For setup speech keys, use the sealed runner and prompter fixtures, share
 `SPEECH_DATA_USE`, preflight before hidden input and resolve environment overrides

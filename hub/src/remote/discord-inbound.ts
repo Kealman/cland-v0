@@ -1,3 +1,4 @@
+import { secretVoiceRefusal } from './cards.ts';
 import { discordChannelKey } from './discord-state.ts';
 import { discordLateText } from './discord-catchup.ts';
 import { discordCdn, CdnError } from './discord-cdn.ts';
@@ -103,6 +104,13 @@ export class DiscordInbound {
     const files = m.attachments as Attachment[], limit = (media.maxUploadMb?.() ?? 50) * 1024 * 1024;
     const voice = Number(m.flags) & 8192 && files.length === 1 && (!files[0]!.content_type || files[0]!.content_type.startsWith('audio/'));
     const say = (line: string) => this.#say(channel, user, message, line);
+    const reference = m.type === 19 ? (m.message_reference as { message_id?: string } | undefined)?.message_id : undefined;
+    const referenced = reference ? this.#store.message(channel, reference) : null;
+    const model = referenced?.ask ? this.#store.get(`discord.card-model:${referenced.ask}`) : null;
+    const card = model ? JSON.parse(model) as InboxAsk : null;
+    const refusal = voice ? secretVoiceRefusal(card) : null;
+    if (refusal) { await say(refusal); this.#store.set(`discord.inbound:${message}`, '1'); this.#confirmCursor(message); return; }
+    const reply = late ? null : referenced, ask = late ? null : card;
     const recovered = this.#receipt?.(ingress);
     if (recovered) { this.#saveMedia(recovered, channel, user, message); this.#confirmCursor(message); return; }
     if (files.some(f => !Number.isSafeInteger(f.size) || f.size < 0 || f.size > limit)) {
@@ -122,10 +130,6 @@ export class DiscordInbound {
         return discordCdn(replacement.url, limit, signal, media.fakeRoot);
       }
     };
-    const reference = m.type === 19 ? (m.message_reference as { message_id?: string } | undefined)?.message_id : undefined;
-    const reply = reference && !late ? this.#store.message(channel, reference) : null;
-    const model = reply?.ask ? this.#store.get(`discord.card-model:${reply.ask}`) : null;
-    const ask = model ? JSON.parse(model) as InboxAsk : null;
     let caption = m.content as string, bytes: Buffer[], descriptions: Array<{ name: string; mime: string }>;
     let echo: string | undefined, answer: string | undefined;
     if (voice) {

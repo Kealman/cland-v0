@@ -6,6 +6,7 @@
 // The answer is a human message carrying `answer_to` (the ask's id), addressed to the session that asked, and
 // delivered like any human message. The core (`./core.ts`) owns the topics and the routing; it hands this module
 // what it needs through the port below, so its private state stays its own.
+import { HubCards } from './hub-cards.ts';
 import { nameRefusal } from '../names.ts';
 import { randomUUID } from 'node:crypto';
 import type { AnswerAttribution, HumanActionVia, RemoteVia, AskCard, HubEvent, Message, SendOutcome, Topic, TopicMessage } from '../protocol.ts';
@@ -17,6 +18,16 @@ import { ToolForbidden, type Decision } from '../roles/permissions.ts';
 /** At most nine options: the keys 1-9 answer them. */
 export const MAX_OPTIONS = 9;
 export const MAX_OPTION_CHARS = 200;
+
+/** Shared validation for Coordinator asks and internal hub cards. */
+export function askOptions(options: string[], free: boolean): string[] {
+  const opts = options.map((o) => o.trim());
+  if (opts.length > MAX_OPTIONS) throw new TopicRefusal(`an ask has at most ${MAX_OPTIONS} options (the keys 1-9 answer them)`);
+  if (opts.some((o) => !o)) throw new TopicRefusal('an option needs a text');
+  if (opts.some((o) => o.length > MAX_OPTION_CHARS || o.includes('\n'))) throw new TopicRefusal(`an option is one line of at most ${MAX_OPTION_CHARS} characters`);
+  if (opts.length === 0 && !free) throw new TopicRefusal('an ask needs options or a free answer');
+  return opts;
+}
 
 /** What the asks need from the core. */
 export type AskPort = {
@@ -49,9 +60,11 @@ export type AskPort = {
 
 export class Asks {
   readonly #port: AskPort;
+  readonly cards: HubCards;
 
   constructor(port: AskPort) {
     this.#port = port;
+    this.cards = new HubCards(port);
   }
 
   /** Human asks take precedence while any linked questions still await their answer. */
@@ -182,11 +195,7 @@ export class Asks {
     if (!q.trim()) throw new TopicRefusal('an ask needs a question');
     const size = p.sizeRefusal(q);
     if (size) throw new TopicRefusal(size);
-    const opts = options.map((o) => o.trim());
-    if (opts.length > MAX_OPTIONS) throw new TopicRefusal(`an ask has at most ${MAX_OPTIONS} options (the keys 1-9 answer them)`);
-    if (opts.some((o) => !o)) throw new TopicRefusal('an option needs a text');
-    if (opts.some((o) => o.length > MAX_OPTION_CHARS || o.includes('\n'))) throw new TopicRefusal(`an option is one line of at most ${MAX_OPTION_CHARS} characters`);
-    if (opts.length === 0 && !free) throw new TopicRefusal('an ask needs options or a free answer');
+    const opts = askOptions(options, free);
     const now = p.now();
     const message: Message = { id: randomUUID(), from, fromKind: 'agent', ...(role !== null ? { fromRole: role } : {}), via: 'session', to: [], ...(replyTo !== undefined ? { replyTo } : {}), text: q, ts: now.toISOString(), topic: topic.id };
     // the message and its card, then the event: the card rides on it
@@ -229,7 +238,7 @@ export class Asks {
       }
       body = a.options[option - 1] as string;
     } else {
-      body = typeof text === 'string' ? text.trim() : '';
+      body = typeof text === 'string' ? (a.secret ? text : text.trim()) : '';
       if (!body) throw new TopicRefusal('an answer needs an option or a text');
       if (!a.free && a.options.length) throw new TopicRefusal(`this ask takes one of its options (1-${a.options.length}), not a free answer`);
     }
@@ -237,6 +246,7 @@ export class Asks {
       const refusal = nameRefusal(standIn);
       if (refusal) throw new TopicRefusal(refusal);
     }
+    if (a.from === 'hub' && a.hubKind !== undefined) return this.cards.answer(a, body, option, via, user, declined, standIn);
     const attribution: AnswerAttribution = standIn === undefined ? { answered_as: 'human' } : { answered_as: 'stand-in', answered_by: standIn };
     // closed first: the topic's status after the answer reads the asks still open
     const at = p.now().toISOString();
@@ -288,7 +298,7 @@ export class Asks {
       p.log({ event: `ask-${state}`, id: a.id, topic: topicId, by });
       this.#changed(a.id);
       const text = note(a);
-      if (text !== null) {
+      if (text !== null && a.from !== 'hub') {
         try {
           p.noteTo(topicId, a.from, `cland hub: ${text}`);
         } catch (err) {

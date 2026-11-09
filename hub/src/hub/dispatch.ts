@@ -2215,12 +2215,14 @@ export class Dispatcher {
             const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, core.store.users.mode() === 'users' || frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), humanUser(frame) ?? undefined);
             if (!messageId || !via) return answer(apply()); // Previous clients keep the ordinary first-answer gate.
             const state = core.store.remotes.forMessenger(via);
+            const digest = core.cards.answerDigest(frame.ask, frame.text ?? frame.reason);
+            const replayText = digest === undefined ? { text: frame.text, reason: frame.reason } : { digest };
             const key = `gateway.answer:${messageId}`;
             const original = state.get(key);
             if (original) {
               const receipt = JSON.parse(original);
-              if (receipt.ask !== frame.ask || receipt.option !== frame.option || receipt.text !== frame.text
-                || receipt.declined !== frame.declined || receipt.reason !== frame.reason) throw new Error('remote answer identity conflict');
+              if (receipt.ask !== frame.ask || receipt.option !== frame.option || (digest === undefined ? receipt.text !== frame.text : receipt.digest !== digest)
+                || receipt.declined !== frame.declined || (digest === undefined && receipt.reason !== frame.reason)) throw new Error('remote answer identity conflict');
               return answer(receipt.value);
             }
             // Commit the native replay receipt with the hub effect, before the adapter
@@ -2230,7 +2232,7 @@ export class Dispatcher {
               // Freeze the admission snapshot before post-commit delivery mutates
               // its outcomes; the first response and every replay must agree.
               const value = JSON.parse(JSON.stringify(applied));
-              state.set(key, JSON.stringify({ ask: frame.ask, option: frame.option, text: frame.text, declined: frame.declined, reason: frame.reason, value }));
+              state.set(key, JSON.stringify({ ask: frame.ask, option: frame.option, ...replayText, declined: frame.declined, value }));
               return value;
             });
             return answer(value);

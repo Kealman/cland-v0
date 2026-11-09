@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { HubFrame } from '../protocol.ts';
 import { mapStrings } from '../host/agent/redact.ts';
 export { remoteRedactor, redactValue } from '../host/agent/redact.ts';
@@ -22,4 +23,9 @@ export function redactHubFrame(input: HubFrame, redact: (text: string) => string
       throw new Error('remote output would alter protocol routing');
     return masked;
   });
+}
+
+/** Compare replayed answer input without retaining its plaintext. */
+export function answerTextDigest(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
 }

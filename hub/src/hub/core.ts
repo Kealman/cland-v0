@@ -483,6 +483,7 @@ export class HubCore {
   readonly #topicStatuses = new Map<string, TopicStatus>();
   /** The Coordinator's asks to the human (#33). */
   readonly asks: Asks;
+  get cards() { return this.asks.cards; }
   /** The human's inbox (§3.7): asks/command approvals, plans, requests and messages. */
   readonly inbox: InboxBoard;
   readonly visibility: Visibility;

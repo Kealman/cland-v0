@@ -91,3 +91,8 @@ export async function remotePublications<T>(store: RemoteStore, work: (pairing: 
   if (failed?.status === 'rejected') throw failed.reason;
   return results.map(result => (result as PromiseFulfilledResult<T>).value);
 }
+
+/** Secret card answers have no voice acquisition path. */
+export function secretVoiceRefusal(card: Pick<InboxAsk, 'secret'> | null | undefined): string | null {
+  return card?.secret ? 'Use text to answer this card' : null;
+}

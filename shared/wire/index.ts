@@ -252,7 +252,7 @@ export type ThreadRun = {
 };
 
 // hub/src/protocol.ts
-export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
+export type InboxAsk = { secret?: true; layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
 
 // hub/src/protocol.ts
 export type ApprovalChoice = 'once' | 'always' | 'deny';

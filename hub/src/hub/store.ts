@@ -218,6 +218,9 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'asks', column: 'forwarded_id', type: 'text' },
   { table: 'asks', column: 'answer_attribution', type: 'text' },
   { table: 'asks', column: 'outcome_json', type: 'text' },
+  { table: 'asks', column: 'hub_kind', type: 'text' },
+  { table: 'asks', column: 'hub_payload', type: 'text' },
+  { table: 'asks', column: 'secret_answer', type: 'integer' },
   { table: 'messages', column: 'answer_attribution', type: 'text' },
   { table: 'sessions', column: 'status', type: 'text' },
   { table: 'sessions', column: 'role', type: 'text' },
@@ -329,7 +332,7 @@ const toMessage = (row: Row): Message => ({
 });
 
 /** An ask's row in the `asks` table (#33). */
-export type AskRow = AskCard & { id: string; topic: string; from: string; ts: string; toSessionId?: string; fromSessionId?: string };
+export type AskRow = AskCard & { id: string; topic: string; from: string; ts: string; toSessionId?: string; fromSessionId?: string; hubKind?: string; payload?: unknown; secret?: boolean };
 
 const attributionOf = (row: Row): Partial<AnswerAttribution> => typeof row.answer_attribution === 'string' ? JSON.parse(row.answer_attribution) as AnswerAttribution : {};
 
@@ -338,6 +341,7 @@ const toAsk = (row: Row): AskRow => ({
   topic: row.topic as string,
   from: row.from_name as string,
   ts: row.ts as string,
+  ...(typeof row.hub_kind === 'string' ? { hubKind: row.hub_kind, payload: JSON.parse(row.hub_payload as string), secret: row.secret_answer === 1 } : {}),
   question: row.question as string,
   options: JSON.parse(row.options_json as string) as string[],
   free: row.free === 1,
@@ -2035,9 +2039,10 @@ export class Store implements HygieneMemory {
     this.#prepare('insert into message_reads (id) values (?) on conflict do nothing').run(id);
   }
 
-  createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string; to?: string }): void {
+  createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string; to?: string; hubKind?: string; payload?: unknown; secret?: boolean }): void {
     this.#prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts, to_name, to_session_id, from_session_id) values (?, ?, ?, ?, ?, ?, 'open', ?, ?, (select session_id from sessions where name = ?), (select from_session_id from messages where id = ?))")
       .run(a.id, a.topic, a.from, a.question, JSON.stringify(a.options), a.free ? 1 : 0, a.ts, a.to ?? null, a.to ?? null, a.id);
+    if (a.hubKind !== undefined) this.#prepare('update asks set hub_kind = ?, hub_payload = ?, secret_answer = ? where id = ?').run(a.hubKind, JSON.stringify(a.payload ?? null), a.secret ? 1 : 0, a.id);
   }
 
   /** Actionable ends of an open agent chain move with their role, atomically with its handover record. */

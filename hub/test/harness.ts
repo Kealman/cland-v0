@@ -402,6 +402,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  registerHubCards?: (cards: import('../src/hub/hub-cards.ts').HubCards) => void;
   createHost?: NonNullable<Parameters<typeof serveProject>[1]>['createHost'];
   uploadOpen?: typeof import('node:fs/promises').open;
   uploadAllocate?: (size: number) => Buffer;
@@ -522,6 +523,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     }
     throw error;
   }
+  options.registerHubCards?.(daemon.hub.core.cards);
   assert.ok(daemon.discovery, 'projectHub must bind both real edges');
   beforeDirectories(t, async () => { try { await daemon.stop(); } finally { await processLog.close(); } });
   afterCleanup(t, () => resources.check());

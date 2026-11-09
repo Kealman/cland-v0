@@ -10,11 +10,12 @@ import { remoteApprovalHarness } from './fakes/remote-approval-harness.ts';
 import { remoteRedactor } from '../src/remote/redact.ts';
 import { fakeTelegramFixture, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { pairing } from './telegram-polling-fixture.ts';
+import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import { FakeClock } from './fake-clock.ts';
 import { DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 
-export async function discordCardsFixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string, historyLimit?: number, usersMode = false, nativeApi = false) {
+export async function discordCardsFixture(t: TestContext, holdType?: string, projectName = 'Cards fixture', onCallback?: (id: string, type: number) => void | Promise<void>, both = false, log?: import('../src/log.ts').LogFn, scripted?: 'codex' | 'opencode', origin?: string, historyLimit?: number, usersMode = false, nativeApi = false, registerHubCards?: import('./harness.ts').ProjectHubOptions['registerHubCards']) {
   const clock = new FakeClock();
   const exchange = await discordExchangeOwner(t, { clock, ...(origin ? { publicOrigin: origin } : {}), ...(onCallback ? { onCallback } : {}) }).start();
   const { root } = await exchange.project();
@@ -38,7 +39,7 @@ export async function discordCardsFixture(t: TestContext, holdType?: string, pro
   let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
   exchange.stop(() => hub?.stop());
   const startHub = () => exchange.run(async () => {
-    hub = await projectHub(t, root, env, { clock, ...(script ? { adapters: [script.factory] } : {}), syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, ...(both ? { 'telegram.token': TELEGRAM_TEST_TOKEN } : {}) }, gatewayMessenger: (...args) => {
+    hub = await projectHub(t, root, env, { clock, ...(registerHubCards ? { registerHubCards, processes: fakeLockProcesses().processes, droplet: { processes: fakeLockProcesses().processes } } : {}), ...(script ? { adapters: [script.factory] } : {}), syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, ...(both ? { 'telegram.token': TELEGRAM_TEST_TOKEN } : {}) }, gatewayMessenger: (...args) => {
       const made = args[0] === 'discord' && (historyLimit !== undefined || nativeApi)
         ? new DiscordRemote(exchange.api, args[1], clock, { store: state, fake: true, projectName: () => projectName, ...(log ? { log } : {}), ...(historyLimit === undefined ? {} : { historyLimit }) })
         : factory(...args); if (made.id !== 'discord') return made;

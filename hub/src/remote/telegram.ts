@@ -1,3 +1,4 @@
+import { secretVoiceRefusal } from './cards.ts';
 import { remotePublications } from './cards.ts';
 import { randomUUID } from 'node:crypto';
 import { transcribes } from './media.ts';
@@ -376,8 +377,12 @@ export class TelegramRemote implements Remote {
         handle: async (update: TgUpdate) => {
           const message = update.message!;
           const file = mediaFile(message)!;
-          if (file.kind === 'voice' && !message.media_group_id && !this.#mediaRefusal(file)) this.#prompts!.captureVoice(String(message.chat.id), String(message.message_id),
-            message.reply_to_message ? String(message.reply_to_message.message_id) : undefined, this.#late(message.date));
+          if (file.kind === 'voice') {
+            const target = this.#prompts!.captureVoice(String(message.chat.id), String(message.message_id),
+              message.reply_to_message ? String(message.reply_to_message.message_id) : undefined, this.#late(message.date));
+            const refusal = secretVoiceRefusal(target);
+            if (refusal) { await this.#commandReply(update, [plainCommandReply(refusal)]); return; }
+          }
           this.#media!.enqueue({ chat: String(message.chat.id), message: String(message.message_id), date: message.date, ...(this.#late(message.date) ? { late: this.#late(message.date)! } : {}),
             ...(message.media_group_id ? { group: message.media_group_id } : {}), caption: message.caption ?? '', ...(message.reply_to_message ? { reply: String(message.reply_to_message.message_id) } : {}), file: mediaFile(message)! });
         },
@@ -510,6 +515,11 @@ export class TelegramRemote implements Remote {
     }
     if (input.file && !input.items && transcribes(input.file, maxSeconds)) {
       const target = input.file.kind === 'voice' ? this.#prompts!.captureVoice(input.chat, input.message, input.reply, input.late) : null;
+      const refusal = secretVoiceRefusal(target);
+      if (refusal) {
+        await this.#commandReply({ update_id: 0, message: { message_id: Number(input.message), date: input.date, chat: { id: Number(input.chat), type: 'private' } } }, [plainCommandReply(refusal)]);
+        return;
+      }
       const result = await voiceNote({ fetch: async signal => {
         const file = await this.#api.getFile({ file_id: input.file!.fileId }, { signal });
         if (!file.file_path) throw new TelegramError('getFile', 400, 'file unavailable');

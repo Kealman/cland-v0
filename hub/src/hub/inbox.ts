@@ -280,6 +280,7 @@ export class InboxBoard {
       const fromRole = p.store.roleOf(a.from);
       return p.visibility.place('inbox', {
         id: a.id,
+        ...(a.from === 'hub' && a.hubKind && a.secret ? { secret: true as const } : {}),
         topic: { id: a.topic, title: t?.title ?? a.topic, ...(t?.item ? { item: t.item } : {}) },
         question: a.question,
         options: a.options,

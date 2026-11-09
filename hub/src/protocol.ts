@@ -246,7 +246,7 @@ export type AskCard = {
 } & Partial<AnswerAttribution>;
 
 /** An open ask as the inbox lists it. */
-export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
+export type InboxAsk = { secret?: true; layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
 
 /** The harness choices and durable outcome shared by approval records and their departures. */
 export type ApprovalChoice = 'once' | 'always' | 'deny';

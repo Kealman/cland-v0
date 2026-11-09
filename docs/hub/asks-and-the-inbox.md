@@ -15,6 +15,59 @@ An **ask** is a question the Coordinator puts to the human inside a topic (spec 
 
 `AskCard` is `{"question","options":[…],"free","state":"open|answered|withdrawn|cancelled","answer"?:"<message id>","option"?:n}`.
 
+### Hub cards
+
+The hub can also raise an ask itself through `core.cards` (`HubCards`):
+`raise(kind, topic, question, options, free, payload, secret = false)` returns its
+message id; `withdraw(id, reason)` folds it with that reason; and
+`onAnswer(kind, handler)` registers its owner. This is an internal service, with
+no new remote request or authority. The existing inbox and ask frames show
+`from: hub`, with the same options and first-answer gate as Coordinator asks.
+Kind and JSON payload stay in the asks store. Secret hub cards additionally
+carry optional `secret: true` on InboxAsk so remotes can refuse voice before
+acquisition; ordinary cards and older shapes omit the key entirely. The
+thread AskCard shape is unchanged.
+
+Register handlers on each startup before admitting answers. A pending card keeps
+its kind and payload across restart. A missing handler logs its card id and kind,
+refuses the answer and leaves the card open. A handler receives
+`(payload, answer, context)` and synchronously returns its immediate outcome line.
+The context names the durable card `id`, whether the answer was `declined`, the
+chosen `option` if any, and `afterCommit(work)`. A decline is never consent;
+handlers must test `context.declined` before accepting an operation. Hub answers
+are recorded in the topic with no session recipients. In users mode, both the
+answer message and the independent outcome retain the admitted stable user id;
+inbox departures preserve it after message retention. Both remote copies fold
+with the handler outcome, or the withdrawal reason.
+
+Handlers validate and record their accepted intent in the same Store transaction
+as the answer, keyed by the card id. They return an immediate outcome such as
+“creating login codex-2…”. Host boot, sign-in and other slow work starts through
+`context.afterCommit`; it raises or withdraws the next card or posts an Agents
+line. The owning login service must resume its committed intents after restart,
+or record one failure line; an accepted card is never replayed as a fresh
+answer. A throwing handler rolls back its intent and answer; it must perform no
+external effect before commit. A failed after-commit callback is logged by card
+id without its exception text; the durable intent remains the owner's recovery
+boundary.
+
+A secret free text answer reaches the handler verbatim, including surrounding spaces.
+Telegram and Discord voice replies to secret cards are refused before download,
+transcription or audio storage with “Use text to answer this card”; there is no
+transcript row or voice echo. Non-secret hub cards, ordinary cards and General
+retain their existing voice behavior.
+The topic answer, stored outcome, inbox archive, journal, log and mirrors contain
+only “answered”; even the handler's returned string is suppressed. Native replay
+receipts store a SHA-256 digest in place of the answer text. Telegram prompt
+snapshots protect all hub-origin cards: they freeze routing and an input digest,
+then hydrate text or a decline reason only from the matching native replay.
+Ordinary Coordinator prompt snapshots retain their previous representation. The
+answer result returns the authoritative stored card in its existing optional
+`message.ask` field so Discord interaction updates use the same outcome as hub
+closure edits, including deferred interaction updates. Keep payloads and
+questions free of secrets. The service's secret marker protects answer retention;
+native pasted-message deletion is owned by the login card integration.
+
 ### Answered ask outcomes
 
 An answered `AskCard` also carries `outcome`, both in the live `ask` event and on
