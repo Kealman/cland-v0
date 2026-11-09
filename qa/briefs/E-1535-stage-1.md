@@ -1,0 +1,906 @@
+# Stage QA brief: E-1535 stage 1 — fake volumes, the login-disk helper, the login model, fake harness logins and hub cards
+
+Everything the run needs is in this file or in the files it names: whoever runs it cannot ask. Commands are for bash (start `bash` first; zsh reads `$S:q`, `$B:h` or `${B}:hub` as modifiers and does not split unquoted path lists; always brace a variable before `:`). The run is local, on macOS (BSD `stat`, Node 24 with `node:sqlite`, `uuidgen`, `lsof`). A platform skip is a FAIL, not a pass. **No real SSH, host, droplet, volume, DigitalOcean API, key, credential, harness login, sudo, mount, Telegram, Discord, speech API, npm registry or network (R-1530's QA rule).** The named files use only their own fakes (the fake host provider and its directory-backed volumes, the stub `cland-auth` fixture, the fake Claude Code, Codex and OpenCode binaries with their fake login files, the test messenger's fake Telegram and Discord APIs, the fake speech API, the scripted fake DigitalOcean API, in-memory or temporary SQLite). The scratch rows start one hub through the real CLI in a disposable project; they create no host. **No real harness.** The browser is the pinned Playwright Headless Shell (E1535S1-47 only); Neovim is headless from the repository's pinned cache (E1535S1-45 only). No GUI.
+
+**Settled after the stage's last landing.** Every member has landed: T-1772 `f077f9397`, T-1774 `69ac4f556`, T-1775 `1dedab368`, T-1773 `bc2d5bd6f` and T-1776 `728efcb88` (reviewed tip `f76bdc9bb`, rev-35 final clear). Every T-1776 line was re-read at dev `728efcb88a02a930ed6a5747d28f83b7e1d487b0` ("Rows to verify after landing"). Markers: VERIFIED = read at origin/dev `728efcb88a02a930ed6a5747d28f83b7e1d487b0` (all five landed); VERIFIED at `caf30df4` = read at the earlier dev `caf30df4fc87ab3317eb1c660e5286d07361c53b` (T-1772 to T-1775) and unchanged by T-1776 unless a row says otherwise; INFERRED = a reasoned expectation no read or run has proven. An INFERRED line is never a pass condition on its own. A dev SHA later than `728efcb88` is re-read under "Rows to verify after landing" before the run.
+
+The stage is model, fixture and seam level: provider volume operations on the fake, a login store and its list command, test-only harness login files, hub-raised cards and the agent's login-disk operation. The run is meant to take about two and a half hours: setup and E1535S1-00 to E1535S1-07 about 25 minutes (including the web build); the named files and standalone cases E1535S1-10 to E1535S1-57 about 120 minutes, one file at a time, the T3 files under the preservation lock; scratch rows E1535S1-60 to E1535S1-69 about 10 minutes. Waits for cover-quiet admission, the preservation lock or load are not product results.
+
+## Carried corrections
+
+A reused kit block must be reconciled against the source brief's recorded run corrections. This brief reuses the same base kits as `qa/briefs/E-1534-stage-3.md` (the stage-4 kit of E-1532 and the stage-3 kit of E-1533, both taken from one fixed commit `K`, `f43f4e21049e9c62a97c8dec1ebf37f9c7035a62`, never by blob, A-17643), and none of E-1534 stage 2's host relay or scratch helpers: this stage creates no host. It therefore carries the chain of corrections exactly as the committed `qa/briefs/E-1534-stage-3.md` holds it at commit `M` (`becee171b9cf1fa76e1732c674e13f2656551397`, after its own run's corrections), verbatim, then that brief's own run's corrections (A-18029), verbatim, then the E-1534 Definition-of-done run's outcome (A-18035). What applies here, and how, is stated in "How this brief applies them"; nothing below is optional.
+
+### From `qa/briefs/E-1533-stage-2.md`, its verbatim copy of stage 1's "Corrections from this brief's own run (qa-678, A-17199)", verbatim
+
+The stage-1 run at `5795362b` (run qa-s1-2026-11-06-qa678-1) applied two Coordinator-approved run-copy corrections. Both come from the E-1532 stage-6 run (A-17053), whose kit this brief reused by blob without its recorded corrections. A brief that copies this kit carries them as written here:
+
+- **Seal every command fresh.** Build every files, typecheck and scratch command through a fresh shared-builder seal, with the hub overlay inside the builder and `login:false`. Never build them from a static `env.sh` or `env-hub.sh` snapshot (T-1705). Run the credential-name count as an immediate gate before each command; a non-zero count stops the row. Redact the stdout and stderr captures while they stream. Set `QA_SESSION` inside the builder, so recorder lines name the QA session and not the rescue default.
+- **Known dead TMPDIR residue.** Inventory known residue from unchanged test files before the final census, and attribute it per file. At this build that is T-1676's spoke fallback sockets and `cland-fixture-owners-<uid>` receipts from `executor-droplet` (5+5) and `executor-prepare` (1+1). Check it dead (no `lsof` Unix entry, owner PIDs gone), then remove it by literal path after row 35, and repeat row 36. Live residue, or residue attributable to a stage item, stays a finding.
+
+### From `qa/briefs/E-1533-stage-2.md`, "Decisions from this brief’s first run (qa-678, A-17342)", verbatim
+
+- **T-1676 dead residue covers an unchanged producer inside a file the stage edited.** In E1533S2-35 a `cland-fixture-owners-<uid>` receipt came from the CLI-started-hub block of `claude-code-remote.test.ts`, which is byte-identical to the stage-1 build. That counts as T-1676 found aside, once QA has shown the residue is dead (PID absent, receipt not open, fixture root gone) and that the producing block’s SHA-256 is unchanged. Residue whose producing code the stage changed stays a finding.
+- **E1533S2-50 found T-1733.** `cland config set` deletes the `[hosts.*]` tables, so the stage was not clear. The rerun after T-1733 lands uses this brief’s original row order, because the fix must make row 50 pass as written. T-1733 landed as `945b974cef3badd17e582c6d3f88f7c0b73fba30` (batch e4878d6a, A-17358). It adds a tenth stage member and changes `hub/src/init/config-set.ts`, `hub/src/init/config.ts` and the other config writers its sweep found. The rerun checks its landing receipt like the other members. The rerun (qa-s2-2026-11-07-qa678-2, A-17366, clear) added T-1733’s committed title `config set preserves SSH hosts and both pools before host prepare` (`hub/test/host-prepare.test.ts`) to host-prepare’s `expect.json` list as an expected-registration correction. A brief that copies this kit adds the new titles of every late-landing member to its lists.
+
+### From `qa/briefs/E-1533-stage-3.md`, "Corrections from this brief's own run (qa-678, A-17467)", verbatim
+
+The stage-3 run at `093f851b` (run qa-s3-2026-11-07-qa678-1, clear) applied two Coordinator decisions and found one kit defect. A brief that copies this kit carries all three:
+
+- **Cleanup order (ask 8483de13).** The cleanup paragraph under "Build" removes `$Q` and `$T` before E1533S3-62, but `s62` reads `$Q/alias.txt`, lists `$T` and is recorded through `$Q/fresh.mjs`. Run it in this order: after E1533S3-61 passes, remove the validated alias and the known dead T-1676 residue by literal path; run and record E1533S3-62 with `$Q` and `$T` still present; after the verdict, remove `$Q`, `$T` and the worktree by literal paths with the checks given.
+- **E1533S3-56 is out of stage scope (decision 06c3f284).** `ports()` maps every loopback port to `session.sock`, but the fake OpenCode on a created host listens on TCP loopback (the capture: `opencode serve did not answer within 30000 ms: server listening on http://127.0.0.1:54101`). The scratch launch therefore cannot pass with this kit. T-1718 C1 is proven by E1533S3-20, including the native launch. The scratch launch moved to the E-1533 Definition-of-done demo. E1533S3-57's `oc row` line follows it under the same label; T-1720 C1's settlement is proven by E1533S3-43 and E1533S3-27.
+- **`m56` shell defect.** `case "$r" in "host=$ID "*) …` inside a `$(…)` substitution gives `syntax error near unexpected token newline` (scratch.sh:54). Compute the match outside the substitution before reusing `m56`.
+
+### From `qa/briefs/E-1533.md`, "Corrections from this brief's own run (qa-678, A-17472)", verbatim
+
+The Definition-of-done run at `79b350ec` (run qa-dod-2026-11-07-qa678-1, clear, C1–C8 verified) applied four Coordinator-approved run-copy corrections. The captures from before each correction are kept beside the corrected ones. A brief that copies this kit carries them as written here:
+
+- **Kit pin (ask 82fc449f).** `qa/briefs/E-1533-stage-3.md` moved from blob `8db55d9d703238490b373b4045d2834a42259a8c` to `997909c0c8ac8770cd879e0862816ca22743c939` when its own run's corrections were folded in. That is one 8-line prose hunk before `## Stage`, and no heredoc changed. Take `want 997909c0…` for kit3, gated on that one-hunk diff and on byte-identical `kit3` output from both blobs. A brief that edits a kit another brief pins by blob updates that pin in the same commit.
+- **Epic occasion suite (ask 9ff76615).** QA's standing clause runs `cland verify all --occasion epic --report <topic> --to <requester> --to <qa>`. The ban on `cland verify` in this brief covers only ad-hoc runs. The hub admits the occasion only as an integrated dev request: run `git fetch origin` in the root, check that HEAD, `refs/heads/dev` and `origin/dev` all equal the request, and submit from the root. A detached worktree is refused. That run (here a047adea, A-17468) is the primary evidence for E1533D-30 and C5; the stage cover is supporting.
+- **Droplet gate filter (coord decision).** `cland demo exec` arrives over ssh, so `SSH_CLIENT` and `SSH_CONNECTION` match P_GATE's `SSH_` prefix. Exclude `SSH_CLIENT`, `SSH_CONNECTION` and `SSH_TTY` from P_GATE. Any other matching name still stops every droplet row.
+- **dpkg quoting (ask 63d679ac).** P_IMAGE passes `dpkg-query -f "${Package} ${Status}\n"` through `sh -c`, and that shell expands the placeholders before dpkg sees them, which prints blank package lines. Put the format in literal single quotes.
+
+### Known flakes by exact signature
+
+From `qa/briefs/E-1533-stage-2.md`, "Probes that mislead", verbatim:
+
+- **Known flakes by signature, not by guess.** `host-ssh-contract` runs alone because T-1731 (its test `accepted spawn reconciles its durable token after the commit reply is dropped` resolving with a raw `process-exited` event) showed only in a four-file mix. `transport-forwards` C1's two unattributed `MainThrea` loopback listeners are T-1732's open cause; T-1670 now attributes them. If either signature appears, keep the full output (for transport-forwards, the attribution lines: pid, sources, nativeStart, parent, command, raw rows), rerun the row once alone under the lock, and report both runs; the second result stands for the row and both are findings for the requester. Any other failure is judged as it stands. (File paths, added here for lint: `hub/test/host-ssh-contract.test.ts`, `hub/test/transport-forwards.test.ts`.)
+
+**Retired: T-1735 and T-1732 are fixed and are no longer known flakes.** T-1735 landed as `7926f3203` (the shared fake-host factory keeps the private fake-machine directory out of the staged tree): if `hub/test/host-relaunch-native.test.ts`'s `git add .` failure on `processes.json.new` appears again, it is a finding, a regression of T-1735, never a rerun. T-1732 landed as `10b63fc8c` (`transport-forwards`' census is scoped to the fixture's ancestry and excluded holders print a diagnostic line): the T-1732 half of the verbatim rule above no longer applies, and an unattributed listener in `hub/test/transport-forwards.test.ts` is a finding, a regression of T-1732. The T-1731 half (`host-ssh-contract`, run alone) stays.
+
+**Added here, under the same policy as T-1731: T-1758.** `hub/test/suite-cancel.test.ts`, the `recreate=false` expansion of its loop `verify cancel reaps a detached fake child <…>, then admits the next run`, named exactly `verify cancel reaps a detached fake child before removing the phase root, then admits the next run`, failing with `detached descendant is reaped before cancellation is reported` (the `pidAlive(fake.pid)` assertion, under load; T-1758, backlog). Only that title failing with that exact message matches; keep the full output, rerun the row once alone under the lock, report both runs, the second result stands for the row and both are findings for the requester.
+
+**T-1736 is not a known flake** (`hub/test/telegram-polling-restart.test.ts`, its fixed 2000 ms setup wait): a failure there, or anywhere else not listed above, is judged as it stands.
+
+### From `qa/briefs/E-1534-stage-1.md`, "Corrections from this brief's own run (qa-678, A-17643)", verbatim
+
+The stage-1 run at `c130bac4` (run qa-e1534s1-2026-11-08-qa678-1, clear) applied four Coordinator-approved run-copy corrections. A brief that copies this kit carries them as written here:
+
+- **Kit pin (ask 9de5178b).** `qa/briefs/E-1533-stage-3.md` moved again, from blob `997909c0…` to `3e85f49d…`, when T-1738 added three historical-scope prose lines. Every heredoc stayed byte-identical. A blob pin on a brief that later items may edit goes stale, so extract the kit from a fixed commit (`git show <sha>:qa/briefs/E-1533-stage-3.md`) and pin that commit, not the blob.
+- **Landing delta from another fix (ask ccf550e7).** T-1741 landed from merge head 042be2f5, which auto-merged T-1735's self-ignore into `shared/fake-host-machine.ts` (`mkdir(directory, 0o700)` plus a `.gitignore` of `*`). A landing check that compares a member's files to its reviewed head names any delta that comes from a separately landed fix, with its commit. The member's own lines must still match.
+- **Counter scope (ask 5f1dfe6d).** `cnt` counts a key across the whole config file, so in E1534S1-51 it also counts `[verification].daily_spend_usd`, which `init` writes. Count keys inside the `[hosts]` table only.
+- **Fake-host census (ask 76d4b23b).** In E1534S1-60, the at-floor OpenCode launch fails its forward because the scratch `pm` helper never calls `ports()`. `ports.json` is then absent, `fake-ssh.ts` refuses the forward and `ssh.ts` retires the master before cleanup. Its OpenCode process survives under the fake host's agent. A fake-provider destroy releases the record and never kills the fake machine's local processes, so an agent-descendant survivor joins the supervisor and agent in the census and is ended by pid. The hub settled every row (no session, process, pending stop, reservation or lease; two confirming reads). Call `ports()` in `pm` before launching through a created host.
+
+### From `qa/briefs/E-1534-stage-2.md`, "Corrections from this brief's own first run (qa-678, A-17820)", verbatim
+
+The first run at `4688f956` (run qa-e1534s2-2026-11-08-qa678-1, A-17820) was not clear: E1534S2-55 FAIL, E1534S2-56 INCONCLUSIVE, the other 37 checks PASS. It applied two Coordinator-approved run-copy corrections and found one product defect. A brief that copies this kit carries them as written here:
+
+- **Casing (ask 7199f474, decision d9b1c31c).** The CLI prints session lines with the role's display label (`withRole`, `hub/src/names.ts`): `launched w1 [Implementer] …` and `w1 [Implementer] … host <id>` in `cland session list`. The waiting-line formatter keeps the raw role id: `w2 [implementer] pool agents: waiting for a host`. Row 52 expects `[Implementer]`; rows 53 and 54 keep `[implementer]`.
+- **Census (ask b9c53ce3, decision 0dcf424b).** A spoke child of the fake OpenCode under the host agent (spoke → fake OpenCode → agent → `supervisor.sh`, all under the alias or `$Q/fh`) is an expected fake-host survivor, in the carried agent-descendant class. Row 57 records each survivor's identity, ancestry and cwd before the TERM drain; nothing outside the fixture trees is exempted.
+- **Rows 55 and 56.** Row 55 printed `lease files 1`: H1, the `min_hosts` startup host running w1, stopped renewing once row 53 scaled H2 up, and its watchdog deleted it before the deliberate hub stop. Hub-side creation passed no `inUse` predicate (`dispatch.ts`), so renewal fell back to `heldByMinimum`, which picks the minimum by host id. T-1763 (landed `550e59aca`, regression-of T-1746) added one shared in-use predicate for manual, startup and demand creates, and is a stage member here. **Both lease mirrors must renew while their hosts are in use:** row 55 expects `lease files 2`, both deadlines moving forward while w1 and w2 run, and both hosts still ready after the wait. **Row 56's after-stop proof needs both hosts alive at its start:** it first checks two `ready` agents hosts; with fewer, the row is BLOCKED naming row 55, never judged on the survivor.
+
+### From the stage-2 rerun (qa-678, A-17843, clear at `966f6fef`)
+
+The rerun (run qa-e1534s2-…-2, clear) applied one Coordinator-approved documentary correction and recorded one finding aside. A brief that copies this kit carries them as written here:
+
+- **Mapping row ids (decision 8c0a533f).** The committed brief's criteria map named E1534S2-27 for T-1744 C4, a row that did not exist; the test ran in E1534S2-21. Every row id a criteria map names must exist in the case or manual tables, and the map must name the row whose command runs the cited test. This brief checks that mechanically (E1534S3-04).
+- **Dead T-1676 receipts (finding aside, Low).** Both stage-2 runs left 37 fixture-owner receipt files in `$T` after the Neovim row (E1534S2-26); every receipt PID was absent, no file was open and every temporary fixture root was gone. The residue was attributed to the row's producer group by per-file `$T` listings and receipt mtimes (the listings name the directory, not each receipt, so no per-test attribution is claimed), the producers (the row's test files plus `nvim/test/stub-hub.ts`, `nvim/test/client.ts`, `nvim/test/fixture.ts` and `shared/fixture-ownership.ts`) were compared by SHA-256 with the baseline, and the checked dead directory was removed by literal path after the owned-process drain. Expect the same class after this brief's Neovim rows (E1534S3-40).
+
+### From `qa/briefs/E-1534-stage-3.md`, "Corrections from this brief's own run (qa-678, A-18029)", verbatim
+
+The run at `1dcf4144` (run qa-e1534s3-2026-11-09-qa678-1, A-18029) was clear. It applied three Coordinator-approved run-copy corrections; a brief that copies this kit carries them as written here:
+
+- **Expected registration (decision b31b1a0b).** `hub/test/host-provider-digitalocean.test.ts` registers **80** top-level cases: 70 direct cases, one direct case indented by a space (`DigitalOcean requires lease, watchdog and hosts reservation even with an injected API`), and nine registered through the shared registrar `hostProviderContract('digitalocean', …)` from `hub/test/host-provider-contract.ts` (four plain cases and the `refused`, `failed-acquire`, `delayed-boot`, `never-boot` and `ignored-delete` expansions of its two block loops, each prefixed `digitalocean: `). E1534S3-50 keeps `exact: true` with all 80. **Exact lists expand imported and generated registrars** and must match the runtime TAP; `hostProviderVolumeContract` (in `host-provider-digitalocean-volumes`) is checked whole-file clean, not exact.
+- **Presentation substitution (decision 603f71d2; scanner false positive filed as T-1771).** The publication scanner in `fresh.mjs` withholds the English title of one `host-secret-admission` case (source line 60 at `1dcf4144`; title SHA-256 `de1378affe29eacb…`), so a plain capture loses its two TAP lines and is INCONCLUSIVE. E1534S3-33 runs that file through `nts`, which replaces exactly that title (found by its SHA-256) with the placeholder `C1 known English title omitted for publication` before the unchanged scanner. Expect `replacements 2`, `# fresh: redacted or withheld lines 0`, and the file `CLEAN`; the source, its assertions and the scanner stay unchanged.
+- **Expected state (decision 88e8f618).** A successful `cland session stop` leaves the session `stopped` (`hub/src/adapters/sessions.ts`, the stop path), not `exited`; `exited` is only for host destruction or a gone host (the host-settlement path). `r65` now waits for `stopped`.
+- **Findings aside, no correction:** 36 dead T-1676 receipts after E1534S3-40 (owners gone, no open handle, fixture roots gone; producers byte-identical to `7c0320829`), attributed per file by inference only. `nvim/test/needs-you.test.ts` registers three cases from `nvim/test/needs-you-fixture.ts`; its runtime TAP must show all three and no skip.
+
+### From the E-1534 Definition-of-done run (qa-678, A-18035, clear at `94f4a8c6`)
+
+No new brief assertion or expected-result correction was needed (its report, "Corrections and disclosures"). It recorded one finding aside, Low, T-1676: the Neovim files left 36 dead fixture-owner receipts, owners absent, no open handle, fixture roots gone, producers byte-identical to `7c0320829`; per-file attribution inferred from serial order and mtimes. Its standing-clause epic occasion suite belongs to a Definition-of-done run and does not apply to this stage run.
+
+### Known flakes for this stage
+
+T-1731 (`hub/test/host-ssh-contract.test.ts`, which runs alone in E1535S1-53), T-1758 and T-1689 (both `hub/test/suite-cancel.test.ts`, not in this brief's tables) are known flakes only by their exact signatures: T-1731 and T-1758 as quoted above; T-1689 is its case named exactly `suite cancel refuses another session’s run while the human can cancel it by id`, failing at line 141 (`assert.equal(pidAlive(job.pid!), true)`) with `false !== true`; any other line or message in that case is not T-1689.
+
+**Added here, under the same policy as T-1731: T-1770** (backlog, needs-triage). `hub/test/host-provider-digitalocean.test.ts` (E1535S1-11), the `422` expansion of its loop `digitalocean <status> pauses every create until retry time without POST cascades or token leaks`, named exactly `digitalocean 422 pauses every create until retry time without POST cascades or token leaks`, failing at line 368 (`assert.deepEqual(results.map(r => r.state), ['created', 'created', 'created'])`, VERIFIED at dev) with actual `['created','failed','created']`. Only that title failing at that line with that actual matches. Keep the full output, rerun that file once alone (T2: no lock), report both runs; the second result stands for the row and both are findings for the requester. The `429` expansion, any other line or any other actual is judged as it stands.
+
+T-1735 and T-1732 are fixed: a recurrence of either signature is a regression finding, never a rerun. **T-1736 and T-1761 are not flakes**: a failure there is judged as it stands; `hub/test/telegram-polling-restart.test.ts` is in this brief's tables (E1535S1-42, because T-1775 edits `hub/test/discord-cards-fixture.ts`, which it imports).
+
+### How this brief applies them, and the reconciliation
+
+- **Fresh seal, streaming redaction, `QA_SESSION` (carried).** Every named file, the typecheck, the web build, the source checks that import build code and every scratch command runs through the stage-3 kit's `fresh.mjs`; `body.sh` repeats the credential gate before each scratch function. No `env.sh`, no `env -i`.
+- **Kit pin (carried; commit `K`).** `holder`, `quiet`, `ld` and `tap.mjs` from `qa/briefs/E-1532-stage-4.md` at `K`; `seal.mjs`, `fresh.mjs`, `frame.mjs`, `body.sh` and `helpers.sh` from `qa/briefs/E-1533-stage-3.md` at `K`, each extracted with `git show`, never by blob. Not taken: E-1534 stage 2's `relays.mjs`, `rstart`/`rstop` and `scratch.sh` (no created host here). The corrections text above is read at commit `M`.
+- **Landing delta from another fix (carried).** E1535S1-02 compares each member's own changed lines at its landing with those of its final branch tip against their merge base, and names every tree difference with the separately landed sibling that caused it. VERIFIED: T-1773's landing `bc2d5bd6f` differs from its tip `b320aef39` in `docs/agents/tests/index.md`, `hub/README.md`, `hub/src/hub/dispatch.ts`, `hub/src/protocol.ts`, `hub/test/tiers.json` and `shared/wire/index.ts` only through T-1775 (`1dedab368`) and T-1774 (`69ac4f556`), with its own lines equal; T-1775's landing `1dedab368` differs from its tip `b1a2b2278` in `docs/agents/tests/index.md` and `hub/test/tiers.json` only through T-1774, own lines equal; T-1776's landing `728efcb88` is byte-identical to its tip `f76bdc9bb` (the tip had merged dev at `bc2d5bd6f`, so no sibling delta). **T-1776 is a later commit for every other member:** it touches T-1772's `hub/src/host/provider/fake.ts`, `fake-volume-record.ts` and `provider.ts` (it moved the fake volume record parser and the contents seam into the agent leaves `hub/src/host/agent/fake-volume-record.ts` and `hub/src/host/agent/fake-volume-contents.ts`, which the provider now imports; two T-1772 source lines in E1535S1-03 follow the moved strings), T-1773's `docs/agents/tests/index.md`, `docs/hub/logins.md`, `hub/README.md` and `hub/test/tiers.json`, and T-1774's and T-1775's `docs/agents/tests/index.md` and `hub/test/tiers.json` (T-1775's `hub/README.md` too).
+- **Expected-registration correction and shared registrars (A-18029, carried).** Every exact list here was expanded statically through imported registrars (`hostProviderVolumeContract` with its new `snapshotOperations` flag, `hostContract` with its `faults` argument), block-bodied and inline `for … of` loops, nested loops and a filtered nested loop (`login-records`' refused transitions), with a TypeScript-AST counter that reproduces every VERIFIED count of this brief and A-18029's 80 for `host-provider-digitalocean`; **no stage file registers a title with leading whitespace** (VERIFIED at dev `728efcb88`). Unlike E-1534 stage 3, `hub/test/host-provider-digitalocean-volumes.test.ts` is exact here, with its four `digitalocean: …` registrar cases: T-1772 changed that registrar. Lists are re-derived at `<dev SHA>` before the cases if it is later than `728efcb88`.
+- **Standalone cases (this brief).** E1535S1-56 and E1535S1-57 run one named case alone through `nc`, with `--test-name-pattern` anchored on its exact title (neither title holds a regex metacharacter, VERIFIED). Node 24 omits filtered cases from its TAP (plan `1..1`), so `tap.mjs` checks each run under the label `<file>#<label>` with its own one-name exact list.
+- **Presentation substitution (A-18029).** No `host-secret-admission` row here. If any capture loses lines to the scanner (`# fresh: line withheld by the publication scan`), the row is INCONCLUSIVE, not FAIL: keep the capture and ask the requester before any substitution. The stage's titles and fixtures say `secret`, `token`, `login` and `OAuth`; none was found to match the scanner's patterns, but that is INFERRED.
+- **Expected state (A-18029).** Not applicable: no scratch session is launched or stopped.
+- **Mapping ids (A-17843, carried).** E1535S1-04 checks every `E1535S1-NN` the criteria map names exists as a row.
+- **Dead receipts (A-17843, A-18029, A-18035, carried).** E1535S1-79 inventories `$T` under the carried T-1676 clause after the Neovim rows (E1535S1-45 and E1535S1-48), with baseline `7c0320829` for the producers (`nvim/test/stub-hub.ts`, `nvim/test/client.ts`, `nvim/test/fixture.ts`, `shared/fixture-ownership.ts`, VERIFIED unchanged from `7c0320829` to dev `728efcb88`); no stage member edits `nvim/` (VERIFIED: the stage touches no file under `nvim/` or `web/`). **One producer import changed:** `nvim/test/fixture.ts` imports `shared/fixture-sockets.ts`, whose private `socketDirectory` T-1776 replaced with an import of `fakeStorageDirectory` from the new neutral leaf `shared/fake-layout.ts` (the same `join(root, '.fixture-sockets')`; VERIFIED). Dead residue from those rows of the carried kind (fixture-owner receipts) is the carried class, attributed and reported aside, never exempted silently; a `.fixture-sockets` entry or any residue the carried class does not name is a finding against T-1776.
+- **Counter scope, `ports()`, the relay, casing, census of fake-host survivors and both-hosts-alive (not applicable here).** No `[hosts]` config edit, no created host, no session launch. The scratch census covers the scratch hub only.
+- **Epic occasion suite, droplet gate filter, dpkg quoting (not applicable here).** A stage run: no epic occasion, no `cland demo`, no droplet gate, no `dpkg` probe.
+- **Cleanup order (carried).** Census, then the dead residue removed by literal path, then the end check with `$Q` and `$T` present, then `$Q`, `$T` and the worktree after the verdict.
+
+### Kit conventions carried
+
+- **Rule 22.** Every selector, test name and string is marked VERIFIED or INFERRED (this settled brief has no UNVERIFIED line); an UNVERIFIED or INFERRED expectation is never a pass condition on its own.
+- **TAP.** `node --test <file>` reports top-level registrations with `1..N` and `# tests/pass/fail/cancelled/skipped/todo` counters that include nested subtests; names escape `#` and `\`. `tap.mjs` parses exactly that.
+- **Exact strings** are counted by `src.mjs` and `secret.mjs` with `String.split` (and ordered with `indexOf`), never by shell `grep`.
+- **The preservation lock** is the directory `/tmp/cland-preserve.lock`, taken with `mkdir`, an owner file naming this run and row, and an owner-checked removal by literal path. A held lock makes the row BLOCKED for now (retry later; never remove another owner's lock).
+
+## Stage
+
+- Epic: E-1535 (Logins).
+- Exact stage name: fake volumes, the login-disk helper, the login model, fake harness logins and hub cards.
+- Items, in plan order, by lane: [T-1772 (login volumes on the fake provider: contents, snapshot history and volumes from a snapshot), T-1776 (the login-disk operation on hosts and the `cland-auth` helper)], [T-1773 (the login model in `hub.db` and `cland login list`)], [T-1774 (fake harness logins that rotate every turn)], [T-1775 (hub cards: asks the hub raises and answers itself)]. The run reads membership, counts and state from `task plan show E-1535 --json` (E1535S1-00), never from this list. QA finding fixes added after writing are listed in the request; none at writing.
+- Policy: affected/after-stage.
+- Scope: **affected.** The combined changed behaviour through the stage's named test files, the importers of the registrars and fixtures the stage edits, read-only source checks, the Neovim recorded-catalog consumers and the web inbox tests for the wire's new optional `InboxAsk.secret`, and scratch checks of `cland login list` on a CLI-started hub. No earlier-epic regression pass beyond those files.
+  - T-1772 (landed `f077f9397`, the first landing; VERIFIED; its files byte-identical to its final tip `b91876182`, the reviewed commit; T-1776 later moved its record parser and contents seam into agent leaves, with the provider importing them): the `HostProvider` interface gains `getSnapshot`, `listSnapshots` (oldest first, or `volume-gone` once the volume is deleted) and `deleteSnapshot` (`deleted` only after a confirming read, else `incomplete`), and `createVolume` an optional `fromSnapshot` (the new volume takes the snapshot's contents and region). The fake (`hub/src/host/provider/fake.ts`) keeps a contents directory per volume (`volumes/<id>.contents`), copies it into each snapshot, keeps every snapshot receipt (the parser in `fake-volume-record.ts` reads the old single-receipt record and fails closed on malformed history), answers `volumeContents(volume, machine)` only for the attached, ready machine (the seam T-1776's fake helper uses), detaches a released machine's volumes with contents kept and removes contents with the volume. DigitalOcean answers each new operation `failed` naming it unsupported, before any API call (until T-1782). `hostProviderVolumeContract` gains `<name>: snapshot history, cloning and confirmed deletion` behind a `snapshotOperations` flag the fake passes and DigitalOcean does not. Tests `hub/test/host-provider-volumes.test.ts` (T2, new cases plus the flag), `hub/test/host-provider-digitalocean-volumes.test.ts` (T2, unchanged); docs `docs/hub/host-providers.md`.
+  - T-1773 (landed `bc2d5bd6f`; VERIFIED; own lines equal to its tip `b320aef39`): `LoginRecords` (`hub/src/host/logins.ts`, constructed in `HostRecords` as `store.hosts.logins`) keeps `logins` and `login_bindings` tables; transitions `creating → ready | signed-out`, `ready → in-use`, `in-use → ready | signed-out`, `signed-out → creating`, every other one refused naming the current state; only `ready` is free and `creating` is never bound; names `[a-z0-9][a-z0-9-]{0,31}`, unique; harness `claude-code`, `codex` or `opencode`; a key login (OpenCode only) has no volume, snapshot ids, exclusive, provider or region; a disk login is exclusive by default; typed binding refusals. `cland login list [--json]` (frame `login.list`, `hub/src/cli/login.ts`) prints a tab-separated table (`NAME HARNESS ACCOUNT KIND EXCLUSIVE STATE PROVIDER REGION VOLUME SNAPSHOTS LAST SIGN-IN`) or the rows with their bindings as JSON; the frame shares the `host.*` local-human gate in `dispatch.ts`, the web edge refuses it (`web-authority.ts`), and the remote gateway table (`hub/src/remote/authority.ts`, an allowlist) does not name it. Help: `cland login --help` and `cland login list --help`; frozen help fixtures migrated; `cli-imports` counts one more pure help module. Tests `hub/test/login-records.test.ts` (T1), `hub/test/login-list.test.ts` (T2); edits to `cli-imports` (T3) and the `cli-usage` fixtures; docs `docs/hub/logins.md`, `docs/agents/session-permissions.md`.
+  - T-1774 (landed `69ac4f556`; VERIFIED; files byte-identical to its tip `afc246a68` at landing, later touched only in `docs/agents/tests/index.md` and `hub/test/tiers.json` by T-1775 and T-1773): test-only. `hub/test/fakes/fake-login.ts` keeps `login.json` in `FAKE_LOGIN_HOME` or the harness home and is opt-in (`FAKE_LOGIN_ENABLED=1` or `FAKE_LOGIN_HOME`), so earlier fake users are unchanged; each turn raises the generation and records host and session (last 20); `DEAD-LOGIN` kills the login and turns then report the harness's own signal (Claude Code `StopFailure`/`authentication_failed`/`OAuth token revoked`; Codex `refresh_token_reused` with `codexErrorInfo: "unauthorized"`; OpenCode `provider.auth`); Codex sign-in refuses a home holding a live login; every logout form is recorded; `FAKE_LOGIN_HOLDER=1` leaves one detached holder (`fake-login-holder.ts`, `login-holder-client.ts`). Edits to `fake-claude.ts`, `fake-codex.ts`, `fake-opencode.ts`, `setup-profile.ts`. Test `hub/test/fake-harness-login.test.ts` (**T3** in `tiers.json`, VERIFIED; the ticket's notes said T2).
+  - T-1775 (landed `1dedab368`; VERIFIED; own lines equal to its tip `b1a2b2278`): `HubCards` (`hub/src/hub/hub-cards.ts`, `core.cards`) with `raise`, `withdraw` and `onAnswer`; a card is an ask `from: hub` whose kind, payload and secret flag are durable columns of `asks` (`store.ts`); answers on the existing human path go to the kind's handler (`asks.ts`), never to a session; a missing handler keeps the card open; a secret free answer reaches the handler verbatim while history, the outcome line and the log hold only `answered`, the native `gateway.answer:<message>` replay receipt keeps a SHA-256 digest (`answerTextDigest`, `remote/redact.ts`) instead of the text, and Telegram's persisted prompt answer drops the text and keeps a digest; `InboxAsk` gains an optional `secret?: true` (hub `protocol.ts` and `shared/wire/index.ts`), set only for a secret hub card (`inbox.ts`), so ordinary asks keep their previous frame; voice on a secret card is refused (`secretVoiceRefusal`, `Use text to answer this card`) on Telegram and Discord before any media acquisition; the remote authority table is unchanged. `ProjectHubOptions.registerHubCards` (`hub/test/harness.ts`) and `discordCardsFixture` (`hub/test/discord-cards-fixture.ts`) gained test seams. Tests `hub/test/hub-cards.test.ts` (T2), `hub/test/hub-cards-voice.test.ts` (T2), `hub/test/hub-cards-authority.test.ts` (T1); docs `docs/hub/asks-and-the-inbox.md`, `docs/hub/remote-commands.md`.
+  - T-1776 (landed `728efcb88`, the stage's last landing; VERIFIED; files byte-identical to its reviewed tip `f76bdc9bb` and own lines equal; the tip merged dev at `bc2d5bd6f`; rev-35's final evidence review `rev-35-1776-final-1` cleared C1 to C6 at `f76bdc9bb`, A-18166): the host agent's `login-disk` operation (`hub/src/host/agent/login-disk.ts`, `server.ts`) checks the helper grammar (op `mount|umount|freeze|thaw`, volume `^[a-z][a-z0-9-]{0,63}$`, path `/cland/auth/<harness>-<login>`) and refuses symlinks before running anything, then runs `sudo -n /usr/local/sbin/cland-auth <op> <volume> <path>` as a durable owned command, mapping helper exits to `bad-argument`, `busy`, `writers-remain` and `wrong-volume`; it holds writer admission (`enterMutation`) for the whole operation, through the final unlink. Under `CLAND_FAKE_HOSTS` and `CLAND_FAKE_HOST_ROOT` only, `fake-login-disk.ts` links the path under the fake host's directory to the attached volume's contents through the canonical seam `fakeVolumeContents` (`hub/src/host/agent/fake-volume-contents.ts`, which the fake provider's `volumeContents` also calls) and, before an unmount's unlink and before unlinking another link to the same contents on mount, drains the disk's users (`AgentProcesses.drainDiskUsers`: `lsof` on macOS, `/proc` on Linux; it signals only current disk users, including a retained orphan's descendant, never an outside parent or sibling). **The close-ordering fix** (`hub/src/host/agent/processes.ts`): a child launched by this agent keeps its owned authority while its native close callback is still pending (kernel exit can precede that callback, as seen on Linux tmpfs), and the drain joins that completion and its exit publication within the drain's 4-second deadline (`#joinDiskCompletion`) instead of marking the row `unknown`; the test hooks `beforeNativeClose`, `beforeExitPublication` and `beforeCompletionJoin` hold each boundary. **The neutral leaves:** the `Clock` implementation (`shared/clock.ts`) and the fake-layout primitives (new `shared/fake-layout.ts`: `fakeStorageDirectory`, `validateFakeHost`, `fakeMachineStorageDirectory`) are admitted to the agent closure, each through exactly one owner wrapper (`hub/src/host/agent/clock.ts`, `hub/src/host/agent/fake-layout.ts`) named by `sharedAgentLeafOwner` in `hub/src/host/agent/package.ts`; `runtimePath` admits those owner-bound shared leaves (with `shared/executor-credentials.ts`), `agentSourceImportAllowed` is the one import policy for the boundary checker and the closure generator (`hub/bin/generate-host-agent-closure.ts`), `code-delivery.ts`'s `INSTALL_AGENT` serializes `sharedAgentLeafOwner` beside `runtimePath`, and `hub/src/host/agent/closure.json` was regenerated (42 files, three under `shared/`). `shared/fixture-sockets.ts` and `shared/fake-host-directory.ts` now take their layout from `shared/fake-layout.ts`. `Host.loginDisk` is optional, the ssh Host sends it (typed codes rethrown, a lost reply made incomplete) and the local Host refuses with `wrong-volume`; `cland-auth.sh` unmounts the device's other mounts (DigitalOcean's `/mnt/<name>` automount) before mounting and refuses a symlinked `/cland` or `/cland/auth`. The `hostContract` registrar (`hub/test/host-contract.ts`) gains `Host login disks preserve optional absence and refuse invalid paths` (so `host-local-contract` and `host-ssh-contract` register it), and `optionalLoginDiskHostContract`. Tests `hub/test/host-login-disk.test.ts` (T3, new, 12 cases), `hub/test/cland-auth.test.ts` (T3, a new case and a `fixture()` helper edit), `hub/test/host-contract-coverage.test.ts` (T1, a new case), `hub/test/host-agent-boundary.test.ts` (T1, one guard renamed and one new) and `hub/test/host-agent-closure.test.ts` (T1, one new case); `hub/test/host-prelude.test.ts` (T1) unedited; `hub/test/durations.json` loses the renamed boundary guard's old baseline; docs `docs/agents/host-agent.md`, `docs/hub/logins.md`, `docs/hub/ssh-host.md`, `hub/README.md` and the per-file notes of `host-login-disk` (new), `cland-auth`, `host-agent-boundary` and `host-agent-closure`. Unedited consumers in this brief's tables: `host-agent-restart`'s version-delivery case over the changed `INSTALL_AGENT` and `runtimePath` (E1535S1-56), `nvim/test/client-component.test.ts` over `nvim/test/fixture.ts` → `shared/fixture-sockets.ts` → `shared/fake-layout.ts` (E1535S1-48), and `nvim-fixture-boundary`, the T2 Neovim no-hub closure guard the neutral leaves must keep (E1535S1-46).
+- **Merge watch.** T-1773 and T-1775 both edit `hub/src/hub/dispatch.ts`, `hub/src/protocol.ts`, `shared/wire/index.ts` and `hub/README.md`; T-1773, T-1774 and T-1775 all edit `docs/agents/tests/index.md` and `hub/test/tiers.json`; T-1776 merged dev at `bc2d5bd6f` before landing and edits `hub/README.md`, `docs/hub/logins.md` (created by T-1773), `docs/agents/tests/index.md` and `hub/test/tiers.json`, and T-1772's `fake.ts`, `fake-volume-record.ts` and `provider.ts`. E1535S1-02 names every delta from a later landing.
+
+### Criteria map
+
+The stage verdict carries no item or epic marks; this tells the run which check proves what. E1535S1-04 checks that every row id named here exists in the tables below. Rows for T-1772 to T-1775 are VERIFIED at dev `caf30df4` and unchanged at `728efcb88`; T-1776's are VERIFIED at dev `728efcb88`.
+
+| criterion | proven by |
+| --- | --- |
+| T-1772 C1 (a volume from a snapshot starts with that snapshot's contents in the snapshot's region; one without starts empty) | E1535S1-10 (test `fake login contents survive snapshots, cloning and machine release`; the `fake: ` registrar case `<name>: snapshot history, cloning and confirmed deletion`; test `surviving snapshot IDs support lookup clone and delete after volume deletion`); E1535S1-03 |
+| T-1772 C2 (`listSnapshots` oldest first; `deleteSnapshot` deleted only after a confirming read, else incomplete) | E1535S1-10 (the same registrar case; test `fake snapshot deletion confirms absence and retained history fails closed`; test `snapshot ID deletion retries history publication after provider recreation`); E1535S1-03 |
+| T-1772 C3 (the contents seam answers only the attached machine; refuses another machine and a detached volume) | E1535S1-10 (test `fake login contents survive snapshots, cloning and machine release`); E1535S1-03 |
+| T-1772 C4 (releasing a machine leaves its volumes detached with contents intact) | E1535S1-10 (the same test); E1535S1-03; E1535S1-11 (`host-provider-fake`, the release path for every fake user) |
+| T-1772 C5 (an old single-receipt record still reads; malformed retained state reports failed or incomplete with bytes untouched) | E1535S1-10 (test `fake snapshot deletion confirms absence and retained history fails closed`; test `malformed retained volume ownership and snapshot facts fail closed without writes`); E1535S1-03 |
+| T-1772 C6 (DigitalOcean answers each new operation `failed` unsupported with no API call; existing volume test files pass with no test edited) | E1535S1-10 (test `digitalocean new snapshot operations refuse without API calls`; `host-provider-digitalocean-volumes` exact and unedited); E1535S1-11 (`host-provider-digitalocean`, its importer of the edited registrar module); E1535S1-02 (`host-provider-digitalocean-volumes` untouched by the stage; the volumes file's only removed line is the registrar call that gained `true`); E1535S1-03 |
+| T-1773 C1 (a disk and a key login round-trip with every field; the key row has no volume, snapshot ids or exclusive) | E1535S1-20 (test `disk and key login rows round-trip every field without key disk properties`); E1535S1-62 |
+| T-1773 C2 (each invalid transition refused naming the current state; `creating` neither free nor bound) | E1535S1-20 (every refused expansion of `refuses login transition from <current> to <target> naming current state`; test `creating is neither free nor bound; bindings enforce exclusive writer and non-exclusive readers`); E1535S1-03 |
+| T-1773 C3 (`cland login list` and `--json` show every field for a disk and a key login) | E1535S1-20 (test `login list text and JSON expose rows and hosts, retained across hub restart`); E1535S1-61 (empty); E1535S1-62 (seeded) |
+| T-1773 C4 (bad name syntax, a duplicate name and an unknown harness refused naming the rule) | E1535S1-20 (test `login syntax, uniqueness, harness and key disk constraints name their rules`; the six `binding invariant: <scenario> …` expansions); E1535S1-03 |
+| T-1773 C5 (`login.list` refused from a session, the web and a remote as `host.list` is; `cland login --help` lists `list`) | E1535S1-20 (test `login list refuses session, web and remote edges like host list`; the help assertions of the restart test); E1535S1-21 (`cli-help`, `cli-command-help`, `cli-usage-compatibility`, `web-authority`, `web-authority-unit`); E1535S1-22 (`cli-imports`, edited); E1535S1-03; E1535S1-61 (help on the real CLI) |
+| T-1773 C6 (login rows and bindings survive a hub restart unchanged) | E1535S1-20 (test `login list text and JSON expose rows and hosts, retained across hub restart`); E1535S1-63 |
+| T-1774 C1 (sign-in writes generation 0 in the harness home; each turn raises it and records host and session) | E1535S1-30 (the `claude-code`, `codex` and `opencode` expansions of `<harness> sign-in writes generation zero in its harness home` and of `<harness> turns rotate and dead logins recover only after sign-in`; test `Codex native app-server turns retain the last twenty rotations and report revocation`) |
+| T-1774 C2 (`DEAD-LOGIN`, every later turn until sign-in, and a turn with no login file report the harness's dead-login signal) | E1535S1-30 (the three expansions of `<harness> turns rotate and dead logins recover only after sign-in`; test `Codex native app-server turns retain the last twenty rotations and report revocation`); E1535S1-03 |
+| T-1774 C3 (Codex sign-in refuses a live login, writes nothing, signs in over a dead one) | E1535S1-30 (test `Codex refuses a live login without changing bytes and replaces a dead login`) |
+| T-1774 C4 (every logout form recorded in the calls file) | E1535S1-30 (the three expansions of `<harness> records CLI logout and slash logout`) |
+| T-1774 C5 (`FAKE_LOGIN_HOLDER=1`: one detached process holding a file open in the home, pid recorded) | E1535S1-30 (the three expansions of `<harness> sign-in leaves one observed detached holder with an open home file`; test `holder stale receipt cannot suppress a fresh launch or authorize a signal`; test `holder cleanup works after receipt corruption and a crashed holder is replaced`; test `uncommitted holder exits when sign-in fails after readiness`); E1535S1-31 and E1535S1-32 (the existing fake-harness tests unchanged, the ticket's note) |
+| T-1775 C1 (a hub card in the inbox frame as an ask from `hub` with options; a card on Telegram and Discord) | E1535S1-40 (test `hub card answers call their registered handler once and never target a session`, which also asserts the non-secret card omits `secret`; the `telegram` and `discord` expansions of `hub cards publish and fold both native copies after <via>`); E1535S1-03 |
+| T-1775 C2 (an option answer from the web, Neovim, Telegram or Discord calls the handler once with payload and answer, never a session, and folds both remotes with the outcome line) | E1535S1-40 (the `web`, `neovim`, `telegram` and `discord` expansions of `hub cards publish and fold both native copies after <via>`; test `hub card answers call their registered handler once and never target a session`; test `deferred native Discord answer keeps handler outcome after all updates settle`; the `option`, `free` and `decline` expansions of `users-mode hub <mode> outcome retains stable user id`); E1535S1-41 (asks, ask outcomes and both remotes' cards unchanged for ordinary asks); E1535S1-03 |
+| T-1775 C3 (a second answer refused as already answered; `withdraw` folds every copy with its reason) | E1535S1-40 (test `hub card answers call their registered handler once and never target a session`; test `pending hub cards survive restart; missing handlers keep them open and withdrawal records its reason`; the `withdraw` expansion of `hub cards publish and fold both native copies after <via>`); E1535S1-03 |
+| T-1775 C4 (a pending card survives a restart with its payload; an answer after it reaches the handler registered at start) | E1535S1-40 (test `pending hub cards survive restart; missing handlers keep them open and withdrawal records its reason`); E1535S1-03 |
+| T-1775 C5 (a secret free answer reaches the handler verbatim and appears in no history row, journal record, log line or remote outcome line) | E1535S1-40 (test `secret hub answers reach the handler verbatim and remote replay stores a digest`; the `secret` expansion of `hub cards publish and fold both native copies after <via>`; the `telegram` and `discord` expansions of `native secret <via> retention probe`; the four expansions of `<via> hub card voice <refuses secret input before acquisition \| keeps non-secret answering>`); E1535S1-07 (the digest and the voice refusal in source); E1535S1-06 (ordinary asks' frames unchanged) |
+| T-1775 C6 (the remotes' authority table unchanged, entry for entry) | E1535S1-40 (test `hub cards keep every remote authority entry at its previous classification`); E1535S1-02 (`hub/src/remote/authority.ts` untouched by the stage) |
+| T-1776 C1 (the agent refuses a path outside `/cland/auth/`, a symlink, `..`, or a bad volume name without running sudo or the helper) | E1535S1-50 (test `login-disk rejects malformed paths and volume names before invoking a helper`; test `login-disk mounts only this fake machine attachment through the SSH Host`, its symlink refusal); E1535S1-51 (test `optional login-disk contract covers absence, refusal and exact input with planted failures`); E1535S1-53 (`host-ssh-contract`, the nested registrar case: the ssh Host refuses `/tmp/invalid-login` with `bad-argument`); E1535S1-03 |
+| T-1776 C2 (on a fake host, mount makes the attached volume's contents readable and writable at the mapped path; refused for another machine or a detached volume) | E1535S1-50 (test `login-disk mounts only this fake machine attachment through the SSH Host`); E1535S1-03 (the fake-host fence and the shared contents seam) |
+| T-1776 C3 (unmount ends a background process holding a file on the disk before it unlinks, and no process outside the disk) | E1535S1-50 (the `live parent` and `retained orphan` expansions of `login-disk closes only disk users in <tree> trees`; test `login-disk holds writer admission through the final unlink boundary`; test `login-disk joins a previously admitted writer before its disk census`; test `login-disk held-spawn setup rejection joins native admission before client close`; test `login-disk joins completion persistence and exit publication before replying`; the held-close regression, test `login-disk joins its owned close callback when kernel exit precedes native publication`; test `login-disk mounts only this fake machine attachment through the SSH Host`, its outside-process check); E1535S1-57 (the held-close regression alone in a fresh process); E1535S1-03 (the drain before unlink, the retained close owner, the close hook, the fresh-ownership rule) |
+| T-1776 C4 (in the stub fixture the helper unmounts another mount of the same device before mounting) | E1535S1-50 (test `mount drains and unmounts the device automount before mounting the login path`); E1535S1-03 |
+| T-1776 C5 (the ssh Host runs exactly `sudo -n /usr/local/sbin/cland-auth <op> <volume> <path>`; the local Host refuses) | E1535S1-50 (test `login-disk uses exactly sudo -n helper op volume path and preserves typed helper failures`; the local Host refusal inside test `login-disk mounts only this fake machine attachment through the SSH Host`); E1535S1-51 (the coverage case: the local Host refuses `wrong-volume`); E1535S1-52 (`host-local-contract`, the registrar case at top level: `wrong-volume`); E1535S1-53 (`host-ssh-contract`, nested); E1535S1-03 |
+| T-1776 C6 (the existing `cland-auth.test.ts` and `host-prelude.test.ts` cases pass with no case edited) | E1535S1-50 (`cland-auth`, exact, the nine base titles kept); E1535S1-51 (`host-prelude`, exact, unedited); E1535S1-02 (`T-1776 removed lines in cland-auth and host-prelude: 1`, the `fixture()` helper's `writeFileSync(helper, …)` line, none inside a case) |
+| T-1776 agent boundary and delivery (no ticket criterion: review findings A-18142 and A-18151, settled by the neutral-leaf architecture) | E1535S1-54 (`host-agent-boundary`, `host-agent-closure`, exact); E1535S1-46 (`nvim-fixture-boundary`: the Neovim T2 closures stay hub-free with the leaves shared); E1535S1-48 (`client-component`, a Neovim consumer of the changed fixture leaf); E1535S1-56 (the version-delivery restart case over the changed `INSTALL_AGENT`); E1535S1-03 |
+
+## Build
+
+Use a clean detached worktree at the full dev SHA named in the request: `<dev SHA>` (40 hex). HEAD must equal that SHA and refs/heads/dev before and after running. Every listed task needs a dev landing receipt: for every member that `task plan show E-1535 --json` lists in stage `fake volumes, the login-disk helper, the login model, fake harness logins and hub cards`, `git log --first-parent --format=%H --grep "^Item: <id>$" <dev SHA>` prints exactly one commit. A task closed `done` with no branch and no landing receipt must have no `Item:` trailer on dev (evidence-only completion). A dirty build, a missing required merge (**every member needs a landing here, T-1776 included**) or moved dev blocks this run: retain any collected evidence and report to the requester. The brief names no run id on purpose.
+
+At writing (dev `728efcb88a02a930ed6a5747d28f83b7e1d487b0`): T-1772 landed as `f077f9397`, T-1774 as `69ac4f556`, T-1775 as `1dedab368`, T-1773 as `bc2d5bd6f` and T-1776 as `728efcb88`, each with exactly one `Item:` trailer on the first-parent history; every member's files were read at that dev (VERIFIED); `task plan show E-1535 --json` read the stage `open` with `merged 5`, `total 5`, `statuses {"done":5}`. **Landing check.** E1535S1-02 compares each member's own changed lines at its landing with its final branch tip's against their merge base, lists the later commits that touched its files, and names every tree difference with its source (a separately landed sibling with its commit, a review correction, a dev merge); a member's own lines must still match, every changed list is re-derived (the expected-registration correction), never a silent pass. Every string, title and path is re-read at `<dev SHA>` and a difference recorded before judging.
+
+In this repository, give the detached worktree a `node_modules` symlink to the project's installed dependencies before any other step. E1535S1-05 builds `web/dist` in the worktree (ignored by Git) for E1535S1-47, whose pinned Headless Shell comes from `node_modules/playwright-core/.local-browsers`. E1535S1-45 needs the pinned Neovim that `nvim/bin/nvim-path.ts` resolves (`NV` and `NVD` in the environment block).
+
+**Where things live.** All scratch state is under `$Q` (`/private/tmp/q53-…`, realpath, 23 bytes; the stage-3 kit's seal accepts exactly this prefix) and `$T` (`/private/tmp/qa-e1533-s3-<uuid>`, the suite root's byte length; also the kit's prefix). The scratch project is `$Q/p1`; its `hub.db` holds the only login rows this run writes. The only paths under the repository are `$W` in `.cland/worktrees/` and the evidence `$EV` in `.cland/qa/E-1535/<run>/`, both ignored by Git. Nothing is written to `.cland/tasks/` of the live project.
+
+**Isolation (rule 15).** Every scratch check runs in the disposable project p1 with its own HOME, XDG directories and Git config, through the fresh seal. Never the live project's hub, config, roles, territory, `hub.db`, secrets or discovery, and never the human's HOME (`~/.cland`, `~/.ssh`, `~/.claude`, `~/.codex`, `~/.opencode`, `~/.local/state`, `~/.config/cland`). Never read or print a credential; never run `cland login …`, `cland config set`, `cland role launch`, `cland session …`, `cland host …` or `cland hub …` against the live project. The live hub is read only by QA's own shell for the plan read and `quiet`.
+
+Two shells, never mixed. **QA's own shell** keeps QA's session identity: worktree, roots, `quiet`, the plan read, the source checks that read files only, every record. **Every other command** runs through `$Q/fresh.mjs`: named files, the typecheck, the web build and the frame check in `plain` mode (cwd `$W`), scratch rows in `hub` mode (cwd `$Q/p1`, through `body.sh`).
+
+**Removals.** Every `rm` names one literal path, written out in full after it was printed and checked; never a glob, a variable, a command substitution or `xargs` (the project's literal-rm hook refuses them and stalls the session). Scratch helpers write into `$Q`, removed with `$Q` at the end.
+
+### Environment
+
+Put Node from `/Users/evgeniyivanov/.nvm/versions/node/v24.21.0/bin` first on `PATH` and check `node --version` against the qa skill's `node-engines.json`. In QA's own shell (bash):
+
+```sh
+R=/Users/evgeniyivanov/Projects/cland/v0
+S=<dev SHA>                                    # the full dev SHA from the request
+K=f43f4e21049e9c62a97c8dec1ebf37f9c7035a62     # the fixed kit commit (A-17643: pin a commit, never a blob)
+M=becee171b9cf1fa76e1732c674e13f2656551397     # the committed E-1534 stage-3 brief whose corrections are carried
+RUN=qa-e1535s1-$(date +%F)-1                   # unique run id for E-1535; bump the suffix on a rerun
+export QA_SESSION=${QA_SESSION:-${CLAND_SESSION_NAME:-}}
+[ -n "$QA_SESSION" ] || echo "BLOCKED: no QA session name"
+W=$R/.cland/worktrees/qa-e1535s1-$RUN
+EV=$R/.cland/qa/E-1535/$RUN
+git -C "$R" worktree add --detach "$W" "$S"
+[ -e "$W/node_modules" ] || ln -s "$R/node_modules" "$W/node_modules"
+mkdir -p "$EV"
+NV=$(cd "$W" && node nvim/bin/nvim-path.ts 2> /dev/null); NVD=$(dirname "${NV:-/nonexistent/x}")
+T=/private/tmp/qa-e1533-s3-$(uuidgen | tr 'A-Z' 'a-z'); mkdir -m 700 "$T"
+Q=$(cd "$(mktemp -d /tmp/q53-XXXXXX)" && pwd -P); chmod 700 "$Q"
+mkdir -p "$Q/home" "$Q/config" "$Q/opencode" "$Q/state" "$Q/cache" "$Q/claude" "$Q/codex" "$Q/fake-claude" "$Q/fake-codex" "$Q/fake-opencode" "$Q/executor-state" "$Q/p1" "$Q/fh" "$Q/bin" "$Q/kit"
+chmod 700 "$Q/claude" "$Q/fake-claude"         # E-1532 DoD fix: Claude roots 0700
+: > "$Q/pids"; : > "$Q/home/.gitconfig"; : > "$Q/home/.gitignore-global"
+# body.sh's gate requires these shims by name even though this stage creates no host:
+ln -s "$W/hub/test/fakes/fake-ssh.ts" "$Q/bin/ssh"; ln -s "$W/hub/test/fakes/fake-scp.ts" "$Q/bin/scp"
+printf '#!/bin/sh\nexec "$@"\n' > "$Q/bin/setsid"
+printf "#!/bin/sh\nln -s '%s/node_modules' node_modules\n" "$W" > "$Q/bin/npm"
+chmod 700 "$Q/bin/setsid" "$Q/bin/npm"
+printf '{"W":"%s","Q":"%s","EV":"%s","T":"%s","R":"%s","SESSION":"%s"}\n' "$W" "$Q" "$EV" "$T" "$R" "$QA_SESSION" > "$Q/state.json"
+git -C "$R" show "$M:qa/briefs/E-1534-stage-3.md" > "$EV/carried-from-M.md"; echo "carried brief commit $(git -C "$R" rev-parse "$M^{commit}") want becee171b9cf1fa76e1732c674e13f2656551397"
+```
+
+**The kits, from one fixed commit.** `K` above. From `qa/briefs/E-1532-stage-4.md` at `K`: `holder`, `quiet`, `ld` (lines 133 to 136) and `tap.mjs` (lines 228 to 279). From `qa/briefs/E-1533-stage-3.md` at `K`: its heredocs `seal.mjs`, `fresh.mjs`, `frame.mjs`, `body.sh` and `helpers.sh`, each taken whole and written to `$Q` unchanged. Not taken: any brief's `expect.json`, `src.mjs`, `checks.sh` or `scratch.sh` (this brief writes its own), nor E-1534 stage 2's relay kit. A missing kit file or block at `K` is a setup BLOCKED.
+
+```sh
+for b in E-1532-stage-4 E-1533-stage-3; do git -C "$R" show "$K:qa/briefs/$b.md" > "$Q/kit/$b.md"; done
+echo "kit commit $(git -C "$R" rev-parse "$K^{commit}") want f43f4e21049e9c62a97c8dec1ebf37f9c7035a62"
+sed -n '133,136p' "$Q/kit/E-1532-stage-4.md" > "$Q/kit-shell.sh"; sed -n '228,279p' "$Q/kit/E-1532-stage-4.md" > "$Q/kit-tap.sh"
+echo "kit first lines: $(head -n 1 "$Q/kit-shell.sh" | cut -c1-10) | $(head -n 1 "$Q/kit-tap.sh" | cut -c1-27)"
+. "$Q/kit-shell.sh"; . "$Q/kit-tap.sh"
+kitb() { awk -v n="$2" 'BEGIN{h="cat > \"$Q/" n "\" <<"} index($0,h)==1{f=1} f{print} f&&/^(JS|SH|JSON)$/{exit}' "$Q/kit/$1.md"; }
+for n in seal.mjs fresh.mjs frame.mjs body.sh helpers.sh; do kitb E-1533-stage-3 "$n" > "$Q/kit3-$n.sh"; echo "kit3 $n: $(head -n 1 "$Q/kit3-$n.sh" | cut -c1-40) | lines $(wc -l < "$Q/kit3-$n.sh" | tr -d ' ')"; . "$Q/kit3-$n.sh"; done
+node --check "$Q/tap.mjs" && node --check "$Q/seal.mjs" && node --check "$Q/fresh.mjs" && node --check "$Q/frame.mjs" && bash -n "$Q/body.sh" && bash -n "$Q/helpers.sh" && echo "kits checked"
+# nt <id> <files…>: named files from $W, each in a fresh plain seal (TMPDIR=$T), one at a time, TAP; $T listed after each file; then the tap.mjs check
+nt() { local id=$1 f; shift; quiet || return 1; : > "$EV/$id.log"; : > "$EV/$id.tmpdir.txt"; for f in "$@"; do ld >> "$EV/$id.log" || { tail -n 1 "$EV/$id.log"; return 1; }; node "$Q/fresh.mjs" "$W" plain node --test --test-concurrency=1 --test-reporter=tap "$f" >> "$EV/$id.log" 2>&1; echo "exit $? $f" >> "$EV/$id.log"; ls -A "$T" | sed "s|^|$f: |" >> "$EV/$id.tmpdir.txt"; done; node "$Q/tap.mjs" check "$EV/$id.log" "$Q/expect.json" | tee "$EV/$id.check.txt"; }
+# nc <id> <label> <file> <title>: one named case alone (Node's name-pattern flag anchored on its exact title, which holds no regex metacharacter), logged and checked as <file>#<label>
+# The flag is assembled from two words so that qa lint does not read the shell variable as a literal pattern; bash passes it as one argument.
+nc() { local id=$1 label=$2 f=$3 title=$4 only; only="--test-name-""pattern=^${title}\$"; quiet || return 1; : > "$EV/$id.log"; : > "$EV/$id.tmpdir.txt"; ld >> "$EV/$id.log" || { tail -n 1 "$EV/$id.log"; return 1; }; node "$Q/fresh.mjs" "$W" plain node --test --test-concurrency=1 --test-reporter=tap "$only" "$f" >> "$EV/$id.log" 2>&1; echo "exit $? $f#$label" >> "$EV/$id.log"; ls -A "$T" | sed "s|^|$f#$label: |" >> "$EV/$id.tmpdir.txt"; node "$Q/tap.mjs" check "$EV/$id.log" "$Q/expect.json" | tee "$EV/$id.check.txt"; }
+# pl <id> <files…>: nt under the preservation lock; plc <id> <label> <file> <title>: nc under the preservation lock
+plc() { PL_RUNNER=nc pl "$@"; }
+pl() {
+  if ! mkdir /tmp/cland-preserve.lock 2> /dev/null; then echo "BLOCKED: /tmp/cland-preserve.lock is held: $(cat /tmp/cland-preserve.lock/owner 2> /dev/null || echo 'no owner file')"; return 1; fi
+  printf 'qa %s %s pid %s %s\n' "$RUN" "$1" "$$" "$(date -u +%FT%TZ)" > /tmp/cland-preserve.lock/owner
+  "${PL_RUNNER:-nt}" "$@"; local x=$?
+  if [ "$(cut -d' ' -f1-3 /tmp/cland-preserve.lock/owner 2> /dev/null)" = "qa $RUN $1" ]; then rm /tmp/cland-preserve.lock/owner && rmdir /tmp/cland-preserve.lock && echo "preservation lock released"; else echo "FINDING: preservation lock owner changed during $1; lock left in place"; fi
+  return $x
+}
+# mrow <id> <function>: one scratch row in a fresh hub seal, cwd p1, after cover-quiet admission and the load gate
+mrow() { quiet || return 2; { ld; node "$Q/fresh.mjs" "$Q/p1" hub /bin/bash "$Q/body.sh" "$2"; echo "row exit $?"; } > "$EV/$1.txt" 2>&1; tail -n 1 "$EV/$1.txt"; }
+```
+
+Expected: `carried brief commit` and `kit commit` each equal to `want`; `kit first lines: holder() { | cat > "$Q/tap.mjs" <<'JS'`; each `kit3` line starts with `cat > "$Q/<name>" <<'` and has more than one line; `kits checked`.
+
+The S0 environment prints, each through its own fresh seal:
+
+```sh
+for m in plain hub; do node "$Q/fresh.mjs" "$Q" "$m" node -e 'const fs=require("fs"),os=require("os"),path=require("path");const e=process.env,h=os.userInfo().homedir,real=p=>{try{return fs.realpathSync(p)}catch{return p}};const allowed=new Set([real(path.dirname(process.execPath)),real(process.argv[1])]);console.log(process.argv[2]+": credential-prefix names "+Object.keys(e).filter(k=>/^(DIGITALOCEAN_|DO_|ANTHROPIC_|OPENAI_|CODEX_API|CODEX_ACCESS|GH_|GITHUB_|AWS_|GOOGLE_|GEMINI_|SSH_)/.test(k)).length+"; QA_SESSION "+(e.QA_SESSION?"set":"unset")+"; TMPDIR is T "+(e.TMPDIR===e.QA_T)+"; HOME is Q/home "+(e.HOME===e.QA_Q+"/home")+"; XDG_STATE_HOME is Q/state "+(e.XDG_STATE_HOME===e.QA_Q+"/state")+"; CLAND_EXECUTOR_STATE is Q/executor-state "+(e.CLAND_EXECUTOR_STATE===e.QA_Q+"/executor-state")+"; CLAND_TEST_HOST_ knobs "+Object.keys(e).filter(k=>k.startsWith("CLAND_TEST_HOST_")).length+"; FAKE_LOGIN_ names "+Object.keys(e).filter(k=>k.startsWith("FAKE_LOGIN_")).length+"; real-HOME PATH entries other than the Node bin and the pinned Neovim directory "+e.PATH.split(":").filter(p=>p.startsWith("~")||((p===h||p.startsWith(h+"/"))&&!allowed.has(real(p)))).length)' "$NVD" "$m"; done 2>&1 | tee "$EV/S0-env.txt"
+echo "Q bytes $(printf '%s' "$Q" | wc -c | tr -d ' '); T bytes $(printf '%s' "$T" | wc -c | tr -d ' '); a suite root for comparison $(printf '%s' "/private/tmp/cland-suite-$(uuidgen | tr 'A-Z' 'a-z')" | wc -c | tr -d ' ')" | tee -a "$EV/S0-env.txt"
+```
+
+Expected (recorded as `S0`): `kits checked`; both modes `credential-prefix names 0`, `QA_SESSION set`, TMPDIR, HOME, `XDG_STATE_HOME is Q/state` and `CLAND_EXECUTOR_STATE is Q/executor-state` `true`, `CLAND_TEST_HOST_ knobs 0`, `FAKE_LOGIN_ names 0` (T-1774's knobs come only from its own test fixtures), `0` real-HOME entries, each `# fresh: redacted or withheld lines 0`; `Q bytes 23`, `T bytes` equal to the suite root's. A non-zero credential count stops the run (BLOCKED).
+
+The TAP expectations. `exact: true` lists every registration; `exact: false` lists the names that prove a criterion (the rest of the file must still pass); `[]` means the whole file must be `CLEAN`. Lists for T-1772 to T-1775 were read at dev `caf30df4` and are unchanged at `728efcb88` (VERIFIED: T-1776 edits none of their test files); T-1776's files (`host-login-disk` 12, `cland-auth` 10, `host-contract-coverage` 8, `host-agent-boundary` 3, `host-agent-closure` 5, the `hostContract` case in `host-local-contract`, 16 top-level registrations in all) and the unedited consumers `host-prelude` 3, `client-component` 6 and `host-agent-restart` (11 top-level; one case run alone) were read at dev `728efcb88` (VERIFIED). Generated names, imported registrars and nested or filtered loops were expanded statically from their arrays and each exact list compared with the full expansion. The two `#` keys are E1535S1-56's and E1535S1-57's standalone runs (`nc`): each run's plan is `1..1`. Re-derive every touched list at `<dev SHA>` before E1535S1-10 if it is later than `728efcb88` (the expected-registration correction).
+
+```sh
+cat > "$Q/expect.json" <<'JSON'
+{
+ "hub/test/host-provider-volumes.test.ts": {"exact": true, "names": [
+  "fake: snapshot history, cloning and confirmed deletion",
+  "fake: volumes create, list and confirm deletion",
+  "fake: volumes enforce one attachment and region binding",
+  "fake: ignored volume deletion retains inventory",
+  "fake: volumes rate limit snapshots until retry time",
+  "mandatory volume contract rejects deletion acknowledged without removal",
+  "volume inventory, attachment and snapshot pacing survive provider recreation",
+  "concurrent volume attachment and snapshot calls each admit one winner",
+  "fake snapshot window rejects invalid durations",
+  "malformed retained volume ownership and snapshot facts fail closed without writes",
+  "fake login contents survive snapshots, cloning and machine release",
+  "fake snapshot deletion confirms absence and retained history fails closed",
+  "digitalocean new snapshot operations refuse without API calls",
+  "surviving snapshot IDs support lookup clone and delete after volume deletion",
+  "snapshot ID deletion retries history publication after provider recreation"]},
+ "hub/test/host-provider-digitalocean-volumes.test.ts": {"exact": true, "names": [
+  "digitalocean: volumes create, list and confirm deletion",
+  "digitalocean: volumes enforce one attachment and region binding",
+  "digitalocean: ignored volume deletion retains inventory",
+  "digitalocean: volumes rate limit snapshots until retry time",
+  "digitalocean volume create carries lon1, 1 GiB and project/pool tags",
+  "digitalocean volume actions publish attachment only after completed",
+  "digitalocean volume creation requires a pool, shares pause and resolves acquire pool",
+  "digitalocean lost volume create reply retains discoverable resource without replay",
+  "digitalocean known snapshot refusal returns immediately for the exact volume identity"]},
+ "hub/test/host-provider-fake.test.ts": {"exact": false, "names": []},
+ "hub/test/host-provider-declarations.test.ts": {"exact": false, "names": []},
+ "hub/test/host-provider-digitalocean.test.ts": {"exact": false, "names": []},
+ "hub/test/login-records.test.ts": {"exact": true, "names": [
+  "disk and key login rows round-trip every field without key disk properties",
+  "refuses login transition from creating to creating naming current state",
+  "refuses login transition from creating to in-use naming current state",
+  "refuses login transition from ready to creating naming current state",
+  "refuses login transition from ready to ready naming current state",
+  "refuses login transition from ready to signed-out naming current state",
+  "refuses login transition from in-use to creating naming current state",
+  "refuses login transition from in-use to in-use naming current state",
+  "refuses login transition from signed-out to ready naming current state",
+  "refuses login transition from signed-out to in-use naming current state",
+  "refuses login transition from signed-out to signed-out naming current state",
+  "creating is neither free nor bound; bindings enforce exclusive writer and non-exclusive readers",
+  "login syntax, uniqueness, harness and key disk constraints name their rules",
+  "binding invariant: disk volume missing is a typed refusal with no partial write",
+  "binding invariant: writer volume differs is a typed refusal with no partial write",
+  "binding invariant: reader uses original volume is a typed refusal with no partial write",
+  "binding invariant: key has volume is a typed refusal with no partial write",
+  "binding invariant: exclusive second binding is a typed refusal with no partial write",
+  "binding invariant: second writer is a typed refusal with no partial write"]},
+ "hub/test/login-list.test.ts": {"exact": true, "names": [
+  "login list text and JSON expose rows and hosts, retained across hub restart",
+  "login list refuses session, web and remote edges like host list"]},
+ "hub/test/cli-help.test.ts": {"exact": false, "names": []},
+ "hub/test/cli-command-help.test.ts": {"exact": false, "names": []},
+ "hub/test/cli-usage-compatibility.test.ts": {"exact": false, "names": []},
+ "hub/test/cli-usage.test.ts": {"exact": false, "names": []},
+ "hub/test/web-authority.test.ts": {"exact": false, "names": []},
+ "hub/test/web-authority-unit.test.ts": {"exact": false, "names": []},
+ "hub/test/cli-imports.test.ts": {"exact": false, "names": [
+  "CLI commands load only their own source closure within the import budgets"]},
+ "hub/test/cli-usage-merge.test.ts": {"exact": false, "names": []},
+ "hub/test/fake-harness-login.test.ts": {"exact": true, "names": [
+  "claude-code sign-in writes generation zero in its harness home",
+  "claude-code turns rotate and dead logins recover only after sign-in",
+  "codex sign-in writes generation zero in its harness home",
+  "codex turns rotate and dead logins recover only after sign-in",
+  "opencode sign-in writes generation zero in its harness home",
+  "opencode turns rotate and dead logins recover only after sign-in",
+  "Codex refuses a live login without changing bytes and replaces a dead login",
+  "claude-code records CLI logout and slash logout",
+  "claude-code sign-in leaves one observed detached holder with an open home file",
+  "codex records CLI logout and slash logout",
+  "codex sign-in leaves one observed detached holder with an open home file",
+  "opencode records CLI logout and slash logout",
+  "opencode sign-in leaves one observed detached holder with an open home file",
+  "Codex native app-server turns retain the last twenty rotations and report revocation",
+  "Claude refuses empty pasted input without creating a login",
+  "holder stale receipt cannot suppress a fresh launch or authorize a signal",
+  "holder cleanup works after receipt corruption and a crashed holder is replaced",
+  "uncommitted holder exits when sign-in fails after readiness",
+  "claude-code preserves disabled-mode refusal parity",
+  "codex preserves disabled-mode refusal parity",
+  "opencode preserves disabled-mode refusal parity"]},
+ "hub/test/fake-harness.test.ts": {"exact": false, "names": []},
+ "hub/test/fake-harness-capabilities.test.ts": {"exact": false, "names": []},
+ "hub/test/codex-fake-envelope.test.ts": {"exact": false, "names": []},
+ "hub/test/fake-claude-cleanup.test.ts": {"exact": false, "names": []},
+ "hub/test/setup-machine.test.ts": {"exact": false, "names": []},
+ "hub/test/hub-cards.test.ts": {"exact": true, "names": [
+  "hub card answers call their registered handler once and never target a session",
+  "pending hub cards survive restart; missing handlers keep them open and withdrawal records its reason",
+  "secret hub answers reach the handler verbatim and remote replay stores a digest",
+  "ordinary ask remote replay preserves its existing answer and deduplicates delivery",
+  "hub card handler failures roll back and a decline carries no consent",
+  "hub cards publish and fold both native copies after web",
+  "hub cards publish and fold both native copies after neovim",
+  "hub cards publish and fold both native copies after telegram",
+  "hub cards publish and fold both native copies after discord",
+  "hub cards publish and fold both native copies after withdraw",
+  "hub cards publish and fold both native copies after secret",
+  "native secret telegram retention probe",
+  "native secret discord retention probe",
+  "deferred native Discord answer keeps handler outcome after all updates settle",
+  "users-mode hub option outcome retains stable user id",
+  "users-mode hub free outcome retains stable user id",
+  "users-mode hub decline outcome retains stable user id"]},
+ "hub/test/hub-cards-voice.test.ts": {"exact": true, "names": [
+  "telegram hub card voice refuses secret input before acquisition",
+  "telegram hub card voice keeps non-secret answering",
+  "discord hub card voice refuses secret input before acquisition",
+  "discord hub card voice keeps non-secret answering"]},
+ "hub/test/hub-cards-authority.test.ts": {"exact": true, "names": [
+  "hub cards keep every remote authority entry at its previous classification"]},
+ "hub/test/asks.test.ts": {"exact": false, "names": []},
+ "hub/test/ask-outcomes.test.ts": {"exact": false, "names": []},
+ "hub/test/ask-chain.test.ts": {"exact": false, "names": []},
+ "hub/test/telegram-cards.test.ts": {"exact": false, "names": []},
+ "hub/test/discord-cards.test.ts": {"exact": false, "names": []},
+ "hub/test/discord-users.test.ts": {"exact": false, "names": []},
+ "hub/test/telegram-voice.test.ts": {"exact": false, "names": []},
+ "hub/test/telegram-voice-answers.test.ts": {"exact": false, "names": []},
+ "hub/test/discord-inbound-media.test.ts": {"exact": false, "names": []},
+ "hub/test/telegram-polling-restart.test.ts": {"exact": false, "names": []},
+ "hub/test/telegram-voice-command.test.ts": {"exact": false, "names": []},
+ "nvim/test/inbox-actions.test.ts": {"exact": false, "names": []},
+ "nvim/test/inbox-requests.test.ts": {"exact": false, "names": []},
+ "nvim/test/inbox-sections.test.ts": {"exact": false, "names": []},
+ "nvim/test/needs-you.test.ts": {"exact": false, "names": []},
+ "nvim/test/declined-ask-component.test.ts": {"exact": false, "names": []},
+ "nvim/test/remote-via.test.ts": {"exact": false, "names": []},
+ "hub/test/nvim-fixture-boundary.test.ts": {"exact": false, "names": []},
+ "hub/test/nvim-frame-refresh.test.ts": {"exact": false, "names": []},
+ "hub/test/nvim-frame-consumers.test.ts": {"exact": false, "names": []},
+ "web/test/inbox.test.ts": {"exact": false, "names": []},
+ "web/test/phone-inbox.test.ts": {"exact": false, "names": []},
+ "web/test/asks.test.ts": {"exact": false, "names": []},
+ "web/test/phone-asks.test.ts": {"exact": false, "names": []},
+ "web/test/remote-via.test.ts": {"exact": false, "names": []},
+ "nvim/test/client-component.test.ts": {"exact": true, "names": [
+  "the default client environment seals poisoned parent homes, accounts, credentials and Git settings",
+  "explicit client inputs reach the launcher without restoring ambient accounts or Git overrides",
+  "Shift+Enter inserts a newline in the composer; Enter sends both lines as one message",
+  "nothing loads from the user configuration: every sourced script is the bundled runtime or nvim/",
+  "the workbench launcher isolates Neovim state and migrates only its legacy files once",
+  "workbench autostart waits for the recorded operator restart window before invoking the CLI"]},
+ "hub/test/host-login-disk.test.ts": {"exact": true, "names": [
+  "login-disk closes only disk users in live parent trees",
+  "login-disk closes only disk users in retained orphan trees",
+  "login-disk holds writer admission through the final unlink boundary",
+  "login-disk joins a previously admitted writer before its disk census",
+  "login-disk held-spawn setup rejection joins native admission before client close",
+  "login-disk joins completion persistence and exit publication before replying",
+  "login-disk joins its owned close callback when kernel exit precedes native publication",
+  "login-disk mounts only this fake machine attachment through the SSH Host",
+  "login-disk uses exactly sudo -n helper op volume path and preserves typed helper failures",
+  "login-disk rejects malformed paths and volume names before invoking a helper",
+  "login-disk incomplete helper retains durable mutation ownership across agent restart",
+  "login-disk fixture closes its server after rejected connect and attempts every cleanup join"]},
+ "hub/test/cland-auth.test.ts": {"exact": true, "names": [
+  "C4: invalid helper arguments fail before any external command",
+  "mount drains and unmounts the device automount before mounting the login path",
+  "helper dispatches freeze and thaw only for the matching mounted volume",
+  "unmount observes writers gone and refuses a disk with persistent writers",
+  "writer probe errors and missing fuser never authorize unmount",
+  "lost or replaced mount after admission refuses every later effect",
+  "contended operation lock refuses before mount discovery or effects",
+  "failed positive census and failed signal retain the mounted disk",
+  "mount installs the requested scratch device and checks identity before permissions",
+  "mount changes after the writer census fence signals and final unmount"]},
+ "hub/test/host-contract-coverage.test.ts": {"exact": true, "names": [
+  "Host contract exercises every interface member and detects an uncovered addition",
+  "Host spawn contract inventory includes logFile and exited with positive omission controls",
+  "Host stop option inventory detects an uncovered callback addition",
+  "Host spawn option inventory detects an uncovered callback addition",
+  "local Host retains no optional Claude launch or adoption implementation",
+  "optional login-disk contract covers absence, refusal and exact input with planted failures",
+  "optional terminal printer contract covers absence and its exact session command",
+  "optional capacity contract covers absence, report delivery and unsubscribe with positive controls"]},
+ "hub/test/host-prelude.test.ts": {"exact": true, "names": [
+  "C1: prelude installs pinned keys and hardened sshd settings",
+  "C2: DigitalOcean steps, helper, sudoers and file credential store are installed",
+  "C3: sentinel scan detects planted values and assignments, and rendered data excludes environment secrets"]},
+ "hub/test/host-local-contract.test.ts": {"exact": false, "names": [
+  "Host login disks preserve optional absence and refuse invalid paths"]},
+ "hub/test/host-agent.test.ts": {"exact": false, "names": []},
+ "hub/test/host-ssh-contract.test.ts": {"exact": false, "names": []},
+ "hub/test/host-agent-boundary.test.ts": {"exact": true, "names": [
+  "agent imports only Node built-ins, agent modules and exact owner-bound shared leaves",
+  "neutral Clock and fake-layout leaves have exact agent owners and no relative dependencies",
+  "JSONL byte limits apply per line across coalesced, fragmented and multibyte chunks"]},
+ "hub/test/host-agent-closure.test.ts": {"exact": true, "names": [
+  "closure admits exactly the two owner-bound neutral leaves and refuses their extra imports",
+  "committed agent closure matches the complete source and native asset graph",
+  "host registry startup imports no development-only package",
+  "restart requires exact fresh native birth and refuses reused or inherited PID authority",
+  "recovery handshake preserves previous hello shape and gates the additive restore operation"]},
+ "hub/test/host-agent-restart.test.ts#version-delivery": {"exact": true, "names": [
+  "C1-C3 version delivery reconnect reads retained table without signalling harness"]},
+ "hub/test/host-login-disk.test.ts#held-close": {"exact": true, "names": [
+  "login-disk joins its owned close callback when kernel exit precedes native publication"]},
+ "hub/test/test-docs.test.ts": {"exact": false, "names": []},
+ "hub/test/suite-tiers.test.ts": {"exact": false, "names": []}
+}
+JSON
+node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log("expect checked")' "$Q/expect.json"
+```
+
+The source checks (`src.mjs`), counted with `String.split` at the build. Every line reads `ok` at dev `728efcb88` (VERIFIED). Lines for T-1773 to T-1775 were first read at `caf30df4`; two T-1772 lines read `0` at `728efcb88` in their old files and follow the strings T-1776 moved into the agent leaves: C5, the history parser, byte-identical in `hub/src/host/agent/fake-volume-record.ts`; C3, the contents fence, reformatted in `hub/src/host/agent/fake-volume-contents.ts` (`this.#status(machine)` is now `fakeMachineStatus(directory,machine,now)`, spaces dropped), with two lines proving the provider uses those leaves; T-1776's lines cover the helper argv and grammar, the fake-host fence and contents seam, the drain before unlink, the close-ordering fix and its held-close hook, and the neutral-leaf admission in `package.ts`, `code-delivery.ts` and `closure.json`.
+
+```sh
+cat > "$Q/src.mjs" <<'JS'
+// node "$Q/src.mjs" <W>   ok or MISMATCH per line (every line VERIFIED ok at dev 728efcb88)
+import { readFileSync, existsSync } from 'node:fs';
+const W = process.argv[2];
+const read = f => existsSync(`${W}/${f}`) ? readFileSync(`${W}/${f}`, 'utf8') : null;
+const PV = 'hub/src/host/provider/provider.ts', FK = 'hub/src/host/provider/fake.ts', DO = 'hub/src/host/provider/digitalocean.ts', LG = 'hub/src/host/logins.ts', DI = 'hub/src/hub/dispatch.ts', HC = 'hub/src/hub/hub-cards.ts', FL = 'hub/test/fakes/fake-login.ts', LD = 'hub/src/host/agent/login-disk.ts', FD = 'hub/src/host/agent/fake-login-disk.ts';
+const VC = 'hub/src/host/agent/fake-volume-contents.ts', VR = 'hub/src/host/agent/fake-volume-record.ts', PR = 'hub/src/host/agent/processes.ts', PK = 'hub/src/host/agent/package.ts';
+const C = [
+  // T-1772
+  ['T-1772 C2 listSnapshots on the provider interface', PV, 'listSnapshots(volume: Volume): Promise<ListSnapshotsResult>;', '=1'],
+  ['T-1772 C2 deleteSnapshot on the provider interface', PV, 'deleteSnapshot(snapshot: VolumeSnapshot | string): Promise<DeleteSnapshotResult>;', '=1'],
+  ['T-1772 C1 createVolume takes an optional snapshot', PV, 'fromSnapshot?: VolumeSnapshot | string', '=1'],
+  ['T-1772 C2 a listed history or volume-gone', PV, "export type ListSnapshotsResult = { state: 'listed'; snapshots: VolumeSnapshot[] } | { state: 'volume-gone' } | Failed;", '=1'],
+  ['T-1772 C1 a clone starts from the snapshot contents', FK, 'if (source) await cp(this.#snapshotContents(source.snapshot!.id), this.#contents(volume.id), { recursive: true, errorOnExist: true, force: false });', '=1'],
+  ['T-1772 C1 a volume without a snapshot starts empty', FK, 'else await mkdir(this.#contents(volume.id), { mode: 0o700 });', '=1'],
+  ['T-1772 C3 contents only for the attached ready machine (moved by T-1776)', VC, "if(record.volume.attachedTo!==machine.id||(await fakeMachineStatus(directory,machine,now)).state!=='ready')throw new Error('volume unavailable');", '=1'],
+  ['T-1772 C3 the provider seam calls the shared contents leaf', FK, 'return this.#serial(async()=>{try{return await fakeVolumeContents(this.#root,hostDirectory(this.#root,machine.id),volume,machine,this.#now);}', '=1'],
+  ['T-1772 C4 release detaches and keeps contents', FK, 'if (record.volume.attachedTo === machine.id) { record.volume.attachedTo = null; await this.#writeVolume(record); }', '=1'],
+  ['T-1772 C5 the history parser fails closed (moved by T-1776)', VR, "if (!Array.isArray(record.snapshots)) throw new Error('invalid fake snapshot history');", '=1'],
+  ['T-1772 C5 the provider record module re-exports the agent parser', 'hub/src/host/provider/fake-volume-record.ts', "export { parseFakeVolumeRecord, isFakeVolumeId, type FakeVolumeRecord } from '../agent/fake-volume-record.ts';", '=1'],
+  ['T-1772 C6 DigitalOcean listSnapshots unsupported', DO, "return { state: 'failed', reason: 'listSnapshots unsupported' };", '=1'],
+  ['T-1772 C6 DigitalOcean deleteSnapshot unsupported', DO, "return { state: 'failed', reason: 'deleteSnapshot unsupported' };", '=1'],
+  ['T-1772 C6 DigitalOcean createVolume fromSnapshot unsupported', DO, "if (options.fromSnapshot !== undefined) return { state: 'failed', reason: 'createVolume fromSnapshot unsupported' };", '=1'],
+  // T-1773
+  ['T-1773 C2 the transition table', LG, "creating: ['ready', 'signed-out'], ready: ['in-use'], 'in-use': ['ready', 'signed-out'], 'signed-out': ['creating'],", '=1'],
+  ['T-1773 C2 the refusal names the current state', LG, 'throw Error(`login ${name} cannot transition from ${row.state} to ${state}`);', '=1'],
+  ['T-1773 C2 only ready is free', LG, "free(): Login[] { return this.list().filter(row => row.state === 'ready'); }", '=1'],
+  ['T-1773 C4 the name rule', LG, "if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(input.name)) throw Error('login name must match [a-z0-9][a-z0-9-]{0,31}');", '=1'],
+  ['T-1773 C4 the harness rule', LG, "throw Error('login harness must be claude-code, codex or opencode');", '=1'],
+  ['T-1773 C1 a disk login is exclusive by default', LG, 'exclusive:input.exclusive ?? true', '=1'],
+  ['T-1773 metadata only, no accounts registry import', LG, 'account-registry', '=0'],
+  ['T-1773 the store is constructed beside the host records', 'hub/src/host/records.ts', 'this.logins = new LoginRecords(db);', '=1'],
+  ['T-1773 C3/C5 login.list answers on the human-local path only', DI, "if (frame.type === 'login.list') return answer(core.store.hosts.logins.list().map(row => ({...row,bindings:core.store.hosts.logins.bindings(row.name)})));", '=1'],
+  ['T-1773 C5 login.list shares the host.* local-human gate', DI, "case 'login.list':\n          case 'host.status':", '=1'],
+  ['T-1773 C5 the web edge refuses login.list', 'hub/src/hub/web-authority.ts', "'login.list': 'requires the local human CLI or Neovim',", '=1'],
+  ['T-1773 C5 the remote gateway table names no login frame', 'hub/src/remote/authority.ts', 'login', '=0'],
+  ['T-1773 C3 the text header', 'hub/src/cli/login.ts', "process.stdout.write('NAME\\tHARNESS\\tACCOUNT\\tKIND\\tEXCLUSIVE\\tSTATE\\tPROVIDER\\tREGION\\tVOLUME\\tSNAPSHOTS\\tLAST SIGN-IN\\n');", '=1'],
+  ['T-1773 C5 login --help', 'hub/src/cli/help.ts', 'login: LOGIN_USAGE,', '=1'],
+  // T-1774 (test-only fakes; opt-in, so earlier fake users are unchanged)
+  ['T-1774 the login file is opt-in', FL, "export function loginEnabled(): boolean { return process.env.FAKE_LOGIN_ENABLED === '1' || !!process.env.FAKE_LOGIN_HOME; }", '=1'],
+  ['T-1774 C2 Claude Code dead-login signal', FL, "if (harness === 'claude-code') return { hook_event_name: 'StopFailure', error: 'authentication_failed', error_details: 'OAuth token revoked' };", '=1'],
+  ['T-1774 C2 Codex dead-login signal', FL, "if (harness === 'codex') return { message: 'refresh_token_reused', codexErrorInfo: 'unauthorized' };", '=1'],
+  ['T-1774 C2 OpenCode dead-login signal', FL, "return { type: 'provider.auth', message: 'Login expired' };", '=1'],
+  // T-1775 (the secret digest and the voice refusal are secret.mjs, E1535S1-07)
+  ['T-1775 C1 a hub card is an ask from hub', HC, "p.store.createAsk({ id: message.id, topic: topic.id, from: 'hub', question: q, options: opts, free, ts: message.ts, hubKind: kind, payload: storedPayload, secret });", '=1'],
+  ['T-1775 C2 hub-card answers go to the kind handler, not a session', 'hub/src/hub/asks.ts', "if (a.from === 'hub' && a.hubKind !== undefined) return this.cards.answer(a, body, option, via, user, declined, standIn);", '=1'],
+  ['T-1775 C4 a missing handler keeps the card open', HC, "throw new TopicRefusal('no handler registered for this hub card; it stays open');", '=1'],
+  ['T-1775 C4 kind and payload are durable', 'hub/src/hub/store.ts', "if (a.hubKind !== undefined) this.#prepare('update asks set hub_kind = ?, hub_payload = ?, secret_answer = ? where id = ?').run(a.hubKind, JSON.stringify(a.payload ?? null), a.secret ? 1 : 0, a.id);", '=1'],
+  ['T-1775 C3 withdraw folds with its reason', HC, "if (!p.store.closeAsk(id, 'withdrawn', at, { id: '', outcome: { status: 'answered', text: reason, by: 'hub', at } })) throw new TopicRefusal(`the ask is ${a.state}`);", '=1'],
+  ['T-1775 InboxAsk.secret only on secret hub cards', 'hub/src/hub/inbox.ts', "...(a.from === 'hub' && a.hubKind && a.secret ? { secret: true as const } : {}),", '=1'],
+  ['T-1775 InboxAsk.secret optional in the hub protocol', 'hub/src/protocol.ts', 'export type InboxAsk = { secret?: true; layer?: Layer;', '=1'],
+  ['T-1775 InboxAsk.secret optional in the shared wire', 'shared/wire/index.ts', 'export type InboxAsk = { secret?: true; layer?: Layer;', '=1'],
+  // T-1776 (VERIFIED at dev 728efcb88)
+  ['T-1776 C5 exactly sudo -n helper op volume path', LD, "runHelper('sudo', ['-n','/usr/local/sbin/cland-auth',input.op,input.volume,input.path], env, 60_000)", '=1'],
+  ['T-1776 C1 the agent checks the helper grammar first', LD, '!/^\\/cland\\/auth\\/[a-z][a-z0-9]*-[a-z0-9][a-z0-9-]*$(?![\\s\\S])/.test(args.path)) throw loginDiskError(\'bad-argument\');', '=1'],
+  ['T-1776 C1 symlinks refused before any helper', LD, 'await rejectLoginSymlinks(input.path);', '=1'],
+  ['T-1776 C2 the fake helper only under the fake-host marker', LD, "if (env.CLAND_FAKE_HOSTS && env.CLAND_FAKE_HOST_ROOT) return await (await import('./fake-login-disk.ts')).fakeLoginDisk(input,env,processes);", '=1'],
+  ['T-1776 C2 contents only through the shared attachment seam', FD, 'const contents=await fakeVolumeContents(root,directory,matches[0]!,machine,()=>realClock.now().getTime());', '=1'],
+  ['T-1776 C2 the fake helper runs only in its own fake machine directory', FD, "try {if(await realpath(directory)!==await realpath(fakeMachineStorageDirectory(root,name)))throw new Error('machine directory mismatch');}", '=1'],
+  ['T-1776 C3 unmount drains disk users before unlink', FD, "if(input.op==='umount') {await drain(processes,await realpath(contents.directory),env);await unlink(path);}", '=1'],
+  ['T-1776 C3 writer admission is held for the whole operation', LD, "if(busy)throw Object.assign(new Error('login-disk owns writer admission'),{code:'CLAND_AGENT_ADMISSION_REFUSED'});", '=1'],
+  ['T-1776 C3 close-ordering fix: a fresh child keeps its pending close owner', PR, 'if(this.#launchedHere.has(row)&&this.#nativeCompletions.has(row))continue;', '=1'],
+  ['T-1776 C3 the held-close hook precedes the completion', PR, 'if(this.#hooks.beforeNativeClose)await this.#hooks.beforeNativeClose(row.pid,exit);', '=1'],
+  ['T-1776 C3 the drain joins completions within its deadline', PR, 'if(!await this.#joinDiskCompletion(row,clock,deadline))return false;', '=2'],
+  ['T-1776 C3 a persisted birth never gains signal authority', PR, 'if(!this.#launchedHere.has(row))return false;', '=1'],
+  ['T-1776 neutral Clock leaf has one agent owner', PK, "case 'shared/clock.ts':return 'hub/src/host/agent/clock.ts';", '=1'],
+  ['T-1776 neutral fake-layout leaf has one agent owner', PK, "case 'shared/fake-layout.ts':return 'hub/src/host/agent/fake-layout.ts';", '=1'],
+  ['T-1776 runtimePath admits only owner-bound shared leaves', PK, '||sharedAgentLeafOwner(path)!==null;', '=1'],
+  ['T-1776 shared leaves import nothing relative', PK, 'if(sharedAgentLeafOwner(importer)!==null)return false;', '=1'],
+  ['T-1776 the Clock owner wrapper', 'hub/src/host/agent/clock.ts', "export * from '../../../../shared/clock.ts';", '=1'],
+  ['T-1776 the fake-layout owner wrapper', 'hub/src/host/agent/fake-layout.ts', "export * from '../../../../shared/fake-layout.ts';", '=1'],
+  ['T-1776 shared/clock.ts stays import-free', 'shared/clock.ts', 'import ', '=0'],
+  ['T-1776 shared/fake-layout.ts imports only Node', 'shared/fake-layout.ts', "from '.", '=0'],
+  ['T-1776 INSTALL_AGENT serializes the leaf owner beside runtimePath', 'hub/src/host/code-delivery.ts', 'export const INSTALL_AGENT = `const sharedAgentLeafOwner=${sharedAgentLeafOwner.toString()};const runtimePath=${runtimePath.toString()};', '=1'],
+  ['T-1776 the regenerated closure lists 42 files', 'hub/src/host/agent/closure.json', '"path": ', '=42'],
+  ['T-1776 the closure holds the Clock leaf', 'hub/src/host/agent/closure.json', '"path": "shared/clock.ts"', '=1'],
+  ['T-1776 the closure holds the fake-layout leaf', 'hub/src/host/agent/closure.json', '"path": "shared/fake-layout.ts"', '=1'],
+  ['T-1776 fixture sockets take their directory from the neutral leaf', 'shared/fixture-sockets.ts', "import { fakeStorageDirectory as socketDirectory } from './fake-layout.ts';", '=1'],
+  ['T-1776 the agent operation', 'hub/src/host/agent/server.ts', "case 'login-disk': result = await loginDisk(request.args); break;", '=1'],
+  ['T-1776 C5 the local Host refuses', 'hub/src/host/local.ts', "loginDisk: async () => { throw Object.assign(new Error('login-disk unavailable on local Host'), {code:'wrong-volume'}); },", '=1'],
+  ['T-1776 typed codes on the ssh Host', 'hub/src/host/ssh-host.ts', "if(['bad-argument','busy','writers-remain','wrong-volume'].includes(String((error as NodeJS.ErrnoException).code)))throw error;", '=1'],
+  ['T-1776 C4 the helper lists the device mounts before mounting', 'hub/src/host/cland-auth.sh', 'others=$(findmnt -rn -S "$dev" -o TARGET) || status=$?', '=1'],
+];
+for (const [label, file, text, e] of C) {
+  const t = read(file), n = t === null ? 'MISSING' : t.split(text).length - 1;
+  const pass = t !== null && (e.startsWith('>=') ? n >= Number(e.slice(2)) : n === Number(e.slice(1)));
+  console.log(`${pass ? 'ok' : 'MISMATCH'} ${label} | ${file} | ${n} | ${e}`);
+}
+JS
+node --check "$Q/src.mjs" && echo "src checked"
+# secret.mjs <W>: T-1775 C5, no secret answer text persisted (gateway.answer receipt, history, journal via the log, Telegram prompt state) and voice refused on secret cards before any acquisition
+cat > "$Q/secret.mjs" <<'JS'
+// node "$Q/secret.mjs" <W>   ok or MISMATCH per line (VERIFIED at dev caf30df4 and 728efcb88: all ok). Counts use String.split; order checks use indexOf.
+import { readFileSync, existsSync } from 'node:fs';
+const W = process.argv[2];
+const read = f => existsSync(`${W}/${f}`) ? readFileSync(`${W}/${f}`, 'utf8') : null;
+const DI = 'hub/src/hub/dispatch.ts', HC = 'hub/src/hub/hub-cards.ts', AS = 'hub/src/hub/asks.ts', TP = 'hub/src/remote/telegram-prompts.ts', TG = 'hub/src/remote/telegram.ts', DC = 'hub/src/remote/discord-inbound.ts';
+const C = [
+  // the digest
+  ['count', 'replay digests a secret hub-card answer', DI, 'const digest = core.cards.answerDigest(frame.ask, frame.text ?? frame.reason);', '=1'],
+  ['count', 'replay keeps plaintext only for ordinary asks', DI, 'const replayText = digest === undefined ? { text: frame.text, reason: frame.reason } : { digest };', '=1'],
+  ['count', 'gateway.answer receipt stores replayText, never frame.text', DI, 'state.set(key, JSON.stringify({ ask: frame.ask, option: frame.option, ...replayText, declined: frame.declined, value }));', '=1'],
+  ['count', 'no receipt writes frame.text directly', DI, 'option: frame.option, text: frame.text', '=0'],
+  ['count', 'the receipt key', DI, 'const key = `gateway.answer:${messageId}`;', '=1'],
+  ['count', 'a digest only for secret hub cards', HC, "return a?.from === 'hub' && a.hubKind && a.secret && text !== undefined\n      ? answerTextDigest(text) : undefined;", '=1'],
+  ['count', 'the digest is SHA-256', 'hub/src/remote/redact.ts', "return createHash('sha256').update(text).digest('hex');", '=1'],
+  ['count', 'a secret answer reaches the handler verbatim (no trim)', AS, "body = typeof text === 'string' ? (a.secret ? text : text.trim()) : '';", '=1'],
+  ['count', 'history holds only "answered"', HC, "const visible = a.secret ? 'answered' : body;", '=1'],
+  ['count', 'the answer message carries the visible text', HC, 'to: [], text: visible, ts: at', '=1'],
+  ['count', 'the outcome line hides a secret result', HC, "text: a.secret ? 'answered' : result", '=1'],
+  ['count', 'a declined outcome hides a secret result', HC, "reason: a.secret ? 'answered' : result", '=1'],
+  ['logs', 'hub-card log events carry ids and counts only (the journal is fed by the log)', HC],
+  ['count', 'no session note for a hub card', AS, "if (text !== null && a.from !== 'hub') {", '=1'],
+  ['count', 'Telegram freezes a digest of a hub-card answer', TP, 'if (field) answer.input = { field, digest: answerTextDigest(answer.fields[field]!) };', '=1'],
+  ['count', 'Telegram drops the answer text before persisting', TP, 'delete fields.text;', '=1'],
+  ['count', 'Telegram drops the decline reason before persisting', TP, 'delete fields.reason;', '=1'],
+  ['count', 'Telegram replay is checked against the digest', TP, "if (answerTextDigest(message.text!) !== answer.input.digest) throw new Error('native answer identity conflict');", '=1'],
+  // the voice refusal
+  ['count', 'the refusal text for a secret card', 'hub/src/remote/cards.ts', "return card?.secret ? 'Use text to answer this card' : null;", '=1'],
+  ['count', 'Telegram stores no voice target for a secret card', TP, 'if (!secretVoiceRefusal(target)) this.#store.set(key, JSON.stringify(target));', '=1'],
+  ['order', 'Telegram refuses secret voice before the media queue', TG, 'if (refusal) { await this.#commandReply(update, [plainCommandReply(refusal)]); return; }', 'this.#media!.enqueue(', 200],
+  ['order', 'Telegram refuses secret voice before transcription download', TG, 'const refusal = secretVoiceRefusal(target);\n      if (refusal) {', 'const result = await voiceNote({', 400],
+  ['count', 'Discord derives the refusal from the referenced card model', DC, 'const refusal = voice ? secretVoiceRefusal(card) : null;', '=1'],
+  ['first', 'Discord refuses before the ingress receipt', DC, 'if (refusal) { await say(refusal);', 'const recovered = this.#receipt?.(ingress);'],
+  ['first', 'Discord refuses before any CDN download', DC, 'if (refusal) { await say(refusal);', 'discordCdn('],
+  ['first', 'Discord refuses before transcription', DC, 'if (refusal) { await say(refusal);', 'voiceNote('],
+];
+for (const [kind, label, file, a, b, gap] of C) {
+  const t = read(file); let pass = false, detail = 'MISSING';
+  if (t !== null && kind === 'count') { const n = t.split(a).length - 1; detail = `${n} | ${b}`; pass = n === Number(b.slice(1)); }
+  if (t !== null && kind === 'order') { const i = t.indexOf(a), j = i < 0 ? -1 : t.indexOf(b, i); detail = `at ${i}, next at ${j}, gap ${j - i} <= ${gap}; first once ${t.split(a).length - 1 === 1}`; pass = i >= 0 && j > i && j - i <= gap && t.split(a).length - 1 === 1; }
+  if (t !== null && kind === 'first') { const i = t.indexOf(a), j = t.indexOf(b); detail = `first at ${i}, other first at ${j}`; pass = i >= 0 && j > i; }
+  if (t !== null && kind === 'logs') { const lines = t.split('\n').filter(l => l.includes('p.log(')); const bad = lines.filter(l => /\bbody\b|\btext\b|payload|result/.test(l)); detail = `log calls ${lines.length}; naming body, text, payload or result ${bad.length}`; pass = lines.length === 4 && bad.length === 0; }
+  console.log(`${pass ? 'ok' : 'MISMATCH'} ${label} | ${file} | ${detail}`);
+}
+JS
+node --check "$Q/secret.mjs" && echo "secret checked"
+# frames.mjs <W> [static]: InboxAsk.secret frame-unchanged check over Neovim's recorded catalog; without "static", the rebuilt asks and the catalog's drift check (imports build test-support code: run it through fresh.mjs)
+cat > "$Q/frames.mjs" <<'JS'
+import { readFileSync, readdirSync } from 'node:fs';
+const [W, mode] = process.argv.slice(2), dir = 'nvim/test/fixtures/protocol-frames';
+const files = ['nvim/test/fixtures/protocol-frames.json', 'nvim/test/fixtures/live-protocol-frames.json',
+  ...readdirSync(`${W}/${dir}`).filter(f => f.endsWith('.json')).sort().map(f => `${dir}/${f}`)];
+let keys = 0, questions = 0;
+for (const f of files) {
+  const text = readFileSync(`${W}/${f}`, 'utf8'), n = text.split('"secret"').length - 1;
+  keys += n; questions += text.split('"question"').length - 1;
+  if (n) console.log(`  "secret" key in ${f}: ${n}`);
+}
+console.log(`recorded frame files read; "secret" keys ${keys}; "question" keys ${questions}`);
+if (mode !== 'static') {
+  const { parseRecordings } = await import(`${W}/nvim/test/frame-fixtures.ts`);
+  let asks = 0, withSecret = 0;
+  const walk = v => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (!v || typeof v !== 'object') return;
+    if (['id', 'question', 'options', 'free', 'from'].every(k => Object.hasOwn(v, k))) { asks++; if (Object.hasOwn(v, 'secret')) withSecret++; }
+    Object.values(v).forEach(walk);
+  };
+  for (const r of Object.values(parseRecordings(readFileSync(`${W}/nvim/test/fixtures/protocol-frames.json`, 'utf8')))) walk(r.output);
+  console.log(`rebuilt recorded asks ${asks}; asks carrying secret ${withSecret}`);
+  const { checkRecordings } = await import(`${W}/hub/test/nvim-fixture-check.ts`);
+  try { await checkRecordings(); console.log('recorded catalog drift: none'); }
+  catch (e) { console.log(`recorded catalog drift: ${String(e?.message ?? e).split('\n')[0]}`); process.exitCode = 1; }
+}
+JS
+node --check "$Q/frames.mjs" && echo "frames checked"
+# ids.mjs <brief>: A-17843 — every E1535S1-NN the criteria map names exists as a row of the case or manual tables
+cat > "$Q/ids.mjs" <<'JS'
+import { readFileSync } from 'node:fs';
+const t = readFileSync(process.argv[2], 'utf8'), map = t.slice(t.indexOf('### Criteria map'), t.indexOf('## Build'));
+const named = new Set(map.match(/E1535S1-\d+/g) ?? []), rows = new Set([...t.matchAll(/^\| (E1535S1-\d+) \|/gm)].map(m => m[1]));
+const missing = [...named].filter(id => !rows.has(id));
+console.log(`criteria-map ids ${named.size}; table rows ${rows.size}; missing from the tables: ${missing.length}${missing.length ? ' ' + missing.join(' ') : ''}`);
+JS
+node --check "$Q/ids.mjs" && echo "ids checked"
+```
+
+The check functions for QA's own shell, and this brief's scratch functions (`body.sh` sources `helpers.sh` and `scratch.sh`):
+
+```sh
+cat > "$Q/checks.sh" <<'SH'
+landing() { git -C "$W" log --first-parent --format=%H --grep "^Item: $1\$" "$S"; }
+BASE=8371b6da6ae451787f1679dc01ff3435d51e1f52   # the tracker commit that cut E-1535 and started stage 1 (the parent of T-1772's landing)
+MEMBERS="T-1772 T-1776 T-1773 T-1774 T-1775"
+# preserved: test files no stage landing may edit (the existing volume, fake-harness, asks, remote-card, voice, Neovim inbox and web inbox tests)
+preserved() { printf '%s\n' hub/test/host-provider-digitalocean-volumes.test.ts hub/test/host-provider-fake.test.ts hub/test/host-provider-declarations.test.ts hub/test/fake-harness.test.ts hub/test/fake-harness-capabilities.test.ts hub/test/codex-fake-envelope.test.ts hub/test/fake-claude-cleanup.test.ts hub/test/asks.test.ts hub/test/ask-outcomes.test.ts hub/test/ask-chain.test.ts hub/test/telegram-cards.test.ts hub/test/discord-cards.test.ts hub/test/telegram-voice.test.ts hub/test/telegram-voice-answers.test.ts hub/test/discord-inbound-media.test.ts hub/test/host-prelude.test.ts nvim/test/inbox-actions.test.ts nvim/test/inbox-requests.test.ts nvim/test/inbox-sections.test.ts nvim/test/needs-you.test.ts nvim/test/declined-ask-component.test.ts nvim/test/remote-via.test.ts web/test/inbox.test.ts web/test/phone-inbox.test.ts web/test/asks.test.ts web/test/phone-asks.test.ts web/test/remote-via.test.ts; }
+# ownlines <landing> <tip>: the member's own changed lines at its landing equal its tip's against their merge base (A-17643)
+ownlines() { local L=$1 H=$2 MB F; MB=$(git -C "$W" merge-base "$H" "$L^1"); F=$(git -C "$W" diff --name-only "$L^1" "$L" | grep -v '^\.cland/')
+  git -C "$W" diff "$MB" "$H" -- $F | grep -E '^[+-]' | grep -v -E '^(\+\+\+|---) ' | sort > "$Q/own-$H.txt"
+  git -C "$W" diff "$L^1" "$L" -- $F | grep -E '^[+-]' | grep -v -E '^(\+\+\+|---) ' | sort > "$Q/land-$L.txt"
+  cmp -s "$Q/own-$H.txt" "$Q/land-$L.txt" && echo yes || echo "no: $(diff "$Q/own-$H.txt" "$Q/land-$L.txt" | grep -c '^[<>]') lines differ"; }
+s00() {   # build, plan and landing receipts
+  echo "PRE HEAD $(git -C "$W" rev-parse HEAD) dev $(git -C "$R" rev-parse refs/heads/dev) request $S"
+  echo "dirty entries $(git -C "$W" status --porcelain --untracked-files=all | grep -v -c -x '?? node_modules')"
+  git -C "$R" status --porcelain | grep -v ' \.cland/tasks/' > "$EV/root-status-before.txt"; echo "root non-tracker entries $(wc -l < "$EV/root-status-before.txt" | tr -d ' ')"
+  (cd "$R" && node "$W/hub/bin/cland.ts" task plan show E-1535 --json) > "$EV/plan.json"; echo "plan read exit $?"
+  node -e 'const v=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const s=(v.stages??[]).find(x=>x.name==="fake volumes, the login-disk helper, the login model, fake harness logins and hub cards");console.log(s?JSON.stringify({name:s.name,state:s.state,qa:s.qa,items:s.items,merged:s.merged,total:s.total,statuses:s.statuses}):"stage missing")' "$EV/plan.json" | tee "$EV/stage-members.json"
+  for id in $(node -e 'const v=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((v.items??[]).join(" "))' "$EV/stage-members.json"); do echo "$id landings $(landing "$id" | wc -l | tr -d ' ') $(landing "$id" | head -n 1)"; done
+}
+s01() { node "$Q/fresh.mjs" "$W" plain node --version; node "$Q/fresh.mjs" "$W" plain npm run typecheck > "$EV/typecheck.log" 2>&1; echo "typecheck exit $?"; echo "dirty entries $(git -C "$W" status --porcelain --untracked-files=all | grep -v -c -x '?? node_modules')"; }
+s02() {   # landing diffs (read-only), the stage-wide invariants and the landing check
+  for id in $MEMBERS; do L=$(landing "$id" | head -n 1); echo "$id landing ${L:-none}"; [ -n "$L" ] || continue
+    echo "$id test paths: $(git -C "$W" diff --name-only "${L}^1" "${L}" -- hub/test nvim/test web/test | tr '\n' ' ')"
+    echo "$id product paths: $(git -C "$W" diff --name-only "${L}^1" "${L}" -- hub/src hub/bin shared nvim/lua web/src | tr '\n' ' ')"
+    echo "$id package.json and lockfiles: $(git -C "$W" diff --name-only "${L}^1" "${L}" -- package.json package-lock.json hub/package.json web/package.json | wc -l | tr -d ' ')"
+    echo "$id preserved files edited at its landing: [$(git -C "$W" diff --name-only "${L}^1" "${L}" -- $(preserved) | tr '\n' ' ')]"
+  done
+  echo "stage paths under nvim/ or web/: [$(git -C "$W" diff --name-only "$BASE" "$S" -- nvim web | tr '\n' ' ')]"
+  echo "remote authority table changed in the stage: [$(git -C "$W" diff --name-only "$BASE" "$S" -- hub/src/remote/authority.ts | tr '\n' ' ')]"
+  echo "fixture producers changed since 7c0320829: [$(git -C "$W" diff --name-only 7c0320829 "$S" -- nvim/test/stub-hub.ts nvim/test/client.ts nvim/test/fixture.ts shared/fixture-ownership.ts | tr '\n' ' ')]"
+  echo "shared fixture leaves changed in the stage: [$(git -C "$W" diff --name-only "$BASE" "$S" -- shared/fixture-sockets.ts shared/fake-host-directory.ts shared/fake-layout.ts shared/clock.ts | tr '\n' ' ')]"
+  git -C "$W" diff "$BASE" "$S" -- shared/fixture-sockets.ts | grep -E '^[-+][^-+]' | sed 's/^/  fixture-sockets: /'
+  L=$(landing T-1772 | head -n 1); echo "T-1772 removed lines in host-provider-volumes: $( [ -n "$L" ] && git -C "$W" diff "${L}^1" "$L" -- hub/test/host-provider-volumes.test.ts | grep -E '^-[^-]' | tr '\n' ' ')"
+  L=$(landing T-1776 | head -n 1); echo "T-1776 removed lines in cland-auth and host-prelude: $( [ -n "$L" ] && git -C "$W" diff "${L}^1" "$L" -- hub/test/cland-auth.test.ts hub/test/host-prelude.test.ts | grep -c -E '^-[^-]')"
+  [ -n "$L" ] && git -C "$W" diff "${L}^1" "$L" -- hub/test/cland-auth.test.ts hub/test/host-prelude.test.ts | grep -E '^-[^-]' | cut -c1-160 | sed 's/^/  removed: /'
+  for pair in "T-1772 b91876182" "T-1773 b320aef39" "T-1774 afc246a68" "T-1775 b1a2b2278" "T-1776 ${T1776_TIP:-f76bdc9bb}"; do set -- $pair; id=$1; head=$2; L=$(landing "$id" | head -n 1)
+    [ -n "$L" ] && git -C "$W" cat-file -e "$head^{commit}" 2> /dev/null || { echo "$id landing ${L:-none} tip $head: BLOCKED (no landing or no tip)"; continue; }
+    F=$(git -C "$W" diff --name-only "$L^1" "$L" | grep -v '^\.cland/' | tr '\n' ' ')
+    echo "$id own lines at its landing $L equal its tip $head: $(ownlines "$L" "$head")"
+    echo "$id files byte-identical to $head at its landing: $(git -C "$W" diff --quiet "$head" "$L" -- $F && echo yes || echo "no: $(git -C "$W" diff --name-only "$head" "$L" -- $F | tr '\n' ' ')")"
+    echo "$id commits after its landing touching its files: [$(git -C "$W" log --format=%h "$L..$S" -- $F | tr '\n' ' ')]"; done
+}
+s79() {   # end check with $Q and $T still present (cleanup order)
+  echo "POST HEAD $(git -C "$W" rev-parse HEAD) dev $(git -C "$R" rev-parse refs/heads/dev) request $S"
+  echo "dirty entries $(git -C "$W" status --porcelain --untracked-files=all | grep -v -c -x '?? node_modules')"
+  git -C "$R" status --porcelain | grep -v ' \.cland/tasks/' > "$EV/root-status-after.txt"; echo "root non-tracker status unchanged: $(cmp -s "$EV/root-status-before.txt" "$EV/root-status-after.txt" && echo yes || echo no)"
+  echo "preservation lock present: $([ -e /tmp/cland-preserve.lock ] && echo "yes: $(cat /tmp/cland-preserve.lock/owner 2> /dev/null)" || echo no)"
+  echo "T entries other than node-compile-cache: $(ls -A "$T" | grep -v -c -x node-compile-cache)"
+  for e in $(ls -A "$T" | grep -v -x node-compile-cache); do echo "  T: $e type $(stat -f %HT "$T/$e") open $(lsof -t "$T/$e" 2> /dev/null | wc -l | tr -d ' ') first seen after $(awk -v e="$e" -F': ' '$2==e{print $1; exit}' $(ls "$EV"/*.tmpdir.txt) /dev/null)"; done
+}
+SH
+cat > "$Q/scratch.sh" <<'SH'
+# this stage's scratch rows; cland, hp, hubstart, up, alive, run, has and cnt come from the kit's helpers.sh
+HEADER=$'NAME\tHARNESS\tACCOUNT\tKIND\tEXCLUSIVE\tSTATE\tPROVIDER\tREGION\tVOLUME\tSNAPSHOTS\tLAST SIGN-IN'   # bash ANSI-C quoting: real tabs
+r60() {   # p1: a Git repository, cland init, then one CLI-started hub
+  echo "PRE p1 entries $(ls -A "$QA_Q/p1" | wc -l | tr -d ' ')"
+  cd "$QA_Q/p1" || return 1
+  git init -q -b dev && git commit -q --allow-empty -m init; echo "git exit $?"
+  cland init . > "$QA_EV/E1535S1-60-init.txt" 2>&1; echo "init exit $?"
+  [ -f .cland/hub.json ] && hp >> "$QA_Q/pids"; cland hub stop > /dev/null 2>&1; echo "hub after init and stop: $(up)"
+  hubstart; echo "hub start exit $?; hub $(up)"
+}
+r61() {   # T-1773 C3, C5: an empty project's list, its JSON, the usage refusal and both help forms
+  cd "$QA_Q/p1" || return 1
+  run "(login list)" cland login list
+  node -e 'const t=require("fs").readFileSync(process.env.QA_Q+"/r.out","utf8");console.log("  text is the header only "+(t===process.argv[1]+"\n"))' "$HEADER"
+  run "(login list json)" cland login list --json
+  node -e 'let v;try{v=JSON.parse(require("fs").readFileSync(process.env.QA_Q+"/r.out","utf8"))}catch{console.log("  json rows: not JSON");process.exit(0)}console.log("  json rows "+(Array.isArray(v)?"array of "+v.length:"not an array"))'
+  run "(login list yaml)" cland login list --yaml; echo "  usage lines $(has 'usage: cland login list [--json]')"
+  run "(login help)" cland login --help; echo "  help lines $(has 'login list [--json]')"
+  run "(login list help)" cland login list --help; echo "  help lines $(has 'login list [--json]')"
+}
+r62() {   # T-1773 C1, C3: rows seeded outside the CLI (no login create exists in this stage), then the CLI's text and JSON
+  cd "$QA_Q/p1" || return 1
+  cland hub stop > /dev/null 2>&1; echo "hub after stop: $(up)"
+  [ "$(up)" = down ] || { echo "  BLOCKED: the hub must be down before the seed"; return 1; }
+  node --input-type=module -e 'const {Store}=await import(process.env.QA_W+"/hub/src/hub/store.ts");const {layout}=await import(process.env.QA_W+"/hub/src/project.ts");const s=new Store(layout(process.cwd()).db);try{const l=s.hosts.logins;l.insert({name:"work",harness:"codex",account:"work-account",kind:"disk",provider:"fake",region:"fake-1",volumeId:"vol-1",snapshotIds:["snap-1"],lastSignIn:"2026-11-09T00:00:00Z"});l.transition("work","ready");l.bind("work",{host:"h1",role:"writer",volumeId:"vol-1"});l.insert({name:"key",harness:"opencode",account:"key-account",kind:"key",lastSignIn:null});console.log("  seeded "+l.list().map(r=>r.name+"="+r.state).join(" "))}finally{s.close()}'
+  hubstart; echo "hub start exit $?; hub $(up)"
+  run "(login list)" cland login list
+  node -e 'const t=require("fs").readFileSync(process.env.QA_Q+"/r.out","utf8").split("\n");const want=[process.argv[1],"key\topencode\tkey-account\tkey\t-\tcreating\t-\t-\t-\t-\t-","work\tcodex\twork-account\tdisk\ttrue\tin-use h1\tfake\tfake-1\tvol-1\tsnap-1\t2026-11-09T00:00:00Z",""];console.log("  text lines "+(t.length-1)+"; header "+(t[0]===want[0])+"; key row "+(t[1]===want[1])+"; work row "+(t[2]===want[2])+"; nothing else "+(t.length===4&&t[3]===""))' "$HEADER"
+  run "(login list json)" cland login list --json
+  cp "$QA_Q/r.out" "$QA_Q/logins-before.json"
+  node -e 'let v;try{v=JSON.parse(require("fs").readFileSync(process.env.QA_Q+"/r.out","utf8"))}catch{console.log("  json rows: not JSON");process.exit(0)}const has=(r,k)=>Object.hasOwn(r,k)?JSON.stringify(r[k]):"absent";for(const r of v)console.log("  json row "+r.name+": harness "+r.harness+"; account "+r.account+"; kind "+r.kind+"; exclusive "+has(r,"exclusive")+"; state "+r.state+"; provider "+has(r,"provider")+"; region "+has(r,"region")+"; volumeId "+has(r,"volumeId")+"; snapshotIds "+has(r,"snapshotIds")+"; lastSignIn "+JSON.stringify(r.lastSignIn)+"; bindings "+((r.bindings??[]).map(b=>b.host+":"+b.role+":"+b.volumeId).join(",")||"none"))'
+}
+r63() {   # T-1773 C6 on a real restart, the frame against the CLI, and the inbox frame with no ask carrying secret
+  cd "$QA_Q/p1" || return 1
+  P1=$(hp); cland hub stop > /dev/null 2>&1; echo "hub after stop: $(up)"
+  hubstart; echo "hub start exit $?; hub $(up); new hub pid $([ "$(hp)" != "$P1" ] && echo yes || echo no)"
+  run "(login list json after restart)" cland login list --json
+  node -e 'const fs=require("fs"),a=JSON.parse(fs.readFileSync(process.env.QA_Q+"/logins-before.json","utf8")),b=JSON.parse(fs.readFileSync(process.env.QA_Q+"/r.out","utf8"));let same=true;try{require("assert").deepStrictEqual(b,a)}catch{same=false}console.log("  rows and bindings unchanged across the restart "+same)'
+  run "(login.list frame)" node "$QA_Q/frame.mjs" '{"type":"login.list"}' 30000
+  node -e 'const fs=require("fs"),t=fs.readFileSync(process.env.QA_Q+"/r.out","utf8"),a=JSON.parse(fs.readFileSync(process.env.QA_Q+"/logins-before.json","utf8"));let v;try{v=JSON.parse(t.slice(t.indexOf("{")))}catch{console.log("  frame: not JSON");process.exit(0)}let same=v.ok===true;try{require("assert").deepStrictEqual(v.value,a)}catch{same=false}console.log("  frame ok "+v.ok+"; frame value equals the CLI JSON "+same)'
+  run "(inbox frame)" node "$QA_Q/frame.mjs" '{"type":"inbox.list"}' 30000
+  node -e 'const t=require("fs").readFileSync(process.env.QA_Q+"/r.out","utf8");let v;try{v=JSON.parse(t.slice(t.indexOf("{")))}catch{console.log("  inbox: not JSON");process.exit(0)}const i=v.value??{};console.log("  inbox ok "+v.ok+"; asks "+(i.asks??[]).length+"; asks carrying secret "+(i.asks??[]).filter(a=>Object.hasOwn(a,"secret")).length)'
+}
+r69() {   # the scratch census: hub stopped, every recorded pid gone, no process naming the scratch root
+  cd "$QA_Q/p1" || return 1
+  cland hub stop > /dev/null 2>&1; echo "hub stop exit $?; hub $(up)"
+  for p in $(sort -u "$QA_Q/pids"); do echo "  pid $p alive $(alive "$p")"; done
+  ps -axo pid=,ppid=,command= | grep -F "$QA_Q" | grep -v -E 'fresh\.mjs|body\.sh|grep -F' > "$QA_Q/census.txt"
+  echo "  processes naming the scratch root: $(wc -l < "$QA_Q/census.txt" | tr -d ' ')"; sed 's/^/  census: /' "$QA_Q/census.txt" | cut -c1-200
+}
+SH
+. "$Q/checks.sh"; bash -n "$Q/scratch.sh" && echo "scratch checked"
+```
+
+Expected: `expect checked`, `src checked`, `secret checked`, `frames checked`, `ids checked`, `scratch checked`. Record the setup in `S0`. `T1776_TIP` defaults to T-1776's reviewed tip `f76bdc9bb` (`f76bdc9bbf86f24011dc98cc4a68d12642c92cf2`, VERIFIED: the commit rev-35's final review `rev-35-1776-final-1` cleared and the landing's files equal); set it in QA's own shell before E1535S1-02 only if the request names another tip.
+
+**Cleanup, in this order (carried).** Step 1, after E1535S1-69 passes: inventory each dead T-1676 residue entry in `$T` (A-17843) and remove it by its literal path. Step 2: run and record E1535S1-79 with `$Q` and `$T` still present. Step 3, after the verdict: print `$Q` and check it begins with `/private/tmp/q53-`, then remove it by that literal path with a non-force recursive remove; print `$T`, check it begins with `/private/tmp/qa-e1533-s3-` and holds nothing but `node-compile-cache`, and remove it by that literal path; remove the worktree with `git -C "$R" worktree remove "$W"` (its `node_modules` symlink and `web/dist` first, each by literal path, if Git refuses). Secrets in `$Q/p1/.cland/hub.json` and `$Q/p1/.cland/secret` are never printed or posted.
+
+## Cases
+
+Every case is one or more named test files run once at the build, from QA's own shell through `nt` (or `pl` for T3 files, under the preservation lock), recorded with `qa-record.sh note` (surface `hub-api`; E1535S1-47 drives the pinned Headless Shell inside its named files), its evidence `$EV/<id>.log`, `$EV/<id>.check.txt` and `$EV/<id>.tmpdir.txt`. A case passes only when every check line reads `CLEAN` (exit 0; `fail`, `cancelled`, `skipped` and `todo` 0; `pass` equal to `tests`; every listed name `ok`; for an `exact` list, the plan equal to the list and no unlisted name). A missing file is a FAIL naming the file. A `fresh: BLOCKED` line makes the row BLOCKED. Run in table order; never two files at once. Tiers are read from `hub/test/tiers.json` at dev `728efcb88` (VERIFIED). E1535S1-56 and E1535S1-57 run one case alone through `plc` (see "Standalone cases"); their check line names `<file>#<label>`.
+
+| case | surface | role | command | expected |
+| --- | --- | --- | --- | --- |
+| E1535S1-10 | hub-api | QA | `nt E1535S1-10 hub/test/host-provider-volumes.test.ts hub/test/host-provider-digitalocean-volumes.test.ts` | Each `CLEAN` with its exact list (T-1772 C1 to C6; T2 each, the fake provider and the scripted fake DigitalOcean API; VERIFIED at dev). `host-provider-volumes`: the five `fake: …` cases its call `hostProviderVolumeContract('fake', factory, …, true)` registers from `hub/test/host-provider-contract.ts` (the flag adds `<name>: snapshot history, cloning and confirmed deletion` before the four earlier contract cases); test `fake login contents survive snapshots, cloning and machine release` (C1, C3, C4: no contents before attach, empty at first, refused to the other machine, a clone in the snapshot's region with its contents, release detaches and keeps contents, delete removes them); test `fake snapshot deletion confirms absence and retained history fails closed` (C2, C5: the old single-receipt record still reads; five malformed histories fail closed with the bytes untouched); test `digitalocean new snapshot operations refuse without API calls` (C6); test `surviving snapshot IDs support lookup clone and delete after volume deletion` (`volume-gone` after delete); test `snapshot ID deletion retries history publication after provider recreation`; and the earlier direct cases unchanged. `host-provider-digitalocean-volumes`: unedited (C6), its four `digitalocean: …` registrar cases (no snapshot-history case: DigitalOcean passes no flag until T-1782) and its direct cases |
+| E1535S1-11 | hub-api | QA | `nt E1535S1-11 hub/test/host-provider-fake.test.ts hub/test/host-provider-declarations.test.ts hub/test/host-provider-digitalocean.test.ts` | Each `CLEAN` (T2, T1, T2; unedited importers of the edited `hub/test/host-provider-contract.ts` and of `fake.ts`, `provider.ts` and `digitalocean.ts`; VERIFIED at dev). `host-provider-fake` runs `hostProviderContract` three times (plain, `fake arm64 only`, `fake x86_64 only`) over the release path that now detaches volumes (C4); since T-1776, `fake.ts` reads machines, volumes and contents through `hub/src/host/agent/fake-volume-contents.ts` and `hub/src/host/agent/fake-volume-record.ts` (VERIFIED), so this row and E1535S1-10 also hold that relocation. `host-provider-digitalocean` keeps the 80 registrations A-18029 recorded (whole-file clean here; the T-1770 signature, the `422` expansion at line 368, is the only rerun; see "Known flakes for this stage") |
+| E1535S1-20 | hub-api | QA | `nt E1535S1-20 hub/test/login-records.test.ts hub/test/login-list.test.ts` | Each `CLEAN` with its exact list (T-1773 C1 to C6; T1 in-memory SQLite and T2 `projectHub`; VERIFIED at dev). `login-records`: test `disk and key login rows round-trip every field without key disk properties` (C1); the refused expansions of the nested filtered loop `refuses login transition from <current> to <target> naming current state` (every pair outside the transition table, each asserting `from <current>` and an unchanged state; C2); test `creating is neither free nor bound; bindings enforce exclusive writer and non-exclusive readers` (C2); test `login syntax, uniqueness, harness and key disk constraints name their rules` (C4); the six `binding invariant: <scenario> is a typed refusal with no partial write` expansions (`disk-volume-required`, `writer-volume-mismatch`, `reader-volume-mismatch`, `key-volume`, `exclusive-writer`, `writer-conflict`). `login-list`: test `login list text and JSON expose rows and hosts, retained across hub restart` (C3, C6, and `cland login --help` matching `login list`, `--yaml` refused with usage; C5); test `login list refuses session, web and remote edges like host list` (C5: the web and gateway edges and a session's `as` actor refused for both `host.list` and `login.list`) |
+| E1535S1-21 | hub-api | QA | `nt E1535S1-21 hub/test/cli-help.test.ts hub/test/cli-command-help.test.ts hub/test/cli-usage-compatibility.test.ts hub/test/cli-usage.test.ts hub/test/web-authority.test.ts hub/test/web-authority-unit.test.ts` | Each `CLEAN` (T2, T1, T1, T1, T2, T1; unedited; VERIFIED at dev). T-1773 adds `LOGIN_USAGE` to the top-level help and the command table and migrates the frozen fixtures `hub/test/fixtures/cli-usage/commands.json`, `exports.json` and `help.txt`, which `cli-usage-compatibility` holds the landed help to; `cli-command-help` covers every advertised command in process (now `login`); `web-authority` and `web-authority-unit` hold the web edge's table, which gained `login.list` (C5) |
+| E1535S1-22 | hub-api | QA | `pl E1535S1-22 hub/test/cli-imports.test.ts hub/test/cli-usage-merge.test.ts` | Each `CLEAN` (T3 each, under the preservation lock). `cli-imports` is edited by T-1773: test `CLI commands load only their own source closure within the import budgets` now expects one more pure command-help module (`usage/login.ts`); `cli-usage-merge` (unedited) copies the command modules into a disposable Git repository and checks native `merge-tree` and `merge` with the new module present |
+| E1535S1-30 | hub-api | QA | `pl E1535S1-30 hub/test/fake-harness-login.test.ts` | `CLEAN` with the exact list (T-1774 C1 to C5; **T3** in `tiers.json`, the three fakes as child processes, no hub; VERIFIED at dev). The `claude-code`, `codex` and `opencode` expansions of `<harness> sign-in writes generation zero in its harness home` and `<harness> turns rotate and dead logins recover only after sign-in` (C1, C2); test `Codex refuses a live login without changing bytes and replaces a dead login` (C3); the three expansions of `<harness> records CLI logout and slash logout` (C4) and of `<harness> sign-in leaves one observed detached holder with an open home file` (C5); test `Codex native app-server turns retain the last twenty rotations and report revocation`; test `Claude refuses empty pasted input without creating a login`; the three holder lifecycle cases; the three expansions of `<harness> preserves disabled-mode refusal parity`. A holder process left alive after the file is a FINDING (E1535S1-69 and E1535S1-79 read the census and `$T`) |
+| E1535S1-31 | hub-api | QA | `nt E1535S1-31 hub/test/fake-harness.test.ts hub/test/fake-harness-capabilities.test.ts hub/test/codex-fake-envelope.test.ts` | Each `CLEAN` (T2, T1, T1; unedited preservation for T-1774's edits of the three fake binaries and `setup-profile.ts`; its login file is opt-in, so these runs set no `FAKE_LOGIN_` knob) |
+| E1535S1-32 | hub-api | QA | `pl E1535S1-32 hub/test/fake-claude-cleanup.test.ts hub/test/setup-machine.test.ts` | Each `CLEAN` (T3 each, under the preservation lock; unedited). `fake-claude-cleanup` drives the edited fake Claude Code; `setup-machine` imports `hub/test/setup-machine.ts`, which uses the edited `setup-profile.ts` |
+| E1535S1-40 | hub-api | QA | `nt E1535S1-40 hub/test/hub-cards.test.ts hub/test/hub-cards-voice.test.ts hub/test/hub-cards-authority.test.ts` | Each `CLEAN` with its exact list (T-1775 C1 to C6; T2, T2, T1; `projectHub` with the test messenger's fake Telegram and Discord APIs and the fake speech API; VERIFIED at dev). `hub-cards`: test `hub card answers call their registered handler once and never target a session` (C1 to C3; it also asserts a non-secret card's inbox ask omits `secret`); test `pending hub cards survive restart; missing handlers keep them open and withdrawal records its reason` (C3, C4); test `secret hub answers reach the handler verbatim and remote replay stores a digest` (C5: the untrimmed sentinel reaches the handler; neither history, the logs, the client frames nor `hub.db`, `log/hub.log` or `journal.jsonl` hold it); test `ordinary ask remote replay preserves its existing answer and deduplicates delivery`; test `hub card handler failures roll back and a decline carries no consent`; the `web`, `neovim`, `telegram`, `discord`, `withdraw` and `secret` expansions of `hub cards publish and fold both native copies after <via>` (C1, C2, C3, C5); the `telegram` and `discord` expansions of `native secret <via> retention probe`; test `deferred native Discord answer keeps handler outcome after all updates settle`; the `option`, `free` and `decline` expansions of `users-mode hub <mode> outcome retains stable user id`. `hub-cards-voice`: the four expansions of the nested loop `<via> hub card voice <…>` (secret voice refused before acquisition, non-secret voice still answering, on each remote; C5). `hub-cards-authority`: test `hub cards keep every remote authority entry at its previous classification` (C6) |
+| E1535S1-41 | hub-api | QA | `nt E1535S1-41 hub/test/asks.test.ts hub/test/ask-outcomes.test.ts hub/test/ask-chain.test.ts hub/test/telegram-cards.test.ts hub/test/discord-cards.test.ts hub/test/discord-users.test.ts hub/test/telegram-voice.test.ts hub/test/telegram-voice-answers.test.ts hub/test/discord-inbound-media.test.ts` | Each `CLEAN` (T2 each; unedited preservation for ordinary asks over T-1775's edits of `asks.ts`, `store.ts`, `inbox.ts`, `dispatch.ts`'s replay receipt, `remote/cards.ts`, `telegram-prompts.ts`, `telegram.ts` and `discord-inbound.ts`; `discord-cards` and `discord-users` import the edited `hub/test/discord-cards-fixture.ts`). Telegram's voice handler now captures the voice target for every voice update before queueing it (the earlier media-group and media-refusal guards moved after the secret refusal); `telegram-voice` and `telegram-voice-answers` hold the non-secret behaviour |
+| E1535S1-42 | hub-api | QA | `pl E1535S1-42 hub/test/telegram-polling-restart.test.ts hub/test/telegram-voice-command.test.ts` | Each `CLEAN` (T3 each, under the preservation lock; unedited). `telegram-polling-restart` imports the edited `hub/test/discord-cards-fixture.ts`; **T-1736 is not a flake**: a failure is judged as it stands. `telegram-voice-command` drives the edited `telegram.ts` voice path |
+| E1535S1-45 | hub-api | QA | `nt E1535S1-45 nvim/test/inbox-actions.test.ts nvim/test/inbox-requests.test.ts nvim/test/inbox-sections.test.ts nvim/test/needs-you.test.ts nvim/test/declined-ask-component.test.ts nvim/test/remote-via.test.ts` | Each `CLEAN` with no skip (Neovim T2 each; headless Neovim from the pinned cache). The Neovim recorded-catalog consumers that read inbox asks through `nvim/test/stub-hub.ts` and the recorded slices (`inbox-actions.json`, `inbox-requests.json`, `needs-you.json`, `declined-ask-component.json`, `remote-via.json`; `inbox-sections` reads the main catalog), unedited, with the catalog unchanged in the stage (E1535S1-02, E1535S1-06): `InboxAsk.secret` is optional and omitted on ordinary asks, so their frames and rendering are unchanged. A `skip` (no pinned Neovim) is BLOCKED, not PASS. `needs-you` registers its three cases from `nvim/test/needs-you-fixture.ts`; its TAP must show all three and no skip. Dead fixture-owner receipts in `$T` after this row are the A-17843 class (36 in A-18029 and in A-18035). `inbox-actions`, `inbox-sections`, `needs-you`, `declined-ask-component` and `remote-via` also import `nvim/test/fixture.ts`, which reaches T-1776's `shared/fake-layout.ts` through `shared/fixture-sockets.ts` (VERIFIED) |
+| E1535S1-46 | hub-api | QA | `nt E1535S1-46 hub/test/nvim-fixture-boundary.test.ts hub/test/nvim-frame-refresh.test.ts hub/test/nvim-frame-consumers.test.ts` | Each `CLEAN` (T1 each; unedited). The recorder's drift, slice and consumer-selection rules the catalog check in E1535S1-06 relies on: `nvim-fixture-boundary` keeps the T2 Neovim import closures free of hub runtime and fails a planted hub frame change until the fixtures are rewritten. It is also the guard that failed at an earlier T-1776 head (A-18151: shared facades reaching `hub/src/host/agent/clock.ts` and `fake-layout.ts`); at `728efcb88` the Neovim closures reach only the neutral `shared/clock.ts` and `shared/fake-layout.ts`, never an agent wrapper |
+| E1535S1-48 | hub-api | QA | `nt E1535S1-48 nvim/test/client-component.test.ts` | `CLEAN` with its exact list and no skip (Neovim T2; headless Neovim from the pinned cache; unedited; VERIFIED at dev `728efcb88`, six cases, each `{ skip }` only when `nvimOrSkip` finds no Neovim). A Neovim consumer of `nvim/test/fixture.ts` (`tempProject`) → `shared/fixture-sockets.ts` → T-1776's neutral leaf `shared/fake-layout.ts`: the fixture-socket directory and its cleanup keep their earlier behaviour. A `skip` is BLOCKED, not PASS. Dead fixture-owner receipts after this row join E1535S1-45's class |
+| E1535S1-47 | hub-api | QA | `nt E1535S1-47 web/test/inbox.test.ts web/test/phone-inbox.test.ts web/test/asks.test.ts web/test/phone-asks.test.ts web/test/remote-via.test.ts` (after E1535S1-05) | Each `CLEAN` (Web; pinned Headless Shell; no other browser; unedited). The web inbox and ask cards over the shared wire's `InboxAsk` with the new optional `secret` (the web never reads it in this stage). The log's `Web prerequisites (report only)` line must read `current web/dist and resolvable node_modules`; a missing Headless Shell is BLOCKED |
+| E1535S1-50 | hub-api | QA | `pl E1535S1-50 hub/test/host-login-disk.test.ts hub/test/cland-auth.test.ts` | Each `CLEAN` with its exact list (T-1776 C1 to C6; T3 each in `tiers.json`, under the preservation lock; a fake host's real agent socket and the fake provider; the helper with every external command stubbed; no sudo, mount or device; VERIFIED at dev `728efcb88`). `host-login-disk`, 12 cases: the `live parent` and `retained orphan` expansions of the loop `login-disk closes only disk users in <tree> trees` (C3: the exact disk-user child ended, an outside parent alive, a retained orphan's descendant closed); test `login-disk holds writer admission through the final unlink boundary`, test `login-disk joins a previously admitted writer before its disk census` and test `login-disk held-spawn setup rejection joins native admission before client close` (C3: no writer admitted through the unlink; the first two, the held-admission cases, failed `writers-remain` on Linux at an earlier head, A-18160); test `login-disk joins completion persistence and exit publication before replying` (C3: the unmount joins the completion owner and the exit is published before the reply); **the held-close regression**, test `login-disk joins its owned close callback when kernel exit precedes native publication` (C3: with the owned child's close callback held by the `beforeNativeClose` hook, the unmount joins that owner, an observer still reads `authority` `owned` and no root exit, the login file stays mapped, and the exit is published before the reply; also alone in E1535S1-57); test `login-disk mounts only this fake machine attachment through the SSH Host` (C1, C2, C3, C5: the other machine and the detached volume refused, roundtrip bytes, the writer ended before unlink, an unrelated process alive, symlink refusal, the local Host refused); test `login-disk uses exactly sudo -n helper op volume path and preserves typed helper failures` (C5 and the exit-to-code map `2 bad-argument`, `3 wrong-volume`, `4 writers-remain`, `5 busy`, `6 writers-remain`); test `login-disk rejects malformed paths and volume names before invoking a helper` (C1); test `login-disk incomplete helper retains durable mutation ownership across agent restart`; test `login-disk fixture closes its server after rejected connect and attempts every cleanup join`. `cland-auth`, 10 cases: test `mount drains and unmounts the device automount before mounting the login path` (C4) and the nine earlier cases, titles unchanged (C6). On macOS the fake helper finds disk users with `lsof`; its Linux `/proc` path is out of scope |
+| E1535S1-51 | hub-api | QA | `nt E1535S1-51 hub/test/host-contract-coverage.test.ts hub/test/host-prelude.test.ts` | Each `CLEAN` with its exact list (T1 each; VERIFIED at dev `728efcb88`; `host-prelude` unedited by the stage). `host-contract-coverage`, 8 cases, with T-1776's test `optional login-disk contract covers absence, refusal and exact input with planted failures` (C1, C5: absence accepted, the local Host refuses `wrong-volume`, the exact input reaches a recording Host, and three planted failures are caught); `host-prelude`'s three cases (C6: the helper, its sudoers line and the automount rule removal still installed) |
+| E1535S1-52 | hub-api | QA | `pl E1535S1-52 hub/test/host-local-contract.test.ts hub/test/host-agent.test.ts` | Each `CLEAN` (T3 each, under the preservation lock; both unedited by the stage; VERIFIED at dev `728efcb88`). `host-local-contract` registers the 16 cases of the `hostContract` registrar at top level, the first being T-1776's `Host login disks preserve optional absence and refuse invalid paths` (the local Host refuses `/tmp/invalid-login` with `wrong-volume`; C5); `host-agent` covers the agent server around the new `login-disk` operation and its writer-admission fence (`server.ts` enters `loginDisk.enterMutation` for every operation other than `login-disk` and the read-only ones) |
+| E1535S1-53 | hub-api | QA | `pl E1535S1-53 hub/test/host-ssh-contract.test.ts` (alone) | `CLEAN` (T3, under the preservation lock, never beside another file: T-1731; unedited; VERIFIED at dev `728efcb88`). The registrar's 16 cases run as nested subtests of test `ssh Host runs every shared Host behavioral contract through fake ssh` (`for (const [name,run] of cases) await t.test(name,run);`); the indented `ok` line naming `Host login disks preserve optional absence and refuse invalid paths` is read from the log by hand (the ssh Host refuses the invalid path `bad-argument`; C1, C5): one such line, `ok`, no `not ok`. The T-1731 signature is the only rerun |
+| E1535S1-54 | hub-api | QA | `nt E1535S1-54 hub/test/host-agent-boundary.test.ts hub/test/host-agent-closure.test.ts` | Each `CLEAN` with its exact list (T1 each; both edited by T-1776; VERIFIED at dev `728efcb88`). `host-agent-boundary`, 3 cases: test `agent imports only Node built-ins, agent modules and exact owner-bound shared leaves` (the earlier guard, renamed from `… and its single credential leaf`; it now asks `agentSourceImportAllowed`), test `neutral Clock and fake-layout leaves have exact agent owners and no relative dependencies` (each leaf has one owner wrapper, stays Node-only, and planted relative edges, another agent importer and a similar shared path are all refused), test `JSONL byte limits apply per line across coalesced, fragmented and multibyte chunks`. `host-agent-closure`, 5 cases: test `closure admits exactly the two owner-bound neutral leaves and refuses their extra imports` (new: a scratch graph admits exactly the two leaves and their wrappers, and every planted extra edge makes generation refuse), test `committed agent closure matches the complete source and native asset graph` (the regenerated `closure.json`, 42 files), and the three earlier cases. These are the two T1 guards that failed at an earlier T-1776 head (A-18141, A-18142) |
+| E1535S1-55 | hub-api | QA | `nt E1535S1-55 hub/test/test-docs.test.ts hub/test/suite-tiers.test.ts` | Each `CLEAN` (T1; VERIFIED at dev `728efcb88` that every file below has its per-file doc and index row). The per-file docs and `docs/agents/tests/index.md` entries the landings add or change: `host-provider-volumes`, `login-list`, `login-records`, `fake-harness-login`, `hub-cards`, `hub-cards-voice`; T-1776's new per-file note for `hub/test/host-login-disk.test.ts` under `docs/agents/tests/` with its index row, and its edited notes for `hub/test/cland-auth.test.ts`, `hub/test/host-agent-boundary.test.ts` and `hub/test/host-agent-closure.test.ts`; and every new test file in `tiers.json` (T-1776 adds `hub/test/host-login-disk.test.ts` as T3) |
+| E1535S1-56 | hub-api | QA | `plc E1535S1-56 version-delivery hub/test/host-agent-restart.test.ts 'C1-C3 version delivery reconnect reads retained table without signalling harness'` | `CLEAN hub/test/host-agent-restart.test.ts#version-delivery run 1 plan 1 pass 1` (T3, under the preservation lock; unedited; VERIFIED at dev `728efcb88`: the loop `C1-C3 <kill-agent \| version delivery> reconnect reads retained table without signalling harness` at line 34 registers both expansions, and the name pattern keeps only this one). The standalone restart case: over fake ssh it installs an `old` agent with `deliverAgent` (the `INSTALL_AGENT` installer, which T-1776 changed to serialize `sharedAgentLeafOwner` beside `runtimePath`, so the installed agent must carry the owner-bound shared leaves its closure now names), then hands the version over to a `new` runtime bundle; the restarted agent reads its retained table without signalling the harness. Its allowance in `hub/test/durations.json` is 48 s (T-1721; not a pass condition here). The rest of `host-agent-restart` (11 top-level cases) is not run by this brief |
+| E1535S1-57 | hub-api | QA | `plc E1535S1-57 held-close hub/test/host-login-disk.test.ts 'login-disk joins its owned close callback when kernel exit precedes native publication'` | `CLEAN hub/test/host-login-disk.test.ts#held-close run 1 plan 1 pass 1` (T3, under the preservation lock; VERIFIED at dev `728efcb88`). The held-close regression alone in a fresh process, as T-1776's per-file note runs the held-admission cases alone: no neighbour case shares its process, timers or load. Its expectations are E1535S1-50's for that title |
+
+### Web cases (when in scope)
+
+E1535S1-47 only: the web inbox and ask tests in the pinned Headless Shell. No other browser, no GUI, no screenshot is a pass condition. No `real-browser` row: the stage changes no web source.
+
+## Manual checks
+
+Run in table order: E1535S1-00 to E1535S1-07 before the cases, E1535S1-60 to E1535S1-69 after them, then cleanup step 1, then E1535S1-79. Scratch rows depend on the state the rows before them leave; a row whose prerequisite failed is BLOCKED, naming it. Record each with `sh .agents/skills/qa/qa-record.sh note E-1535 "$RUN" <id> hub-api "<the command you ran>" <PASS|FAIL|INCONCLUSIVE|BLOCKED> <evidence file>` from `$W`. Every scratch row's evidence begins with the kit's `PRE gate` line and ends with `# fresh: redacted or withheld lines 0` and `row exit 0`; a gate refusal is BLOCKED.
+
+| id | surface | role | command | expected |
+| --- | --- | --- | --- | --- |
+| E1535S1-00 | hub-api | QA | `s00 > "$EV/E1535S1-00.txt" 2>&1` | PRE line: HEAD, dev and request the same 40 hex; `dirty entries 0`; root non-tracker count recorded. `plan read exit 0`; the stage line: exact name, `qa` `{"scope":"affected","when":"after-stage"}`, `items` T-1772, T-1776, T-1773, T-1774, T-1775 plus any finding fixes the request names, `merged` equal to `total`, `state` not `closed`. Every member `landings 1` (T-1776 included); anything else is BLOCKED. VERIFIED at dev `728efcb88`: the stage reads `state` `open`, `merged 5`, `total 5`, `statuses {"done":5}`; the receipts are `T-1772 landings 1 f077f9397…`, `T-1776 landings 1 728efcb88…`, `T-1773 landings 1 bc2d5bd6f…`, `T-1774 landings 1 69ac4f556…`, `T-1775 landings 1 1dedab368…` (full 40-hex SHAs in the evidence) |
+| E1535S1-01 | hub-api | QA | `s01 > "$EV/E1535S1-01.txt" 2>&1` | Node 24; `typecheck exit 0` (the integrated build: T-1773's and T-1775's `dispatch.ts`, `protocol.ts` and `shared/wire/index.ts` edits together, T-1776's `Host.loginDisk` over T-1772's provider interface, and the web workspace over the wire's new optional `InboxAsk.secret`, with its colour and contrast checks); `dirty entries 0` |
+| E1535S1-02 | hub-api | QA | `s02 > "$EV/E1535S1-02.txt" 2>&1` (`T1776_TIP` defaults to `f76bdc9bb`) | Every landing `package.json and lockfiles: 0` and `preserved files edited at its landing: []`; `stage paths under nvim/ or web/: []`; `remote authority table changed in the stage: []` (T-1775 C6); `fixture producers changed since 7c0320829: []`; `shared fixture leaves changed in the stage: [shared/fake-host-directory.ts shared/fake-layout.ts shared/fixture-sockets.ts]` (T-1776) with exactly two `fixture-sockets:` lines, the removed `const socketDirectory = (root: string) => join(root, '.fixture-sockets');` and the added `import { fakeStorageDirectory as socketDirectory } from './fake-layout.ts';`; the T-1772 removed line in `host-provider-volumes` is only its registrar call `hostProviderVolumeContract('fake', factory, (name, run) => test(name, run));` (C6: no case edited); `T-1776 removed lines in cland-auth and host-prelude: 1`, the `fixture()` helper's `writeFileSync(helper, readFileSync(new URL('../src/host/cland-auth.sh', import.meta.url), 'utf8').replace('/cland/auth/.operation.lock', join(root, 'operation.lock')));`, nothing inside a case (C6). **Landing check** (VERIFIED at dev `728efcb88`): `T-1772 own lines … b91876182: yes`, byte-identical `yes`, later commits `[728efcb88]` (T-1776: `hub/src/host/provider/fake-volume-record.ts`, `fake.ts`, `provider.ts`; the relocation in "How this brief applies them"); `T-1773 own lines … b320aef39: yes`, byte-identical `no: docs/agents/tests/index.md hub/README.md hub/src/hub/dispatch.ts hub/src/protocol.ts hub/test/tiers.json shared/wire/index.ts` (T-1775 `1dedab368` and T-1774 `69ac4f556`, landed separately and named), later commits `[728efcb88]` (T-1776: `docs/agents/tests/index.md`, `docs/hub/logins.md`, `hub/README.md`, `hub/test/tiers.json`); `T-1774 own lines … afc246a68: yes`, byte-identical `yes`, later commits `[728efcb88 bc2d5bd6f 1dedab368]` (index and tiers only); `T-1775 own lines … b1a2b2278: yes`, byte-identical `no: docs/agents/tests/index.md hub/test/tiers.json` (T-1774, named), later commits `[728efcb88 bc2d5bd6f]` (T-1776: index, `hub/README.md`, tiers); `T-1776 own lines … f76bdc9bb: yes`, byte-identical `yes` (the tip merged dev at `bc2d5bd6f`, so no sibling delta), later commits `[]`; any landing after `728efcb88` touching a member's files is named with its commit |
+| E1535S1-03 | hub-api | QA | `node "$Q/src.mjs" "$W" > "$EV/E1535S1-03.txt" 2>&1` | Every line `ok`: 69 lines (T-1772 14, T-1773 14, T-1774 4, T-1775 8, T-1776 29), all `ok` at dev `728efcb88` (VERIFIED). First read at dev `caf30df4` for T-1772 (the interface, the fake's contents, clone, attachment and release, the history parser, DigitalOcean's three refusals; at `728efcb88` the contents fence and the parser are read in T-1776's agent leaves, with the provider's seam call and its parser re-export), T-1773 (transitions and their refusal, free, the name and harness rules, exclusive by default, the store in `HostRecords`, the `login.list` answer and its shared local-human gate, the web refusal, no login frame in the remote gateway table, the text header, the help entry), T-1774 (opt-in login file, the three dead-login signals) and T-1775 (the card as an ask from `hub`, handler routing, missing-handler refusal, durable kind and payload, withdraw, `InboxAsk.secret` set only on secret hub cards and optional in both protocol copies). T-1776's 29 lines, read at `728efcb88`: the exact sudo argv, the grammar and symlink checks, the fake-host marker and the fake machine-directory fence, the shared contents seam, the drain before unlink, writer admission held for the operation, the agent operation, the local refusal, typed codes on the ssh Host, the helper's mount census; the close-ordering fix (a fresh child keeps its pending close owner, the `beforeNativeClose` hook, the drain's two deadline-bounded joins, a persisted birth never signalled); the neutral leaves (one owner each in `package.ts`, `runtimePath`, no relative import from a leaf, the two owner wrappers, `shared/clock.ts` import-free, `shared/fake-layout.ts` Node-only, `INSTALL_AGENT` serializing `sharedAgentLeafOwner`, `closure.json` with 42 files including both leaves, `shared/fixture-sockets.ts` taking its directory from the leaf). A `MISMATCH` on a settled line is read at the build (a renamed string is followed); it is a FAIL unless the landing changed it with a recorded decision |
+| E1535S1-04 | hub-api | QA | `node "$Q/ids.mjs" "$W/qa/briefs/E-1535-stage-1.md" > "$EV/E1535S1-04.txt" 2>&1` | `missing from the tables: 0` (A-17843: every row id the criteria map names exists as a table row). Also read by hand: each map row cites tests that row's command runs |
+| E1535S1-05 | hub-api | QA | `node "$Q/fresh.mjs" "$W" plain npm run build > "$EV/E1535S1-05.txt" 2>&1; echo "build exit $?"` | `build exit 0`; `web/dist/index.html` present in `$W` (ignored by Git, so `dirty entries` stays 0). E1535S1-47 is BLOCKED without it |
+| E1535S1-06 | hub-api | QA | `node "$Q/fresh.mjs" "$W" plain node "$Q/frames.mjs" "$W" > "$EV/E1535S1-06.txt" 2>&1` | **The `InboxAsk.secret` frame-unchanged check.** `"secret" keys 0` over `nvim/test/fixtures/protocol-frames.json`, its per-file slices and `live-protocol-frames.json` (VERIFIED at dev; `"question" keys` at least one, VERIFIED); `rebuilt recorded asks` at least one and `asks carrying secret 0` (INFERRED: the catalog's ask frames are rebuilt with `parseRecordings`, not read at drafting); `recorded catalog drift: none` (INFERRED: `checkRecordings` from `hub/test/nvim-fixture-check.ts` re-derives every recorded projection from hub source; not run at drafting); `# fresh: redacted or withheld lines 0`. With E1535S1-02's `stage paths under nvim/ or web/: []`, the source line in E1535S1-03 that sets `secret` only for a secret hub card, and the omission asserted by test `hub card answers call their registered handler once and never target a session` (E1535S1-40), ordinary asks' frames are unchanged |
+| E1535S1-07 | hub-api | QA | `node "$Q/secret.mjs" "$W" > "$EV/E1535S1-07.txt" 2>&1` | Every line `ok` (VERIFIED at dev `caf30df4` and again at `728efcb88`). **Digest:** the native replay digests a secret hub-card answer and the `gateway.answer:<message>` receipt stores `replayText` (plaintext only for ordinary asks), never `frame.text`; the digest is SHA-256 and only for secret hub cards; the handler gets the answer untrimmed; the answer message and the outcome or decline line carry `answered`; the hub-card log calls name ids and counts only, none `body`, `text`, `payload` or `result` (the journal is fed by the log); no session note for a hub card; Telegram's persisted prompt answer drops `text` and `reason` and keeps a digest it checks on replay. **Voice refusal:** `Use text to answer this card` for a secret card; Telegram stores no voice target for it, and refuses before the media queue and before the transcription download; Discord refuses from the referenced card model before its ingress receipt, any CDN download and transcription. The runtime proof is E1535S1-40 |
+| E1535S1-60 | hub-api | Human | `mrow E1535S1-60 r60` | **Setup.** `PRE p1 entries 0`; `git exit 0`; `init exit 0`; `hub after init and stop: down`; `hub start exit 0; hub up`. A failure makes E1535S1-61 to E1535S1-63 BLOCKED |
+| E1535S1-61 | hub-api | Human | `mrow E1535S1-61 r61` | **T-1773 C3, C5, empty.** `(login list) exit 0` and `text is the header only true` (the tab-separated `NAME HARNESS ACCOUNT KIND EXCLUSIVE STATE PROVIDER REGION VOLUME SNAPSHOTS LAST SIGN-IN`); `(login list json) exit 0` and `json rows array of 0`; `(login list yaml) exit 1` with `usage lines 1`; `(login help) exit 0` with `help lines 1`; `(login list help) exit 0` with `help lines 1`. INFERRED: the exact header and usage strings come from `hub/src/cli/login.ts` and `hub/src/cli/usage/login.ts`, not from a run |
+| E1535S1-62 | hub-api | Human | `mrow E1535S1-62 r62` | **T-1773 C1, C3, seeded.** The CLI has no login create in this stage (T-1777 and later write rows), so the row seeds `hub.db` with the hub down through the build's own `Store` (`store.hosts.logins`, as `login-list.test.ts` does): `hub after stop: down`; `seeded key=creating work=in-use`; `hub start exit 0; hub up`; `(login list) exit 0` with `text lines 3; header true; key row true; work row true; nothing else true` (the key login `key opencode key-account key - creating - - - - -`, the disk login `work codex work-account disk true in-use h1 fake fake-1 vol-1 snap-1 2026-11-09T00:00:00Z`); `(login list json) exit 0` with `json row key: harness opencode; account key-account; kind key; exclusive absent; state creating; provider absent; region absent; volumeId absent; snapshotIds absent; lastSignIn null; bindings none` and `json row work: harness codex; account work-account; kind disk; exclusive true; state in-use; provider "fake"; region "fake-1"; volumeId "vol-1"; snapshotIds ["snap-1"]; lastSignIn "2026-11-09T00:00:00Z"; bindings h1:writer:vol-1`. INFERRED: the exact lines come from the source and `login-list.test.ts`'s seed, not from a run |
+| E1535S1-63 | hub-api | Human | `mrow E1535S1-63 r63` | **T-1773 C6 on a real restart, the frame, and the inbox frame.** `hub after stop: down`; `hub start exit 0; hub up; new hub pid yes`; `(login list json after restart) exit 0` with `rows and bindings unchanged across the restart true`; `(login.list frame) exit 0` with `frame ok true; frame value equals the CLI JSON true` (the human's local CLI frame); `(inbox frame) exit 0` with `inbox ok true; asks 0; asks carrying secret 0` (no ask exists in a fresh project; the ordinary-ask shape is E1535S1-06's and E1535S1-40's). The session, web and remote refusals of `login.list` are component-only (E1535S1-20) |
+| E1535S1-69 | hub-api | Human | `mrow E1535S1-69 r69` | `hub stop exit 0; hub down`; every recorded pid `alive no`; `processes naming the scratch root: 0` (no fake host, harness or holder runs in the scratch project; any line is a FINDING unless its command is unrelated, recorded). Then cleanup step 1 |
+| E1535S1-79 | hub-api | QA | `s79 > "$EV/E1535S1-79.txt" 2>&1` (after cleanup step 1, with `$Q` and `$T` present) | HEAD, dev and request still the same 40 hex; `dirty entries 0`; `root non-tracker status unchanged: yes`; `preservation lock present: no`; `T entries other than node-compile-cache 0` after the T-1676 handling (A-17843: each dead receipt inventoried with its count, PIDs absent, no open handle and its fixture root gone, attributed to the producing row by the `$T` listings (expected after the Neovim rows E1535S1-45 and E1535S1-48), the four fixture producers unchanged from `7c0320829` per E1535S1-02 and `shared/fixture-sockets.ts` changed only by its one-line import of the same directory name; live residue, a live T-1774 holder, a `.fixture-sockets` entry, residue first seen after a row that runs one of T-1776's own files (E1535S1-50, E1535S1-51, E1535S1-54, E1535S1-57: producers the stage changed), or residue from a changed producer outside the clause, is a finding). A moved dev keeps the evidence and makes the run BLOCKED |
+
+Before requesting QA, run `cland qa lint` with this filled brief at the build under test: from the root, `node hub/bin/cland.ts qa lint qa/briefs/E-1535-stage-1.md --commit <dev SHA>`, with a dev SHA that includes every stage landing. The brief is complete only when qa lint passes at the build.
+
+## Probes that mislead
+
+- **Generated names cannot be certified by `qa lint`.** Loop and registrar titles (`<name>: snapshot history, cloning and confirmed deletion` and the other volume-contract cases, `refuses login transition from <current> to <target> naming current state`, `binding invariant: <scenario> …`, `<harness> …`, `hub cards publish and fold both native copies after <via>`, `native secret <via> retention probe`, `users-mode hub <mode> …`, `<via> hub card voice <…>`, `Host login disks preserve optional absence and refuse invalid paths`, `login-disk closes only disk users in <tree> trees`, `C1-C3 <…> reconnect reads retained table without signalling harness`) are expanded in `expect.json` and checked by `tap.mjs` at the run.
+- **A standalone run is not the file.** `nc` filters by test name; Node 24 drops the other cases from the TAP (VERIFIED with a three-case probe file: plan `1..1`, one case reported), so E1535S1-56's and E1535S1-57's `plan 1` proves only the named case. `host-login-disk` as a whole is E1535S1-50; the rest of `host-agent-restart` is outside this brief.
+- **A renamed guard is not a new test.** `host-agent-boundary`'s first case was renamed (`… and its single credential leaf` → `… and exact owner-bound shared leaves`) and T-1776 deleted its old duration baseline (`hub/test/durations.json`, A-18157): the exact list carries the new title only.
+- **A filtered nested loop.** `login-records` registers only the transitions outside the table (`continue` on allowed pairs); counting the full current × target product overstates the plan.
+- **The registrar flag decides the volume contract's size.** `hostProviderVolumeContract` adds its snapshot-history case only with `snapshotOperations = true`: the fake passes it, DigitalOcean does not until T-1782.
+- **Seeded rows are not a login create.** E1535S1-62 writes `hub.db` through the build's `Store` with the hub down, as the named test does; it proves the list, not any sign-in. No CLI or frame creates, binds or signs in a login in this stage.
+- **`secret` absent is the ordinary shape.** `InboxAsk.secret` is optional; an ordinary ask's frame must not carry the key at all (not `secret: false`).
+- **The local Host's refusal code is `wrong-volume`.** That is T-1776's chosen code for a Host without login disks, not a volume mismatch.
+- **T-1774's knobs are opt-in.** `FAKE_LOGIN_ENABLED` or `FAKE_LOGIN_HOME` turns the login file on; S0 shows none in the seals, so every other fake-harness test runs the earlier behaviour.
+- **Holders are detached on purpose.** `FAKE_LOGIN_HOLDER=1` leaves a detached process for the test's lifetime; the test ends it. One left alive after E1535S1-30 is a finding, not residue.
+- **No real secret is involved.** The stage's sentinel answers (`sentinel-login-code-1775`, `native-secret-1775`) are fixture strings; a scanner withholding one is INCONCLUSIVE (A-18029's rule), never a reason to print it.
+- **Plain `node --test` is not the suite runner.** It enforces no duration allowance and no resource tripwire preload: a slow pass is not a finding and a fast one proves no budget.
+- Process cleanup probes use the fixture-owned pid census (`$Q/pids`) and the scratch-root census; a machine-wide `pgrep` counts other sessions too.
+- File-change probes use isolation and digests; mtime alone is confounded by live sessions rewriting the same file.
+- Speed criteria use measured wall times, never projections.
+- "No skip" names platform-only cases and where they are covered: the fake helper's Linux `/proc` census (T-1776) runs only on Linux covers.
+- Re-check helper and function names with grep at the tested build; renames happen. The kits come from commit `K` and the corrections from commit `M`; a different commit is a setup BLOCKED.
+
+## Out of scope
+
+- The real DigitalOcean API, droplets, volumes, snapshots, keys, tokens and any network; DigitalOcean's snapshot operations (T-1782).
+- Real harness logins, sign-in, the capacity line of `cland login list` (T-1787), login create, bind, release and the login cards that use the hub card service (T-1785, T-1789, T-1791): later stages.
+- Real `sudo`, mounts, devices and the privileged helper on a real host; the fake helper's Linux `/proc` path (Linux covers).
+- Real Telegram, Discord and speech APIs; any GUI or real browser.
+- Linux and container runs, the stage covers and the items' loaded repetitions: their evidence; this run is macOS only and says so.
+- Duration allowances (`hub/test/durations.json`) as pass conditions.
+- T-1731, T-1758, T-1689 and T-1770 as bugs (signatures only); T-1735 and T-1732 (fixed; a recurrence is a regression finding); T-1736 and T-1761 (judged as they stand if they appear).
+- Any `cland login …`, `cland config set`, `cland role launch`, `cland session …`, `cland hub …` or `cland host …` on the live project.
+
+Missing authorization (a real provider token, a harness account, a GUI) is out of scope, not BLOCKED, because no case needs one.
+
+## Grants
+
+none. No grant is needed: every case runs on this Mac against fakes with a disposable HOME and no credential.
+
+## Rows to verify after landing
+
+**Every line here was settled at dev `728efcb88a02a930ed6a5747d28f83b7e1d487b0`, which includes all five landings.** If the request names a later dev SHA, re-read each line at it before requesting QA and record each difference in the brief or the request. VERIFIED = read at dev `728efcb88`; VERIFIED at `caf30df4` = first read at dev `caf30df4fc87ab3317eb1c660e5286d07361c53b` and unchanged at `728efcb88`; INFERRED = reasoned, unproven.
+
+**Settled at dev `caf30df4` and unchanged at `728efcb88` (VERIFIED):** T-1772's exact lists (`host-provider-volumes` with its five `fake: …` registrar cases and ten direct cases; `host-provider-digitalocean-volumes`, unedited, with four registrar and five direct cases) and its landing pair; T-1773's exact lists (`login-records` with its filtered loop and six binding expansions, `login-list`), its fourteen source lines, the CLI and authority preservation files and its landing pair; T-1774's exact list (`fake-harness-login`, T3), its four source lines, the preservation files and its landing pair; T-1775's exact lists (`hub-cards`, `hub-cards-voice`, `hub-cards-authority`), its eight source lines, every `secret.mjs` line, the frame catalog's zero `"secret"` keys and its landing pair; the stage touches nothing under `nvim/` or `web/` and not `hub/src/remote/authority.ts`.
+
+**Settled at T-1776's landing, dev `728efcb88` (VERIFIED):**
+
+- E1535S1-00: every member `landings 1` (T-1776 `728efcb88`); the stage `open`, `merged 5`, `total 5`.
+- E1535S1-02: `T1776_TIP` `f76bdc9bb` (the commit rev-35's final review cleared); own lines equal and files byte-identical at the landing, no sibling delta (the tip merged dev at `bc2d5bd6f`); T-1776 named as the later commit for each earlier member, with its files; the C6 removed-line set, one `fixture()` helper line; the three shared fixture leaves T-1776 changed and the two `fixture-sockets` lines.
+- E1535S1-03: T-1772's 14 lines (two moved into T-1776's agent leaves, two added for the provider's use of them) and T-1776's 29 lines, every line `ok`.
+- E1535S1-48 and E1535S1-50 to E1535S1-57: the exact lists of `client-component` (6), `host-login-disk` (12, the held-close regression included), `cland-auth` (10), `host-contract-coverage` (8), `host-prelude` (3), `host-agent-boundary` (3, one renamed), `host-agent-closure` (5); the registrar case at top level in `host-local-contract` (16 top-level) and nested in `host-ssh-contract` (16 nested); the standalone `host-agent-restart` version-delivery case and the standalone held-close case; and the tiers (`host-login-disk` T3, `cland-auth` T3, `host-agent-restart` T3, `host-local-contract` and `host-ssh-contract` T3 scenarios, `host-contract-coverage`, `host-prelude`, `host-agent-boundary` and `host-agent-closure` T1, `client-component` Neovim T2).
+- The T-1776 criteria-map rows (C1 to C6, and the agent-boundary row), and E1535S1-55's per-file docs (`host-login-disk` new with its index row; `cland-auth`, `host-agent-boundary`, `host-agent-closure` edited).
+- No stage file registers a title with leading whitespace (the counter's whitespace check over every exact-listed file).
+
+**Component-only, with the reason:**
+
+- T-1772's volume operations and contents seam: no CLI command or hub frame creates, snapshots, clones or attaches a volume in this stage; only providers call them in process (E1535S1-10, E1535S1-11).
+- T-1774's fake harness logins: test-only code under `hub/test/fakes`, reached only by test fixtures (E1535S1-30 to E1535S1-32).
+- T-1775's hub cards: no hub code raises a card in this stage (`raise` has no caller in `hub/src`; T-1785, T-1789 and T-1791 will), so only tests reach it through `ProjectHubOptions.registerHubCards`, with the fake Telegram and Discord APIs (E1535S1-40 to E1535S1-42).
+- T-1776's `login-disk`: no hub path calls `Host.loginDisk` in this stage (VERIFIED at `728efcb88`: in `hub/src` only the Host definitions and the agent's `case 'login-disk'`), and a scratch hub has no fake volume attached to a created host to mount (E1535S1-50 to E1535S1-53, E1535S1-57). Its agent delivery is component-only too: the version-delivery case installs the agent over fake ssh in process (E1535S1-56), and the boundary and closure guards read the source tree (E1535S1-54).
+- T-1773's session, web and remote refusals of `login.list`: a scratch session needs a harness launch and the web and gateway edges need their own clients, outside this run's surface (E1535S1-20). The CLI list, its JSON, help and restart retention are on the scratch hub (E1535S1-61 to E1535S1-63).
+
+**INFERRED, with the reason:**
+
+- E1535S1-61 and E1535S1-62: the exact header, usage and row lines, derived from `hub/src/cli/login.ts` and the store, not from a run.
+- E1535S1-62: that the `Store` opened on the stopped scratch project's `hub.db` accepts the seed the named test writes while its hub runs.
+- E1535S1-06: the rebuilt ask count and `recorded catalog drift: none` (not run at drafting).
+- The scanner passing every stage title and fixture string through `fresh.mjs` unwithheld.
+- E1535S1-53: that the nested `ok` line for the registrar case appears exactly once in the TAP; the 16 nested registrations are read from source, not from a run.
+- E1535S1-56: that the version-delivery case passes on this Mac within its 90-second test timeout under the load gate (its allowance history is T-1721's; not run at writing).
+
+## Source provenance
+
+VERIFIED = read in source at dev `728efcb88a02a930ed6a5747d28f83b7e1d487b0` (T-1772 to T-1775 first at `caf30df4fc87ab3317eb1c660e5286d07361c53b`); all re-read at the build if it is later.
+
+- The kits: commit `K` = `f43f4e21049e9c62a97c8dec1ebf37f9c7035a62`: `qa/briefs/E-1532-stage-4.md` lines 133 to 136 and 228 to 279; `qa/briefs/E-1533-stage-3.md` heredocs `seal.mjs`, `fresh.mjs`, `frame.mjs`, `body.sh`, `helpers.sh`. The carried corrections: commit `M` = `becee171b9cf1fa76e1732c674e13f2656551397`, `qa/briefs/E-1534-stage-3.md` ("Carried corrections" and "Corrections from this brief's own run (qa-678, A-18029)"); the E-1534 Definition-of-done report `.cland/artifacts/A-18035-e-1534-definition-of-done-qa-clear-at-94f4a8c6/report.md`.
+- T-1772 (`f077f9397`, tip `b91876182`): `hub/src/host/provider/provider.ts`, `fake.ts` (`volumeContents`, contents directories, snapshot history, release detaching volumes), `fake-volume-record.ts`, `digitalocean.ts` (three refusing stubs); `hub/test/host-provider-contract.ts` (`hostProviderVolumeContract`, `snapshotOperations`); `hub/test/host-provider-volumes.test.ts` (T2); docs `docs/hub/host-providers.md`.
+- T-1773 (`bc2d5bd6f`, tip `b320aef39`): `hub/src/host/logins.ts`, `hub/src/host/records.ts`, `hub/src/cli/login.ts`, `hub/src/cli/usage/login.ts`, `hub/src/cli/help.ts`, `hub/bin/cland.ts`, `hub/src/hub/dispatch.ts`, `hub/src/hub/web-authority.ts`, `hub/src/protocol.ts`, `shared/wire/index.ts`; tests `login-records` (T1), `login-list` (T2), `cli-imports` (T3, edited), fixtures `hub/test/fixtures/cli-usage/`; docs `docs/hub/logins.md`, `docs/agents/session-permissions.md`.
+- T-1774 (`69ac4f556`, tip `afc246a68`): `hub/test/fakes/fake-login.ts`, `fake-login-holder.ts`, `login-holder-client.ts`, `claude-code/fake-claude.ts`, `codex/fake-codex.ts`, `opencode/fake-opencode.ts`, `setup-profile.ts`; the file `hub/test/fake-harness-login.test.ts` (T3); docs `docs/agents/fake-harness-logins.md`.
+- T-1775 (`1dedab368`, tip `b1a2b2278`): `hub/src/hub/hub-cards.ts`, `asks.ts`, `store.ts`, `inbox.ts`, `core.ts`, `dispatch.ts` (the replay digest), `hub/src/remote/cards.ts`, `redact.ts`, `telegram-prompts.ts`, `telegram.ts`, `discord-inbound.ts`, `hub/src/protocol.ts`, `shared/wire/index.ts`; `hub/test/harness.ts` (`registerHubCards`), `hub/test/discord-cards-fixture.ts`; tests `hub-cards` (T2), `hub-cards-voice` (T2), `hub-cards-authority` (T1); docs `docs/hub/asks-and-the-inbox.md`, `docs/hub/remote-commands.md`. The remote gateway table `hub/src/remote/authority.ts` is unchanged.
+- T-1776 (`728efcb88`, tip `f76bdc9bb`, 40 files): `hub/src/host/agent/login-disk.ts`, `fake-login-disk.ts`, `fake-volume-contents.ts` and `fake-volume-record.ts` (new agent leaves, moved from the fake provider), `resource-types.ts`, `processes.ts` (`drainDiskUsers`, `#joinDiskCompletion`, `#launchedHere`, the hooks `beforeNativeClose`, `beforeExitPublication`, `beforeCompletionJoin`), `server.ts`, `clock.ts` and `fake-layout.ts` (owner wrappers), `package.ts` (`sharedAgentLeafOwner`, `runtimePath`, `agentSourceImportAllowed`), `closure.json` (regenerated, 42 files); `hub/bin/generate-host-agent-closure.ts`; `hub/src/host/code-delivery.ts` (`INSTALL_AGENT`), `cland-auth.sh`, `host.ts` (`LoginDisk`, optional `loginDisk`), `ssh-host.ts`, `local.ts`; `hub/src/host/provider/fake.ts`, `fake-volume-record.ts` (now a re-export), `provider.ts`; `shared/fake-layout.ts` (new), `shared/fixture-sockets.ts`, `shared/fake-host-directory.ts`; `hub/test/host-contract.ts` (`hostContract` case, `optionalLoginDiskHostContract`); tests `host-login-disk` (T3, new), `cland-auth` (T3), `host-contract-coverage`, `host-agent-boundary`, `host-agent-closure` (T1 each); `hub/test/durations.json` (one baseline removed), `hub/test/tiers.json`; docs `docs/agents/host-agent.md`, `docs/hub/logins.md`, `docs/hub/ssh-host.md`, `hub/README.md`, `docs/agents/tests/index.md` and four per-file notes. Review: C3 failed at `177eae883` (rev-35, 2026-11-09T15:19Z), the agent-boundary and Neovim-boundary findings (A-18142, A-18151) were settled by the neutral-leaf architecture (Coordinator approvals `5e88ea35`/`e1f1b884`), the Linux held-admission failures (A-18160) by the close-ordering fix (A-18163), and `rev-35-1776-final-1` cleared C1 to C6 at `f76bdc9bb` (A-18166). Unedited consumers read at `728efcb88`: `hub/test/host-agent-restart.test.ts` (T3), `nvim/test/client-component.test.ts` (Neovim T2), `hub/test/nvim-fixture-boundary.test.ts` (T1), `hub/test/host-local-contract.test.ts` and `hub/test/host-ssh-contract.test.ts` (T3).
+- Plan: stage 1 `{"scope":"affected","when":"after-stage"}`, lanes [T-1772, T-1776], [T-1773], [T-1774], [T-1775]; at dev `728efcb88` `state` `open`, `merged 5`, `total 5`, `statuses {"done":5}` (read from `task plan show E-1535 --json`).
+
+## Verdict
+
+Fix nothing. Clear only when every case and check in scope passes. Otherwise not clear, with the failing, blocked or inconclusive case ids and findings. On the epic record one QA verdict with the exact stage name (`--stage "fake volumes, the login-disk helper, the login model, fake harness logins and hub cards"`), full tested dev SHA, unique run id and case table. Stage QA carries no epic criterion marks. Read the request's id and any earlier verdict's id from the epic topic's `history`, never from a `send` result (rule 22). Report `qa clear E-1535 stage fake volumes, the login-disk helper, the login model, fake harness logins and hub cards` or `qa not clear E-1535 stage fake volumes, the login-disk helper, the login model, fake harness logins and hub cards` to the requester in the epic topic. Keep recorded evidence if publication fails; follow the qa skill's recovery procedure.

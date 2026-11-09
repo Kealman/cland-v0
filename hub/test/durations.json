@@ -131,9 +131,10 @@
       "A-17809",
       "A-17830",
       "A-17839",
-      "A-18014"
+      "A-18014",
+      "A-18167"
     ],
-    "commit": "f1fc91aaee1856dec849e7f02a9fde1458a0105f"
+    "commit": "caf30df4fc87ab3317eb1c660e5286d07361c53b"
   },
   "budget": {
     "testSeconds": 5,
@@ -3818,6 +3819,26 @@
     "hub/test/pool-idle-stop.test.ts": {
       "seconds": 1.700992,
       "tests": 10
+    },
+    "hub/test/fake-harness-login.test.ts": {
+      "seconds": 19.11592,
+      "tests": 21
+    },
+    "hub/test/hub-cards-voice.test.ts": {
+      "seconds": 1.183301,
+      "tests": 4
+    },
+    "hub/test/hub-cards.test.ts": {
+      "seconds": 3.382818,
+      "tests": 17
+    },
+    "hub/test/login-list.test.ts": {
+      "seconds": 1.031012,
+      "tests": 2
+    },
+    "hub/test/pool-spend-cap.test.ts": {
+      "seconds": 0.728575,
+      "tests": 5
     }
   },
   "tests": {
@@ -11340,7 +11361,62 @@
     "hub/test/web-authority.test.ts::web refuses host.status even from authenticated human": 0.110901,
     "hub/test/web-authority.test.ts::web refuses host.stop even from authenticated human": 0.114156,
     "nvim/test/inbox-sections.test.ts::waiting launches render facts and replace reasons without needs-you or departure rows": 0.530716,
-    "web/test/inbox.test.ts::waiting launches update status facts in place without needs-you and disappear on placement or cancel": 1.62886
+    "web/test/inbox.test.ts::waiting launches update status facts in place without needs-you and disappear on placement or cancel": 1.62886,
+    "hub/test/fake-harness-login.test.ts::Claude refuses empty pasted input without creating a login": 0.312921,
+    "hub/test/fake-harness-login.test.ts::claude-code preserves disabled-mode refusal parity": 0.289883,
+    "hub/test/fake-harness-login.test.ts::claude-code records CLI logout and slash logout": 1.277448,
+    "hub/test/fake-harness-login.test.ts::claude-code sign-in leaves one observed detached holder with an open home file": 0.758069,
+    "hub/test/fake-harness-login.test.ts::claude-code sign-in writes generation zero in its harness home": 0.327851,
+    "hub/test/fake-harness-login.test.ts::claude-code turns rotate and dead logins recover only after sign-in": 2.187864,
+    "hub/test/fake-harness-login.test.ts::Codex native app-server turns retain the last twenty rotations and report revocation": 0.760347,
+    "hub/test/fake-harness-login.test.ts::codex preserves disabled-mode refusal parity": 0.348295,
+    "hub/test/fake-harness-login.test.ts::codex records CLI logout and slash logout": 1.315014,
+    "hub/test/fake-harness-login.test.ts::Codex refuses a live login without changing bytes and replaces a dead login": 1.338306,
+    "hub/test/fake-harness-login.test.ts::codex sign-in leaves one observed detached holder with an open home file": 0.785609,
+    "hub/test/fake-harness-login.test.ts::codex sign-in writes generation zero in its harness home": 0.31504,
+    "hub/test/fake-harness-login.test.ts::codex turns rotate and dead logins recover only after sign-in": 2.314063,
+    "hub/test/fake-harness-login.test.ts::holder cleanup works after receipt corruption and a crashed holder is replaced": 0.871616,
+    "hub/test/fake-harness-login.test.ts::holder stale receipt cannot suppress a fresh launch or authorize a signal": 0.473306,
+    "hub/test/fake-harness-login.test.ts::opencode preserves disabled-mode refusal parity": 0.638557,
+    "hub/test/fake-harness-login.test.ts::opencode records CLI logout and slash logout": 1.213125,
+    "hub/test/fake-harness-login.test.ts::opencode sign-in leaves one observed detached holder with an open home file": 0.818369,
+    "hub/test/fake-harness-login.test.ts::opencode sign-in writes generation zero in its harness home": 0.295276,
+    "hub/test/fake-harness-login.test.ts::opencode turns rotate and dead logins recover only after sign-in": 2.053076,
+    "hub/test/fake-harness-login.test.ts::uncommitted holder exits when sign-in fails after readiness": 0.421885,
+    "hub/test/host-provider-volumes.test.ts::digitalocean new snapshot operations refuse without API calls": 0.102152,
+    "hub/test/host-provider-volumes.test.ts::fake login contents survive snapshots, cloning and machine release": 0.038643,
+    "hub/test/host-provider-volumes.test.ts::fake snapshot deletion confirms absence and retained history fails closed": 0.014992,
+    "hub/test/host-provider-volumes.test.ts::fake: snapshot history, cloning and confirmed deletion": 0.055876,
+    "hub/test/host-provider-volumes.test.ts::snapshot ID deletion retries history publication after provider recreation": 0.007391,
+    "hub/test/host-provider-volumes.test.ts::surviving snapshot IDs support lookup clone and delete after volume deletion": 0.018577,
+    "hub/test/hub-cards-voice.test.ts::discord hub card voice keeps non-secret answering": 0.240184,
+    "hub/test/hub-cards-voice.test.ts::discord hub card voice refuses secret input before acquisition": 0.18616,
+    "hub/test/hub-cards-voice.test.ts::telegram hub card voice keeps non-secret answering": 0.298987,
+    "hub/test/hub-cards-voice.test.ts::telegram hub card voice refuses secret input before acquisition": 0.45797,
+    "hub/test/hub-cards.test.ts::deferred native Discord answer keeps handler outcome after all updates settle": 0.232762,
+    "hub/test/hub-cards.test.ts::hub card answers call their registered handler once and never target a session": 0.216532,
+    "hub/test/hub-cards.test.ts::hub card handler failures roll back and a decline carries no consent": 0.098232,
+    "hub/test/hub-cards.test.ts::hub cards publish and fold both native copies after discord": 0.222312,
+    "hub/test/hub-cards.test.ts::hub cards publish and fold both native copies after neovim": 0.237491,
+    "hub/test/hub-cards.test.ts::hub cards publish and fold both native copies after secret": 0.204759,
+    "hub/test/hub-cards.test.ts::hub cards publish and fold both native copies after telegram": 0.214815,
+    "hub/test/hub-cards.test.ts::hub cards publish and fold both native copies after web": 0.312747,
+    "hub/test/hub-cards.test.ts::hub cards publish and fold both native copies after withdraw": 0.200557,
+    "hub/test/hub-cards.test.ts::native secret discord retention probe": 0.197358,
+    "hub/test/hub-cards.test.ts::native secret telegram retention probe": 0.293745,
+    "hub/test/hub-cards.test.ts::ordinary ask remote replay preserves its existing answer and deduplicates delivery": 0.207378,
+    "hub/test/hub-cards.test.ts::pending hub cards survive restart; missing handlers keep them open and withdrawal records its reason": 0.15091,
+    "hub/test/hub-cards.test.ts::secret hub answers reach the handler verbatim and remote replay stores a digest": 0.122044,
+    "hub/test/hub-cards.test.ts::users-mode hub decline outcome retains stable user id": 0.160946,
+    "hub/test/hub-cards.test.ts::users-mode hub free outcome retains stable user id": 0.151761,
+    "hub/test/hub-cards.test.ts::users-mode hub option outcome retains stable user id": 0.158469,
+    "hub/test/login-list.test.ts::login list refuses session, web and remote edges like host list": 0.187904,
+    "hub/test/login-list.test.ts::login list text and JSON expose rows and hosts, retained across hub restart": 0.843108,
+    "hub/test/pool-spend-cap.test.ts::80 percent General warning survives restart and repeats only on a new UTC day": 0.301638,
+    "hub/test/pool-spend-cap.test.ts::admitted host renews beyond hosts sub-cap while shared cap still applies": 0.026194,
+    "hub/test/pool-spend-cap.test.ts::cap-refused scheduler launch remains in the durable waiting list through retry": 0.293885,
+    "hub/test/pool-spend-cap.test.ts::full hosts cap keeps demand waiting without provider acquisition or ledger entry and retains busy host": 0.094001,
+    "hub/test/pool-spend-cap.test.ts::mutation notices reuse loaded ledger with no observer reads and unsubscribe retires owner": 0.012857
   },
   "allow": {
     "hub/test/pool-idle-stop.test.ts::C1 idle host is destroyed at one minute while min_hosts stays": {
