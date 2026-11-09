@@ -2,8 +2,8 @@
 id: T-1756
 kind: task
 title: DigitalOcean host creation under the lease, the watchdog and the spend
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1449
 branch: t/T-1756-digitalocean-host-creation-under-the
 created: 2026-11-07T16:02:00.451Z
-updated: 2026-11-08T21:30:10.529Z
+updated: 2026-11-09T08:06:58.734Z
+closed: 2026-11-09T08:06:58.734Z
 ---
 
 ## Summary
@@ -29,18 +30,24 @@ Admission receipts from T-1747 and T-1748 passed through `createAdmission` and `
 
 ## Acceptance criteria
 
-- [ ] C1. Against the fake API, a DigitalOcean host create with its lease, armed watchdog and hosts reservation reaches the droplet create, with the pool image and the cland, project and pool tags (test).
-  - failed: rev-36 [reviewer] · 2026-11-08T21:30:10.528Z · note Queued provider mutations can send after live backing or acquisition signal changes during API pacing.
-- [ ] C2. A DigitalOcean create missing any of the three is refused before any API call, naming what is missing (test).
-  - failed: rev-36 [reviewer] · 2026-11-08T21:30:10.529Z · note Invocation-time validation does not protect actual admitted send after budget/cooldown waits.
+- [x] C1. Against the fake API, a DigitalOcean host create with its lease, armed watchdog and hosts reservation reaches the droplet create, with the pool image and the cland, project and pool tags (test).
+  - done: impl-1756 · 2026-11-09T06:54:53.020Z
+  - verified: rev-36 [reviewer] · run rev-36-1756-final-1 · 2026-11-09T07:28:22.113Z · commit 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
+- [x] C2. A DigitalOcean create missing any of the three is refused before any API call, naming what is missing (test).
+  - done: impl-1756 · 2026-11-09T06:54:53.351Z
+  - verified: rev-36 [reviewer] · run rev-36-1756-final-1 · 2026-11-09T07:28:22.113Z · commit 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
 - [x] C3. The SSH gate for a DigitalOcean machine uses the client key and known-host material from the provision record and the machine's address, and never reads a fake host directory or `CLAND_FAKE_HOSTS` (test).
-  - done: impl-1756 · 2026-11-08T21:24:23.204Z
-- [ ] C4. With the hub stopped, the host watchdog deletes a DigitalOcean host's droplet and key through the fake API at the deadline, each confirmed by a GET (test).
-  - failed: rev-36 [reviewer] · 2026-11-08T21:30:10.529Z · note Stopped-hub worker skips required known-id/exact-name key recovery attempts in pre-POST/lost-import windows.
+  - done: impl-1756 · 2026-11-09T06:54:53.559Z
+  - verified: rev-36 [reviewer] · run rev-36-1756-final-1 · 2026-11-09T07:28:22.113Z · commit 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
+- [x] C4. With the hub stopped, the host watchdog deletes a DigitalOcean host's droplet and key through the fake API at the deadline, each confirmed by a GET (test).
+  - done: impl-1756 · 2026-11-09T06:54:53.890Z
+  - verified: rev-36 [reviewer] · run rev-36-1756-final-1 · 2026-11-09T07:28:22.113Z · commit 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
 - [x] C5. The fake provider's create-to-ready tests pass through the same provision-record identity with no test edited.
-  - done: impl-1756 · 2026-11-08T21:24:23.794Z
+  - done: impl-1756 · 2026-11-09T06:54:54.098Z
+  - verified: rev-36 [reviewer] · run rev-36-1756-final-1 · 2026-11-09T07:28:22.113Z · commit 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
 - [x] C6. No code, test or doc still names the E-1534 refusal.
-  - done: impl-1756 · 2026-11-08T21:24:24.090Z
+  - done: impl-1756 · 2026-11-09T06:54:54.433Z
+  - verified: rev-36 [reviewer] · run rev-36-1756-final-1 · 2026-11-09T07:28:22.113Z · commit 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
 
 ## Blocked by
 
@@ -110,3 +117,49 @@ finding_counts: {"high":1,"medium":2,"low":0}
 Completed in-progress source verdict under Coordinator pause. Standards1medium/Spec1high1medium; author confirmed all three. Actual API send lacks backing/acquisition-signal revalidation after pacing; worker key-only replay misses pre-POST/lost-import windows; process-free T2 fixture omits lock process injection. Directly read Coordinator bcd50eb8 final bar: bounded key recovery attempts required, unresolved non-billable orphans may remain reported under T-1765 once droplet positively settled; no stronger key completion requirement. Other repaired receipt publication/C6/timing issues source-consistent; C3/C5 runtime-unverified, no criteria verified. A-17973 candidate199/199 retained with precommit/tier-instrumentation limits, not final native/Linux proof. Correct after pause and request fresh source review before already-directed native14/configuredLinux/fullT3batch. No Reviewer execution/edit/delegation. Taking no new reviews until explicit Coordinator resume.
 
 Criteria: C1 failed (Queued provider mutations can send after live backing or acquisition signal changes during API pacing.), C2 failed (Invocation-time validation does not protect actual admitted send after budget/cooldown waits.), C4 failed (Stopped-hub worker skips required known-id/exact-name key recovery attempts in pre-POST/lost-import windows.).
+
+### impl-1756 · 2026-11-09T06:42:00.466Z
+
+Final-bar shared-contract sweep before edits: add optional per-mutation send scope to DigitalOceanApi.create/importKey and private #call/#admit/#send; existing deadline-only callers remain compatible. Production consumers include host provider, executor droplet run/prepare/reap/snapshot/cleanup and mapped DropletDependencies.Provider, direct API tests, fakeDigitalOcean scripted transport, API pacing/endpoint tests, pool preparation and volume fixtures. Search covers create/importKey/deadline/signal/ProviderCall/tokenBudget plus API importers across all tiers; no wire frames change. Provider intent adds explicit postState not-started/pending so new key-only windows have positive droplet-side disposition while old records without that field stay conservative. Optional non-acquisition receipt gains bound orphan information only when droplet never-posted/refused; unresolved keys are reported for T-1765. Watchdog options gain LockProcessTable injection; admission fixture and changed worker/spend tests import one shared scripted lock table, distinct from watchdog native-birth fakes.
+
+### impl-1756 · 2026-11-09T06:55:19.804Z
+
+Final repair head 52f12c657 pushed after Coordinator-authorized origin/dev merge1e7b9d467 (landed T-1750). Boot deadline/checkpoint/notice, typed retry/failed occupancy and scoped GET signal preserved. All C1–C6 done marks restored. A-17992 report/manifests: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-17992-t-1756-final-source-repair-pacing-guard-and-resource-proof-at-52f12c657/report.md.
+
+Actual DigitalOceanApi admitted send now owns MutationScope authority+signal after pacing, rechecking shared capacity after async backing reads. Original queued-send red observed1 forbidden key POST versus expected0; eight key/drop × lease/watchdog/spend/signal invalidations inside actual API waits now pass. Exact key-id/name attempts cover pre-POST and lost-import windows; unresolved non-billable orphans remain durable/reported for T-1765 after positive droplet settlement. Unknown POST remains reserved through key cleanup until exact-tag droplet deletion/GET. Optional API scopes/receipt orphan fields remain additive; no public frame change. Exact pre-edit API consumer inventory is A-17992/api-consumers.txt, with production/test family sweep recorded before edits.
+
+Committed-head four-file proof101/101 T2, macOS Node24.21, suite tier bootstrap report-only0 resource findings, native code0/signalnull. The original shell committed/pushed before this run; no source edits followed. Positive pre-injection control caught native lock ps; identical post-injection control has0 findings. WatchdogProcesses and LockProcessTable now injected separately for lease/spend/worker paths. Broader six-file candidate138/138; full typecheck and test:lint exit0, report-only known findings labelled. Unchanged HTTP pacing teardown findings are T-1767 and excluded from own process-free claim. No new case≥3s macOS; no baseline transfer or allowance added. C6 strict old strings0, previous broad-history dispositions retained.
+
+Pending fresh source clearance, native14 under coordinated lock, mode-free configured Linux verification and fullT3Linux batch before landing. Full after-stage QA separate. No native preservation/configured suite or real-provider run since second source verdict.
+
+### rev-36 · 2026-11-09T06:59:24.311Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1756-source-3
+commit: 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, Standards0/Spec0. A-17976 three findings resolved under Coordinator bcd50eb8 final bar: actual admitted API send revalidates backing/signal after pacing and rechecks shared capacity; persisted POST phase plus known-id/exact-name worker attempts separate positive no-droplet from unknown POST; allowed non-billable key orphans remain reported for T-1765 without another finding. Distinct lock injection and A-17992 own4file101/101 tier-bootstrap0events/code0/signalnull proof inspected, positive native-ps control retained; broader138/138 excludes T-1767 HTTP teardown from process-free claim. Authorized dev merge preserves T-1750 boot checkpoint/deadline/notice, typed retry/occupancy, scoped GET/status and joined probe. C6/timing repairs retained. Runtime criteria unverified; native14/configured mode-free Linux/fullT3Linux-before-landing still pending per Coordinator, fullafter-stageQA separate. Evidence capture/tree limits retained; no provenance-only rerun or real-provider probe requested. Reviewer read-only/no execution/delegation.
+
+### rev-36 · 2026-11-09T07:28:22.113Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1756-final-1
+commit: 52f12c657f07b3c19fbec697ec2e1e01e3be2c6f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, C1–C6 verified, no findings. A-18001 same-source head5720/5720; parsed named admission/tag/missing components/SSH identity/order/worker-replay/unknown-POST cases. Inside-pacing8base+40load; all45new/admission identities each5/5load. Own4file resource events0; known HTTP T-1767/report-only baseline notices retained. T0/allT1/fallbackallT2/selected gateT3(8once)/Web executed; LinuxT4/fullT3 not run. A-17999 exact committed-head native14 manifests/raw names reconcile146/146 and all code0/signalnull, including unchanged fake-ready12, detachedwatchdog2, committedQAcorpus3, CLIusage2 and macOS T4control1. Capturetree1c44969 differs from native commit Git tree47e9e4ad; both correctly labeled. Uncached Linux/Node24.21/Nvim0.12.5/pinnedHeadless1248 CfT156, skips[]missing0report. Coordinator bcd50eb8 allowed key-orphan scope retained. FullT3Linux batch BEFORE LANDING still pending Coordinator gate; fullafter-stageQA separate, no realcloudready claim. No extra task run requested; Reviewer read-only/no execution/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-09T08:06:58.734Z
+
+Merged 49b3099fa614a56f9b4984ad145257aa84cdb52a onto dev.
