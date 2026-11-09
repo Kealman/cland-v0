@@ -18,7 +18,7 @@ async function factory(t: TestContext, scenario: 'normal' | 'ignored-volume-dele
   return { provider, env, region: 'region-a', otherRegion: 'region-b', snapshotRetryAt: '2026-11-06T00:00:01.000Z',
     ready: async () => {}, advanceSnapshotWindow: async () => { time += 1000; } };
 }
-hostProviderVolumeContract('fake', factory, (name, run) => test(name, run));
+hostProviderVolumeContract('fake', factory, (name, run) => test(name, run), true);
 
 test('mandatory volume contract rejects deletion acknowledged without removal', async t => {
   let selected: ((t: TestContext) => Promise<void>) | undefined;
@@ -99,4 +99,139 @@ test('malformed retained volume ownership and snapshot facts fail closed without
     assert.equal((await p.deleteVolume(v.volume)).state, 'incomplete');
     assert.equal(await readFile(path, 'utf8'), bytes);
   }
+});
+
+
+test('fake login contents survive snapshots, cloning and machine release', async t => {
+  const f = await factory(t, 'normal'), p = f.provider;
+  const a = await p.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64', region: f.region });
+  const b = await p.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64', region: f.region });
+  const v = await p.createVolume({ project: 'contract', region: f.region, name: 'login', sizeGiB: 1 });
+  assert.equal(a.state, 'created'); assert.equal(b.state, 'created'); assert.equal(v.state, 'created');
+  if (a.state !== 'created' || b.state !== 'created' || v.state !== 'created') return;
+  assert.equal((await p.volumeContents(v.volume, a.machine)).state, 'failed');
+  assert.equal((await p.attachVolume(v.volume, a.machine)).state, 'attached');
+  const contents = await p.volumeContents(v.volume, a.machine);
+  assert.equal(contents.state, 'ready');
+  if (contents.state !== 'ready') return;
+  assert.deepEqual(await (await import('node:fs/promises')).readdir(contents.directory), []);
+  assert.equal((await p.volumeContents(v.volume, b.machine)).state, 'failed');
+  await writeFile(join(contents.directory, 'login'), 'first');
+  const first = await p.snapshotVolume(v.volume);
+  assert.equal(first.state, 'snapshotted');
+  if (first.state !== 'snapshotted') return;
+  await writeFile(join(contents.directory, 'login'), 'second');
+  await f.advanceSnapshotWindow();
+  const second = await p.snapshotVolume(v.volume);
+  assert.equal(second.state, 'snapshotted');
+  if (second.state !== 'snapshotted') return;
+  assert.deepEqual(await p.listSnapshots(v.volume), { state: 'listed', snapshots: [first.snapshot, second.snapshot] });
+  const clone = await p.createVolume({ project: 'contract', region: f.otherRegion, name: 'copy', sizeGiB: 1, fromSnapshot: first.snapshot });
+  assert.equal(clone.state, 'created');
+  if (clone.state !== 'created') return;
+  assert.equal(clone.volume.region, f.region);
+  assert.equal((await p.attachVolume(clone.volume, b.machine)).state, 'attached');
+  const copy = await p.volumeContents(clone.volume, b.machine);
+  assert.equal(copy.state, 'ready');
+  if (copy.state !== 'ready') return;
+  assert.equal(await readFile(join(copy.directory, 'login'), 'utf8'), 'first');
+  assert.equal((await p.release(a.machine)).state, 'released');
+  assert.equal((await p.volumeContents(v.volume, a.machine)).state, 'failed');
+  assert.equal((await p.attachVolume(v.volume, b.machine)).state, 'attached');
+  assert.equal(await readFile(join(contents.directory, 'login'), 'utf8'), 'second');
+  assert.equal((await p.detachVolume(v.volume, b.machine)).state, 'detached');
+  assert.equal((await p.deleteVolume(v.volume)).state, 'deleted');
+  await assert.rejects(readFile(join(contents.directory, 'login')), { code: 'ENOENT' });
+  assert.deepEqual(await p.deleteSnapshot(first.snapshot), { state: 'deleted' });
+});
+
+
+test('fake snapshot deletion confirms absence and retained history fails closed', async t => {
+  const f = await factory(t, 'normal'), p = f.provider;
+  const v = await p.createVolume({ project: 'contract', region: f.region, name: 'login', sizeGiB: 1 });
+  assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+  const first = await p.snapshotVolume(v.volume);
+  assert.equal(first.state, 'snapshotted'); if (first.state !== 'snapshotted') return;
+  const ignored = new FakeHostProvider({ env: f.env, ignoreSnapshotDelete: true });
+  assert.equal((await ignored.deleteSnapshot(first.snapshot)).state, 'incomplete');
+  assert.deepEqual(await p.listSnapshots(v.volume), { state: 'listed', snapshots: [first.snapshot] });
+  const path = join(f.env.CLAND_FAKE_HOST_ROOT!, 'volumes', v.volume.id + '.json');
+  const valid = JSON.parse(await readFile(path, 'utf8'));
+  // Previous writer's single-receipt shape remains readable.
+  delete valid.snapshots;
+  await writeFile(path, JSON.stringify(valid));
+  assert.deepEqual(await p.listSnapshots(v.volume), { state: 'listed', snapshots: [first.snapshot] });
+  for (const snapshots of [null, {}, [first.snapshot, first.snapshot], [{ ...first.snapshot, volumeId: 'wrong' }], [{ ...first.snapshot, created: 'bad' }]]) {
+    const bytes = JSON.stringify({ ...valid, snapshots });
+    await writeFile(path, bytes);
+    assert.equal((await p.listSnapshots(v.volume)).state, 'failed');
+    assert.equal((await p.deleteSnapshot(first.snapshot)).state, 'incomplete');
+    assert.equal((await p.createVolume({ project: 'contract', region: f.region, name: 'copy', sizeGiB: 1, fromSnapshot: first.snapshot })).state, 'failed');
+    assert.equal(await readFile(path, 'utf8'), bytes);
+  }
+});
+
+test('digitalocean new snapshot operations refuse without API calls', async t => {
+  const { DigitalOceanHostProvider } = await import('../src/host/provider/digitalocean.ts');
+  const { fakeDigitalOcean } = await import('./fakes/digitalocean/fake-api.ts');
+  const { FakeClock } = await import('./fake-clock.ts');
+  const clock = new FakeClock();
+  const api = await fakeDigitalOcean('snapshot-sentinel', { machine: 'scripted', clock });
+  t.after(() => api.close());
+  const p = new DigitalOceanHostProvider({ root: api.stateRoot, env: fixtureEnvironment(api.stateRoot, {}, { CLAND_FAKE_HOST_ROOT: api.stateRoot }), api: api.provider, pool: 'agents', clock });
+  const v = { id: 'sentinel', project: 'contract', name: 'login', region: 'lon1', sizeGiB: 1, created: '2026-11-06T00:00:00Z', attachedTo: null };
+  const snapshot = { id: 'snapshot-sentinel', volumeId: v.id, created: v.created };
+  const before = api.requests.length;
+  for (const result of [await p.createVolume({ ...v, fromSnapshot: snapshot }), await p.listSnapshots(v), await p.getSnapshot(snapshot.id), await p.deleteSnapshot(snapshot), await p.deleteSnapshot(snapshot.id)]) {
+    assert.equal(result.state, 'failed');
+    if (result.state === 'failed') assert.match(result.reason, /unsupported/);
+  }
+  assert.equal(api.requests.length, before);
+});
+
+
+test('surviving snapshot IDs support lookup clone and delete after volume deletion', async t => {
+  const f = await factory(t, 'normal'), p = f.provider;
+  const v = await p.createVolume({ project: 'contract', region: f.region, name: 'login', sizeGiB: 1 });
+  assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+  const a = await p.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64', region: f.region });
+  assert.equal(a.state, 'created'); if (a.state !== 'created') return;
+  assert.equal((await p.attachVolume(v.volume, a.machine)).state, 'attached');
+  const contents = await p.volumeContents(v.volume, a.machine);
+  assert.equal(contents.state, 'ready'); if (contents.state !== 'ready') return;
+  await writeFile(join(contents.directory, 'login'), 'retained');
+  const snap = await p.snapshotVolume(v.volume);
+  assert.equal(snap.state, 'snapshotted'); if (snap.state !== 'snapshotted') return;
+  assert.equal((await p.detachVolume(v.volume, a.machine)).state, 'detached');
+  assert.equal((await p.deleteVolume(v.volume)).state, 'deleted');
+  assert.deepEqual(await p.listSnapshots(v.volume), { state: 'volume-gone' });
+  assert.deepEqual(await p.getSnapshot(snap.snapshot.id), { state: 'found', snapshot: snap.snapshot });
+  const clone = await p.createVolume({ project: 'contract', region: f.otherRegion, name: 'copy', sizeGiB: 1, fromSnapshot: snap.snapshot.id });
+  assert.equal(clone.state, 'created'); if (clone.state !== 'created') return;
+  assert.equal(clone.volume.region, f.region);
+  assert.equal((await p.attachVolume(clone.volume, a.machine)).state, 'attached');
+  const copy = await p.volumeContents(clone.volume, a.machine);
+  assert.equal(copy.state, 'ready'); if (copy.state !== 'ready') return;
+  assert.equal(await readFile(join(copy.directory, 'login'), 'utf8'), 'retained');
+  const ignored = new FakeHostProvider({ env: f.env, ignoreSnapshotDelete: true });
+  assert.equal((await ignored.deleteSnapshot(snap.snapshot.id)).state, 'incomplete');
+  assert.deepEqual(await p.deleteSnapshot(snap.snapshot.id), { state: 'deleted' });
+  assert.equal((await p.getSnapshot(snap.snapshot.id)).state, 'failed');
+  assert.deepEqual(await p.deleteSnapshot(snap.snapshot.id), { state: 'deleted' });
+});
+
+
+test('snapshot ID deletion retries history publication after provider recreation', async t => {
+  const f = await factory(t, 'normal'), p = f.provider;
+  const v = await p.createVolume({ project: 'contract', region: f.region, name: 'login', sizeGiB: 1 });
+  assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+  const snap = await p.snapshotVolume(v.volume);
+  assert.equal(snap.state, 'snapshotted'); if (snap.state !== 'snapshotted') return;
+  const faulted = new FakeHostProvider({ env: f.env, failSnapshotHistoryWrite: true });
+  assert.equal((await faulted.deleteSnapshot(snap.snapshot.id)).state, 'incomplete');
+  assert.deepEqual(await p.listSnapshots(v.volume), { state: 'listed', snapshots: [snap.snapshot] });
+  const recovered = new FakeHostProvider({ env: f.env });
+  assert.deepEqual(await recovered.deleteSnapshot(snap.snapshot.id), { state: 'deleted' });
+  assert.deepEqual(await recovered.listSnapshots(v.volume), { state: 'listed', snapshots: [] });
+  assert.equal((await recovered.getSnapshot(snap.snapshot.id)).state, 'failed');
 });

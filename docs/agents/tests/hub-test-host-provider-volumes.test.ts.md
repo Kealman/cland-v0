@@ -37,3 +37,42 @@ snapshot time or volume identity, and corrupts its date. Every candidate must
 fail inventory, attach, detach and snapshot, report incomplete deletion, and
 retain the exact faulted bytes. This proves unknown ownership/pacing never
 becomes permission to mutate; normal recreation remains the positive control.
+
+
+T-1772 adds the opt-in fourth registrar argument for snapshot operations; the
+fake enables it, while the unchanged DigitalOcean registrar retains the earlier
+volume contract. New generated case `fake: snapshot history, cloning and confirmed
+deletion` proves oldest-first history, region inheritance, confirmed removal and
+failure to clone a deleted snapshot.
+
+Additional standalone names for stage QA:
+
+- `fake login contents survive snapshots, cloning and machine release`: empty
+  contents, attached-machine access, wrong-machine/detached refusal, immutable
+  snapshot copy, reattachment after release and contents removal on deletion.
+- `fake snapshot deletion confirms absence and retained history fails closed`:
+  ignored snapshot deletion is incomplete; old single-receipt records read;
+  malformed histories block list/delete/clone and retain exact bytes.
+- `digitalocean new snapshot operations refuse without API calls`: all three
+  additive operations fail unsupported using the fake API and FakeClock; the
+  request count stays unchanged.
+
+All cases use sealed disposable roots and no native lifecycle processes. Run
+individual names with `--test-name-pattern` before the file path. No browser,
+cloud account, native preservation slot or duration allowance is required.
+
+
+The decided surviving-snapshot contract adds `surviving snapshot IDs support
+lookup clone and delete after volume deletion`: live-volume listing becomes
+`volume-gone` after deletion while the retained ID supports lookup and cloning
+with exact saved contents, region inheritance, incomplete ignored deletion,
+confirmed deletion and idempotent delete. The generic opt-in contract also
+proves ID-based survival. DigitalOcean's additive unsupported case includes
+`getSnapshot` and ID-based deletion, with no API requests.
+
+
+`snapshot ID deletion retries history publication after provider recreation`
+injects a failed live-volume history write after snapshot contents removal. The
+first deletion reports incomplete and retains history. A fresh provider retries
+with only the ID, publishes the empty history and confirms snapshot absence.
+The fake's `failSnapshotHistoryWrite` fault affects only that publication.

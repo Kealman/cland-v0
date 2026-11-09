@@ -3,7 +3,7 @@ import { keyHash } from '../../executor/droplet/prepare.ts';
 import { durableJson } from '../../executor/droplet/lease.ts';
 import type { PoolImageKey } from './pool-image.ts';
 import { declareHostProvider, type HostProviderDeclarationInput, type HostProviderDeclarations } from './declarations.ts';
-import { readFile, writeFile, opendir, stat, unlink, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, opendir, stat, unlink, mkdir, cp, rm } from 'node:fs/promises';
 import { join, dirname, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostDirectory } from '../../../../shared/fake-host-directory.ts';
@@ -19,6 +19,9 @@ export type FakeHostProviderOptions = {
   /** Simulates an acknowledged delete which did not delete the machine. */
   ignoreDelete?: boolean;
   ignoreVolumeDelete?: boolean;
+  ignoreSnapshotDelete?: boolean;
+  /** Simulates failure publishing snapshot removal to the live volume history. */
+  failSnapshotHistoryWrite?: boolean;
   snapshotWindowMs?: number;
   buildTimeMs?: number;
   wait?: (ms: number) => Promise<void>;
@@ -64,13 +67,87 @@ export class FakeHostProvider implements HostProvider {
     return record;
   }
   async #writeVolume(record: VolumeRecord): Promise<void> {
-    await writeFile(this.#volumePath(record.volume.id), JSON.stringify(record), { mode: 0o600 });
+    await durableJson(this.#volumePath(record.volume.id), record);
   }
+  #contents(id: string): string { this.#volumePath(id); return join(this.#root, 'volumes', id + '.contents'); }
+  #snapshotContents(id: string): string {
+    if (!/^snapshot-[a-f0-9-]+$/.test(id)) throw new Error('invalid snapshot identity');
+    return join(this.#root, 'snapshots', id, 'contents');
+  }
+  async #snapshot(snapshot: import('./provider.ts').VolumeSnapshot | string): Promise<VolumeRecord> {
+    const id = typeof snapshot === 'string' ? snapshot : snapshot.id;
+    this.#snapshotContents(id);
+    const bytes = await readFile(join(this.#root, 'snapshots', id, 'record.json'), 'utf8');
+    const record = parseFakeVolumeRecord(bytes, typeof snapshot === 'string' ? JSON.parse(bytes)?.volume?.id : snapshot.volumeId);
+    if (record.snapshot?.id !== id || (typeof snapshot !== 'string' && record.snapshot.created !== snapshot.created)) throw new Error('snapshot identity mismatch');
+    try { await this.#volume(record.volume); } catch (e) { if (!missing(e)) throw e; }
+    return record;
+  }
+  /** Test-only login-disk seam. Caller drains file users before detach/release. */
+  volumeContents(volume: Volume, machine: Machine): Promise<{state:'ready'; directory:string} | import('./provider.ts').Failed> { return this.#serial(async () => {
+    try {
+      const record = await this.#volume(volume);
+      await this.#record(machine);
+      if (record.volume.attachedTo !== machine.id || (await this.#status(machine)).state !== 'ready') throw new Error('volume unavailable');
+      await mkdir(this.#contents(volume.id), { recursive: true, mode: 0o700 });
+      return { state: 'ready', directory: this.#contents(volume.id) };
+    } catch { return { state: 'failed', reason: 'fake volume contents unavailable' }; }
+  }); }
+  getSnapshot(id: string): Promise<import('./provider.ts').GetSnapshotResult> { return this.#serial(async () => {
+    try { return { state: 'found', snapshot: (await this.#snapshot(id)).snapshot! }; }
+    catch { return { state: 'failed', reason: 'fake snapshot lookup failed' }; }
+  }); }
+  listSnapshots(volume: Volume): Promise<import('./provider.ts').ListSnapshotsResult> { return this.#serial(async () => {
+    try {
+      const record = await this.#volume(volume);
+      return { state: 'listed', snapshots: record.snapshots ?? (record.snapshot ? [record.snapshot] : []) };
+    } catch (e) { return missing(e) ? { state: 'volume-gone' } : { state: 'failed', reason: 'fake snapshot list failed' }; }
+  }); }
+  deleteSnapshot(input: import('./provider.ts').VolumeSnapshot | string): Promise<import('./provider.ts').DeleteSnapshotResult> { return this.#serial(async () => {
+    try {
+      const id = typeof input === 'string' ? input : input.id;
+      const contents = this.#snapshotContents(id), path = dirname(contents);
+      let snapshot = typeof input === 'string' ? undefined : input;
+      try { snapshot = (await this.#snapshot(input)).snapshot!; } catch (e) {
+        if (!missing(e)) throw e;
+        try { await stat(path); throw new Error('snapshot metadata missing'); } catch (error) { if (!missing(error)) throw error; }
+      }
+      // Validate retained history before deleting any bytes.
+      let volume: VolumeRecord | undefined;
+      if (snapshot) try {
+        volume = parseFakeVolumeRecord(await readFile(this.#volumePath(snapshot.volumeId), 'utf8'), snapshot.volumeId);
+        const receipt = (volume.snapshots ?? (volume.snapshot ? [volume.snapshot] : [])).find(s => s.id === snapshot.id);
+        if (receipt && receipt.created !== snapshot.created) throw new Error('snapshot identity mismatch');
+      } catch (e) { if (!missing(e)) throw e; }
+      if (this.#options.ignoreSnapshotDelete) {
+        try { await stat(path); return { state: 'incomplete', reason: 'fake snapshot still exists after delete' }; }
+        catch (e) { if (!missing(e)) throw e; }
+      }
+      // Keep the snapshot's own recovery identity until history publication is
+      // durable, so an ID-only retry can finish after provider recreation.
+      await rm(contents, { recursive: true, force: true });
+      try { await stat(contents); return { state: 'incomplete', reason: 'fake snapshot contents still exist after delete' }; }
+      catch (e) { if (!missing(e)) throw e; }
+      if (volume) {
+        volume.snapshots = (volume.snapshots ?? (volume.snapshot ? [volume.snapshot] : [])).filter(s => s.id !== id);
+        if (this.#options.failSnapshotHistoryWrite) throw new Error('fake snapshot history write failed');
+        await this.#writeVolume(volume);
+      }
+      await rm(path, { recursive: true, force: true });
+      try { await stat(path); return { state: 'incomplete', reason: 'fake snapshot still exists after delete' }; }
+      catch (e) { if (!missing(e)) throw e; }
+      return { state: 'deleted' };
+    } catch { return { state: 'incomplete', reason: 'fake snapshot deletion unconfirmed' }; }
+  }); }
   createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult> { return this.#serial(async () => {
     if (!options.project || !options.name || !options.region || !Number.isSafeInteger(options.sizeGiB) || options.sizeGiB <= 0) return { state: 'failed', reason: 'invalid volume options' };
     try {
-      const volume: Volume = { ...options, id: 'volume-' + randomUUID(), created: new Date(this.#now()).toISOString(), attachedTo: null };
+      const source = options.fromSnapshot === undefined ? undefined : await this.#snapshot(options.fromSnapshot);
+      if (source && (source.volume.project !== options.project || options.sizeGiB < source.volume.sizeGiB)) throw new Error('snapshot ownership or size mismatch');
+      const volume: Volume = { project: options.project, name: options.name, region: source?.volume.region ?? options.region, sizeGiB: options.sizeGiB, id: 'volume-' + randomUUID(), created: new Date(this.#now()).toISOString(), attachedTo: null };
       await mkdir(join(this.#root, 'volumes'), { recursive: true, mode: 0o700 });
+      if (source) await cp(this.#snapshotContents(source.snapshot!.id), this.#contents(volume.id), { recursive: true, errorOnExist: true, force: false });
+      else await mkdir(this.#contents(volume.id), { mode: 0o700 });
       await this.#writeVolume({ volume });
       return { state: 'created', volume };
     } catch { return { state: 'failed', reason: 'fake volume create failed' }; }
@@ -82,6 +159,7 @@ export class FakeHostProvider implements HostProvider {
       catch (e) { if (missing(e)) return { state: 'listed', volumes: [] }; throw e; }
       const volumes: Volume[] = [];
       for await (const entry of directory) {
+        if (entry.isDirectory()) continue;
         const record = parseFakeVolumeRecord(await readFile(join(this.#root, 'volumes', entry.name), 'utf8'), entry.name.replace(/\.json$/, ''));
         if (record.volume.project === options.project) volumes.push(record.volume);
       }
@@ -94,6 +172,12 @@ export class FakeHostProvider implements HostProvider {
       const retry = record.lastSnapshotAt === undefined ? undefined : record.lastSnapshotAt + (this.#options.snapshotWindowMs ?? 60_000);
       if (retry !== undefined && now < retry) return { state: 'refused', reason: 'rate limited', retryAt: new Date(retry).toISOString() };
       const snapshot = { id: 'snapshot-' + randomUUID(), volumeId: record.volume.id, created: new Date(now).toISOString() };
+      // Copy before publishing the receipt; retained legacy volumes start empty.
+      await mkdir(this.#contents(volume.id), { recursive: true, mode: 0o700 });
+      await mkdir(join(this.#root, 'snapshots', snapshot.id), { recursive: true, mode: 0o700 });
+      await cp(this.#contents(volume.id), this.#snapshotContents(snapshot.id), { recursive: true });
+      await durableJson(join(this.#root, 'snapshots', snapshot.id, 'record.json'), { volume: record.volume, lastSnapshotAt: now, snapshot });
+      record.snapshots = [...(record.snapshots ?? (record.snapshot ? [record.snapshot] : [])), snapshot];
       record.lastSnapshotAt = now;
       record.snapshot = snapshot;
       await this.#writeVolume(record);
@@ -130,10 +214,11 @@ export class FakeHostProvider implements HostProvider {
       catch (e) { if (!missing(e)) throw e; }
       if (record?.volume.attachedTo) return { state: 'refused', reason: 'attached' };
       if (!this.#options.ignoreVolumeDelete) {
+        await rm(this.#contents(volume.id), { recursive: true, force: true });
         try { await unlink(path); } catch (e) { if (!missing(e)) throw e; }
       }
       try { await readFile(path); }
-      catch (e) { if (missing(e)) return { state: 'deleted' }; throw e; }
+      catch (e) { if (missing(e)) { try { await stat(this.#contents(volume.id)); } catch (error) { if (missing(error)) return { state: 'deleted' }; throw error; } } throw e; }
       return { state: 'incomplete', reason: 'fake volume still exists after delete' };
     } catch { return { state: 'incomplete', reason: 'fake volume deletion unconfirmed' }; }
   }); }
@@ -236,6 +321,13 @@ export class FakeHostProvider implements HostProvider {
       for (const key of ['host-key.pub','client-key','known_hosts']) {
         try { await stat(join(directory,key)); return {state:'incomplete',reason:'fake key still exists after delete'}; }
         catch(e){if(!missing(e))throw e;}
+      }
+      let volumes;
+      try { volumes = await opendir(join(this.#root, 'volumes')); } catch (e) { if (!missing(e)) throw e; }
+      if (volumes) for await (const entry of volumes) {
+        if (entry.isDirectory()) continue;
+        const record = parseFakeVolumeRecord(await readFile(join(this.#root, 'volumes', entry.name), 'utf8'), entry.name.replace(/\.json$/, ''));
+        if (record.volume.attachedTo === machine.id) { record.volume.attachedTo = null; await this.#writeVolume(record); }
       }
       confirm?.({resource:'key',read:`stat ${directory}/{host-key.pub,client-key,known_hosts}: ENOENT`});
       return {state:'released'};

@@ -357,7 +357,17 @@ export class DigitalOceanHostProvider implements HostProvider {
   // Volume creates share the machine creation pause: account-wide 429s must
   // not cascade through a second resource type. Snapshot window refusals keep
   // their native retry time; the API also applies its shared token budget.
+  async getSnapshot(_id: string): Promise<import('./provider.ts').GetSnapshotResult> {
+    return { state: 'failed', reason: 'getSnapshot unsupported' };
+  }
+  async listSnapshots(_volume: Volume): Promise<import('./provider.ts').ListSnapshotsResult> {
+    return { state: 'failed', reason: 'listSnapshots unsupported' };
+  }
+  async deleteSnapshot(_snapshot: import('./provider.ts').VolumeSnapshot | string): Promise<import('./provider.ts').DeleteSnapshotResult> {
+    return { state: 'failed', reason: 'deleteSnapshot unsupported' };
+  }
   createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult> { return this.#serial(async () => {
+    if (options.fromSnapshot !== undefined) return { state: 'failed', reason: 'createVolume fromSnapshot unsupported' };
     try {
       const pools = new Set((await this.#records()).filter(r => r.project === options.project).map(r => r.pool));
       const pool = this.#options.pool ?? (pools.size === 1 ? [...pools][0] : undefined);

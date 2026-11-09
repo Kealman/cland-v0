@@ -33,6 +33,9 @@ export interface HostProvider {
    * positive read of native absence, including every associated key. */
   release(machine: Machine, confirm?:ReleaseObserver): Promise<ReleaseResult>;
   reap(options: ReapOptions): Promise<ReapResult>;
+  getSnapshot(id: string): Promise<GetSnapshotResult>;
+  listSnapshots(volume: Volume): Promise<ListSnapshotsResult>;
+  deleteSnapshot(snapshot: VolumeSnapshot | string): Promise<DeleteSnapshotResult>;
   snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult>;
   attachVolume(volume: Volume, machine: Machine): Promise<AttachVolumeResult>;
   detachVolume(volume: Volume, machine: Machine): Promise<DetachVolumeResult>;
@@ -43,7 +46,7 @@ export interface HostProvider {
 }
 
 export type Volume = { id: string; project: string; name: string; region: string; sizeGiB: number; created: string; attachedTo: string | null };
-export type CreateVolumeOptions = { project: string; name: string; region: string; sizeGiB: number };
+export type CreateVolumeOptions = { project: string; name: string; region: string; sizeGiB: number; fromSnapshot?: VolumeSnapshot | string };
 export type CreateVolumeResult = { state: 'created'; volume: Volume } | { state: 'refused'; reason: string; retryAt?: string } | Failed;
 export type DeleteVolumeResult = { state: 'deleted' } | { state: 'incomplete'; reason: string } | { state: 'refused'; reason: 'attached' };
 export type ListVolumesResult = { state: 'listed'; volumes: Volume[] } | Failed;
@@ -54,3 +57,7 @@ export type DetachVolumeResult = { state: 'detached' } | VolumeRefusal | Failed;
 
 export type VolumeSnapshot = { id: string; volumeId: string; created: string };
 export type SnapshotVolumeResult = { state: 'snapshotted'; snapshot: VolumeSnapshot } | { state: 'refused'; reason: 'rate limited'; retryAt: string } | Failed;
+
+export type ListSnapshotsResult = { state: 'listed'; snapshots: VolumeSnapshot[] } | { state: 'volume-gone' } | Failed;
+export type GetSnapshotResult = { state: 'found'; snapshot: VolumeSnapshot } | Failed;
+export type DeleteSnapshotResult = { state: 'deleted' } | { state: 'incomplete'; reason: string } | Failed;

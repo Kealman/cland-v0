@@ -102,7 +102,31 @@ function declaredArchitecture(provider: HostProvider): HostArchitecture {
 export function hostProviderVolumeContract(name: string, factory: (t: TestContext, scenario: 'normal' | 'ignored-volume-delete') => Promise<{
   provider: HostProvider; region: string; otherRegion: string; snapshotRetryAt: string;
   advanceSnapshotWindow: () => Promise<void>; ready: () => Promise<void>;
-}>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown) {
+}>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown, snapshotOperations = false) {
+  if (snapshotOperations) register(`${name}: snapshot history, cloning and confirmed deletion`, async t => {
+    const { provider, region, otherRegion, advanceSnapshotWindow } = await factory(t, 'normal');
+    const v = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });
+    assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+    const first = await provider.snapshotVolume(v.volume);
+    assert.equal(first.state, 'snapshotted'); if (first.state !== 'snapshotted') return;
+    await advanceSnapshotWindow();
+    const second = await provider.snapshotVolume(v.volume);
+    assert.equal(second.state, 'snapshotted'); if (second.state !== 'snapshotted') return;
+    assert.deepEqual(await provider.listSnapshots(v.volume), { state: 'listed', snapshots: [first.snapshot, second.snapshot] });
+    const clone = await provider.createVolume({ project: 'contract', region: otherRegion, name: 'copy', sizeGiB: 1, fromSnapshot: first.snapshot });
+    assert.equal(clone.state, 'created'); if (clone.state !== 'created') return;
+    assert.equal(clone.volume.region, region);
+    assert.deepEqual(await provider.deleteSnapshot(first.snapshot), { state: 'deleted' });
+    assert.deepEqual(await provider.listSnapshots(v.volume), { state: 'listed', snapshots: [second.snapshot] });
+    assert.equal((await provider.createVolume({ project: 'contract', region, name: 'gone', sizeGiB: 1, fromSnapshot: first.snapshot })).state, 'failed');
+    assert.deepEqual(await provider.deleteVolume(v.volume), { state: 'deleted' });
+    assert.deepEqual(await provider.listSnapshots(v.volume), { state: 'volume-gone' });
+    assert.deepEqual(await provider.getSnapshot(second.snapshot.id), { state: 'found', snapshot: second.snapshot });
+    const survivor = await provider.createVolume({ project: 'contract', region: otherRegion, name: 'survivor', sizeGiB: 1, fromSnapshot: second.snapshot.id });
+    assert.equal(survivor.state, 'created');
+    assert.deepEqual(await provider.deleteSnapshot(second.snapshot.id), { state: 'deleted' });
+    assert.equal((await provider.getSnapshot(second.snapshot.id)).state, 'failed');
+  });
   register(`${name}: volumes create, list and confirm deletion`, async t => {
     const { provider, region } = await factory(t, 'normal');
     const created = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });

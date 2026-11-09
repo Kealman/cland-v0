@@ -1,6 +1,6 @@
 import type { Volume, VolumeSnapshot } from './provider.ts';
 
-export type FakeVolumeRecord = { volume: Volume; lastSnapshotAt?: number; snapshot?: VolumeSnapshot };
+export type FakeVolumeRecord = { volume: Volume; lastSnapshotAt?: number; snapshot?: VolumeSnapshot; snapshots?: VolumeSnapshot[] };
 export function isFakeVolumeId(value: unknown): value is string {
   return typeof value === 'string' && /^volume-[a-f0-9-]+$/.test(value);
 }
@@ -25,6 +25,17 @@ export function parseFakeVolumeRecord(bytes: string, expectedId: string): FakeVo
     const s = record.snapshot, at = record.lastSnapshotAt;
     if (typeof at !== 'number' || !Number.isSafeInteger(at) || at < 0 || !object(s) || !text(s.id)
         || s.volumeId !== v.id || !time(s.created) || Date.parse(s.created) !== at) throw new Error('invalid fake snapshot receipt');
+  }
+  if (Object.hasOwn(record, 'snapshots')) {
+    if (!Array.isArray(record.snapshots)) throw new Error('invalid fake snapshot history');
+    const ids = new Set<string>();
+    let previous = -1;
+    for (const s of record.snapshots) {
+      if (!object(s) || !text(s.id) || !/^snapshot-[a-f0-9-]+$/.test(s.id) || s.volumeId !== v.id || !time(s.created)
+          || Date.parse(s.created) < previous || !hasTime || Date.parse(s.created) > Number(record.lastSnapshotAt)
+          || ids.has(s.id)) throw new Error('invalid fake snapshot history');
+      ids.add(s.id); previous = Date.parse(s.created);
+    }
   }
   return record as FakeVolumeRecord;
 }

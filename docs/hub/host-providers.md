@@ -472,3 +472,33 @@ idle host cannot displace an older minimum host. Idle hosts beyond this minimum
 stop renewing and follow the existing expiry and confirmed-destruction flow.
 The predicate reads current pool settings, so configuration changes apply to
 existing renewal owners too.
+
+
+### Fake login-volume contents and snapshot history
+
+`CreateVolumeOptions.fromSnapshot` accepts a snapshot ID or a `VolumeSnapshot` receipt. The fake
+copies its saved contents into a new detached volume in the snapshot's region;
+project ownership must match and the requested size must hold the source.
+Without a snapshot, contents start empty. `listSnapshots(volume)` returns all
+retained receipts oldest first. `deleteSnapshot(snapshot)` confirms absence by
+reading after deletion and otherwise reports incomplete. Deleting a snapshot
+keeps the volume's snapshot pacing window. Listing is per live volume: after
+volume deletion it returns `{state: 'volume-gone'}`. Snapshots survive volume
+deletion and are addressed by ID, with no deleted-volume index. `getSnapshot(id)`
+returns `{state: 'found', snapshot}` or failed; clone and delete also accept IDs.
+Consumers retain snapshot IDs in their login records. Snapshot deletion keeps
+its own metadata until live-volume history publication succeeds; an ID-only retry
+after provider recreation can finish an incomplete deletion.
+
+The fake's test-only `volumeContents(volume, machine)` returns
+`{state: 'ready', directory}` only for the attached, ready machine with matching
+identity; other access returns failed. Callers drain file users before detach,
+release or deletion. Machine release detaches volumes and preserves contents;
+volume deletion removes contents. Fake volume records accept the legacy single
+snapshot receipt and the additive history list; invalid retained records fail
+closed. Old receipts without saved contents can be listed and deleted, but
+cannot supply a clone.
+
+DigitalOcean currently refuses `fromSnapshot`, `listSnapshots` and
+`deleteSnapshot` and `getSnapshot` as failed/unsupported without API calls. Existing DigitalOcean
+volume operations retain their behaviour.
