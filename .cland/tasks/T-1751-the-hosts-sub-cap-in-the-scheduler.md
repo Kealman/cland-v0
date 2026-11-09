@@ -2,8 +2,8 @@
 id: T-1751
 kind: task
 title: The hosts sub-cap in the scheduler
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1450
 branch: t/T-1751-the-hosts-sub-cap-in-the-scheduler
 created: 2026-11-07T16:01:59.458Z
-updated: 2026-11-09T07:37:44.384Z
+updated: 2026-11-09T09:13:37.138Z
+closed: 2026-11-09T09:13:37.138Z
 ---
 
 ## Summary
@@ -29,12 +30,15 @@ The scheduler maps T-1747's reservation refusal to "waiting for a host". It also
 
 ## Acceptance criteria
 
-- [ ] C1. With a tiny sub-cap, a second host is refused at 100 %, the launch keeps waiting, and the first host keeps running with its sessions and its renewals (test).
-  - failed: rev-35 [reviewer] · 2026-11-09T07:37:44.384Z · note New durable waiting-through-retry case fails in exact-head Linux configured run; its file and five load repetitions do not finish before stall.
-- [ ] C2. Crossing 80 % of the sub-cap posts exactly one General line that day, also across a hub restart (test).
-  - failed: rev-35 [reviewer] · 2026-11-09T07:02:53.802Z · note A retired subscriber's repeated unsubscribe can erase its replacement and silence future committed-spend warnings.
+- [x] C1. With a tiny sub-cap, a second host is refused at 100 %, the launch keeps waiting, and the first host keeps running with its sessions and its renewals (test).
+  - done: impl-1751 · 2026-11-09T08:09:11.650Z
+  - verified: rev-35 [reviewer] · run rev-35-1751-final-1 · 2026-11-09T08:35:40.300Z · commit 467af71d465083bffb28a351c57905c6870bcc47
+- [x] C2. Crossing 80 % of the sub-cap posts exactly one General line that day, also across a hub restart (test).
+  - verified: rev-35 [reviewer] · run rev-35-1751-final-1 · 2026-11-09T08:35:40.300Z · commit 467af71d465083bffb28a351c57905c6870bcc47
+  - done: impl-1751 · 2026-11-09T08:35:50.969Z
 - [x] C3. A refused create makes no provider call and adds no ledger entry (test).
   - done: impl-1751 · 2026-11-09T06:46:43.951Z
+  - verified: rev-35 [reviewer] · run rev-35-1751-final-1 · 2026-11-09T08:35:40.300Z · commit 467af71d465083bffb28a351c57905c6870bcc47
 
 ## Blocked by
 
@@ -108,3 +112,35 @@ finding_counts: {"high":0,"medium":1,"low":0}
 NOT CLEAR, A-18004. Configured36772956/A-18003 exits124: interrupted5121completed5120pass1fail; waiting-through-retry base failure135.149s, all5 pool cases finish4pass1fail but no file completion; five load starts for failed identity have no finish. Exact assertion/drainage cause unknown and author confirms only named failure/stall available; no accepted shared-defect exemption. T0/T1 pass, T2 incomplete, Web unexecuted/browser provenance null. Other4 pool cases base+5pass retained; C2/C3 finally runtime-unverified. Native A-18000 audited8files112pass/code0/signalnull remains supplemental, not replacement. Author conducting Coordinator-directed parent-bounded5 focused repetitions with original output/cleanup receipts; no unchanged-source full verify repeat. Fix/authorized merge needs fresh source review before retry. FullLinuxT3 batch/after-stageQA separate; no Reviewer execution.
 
 Criteria: C1 failed (New durable waiting-through-retry case fails in exact-head Linux configured run; its file and five load repetitions do not finish before stall.).
+
+### rev-35 · 2026-11-09T08:11:32.367Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1751-delta-1
+commit: 467af71d465083bffb28a351c57905c6870bcc47
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged source CLEAR, Standards0/Spec0; A-18009. Approved startup-sweep post-release observer+lock-absence barrier preserves waiting/retry assertions and resolves diagnosed fixture ordering on source. Both merge conflicts reviewed: T-1756 invalidateHostAdmission remains BEFORE hostSpendMutation in settle/cancel; spend export, warning hooks, renewal selection and both README pointers retained. All31 non-conflict dev-added paths match dev parent. A-18005 bounded red5/5 incomplete versus green case5+ordinarycase5+full5/25 natural0/null independently reconciled; containerarm64 distinct cloudx64. A-18008 merged144targeted/static/typecheck originals qualified. AllC1–C3 runtime-unverified; oldA-18003 remains failed/incomplete. Proceed Coordinator-directed fresh native4 then mode-free same-head verify. Full LinuxT3 batch/after-stageQA separate. Clean head; no Reviewer execution.
+
+### rev-35 · 2026-11-09T08:35:40.300Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1751-final-1
+commit: 467af71d465083bffb28a351c57905c6870bcc47
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final CLEAR,C1–C3 verified; A-18013. Independent exact-head/export-tree5bb04db697fade1a439ffe93691090288c05701f and clean tip audit; configurede8d22981/A-18011 5717/5717,zero fail/cancel/skip. All5 new cases base+5distinct load passes each; repaired retry0.392394679s with positive base file completion and all load finishes. Reconciled selected453 lower/Web plus8 conservative unknown lower-tier paths:461files all passing substantive cases AND file completions. Exact-head local native4/28 A-18010 summaries/close0signalnull audited. Prior red/incomplete36772956 stays historical; bounded diagnosis and source/provenance/report-only limits preserved. Standards/Spec0 outstanding. FullLinuxT3 batch still required before landing,broadT4/full after-stageQA separate. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-09T09:13:37.138Z
+
+Merged 0a4e5372057b00624ef2b26548c5e41e8b9ea761 onto dev.
