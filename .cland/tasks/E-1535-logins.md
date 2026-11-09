@@ -13,10 +13,10 @@ blocked_by:
   - E-1534
 follows:
   - E-1534
-topic: null
+topic: topic-1451
 branch: null
 created: 2026-10-31T18:22:03.944Z
-updated: 2026-10-31T18:22:55.790Z
+updated: 2026-11-09T12:44:27.338Z
 ---
 
 ## Goal
@@ -29,7 +29,7 @@ Harness sign-ins on hosts become logins: a resource the scheduler hands to hosts
 - **Disk logins** (§3.7). A 1 GiB volume per login, created empty at `login add`, mounted at `/cland/auth/<harness>-<login>` and passed as `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or `OPENCODE_DB`; kept for good, detached at host stop and re-attached at the next bind; snapshots after a sign-in and at most daily in use, the last two kept, never blocking a host stop (snapshot the detached volume later; respect one snapshot per volume per 10 minutes). Demo: a fake harness's rotating login written on host A is read at its newer generation on host B after A stops, from the same volume.
 - **`exclusive`** (§3.7). True by default for Claude Code and Codex, enforced by the scheduler and, on DigitalOcean, by the volume's single attachment; false lets readers mount volumes from the latest snapshot, the writer being the holder of the login's own volume, readers never writing back and their volumes deleted at stop. Demo: a second host refuses an exclusive login in use; with `exclusive = false` two hosts run, and only the writer's turns survive.
 - **Regions** (§3.7). A login belongs to its volume's region, and a pool in another region cannot bind it. Demo: a pool in a second fake region waits for a login of its own.
-- **Key logins** (§3.7). `cland login add <harness> --kind key` reads the key from stdin or a hidden prompt as `cland secret set` does, and stores it AES-256-GCM in `.cland/auth/<login>.key` with the store key from the `[auth]` section of `.cland/secrets.toml`, which the strict secrets reader and `cland secret` learn. The key goes only into the spawn environment of the harness over `agent.sock`. Demo: a key login runs on two fake hosts at once, and a search of argv, host files, process rows, `hub.db`, the log and the journal finds no key; `.cland/auth` holds ciphertext only.
+- **Key logins** (§3.7). OpenCode only in 0.4.0; `--kind key` for Claude Code and Codex is refused naming 0.4.x. `cland login add <harness> --kind key` reads the key from stdin or a hidden prompt as `cland secret set` does, and stores it AES-256-GCM in `.cland/auth/<login>.key` with the store key from the `[auth]` section of `.cland/secrets.toml`, which the strict secrets reader and `cland secret` learn. The key goes only into the spawn environment of the harness over `agent.sock`. Demo: a key login runs on two fake hosts at once, and a search of argv, host files, process rows, `hub.db`, the log and the journal finds no key; `.cland/auth` holds ciphertext only.
 - **The login-disk helper** (§3.7). `cland-auth` on the host, through sudo with strict arguments (mount, unmount, freeze, thaw; volume names and `/cland/auth/<x>` paths only); the host agent stays unprivileged; any other mount of the device is unmounted. Demo: the helper refuses a path outside `/cland/auth/`.
 - **Binding and release** (§3.7). A host needs one bound login per harness of the roles placed on it, a role's `account` narrowing the choice (assumed in the spec). Volumes attach while a new host provisions; a bind on a running host adds 8 to 10 s; a host's logins are released in parallel, after every process using the disk is ended. Demo: a cold host's bind adds no wait to its boot; a release ends a background process left holding the disk.
 - **Capacity and the waiting reason** (§3.5, §3.7). Placement asks each host for a verdict per harness: serves, can bind, signed out, or no login. A pool grows only with a free login, so its effective size is min(`max_hosts`, free logins of its scarcest harness). A blocked launch waits as "waiting for a login <harness>", then "waiting for host <id> to boot" once a login frees. The human gets one "Not enough <harness> logins. Create one?" card per wait. Demo: with one login in use and `max_hosts = 2`, a launch waits with no host booted; `cland login add` releases it and a host boots.
@@ -55,7 +55,7 @@ Not in this epic: the web's hosts view and its login actions, doctor's login row
 
 QA runs the demo below on `dev` through the `cland` CLI and the hub's frame protocol, with the fake host provider (volumes attaching to one host at a time and a snapshot rate limit), the fake transport, the fake harness and a test messenger in the suite, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. No real provider, volume or subscription login is involved.
 
-In a scratch project with an `agents` pool on the fake provider, QA adds a fake-harness disk login and reads it `ready`, launches a session, rotates the login over two turns, stops the host and launches again on a new host, and reads the newer generation. With `max_hosts = 2` and one login in use it launches a second session and reads "waiting for a login fake", the card once, and no host booted; it adds a login from the test messenger's card and reads the host boot and the reason change. It sets `exclusive = false` and reads two hosts running with only the writer's turns kept. It adds an OpenCode key login through stdin, runs it on two hosts, and searches argv, host files, process rows, `hub.db`, the log and the journal for the key. It makes the fake harness report a dead login and reads the mark, the skipped host, the running session and the card; runs `cland login signin` and reads the same volume id; makes the account sign out again and reads the hint. It stops the hub, lets the watchdog delete a host holding a login, restarts and reads the login free. It tries `login remove` on a login in use and reads the refusal, then reads the ADR and v0.1.2 §3.13 amendment.
+In a scratch project with an `agents` pool on the fake provider, QA adds a Codex disk login on the fake harness binaries and reads it `ready`, launches a session, rotates the login over two turns, stops the host and launches again on a new host, and reads the newer generation. With `max_hosts = 2` and one login in use it launches a second session and reads "waiting for a login codex", the card once, and no host booted; it adds a login from the test messenger's card and reads the host boot and the reason change. It runs `cland login set <name> --exclusive false` and reads two hosts running with only the writer's turns kept. It adds an OpenCode key login through stdin, runs it on two hosts, and searches argv, host files, process rows, `hub.db`, the log and the journal for the key. It makes the fake Codex binary report a dead login and reads the mark, the skipped host, the running session and the card; runs `cland login signin` and reads the same volume id; makes the account sign out again and reads the hint. It stops the hub, lets the watchdog delete a host holding a login, restarts and reads the login free. It tries `login remove` on a login in use and reads the refusal, then reads the ADR and v0.1.2 §3.13 amendment.
 
 - [ ] C1. A login is a `hub.db` row with harness, account, kind, `exclusive`, region, volume and snapshot ids, state and last sign-in, and `cland login list` shows them with the capacity per pool and harness.
 - [ ] C2. A disk login keeps its volume, detaches at host stop and re-attaches at the next bind, and a rotated login written on one host is read at its newer generation on the next.
@@ -72,7 +72,7 @@ In a scratch project with an `agents` pool on the fake provider, QA adds a fake-
 
 - **Standing rules.** Every artifact, item, commit and doc in English. Sub-agents never use the hub. Commit on the task branch, push to `origin`, reach `dev` only through `cland merge`; only `cland release` pushes to GitHub. Suites run through `cland verify`. Items through `cland task` only.
 - **The hub's code.** TypeScript on Node 24 under the hub's tsconfig. No new runtime dependency; encryption with `node:crypto`.
-- **Tests.** Test first (`tdd`) with the fake harness whose login is a file it rotates every turn (`FAKE_LOGIN_HOME`). No test uses a real subscription login, real volume or real key.
+- **Tests.** Test first (`tdd`) with the fake Claude Code, Codex and OpenCode binaries, whose login is a file in their harness home that they rotate every turn (`FAKE_LOGIN_HOME` overrides the location). No test uses a real subscription login, real volume or real key.
 - **The terms boundary.** cland never stores, copies, reads or intermediates a Claude.ai or ChatGPT session credential: no setup-token, no `.credentials.json`, no `auth.json` in cland's store. The Mac's logins are never snapshotted or copied.
 - **Never sign anyone out.** No `codex logout`, `/logout` or `claude auth logout` from anything cland starts; a Codex sign-in always starts in an empty home.
 - **Secrets.** A key never appears in argv, a frame, a log line, an error, the journal, `hub.db` or an artifact; the redactor covers login output. The store key lives only in `.cland/secrets.toml`.
@@ -89,3 +89,53 @@ In a scratch project with an `agents` pool on the fake provider, QA adds a fake-
 - Prototype, on `prototype/agent-host` at 7f7ecb0f: `hub/src/host/README.md` ("Logins": timings, checks, frictions, decisions), `logins.ts`, `fake-harness.ts`, `fake-adapter.ts`, `host-root.sh` (the helper); the sandbox's `HOW-TO-TRY.md`, "Try logins".
 - Code: `hub/src/accounts/registry.ts`, `hub/src/remote/secrets.ts`, `hub/src/cli/secret.ts`, `hub/src/adapters/sessions.ts`, the v0.3 remote card model in `hub/src/remote/`; `docs/spec/v0.1.2.md` §3.13.
 - GLOSSARY: Login, Login disk, Key login (added for v0.4); Account (amended); Remote card.
+
+## Plan
+
+```yaml
+stages:
+  - name: fake volumes, the login-disk helper, the login model, fake harness logins and hub cards
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1772
+        - T-1776
+      - - T-1773
+      - - T-1774
+      - - T-1775
+  - name: disk logins across hosts - sign-in, bind, release, snapshots, DigitalOcean volumes and the key store
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1777
+        - T-1781
+      - - T-1778
+        - T-1779
+        - T-1780
+      - - T-1782
+      - - T-1783
+  - name: capacity, the login wait and its card, exclusive logins and keys at spawn
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1784
+        - T-1785
+        - T-1787
+      - - T-1786
+        - T-1788
+  - name: signed out, signing in again and from cards, remove, reconciliation and the amendment
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1789
+        - T-1790
+        - T-1791
+        - T-1794
+      - - T-1792
+      - - T-1793
+      - - T-1795
+```
