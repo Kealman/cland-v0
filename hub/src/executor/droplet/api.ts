@@ -63,6 +63,9 @@ export class DeletionUnconfirmed extends DigitalOceanError {
 
 export type ProviderCall = (method: string, path: string, body: unknown, deadline?: number, signal?:AbortSignal) => Promise<unknown>;
 
+/** Optional mutation ownership at the admitted send, after every pacing wait. */
+export type MutationScope = {signal?:AbortSignal;authorize?:<T>(send:()=>Promise<T>)=>Promise<T>;onSend?:()=>void;onWait?:(until:number)=>void};
+
 /** Only this call scope holds the token. Transport failures never expose fetch's request. */
 export class DigitalOceanApi {
   readonly #env: NodeJS.ProcessEnv;
@@ -70,34 +73,51 @@ export class DigitalOceanApi {
   readonly #callProvider: ProviderCall | undefined;
   readonly #signal: AbortSignal | undefined;
   constructor(env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, callProvider?: ProviderCall, signal?: AbortSignal) { this.#callProvider = callProvider; this.#clock = clock; this.#env = env; this.#signal = signal; }
-  async #admit<T>(budget: Budget, send: () => Promise<T>, deadline?: number): Promise<T> {
+  async #admit<T>(budget:Budget,send:()=>Promise<T>,deadline?:number,scope?:MutationScope,signal:AbortSignal|undefined=this.#signal):Promise<T> {
     for (;;) {
-      this.#signal?.throwIfAborted();
-      const now = this.#clock.now().getTime();
-      if (deadline !== undefined && now >= deadline) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
-      budget.sent = budget.sent.filter(time => time > now - 60000);
-      const next = Math.max(budget.retryAt, budget.sent.length >= budget.limit ? budget.sent[0]! + 60000 : now);
-      if (next <= now) { budget.sent.push(now); return send(); }
-      await new Promise<void>((resolve, reject) => {
-        const finish = () => { this.#signal?.removeEventListener('abort', abort); resolve(); };
-        const timer = this.#clock.setTimeout(finish, Math.min(2147483647, Math.min(next, deadline ?? Infinity) - now));
-        const abort = () => { this.#clock.clearTimeout(timer); this.#signal?.removeEventListener('abort', abort); reject(this.#signal?.reason); };
-        this.#signal?.addEventListener('abort', abort, { once: true });
+      signal?.throwIfAborted();
+      const now=this.#clock.now().getTime();
+      if(deadline!==undefined&&now>=deadline)throw new DigitalOceanError(0,'deadline','request deadline reached');
+      budget.sent=budget.sent.filter(time=>time>now-60000);
+      const next=Math.max(budget.retryAt,budget.sent.length>=budget.limit?budget.sent[0]!+60000:now);
+      if(next<=now) {
+        const attempt=async():Promise<{sent:false}|{sent:true;value:T}>=>{
+          signal?.throwIfAborted();
+          const current=this.#clock.now().getTime();
+          if(deadline!==undefined&&current>=deadline)throw new DigitalOceanError(0,'deadline','request deadline reached');
+          budget.sent=budget.sent.filter(time=>time>current-60000);
+          if(budget.retryAt>current||budget.sent.length>=budget.limit)return {sent:false};
+          budget.sent.push(current);scope?.onSend?.();
+          return {sent:true,value:await send()};
+        };
+        // Authority may await native identity reads. Recheck capacity inside its
+        // final callback, so concurrent sends cannot spend the same budget slot.
+        const outcome=await (scope?.authorize?scope.authorize(attempt):attempt());
+        if(outcome.sent)return outcome.value;
+        continue;
+      }
+      await new Promise<void>((resolve,reject)=>{
+        const finish=()=>{signal?.removeEventListener('abort',abort);resolve();};
+        const timer=this.#clock.setTimeout(finish,Math.min(2147483647,Math.min(next,deadline??Infinity)-now));
+        const abort=()=>{this.#clock.clearTimeout(timer);signal?.removeEventListener('abort',abort);reject(signal?.reason);};
+        signal?.addEventListener('abort',abort,{once:true});
+        scope?.onWait?.(Math.min(next,deadline??Infinity));
       });
     }
   }
-  async #call<T>(method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
+  async #call<T>(method: string, path: string, body?: unknown, deadline?: number,scope?:MutationScope): Promise<T> {
     const token = this.#env.DIGITALOCEAN_TOKEN;
     if (!token) throw new Error('DIGITALOCEAN_TOKEN is required');
     const endpoint = parseDigitalOceanEndpoint(this.#env.CLAND_DIGITALOCEAN_API);
     const base = endpoint.base;
     const budget = tokenBudget(this.#clock, token, endpoint);
-    return this.#admit(budget, () => this.#send<T>(token, budget, base, method, path, body, deadline), deadline);
+    const signal=scope?.signal?(this.#signal?AbortSignal.any([this.#signal,scope.signal]):scope.signal):this.#signal;
+    return this.#admit(budget, () => this.#send<T>(token, budget, base, method, path, body, deadline,signal), deadline,scope,signal);
   }
-  async #send<T>(token: string, budget: Budget, base: string, method: string, path: string, body?: unknown, deadline?: number): Promise<T> {
-    this.#signal?.throwIfAborted();
+  async #send<T>(token: string, budget: Budget, base: string, method: string, path: string, body?: unknown, deadline?: number,activeSignal:AbortSignal|undefined=this.#signal): Promise<T> {
+    activeSignal?.throwIfAborted();
     if (this.#callProvider) {
-      try { return await this.#callProvider(method, path, body, deadline,this.#signal) as T; }
+      try { return await this.#callProvider(method, path, body, deadline,activeSignal) as T; }
       catch (error) { if (error instanceof RateLimited && error.retryAt !== undefined) budget.retryAt = Math.max(budget.retryAt, error.retryAt); throw error; }
     }
     const url = new URL(`${base}${path}`);
@@ -109,7 +129,7 @@ export class DigitalOceanApi {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), timeout);
     timer.unref();
-    const signal = this.#signal ? AbortSignal.any([controller.signal, this.#signal]) : controller.signal;
+    const signal = activeSignal ? AbortSignal.any([controller.signal, activeSignal]) : controller.signal;
     try {
       const response = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal, redirect: 'error' });
       if (response.status === 429) {
@@ -161,10 +181,10 @@ export class DigitalOceanApi {
   regions(deadline?: number): Promise<Region[]> { return this.#list('/regions', 'regions', deadline); }
   droplets(tag: string, deadline?: number): Promise<Droplet[]> { return this.#list(`/droplets?tag_name=${encodeURIComponent(tag)}`, 'droplets', deadline); }
   keys(deadline?: number): Promise<Key[]> { return this.#list('/account/keys', 'ssh_keys', deadline); }
-  async create(input: CreateDroplet, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('POST', '/droplets', input, deadline)).droplet; }
+  async create(input: CreateDroplet, deadline?: number,scope?:MutationScope): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('POST', '/droplets', input, deadline,scope)).droplet; }
   async droplet(id: number, deadline?: number, signal?:AbortSignal): Promise<Droplet> { if(signal){const scoped=this.#signal?AbortSignal.any([signal,this.#signal]):signal;return new DigitalOceanApi(this.#env,this.#clock,this.#callProvider,scoped).droplet(id,deadline);} return (await this.#call<{ droplet: Droplet }>('GET', `/droplets/${id}`, undefined, deadline)).droplet; }
   async key(id: number, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('GET', `/account/keys/${id}`, undefined, deadline)).ssh_key; }
-  async importKey(name: string, publicKey: string, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey }, deadline)).ssh_key; }
+  async importKey(name: string, publicKey: string, deadline?: number,scope?:MutationScope): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey }, deadline,scope)).ssh_key; }
   async deleteDroplet(id: number, deadline?: number, accepted?: () => Promise<void>): Promise<void> { await this.#confirmedDelete(`/droplets/${id}`, deadline, accepted); }
   async deleteKey(id: number, deadline?: number, accepted?: () => Promise<void>): Promise<void> { await this.#confirmedDelete(`/account/keys/${id}`, deadline, accepted); }
   async dropletAction(id: number, type: 'power_off' | 'snapshot', name?: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/droplets/${id}/actions`, { type, ...(name ? { name } : {}) }, deadline)).action; }

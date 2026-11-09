@@ -73,10 +73,76 @@ headroom. These are setup/watchdog caps, not the exact 2s/10s product boundaries
 The shared `create admission is allowed without side effects` case compares the
 factory's observable file/API effects before and after `createAdmission()`. The
 fake factory snapshots its directory; DigitalOcean also counts scripted API
-requests. Production DigitalOcean refusal parity with acquire is covered in
-host-provider-digitalocean-prepare and the public create CLI admission test.
+requests. Missing production admission receipts are covered here and in
+host-provider-digitalocean-prepare; the public CLI checks the prepared-image prerequisite.
 T-1734: `digitalocean refuses invalid pool <name> before acquire or reap API calls`
 proves refusal before fake API traffic. `digitalocean reaps valid pool tags and
 keys exactly: <pool>` covers the 64-character boundary and embedded `-host-`,
 preserving malformed sibling tags/keys and malformed UUID suffixes. These use
 the scripted fake API only; no real DigitalOcean service or browser is used.
+
+T-1756 exact cases:
+
+- `DigitalOcean requires lease, watchdog and hosts reservation even with an injected API` and `DigitalOcean missing <field> refuses before any API call` prove the missing-receipt paths for lease, watchdog and reservation.
+- `DigitalOcean binds create to durable watchdog input and discovers the exact lease after a lost checkpoint` proves the lease tag alongside existing tags and exact-tag discovery.
+- `DigitalOcean watchdog deletes an admitted droplet after owner closure before machine checkpoint` observes the published watchdog birth before POST, loses the address reply, closes the lease database owner, advances the shared FakeClock to the exact deadline, then checks durable absence reads and both GET-confirmed deletions.
+- `DigitalOcean watchdog with no exact tag match retains ownership and reports once` bounds retries with an abort, asserts no DELETE and an unsettled reservation. This is retained ownership, not a successful deletion.
+
+The admission fixture scripts native watchdog birth and ledger lock identity; lease,
+mirror, watchdog input, spend and receipt issuance use production modules. Its
+zero-price reservations avoid consuming unrelated image-builder test budgets.
+No real detached worker, provider network or browser runs in these T2 cases.
+Run the unchanged host-create-ready and host-watchdog native files separately
+under the preservation lock for process and fake create-to-ready evidence.
+
+Additional T-1756 controls: `DigitalOcean admission creates at most one provider intent per lease`
+checks a durable create-only lease fence with no second API call, and
+`DigitalOcean rejects a lease admitted for another provider before API access`
+checks the provider binding. The worker-owner-closure case also reruns the worker
+from its original machine-less input and requires reuse of the bound durable
+absence receipt with zero rediscovery calls. The failed-discovery-list expansion
+keeps an unrelated admitted machine and key and leaves spend unsettled.
+
+Source-review repairs add nine `DigitalOcean revalidates <component> <boundary> before provider mutations`
+cases: lease, watchdog and spend before acquire, after declaration reads and
+after key import. They prove zero unauthorized droplet POSTs and exact preceding
+key effects. The 429/422 imported-key refusal cases assert DELETE then confirming
+GET and a bound receipt; unconfirmed deletion remains owned and replays by exact
+key id. `DigitalOcean machine-less watchdog replays a hub-originated absence receipt without API rediscovery`
+uses the same short input shape as hub cleanup and requires settlement at its
+original timestamp without API rediscovery.
+
+`DigitalOcean cooldown key cleanup completes through <owner>` has live acquisition
+and stopped-hub watchdog expansions. Both prearm an observer for the durable
+refused-POST/key checkpoint, assert no delete or spend release before the exact
+cooldown boundary, and require one exact-id DELETE, confirming GET and zero cost
+cancellation after confirmation. The live path scripts native watchdog retirement;
+the stopped path aborts acquisition, closes its lease DB and runs the worker at
+the deadline. These T2 observations are not real native worker-exit evidence.
+The shared cooldown regression cases observe persisted refusal before advancing
+the FakeClock; no launch snapshot or pending timer count substitutes for it.
+The renamed CLI image-currency case has no transferred historical timing sample;
+its new ordinary/load evidence is collected by verification under its own identity.
+
+Final source-review controls use the suite tier bootstrap in report-only mode,
+with the assignment and JSONL resource receipt retained next to native child
+completion metadata. A before-change control catches the ledger's native ps
+probe; after injecting hostLockProcesses the same control has zero findings.
+The shared lock table is separate from WatchdogProcesses and is passed through
+lease creation, spend settlement/cancellation and worker options.
+
+`DigitalOcean <mutation> revalidates <component> inside API pacing` covers key
+import and droplet POST against lease, watchdog, spend and signal invalidation.
+Its observer is the API's onWait receipt after the pacing timer/listener is
+installed. It exhausts the actual shared budget, invalidates inside the wait,
+advances the same FakeClock and asserts no additional native mutation. This is
+actual-send evidence, not only API-method invocation.
+
+Stopped-hub recovery cases cover persisted key id, lost import reply/exact name,
+confirmed deletion, failed deletion, absent/failed/ambiguous lookup and reported
+orphans. The unknown-POST regression hides a created droplet for one discovery,
+confirms key cleanup without releasing spend, then exposes the exact tag and
+requires confirmed droplet deletion before settlement. Exact-name ambiguity
+never authorizes deleting either candidate. Non-billable orphan completion is
+outside this item's final bar; the orphan and reason remain durable for explicit
+reap and T-1765.

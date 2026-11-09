@@ -1,3 +1,4 @@
+import { invalidateHostAdmission } from '../../host/admission-fence.ts';
 import { positiveNonAcquisition, type HostNonAcquisitionReceipt } from '../../host/acquisition-receipt.ts';
 export type { HostNonAcquisitionReceipt } from '../../host/acquisition-receipt.ts';
 import { parsePoolName } from '../../host/pool-name.ts';
@@ -338,6 +339,12 @@ function pendingHostEntry(ledger: Ledger, project: string, lease: string): Entry
   if (!entry || entry.priceHourly === undefined || entry.billingMinimumMs === undefined) throw new Error('host spend reservation not found or missing billing metadata');
   return entry as Entry & { priceHourly: number; billingMinimumMs: number };
 }
+/** Exact unsettled host reservation, observed after durable publication. */
+export async function hostSpendReservation(project:string,lease:string,env:NodeJS.ProcessEnv) {
+ const entry=pendingHostEntry(await observe(env),project,lease);
+ if(entry.cost!==null||entry.released)throw Error('host reservation already settled');
+ return {project:entry.project,lease:entry.lease,pool:entry.pool!,deadline:entry.deadline};
+}
 /** Reserve the whole extended lifetime before publishing the new lease deadline. */
 export async function renewHostSpend(project: string, lease: string, deadline: string, caps: HostSpendCaps, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
   await locked(ledger => {
@@ -352,6 +359,7 @@ export async function renewHostSpend(project: string, lease: string, deadline: s
 }
 /** Only call with confirmed provider absence and the observed real lifetime end. */
 export async function settleHostSpend(project: string, lease: string, released: string, env: NodeJS.ProcessEnv = process.env, timing: LockRetryTiming = {}): Promise<void> {
+  invalidateHostAdmission(project,lease);
   await locked(ledger => {
     const entry = pendingHostEntry(ledger, project, lease);
     const cost = hostCost(entry, released);
@@ -369,6 +377,7 @@ export async function settleHostSpend(project: string, lease: string, released: 
  * acquire outcomes must retain their reservation for provider reconciliation. */
 export async function cancelHostSpend(identity:{project:string;lease:string},receipt:HostNonAcquisitionReceipt,env:NodeJS.ProcessEnv=process.env,timing:LockRetryTiming={}):Promise<void>{
  if(!positiveNonAcquisition(receipt))throw Error('positive non-acquisition receipt required');
+ invalidateHostAdmission(identity.project,identity.lease);
  const released=new Date(receipt.at).toISOString();
  await locked(ledger=>{
   const entry=ledger.entries.find(e=>e.project===identity.project&&e.lease===identity.lease&&category(e)==='hosts');

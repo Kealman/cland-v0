@@ -1,3 +1,4 @@
+import { invalidateHostAdmission } from './admission-fence.ts';
 import type { LockProcessTable } from '../hub/lock.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync, writeFileSync, renameSync, rmSync } from 'node:fs';
@@ -28,6 +29,7 @@ export class HostLeases {
  readonly #owners=new Map<string,{stop():void;done:Promise<void>}>();
  constructor(db:DatabaseSync){this.#db=db;db.exec('create table if not exists host_leases(id text primary key,pool text not null,created text not null,deadline text not null,released text); create table if not exists host_lease_watchdogs(id text primary key, identity text not null)');}
  get(id:string):HostLease|null{const row=this.#db.prepare('select id,pool,created,deadline from host_leases where id=?').get(id) as HostLease|undefined;if(!row)return null;const identity=this.#db.prepare('select identity from host_lease_watchdogs where id=?').get(id);return identity?{...row,watchdog:JSON.parse(String(identity.identity))}:row;}
+ currentAdmission(id:string):HostLease|null {const row=this.#db.prepare('select released from host_leases where id=?').get(id);return row&&row.released===null?this.get(id):null;}
  *active():Iterable<HostLease>{for(const row of this.#db.prepare('select id from host_leases order by id').iterate()){const lease=this.get(String(row.id));if(lease)yield lease;}}
  checkpointWatchdog(id:string,root:string,watchdog:NonNullable<HostLease['watchdog']>,mirrorDeadline?:string):void{if(!this.get(id))throw Error('unknown host lease');this.#db.prepare('insert into host_lease_watchdogs(id,identity) values(?,?) on conflict(id) do update set identity=excluded.identity').run(id,JSON.stringify(watchdog));const row=this.get(id)!;this.#mirror(root,{...row,deadline:new Date(Math.min(Date.parse(row.deadline),Date.parse(mirrorDeadline??row.deadline))).toISOString()});}
  #mirror(root:string,row:HostLease){try {const path=hostLeasePath(root,row.id);mkdirSync(dirname(path),{recursive:true,mode:0o700});writeFileSync(path+'.next',JSON.stringify(row),{mode:0o600});renameSync(path+'.next',path);}catch(error){throw new HostLeasePublicationError(row.id,error);}}
@@ -71,6 +73,7 @@ export class HostLeases {
  }
  /** Join renewal before shortening the authoritative lease and its watchdog mirror. */
  async expireNow(id:string,root:string,clock:Clock):Promise<void>{
+  invalidateHostAdmission(root,id);
   await this.stop(id);const row=this.get(id);if(!row)return;
   const deadline=new Date(Math.min(Date.parse(row.deadline),clock.now().getTime())).toISOString();
   this.#db.prepare('update host_leases set deadline=? where id=?').run(deadline,id);
@@ -94,6 +97,7 @@ export class HostLeases {
  async close():Promise<void>{for(const owner of this.#owners.values())owner.stop();await Promise.all([...this.#owners.values()].map(owner=>owner.done));this.#owners.clear();await Promise.all([...this.#expiries]);}
  /** Cancellation authority comes from the durable admission checkpoint, never a timer or caller flag. */
  async cancel(id:string,o:Pick<LeaseOptions,'root'|'env'|'clock'|'processes'>):Promise<void>{
+  invalidateHostAdmission(o.root,id);
   await this.stop(id);
   const stored=this.#db.prepare('select record from provisioned_hosts where id=?').get(id);
   const record=stored?JSON.parse(String(stored.record)):null;
@@ -105,6 +109,7 @@ export class HostLeases {
  }
  /** Caller supplies a positive absence receipt; unknown outcomes must never call this. */
  async release(id:string,o:Pick<LeaseOptions,'root'|'env'|'clock'|'processes'>,confirmedAt?:string):Promise<void>{
+  invalidateHostAdmission(o.root,id);
   const released=confirmedAt??o.clock.now().toISOString();
   await this.stop(id);const row=this.get(id);if(!row)return;
   this.#db.prepare('update host_leases set released=coalesce(released,?) where id=?').run(released,id);

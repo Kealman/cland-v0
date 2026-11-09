@@ -1,3 +1,5 @@
+import { provisionSsh } from './provision-ssh.ts';
+import { hostCreateAdmission } from './create-admission.ts';
 import { hostLeaseRenewable } from './provision-records.ts';
 import type { LockProcessTable } from '../hub/lock.ts';
 import { armHostWatchdog, stopHostWatchdog, retireHostWatchdog, recordHostAbsence } from './host-watchdog.ts';
@@ -18,7 +20,6 @@ import { renderPrelude } from './prelude.ts';
 import { HostSecretStore } from './records.ts';
 import type { HostRecords } from './records.ts';
 import type { HostProvider, Machine, ReleaseRead } from './provider/provider.ts';
-import { hostDirectory } from '../../../shared/fake-host-directory.ts';
 import { deliverRuntime, RuntimeDeliveryIncomplete } from './code-delivery.ts';
 import { remoteRedactor } from './agent/redact.ts';
 import { VERSION } from '../version.ts';
@@ -29,11 +30,13 @@ export const PROVISION_GATE_MS = HOST_BOOT_MS;
 export type { ProvisionState, ProvisionRecord } from './provision-records.ts';
 import type { ProvisionRecord } from './provision-records.ts';
 const directory=(root:string)=>join(root,'.cland/run/host-provisions');
+/** Provision SSH material stays internal; existing public row shapes are unchanged. */
+const publicProvision=(record:ProvisionRecord)=>{const result={...record};delete result.ssh;return result;};
 export async function listHosts(records:HostRecords, env:NodeJS.ProcessEnv) {
  const registry=new HostProviderRegistry({env});
  return records.provisions.list().map(record=>{
   const declarations=registry.resolve(record).declarations;
-  return {...record,uptime:record.machine&&record.state==='ready'?Math.max(0,(Date.now()-Date.parse(record.machine.created))/1000):null,livePerHour:'state' in declarations?null:declarations.prices[record.size]?.livePerHour??null};
+  return {...publicProvision(record),uptime:record.machine&&record.state==='ready'?Math.max(0,(Date.now()-Date.parse(record.machine.created))/1000):null,livePerHour:'state' in declarations?null:declarations.prices[record.size]?.livePerHour??null};
  });
 }
 /** Joins native close before returning, including deadline termination. Inputs stay on stdin. */
@@ -63,13 +66,12 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
  parsePoolName(pool);
  const config=pools[pool]!;
  const provider=o.provider??new HostProviderRegistry({env:o.env,digitalocean:{root:o.root}}).resolve(config);
- const admission=provider.createAdmission();
- if(admission.state==='refused') { if(admission.retryAt) throw new HostProviderRetry(admission.reason,admission.retryAt); throw Error(admission.reason); }
  const key=await poolImageKey(o.root,o.env,config.provider);
  let prepared;
  try {prepared=JSON.parse(await readFile(join(o.root,'.cland/run/hosts',pool+'-image.json'),'utf8'));}catch{}
  if(!prepared?.key||!samePoolImageKey(prepared.key,key))throw Error(`pool ${pool} image is not current; run cland host prepare ${pool}`);
  const record:ProvisionRecord={id:'host-'+randomUUID(),...config,pool,created:clock.now().toISOString(),state:'creating',nonAcquisition:{kind:'not-called',at:clock.now().toISOString()}};
+ if('state' in provider.declarations&&provider instanceof (await import('./provider/digitalocean.ts')).DigitalOceanHostProvider)await provider.refreshDeclarations();
  const declarations=provider.declarations;
  if('state' in declarations||!declarations.prices[config.size])throw Error('host billing declaration unavailable');
  const leaseOptions={root:o.root,env:o.env,clock,leaseMs:hostConfig.leaseMs,caps:{shared:projectConfig.verification.dailySpendUsd,hosts:hostConfig.dailySpendUsd},pool,size:config.size,priceHourly:declarations.prices[config.size]!.livePerHour+declarations.extraAddressPerHour,billingMinimumMs:declarations.billingMinimumMs};
@@ -90,6 +92,12 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
   if(o.records.leases.effective(record.id,o.root,clock)?.expired)throw Error('host lease expired before acquisition');
   o.records.leases.arm(record.id,leaseOptions,()=>hostLeaseRenewable(o.records.provisions.get(record.id)?.state)&&(o.inUse?.(record.id)??o.records.provisions.heldByMinimum(record.id,pool,config.minHosts)),error=>{console.error(error);},async()=>{await destroyHost({clock,root:o.root,id:record.id,env:o.env,records:o.records,owner:o.owner,provider,log:()=>{}});});
   o.onCreating?.(record.id);
+  const lease=o.records.leases.get(record.id)!;
+  const watchdog=await armHostWatchdog({root:o.root,id:record.id,provider:record.provider,project:o.root,pool,deadline:lease.deadline},o.env,{clock});
+  try{o.records.leases.checkpointWatchdog(record.id,o.root,watchdog);}catch(error){await stopHostWatchdog(watchdog,o.env,{clock});throw error;}
+  const createReceipt=await hostCreateAdmission(o.root,record.id,record.provider,o.env,{clock,currentLease:()=>o.records.leases.currentAdmission(record.id)});
+  const admission=provider.createAdmission(createReceipt);
+  if(admission.state==='refused'){if(admission.retryAt)throw new HostProviderRetry(admission.reason,admission.retryAt);throw Error(admission.reason);}
   signal.throwIfAborted();
   // An actual OpenSSH key, never a key inferred from a responding machine.
   await mkdir(directory(o.root),{recursive:true,mode:0o700});
@@ -112,34 +120,27 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
    o.records.provisions.save(record);o.onBootFailure?.(record);
   },Math.max(1,deadline-clock.now().getTime()));
   bootTimer.unref();
-  const acquired=await provider.acquire({project:o.root,pool,architecture:process.arch==='arm64'?'arm64':'x86_64',region:config.region,userData,image:key});
-  if(acquired.state!=='created'){if(acquired.state==='refused'){acquiring=false;delete record.acquisition;record.nonAcquisition={kind:'provider-refused',at:clock.now().toISOString()};record.retryAt=acquired.retryAt;o.records.provisions.save(record);}throw Error(acquired.reason);}
+  const acquired=await provider.acquire({signal,admission:createReceipt,size:config.size,project:o.root,pool,architecture:declarations.architectures.includes(process.arch==='arm64'?'arm64':'x86_64')?(process.arch==='arm64'?'arm64':'x86_64'):declarations.architectures[0]!,region:config.region,userData,image:key});
+  if(acquired.state!=='created'){if(acquired.state==='refused'){acquiring=false;delete record.acquisition;record.nonAcquisition=acquired.nonAcquisition??{kind:'provider-refused',at:clock.now().toISOString()};record.retryAt=acquired.retryAt;o.records.provisions.save(record);}throw Error(acquired.reason);}
   record.acquisition='acquired';record.machine=acquired.machine;record.state='booting';o.records.provisions.save(record);
-  const watchdog=await armHostWatchdog({root:o.root,id:record.id,provider:record.provider,machine:acquired.machine},o.env,{clock});
-  try{o.records.leases.checkpointWatchdog(record.id,o.root,watchdog);}catch(error){await stopHostWatchdog(watchdog,o.env,{clock});throw error;}
+  if(!acquired.ssh)throw Error('provider SSH identity unavailable');
+  record.ssh=acquired.ssh;o.records.provisions.save(record);
   signal?.throwIfAborted();
-  const fake=hostDirectory(o.env.CLAND_FAKE_HOST_ROOT!,acquired.machine.id);
-  const provisioningEnv={...o.env,CLAND_FAKE_HOSTS:[o.env.CLAND_FAKE_HOSTS,acquired.machine.address].filter(Boolean).join(',')};
-  const known=join(privateDirectory,'known_hosts');
-  const {writeFile}=await import('node:fs/promises');
-  await writeFile(known,`${acquired.machine.address} ${publicKey}\n`,{mode:0o600});
-  const base=['-F','/dev/null','-i',join(fake,'client-key'),...['BatchMode=yes','StrictHostKeyChecking=yes','GlobalKnownHostsFile=/dev/null','KnownHostsCommand=none','VerifyHostKeyDNS=no','UpdateHostKeys=no',`UserKnownHostsFile="${known}"`].flatMap(v=>['-o',v])];
-  const destination=`agent@${acquired.machine.address}`;
-  const ssh=o.env.CLAND_SSH_BIN??'ssh',scp=o.env.CLAND_SCP_BIN??'scp';
+  const transport=await provisionSsh(record,join(privateDirectory,'known_hosts'),o.env,(binary,args,env,input,timeoutMs,probeSignal)=>command(binary,args,env,input,timeoutMs,clock,probeSignal??signal));
   await hostBootGate(clock,deadline,async (_remaining,probeSignal)=>{
    if((await provider.status(acquired.machine,{signal:probeSignal,deadline})).state!=='ready')throw Error('machine booting');
    const remaining=deadline-clock.now().getTime();probeSignal.throwIfAborted();
    if(remaining<=0)throw Error('pinned-key provisioning gate timed out');
-   await command(ssh,[...base,destination,'sh','-s'],provisioningEnv,'true\n',Math.max(1,Math.min(10000,remaining)),clock,probeSignal);
+   await transport.probe(Math.max(1,Math.min(10000,remaining)),probeSignal);
   },signal);
   clock.clearTimeout(bootTimer);
   record.state='connecting';o.records.provisions.save(record);
-  const home=join(fake,'home');
-  await deliverRuntime({transport:{execute:script=>command(ssh,[...base,destination,'sh','-s'],provisioningEnv,script,120000),copyFile:(source,target)=>command(scp,[...base,source,`${destination}:${target}`],provisioningEnv)},codeRoot:join(home,'.cland-host/code'),node:process.execPath,version:VERSION,...(signal?{signal:signal}:{})});
+  const home=record.ssh.home;
+  await deliverRuntime({transport,codeRoot:join(home,'.cland-host/code'),node:record.ssh.node,version:VERSION,...(signal?{signal:signal}:{})});
   signal?.throwIfAborted();
-  const registration=new HostSecretStore(o.root,o.records,o.registerSecrets).register({id:record.id,address:acquired.machine.address,user:'agent',clientKeyPath:join(fake,'client-key'),knownHosts:`${acquired.machine.address} ${publicKey}\n`});
+  const registration=new HostSecretStore(o.root,o.records,o.registerSecrets).register({id:record.id,address:acquired.machine.address,user:record.ssh.user??'agent',clientKeyPath:record.ssh.clientKeyPath,knownHosts:record.ssh.knownHosts});
   registered=true;
-  o.env.CLAND_FAKE_HOSTS=[o.env.CLAND_FAKE_HOSTS,acquired.machine.address].filter(Boolean).join(',');
+  Object.assign(o.env,record.ssh.environment??{});
   await o.owner.add(registration);
   record.state='cloning';o.records.provisions.save(record);
   await o.owner.ready(record.id,signal);
@@ -149,7 +150,7 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
   record.state='failed';record.reason=error instanceof Error?error.message:String(error);
   // A runtime owner must close before its machine can be released.
   try {
-   if(record.nonAcquisition){await o.records.leases.cancel(record.id,leaseOptions);record.release='released';}
+   if(record.nonAcquisition){await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,{clock});await o.records.leases.cancel(record.id,leaseOptions);record.release='released';}
    else if(error instanceof RuntimeDeliveryIncomplete)record.release='incomplete';
    else {
     const settled=!registered||hostSettlementComplete(await o.owner.remove(record.id));
@@ -162,7 +163,7 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
   o.records.provisions.save(record);
   if(!admitted)throw error;
  } finally {clock.clearTimeout(bootTimer);creations.delete(creationKey);completion.resolve();}
- return record;
+ return publicProvision(record);
 }
 
 /** Restore only the admitted registration/machine association. No new registration,
@@ -198,7 +199,7 @@ export async function destroyHost(o:{watchdogOptions?:import('../executor/drople
  const initial=o.records.provisions.get(o.id);
  if(!initial)throw Error('unknown host');
  let record:ProvisionRecord=initial;
- if(record.state==='destroyed')return record;
+ if(record.state==='destroyed')return publicProvision(record);
  record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);
  try {
   const creation=creations.get(join(o.root,o.id));
@@ -207,7 +208,7 @@ export async function destroyHost(o:{watchdogOptions?:import('../executor/drople
   if(o.records.get(record.id))await o.owner.remove(record.id);
   const provider=o.provider??new HostProviderRegistry({env:o.env}).resolve(record);
   const confirmed=new Set<string>();const releaseReads:ReleaseRead[]=[];
-  if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,o.processes?{root:o.root,env:o.env,clock:o.clock??realClock,processes:o.processes}:{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return record;}throw Error('acquisition outcome unknown');}
+  if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,o.processes?{root:o.root,env:o.env,clock:o.clock??realClock,processes:o.processes}:{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return publicProvision(record);}throw Error('acquisition outcome unknown');}
   const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);releaseReads.push(receipt);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
   if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
   record.release=result.state;
@@ -215,5 +216,5 @@ export async function destroyHost(o:{watchdogOptions?:import('../executor/drople
   else {record.release='incomplete';record.reason='deletion not confirmed'+(result.state==='incomplete'?': '+result.reason:': confirming reads missing');}
  }catch{record.release='incomplete';record.reason='deletion not confirmed';}
  o.records.provisions.save(record);
- return record;
+ return publicProvision(record);
 }

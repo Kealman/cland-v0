@@ -1,3 +1,4 @@
+import { admissionFixture, hostLockProcesses } from './host-admission-fixture.ts';
 import { readdir } from 'node:fs/promises';
 import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted DigitalOcean boundary and disposable provider records; no sockets or processes.
@@ -14,10 +15,15 @@ import { hostProviderContract, type ProviderScenario } from './host-provider-con
 import { HostProviderRegistry } from '../src/host/provider/registry.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 
+async function refusedIntent(root:string):Promise<boolean> {
+ const {readFile}=await import('node:fs/promises');
+ try {for(const name of await readdir(root+'/.cland/host-provider/digitalocean'))if(name.startsWith('intent-')){const row=JSON.parse(await readFile(root+'/.cland/host-provider/digitalocean/'+name,'utf8'));if(row.dropletRefused==='429')return true;}}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+ return false;
+}
 const request = { project: 'contract', pool: 'agents', architecture: 'x86_64' as const };
-async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', beforeClose?: () => Promise<void>) {
+async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', beforeClose?: () => Promise<void>,requestsPerMinute?:number) {
   const clock = new FakeClock();
-  const api = await fakeDigitalOcean('provider-sentinel-secret', { machine: 'scripted', clock });
+  const api = await fakeDigitalOcean('provider-sentinel-secret', { machine: 'scripted', clock,...(requestsPerMinute?{requestsPerMinute}:{}) });
   t.after(async () => { await beforeClose?.(); await api.close(); });
   await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
@@ -29,7 +35,10 @@ async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', be
   if (scenario === 'refused') api.faults.rateLimits = 1;
   const env = fixtureEnvironment(api.stateRoot, {}, { DIGITALOCEAN_TOKEN: 'provider-sentinel-secret', CLAND_FAKE_HOST_ROOT: api.stateRoot });
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env, api: api.provider, clock, size: 's-2vcpu-4gb', image: 'ubuntu-24-04-x64' });
-  return { api, provider, clock };
+  const rawProvider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});
+  const acquire=rawProvider.acquire.bind(rawProvider),createAdmission=rawProvider.createAdmission.bind(rawProvider);
+  await admissionFixture(t,api.stateRoot,env,clock).wrap(provider);
+  return { api, provider, clock, raw:{acquire,createAdmission} };
 }
 test('digitalocean create carries configured inputs, isolated key and project/pool tags; invalid region makes no call', async t => {
   const { api, provider } = await fixture(t);
@@ -323,10 +332,26 @@ for (const status of [429, 422]) test(`digitalocean ${status} pauses every creat
   await provider.refreshDeclarations();
   Object.assign(api.faults, { create: status, createLimit: status === 422, createRetryHeaders: true, echoToken: true, retryAfter: '2' });
   const start = clock.now().getTime();
-  const first = await provider.acquire(request);
-  assert.equal(first.state, 'refused');
-  if (first.state !== 'refused') return;
-  assert.equal(first.retryAt, new Date(start + 2000).toISOString());
+  if(status===429) {
+    const checkpoint=until(()=>refusedIntent(api.stateRoot),{what:'durable refused POST and exact imported key',timeoutMs:testWaitMs()});
+    const initial=provider.acquire(request);
+    try {
+      await checkpoint;assert.equal(api.keys.length,1);
+      await clock.advance(1999);
+      assert.equal(api.requests.filter(r=>r.method==='DELETE').length,0);
+      assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/droplets').length,1);
+      await clock.advance(1);
+      const result=await initial;assert.equal(result.state,'refused');
+      assert.ok(result.state==='refused'&&result.nonAcquisition);assert.equal(api.keys.length,0);
+      api.faults.create=0;
+      assert.equal((await provider.acquire(request)).state,'created');
+      assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/droplets').length,2);
+    }finally {await clock.advance(60000);await initial;}
+    return;
+  }
+  const initial = await provider.acquire(request);
+  assert.equal(initial.state,'refused');assert.equal(api.keys.length,0);assert.ok(initial.state==='refused'&&initial.nonAcquisition);
+  const first={state:'refused',reason:'DigitalOcean creation paused',retryAt:new Date(start+2000).toISOString()};
   assert.ok(!JSON.stringify(first).includes('provider-sentinel-secret'));
   const sent = api.requests.length;
   const postCount = () => api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length;
@@ -430,22 +455,16 @@ test('digitalocean held create refusal cannot shorten a concurrent declaration r
   let entered = false;
   api.beforeCreate(async () => { entered = true; await gate.promise; });
   Object.assign(api.faults, { create: 429, createRetryHeaders: true, retryAfter: '2' });
+  const checkpoint=until(()=>refusedIntent(api.stateRoot),{what:'durable held POST refusal after refresh',timeoutMs:testWaitMs()});
   const initial = acquire();
   try {
     await until(() => entered, { what: 'create POST reached held provider response', timeoutMs: heldSetupMs, loadFactor: heldSetupScale });
     api.beforeSizes(async () => { throw new RateLimited(latest); });
     await provider.refreshDeclarations(); // Complete publication of the longer deadline.
-  } finally { gate.resolve(); await initial; }
-  const first = await initial;
-  assert.equal(first.state, 'refused');
-  if (first.state !== 'refused') return;
-  assert.equal(first.retryAt, new Date(latest).toISOString());
-  const count = api.requests.length;
-  assert.deepEqual(await acquire(), first);
-  await clock.advance(2000);
-  assert.deepEqual(await acquire(), first);
-  assert.equal(api.requests.length, count);
-  await clock.advance(8000);
+  } finally {gate.resolve();await checkpoint;await clock.advance(2000);assert.equal(api.keys.length,1);assert.equal(api.requests.filter(r=>r.method==='DELETE').length,0);await clock.advance(8000);await initial;}
+  const result = await initial;
+  assert.equal(result.state,'refused');assert.ok(result.state==='refused'&&result.nonAcquisition);
+  assert.equal(api.keys.length,0);if(result.state==='refused')assert.equal(result.retryAt,new Date(latest).toISOString());
   api.faults.create = 0;
   assert.equal((await acquire()).state, 'created');
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
@@ -473,4 +492,291 @@ for (const pool of ['agents-host-x', 'A' + 'a'.repeat(63)]) test(`digitalocean r
   assert.equal(api.droplets.length, 1);
   assert.equal(api.keys.length, 2);
   assert.equal(api.droplets[0]!.tags.at(-1), `cland-pool-${pool}_1`);
+});
+
+ test('DigitalOcean requires lease, watchdog and hosts reservation even with an injected API',async t=>{
+  const {api,raw}=await fixture(t);
+  const admission=raw.createAdmission();
+  assert.equal(admission.state,'refused');
+  if(admission.state==='refused')assert.match(admission.reason,/lease.*watchdog.*reservation/);
+  const result=await raw.acquire(request);
+  assert.equal(result.state,'refused');assert.equal(api.requests.length,0);
+ });
+
+for(const [field,reason] of [['lease','lease'],['watchdog','armed watchdog'],['reservation','hosts reservation']] as const)test(`DigitalOcean missing ${field} refuses before any API call`,async t=>{
+ const {api,clock,raw}=await fixture(t);
+ const env=fixtureEnvironment(api.stateRoot,{},{});
+ const receipt=await admissionFixture(t,api.stateRoot,env,clock).issue('contract','agents');
+ const missing={...receipt};delete missing[field];
+ const result=await raw.acquire({...request,admission:missing});
+ assert.equal(result.state,'refused');if(result.state==='refused')assert.ok(result.reason.includes(reason));assert.equal(api.requests.length,0);
+});
+
+test('DigitalOcean binds create to durable watchdog input and discovers the exact lease after a lost checkpoint',async t=>{
+ const {api,provider,clock}=await fixture(t);
+ const env=fixtureEnvironment(api.stateRoot,{},{});
+ const receipt=await admissionFixture(t,api.stateRoot,env,clock).issue('contract','agents');
+ const result=await provider.acquire({...request,admission:receipt});
+ assert.equal(result.state,'created');if(result.state!=='created')return;
+ const body=api.requests.find(r=>r.method==='POST'&&r.path==='/v2/droplets')!.body!;
+ assert.ok((body.tags as string[]).includes('cland-lease-'+receipt.lease!.id));
+ const machine=await provider.findAdmission('contract','agents',receipt.lease!.id);
+ assert.deepEqual(machine,result.machine);
+ assert.equal(await provider.findAdmission('contract','agents','unrelated'),undefined);
+});
+
+test('DigitalOcean watchdog deletes an admitted droplet after owner closure before machine checkpoint',async t=>{
+ const {api,clock,raw}=await fixture(t);
+ const {readFile}=await import('node:fs/promises');
+ const {hostWatchdogPaths,runHostWatchdog}=await import('../src/host/host-watchdog.ts');
+ const env=fixtureEnvironment(api.stateRoot,{},{}),admissions=admissionFixture(t,api.stateRoot,env,clock);
+ const receipt=await admissions.issue('contract','agents');
+ const input=JSON.parse(await readFile(hostWatchdogPaths(api.stateRoot,receipt.lease!.id).input,'utf8'));
+ let armedObserved=false;const effectOrder:string[]=[];
+ const armed=async(effect:string)=>{
+  const mirror=JSON.parse(await readFile((await import('../src/host/host-leases.ts')).hostLeasePath(api.stateRoot,input.id),'utf8'));
+  assert.equal(mirror.watchdog.pidIdentity,'scripted-birth');armedObserved=true;effectOrder.push(effect);
+ };
+ api.beforeImport(()=>armed('key-import'));api.beforeCreate(()=>armed('droplet-post'));
+ api.beforeDropletRead(async()=>{throw Error('hub lost address reply before machine checkpoint');});
+ const result=await raw.acquire({...request,admission:receipt});assert.equal(result.state,'failed');assert.equal(armedObserved,true);assert.deepEqual(effectOrder,['key-import','droplet-post']);
+ assert.equal(api.droplets.length,1);assert.equal(api.keys.length,1);
+ await admissions.close();
+ api.beforeDropletRead(async()=>{});
+ await clock.advance(43200000);
+ const worker=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});
+ // Discovery is the list by exact lease tag; no machine checkpoint is supplied.
+ let retries=0;const abort=new AbortController();
+ await runHostWatchdog(input,env,clock,async ms=>{await clock.advance(ms);if(++retries===5)abort.abort();},abort.signal,{processes:hostLockProcesses,provider:worker});
+ assert.equal(api.droplets.length,0);assert.equal(api.keys.length,0);
+ const absence=JSON.parse(await readFile(hostWatchdogPaths(api.stateRoot,input.id).receipt,'utf8'));
+ assert.deepEqual(absence.reads.map((r:{resource:string})=>r.resource),['machine','key']);
+ for(const deleted of api.requests.filter(r=>r.method==='DELETE'))assert.ok(api.requests.some(r=>r.method==='GET'&&r.path===deleted.path));
+ const count=api.requests.length,restarted=new AbortController();let restartTicks=0;
+ await runHostWatchdog(input,env,clock,async ms=>{await clock.advance(ms);if(++restartTicks===2)restarted.abort();},restarted.signal,{processes:hostLockProcesses,provider:worker,report:()=>{}});
+ assert.equal(api.requests.length,count,'worker restart reuses durable bound absence without rediscovery');
+});
+
+for(const discovery of ['no exact tag match','failed discovery list'] as const)test(`DigitalOcean watchdog with ${discovery} retains ownership and reports once`,async t=>{
+ const {api,clock,provider}=await fixture(t);
+ assert.equal((await provider.acquire(request)).state,'created','unrelated admitted machine is retained');
+ if(discovery==='failed discovery list')api.beforeDropletList(async()=>{throw Error('scripted discovery list failure');});
+ const {runHostWatchdog}=await import('../src/host/host-watchdog.ts');
+ const env=fixtureEnvironment(api.stateRoot,{},{}),admissions=admissionFixture(t,api.stateRoot,env,clock);
+ const receipt=await admissions.issue('contract','agents');
+ const input={root:api.stateRoot,id:receipt.lease!.id,provider:'digitalocean',project:'contract',pool:'agents',deadline:receipt.lease!.deadline};
+ await admissions.close();await clock.advance(43200000);
+ const worker=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock}),abort=new AbortController(),reports:string[]=[];
+ let ticks=0;
+ await runHostWatchdog(input,env,clock,async ms=>{await clock.advance(ms);if(++ticks===3)abort.abort();},abort.signal,{processes:hostLockProcesses,provider:worker,report:message=>reports.push(message)});
+ assert.equal(reports.length,1);assert.match(reports[0]!,/retained/);
+ assert.equal(api.requests.filter(r=>r.method==='DELETE').length,0);assert.equal(api.droplets.length,1);assert.equal(api.keys.length,1);
+ const {spendPath}=await import('../src/executor/droplet/spend.ts');
+ const {readFile}=await import('node:fs/promises');
+ const ledger=JSON.parse(await readFile(spendPath(env),'utf8'));
+ assert.equal(ledger.entries.find((r:{lease:string})=>r.lease===input.id).cost,null);
+});
+
+test('DigitalOcean admission creates at most one provider intent per lease',async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{});
+ const admission=await admissionFixture(t,api.stateRoot,env,clock).issue('contract','agents');
+ assert.equal((await raw.acquire({...request,admission})).state,'created');
+ const before=api.requests.length;
+ const repeated=await raw.acquire({...request,admission});assert.equal(repeated.state,'refused');
+ assert.equal(api.requests.length,before);assert.equal(api.droplets.length,1);assert.equal(api.keys.length,1);
+});
+
+test('DigitalOcean rejects a lease admitted for another provider before API access',async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{});
+ const admission=await admissionFixture(t,api.stateRoot,env,clock).issue('contract','agents','fake');
+ const result=await raw.acquire({...request,admission});assert.equal(result.state,'refused');assert.equal(api.requests.length,0);
+});
+
+for(const boundary of ['before acquire','after declarations','after key import'] as const)for(const invalidation of ['lease','watchdog','spend'] as const)test(`DigitalOcean revalidates ${invalidation} ${boundary} before provider mutations`,async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock);
+ const admission=await owner.issue('contract','agents');
+ const invalidate=async()=>{
+  if(invalidation==='lease')await owner.leases.expireNow(admission.lease!.id,api.stateRoot,clock);
+  if(invalidation==='watchdog')owner.loseWatchdog();
+  if(invalidation==='spend')await (await import('../src/executor/droplet/spend.ts')).settleHostSpend(api.stateRoot,admission.lease!.id,clock.now().toISOString(),env,{clock,processes:hostLockProcesses});
+ };
+ if(boundary==='before acquire')await invalidate();
+ if(boundary==='after declarations')api.beforeSizes(invalidate);
+ if(boundary==='after key import')api.beforeImport(invalidate);
+ const result=await raw.acquire({...request,admission});
+ assert.notEqual(result.state,'created');
+ assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/droplets').length,0);
+ assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/account/keys').length,boundary==='after key import'?1:0);
+ if(boundary==='before acquire')assert.equal(api.requests.length,0);
+});
+
+for(const status of [429,422])test(`DigitalOcean ${status} refusal confirms imported key absence before returning non-acquisition`,async t=>{
+ const {api,provider}=await fixture(t);api.faults.create=status;api.faults.createLimit=status===422;
+ const result=await provider.acquire(request);assert.equal(result.state,'refused');assert.equal(api.keys.length,0);
+ if(result.state==='refused'){assert.ok(result.nonAcquisition);assert.match(result.nonAcquisition!.key!.read,/GET.*404/);}
+ const deletion=api.requests.findIndex(r=>r.method==='DELETE'&&r.path.startsWith('/v2/account/keys/'));
+ assert.ok(deletion>=0);assert.ok(api.requests.slice(deletion+1).some(r=>r.method==='GET'&&r.path===api.requests[deletion]!.path));
+});
+
+test('DigitalOcean unconfirmed refused-create key deletion stays owned and key-only watchdog replay confirms it',async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock);
+ const admission=await owner.issue('contract','agents');api.faults.create=429;api.faults.keyDeleteFailures=[403];
+ const result=await raw.acquire({...request,admission});assert.equal(result.state,'failed');assert.equal(api.keys.length,1);
+ const {readFile}=await import('node:fs/promises'),{spendPath}=await import('../src/executor/droplet/spend.ts');
+ const {runHostWatchdog,hostWatchdogPaths}=await import('../src/host/host-watchdog.ts');
+ const input=JSON.parse(await readFile(hostWatchdogPaths(api.stateRoot,admission.lease!.id).input,'utf8'));
+ const ledger=()=>readFile(spendPath(env),'utf8').then(JSON.parse);
+ assert.equal((await ledger()).entries.find((r:{lease:string})=>r.lease===input.id).cost,null);
+ await owner.close();await clock.advance(43200000);
+ const worker=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock}),abort=new AbortController();let ticks=0;
+ await runHostWatchdog(input,env,clock,async ms=>{await clock.advance(ms);if(++ticks===3)abort.abort();},abort.signal,{processes:hostLockProcesses,provider:worker,report:()=>{}});
+ assert.equal(api.keys.length,0);assert.equal((await ledger()).entries.find((r:{lease:string})=>r.lease===input.id).cost,0);
+});
+
+test('DigitalOcean machine-less watchdog replays a hub-originated absence receipt without API rediscovery',async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue('contract','agents');
+ const created=await raw.acquire({...request,admission});assert.equal(created.state,'created');if(created.state!=='created')return;
+ const {runHostWatchdog,recordHostAbsence,hostWatchdogPaths}=await import('../src/host/host-watchdog.ts'),{readFile}=await import('node:fs/promises');
+ const input=JSON.parse(await readFile(hostWatchdogPaths(api.stateRoot,admission.lease!.id).input,'utf8'));
+ const reads:Array<{resource:'machine'|'key';read:string}>=[];
+ const provider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});
+ assert.equal((await provider.release(created.machine,read=>reads.push(read))).state,'released');
+ const receipt=await recordHostAbsence({root:api.stateRoot,id:input.id,provider:'digitalocean',machine:created.machine},clock,reads);
+ await owner.close();const count=api.requests.length;
+ await runHostWatchdog(input,env,clock,async()=>{throw Error('receipt replay must not wait');},undefined,{processes:hostLockProcesses,provider});
+ assert.equal(api.requests.length,count);
+ const {spendPath}=await import('../src/executor/droplet/spend.ts');
+ const entry=JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id);
+ assert.equal(entry.released,receipt.confirmedAt);
+});
+
+for(const stop of [false,true])test(`DigitalOcean cooldown key cleanup completes through ${stop?'stopped-hub watchdog':'live acquisition owner'}`,async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue('contract','agents'),abort=new AbortController();
+ const {readFile,access}=await import('node:fs/promises'),{hostWatchdogPaths,runHostWatchdog}=await import('../src/host/host-watchdog.ts'),{spendPath,cancelHostSpend}=await import('../src/executor/droplet/spend.ts');
+ const path=hostWatchdogPaths(api.stateRoot,admission.lease!.id),input=JSON.parse(await readFile(path.input,'utf8'));
+ const entry=async()=>JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id);
+ Object.assign(api.faults,{create:429,createRetryHeaders:true,retryAfter:'2'});
+ const checkpoint=until(()=>refusedIntent(api.stateRoot),{what:'durable cooldown ownership',timeoutMs:testWaitMs()});
+ const pending=raw.acquire({...request,admission,signal:abort.signal});
+ try {
+  await checkpoint;const key=api.keys[0]!.id;
+  assert.equal((await entry()).cost,null);assert.equal(api.requests.filter(r=>r.method==='DELETE').length,0);
+  if(stop) {
+   abort.abort();assert.equal((await pending).state,'failed');await access(path.input);assert.equal((await entry()).cost,null);
+   await owner.close();await clock.advance(43200000);
+   const worker=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});
+   await runHostWatchdog(input,env,clock,async()=>{throw Error('exact key replay must complete');},undefined,{processes:hostLockProcesses,provider:worker});
+   const receipt=JSON.parse(await readFile(path.nonAcquisition,'utf8'));assert.equal(receipt.key.id,key);
+  }else {
+   await clock.advance(1999);assert.equal(api.keys.length,1);assert.equal((await entry()).cost,null);
+   await clock.advance(1);const result=await pending;assert.equal(result.state,'refused');
+   assert.ok(result.state==='refused'&&result.nonAcquisition);if(result.state!=='refused'||!result.nonAcquisition)return;
+   await owner.retire(input.id);await cancelHostSpend({project:api.stateRoot,lease:input.id},result.nonAcquisition,env,{clock,processes:hostLockProcesses});
+   await assert.rejects(access(path.input),{code:'ENOENT'});
+  }
+  assert.equal(api.keys.length,0);assert.equal((await entry()).cost,0);
+  assert.equal(api.requests.filter(r=>r.method==='DELETE'&&r.path===`/v2/account/keys/${key}`).length,1);
+  assert.ok(api.requests.some(r=>r.method==='GET'&&r.path===`/v2/account/keys/${key}`));
+ }finally {abort.abort();await pending;}
+});
+
+for(const phase of ['key import','droplet POST'] as const)for(const invalidation of ['lease','watchdog','spend','signal'] as const)test(`DigitalOcean ${phase} revalidates ${invalidation} inside API pacing`,async t=>{
+ const abort=new AbortController();let pending:Promise<unknown>|undefined;
+ const f=await fixture(t,'normal',async()=>{abort.abort();await f.clock.advance(180000);await pending;},phase==='key import'?2:3);
+ const {api,clock,raw}=f,env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock);
+ const admission=await owner.issue('contract','agents');
+ let queuedUntil:number|undefined;const queued=(value:number)=>{queuedUntil=value;};
+ if(phase==='key import') {const original=api.provider.importKey.bind(api.provider);t.mock.method(api.provider,'importKey',(...[name,key,deadline,scope]:Parameters<typeof original>)=>original(name,key,deadline,{...scope,onWait:until=>queued(until)}));}
+ else {const original=api.provider.create.bind(api.provider);t.mock.method(api.provider,'create',(...[input,deadline,scope]:Parameters<typeof original>)=>original(input,deadline,{...scope,onWait:until=>queued(until)}));}
+ const observed=until(()=>queuedUntil!==undefined,{what:'API owns a paced mutation',timeoutMs:testWaitMs()});
+ pending=raw.acquire({...request,admission,signal:abort.signal});
+ try {
+  await observed;
+  const mutations=api.requests.filter(r=>r.method==='POST').length;
+  assert.equal(mutations,phase==='key import'?0:1,'budget exhausted before native mutation');
+  if(invalidation==='lease')await owner.leases.expireNow(admission.lease!.id,api.stateRoot,clock);
+  if(invalidation==='watchdog')owner.loseWatchdog();
+  if(invalidation==='spend')await (await import('../src/executor/droplet/spend.ts')).settleHostSpend(api.stateRoot,admission.lease!.id,clock.now().toISOString(),env,{clock,processes:hostLockProcesses});
+  if(invalidation==='signal')abort.abort();
+  await clock.advance(queuedUntil!-clock.now().getTime());
+  await clock.advance(120000);
+  const result=await pending as {state:string};assert.notEqual(result.state,'created');
+  assert.equal(api.requests.filter(r=>r.method==='POST').length,mutations,'paced request never sends after invalidation');
+ }finally {abort.abort();await clock.advance(180000);await pending;}
+});
+
+for(const identity of ['id','name'] as const)for(const outcome of ['confirmed','delete-failed','lookup-missing'] as const)test(`DigitalOcean stopped-hub key recovery by ${identity}: ${outcome}`,async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue('contract','agents');
+ api.faults.create=503;
+ const failed=await raw.acquire({...request,admission});assert.equal(failed.state,'failed');assert.equal(api.keys.length,1);
+ const {readFile,writeFile}=await import('node:fs/promises');
+ const directory=api.stateRoot+'/.cland/host-provider/digitalocean';
+ const name=(await readdir(directory)).find(name=>name.startsWith('intent-'))!;
+ const record=JSON.parse(await readFile(directory+'/'+name,'utf8'));
+ // Reopen the last durable pre-POST checkpoint, or the lost-import-reply checkpoint.
+ record.postState='not-started';delete record.dropletRefused;delete record.nonAcquisition;
+ if(identity==='name')delete record.keyId;
+ await writeFile(directory+'/'+name,JSON.stringify(record),{mode:0o600});
+ const key=api.keys[0]!.id;
+ if(outcome==='delete-failed')api.faults.keyDeleteFailures=[403];
+ if(outcome==='lookup-missing')api.faults.omitKeyIds=[key];
+ const {runHostWatchdog,hostWatchdogPaths}=await import('../src/host/host-watchdog.ts'),{spendPath}=await import('../src/executor/droplet/spend.ts');
+ const path=hostWatchdogPaths(api.stateRoot,admission.lease!.id),input=JSON.parse(await readFile(path.input,'utf8'));
+ await owner.close();await clock.advance(43200000);
+ const provider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock}),abort=new AbortController(),reports:string[]=[];let retries=0;
+ await runHostWatchdog(input,env,clock,async ms=>{await clock.advance(ms);if(++retries===2)abort.abort();},abort.signal,{provider,processes:hostLockProcesses,report:message=>reports.push(message)});
+ const receipt=JSON.parse(await readFile(path.nonAcquisition,'utf8'));
+ assert.equal(JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id).cost,0);
+ if(outcome==='delete-failed'||identity==='name'&&outcome==='lookup-missing') {assert.ok(receipt.orphan);assert.equal(reports.length,1);assert.equal(api.keys.length,1);}
+ else {assert.equal(receipt.key.id,key);assert.equal(api.keys.length,0);assert.ok(api.requests.some(r=>r.method==='GET'&&r.path===`/v2/account/keys/${key}`));}
+});
+
+test('DigitalOcean lost import reply recovers the unique exact key name after owner closes',async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue('contract','agents');
+ const original=api.provider.importKey.bind(api.provider);
+ t.mock.method(api.provider,'importKey',async(...args:Parameters<typeof original>)=>{await original(...args);throw Error('import reply lost after native acceptance');});
+ assert.equal((await raw.acquire({...request,admission})).state,'failed');assert.equal(api.keys.length,1);
+ const {readFile}=await import('node:fs/promises'),{hostWatchdogPaths,runHostWatchdog}=await import('../src/host/host-watchdog.ts'),{spendPath}=await import('../src/executor/droplet/spend.ts');
+ const path=hostWatchdogPaths(api.stateRoot,admission.lease!.id),input=JSON.parse(await readFile(path.input,'utf8'));
+ await owner.close();await clock.advance(43200000);
+ const provider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});
+ await runHostWatchdog(input,env,clock,async()=>{throw Error('known no-POST key recovery must settle');},undefined,{provider,processes:hostLockProcesses});
+ assert.equal(api.keys.length,0);assert.equal(JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id).cost,0);
+ assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/droplets').length,0);
+});
+
+test('DigitalOcean unknown POST stays reserved through key cleanup until exact-tag droplet deletion',async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue('contract','agents');
+ api.faults.loseCreateResponse=1;assert.equal((await raw.acquire({...request,admission})).state,'failed');
+ const id=api.droplets[0]!.id;api.faults.omitDropletIds=[id];
+ const {readFile}=await import('node:fs/promises'),{hostWatchdogPaths,runHostWatchdog}=await import('../src/host/host-watchdog.ts'),{spendPath}=await import('../src/executor/droplet/spend.ts');
+ const path=hostWatchdogPaths(api.stateRoot,admission.lease!.id),input=JSON.parse(await readFile(path.input,'utf8'));
+ await owner.close();await clock.advance(43200000);
+ const provider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});let held=false;
+ await runHostWatchdog(input,env,clock,async ms=>{
+  assert.equal(api.keys.length,0,'non-billable key is settled separately');assert.equal(api.droplets.length,1);
+  assert.equal(JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id).cost,null,'key absence never releases unknown droplet spend');
+  held=true;api.faults.omitDropletIds=[];await clock.advance(ms);
+ },undefined,{provider,processes:hostLockProcesses,report:()=>{}});
+ assert.equal(held,true);assert.equal(api.droplets.length,0);assert.equal(api.keys.length,0);
+ const receipt=JSON.parse(await readFile(path.receipt,'utf8'));assert.equal(receipt.machine.id,String(id));
+ assert.equal(JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id).released,receipt.confirmedAt);
+});
+
+for(const outcome of ['lookup-failed','lookup-ambiguous'])test(`DigitalOcean exact-name orphan remains reported: ${outcome}`,async t=>{
+ const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{}),owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue('contract','agents');
+ const original=api.provider.importKey.bind(api.provider);
+ t.mock.method(api.provider,'importKey',async(...args:Parameters<typeof original>)=>{await original(...args);throw Error('lost accepted key reply');});
+ assert.equal((await raw.acquire({...request,admission})).state,'failed');
+ if(outcome==='lookup-failed')api.beforeKeyList(async()=>{throw Error('unavailable key inventory');});
+ else await original(api.keys[0]!.name,'ssh-ed25519 other-exact-name-match');
+ const count=api.keys.length;
+ const {readFile}=await import('node:fs/promises'),{runHostWatchdog,hostWatchdogPaths}=await import('../src/host/host-watchdog.ts'),{spendPath}=await import('../src/executor/droplet/spend.ts');
+ const paths=hostWatchdogPaths(api.stateRoot,admission.lease!.id),input=JSON.parse(await readFile(paths.input,'utf8'));
+ await owner.close();await clock.advance(43200000);
+ const provider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock}),reports:string[]=[];
+ await runHostWatchdog(input,env,clock,async()=>{throw Error('reported non-billable orphan must settle droplet side');},undefined,{provider,processes:hostLockProcesses,report:message=>reports.push(message)});
+ assert.equal(api.keys.length,count);assert.equal(api.requests.filter(r=>r.method==='DELETE').length,0);assert.equal(reports.length,1);
+ const receipt=JSON.parse(await readFile(paths.nonAcquisition,'utf8'));assert.ok(receipt.orphan);assert.equal(receipt.droplet,'never-posted');
+ assert.equal(JSON.parse(await readFile(spendPath(env),'utf8')).entries.find((r:{lease:string})=>r.lease===input.id).cost,0);
 });

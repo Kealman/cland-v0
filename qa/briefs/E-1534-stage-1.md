@@ -321,7 +321,7 @@ cat > "$Q/expect.json" <<'JSON'
   "config set preserves SSH hosts and both pools before host prepare"]},
  "hub/test/host-create-admission.test.ts": {"exact": false, "names": [
   "C4 create refuses an unprepared pool naming host prepare",
-  "DigitalOcean create names missing E-1534 admission before image checks or API calls"]},
+  "DigitalOcean create requires a prepared pool before acquisition API calls"],"note":"(superseded by T-1756)"},
  "hub/test/host-provision-recovery.test.ts": {"exact": false, "names": []},
  "hub/test/host-provider-digitalocean-prepare.test.ts": {"exact": false, "names": []},
  "hub/test/setup-accounts.test.ts": {"exact": false, "names": []},

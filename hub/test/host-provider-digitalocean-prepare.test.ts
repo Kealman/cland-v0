@@ -1,3 +1,4 @@
+import { admissionFixture } from './host-admission-fixture.ts';
 // T2: provider admission and pool image lifecycle against the scripted API/machine.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +17,7 @@ test('digitalocean production create names the missing host lease watchdog and s
   assert.deepEqual(result,admission,'acquire uses the same refusal policy');
   assert.equal(result.state, 'refused');
   if (result.state !== 'refused') return;
-  assert.match(result.reason, /E-1534.*lease.*watchdog.*spend/);
+  assert.match(result.reason, /lease.*watchdog.*reservation/);
   assert.equal(api.requests.length, 0);
 });
 
@@ -44,6 +45,7 @@ async function fixture(t: TestContext) {
   } };
   const env = fixtureEnvironment(root, {}, { DIGITALOCEAN_TOKEN: 'pool-sentinel', CLAND_FAKE_HOST_ROOT: root, CLAND_EXECUTOR_STATE: join(root, 'executor-state') });
   const provider = new DigitalOceanHostProvider({ root, env, api: api.provider, clock, dependencies });
+  await admissionFixture(t,root,env,clock).wrap(provider);
   return { root, api, clock, key, machine, provider, commands, readFile, join, drive, dependencies, env };
 }
 
@@ -74,7 +76,7 @@ test('digitalocean create refuses a missing or stale pool image and sends provid
   assert.equal(missing.state, 'refused');
   if (missing.state === 'refused') assert.match(missing.reason, /cland host prepare/);
   assert.equal(api.requests.length, 0);
-  assert.equal((await drive(machine, provider.prepare({ pool: 'agents', key }))).state, 'prepared');
+  {const result=await drive(machine,provider.prepare({pool:'agents',key}));assert.equal(result.state,'prepared',JSON.stringify(result));}
   api.faults.allocateAddressEarly = true;
   const created = await provider.acquire(request);
   assert.equal(created.state, 'created');

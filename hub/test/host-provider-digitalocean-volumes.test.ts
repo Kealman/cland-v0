@@ -1,3 +1,4 @@
+import { admissionFixture } from './host-admission-fixture.ts';
 import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted provider boundary; disposable records, no native processes or sockets.
 import test, { type TestContext } from 'node:test';
@@ -23,6 +24,7 @@ async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => 
   const env = fixtureEnvironment(api.stateRoot, {}, { CLAND_FAKE_HOST_ROOT: api.stateRoot });
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env, api: api.provider, clock, pool: 'agents' });
   await provider.refreshDeclarations();
+  await admissionFixture(t,api.stateRoot,env,clock).wrap(provider);
   return { provider, api, clock, env };
 }
 hostProviderVolumeContract('digitalocean', async (t, scenario) => {
@@ -104,6 +106,7 @@ test('digitalocean volume creation requires a pool, shares pause and resolves ac
   let count = api.requests.length;
   assert.deepEqual(await unbound.createVolume(request), { state: 'refused', reason: 'volume pool unavailable' });
   assert.equal(api.requests.length, count);
+  await admissionFixture(t,api.stateRoot,env,clock).wrap(unbound);
   await unbound.acquire({ project: 'contract', pool: 'actual', architecture: 'x86_64' });
   assert.equal((await unbound.createVolume(request)).state, 'created');
   assert.ok(api.volumes[0]!.tags.includes('cland-pool-actual'));

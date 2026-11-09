@@ -32,7 +32,7 @@ test('C4 create refuses a prepared image after harness pins change',async t=>{
  assert.equal(result.code,1);assert.match(result.stderr,/cland host prepare agents/);
 });
 
-test('DigitalOcean create names missing E-1534 admission before image checks or API calls',async t=>{
+test('DigitalOcean create requires a prepared pool before acquisition API calls',async t=>{
  const root=await tempProject(t);await mkdir(join(root,'.cland'),{recursive:true});
  await writeFile(join(root,'.cland/config.toml'),'[hosts.do]\nprovider="digitalocean"\nsize="s-2vcpu-4gb"\nregion="lon1"\n');
  await projectHub(t,root);
@@ -41,7 +41,7 @@ test('DigitalOcean create names missing E-1534 admission before image checks or 
  await assert.rejects(fetch('https://fixture.invalid/admission-control'),/provider network forbidden/);
  assert.equal(calls,1,'positive control intercepts a fetch before exercising create');calls=0;
  const result=await cland(root,'host','create','do');
- assert.equal(result.code,1);assert.match(result.stderr,/E-1534.*lease.*watchdog.*spend/);
+ assert.equal(result.code,1);assert.match(result.stderr,/host prepare/);
  assert.equal(calls,0,'refusal precedes every provider API call');
 });
 
@@ -59,4 +59,19 @@ test('pre-row admission refusal acquires nothing and publishes no provision reco
  t.mock.method(provider,'acquire',async()=>{acquired++;throw Error('acquisition must not run');});
  await assert.rejects(createHost({root,pool:'agents',env:hub.hostEnvironment,records:store.hosts,owner:hub.hostOwner!,provider,admit:()=>{admitted++;throw Error('latest admission refused');}}),/latest admission refused/);
  assert.equal(admitted,1);assert.equal(acquired,0);assert.deepEqual(store.hosts.provisions.list(),[]);
+});
+
+test('DigitalOcean SSH gate records the provision identity and address without fake environment reads',async t=>{
+ const {provisionSsh}=await import('../src/host/provision-ssh.ts');
+ const {readFile,stat}=await import('node:fs/promises');
+ const root=await tempProject(t),known=join(root,'known_hosts');
+ const env:NodeJS.ProcessEnv={CLAND_SSH_BIN:'recording-ssh'};
+ for(const key of ['CLAND_FAKE_HOST_ROOT','CLAND_FAKE_HOSTS'])Object.defineProperty(env,key,{get(){throw Error('fake environment read');}});
+ const calls:Array<{binary:string;args:string[];input?:string|undefined}>=[];
+ const record={id:'host-do',pool:'agents',provider:'digitalocean',size:'c-8',region:'lon1',created:'2026-11-08T00:00:00Z',state:'booting' as const,machine:{id:'123',address:'192.0.2.17',architecture:'x86_64' as const,created:'2026-11-08T00:00:00Z'},ssh:{clientKeyPath:join(root,'provider-client-key'),knownHosts:'192.0.2.17 ssh-ed25519 pinned-material\n',home:'/home/agent',node:'node'}};
+ const transport=await provisionSsh(record,known,env,async(binary,args,_env,input)=>{calls.push({binary,args,input});});
+ await transport.probe(1000);
+ assert.equal(calls[0]!.binary,'recording-ssh');assert.equal(calls[0]!.args[calls[0]!.args.indexOf('-i')+1],record.ssh.clientKeyPath);
+ assert.ok(calls[0]!.args.includes('agent@192.0.2.17'));assert.ok(calls[0]!.args.includes('StrictHostKeyChecking=yes'));
+ assert.equal(calls[0]!.input,'true\n');assert.equal(await readFile(known,'utf8'),record.ssh.knownHosts);assert.equal((await stat(known)).mode&0o777,0o600);
 });

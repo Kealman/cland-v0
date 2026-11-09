@@ -42,7 +42,7 @@ export const SUBSCRIPTIONS_USAGE = SUBSCRIBE_USAGE + UNSUBSCRIBE_USAGE + SUBSCRI
 
 export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
 
-export const HOST_USAGE = `  host create [pool] human-only local CLI: create a fake-provider host from a current pool image to ready
+export const HOST_USAGE = `  host create [pool] human-only local CLI: create a pool host from a current pool image to ready
                   five-minute boot gate; automatic retries back off 1–30 minutes; provider retry times pause the pool
                   unknown acquisition retains its slot; failures notify Coordinator in Agents
   host status [--json] human-only local CLI: pool slots and settled plus accrued UTC spend; host details

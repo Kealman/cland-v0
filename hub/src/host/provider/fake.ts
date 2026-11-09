@@ -4,14 +4,14 @@ import { durableJson } from '../../executor/droplet/lease.ts';
 import type { PoolImageKey } from './pool-image.ts';
 import { declareHostProvider, type HostProviderDeclarationInput, type HostProviderDeclarations } from './declarations.ts';
 import { readFile, writeFile, opendir, stat, unlink, mkdir } from 'node:fs/promises';
-import { join, isAbsolute } from 'node:path';
+import { join, dirname, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostDirectory } from '../../../../shared/fake-host-directory.ts';
 import { createFakeHost } from '../../../../shared/fake-host-machine.ts';
 import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReleaseObserver, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, DeleteVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult } from './provider.ts';
 
 import { parseFakeVolumeRecord, isFakeVolumeId, type FakeVolumeRecord as VolumeRecord } from './fake-volume-record.ts';
-type Record = { region?: string; machine: Machine; project: string; pool: string; readyAt: number; neverBoot: boolean };
+type Record = { region?: string; machine: Machine; project: string; pool: string; leaseId?:string|undefined; readyAt: number; neverBoot: boolean };
 export type FakeHostProviderOptions = {
   declarations?: HostProviderDeclarationInput;
   env: NodeJS.ProcessEnv; now?: () => number; bootDelayMs?: number;
@@ -179,11 +179,19 @@ export class FakeHostProvider implements HostProvider {
       if (publicKey) {
         await writeFile(join(host.directory, 'host-key.pub'), publicKey);
       }
-      const record: Record = { region: options.region ?? 'fake-1', machine, project: options.project, pool: options.pool, readyAt: this.#now() + (this.#options.bootDelayMs ?? 0), neverBoot: this.#options.neverBoot ?? false };
+      const record: Record = { leaseId:options.admission?.lease?.id, region: options.region ?? 'fake-1', machine, project: options.project, pool: options.pool, readyAt: this.#now() + (this.#options.bootDelayMs ?? 0), neverBoot: this.#options.neverBoot ?? false };
       await writeFile(join(host.directory, 'provider.json'), JSON.stringify(record), { mode: 0o600 });
-      return { state: 'created', machine };
+      return { state: 'created', machine, ssh:{environment:{CLAND_FAKE_HOSTS:[this.#options.env.CLAND_FAKE_HOSTS,machine.address].filter(Boolean).join(',')},clientKeyPath:join(host.directory,'client-key'),knownHosts:`${machine.address} ${publicKey??(await readFile(join(host.directory,'host-key.pub'),'utf8')).trim()}\n`,home:join(host.directory,'home'),node:process.execPath} };
     } catch { return { state: 'failed', reason: 'fake create failed' }; }
   }); }
+  async findAdmission(project:string,pool:string,id:string):Promise<Machine|undefined> {
+    const matches:Machine[]=[];
+    for await(const entry of await opendir(dirname(hostDirectory(this.#root,'admission')))) {
+      if(!entry.isDirectory())continue;
+      try {const record=JSON.parse(await readFile(join(dirname(hostDirectory(this.#root,'admission')),entry.name,'provider.json'),'utf8')) as Record;if(record.leaseId===id&&record.project===project&&record.pool===pool)matches.push(record.machine);}catch(error){if(!missing(error))throw error;}
+    }
+    return matches.length===1?matches[0]:undefined;
+  }
   async #record(machine: Machine): Promise<Record> {
     const record = JSON.parse(await readFile(join(hostDirectory(this.#root, machine.id), 'provider.json'), 'utf8')) as Record;
     const captured = record.machine;

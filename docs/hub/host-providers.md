@@ -147,8 +147,8 @@ uses the injected clock, independently of shared API pacing, and concurrent
 refusals can only extend its deadline. An address-observation failure after a
 successful create retains the accepted identity for reap and returns `failed`,
 not a retryable refused-create outcome; a 429 still pauses later creates. Status and cleanup
-do not consult the create pause (API pacing still applies). Production acquisition
-remains test-only; endpoint configuration and credentials do not enable it.
+do not consult the create pause (API pacing still applies). Production acquisition requires durable host admission; see
+[DigitalOcean host admission](digitalocean-host-admission.md).
 
 `earliestStop({created, idleSince, idleStopMs, declarations})` returns epoch
 milliseconds: the later of `created + billingMinimumMs` and
@@ -169,9 +169,8 @@ failed acquisition for an unsupported architecture without creating a machine.
 The registry includes `digitalocean`. It uses the executor's DigitalOceanApi,
 endpoint parser, shared token budget and confirmed DELETE/GET operations.
 The hub environment supplies DIGITALOCEAN_TOKEN; no token enters user-data,
-child arguments or returned diagnostics. Acquisition remains test-only: both an
-injected API and a matching CLAND_FAKE_HOST_ROOT are required. No CLI admission
-is added. The default region is lon1; fra1 and ams3 are also accepted. The
+child arguments or returned diagnostics. Acquisition requires the hub’s lease, armed watchdog and hosts reservation
+receipts; see [DigitalOcean host admission](digitalocean-host-admission.md). The default region is lon1; fra1 and ams3 are also accepted. The
 configured size and image select the droplet; each acquire generates a new key.
 
 Provider state lives in `.cland/host-provider/digitalocean` under its root.
@@ -219,8 +218,9 @@ the source-release installer preserves the tracked source tree.
 DigitalOcean host creation requires a current pool image and sends that image id
 with the provider-rendered SSH prelude, automount removal, auth helper/sudoers and
 Codex file credential store. Missing or stale images name `cland host prepare`.
-Outside the sealed test environment, host creation refuses before API access:
-E-1534 host lease, watchdog and spend admission are required. Image preparation
+Host acquisition refuses before API access unless the lease, armed watchdog
+and hosts reservation receipts are supplied; see
+[DigitalOcean host admission](digitalocean-host-admission.md). Image preparation
 remains available through the executor's existing builder controls. A legacy
 configured-image receipt does not satisfy a pool recipe key.
 
@@ -307,19 +307,18 @@ admitted preparations before storage closes.
 
 `cland host create [pool]` and `cland host list [--json]` (`host.create`, `host.list`)
 require the local human CLI or Neovim. Sessions, host-secret connections, web
-and messenger remotes are refused. Creation currently supports the directory-only
-fake provider under its explicit fake-host environment; DigitalOcean acquisition
-remains test-only and is refused by this command. The omitted pool selects
+and messenger remotes are refused. Creation supports the directory-only fake provider under its explicit
+fake-host environment and DigitalOcean under durable admission
+([details](digitalocean-host-admission.md)). The omitted pool selects
 `agents`, or the sole configured pool; ambiguous pools require a name.
 
-Creation first asks the provider's side-effect-free `createAdmission()`, before
-computing the image key or checking its receipt. The fake provider allows;
-DigitalOcean's production refusal names E-1534's host lease, watchdog and spend
-requirements, unchanged from `acquire`, and makes no API call. Creation then
-compares the prepared pool key with the current Node, lock, recipe,
+Creation compares the prepared pool key with the current Node, lock, recipe,
 harness pins and provision hook. A stale or absent key names
 `cland host prepare <pool>` before acquisition. It renders a fresh pinned host
-key in the prelude user-data and acquires the machine with that pool image.
+key in the prelude user-data. Before acquiring the machine, it reserves hosts
+spend, publishes the lease, arms the detached watchdog and passes the durable
+admission through `createAdmission` and `acquire`. See
+[DigitalOcean host admission](digitalocean-host-admission.md).
 The SSH gate allows five minutes for boot and successful strict pinned-key
 admission, before any runtime delivery or registration. A mismatching key never
 starts the supervisor. Whole-runtime delivery then precedes registration and
@@ -380,8 +379,8 @@ a machine id supplies no non-admission receipt.
 
 The fake provider reads its machine tombstone and stats all associated key files
 for absence. DigitalOcean release uses the API's confirmed DELETE/GET paths,
-logging GET 404 for the droplet and its key. Production DigitalOcean creation
-still requires E-1534 admission; this command does not enable it. No provider
+logging GET 404 for the droplet and its key. DigitalOcean creation
+uses [durable host admission](digitalocean-host-admission.md). No provider
 credentials or private key bytes appear in the deletion evidence.
 
 ### In-hub creation and clock

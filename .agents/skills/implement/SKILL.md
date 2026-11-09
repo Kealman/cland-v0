@@ -293,8 +293,9 @@ the old native generation or discard retained ownership. Successful publication 
 row, ready checkout, restart warning and intent completion atomically.
 
 DigitalOcean pool image preparation uses the executor builder lease, watchdog and
-spend with pool-specific image/recovery records. Host creation remains refused
-outside sealed tests pending E-1534 host admission; image preparation is allowed.
+spend with pool-specific image/recovery records. Host creation uses the published lease, armed watchdog and hosts reservation
+receipts; see docs/hub/digitalocean-host-admission.md. Image preparation uses its
+existing executor builder controls.
 Use the scripted pool preparation tests and preserve executor preparation tests
 unchanged. See [pool preparation](../../../docs/hub/host-providers.md#pool-images).
 

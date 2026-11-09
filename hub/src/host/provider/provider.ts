@@ -4,10 +4,12 @@ import type { HostProviderDeclarationState } from './declarations.ts';
  * and native resource details stay behind this interface, on the hub. */
 export type HostArchitecture = 'x86_64' | 'arm64';
 export type Machine = { id: string; address: string; architecture: HostArchitecture; created: string };
-export type AcquireOptions = { project: string; pool: string; architecture: HostArchitecture; region?: string; userData?: string; image?: PoolImageKey };
+export type HostCreateAdmission = { provider:string; root:string; project:string; lease?: import('../host-leases.ts').HostLease; watchdog?: import('../host-watchdog.ts').HostWatchdogIdentity; reservation?: {project:string;lease:string;pool:string;deadline:string} };
+export type HostSshIdentity = {environment?:{CLAND_FAKE_HOSTS:string};user?:string;clientKeyPath:string;knownHosts:string;home:string;node:string};
+export type AcquireOptions = { signal?:AbortSignal; admission?:HostCreateAdmission; size?:string; project: string; pool: string; architecture: HostArchitecture; region?: string; userData?: string; image?: PoolImageKey };
 export type CreateAdmission = { state:'allowed' } | { state:'refused'; reason:string; retryAt?:string };
 export type Failed = { state: 'failed'; reason: string };
-export type AcquireResult = { state: 'created'; machine: Machine } | { state: 'refused'; reason: string; retryAt: string } | Failed;
+export type AcquireResult = { state: 'created'; machine: Machine; ssh?:HostSshIdentity } | { state: 'refused'; reason: string; retryAt: string;nonAcquisition?:import('../acquisition-receipt.ts').ProviderNonAcquisitionReceipt } | Failed;
 export type StatusReadScope = {signal?:AbortSignal;deadline?:number};
 export type MachineStatus = { state: 'booting' | 'ready' | 'gone' } | Failed;
 export type ReleaseRead = {resource:'machine'|'key';read:string};
@@ -20,8 +22,10 @@ export interface HostProvider {
   readonly transport: 'ssh';
   readonly declarations: HostProviderDeclarationState;
   /** Side-effect free: no API call or resource admission. */
-  createAdmission(): CreateAdmission;
+  createAdmission(admission?:HostCreateAdmission): CreateAdmission;
   acquire(options: AcquireOptions): Promise<AcquireResult>;
+  releaseAdmission?(project:string,pool:string,id:string):Promise<{state:'released';nonAcquisition:import('../acquisition-receipt.ts').ProviderNonAcquisitionReceipt}|Extract<ReleaseResult,{state:'incomplete'}>>;
+  findAdmission?(project:string,pool:string,id:string):Promise<Machine|undefined>;
   prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult>;
   /** Scoped reads must join cancellation before rejecting, freeing the provider for release. */
   status(machine: Machine, scope?:StatusReadScope): Promise<MachineStatus>;

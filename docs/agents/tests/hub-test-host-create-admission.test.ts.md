@@ -8,12 +8,15 @@ lists create and list` checks both help entries without a hub.
 
 `C4 create refuses a prepared image after harness pins change` proves stale-image refusal after a successful prepare, before any native acquisition.
 
-`DigitalOcean create names missing E-1534 admission before image checks or API calls`
-uses an unprepared DigitalOcean pool. A fetch interceptor first proves it catches
-a request, then the public create CLI must name E-1534's lease, watchdog and spend
-requirements with zero provider calls. The interceptor prevents external network
-access even if admission regresses. This is refusal-ordering evidence, not a
-DigitalOcean creation or image-preparation run.
+`DigitalOcean create requires a prepared pool before acquisition API calls`
+uses an unprepared DigitalOcean pool. A positive-control fetch interceptor proves
+zero provider calls while the CLI names host prepare. Direct missing-receipt
+coverage lives in host-provider-digitalocean.test.ts.
+
+`DigitalOcean SSH gate records the provision identity and address without fake environment reads`
+records the actual probe command. It checks the supplied client key, strict pin,
+private known-host file and machine destination; fake-variable getters throw on
+read. No native SSH process or cloud machine starts.
 
 The pre-row admission refusal case prepares a fake image, injects a refusal into
 the real create path after asynchronous image checks, and asserts the callback

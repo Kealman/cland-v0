@@ -122,3 +122,10 @@ Waiting-launch restart ownership: [durable waits](../docs/hub/waiting-launches.m
 
 - [Pool boot failures and provider limits](../docs/hub/pool-failures.md): fixed boot gate, retry backoff and unknown acquisition ownership.
 Host tunnel loss, unreachable state and confirmed teardown: [Host health](../docs/hub/host-health.md).
+
+DigitalOcean host creation uses [durable host admission](../docs/hub/digitalocean-host-admission.md):
+a current pool image, the published host lease, an armed detached watchdog and
+hosts spend reservation. The same path serves manual and automatic pool creation;
+provider credentials and API access are required. SSH provisioning uses the
+persisted provider identity, and pre-checkpoint watchdog recovery requires the
+exact admitted lease tag and confirmed droplet/key absence reads.

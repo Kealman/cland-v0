@@ -11022,7 +11022,6 @@
     "hub/test/host-create-admission.test.ts::C4 create refuses a prepared image after harness pins change": 0.654693,
     "hub/test/host-create-admission.test.ts::C4 create refuses an unprepared pool naming host prepare": 0.423728,
     "hub/test/host-create-admission.test.ts::C5 host help lists create and list": 0.136715,
-    "hub/test/host-create-admission.test.ts::DigitalOcean create names missing E-1534 admission before image checks or API calls": 0.320604,
     "hub/test/host-create-admission.test.ts::pre-row admission refusal acquires nothing and publishes no provision record": 0.420278,
     "hub/test/host-create-entry.test.ts::hub create entry passes its clock and owner to the injected create path": 0.317973,
     "hub/test/host-destroy.test.ts::C4 destroy refuses an unknown id": 0.405845,

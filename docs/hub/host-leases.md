@@ -5,7 +5,8 @@ charge) to `[hosts] lease` under the shared verification spend cap and the
 hosts cap. Reservation refusal precedes acquisition and creates no lease row.
 The default lease is 12 hours, with a 30-second minimum, as parsed by the shared
 host-pool configuration parser. Fake providers normally declare zero cost;
-DigitalOcean creation remains refused by its provider admission.
+DigitalOcean creation requires the published lease, armed watchdog and hosts spend
+reservation; see [DigitalOcean host admission](digitalocean-host-admission.md).
 
 `HostRecords.leases` owns `host_leases` in hub.db. The provision identity and
 creation cancellation/completion owner exist before asynchronous spend admission.
