@@ -5,13 +5,13 @@ Command help text lives in `src/cli/usage/<command>.ts`; the `usage.ts` facade
 re-exports existing constants and composes the legacy grouped blocks.
 `src/cli/help.ts` composes top-level usage and resolves bare help. Help, version
 and noninteractive no-command invocations load the facade, help, `version.ts`
-and 37 pure command-help modules. Command implementations re-export their usage
+and 38 pure command-help modules. Command implementations re-export their usage
 constants for existing callers.
 
-`test/cli-imports.test.ts` uses a real-process resolve hook to assert the 37 help
+`test/cli-imports.test.ts` uses a real-process resolve hook to assert the 38 help
 modules separately. Excluding those modules, the existing source-module budgets
 remain: help/version/no-command at most 10, task list at most 17 and hub status
-at most 21. The macOS Node 24 real-CLI fixture observed total counts of 40, 52 and 57
+at most 21. The macOS Node 24.21.0 real-CLI fixture observed total counts of 41, 54 and 55
 respectively (help/version/no-command, task list and hub status).
 The guard also checks lazy implementation imports and preserves command import
 failure error lines and exit codes.

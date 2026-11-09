@@ -117,7 +117,8 @@ test('CLI commands load only their own source closure within the import budgets'
     assert.equal(result.status, code, result.stderr);
     const helpModules = urls.filter(url => url.includes('/src/cli/usage/'));
     t.diagnostic(`cland ${args.join(' ')}: ${urls.length} hub/src modules (${helpModules.length} pure command-help modules)`);
-    assert.equal(helpModules.length, 37, 'the command-help split has a fixed import cost');
+    // Login adds one pure command-help module; implementation budgets stay unchanged.
+    assert.equal(helpModules.length, 38, 'the command-help split has a fixed import cost');
     assert.ok(urls.length > 0, 'the counter observed source imports');
     assert.ok(urls.filter(url => !url.includes('/src/cli/usage/')).length <= budget, `loaded ${urls.length} modules (budget ${budget}): ${urls.join(', ')}`);
     const cliModules = urls.filter(url => url.includes('/src/cli/') && !url.includes('/src/cli/usage/') && !['usage.ts', 'help.ts'].some(name => url.endsWith(`/${name}`)));

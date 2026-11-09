@@ -1,3 +1,4 @@
+import { LoginRecords } from './logins.ts';
 import { HostLeases } from './host-leases.ts';
 import { ProvisionRecords } from './provision-records.ts';
 // Host persistence and private bootstrap material. Admission belongs to the socket edge.
@@ -17,11 +18,13 @@ function hostId(id: string): void {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(id) || id === 'local') throw new Error('invalid host id');
 }
 export class HostRecords {
+  readonly logins: LoginRecords;
   readonly provisions:ProvisionRecords;
   readonly leases:HostLeases;
   readonly #db: DatabaseSync;
   constructor(db: DatabaseSync) {
     this.#db = db;
+    this.logins = new LoginRecords(db);
     db.exec(`create table if not exists hosts (
       id text primary key, transport text not null, address text not null,
       user text not null, state text not null, secret_digest text not null

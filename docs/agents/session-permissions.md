@@ -147,3 +147,10 @@ CLI launch flags remain unchanged.
 ## Remote discovery
 
 Remote sessions use `CLAND_HUB_FILE` to find the host-local forwarded sockets. The per-host bearer still requires the session launch credential and grants no human authority; status and doctor reach that socket without checking a local hub PID. See [remote discovery](../hub/remote-discovery.md).
+
+## Login metadata
+
+`login.list` / `cland login list [--json]` requires a local human CLI or Neovim
+connection, like `host.list`. Sessions, web clients and remotes are refused.
+Users mode also checks the local user's administrative authority. Implementers
+exercise this boundary only in isolated fixtures. See [project logins](../hub/logins.md).

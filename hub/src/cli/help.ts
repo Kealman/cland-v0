@@ -1,3 +1,4 @@
+import { LOGIN_USAGE } from './usage/login.ts';
 // Static help entry shared by the executable and in-process command coverage.
 import {
   HOST_USAGE,
@@ -42,11 +43,12 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${HOST_USAGE}${AUTH_USAGE}${USER_USAGE}${MODELS_USAGE}${ACCOUNT_USAGE}${OPEN_USAGE}${WEB_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${QA_LINT_USAGE}${INIT_USAGE}${SETUP_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${SECRET_USAGE}${REMOTE_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
+${LOGIN_USAGE}${HOST_USAGE}${AUTH_USAGE}${USER_USAGE}${MODELS_USAGE}${ACCOUNT_USAGE}${OPEN_USAGE}${WEB_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${QA_LINT_USAGE}${INIT_USAGE}${SETUP_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${SECRET_USAGE}${REMOTE_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
 const commandUsage: Readonly<Record<string, string>> = {
+  login: LOGIN_USAGE,
   host: HOST_USAGE,
   auth: AUTH_USAGE,
   user: USER_USAGE,
@@ -100,6 +102,7 @@ for (const block of TASK_USAGE.slice(0, taskOptionsStart).split(/(?=^  task )/m)
 /** Undefined leaves argument parsing and command execution to the CLI. */
 export function commandHelp(command: string, args: readonly string[]): string | undefined {
   if (command === '--help' || command === '-h' || command === 'help') return usage;
+  if (command === 'login' && args.length === 2 && args[0] === 'list' && ['--help','-h'].includes(args[1]!)) return LOGIN_USAGE;
   if (command === 'host' && args.length === 2 && ['create', 'list', 'status', 'stop', 'destroy', 'prepare', 'serve', 'revoke', 'git-proxy'].includes(args[0]!) && ['--help', '-h'].includes(args[1]!)) return HOST_USAGE;
   if (command === 'task' && args.length === 2 && (args[1] === '--help' || args[1] === '-h')) {
     const help = taskUsage.get(args[0]!);

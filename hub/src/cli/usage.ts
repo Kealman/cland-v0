@@ -1,3 +1,4 @@
+export { LOGIN_USAGE } from './usage/login.ts';
 // Compatibility facade. Edit help in usage/<command>.ts; keep command implementations out.
 import { ACCOUNT_USAGE } from './usage/account.ts';
 import { OPEN_USAGE } from './usage/open.ts';

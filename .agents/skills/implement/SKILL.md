@@ -306,3 +306,7 @@ Role host pool settings use `[<role>.launch] pool` (default `local`) or
 `cland role launch <role> --pool <pool>`. Coordinator and Aide accept only
 `local`. Check syntax independently of pool existence; see
 [role pool defaults](../../../docs/hub/roles.md#role-host-pool-defaults).
+
+For project login metadata work, use `HostRecords.logins` and isolated SQLite or
+projectHub fixtures. `cland login list [--json]` is local human CLI/Neovim only;
+sessions, web and remotes are refused. See [project logins](../../../docs/hub/logins.md).

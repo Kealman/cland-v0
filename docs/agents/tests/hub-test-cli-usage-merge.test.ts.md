@@ -2,7 +2,7 @@
 
 Edit command help in its owning `hub/src/cli/usage/<command>.ts` module. `usage.ts` is the compatibility facade: it re-exports the existing constants and composes the legacy init/update, publish/release/sync and subscribe/unsubscribe/subscriptions blocks. `usage/task-import.ts` owns `IMPORT_USAGE`, imported by the task module. Keep these modules free of command implementations.
 
-The T1 command-help table covers every advertised command in process. T2 keeps five real CLI help launches; see [CLI help coverage](hub-test-cli-help.test.ts.md). Help bytes and public export composition stay unchanged through this split. The source import graph now includes 37 pure command-help modules; `cli-imports.test.ts` asserts that count separately from the existing implementation budgets.
+The T1 command-help table covers every advertised command in process. T2 keeps five real CLI help launches; see [CLI help coverage](hub-test-cli-help.test.ts.md). Help bytes and public export composition stay unchanged through this split. The source import graph now includes 38 pure command-help modules; `cli-imports.test.ts` asserts that count separately from the existing implementation budgets.
 
 The T3 test copies the owning command modules into a disposable Git repository, commits independent verify/executor and init/update edits, and checks native `merge-tree` and `merge`. Git runs synchronously with the shared sealed fixture environment and `gc.auto=0`; no writer remains at cleanup. No union merge attribute is needed for command modules.
 

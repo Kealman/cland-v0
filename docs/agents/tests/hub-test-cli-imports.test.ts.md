@@ -12,7 +12,8 @@ Keep the budget and dispatch-module assertions. The [T2 secret startup
 cases](hub-test-secrets.test.ts.md) separately prove that deferred loading still
 tightens/refuses credentials before serving and releases the lock on refusal.
 
-The auth/user commands add one shared pure help module (37 total). Keep the
+The auth/user commands share one pure help module, and login adds its own pure
+help module (38 total). Keep the
 non-help implementation budgets unchanged. Native no-hub auth/user calls remain
 database-free, and both dispatch paths preserve their import-failure stderr/exit.
 
