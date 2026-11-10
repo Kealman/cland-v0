@@ -53,9 +53,6 @@ Additional standalone names for stage QA:
 - `fake snapshot deletion confirms absence and retained history fails closed`:
   ignored snapshot deletion is incomplete; old single-receipt records read;
   malformed histories block list/delete/clone and retain exact bytes.
-- `digitalocean new snapshot operations refuse without API calls`: all three
-  additive operations fail unsupported using the fake API and FakeClock; the
-  request count stays unchanged.
 
 All cases use sealed disposable roots and no native lifecycle processes. Run
 individual names with `--test-name-pattern` before the file path. No browser,
@@ -67,8 +64,8 @@ lookup clone and delete after volume deletion`: live-volume listing becomes
 `volume-gone` after deletion while the retained ID supports lookup and cloning
 with exact saved contents, region inheritance, incomplete ignored deletion,
 confirmed deletion and idempotent delete. The generic opt-in contract also
-proves ID-based survival. DigitalOcean's additive unsupported case includes
-`getSnapshot` and ID-based deletion, with no API requests.
+proves ID-based survival. DigitalOcean exercises the same contract in its own
+provider test entry.
 
 
 `snapshot ID deletion retries history publication after provider recreation`
@@ -76,3 +73,9 @@ injects a failed live-volume history write after snapshot contents removal. The
 first deletion reports incomplete and retains history. A fresh provider retries
 with only the ID, publishes the empty history and confirms snapshot absence.
 The fake's `failSnapshotHistoryWrite` fault affects only that publication.
+
+T-1782 removes the stage-1 unsupported-operation control. The production-path
+DigitalOcean replacement lives in `host-provider-digitalocean-volumes.test.ts`:
+`digitalocean: snapshot history, cloning and confirmed deletion` plus
+`digitalocean snapshot receipts and source project fence destructive use across restart`.
+The original control is historical stage-1 evidence, not a current expectation.

@@ -45,7 +45,9 @@ export interface HostProvider {
   deleteVolume(volume: Volume): Promise<DeleteVolumeResult>;
 }
 
-export type CreateVolumeOptions = { project: string; name: string; region: string; sizeGiB: number; fromSnapshot?: VolumeSnapshot | string };
+/** Login owner supplies the project and pool whose disk is being allocated. */
+export type LoginVolumeAdmission = { login: string; project: string; pool: string };
+export type CreateVolumeOptions = { project: string; name: string; region: string; sizeGiB: number; fromSnapshot?: VolumeSnapshot | string; admission?: LoginVolumeAdmission };
 export type CreateVolumeResult = { state: 'created'; volume: Volume } | { state: 'refused'; reason: string; retryAt?: string } | Failed;
 export type DeleteVolumeResult = { state: 'deleted' } | { state: 'incomplete'; reason: string } | { state: 'refused'; reason: 'attached' };
 export type ListVolumesResult = { state: 'listed'; volumes: Volume[] } | Failed;

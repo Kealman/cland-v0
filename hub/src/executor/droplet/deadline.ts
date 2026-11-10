@@ -28,7 +28,7 @@ export async function within<T>(work: Promise<T>, ms: number, clock: Clock = rea
 }
 
 const deadlineArgument: Record<keyof Provider, number> = {
-  volumes: 1, volume: 1, createVolume: 1, volumeAction: 4, volumeSnapshot: 2, deleteVolume: 1,
+  volumes: 1, volume: 1, createVolume: 1, volumeAction: 4, volumeSnapshot: 2, volumeSnapshots: 1, volumeSnapshotInfo: 1, deleteVolumeSnapshot: 1, deleteVolume: 1,
   image: 1, account: 0, sizes: 0, regions: 0, droplets: 1, keys: 0, key: 1, create: 1, droplet: 1,
   importKey: 2, deleteDroplet: 1, deleteKey: 1, dropletAction: 3, action: 1,
   actions: 0, snapshots: 0, snapshot: 1, transferImage: 2, tagImage: 2, deleteSnapshot: 1,

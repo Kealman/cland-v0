@@ -171,25 +171,6 @@ test('fake snapshot deletion confirms absence and retained history fails closed'
   }
 });
 
-test('digitalocean new snapshot operations refuse without API calls', async t => {
-  const { DigitalOceanHostProvider } = await import('../src/host/provider/digitalocean.ts');
-  const { fakeDigitalOcean } = await import('./fakes/digitalocean/fake-api.ts');
-  const { FakeClock } = await import('./fake-clock.ts');
-  const clock = new FakeClock();
-  const api = await fakeDigitalOcean('snapshot-sentinel', { machine: 'scripted', clock });
-  t.after(() => api.close());
-  const p = new DigitalOceanHostProvider({ root: api.stateRoot, env: fixtureEnvironment(api.stateRoot, {}, { CLAND_FAKE_HOST_ROOT: api.stateRoot }), api: api.provider, pool: 'agents', clock });
-  const v = { id: 'sentinel', project: 'contract', name: 'login', region: 'lon1', sizeGiB: 1, created: '2026-11-06T00:00:00Z', attachedTo: null };
-  const snapshot = { id: 'snapshot-sentinel', volumeId: v.id, created: v.created };
-  const before = api.requests.length;
-  for (const result of [await p.createVolume({ ...v, fromSnapshot: snapshot }), await p.listSnapshots(v), await p.getSnapshot(snapshot.id), await p.deleteSnapshot(snapshot), await p.deleteSnapshot(snapshot.id)]) {
-    assert.equal(result.state, 'failed');
-    if (result.state === 'failed') assert.match(result.reason, /unsupported/);
-  }
-  assert.equal(api.requests.length, before);
-});
-
-
 test('surviving snapshot IDs support lookup clone and delete after volume deletion', async t => {
   const f = await factory(t, 'normal'), p = f.provider;
   const v = await p.createVolume({ project: 'contract', region: f.region, name: 'login', sizeGiB: 1 });

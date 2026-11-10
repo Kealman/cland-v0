@@ -235,12 +235,30 @@ resources have disappeared or the owner acknowledgement was lost.
 
 ### DigitalOcean volumes
 
-Volume creation uses the same injected-API and disposable-root fence as machine
-acquisition. It creates 1 GiB in lon1, fra1 or ams3 with cland, project and pool
-tags. The provider's configured `pool` also constrains machine acquire inputs;
-without it, volume creation resolves one unambiguous pool from that project's
-persisted acquire intents. Missing or ambiguous pool context refuses before API
-calls. No default pool is invented. CreateVolumeOptions remains unchanged.
+Volume creation requires `CreateVolumeOptions.admission` with a nonempty login
+name, matching project and a valid pool. The login owner supplies this context;
+a configured provider pool must match. Missing or mismatched admission refuses
+before any API call. Creates allocate 1 GiB in lon1, fra1 or ams3 with `cland`,
+project and pool tags, including on the production provider path. Tests inject
+only the scripted fake API and never allocate cloud resources.
+
+`fromSnapshot` accepts a snapshot ID or receipt. The provider reads the snapshot,
+validates a supplied receipt's source volume and creation time, and POSTs
+`/volumes` with `snapshot_id` in the snapshot's region. `listSnapshots(volume)`
+reads `/volumes/<id>/snapshots` after validating volume ownership; a missing
+volume returns `volume-gone`. Snapshots survive source-volume deletion and
+`getSnapshot(id)` reads them independently. `deleteSnapshot` uses
+`DELETE /snapshots/<id>` followed by GET; only GET 404 confirms deletion.
+An ignored DELETE, failed confirmation or unknown outcome stays incomplete.
+
+Snapshot creation and owned-volume history listing persist a root-local ownership
+receipt (project, source volume, creation time and region). Lookup, restore and
+deletion require that receipt; unknown snapshot IDs fail closed. Restore matches
+the target project to the retained source project, including after source-volume
+deletion and provider restart. Object receipts must match volumeId and created
+before deletion; a fresh provider read validates native identity before DELETE.
+Ownership receipts remain after deletion for idempotent absence confirmation.
+
 Machine and volume creates share the provider creation pause. All volume calls
 use DigitalOceanApi's endpoint/token pacing budget. The provider holds the raw
 API: only action polling passes an explicit deadline. The additive volume
@@ -499,6 +517,5 @@ snapshot receipt and the additive history list; invalid retained records fail
 closed. Old receipts without saved contents can be listed and deleted, but
 cannot supply a clone.
 
-DigitalOcean currently refuses `fromSnapshot`, `listSnapshots` and
-`deleteSnapshot` and `getSnapshot` as failed/unsupported without API calls. Existing DigitalOcean
-volume operations retain their behaviour.
+DigitalOcean implements snapshot history, lookup, restoration and confirmed
+deletion through its API; see [DigitalOcean volumes](#digitalocean-volumes).

@@ -1,3 +1,4 @@
+import { beforeDirectories } from './process-cleanup.ts';
 import { admissionFixture } from './host-admission-fixture.ts';
 import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted provider boundary; disposable records, no native processes or sockets.
@@ -10,10 +11,17 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { hostProviderVolumeContract } from './host-provider-contract.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 
+async function closeFixture(api: { close(options?: { retainRoot?: boolean }): Promise<void> }, beforeClose?: () => Promise<void>) {
+  const failures: unknown[] = [];
+  try { await beforeClose?.(); } catch (error) { failures.push(error); }
+  try { await api.close({ retainRoot: failures.length > 0 }); } catch (error) { failures.push(error); }
+  if (failures.length) throw new AggregateError(failures, 'volume fixture cleanup incomplete');
+}
+
 async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => Promise<void>) {
   const clock = new FakeClock();
-  const api = await fakeDigitalOcean('volume-sentinel', { machine: 'scripted', clock });
-  t.after(async () => { await beforeClose?.(); await api.close(); });
+  const api = await fakeDigitalOcean('volume-sentinel', { machine: 'scripted', clock, testContext: t });
+  beforeDirectories(t, () => closeFixture(api, beforeClose));
   await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
   api.faults.allocateAddressEarly = true;
@@ -25,6 +33,8 @@ async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => 
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env, api: api.provider, clock, pool: 'agents' });
   await provider.refreshDeclarations();
   await admissionFixture(t,api.stateRoot,env,clock).wrap(provider);
+  const create = provider.createVolume.bind(provider);
+  provider.createVolume = options => create({ ...options, admission: options.admission ?? { login: options.name, project: options.project, pool: 'agents' } });
   return { provider, api, clock, env };
 }
 hostProviderVolumeContract('digitalocean', async (t, scenario) => {
@@ -32,7 +42,7 @@ hostProviderVolumeContract('digitalocean', async (t, scenario) => {
   return { provider: f.provider, region: 'lon1', otherRegion: 'fra1',
     snapshotRetryAt: new Date(f.clock.now().getTime() + 600000).toISOString(),
     advanceSnapshotWindow: () => f.clock.advance(600000), ready: async () => {} };
-}, (name, run) => test(name, run));
+}, (name, run) => test(name, run), true);
 
 test('digitalocean volume create carries lon1, 1 GiB and project/pool tags', async t => {
   const { provider, api } = await fixture(t);
@@ -41,6 +51,20 @@ test('digitalocean volume create carries lon1, 1 GiB and project/pool tags', asy
   const body = api.requests.find(r => r.method === 'POST' && r.path === '/v2/volumes')!.body!;
   assert.equal(body.size_gigabytes, 1); assert.equal(body.region, 'lon1');
   assert.deepEqual(body.tags, ['cland', projectTag(api.stateRoot, 'contract'), 'cland-pool-agents']);
+});
+
+test('digitalocean volume create requires login admission outside the fake-host fence', async t => {
+  const { api, clock } = await fixture(t);
+  const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env: {}, api: api.provider, clock, pool: 'agents' });
+  const input = { project: 'contract', region: 'lon1', name: 'login', sizeGiB: 1 };
+  const before = api.requests.length;
+  assert.deepEqual(await provider.createVolume(input), { state: 'refused', reason: 'DigitalOcean volume create requires login admission' });
+  assert.equal(api.requests.length, before);
+  for (const admission of [{ login: '', project: 'contract', pool: 'agents' }, { login: 'login', project: 'other', pool: 'agents' }, { login: 'login', project: 'contract', pool: 'other' }]) {
+    assert.equal((await provider.createVolume({ ...input, admission })).state, 'refused');
+    assert.equal(api.requests.length, before);
+  }
+  assert.equal((await provider.createVolume({ ...input, admission: { login: 'login', project: 'contract', pool: 'agents' } })).state, 'created');
 });
 
 test('digitalocean volume actions publish attachment only after completed', async t => {
@@ -99,22 +123,17 @@ test('digitalocean volume actions publish attachment only after completed', asyn
   }
 });
 
-test('digitalocean volume creation requires a pool, shares pause and resolves acquire pool', async t => {
+test('digitalocean volume admission selects pool and shares the creation pause', async t => {
   const { provider, api, clock, env } = await fixture(t);
   const unbound = new DigitalOceanHostProvider({ root: api.stateRoot, env, api: api.provider, clock });
   const request = { project: 'contract', name: 'login', region: 'lon1', sizeGiB: 1 };
-  let count = api.requests.length;
-  assert.deepEqual(await unbound.createVolume(request), { state: 'refused', reason: 'volume pool unavailable' });
-  assert.equal(api.requests.length, count);
-  await admissionFixture(t,api.stateRoot,env,clock).wrap(unbound);
-  await unbound.acquire({ project: 'contract', pool: 'actual', architecture: 'x86_64' });
-  assert.equal((await unbound.createVolume(request)).state, 'created');
+  assert.equal((await unbound.createVolume({ ...request, admission: { login: 'login', project: 'contract', pool: 'actual' } })).state, 'created');
   assert.ok(api.volumes[0]!.tags.includes('cland-pool-actual'));
   api.faults.rateLimits = 1;
   api.faults.retryAfter = '2';
   const refused = await provider.createVolume(request);
   assert.deepEqual(refused, { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(clock.now().getTime() + 2000).toISOString() });
-  count = api.requests.length;
+  const count = api.requests.length;
   assert.deepEqual(await provider.createVolume(request), refused);
   assert.equal((await provider.acquire({ project: 'contract', pool: 'agents', architecture: 'x86_64' })).state, 'refused');
   assert.equal(api.requests.length, count);
@@ -158,4 +177,80 @@ test('digitalocean known snapshot refusal returns immediately for the exact volu
     assert.equal(api.requests.length, sent, 'expiry does not replay a mutation');
     assert.equal((await provider.snapshotVolume(v.volume)).state, 'snapshotted');
   } finally { if (!settled) await clock.advance(600000); await work; }
+});
+
+test('digitalocean snapshot restore sends source region and tags; deletion needs observed absence', async t => {
+  const { provider, api } = await fixture(t);
+  const v = await provider.createVolume({ project: 'contract', region: 'lon1', name: 'login', sizeGiB: 1 });
+  assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+  const s = await provider.snapshotVolume(v.volume);
+  assert.equal(s.state, 'snapshotted'); if (s.state !== 'snapshotted') return;
+  const restored = await provider.createVolume({ project: 'contract', region: 'fra1', name: 'copy', sizeGiB: 1, fromSnapshot: s.snapshot });
+  assert.equal(restored.state, 'created');
+  assert.deepEqual(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/volumes').at(-1)!.body, {
+    name: 'copy', region: 'lon1', size_gigabytes: 1, snapshot_id: s.snapshot.id,
+    tags: ['cland', projectTag(api.stateRoot, 'contract'), 'cland-pool-agents'],
+  });
+  api.faults.snapshotDelete404Reads = 1;
+  const before = api.requests.length;
+  assert.equal((await provider.deleteSnapshot(s.snapshot)).state, 'incomplete');
+  assert.deepEqual(api.requests.slice(before).map(r => [r.method, r.path]), [
+    ['GET', `/v2/snapshots/${s.snapshot.id}`], ['DELETE', `/v2/snapshots/${s.snapshot.id}`], ['GET', `/v2/snapshots/${s.snapshot.id}`],
+  ]);
+  assert.deepEqual(await provider.listSnapshots(v.volume), { state: 'listed', snapshots: [s.snapshot] });
+  api.faults.snapshotDelete404Reads = 0;
+  assert.deepEqual(await provider.deleteSnapshot(s.snapshot.id), { state: 'deleted' });
+  assert.deepEqual(await provider.deleteSnapshot(s.snapshot.id), { state: 'deleted' });
+  assert.equal((await provider.getSnapshot(s.snapshot.id)).state, 'failed');
+});
+
+test('digitalocean snapshot receipts and source project fence destructive use across restart', async t => {
+  const { provider, api, clock } = await fixture(t);
+  const v = await provider.createVolume({ project: 'contract', region: 'lon1', name: 'login', sizeGiB: 1 });
+  assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+  const s = await provider.snapshotVolume(v.volume);
+  assert.equal(s.state, 'snapshotted'); if (s.state !== 'snapshotted') return;
+  for (const forged of [{ ...s.snapshot, volumeId: 'other' }, { ...s.snapshot, created: '2000-01-01T00:00:00Z' }]) {
+    const before = api.requests.length;
+    assert.equal((await provider.deleteSnapshot(forged)).state, 'incomplete');
+    assert.equal(api.requests.slice(before).filter(r => r.method === 'DELETE').length, 0);
+  }
+  await provider.deleteVolume(v.volume);
+  const restarted = new DigitalOceanHostProvider({ root: api.stateRoot, env: {}, api: api.provider, clock, pool: 'agents' });
+  for (const source of [s.snapshot, s.snapshot.id]) {
+    const before = api.requests.length;
+    assert.equal((await restarted.createVolume({ project: 'other', name: 'foreign', region: 'lon1', sizeGiB: 1, fromSnapshot: source, admission: { login: 'foreign', project: 'other', pool: 'agents' } })).state, 'failed');
+    assert.equal(api.requests.slice(before).filter(r => r.method === 'POST').length, 0);
+  }
+  assert.equal((await restarted.createVolume({ project: 'contract', name: 'own', region: 'fra1', sizeGiB: 1, fromSnapshot: s.snapshot.id, admission: { login: 'own', project: 'contract', pool: 'agents' } })).state, 'created');
+  assert.deepEqual(await restarted.deleteSnapshot(s.snapshot), { state: 'deleted' });
+});
+
+test('digitalocean volume fixture closes API and retains root after rejected owner drain', async () => {
+  let closed = false;
+  const drainError = new Error('injected owner drain failure');
+  const closeError = new Error('injected API close failure');
+  await assert.rejects(closeFixture({ close: async options => {
+    closed = true;
+    assert.deepEqual(options, { retainRoot: true });
+    throw closeError;
+  } }, async () => { throw drainError; }), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [drainError, closeError]);
+    return true;
+  });
+  assert.equal(closed, true);
+});
+
+test('digitalocean snapshot restore keeps retained region when API region order changes', async t => {
+  const { provider, api } = await fixture(t);
+  const v = await provider.createVolume({ project: 'contract', region: 'lon1', name: 'login', sizeGiB: 1 });
+  assert.equal(v.state, 'created'); if (v.state !== 'created') return;
+  const s = await provider.snapshotVolume(v.volume);
+  assert.equal(s.state, 'snapshotted'); if (s.state !== 'snapshotted') return;
+  api.faults.volumeSnapshotRegions = ['fra1', 'lon1'];
+  const clone = await provider.createVolume({ project: 'contract', region: 'ams3', name: 'copy', sizeGiB: 1, fromSnapshot: s.snapshot.id });
+  assert.equal(clone.state, 'created'); if (clone.state !== 'created') return;
+  assert.equal(clone.volume.region, 'lon1');
+  assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/volumes').at(-1)!.body!.region, 'lon1');
 });

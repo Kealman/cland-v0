@@ -357,25 +357,69 @@ export class DigitalOceanHostProvider implements HostProvider {
   // Volume creates share the machine creation pause: account-wide 429s must
   // not cascade through a second resource type. Snapshot window refusals keep
   // their native retry time; the API also applies its shared token budget.
-  async getSnapshot(_id: string): Promise<import('./provider.ts').GetSnapshotResult> {
-    return { state: 'failed', reason: 'getSnapshot unsupported' };
+  #snapshot(s: import('../../executor/droplet/api.ts').BlockVolumeSnapshot): import('./provider.ts').VolumeSnapshot {
+    return { id: s.id, volumeId: s.resource_id, created: s.created_at };
   }
-  async listSnapshots(_volume: Volume): Promise<import('./provider.ts').ListSnapshotsResult> {
-    return { state: 'failed', reason: 'listSnapshots unsupported' };
+  #snapshotFile(id: string): string { return `snapshot-${createHash('sha256').update(id).digest('hex')}.json`; }
+  async #snapshotOwnership(input: import('./provider.ts').VolumeSnapshot | string): Promise<{ project: string; region: string; snapshot: import('./provider.ts').VolumeSnapshot }> {
+    const id = typeof input === 'string' ? input : input.id;
+    const owner = JSON.parse(await readFile(join(this.#directory, this.#snapshotFile(id)), 'utf8'));
+    if (!owner || typeof owner.project !== 'string' || !owner.project || typeof owner.region !== 'string' || !owner.region || owner.snapshot?.id !== id || typeof owner.snapshot.volumeId !== 'string' || !owner.snapshot.volumeId || typeof owner.snapshot.created !== 'string' || !Number.isFinite(Date.parse(owner.snapshot.created))) throw new Error('snapshot ownership unavailable');
+    if (typeof input !== 'string' && (input.volumeId !== owner.snapshot.volumeId || input.created !== owner.snapshot.created)) throw new Error('snapshot identity mismatch');
+    return owner;
   }
-  async deleteSnapshot(_snapshot: import('./provider.ts').VolumeSnapshot | string): Promise<import('./provider.ts').DeleteSnapshotResult> {
-    return { state: 'failed', reason: 'deleteSnapshot unsupported' };
-  }
-  createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult> { return this.#serial(async () => {
-    if (options.fromSnapshot !== undefined) return { state: 'failed', reason: 'createVolume fromSnapshot unsupported' };
+  async #rememberSnapshot(snapshot: import('./provider.ts').VolumeSnapshot, volume: Volume): Promise<void> {
     try {
-      const pools = new Set((await this.#records()).filter(r => r.project === options.project).map(r => r.pool));
-      const pool = this.#options.pool ?? (pools.size === 1 ? [...pools][0] : undefined);
-      if (!pool) return { state: 'refused', reason: 'volume pool unavailable' };
-      if (!validPool(pool) || !options.project || options.sizeGiB !== 1 || !['lon1', 'fra1', 'ams3'].includes(options.region)) return { state: 'failed', reason: 'volume options unsupported' };
-      if (!this.#options.api || this.#options.env.CLAND_FAKE_HOST_ROOT !== this.#options.root) return { state: 'refused', reason: 'DigitalOcean volume acquisition is test-only' };
+      const owner = await this.#snapshotOwnership(snapshot);
+      if (owner.project !== volume.project || owner.region !== volume.region) throw new Error('snapshot ownership mismatch');
+    } catch (e) {
+      if (!missing(e)) throw e;
+      await this.#write(this.#snapshotFile(snapshot.id), { project: volume.project, region: volume.region, snapshot });
+    }
+  }
+  async #ownedSnapshot(input: import('./provider.ts').VolumeSnapshot | string, project?: string): Promise<import('../../executor/droplet/api.ts').BlockVolumeSnapshot & { sourceRegion: string }> {
+    const owner = await this.#snapshotOwnership(input);
+    if (project !== undefined && project !== owner.project) throw new Error('snapshot project mismatch');
+    const s = await this.#api.volumeSnapshotInfo(owner.snapshot.id);
+    if (s.id !== owner.snapshot.id || s.resource_id !== owner.snapshot.volumeId || s.created_at !== owner.snapshot.created || !s.regions.includes(owner.region)) throw new Error('snapshot identity mismatch');
+    return { ...s, sourceRegion: owner.region };
+  }
+  getSnapshot(id: string): Promise<import('./provider.ts').GetSnapshotResult> { return this.#serial(async () => {
+    try { return { state: 'found', snapshot: this.#snapshot(await this.#ownedSnapshot(id)) }; }
+    catch { return { state: 'failed', reason: 'DigitalOcean snapshot lookup failed' }; }
+  }); }
+  listSnapshots(volume: Volume): Promise<import('./provider.ts').ListSnapshotsResult> { return this.#serial(async () => {
+    try {
+      await this.#ownedVolume(volume);
+      const snapshots = (await this.#api.volumeSnapshots(volume.id)).map(s => this.#snapshot(s));
+      for (const snapshot of snapshots) {
+        if (snapshot.volumeId !== volume.id) throw new Error('snapshot source mismatch');
+        await this.#rememberSnapshot(snapshot, volume);
+      }
+      return { state: 'listed', snapshots };
+    } catch (e) { return e instanceof DigitalOceanError && e.status === 404 ? { state: 'volume-gone' } : { state: 'failed', reason: 'DigitalOcean snapshot list failed' }; }
+  }); }
+  deleteSnapshot(snapshot: import('./provider.ts').VolumeSnapshot | string): Promise<import('./provider.ts').DeleteSnapshotResult> { return this.#serial(async () => {
+    try {
+      await this.#snapshotOwnership(snapshot);
+      try { await this.#ownedSnapshot(snapshot); }
+      catch (e) { if (!(e instanceof DigitalOceanError && e.status === 404)) throw e; }
+      await this.#api.deleteVolumeSnapshot(typeof snapshot === 'string' ? snapshot : snapshot.id);
+      return { state: 'deleted' };
+    }
+    catch { return { state: 'incomplete', reason: 'DigitalOcean snapshot deletion unconfirmed' }; }
+  }); }
+  createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult> { return this.#serial(async () => {
+    const admission = options.admission;
+    if (!admission?.login || admission.project !== options.project || !validPool(admission.pool) || this.#options.pool !== undefined && this.#options.pool !== admission.pool) return { state: 'refused', reason: 'DigitalOcean volume create requires login admission' };
+    try {
+      const pool = admission.pool;
       if (this.#clock.now().getTime() < this.#createRetryAt) return { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(this.#createRetryAt).toISOString() };
-      const volume = await this.#api.createVolume({ name: options.name, region: options.region, size_gigabytes: 1, tags: ['cland', projectTag(this.#options.root, options.project), `cland-pool-${pool}`] });
+      const snapshot = options.fromSnapshot === undefined ? undefined : await this.#ownedSnapshot(options.fromSnapshot, options.project);
+      if (snapshot && typeof options.fromSnapshot !== 'string' && options.fromSnapshot !== undefined && (snapshot.resource_id !== options.fromSnapshot.volumeId || snapshot.created_at !== options.fromSnapshot.created)) throw new Error('snapshot identity mismatch');
+      const region = snapshot?.sourceRegion ?? options.region;
+      if (!validPool(pool) || !options.project || options.sizeGiB !== 1 || !['lon1', 'fra1', 'ams3'].includes(region)) return { state: 'failed', reason: 'volume options unsupported' };
+      const volume = await this.#api.createVolume({ name: options.name, region, size_gigabytes: 1, ...(snapshot ? { snapshot_id: snapshot.id } : {}), tags: ['cland', projectTag(this.#options.root, options.project), `cland-pool-${pool}`] });
       return { state: 'created', volume: this.#volume(volume, options.project) };
     } catch (e) {
       if (e instanceof RateLimited) { this.#pauseUntil(e.retryAt); return { state: 'refused', reason: 'DigitalOcean creation paused', retryAt: new Date(this.#createRetryAt).toISOString() }; }
@@ -423,7 +467,7 @@ export class DigitalOceanHostProvider implements HostProvider {
     const known = this.#snapshotRefusals.get(volume.id);
     if (known?.identity === identity && this.#clock.now().getTime() < known.retryAt) return { state: 'refused', reason: 'rate limited', retryAt: new Date(known.retryAt).toISOString() };
     let validated = false;
-    try { await this.#ownedVolume(volume); validated = true; const snapshot = await this.#api.volumeSnapshot(volume.id, `cland-${randomUUID()}`); return { state: 'snapshotted', snapshot: { id: snapshot.id, volumeId: volume.id, created: snapshot.created_at } }; }
+    try { await this.#ownedVolume(volume); validated = true; const native = await this.#api.volumeSnapshot(volume.id, `cland-${randomUUID()}`); const snapshot = { id: native.id, volumeId: volume.id, created: native.created_at }; await this.#rememberSnapshot(snapshot, volume); return { state: 'snapshotted', snapshot }; }
     catch (e) {
       if (e instanceof RateLimited && e.retryAt !== undefined) {
         if (validated) this.#snapshotRefusals.set(volume.id, { identity, retryAt: e.retryAt });

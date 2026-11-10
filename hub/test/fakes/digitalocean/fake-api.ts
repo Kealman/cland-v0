@@ -2,7 +2,8 @@ import { clockDelay } from '../../../src/host/clock-delay.ts';
 import { declareDigitalOceanEndpoint } from '../../../src/executor/droplet/endpoint.ts';
 import assert from 'node:assert/strict';
 import { testWaitMs } from '../../until.ts';
-import { cleanupProcesses, fixtureProcessCensus } from '../../process-cleanup.ts';
+import type { TestContext } from 'node:test';
+import { ownDirectory, cleanupProcesses, fixtureProcessCensus } from '../../process-cleanup.ts';
 import { realClock, type Clock } from '../../../src/hub/clock.ts';
 import { pause } from '../../../src/executor/droplet/watchdog.ts';
 import { FakeClock } from '../../fake-clock.ts';
@@ -14,10 +15,10 @@ import { createServer } from 'node:http';
 import { cp, mkdir, mkdtemp, writeFile, rm, readFile, copyFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { BlockVolume, Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
+import type { BlockVolume, BlockVolumeSnapshot, Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
 
 /** Provider boundary: never retains Authorization in its request log. */
-export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock; requestsPerMinute?: number } = {}) {
+export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock; requestsPerMinute?: number; testContext?: TestContext } = {}) {
   const limit = options.requestsPerMinute ?? 100000;
   declareDigitalOceanEndpoint('http://127.0.0.1/v2', limit);
   const clock = options.clock ?? realClock;
@@ -27,6 +28,8 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   // Intentional provider delays yield ownership; native publication hooks do not.
   const wait = waits?.wait ?? ((ms: number) => pause(ms, clock));
   const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'cland-fake-do-')));
+  let retainRoot = false;
+  if (options.testContext) ownDirectory(options.testContext, stateRoot, { beforeRemove: async () => { if (!closing || retainRoot) throw new Error('fake API owner incomplete; root retained'); await closing; } });
   const run = promisify(execFile);
   let accepting = true;
   const active = new Set<Promise<unknown>>();
@@ -53,6 +56,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const droplets: Droplet[] = [];
   const keys: Key[] = [];
   const volumes: BlockVolume[] = [];
+  const volumeSnapshots: BlockVolumeSnapshot[] = [];
   const volumeSnapshotAt = new Map<string, number>();
   const sizes: Size[] = [{ slug: 'c-8', available: true, price_hourly: 0.25, disk: 50, regions: ['lon1', 'nyc1'] }];
   const regions: Region[] = [{ slug: 'lon1', available: true, sizes: ['c-8'] }, { slug: 'nyc1', available: true, sizes: ['c-8'] }];
@@ -93,7 +97,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { volumeDelete404Reads: 0, loseVolumeCreateResponse: 0, loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { volumeSnapshotRegions: [] as string[], volumeDelete404Reads: 0, loseVolumeCreateResponse: 0, loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
@@ -113,7 +117,22 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
     if (method === 'GET' && faults.getDelayMs && (!faults.getDelayPath || path === faults.getDelayPath)) await (signal?clockDelay(clock,faults.getDelayMs,signal):wait(faults.getDelayMs));
     const answer = (status: number, value?: unknown) => ({ status, value });
+    const volumeSnapshotPath = /^\/snapshots\/([^/]+)$/.exec(path);
+    if (volumeSnapshotPath && !/^\d+$/.test(volumeSnapshotPath[1]!)) {
+      const index = volumeSnapshots.findIndex(s => s.id === decodeURIComponent(volumeSnapshotPath[1]!));
+      if (method === 'GET') {
+        if (splitGone(path) && index >= 0) volumeSnapshots.splice(index, 1);
+        const snapshot = volumeSnapshots.find(s => s.id === decodeURIComponent(volumeSnapshotPath[1]!));
+        return snapshot ? answer(200, { snapshot: { ...snapshot, ...(faults.volumeSnapshotRegions.length ? { regions: faults.volumeSnapshotRegions } : {}) } }) : answer(404, { id: 'not_found', message: 'absent' });
+      }
+      if (method === 'DELETE') {
+        if (splitDelete(path, faults.snapshotDelete404Reads)) return answer(404, { id: 'not_found', message: 'split answer' });
+        if (index >= 0) volumeSnapshots.splice(index, 1);
+        return answer(204);
+      }
+    }
     if (path === '/volumes' && method === 'POST') {
+      if (body!.snapshot_id !== undefined && !volumeSnapshots.some(s => s.id === body!.snapshot_id)) return answer(404, { id: 'not_found', message: 'snapshot absent' });
       const volume: BlockVolume = { id: `volume-${nextId++}`, name: String(body!.name), tags: body!.tags as string[], region: { slug: String(body!.region) }, size_gigabytes: Number(body!.size_gigabytes), created_at: clock.now().toISOString(), droplet_ids: [] };
       volumes.push(volume);
       if (faults.loseVolumeCreateResponse > 0) { faults.loseVolumeCreateResponse--; throw new DigitalOceanError(0, 'transport', 'volume create reply lost'); }
@@ -131,10 +150,12 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
         if (volume.droplet_ids.length) return answer(422, { id: 'attached', message: 'attached' });
         volumes.splice(index, 1); return answer(204);
       }
+      if (volumePath[2] === 'snapshots' && method === 'GET') return answer(200, { snapshots: volumeSnapshots.filter(s => s.resource_id === volume.id) });
       if (volumePath[2] === 'snapshots' && method === 'POST') {
         const now = clock.now().getTime(), previous = volumeSnapshotAt.get(volume.id);
         if (previous !== undefined && now < previous + 600000) return { status: 429, value: { id: 'snapshot_rate_limited', message: 'snapshot window' }, headers: { 'Retry-After': String((previous + 600000 - now) / 1000) } };
-        const snapshot = { id: `volume-snapshot-${nextId++}`, created_at: clock.now().toISOString() };
+        const snapshot = { id: `volume-snapshot-${nextId++}`, created_at: clock.now().toISOString(), resource_id: volume.id, regions: [volume.region.slug] };
+        volumeSnapshots.push(snapshot);
         volumeSnapshotAt.set(volume.id, now);
         return answer(201, { snapshot });
       }
@@ -367,7 +388,8 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
     beforeImport: (check: () => Promise<void>) => { beforeImport = check; },
     beforeSnapshotDelete: (check: (id: number) => Promise<void>) => { beforeSnapshotDelete = check; },
-    close: () => {
+    close: (options: { retainRoot?: boolean } = {}) => {
+      retainRoot ||= options.retainRoot === true;
       if (closing) return closing;
       accepting = false;
       closing = (async () => {
@@ -384,7 +406,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
           await cleanupProcesses(stateRoot, [], undefined, undefined, []);
           assert.deepEqual(fixtureProcessCensus(stateRoot), [], 'fake provider left live machine writers');
         }
-        await rm(stateRoot, { recursive: true, force: true });
+        if (!retainRoot) await rm(stateRoot, { recursive: true, force: true });
       })();
       return closing;
     },
