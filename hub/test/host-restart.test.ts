@@ -16,6 +16,7 @@ import { watchdogAlive } from '../src/executor/droplet/watchdog.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { spendPath } from '../src/executor/droplet/spend.ts';
+import { mountedSettledLogin } from './settled-login-fixture.ts';
 const SETUP_MS=testWaitMs(60000);
 test('restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership',{timeout:12*SETUP_MS},async t=>{
  const f=await fixture(t),store=f.own(new Store(join(f.root,'.cland/hub.db'))),table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
@@ -26,6 +27,7 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
   const fake=hostDirectory(f.root,record.machine.id),home=join(fake,'home');
   await writeFile(join(fake,'ports.json'),JSON.stringify({'12345':join(home,'session.sock')}));
   const host=f.hub.hostOwner!.hosts.find(host=>host.name===record.id)!;
+  await mountedSettledLogin({root:f.root,env:f.env,records:store.hosts.logins,host,machine:record.machine,beforeStop:f.beforeStop,afterNativeJoin:f.afterNativeJoin});
   host.freePort=async()=>12345;
   const spawn=host.spawn.bind(host);
   host.spawn=(command,options)=>spawn({...command,env:{...command.env,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,'session.sock'),FAKE_OPENCODE_TURN_MS:'30'}},options);

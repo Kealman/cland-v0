@@ -684,3 +684,7 @@ No agent role gains a host-create permission: this is the hub's lifecycle owner.
 Local-human status and stop commands, their lease and failure semantics, are in
 [host status and stop](../hub/host-status-stop.md). Agent sessions retain the
 human-only admission boundary and exercise these commands in sealed fixtures.
+
+Pool placement binds disk logins before harness spawn and stores only the mount
+overlay on the process row. Unknown native outcomes retain an in-use pending
+binding; release leaves it for reconciliation. See [launch binding](../hub/logins.md#binding-at-launch).

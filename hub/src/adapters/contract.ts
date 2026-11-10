@@ -40,6 +40,7 @@ export type HarnessProcess = {
   /** The adapter's name (`claude-code`). */
   harness: string;
   /** Named launch account; null on unpinned and older rows. */
+  login?: string | null;
   account?: string | null;
   /** Resolved launch overlay, retained across resumes and pool handoffs. */
   accountEnv?: Record<string, string> | null;

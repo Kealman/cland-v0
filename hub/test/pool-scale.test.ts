@@ -13,6 +13,7 @@ import { readHostPools } from '../src/host/pools.ts';
 import { FakeClock } from './fake-clock.ts';
 import { readHostLeaseFile } from '../src/host/host-leases.ts';
 import { HostSecretStore } from '../src/host/records.ts';
+import { settledLogin } from './settled-login-fixture.ts';
 
 async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof Promise.withResolvers<void>>, lease=false) {
  const root=await tempProject(t);
@@ -44,6 +45,7 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
   await new Promise<void>(resolve=>{gates.push(resolve);if(closing)resolve();options.signal?.addEventListener('abort',()=>resolve(),{once:true});});
   if(options.signal?.aborted)return {...row,state:'failed' as const};
   new HostSecretStore(root,options.records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
+  settledLogin(options.records.logins,id,'codex',{provider:'fake',region:'fake'});
   const ready={...row,state:'ready' as const};options.records.provisions.ready(ready);return ready;
  })().finally(()=>{completed++;})});
  await writeFile(join(root,'.cland/config.toml'),'# managed by cland\n'+await readFile(join(root,'.cland/config.toml'),'utf8'));

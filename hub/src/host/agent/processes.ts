@@ -1,3 +1,4 @@
+import { loginExecutionEnvironment } from './command-environment.ts';
 import { requireSpawnMemory } from './memory.ts';
 import { realClock, type Clock } from './clock.ts';
 import { setImmediate as yieldIO } from 'node:timers/promises';
@@ -184,8 +185,9 @@ export class AgentProcesses {
     await requireSpawnMemory(this.#runDir, this.#env);
     if (!process.execve) throw new Error('native execve unavailable');
     if (typeof args.command !== 'string' || !args.command || !Array.isArray(args.args) || !args.args.every(a => typeof a === 'string') || typeof args.cwd !== 'string' || !args.env || typeof args.env !== 'object' || Array.isArray(args.env)) throw new Error('invalid spawn');
-    const env: Record<string, string> = {};
+    let env: NodeJS.ProcessEnv = {};
     for (const [key, value] of Object.entries(args.env)) { if (typeof value !== 'string') throw new Error('invalid environment'); if (!key.startsWith('CLAND_HOST_')) env[key] = value; }
+    env = await loginExecutionEnvironment(env, this.#env);
     let command = args.command;
     if (!isAbsolute(command)) {
       const candidates = command.includes('/') ? [resolve(args.cwd, command)] : (env.PATH ?? '').split(':').map(path => resolve(args.cwd as string, path, command));

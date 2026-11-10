@@ -79,6 +79,10 @@ existing database. Callers own admission and native resource receipts.
   `volumeId: string | null`, `snapshotIds: string[]` and optional exclusive.
 - `get(name)` returns a row or null; `list()` returns rows sorted by name.
   `free()` returns ready rows only.
+- `selectForLaunch({host, harness, provider, region, account})` returns at most
+  two held host/harness bindings (to detect conflicts), or one ready disk login.
+  Ready selection uses optional account filtering and stable account/name order.
+  It uses the store's maintained indexes rather than decoding retained history.
 - `bindings(name)` returns rows sorted by host, each containing login, host,
   `role: 'writer' | 'reader'` and `volumeId: string | null`.
 - `transition(name, state, binding?)` validates the state edge. Entering in-use
@@ -146,6 +150,77 @@ The agent reserves writer admission before login-disk drainage, joins already ad
 
 A closed process row alone does not settle drainage. The agent joins any current-lifetime root completion that has observed native exit through its durable checkpoint and exit publication before unlinking. The same drainage deadline bounds that join; failure or missing completion retains the disk. A still-live unrelated root does not enter this completion join.
 
+## Binding at launch
+
+A pool-host launch first reserves host capacity. After item, role and checkout
+admission, the shared native spawn boundary selects a ready disk login of the
+harness, provider and host region, attaches its volume and mounts it before
+spawning. An explicit launch account or matching role harness account narrows
+selection. An explicit empty account clears a role pin and remains unpinned, as
+for local account resolution. This uses project login accounts, without looking up a path on the
+hub machine. Before provider work, the binder checks the selected login's actual
+account through the existing account-limit owner, and repeats that check after
+each await before effects and settlement. An already-limited selected account
+refuses without consuming a ready login. A host's settled
+disk binding must match its provider and region and remain in-use; key bindings
+cannot supply a disk mount. A settled binding is reused by later launches of
+that harness; a different requested
+account refuses. With no eligible login, launch refuses with
+`no login <harness> in pool <pool>`.
+
+`LoginBinder` in `hub/src/host/login-binding.ts` serializes selection. The mount
+is `/cland/auth/<harness>-<login>` using the full harness id. `CODEX_HOME` and
+`CLAUDE_CONFIG_DIR` name that directory; `OPENCODE_DB` names its `opencode.db`.
+The process table persists optional `login`, the account, and only this mount
+overlay in `accountEnv`. Public session views add optional `login`; older rows
+and replies without it remain readable. Local launches and manually registered
+hosts outside pools retain the existing account registry behavior.
+
+Before attachment the owner commits an in-use writer binding with optional
+`phase: pending`. A successful mount and metadata commit change it to `settled`.
+An absent phase is a legacy settled binding. `bindings(name)` and `login.list`
+include phase only when stored, preserving the previous shape for older rows.
+`settleBinding(name, host)` requires that exact pending binding. No new public
+login state is introduced. A pending binding is never reused or offered by
+`free()`. A failed bind unmounts and detaches before removing its binding and
+returning to ready. Missing positive cleanup receipts retain the pending binding
+and fail the launch with the login name and `outcome unknown`. Reconciliation
+at startup (T-1793) owns recovery of pending bindings; ordinary host-stop release
+(T-1779) must leave them alone. Shutdown joins in-flight binding work to native
+settlement or its existing operation deadline before storage closes. It introduces no raced timeout.
+Abortable volume and login-disk operations are follow-up T-1801.
+
+The same spawn boundary binds or reuses the destination login for fresh and
+cross-host resumes, replacing the source overlay and persisting the destination
+login. A same-host fresh resume keeps its settled binding. Normal native
+conversation resume retains its recorded login and mount without rebinding.
+
+Remote command environments remove `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
+`OPENAI_API_KEY`, `CODEX_API_KEY` and `CODEX_ACCESS_TOKEN` after all overlays,
+on both sides of the agent connection. Local command filtering is unchanged.
+See [binding tests](../agents/tests/hub-test-login-binding.test.ts.md).
+
+At host execution, `loginExecutionEnvironment` maps the three login home/database
+variables through the agent's exported `loginFilePath` using the authoritative
+fake-host layout. Spawn, generic run and run-host/Claude command owners share it.
+T-1777's file-operation mapper handles directory preparation and file access;
+real hosts keep logical paths unchanged. Hub requests and process/session rows
+retain the logical mount paths. OpenCode mount construction imports the canonical
+`mountedOpenCodeDatabase` helper from the account registry.
+
+Launch selection uses `login_bindings_launch(host,harness,login)` and a JSON-field
+`login_ready_launch` index matching the ready/disk/harness/provider/region/account
+query. The private binding harness column is backfilled from existing rows in a
+savepoint with index creation; public binding shapes are unchanged. Every binding
+insert supplies its harness. Selection decodes at most two bound rows or one ready
+row, independently of signed-out/ineligible history. The normal SQLite indexes
+maintain this derived selection across writes and connections. The indexed
+selector itself scans no retained history. Binding writes currently notify the
+snapshot listener, whose scheduling calls the full `logins.list()`; the bounded
+selector therefore does not bound the complete launch path. The snapshot owner
+also currently accepts pending bindings. T-1803 tracks bounded snapshot scheduling
+on login changes and refusal of pending bindings. These are accepted integration
+limitations; the launch binder continues to fence pending bindings from reuse.
 
 ## Backup snapshots
 

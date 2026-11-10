@@ -13,6 +13,7 @@ import { hostDirectory } from '../../shared/fake-host-directory.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { Machine, ReleaseObserver } from '../src/host/provider/provider.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
+import { mountedSettledLogin } from './settled-login-fixture.ts';
 const SETUP_MS=testWaitMs(60000);
 // Twelve sequential setup allowances plus 120s for exact CLI behaviour and joined cleanup.
 const OUTER_MS=12*SETUP_MS+120000;
@@ -30,6 +31,8 @@ for(const down of [false,true])test(`C1/C2/C3 destroy settles native session aft
  host.spawn=(command,options)=>spawn({...command,env:{...command.env,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,'session.sock'),FAKE_OPENCODE_TURN_MS:'30'}},options);
  const ui=await connectUi(t,f.hub.discovery,'cli');
  const table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
+ const {Store}=await import('../src/hub/store.ts');const store=f.own(new Store(join(f.root,'.cland/hub.db')));
+ await mountedSettledLogin({root:f.root,env:f.env,records:store.hosts.logins,host,machine:record.machine,beforeStop:f.beforeStop,afterNativeJoin:f.afterNativeJoin});
  const launch=await ui.request({type:'session.launch',name:'destroy-worker',harness:'opencode',host:record.id,cwd:home,model:'opencode/fake-paid'},SETUP_MS);assert.equal(launch.ok,true,launch.error);
  await eventually('native worker persisted',()=>{const row=table.get('destroy-worker');return row?.status==='running'&&row.pid&&row.harnessSessionId?true:undefined;},SETUP_MS);
  if(down) {

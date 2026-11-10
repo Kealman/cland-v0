@@ -1,6 +1,7 @@
 // T3: native pinned SSH admission, delivered runtime, supervisor, tunnel and OpenCode lifecycle.
 // projectHub owns the hub; beforeDirectories stops it then joins every fixture process before removal.
 import test from 'node:test';
+import {readyLogin} from './settled-login-fixture.ts';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -18,7 +19,7 @@ import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 const SETUP_MS=testWaitMs(60000);
 export async function fixture(t:test.TestContext,options:{lease?:string; fakeCodex?:boolean}={}) {
  const root=await tempProject(t,'hc-','/tmp');
- const beforeStop:Array<()=>Promise<void>>=[],handles:Array<()=>unknown>=[];
+ const beforeStop:Array<()=>Promise<void>>=[],afterNativeJoin:Array<()=>Promise<void>>=[],handles:Array<()=>unknown>=[];
  onCleanup(t,async()=>{
   const errors:unknown[]=[];
   for(const stop of [...beforeStop].reverse())try{await stop();}catch(error){errors.push(error);}
@@ -40,6 +41,7 @@ export async function fixture(t:test.TestContext,options:{lease?:string; fakeCod
  await writeFile(join(root,'seed'),'territory seed\n');await git('add','seed');await git('commit','-m','seed');
  await git('clone','--bare',root,join(root,'.cland/territory.git'));
  await git('--git-dir='+join(root,'.cland/territory.git'),'config','cland.managed','true');
+ if(options.fakeCodex){const metadata=own(new Store(join(root,'.cland/hub.db')));await readyLogin(root,env,metadata.hosts.logins);}
  const hub=await projectHub(t,root,env as Record<string,string>,{adapters:[...(options.fakeCodex ? [((host:import('../src/adapters/contract.ts').AdapterHost,clock:import('../src/hub/clock.ts').Clock)=>fakeHarness('codex',{host,clock}))] : []),boundary=>new OpenCodeAdapter(boundary,{bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,env:fixtureEnvironment(root,env),stopGraceMs:50})]});
  const stops=[()=>hub.stop()];
  let safeToRemove=false;
@@ -61,9 +63,11 @@ export async function fixture(t:test.TestContext,options:{lease?:string; fakeCod
    await eventually('fixture native children closed',()=>fixtureProcessCensus(root).filter(p=>p.pid!==process.pid).length===0?true:undefined,testWaitMs());
    return captured&&hubsClosed===stops.length&&proof.every(result=>result.status==='fulfilled'&&result.value);
   });
-  safeToRemove=result.drained;errors.push(...result.errors);
+  errors.push(...result.errors);
+  if(result.drained)for(const cleanup of [...afterNativeJoin].reverse())try{await cleanup();}catch(error){errors.push(error);}
+  safeToRemove=result.drained&&errors.length===0;
   if(errors.length)throw new AggregateError(errors,'fixture drain failed');
  });
  const prepared=await cland(root,'host','prepare','agents');assert.equal(prepared.code,0,prepared.stderr);
- return {root,hub,env,stops,own,beforeStop:(work:()=>Promise<void>)=>beforeStop.push(work)};
+ return {root,hub,env,stops,own,beforeStop:(work:()=>Promise<void>)=>beforeStop.push(work),afterNativeJoin:(work:()=>Promise<void>)=>afterNativeJoin.push(work)};
 }

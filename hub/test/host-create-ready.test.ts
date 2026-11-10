@@ -1,6 +1,7 @@
 // T3: native pinned SSH admission, delivered runtime, supervisor, tunnel and OpenCode lifecycle.
 // projectHub owns the hub; beforeDirectories stops it then joins every fixture process before removal.
 import test from 'node:test';
+import {readyLogin} from './settled-login-fixture.ts';
 import assert from 'node:assert/strict';
 import { writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -38,6 +39,8 @@ test('C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list s
  const f=await fixture(t);
  const created=await cland(f.root,'host','create','agents');assert.equal(created.code,0,created.stderr);
  const record=JSON.parse(created.stdout);assert.equal(record.state,'ready',JSON.stringify(record));
+ const store=fixtureStore(t,f);
+ await readyLogin(f.root,f.env,store.hosts.logins,'opencode');
  const fake=hostDirectory(f.root,record.machine.id),home=join(fake,'home');
  const clone=hostCloneRoot(join(home,'.cland-host/run'),f.root);
  await access(join(clone,'.git/config'));
@@ -54,8 +57,14 @@ test('C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list s
  let cancelObservation=false,observed:Promise<ReturnType<typeof table.get>>|undefined;
  f.beforeStop(async()=>{cancelObservation=true;await observed?.catch(()=>null);});
  observed=eventually('created OpenCode native receipt persisted',()=>{if(cancelObservation)return null;const row=table.get('created-worker');return row?.status==='running'&&row.pid&&row.harnessSessionId?row:undefined;},SETUP_MS);
- const [worker,launch]=await Promise.all([observed,ui.request({type:'session.launch',name:'created-worker',harness:'opencode',role:'implementer',cwd:home,model:'opencode/fake-paid'},SETUP_MS)]);
- assert.equal(launch.ok,true,launch.error);assert.ok(worker);
+ void observed.catch(()=>{});
+ const launch=await ui.request({type:'session.launch',name:'created-worker',harness:'opencode',role:'implementer',cwd:home,model:'opencode/fake-paid'},SETUP_MS);
+ assert.equal(launch.ok,true,launch.error);
+ const worker=await observed;assert.ok(worker);
+ assert.equal(worker.login,'fixture-opencode');
+ assert.equal(store.hosts.logins.get('fixture-opencode')!.state,'in-use');
+ assert.ok((await host.realpath(join(fake,'cland/auth/opencode-fixture-opencode'))).startsWith(f.root+'/'));
+ assert.deepEqual(worker.accountEnv,{OPENCODE_DB:'/cland/auth/opencode-fixture-opencode/opencode.db'});
  assert.equal(worker.host,record.id);assert.equal(await host.alive(worker),true);
  const listed=await cland(f.root,'host','list');assert.equal(listed.code,0,listed.stderr);
  const row=JSON.parse(listed.stdout)[0];

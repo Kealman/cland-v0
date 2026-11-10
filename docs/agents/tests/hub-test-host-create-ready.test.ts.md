@@ -68,3 +68,10 @@ identity. Codex is an in-process fake; its fixture role explicitly uses
 `danger-full-access` because sandbox directory validation is outside this case.
 The fixture sets min_hosts=0 so manual-create scenarios do not race startup
 maintenance before their image preparation. Scaling startup is covered at T2.
+
+T-1778 seeds a directory-backed ready OpenCode login before launch, then checks
+the persisted login, in-use binding, mounted link and OPENCODE_DB overlay. The
+process-row observer is armed first; the launch reply is asserted before awaiting
+that observer so a failed launch surfaces immediately. Cleanup still cancels and
+joins the observer if launch refuses. The fake-Codex demand fixture similarly
+starts with a ready directory-backed login. No real login or provider is used.

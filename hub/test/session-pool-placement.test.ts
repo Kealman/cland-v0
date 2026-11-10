@@ -1,3 +1,4 @@
+import { settledLogin } from './settled-login-fixture.ts';
 // T2: pool placement through session frames with provided Hosts and fake harnesses; no children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,6 +26,7 @@ async function fixture(t: test.TestContext, log?: (entry: Record<string, unknown
   const store = new Store(join(root, '.cland/hub.db'));
   onCleanup(t, () => store.close());
   for (const [id, pool] of [['a', 'agents'], ['b', 'agents'], ['c', 'other']] as const) {
+    settledLogin(store.hosts.logins,id,'codex',{provider:'provided-fixture',region:'fake'});
     new HostSecretStore(root, store.hosts, () => {}).register({ id, address: id, user: 'fixture', clientKeyPath: '', knownHosts: '' });
     store.hosts.provisions.ready({ id, pool, provider: 'provided-fixture', size: 'fake', region: 'fake', created: new Date().toISOString(), state: 'ready', machine: { id, address: id, architecture: 'x86_64', created: new Date().toISOString() } });
   }
@@ -42,7 +44,7 @@ test('C1 pool launch uses a ready member and session list names its host', async
   const process = (list.value as { processes: import('../src/protocol.ts').HarnessProcessView[] }).processes[0]!;
   assert.equal(process.host, 'a');
   assert.match(sessionLine(process), /host a/);
-  const { host: _host, ...legacy } = process;
+  const { host: _host, login: _login, ...legacy } = process;
   assert.match(sessionLine(legacy), /host local/);
 });
 
@@ -347,7 +349,6 @@ for (const boundary of ['preparation', 'stop']) test(`a duplicate worker name re
 test('a later handoff cannot select a worker whose name an earlier placement owns', async t => {
   const files = (await import('node:fs/promises')).default;
   const { syncBuiltinESMExports } = await import('node:module');
-  const { readAccounts } = await import('../src/accounts/registry.ts');
   const f = await fixture(t);
   for (const [key, value] of [['implementer.policy', 'pool'], ['implementer.keep_context', false], ['implementer.size', 1]] as const)
     assert.equal((await f.ui.request({ type: 'crew.set', key, value })).ok, true);
@@ -362,7 +363,7 @@ test('a later handoff cannot select a worker whose name an earlier placement own
   const adapter = f.hub.fakes.codex!, stop = adapter.stop.bind(adapter);
   adapter.stop = async (...args) => { await stop(...args); await peer.close(); };
   adapter.idle('worker');
-  const registry = (await readAccounts(f.hub.hostEnvironment)).registry;
+  const registry = (await (await import('../src/accounts/registry.ts')).readAccounts(f.hub.hostEnvironment)).registry;
   const read = files.readFile, gate = Promise.withResolvers<void>();
   let entered = false, pending: ReturnType<typeof f.ui.request> | undefined;
   onCleanup(t, async () => { gate.resolve(); try { await pending; } finally { files.readFile = read; adapter.stop = stop; syncBuiltinESMExports(); } });
@@ -371,8 +372,8 @@ test('a later handoff cannot select a worker whose name an earlier placement own
     return read(...args);
   }) as typeof read;
   syncBuiltinESMExports();
-  pending = f.ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'codex', account: 'missing' });
-  await eventually('early placement account read held', () => entered ? true : undefined);
+  pending = f.ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'codex', host:'local', account: 'missing' });
+  await eventually('early local account read held', () => entered ? true : undefined);
   const handoff = await f.ui.request({ type: 'session.launch', name: 'later', role: 'implementer', harness: 'codex', item });
   assert.equal(handoff.ok, false);
   assert.equal(adapter.stops.length, 0);

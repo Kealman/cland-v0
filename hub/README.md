@@ -19,7 +19,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
-- [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots, local human metadata listing, SQLite records, transitions and host bindings.
+- [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots, local human metadata listing, SQLite records, transitions and launch-time disk binding.
 - [Host providers](../docs/hub/host-providers.md): validated pool configuration and pure weighted placement decisions, provider contracts, pool image keys and local human `cland host prepare [pool]`, `host create [pool]`, `host list` and `host destroy <id>`; pool settings apply on reload or `cland config set`, init creates no pools; fake hosts create to ready, DigitalOcean prepares with executor builder controls and requires E-1534 admission for production creation.
 - [SSH transport](../docs/hub/ssh-transport.md)
 - [Host revocation settlement](../docs/agents/host-agent.md#settlement-before-host-revocation): bounded pre-cut cleanup, changed-boot closure receipts and named unresolved generations.

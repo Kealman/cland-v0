@@ -4,7 +4,7 @@ import { refPushOwner } from './ref-push.ts';
 import { RefWatches, REF_FLUSH_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './watch.ts';
 import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY } from './claude.ts';
 import { processUsage } from './process-usage.ts';
-import { remoteCommandEnvironment } from './command-environment.ts';
+import { remoteCommandEnvironment, loginExecutionEnvironment } from './command-environment.ts';
 import { PreparedOperations } from './prepared.ts';
 import { createConnection, createServer } from 'node:net';
 import type { Socket } from 'node:net';
@@ -153,6 +153,7 @@ export async function serveAgent(options: AgentOptions) {
                   try {result=await prepared.runCommand(token,recoveryKey,command,async()=>{
                     if(connection.destroyed)prepared.fenceCommand(token);
                     await options.runStarted?.(token,connection,controller.signal);
+                    parsed={...parsed,env:await loginExecutionEnvironment(parsed.env,options.env??process.env)};
                     if(typeof command.claudeGeneration==='string'){await requireSpawnMemory(options.runDir,options.env??process.env);return claude.launch(parsed,command.claudeGeneration,controller.signal);}
                     return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd);
                   });} finally {commands.delete(token);}

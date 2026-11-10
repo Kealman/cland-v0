@@ -1,6 +1,8 @@
 // T3: real SSH carrier loss, native worker birth, checkout and socket receive-pack lease transfer.
 // Lifecycle: each sshHostFixture joins agents, carriers, Git and workers before deleting its root.
 import test from 'node:test';
+import {withFixtureStore} from './fixture-store.ts';
+import {settledLogin} from './settled-login-fixture.ts';
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -24,7 +26,7 @@ import { ProcessTable, hostGenerationKey } from '../src/adapters/processes.ts';
 import { setRoleKey } from '../src/roles/editor.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host relaunch ${outcome} keeps durable native and checkout ownership`, {timeout:testWaitMs(180_000)}, async t => {
+for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 admitted host relaunch ${outcome} keeps durable native and checkout ownership`, {timeout:testWaitMs(180_000)}, async t => {
   const secrets:string[]=[];
   const describe=(error:unknown):unknown=>error instanceof Error?{name:error.name,message:error.message,...(error instanceof AggregateError?{errors:[...error.errors].map(describe)}:{})}:String(error);
   const context={after:(cleanup:()=>Promise<void>)=>t.after(async()=>{try{await cleanup();}catch(error){t.diagnostic(remoteRedactor(secrets).text(JSON.stringify(describe(error))).slice(-16384));throw error;}})};
@@ -47,11 +49,15 @@ for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host 
     await ensureHostClone({host:f.host,root,layout:{...f.layout,cli:new URL('../bin/cland.ts',import.meta.url).pathname},bundle:async()=>{throw Error('unexpected fallback');}});
     await mkdir(join(root,'node_modules'));
   }
-  const store=new Store(join(f1.root,'.cland/hub.db'));
-  for (const {f,name} of machines) store.hosts.insert({id:name,address:name,user:'agent',clientKeyPath:'unused',knownHosts:'unused'},f.secrets.readSecret('f1'));
+  await withFixtureStore(join(f1.root,'.cland/hub.db'),close=>f1.addCleanup(close),async store=>{
+  await writeFile(join(f1.root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=8\nregion="fake-1"\n');
+  for (const {f,name} of machines) {
+    store.hosts.insert({id:name,address:name,user:'agent',clientKeyPath:'unused',knownHosts:'unused'},f.secrets.readSecret('f1'));
+    if(name==='f1'||outcome!=='no-login')settledLogin(store.hosts.logins,name,'codex',{provider:'fake',region:'fake-1',account:'work'});
+  }
   await mkdir(dirname(hostPaths(f1.root,'f2').secret),{recursive:true,mode:0o700});
   await writeFile(hostPaths(f1.root,'f2').secret,f2.secrets.readSecret('f1'),{mode:0o600});
-  store.close();
+  });
   let observerFailed=false;
   const spawns:import('../src/adapters/contract.ts').SpawnRequest[]=[];
   const hub=await projectHub(t,f1.root,f1.env,{hasTerritory:async()=>true,log:entry=>{if(outcome==='running'&&entry.event==='session-launched'&&String(entry.cwd).startsWith(f2.fake.home)){observerFailed=true;throw Error('injected post-publication observer failure');}},hosts:[f1.host,{...f2.host,name:'f2'}],adapters:[host=>{
@@ -73,6 +79,8 @@ for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host 
       return {generation:hostGenerationKey(p),released:true as const,dropped:[],forwardIds:[]};
     }});
   }]}); f1.addCleanup(()=>hub.stop());
+  const placementRecords=new Store(join(f1.root,'.cland/hub.db'));
+  try { for(const {name} of machines){const created=new Date().toISOString();placementRecords.hosts.provisions.ready({id:name,pool:'agents',provider:'fake',size:'fake',region:'fake-1',created,state:'ready',machine:{id:name,address:name,architecture:'x86_64',created}});} } finally {placementRecords.close();}
   const roles=join(f1.root,'.cland/roles.toml'); await writeFile(roles,setRoleKey(await readFile(roles,'utf8'),'implementer','launch','writable_roots',['.']));
   const ui=await sessionUi(t,hub.discovery);
   const created=await ui.request({type:'task.create',size:'M',kind:'task',title:'relaunch'}); assert.equal(created.ok,true,created.error);
@@ -81,6 +89,8 @@ for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host 
   const brief=(artifact.value as {artifact:{id:string}}).artifact.id;
   const launch=await ui.request({type:'session.launch',name:'worker',role:'implementer',harness:'codex',item,host:'f1',brief},testWaitMs(60_000)); assert.equal(launch.ok,true,launch.error);
   const before=(launch.value as {process:HarnessProcessView}).process;
+  assert.equal(before.login,'codex-f1');assert.equal(before.account,'work');
+  assert.deepEqual(spawns[0]!.accountEnv,{CODEX_HOME:'/cland/auth/codex-codex-f1'});
   await eventually('f1 native worker first-input receipt',()=>readFile(join(before.cwd,'worker.ready'),'utf8').catch(()=>undefined));
   await unlink(join(before.cwd,'worker.ready'));
   await git(before.cwd,['commit','--allow-empty','-m','pushed task commit']);
@@ -98,6 +108,11 @@ for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host 
   await hostControl('gone','f1',f1.env);
   await down;
   const moved=await ui.request({type:'session.resume',session:'worker',relaunch:true,host:'f2'},testWaitMs(60_000));
+  if(outcome==='no-login') {
+    assert.equal(moved.ok,false);assert.match(String(moved.error),/no login codex in pool agents/);
+    assert.equal(spawns.length,1);assert.equal(table.get('worker')!.host,'f1');
+    await drainPublishers();return;
+  }
   if(outcome==='refused') {
     assert.equal(moved.ok,false); assert.match(String(moved.error),/failed; destination remains fenced.*injected native admission refusal/);
     assert.equal(table.get('worker')!.host,'f1'); assert.equal(owned.hostWorktrees()[0]!.host,'f2'); assert.equal(owned.hostWorktrees()[0]!.phase,'adding');
@@ -110,6 +125,9 @@ for (const outcome of ['running','refused'] as const) test(`C2/C3 admitted host 
   assert.equal(moved.ok,true,moved.error); assert.equal(observerFailed,true);
   const result=moved.value as {found:boolean;process:HarnessProcessView;notes:string[]}; assert.equal(result.found,true);
   const after=result.process;
+  assert.equal(after.login,'codex-f2');assert.equal(after.account,'work');
+  assert.deepEqual(spawns[1]!.accountEnv,{CODEX_HOME:'/cland/auth/codex-codex-f2'});
+  assert.deepEqual(table.get('worker')!.accountEnv,{CODEX_HOME:'/cland/auth/codex-codex-f2'});
   await eventually('f2 native worker receipt',()=>readFile(join(after.cwd,'worker.ready'),'utf8').catch(()=>undefined));
   assert.equal(after.sessionId,before.sessionId); assert.equal(after.role,before.role); assert.equal(after.item,before.item); assert.notEqual(after.harnessSessionId,before.harnessSessionId);
   assert.equal(table.get('worker')!.host,'f2'); assert.equal(table.get('worker')!.status,'running'); assert.equal(table.get('worker')!.launchBrief,brief); assert.equal(await git(after.cwd,['rev-parse','HEAD']),tip);

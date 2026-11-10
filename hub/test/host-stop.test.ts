@@ -1,3 +1,4 @@
+import {settledLogin} from './settled-login-fixture.ts';
 // T2: explicit human stop through a projectHub and directory-only fake provider.
 import test from 'node:test';
 import { hostGenerationKey } from '../src/adapters/processes.ts';
@@ -31,6 +32,7 @@ for(const confirmed of [true,false])test(`C3 stop joins lease renewal and requir
  records.provisions.save({id,pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'booting',machine:{id,address:id,architecture:'arm64',created}});
  new HostSecretStore(root,records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
  records.provisions.ready({...records.provisions.get(id)!,state:'ready'});
+ settledLogin(records.logins,id,'codex',{provider:'fake',region:'fake'});
  const launched=await ui.request({type:'session.launch',name:'stop-worker',harness:'codex',host:id,cwd:root});assert.equal(launched.ok,true,launched.error);
  const lease={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:0};
  await records.leases.create(id,lease);

@@ -1,3 +1,4 @@
+import {settledLogin} from './settled-login-fixture.ts';
 // T2: projectHub restart on one disposable root; fake adapters, no native children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -115,6 +116,7 @@ test('restored wait places once on capacity commit and placed launches never res
   onCleanup(t,()=>provider.release(acquired.machine));
   new HostSecretStore(f.root,store.hosts,()=>{}).register({id:'a',address:acquired.machine.address,user:'fixture',clientKeyPath:'',knownHosts:''});
   const now = new Date().toISOString();
+  settledLogin(store.hosts.logins,'a','codex',{provider:'fake',region:'fake'});
   store.hosts.provisions.save({id:'a',pool:'agents',provider:'fake',size:'fake',region:'fake',created:now,state:'cloning',machine:acquired.machine});
   const local = localHost(fixtureEnvironment(f.root,process.env));
   const hosts = [{...testHost('a',()=>{}),realpath:local.realpath,statDirectory:async()=>({refusal:null,identity:null})}];
@@ -209,6 +211,7 @@ test('restart preserves typed memory evidence until a fresh host memory report',
   onCleanup(t,()=>store.close());
   const now = new Date().toISOString();
   new HostSecretStore(f.root,store.hosts,()=>{}).register({id:'a',address:'a',user:'fixture',clientKeyPath:'',knownHosts:''});
+  settledLogin(store.hosts.logins,'a','codex',{provider:'provided-fixture',region:'fake'});
   store.hosts.provisions.ready({id:'a',pool:'agents',provider:'provided-fixture',size:'fake',region:'fake',created:now,state:'ready',machine:{id:'a',address:'a',architecture:'x86_64',created:now}});
   const listeners = new Set<(bytes:number)=>void>();
   const hosts = [{...testHost('a',()=>{}),realpath:async(path:string)=>path,statDirectory:async()=>({refusal:null,identity:null}),onCapacityChanged:(listener:(bytes:number)=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};}}];
@@ -278,6 +281,7 @@ test('different-name idle reuse consumes the admitted wait at publication and ne
   onCleanup(t,()=>table.close());
   const now = new Date().toISOString();
   new HostSecretStore(f.root,store.hosts,()=>{}).register({id:'a',address:'a',user:'fixture',clientKeyPath:'',knownHosts:''});
+  settledLogin(store.hosts.logins,'a','codex',{provider:'provided-fixture',region:'fake'});
   store.hosts.provisions.ready({id:'a',pool:'agents',provider:'provided-fixture',size:'fake',region:'fake',created:now,state:'ready',machine:{id:'a',address:'a',architecture:'x86_64',created:now}});
   await writeFile(join(f.root,'.cland/roles.toml'),await readFile(join(f.root,'.cland/roles.toml'),'utf8')+'\n[reviewer.launch]\npool="agents"\n');
   const hosts = [{...testHost('a',()=>{}),realpath:async(path:string)=>path,statDirectory:async()=>({refusal:null,identity:null})}];

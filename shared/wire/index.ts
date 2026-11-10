@@ -443,6 +443,7 @@ export type SessionListRows = { processes: HarnessProcessView[]; rows: SessionRo
 
 export type HarnessProcessView = {
   host?: string;
+  login?: string | null;
   account?: string | null;
   stateReason?: string;
   deaf?: { message: string; since: string; text: string; notice: string };

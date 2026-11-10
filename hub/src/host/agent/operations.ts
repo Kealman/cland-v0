@@ -1,3 +1,4 @@
+import { loginExecutionEnvironment } from './command-environment.ts';
 import { parseCheckoutOwnership } from './prepared-checkout.ts';
 import { loginFilePath } from './fake-login-mount.ts';
 import { open } from 'node:fs/promises';
@@ -99,9 +100,10 @@ export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): R
       if (!Array.isArray(a.sessions)) throw new Error('sessions must be an array');
       return occupants(path(a), a.sessions.map(value => { const row = object(value); return {name:text(row.name,'name'),cwd:text(row.cwd,'cwd')}; }));
     },
-    run: a => {
+    run: async a => {
       const command=parseAgentRun(a);
-      return run(command.command,command.args,command.env,command.timeoutMs,false,signal,'utf8',command.cwd);
+      const executionEnv=await loginExecutionEnvironment(command.env,env);
+      return run(command.command,command.args,executionEnv,command.timeoutMs,false,signal,'utf8',command.cwd);
     },
     worktreeAdd: a => {
       const territory = a.territory === undefined ? undefined : object(a.territory);

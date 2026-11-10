@@ -27,18 +27,19 @@ test('C2 explicit additions merge with agent base while planted hub tokens never
  const f = await sshHostFixture(t);
  const planted = {DIGITALOCEAN_TOKEN:'synthetic-do',CLAND_TELEGRAM_TOKEN:'synthetic-tg',CLAND_DISCORD_TOKEN:'synthetic-discord',CLAND_HUB_SECRET:'synthetic-project'};
  const env = fixtureEnvironment(f.root,process.env,{...planted,EXPLICIT:'allowed'});
- // Controlled raw map is the positive control before the SSH boundary's filter.
+ // The controlled source map plants only synthetic values before either filter.
  assert.equal(Object.values(planted).filter(v=>v.startsWith('synthetic-')).length,4);
  const controlOutput=join(f.root,'control-environment.json');
  const control=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'));
  f.addCleanup(()=>control.close());
  const receipts: Array<{event:string;pid:number;identity:string}>=[];
  control.on('event',frame=>receipts.push(frame));
- // The unchanged monolithic spawn is the positive control before the filtered Host operation.
+ // Raw and prepared agent paths retain a neutral value and remove planted credentials.
  const baseline=await control.request('spawn',{command:process.execPath,args:['-e',`require('fs').writeFileSync(process.argv[1],JSON.stringify(process.env))`,controlOutput],cwd:f.root,env:{...env,...planted}}) as {pid:number;identity:string};
  await eventually('positive-control native completion',()=>receipts.find(row=>row.event==='process-exited'&&row.pid===baseline.pid&&row.identity===baseline.identity),5000);
  const detected=JSON.parse(await readFile(controlOutput,'utf8'));
- for(const [key,value] of Object.entries(planted)) assert.equal(detected[key],value,key);
+ assert.equal(detected.EXPLICIT,'allowed');
+ for(const key of Object.keys(planted)) assert.equal(detected[key],undefined,key);
  const output=join(f.root,'environment.json');
  const child=await f.host.spawn({command:process.execPath,args:['-e',`require('fs').writeFileSync(process.argv[1],JSON.stringify(process.env))`,output],cwd:f.root,env:{...env,...planted}});
  assert.deepEqual(await child.exited,{code:0,signal:null});

@@ -1,3 +1,4 @@
+import {settledLogin} from './settled-login-fixture.ts';
 // T2: pool retry lifecycle with real inventory, fake provider and hub clock; no children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -181,6 +182,7 @@ test('cleanup refusal retains its record while a ready sibling places waiting la
  const failed=records.provisions.get('retained-1')!;assert.equal(failed.release,'incomplete');assert.equal(failed.acquisition,'acquired');assert.equal(records.provisions.occupied('agents'),1);
  await clock.advance(59999);assert.equal(calls,1);
  new HostSecretStore(root,records,()=>{}).register({id:'ready',address:'ready',user:'fixture',clientKeyPath:'',knownHosts:''});
+ settledLogin(records.logins,'ready','codex',{provider:'fake',region:'fake'});
  records.provisions.ready({id:'ready',pool:'agents',provider:'fake',size:'fake',region:'fake',created:clock.now().toISOString(),state:'ready',machine:{id:'ready',address:'ready',architecture:'x86_64',created:clock.now().toISOString()}});
  await eventually('ready sibling accepts waiting launch',()=>hub.fakes.codex!.spawns.some(row=>row.name==='sibling-launch'&&row.host==='ready')?true:undefined);
  assert.equal(records.provisions.get('retained-1')?.failure?.code,'cleanup-unavailable');

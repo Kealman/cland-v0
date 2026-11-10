@@ -135,6 +135,7 @@ const toProcess = (r: Row): HarnessProcess => ({
   cleanupItem: (r.cleanup_item as string | null) ?? null,
   cleanupHeldAt: (r.cleanup_held_at as string | null) ?? null,
   launchBrief: (r.brief as string | null) ?? null,
+  ...(r.login ? {login:r.login as string} : {}),
   account: (r.account as string | null) ?? null,
   accountEnv: r.account_env ? JSON.parse(r.account_env as string) as Record<string, string> : null,
   effort: (r.effort as string | null) ?? null,
@@ -162,7 +163,7 @@ export class ProcessTable {
     if (!columns.has('pid_identity')) this.#db.exec('alter table harness_processes add column pid_identity text');
     if (!columns.has('pid_started')) this.#db.exec('alter table harness_processes add column pid_started text');
     if (!columns.has('brief')) this.#db.exec('alter table harness_processes add column brief text');
-    for (const column of ['account', 'account_env']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
+    for (const column of ['account', 'account_env', 'login']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
     if (!columns.has('effort')) this.#db.exec('alter table harness_processes add column effort text');
     // Old stopped rows remain undated: no journal backfill on startup.
     for (const column of ['stopped_at', 'archived_at', 'archived_by']) if (!columns.has(column)) this.#db.exec(`alter table harness_processes add column ${column} text`);
@@ -227,12 +228,12 @@ export class ProcessTable {
     if(previous&&hostGenerationKey(previous)!==hostGenerationKey(p))this.#preserveTerminalHostGeneration(previous);
     this.#db
       .prepare(
-        `insert into harness_processes (host, name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, pid_identity, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `insert into harness_processes (host, name, harness, role, model, cwd, pid, harness_id, session_id, harness_session_id, started_at, status, pid_started, pid_identity, item, brief, effort, stopped_at, archived_at, archived_by, cleanup_item, cleanup_held_at, account, account_env, usage, login) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict (name) do update set host_retired = 0, host = excluded.host, harness = excluded.harness, role = excluded.role, model = excluded.model, cwd = excluded.cwd, pid = excluded.pid,
            harness_id = excluded.harness_id, session_id = excluded.session_id, harness_session_id = excluded.harness_session_id, started_at = excluded.started_at, status = excluded.status,
-           pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage`,
+           pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage, login = excluded.login`,
       )
-      .run(p.host ?? 'local', p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null);
+      .run(p.host ?? 'local', p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null, p.login ?? null);
     if (relaunch) {
       const stored = this.#db.prepare('select value from meta where key=?').get(relaunch.intentKey);
       const intent = stored?.value ? JSON.parse(String(stored.value)) as HostRelaunchIntent : null;

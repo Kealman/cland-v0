@@ -30,3 +30,17 @@ unregistered destination. Their previous blanket fences represented missing retr
 functionality. The drain/returned-f1 setup and no-host fence remain; the additional
 spawn is counted. Other T-1614 test files are unchanged. Successful returned-source
 f2/f3 retries and repeated f2→f3→f4 retention are in host-relaunch-retry.test.ts.
+
+T-1778 makes the two hosts pool members with explicit settled disk metadata. The
+running case checks source `codex-f1` and destination `codex-f2`, account `work`,
+and destination-only CODEX_HOME in the spawn and persisted process row. The new
+`C2/C3 admitted host relaunch no-login keeps durable native and checkout ownership`
+case omits the destination login, asserts the harness/pool refusal and zero
+destination spawns, and retains the source row/checkout ownership. These are
+scripted binding metadata/native lifecycle checks; the host-create case exercises
+real fake-provider attachment and Host.loginDisk.
+
+The setup Store is allocated by `withFixtureStore`: its owner is registered
+immediately, joins configuration/secret seeding on rejection or cleanup, and
+closes idempotently after setup settles. Pure `fixture-store.test.ts` controls
+hold both successful and rejected setup producers and observe close afterward.

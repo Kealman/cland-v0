@@ -13,6 +13,9 @@ under supported Node after targeted admission. No provider network or browser.
   state from a stored provision. Pinned ledger prices for both fake and DigitalOcean provision rows; no native
   transport or provider API. Unknown legacy billing makes pool totals unknown.
   A held placement promise counts before a running session is published.
+  Provided hosts seed settled Codex disk bindings through `settledLogin`, matching
+  each provision's provider and region, before ready publication. Native binding
+  itself is covered by `login-binding.test.ts`; status assertions stay unchanged.
 
 `status ledger read drains before storage closes; setup failure=false/true` holds the spend-file
 read, closes an in-process base hub and asserts the positive completion order:

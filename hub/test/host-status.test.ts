@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, tempProject, connectUi, cland } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { settledLogin } from './settled-login-fixture.ts';
 
 test('C1 status includes configured empty pools and zero settled spend',async t=>{
  const root=await tempProject(t);
@@ -36,6 +37,7 @@ test('C1/C2 status weights sessions and clips live accrual to UTC day/month, exc
  const created='2026-10-31T23:00:00Z';
  for(const id of ['z-host','a-host']){
   new HostSecretStore(root,records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
+  settledLogin(records.logins,id,'codex',{provider:id==='a-host'?'digitalocean':'fake',region:'fake-1'});
   records.provisions.ready({id,pool:'agents',provider:id==='a-host'?'digitalocean':'fake',size:'fake',region:'fake-1',created,state:'ready',machine:{id,address:id,architecture:'arm64',created}});
  }
  const gate=Promise.withResolvers<void>();let entered=false;

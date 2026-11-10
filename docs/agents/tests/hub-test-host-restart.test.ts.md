@@ -6,6 +6,12 @@ two directory-provider hosts, detached watchdogs and native fake OpenCode.
 No real provider API or human browser is used. Fixture owners join hubs,
 watchdogs and descendants before root removal.
 
+Both fake hosts receive `mountedSettledLogin` OpenCode disks before launch.
+The helper records real fake-provider volume identities and owns unmount/detach
+after all restarted hubs and native processes join. Existing restart, deletion,
+spend and watchdog assertions and bounds stay unchanged.
+See [shared fixture ownership](hub-test-host-destroy-native.test.ts.md#shared-settled-login-fixture).
+
 The case `restart keeps the live host and exits the deleted host, settles spend,
 and restores watchdog ownership` asserts the persisted session rows, vacated
 Implementer role, released lease and settled spend after external fake-provider

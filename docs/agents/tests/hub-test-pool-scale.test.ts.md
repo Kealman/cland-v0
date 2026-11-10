@@ -1,5 +1,11 @@
 # hub/test/pool-scale.test.ts
 
+The injected creator seeds a settled Codex disk binding through `settledLogin`
+before publishing each ready fake host, matching its provider and region. This
+keeps scaling and lease assertions independent of native login acquisition;
+`login-binding.test.ts` covers that boundary. Placement assertions and bounds
+remain unchanged.
+
 T2, `projectHub` with injected create and provided Hosts, no children. Cases:
 `C1 startup maintains min_hosts without a launch`;
 `C2/C4 booting counts toward max and two launches share one new host`;

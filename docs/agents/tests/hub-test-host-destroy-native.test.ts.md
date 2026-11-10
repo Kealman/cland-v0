@@ -4,6 +4,11 @@ T3 native fake SSH/OpenCode destruction. Cases `C1/C2/C3 destroy settles native 
 
 Run: `node --test hub/test/host-destroy-native.test.ts`.
 
+Each launched fake host starts with `mountedSettledLogin`: an attached,
+Host.loginDisk-mounted OpenCode volume recorded as settled. Its cleanup follows
+all native joins and precedes root disposal; the destruction assertions and
+bounds are unchanged. The shared fixture ownership is described below.
+
 `destroy joins an admitted held acquisition and prevents ready resurrection` holds
 a provider acquire after its machine is durable but before its result reaches
 create. Destroy checkpoints intent, joins aborted creation and confirms deletion;
@@ -12,3 +17,24 @@ acquisition joined (red). Twelve sequential load-scaled setup allowances plus
 120 seconds for the fixed 30-second CLI behaviour bounds and cleanup size the
 outer timeout; individual setup waits keep SETUP_MS and behaviour bounds remain
 the harness's exact 30-second CLI limit.
+
+## Shared settled-login fixture
+
+`settledLogin` seeds metadata for provided in-process Hosts. Its optional
+`volumeId` lets native fixtures record an already mounted fake disk without
+inventing a second identity. `mountedSettledLogin` in
+`hub/test/settled-login-fixture.ts` creates a directory-backed FakeHostProvider
+volume, positively attaches it, mounts through Host.loginDisk, observes the
+mount link, then seeds settled metadata through `settledLogin`. Both functions
+share login-name construction and use the shared fake-layout mount primitive.
+
+Before allocation, the helper registers a `beforeStop` setup join and an
+`afterNativeJoin` cleanup with host-create-fixture. Setup settles before borrowed
+Store handles or hubs close, including rejection. Cleanup follows all
+hub/session, watchdog and native fixture process joins: it unlinks only the
+captured fake mount target and observes absence, then confirms volume detach
+and deletion before root disposal. No stopped agent is asked to mutate anything.
+Cleanup reads captured identities, not the closed Store; uncertain ownership or
+cleanup failure retains the root. Destroy and restart cases exercise this
+shared helper without changing their assertions or bounds. The native-slot
+receipt includes before/after TMPDIR fixture inventories.

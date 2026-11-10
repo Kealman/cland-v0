@@ -1,3 +1,5 @@
+import { LoginBinder } from '../host/login-binding.ts';
+import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
 import { HostMemoryFloorRefusal } from '../host/ssh-host.ts';
 import type { WaitingLaunch } from '../protocol.ts';
@@ -64,7 +66,7 @@ const waitingReason = (cause: PoolCapacityUnavailable | HostMemoryFloorRefusal) 
 export type LaunchRequest = {
   [waitingPublication]?: WaitingPublication; [waitingPool]?: string; [waitingRetry]?: boolean; [placedLaunch]?: { active: boolean; validate?: () => void; reuse?: string }; name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
-type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection };
+type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection; login?: string };
 
 /** A launch directory refused before the harness is spawned; its admission reservation is rolled back. */
 export class InvalidLaunchCwd extends Error {}
@@ -120,6 +122,8 @@ export class Sessions {
   readonly #hostCapacity = new Map<string, () => void>();
   readonly #unprovision: () => void;
   readonly #poolRuntime: PoolRuntime | null;
+  readonly #loginBinder: LoginBinder;
+  readonly #loginProviders: HostProviderRegistry;
   readonly #waiting = new WaitingLaunches((row, end) => {
     if (end) this.#table.deleteWaitingLaunch(row.name);
     else { const record = this.#table.waitingLaunch(row.name); if (record) this.#table.saveWaitingLaunch({ ...record, row }); }
@@ -565,7 +569,7 @@ export class Sessions {
     const planned = request[placedLaunch]?.reuse;
     return this.#table.running().find(p => (!this.#reusing.has(p.sessionId) || planned === p.sessionId)
       && (!planned || planned === p.sessionId) && acceptsHost(p.host ?? 'local')
-      && request.harness === p.harness && (p.account ?? null) === request.resolvedAccount.account
+      && request.harness === p.harness && ((p.account ?? null) === request.resolvedAccount.account || (request.resolvedAccount.account === null && (p.host ?? 'local') !== 'local' && !!this.#core.store.hosts.provisions.get(p.host!)))
       && this.#reuseEligible(p, role, implementer ? p.cwd : cwd));
   }
 
@@ -731,6 +735,8 @@ export class Sessions {
     this.#hosts = new Map([['local', localHost(this.#env, this.#log)]]);
     for (const host of options.hosts ?? []) this.addHost(host);
     this.#core = options.core;
+    this.#loginBinder = new LoginBinder(this.#core.store.hosts.logins);
+    this.#loginProviders = new HostProviderRegistry({env:this.#env,now:()=>this.#core.clock.now().getTime(),digitalocean:{root:options.root,clock:this.#core.clock}});
     this.#table = options.table;
     this.#core.waitingNames(name => this.#waiting.has(name));
     this.#unprovision = this.#core.store.hosts.provisions.onChange((id, _previous, state) => { if (state !== 'ready') this.#memoryBlocked.delete(id); this.capacityChanged(); });
@@ -1055,6 +1061,7 @@ export class Sessions {
       ...((p.host ?? 'local') === 'local' ? {} : { host: p.host }),
       harness: p.harness,
       account: p.account ?? null,
+      ...(p.login ? {login:p.login} : {}),
       role: p.role,
       label: withRole(p.name, p.role),
       model: p.model,
@@ -1517,9 +1524,14 @@ export class Sessions {
     }
   }
 
-  async #accountRequest(request: LaunchRequest, role: string | null, resumed: Resumed): Promise<AccountLaunchRequest> {
+  async #accountRequest(request: LaunchRequest, role: string | null, resumed: Resumed, disk = false): Promise<AccountLaunchRequest> {
     const defaults = resumed(() => role ? this.#core.roles?.get().get(role)?.launch : null);
     const roleAccount = request.account === undefined && (!request.harness || request.harness === defaults?.harness) ? defaults?.account : null;
+    if(disk){
+      const harness=request.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
+      const account=request.account !== undefined ? request.account : defaults?.harness===harness ? defaults.account ?? null : null;
+      return {...request,harness,resolvedAccount:{account:account || null,accountEnv:null}};
+    }
     const registry = request.account || roleAccount ? await readAccounts(this.#env) : { registry: '', accounts: [] };
     const explicit = resumed(() => request.account ? namedAccount(registry, request.account) : null);
     const harness = request.harness ?? explicit?.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
@@ -1532,7 +1544,7 @@ export class Sessions {
   async withLaunchPlacement<T>(request: LaunchRequest, operation: (placed: LaunchRequest) => Promise<T>, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<T> {
     if (this.#waiting.has(request.name) && !request[waitingRetry]) throw new Error(`session "${request.name}" is waiting for a host`);
     if (!this.#poolRuntime || request[placedLaunch]?.active) return operation(request);
-    const role = request.role ?? this.#core.store.roleOf(request.name);
+    const role = request.item ? request.role ?? this.#core.store.roleOf(request.name) : this.#launchRequestRole(request);
     const validateRole = () => {
       if (request.role == null && this.#core.store.roleOf(request.name) !== role) throw new Error(`session "${request.name}" changed role while launching; retry the launch`);
     };
@@ -1562,8 +1574,9 @@ export class Sessions {
     try {
       if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
       resumed(() => { authorize(); validateRole(); admission?.validate(); this.#checkRolesLaunch(role); });
-      const effective = await this.#accountRequest(request, role, resumed);
       const pool = resumed(() => request[waitingPool] ?? (role ? this.#core.roles?.get().get(role)?.launch.pool ?? 'local' : 'local'));
+      const remote=request.host !== undefined ? !!this.#core.store.hosts.provisions.get(request.host) : pool !== 'local';
+      const effective = await this.#accountRequest(request, role, resumed, remote);
       reservation = resumed(() => {
         authorize(); validateRole(); admission?.validate();
         if (request.host !== undefined) this.validateLaunchHost(request);
@@ -1605,7 +1618,7 @@ export class Sessions {
       return resumed(() => this.#launchNew(request, role, resumed, authorize));
     if (this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
     resumed(() => { authorize(); this.#checkRolesLaunch(role); });
-    const effective = await this.#accountRequest(request, role, resumed);
+    const effective = Object.hasOwn(request, 'resolvedAccount') ? request as AccountLaunchRequest : await this.#accountRequest(request, role, resumed);
     resumed(() => this.#core.checkAccountLimit(effective.resolvedAccount.account ?? `default:${effective.harness}`));
     const reused = await resumed(() => this.#reuse(effective, role, resumed, authorize));
     return resumed(() => {
@@ -1735,7 +1748,7 @@ export class Sessions {
     const forHarness = defaults !== null && defaults.harness === harness;
     const model = retainedId ? request.model ?? null : request.model ?? (forHarness ? defaults.model : null);
     const effort = retainedId ? request.effort ?? null : request.effort ?? (forHarness ? defaults.effort : null);
-    const selected = request.resolvedAccount;
+    let selected = request.resolvedAccount;
     const policy = await this.#hostLaunchPolicy(role, harness, this.#hostForLaunch(request), cwd);
     resumed(() => { authorize(); this.#checkRolesLaunch(role); });
     const adapter = this.adapter(harness);
@@ -1749,6 +1762,27 @@ export class Sessions {
     let conflict = false;
     let accepted = false;
     try {
+      // Every new native generation reaches this boundary after launch, item and
+      // checkout admission, including fresh and cross-host resume.
+      const provision = this.#core.store.hosts.provisions.get(request.host ?? 'local');
+      if (provision?.machine) {
+        const validate = () => resumed(() => {
+          authorize(); if(this.#closed)throw Error('the hub is closing');
+          this.validateLaunchHost(request); request[placedLaunch]?.validate?.();
+          const current = this.#core.store.hosts.provisions.get(provision.id);
+          if (JSON.stringify(current) !== JSON.stringify(provision) || current?.state !== 'ready') throw Error(`host ${provision.id}: login placement changed`);
+        });
+        const bound = await this.#loginBinder.bind({
+          host: this.#hostForLaunch(request), machine: provision.machine,
+          provider: () => this.#loginProviders.resolve(provision), providerName: provision.provider,
+          region: provision.region, pool: provision.pool, project: this.#root,
+          harness, account: selected.account, validate,
+          checkAccount: account => resumed(() => this.#core.checkAccountLimit(account)),
+        });
+        selected = {account:bound.account,accountEnv:bound.accountEnv};
+        request = {...request,resolvedAccount:selected,login:bound.login};
+        resumed(() => {validate();this.#core.checkAccountLimit(selected.account ?? `default:${harness}`);});
+      }
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
       owned = await adapter.spawn({ ...selected, ...(request.host !== undefined ? { host: request.host } : {}), name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, () => { authorize(); this.#core.checkAccountLimit(selected.account ?? `default:${harness}`); });
       owned = { ...owned, host: request.host ?? 'local' };
@@ -1765,7 +1799,7 @@ export class Sessions {
       const proof = owned.pid !== null && (owned.pidStarted == null || owned.pidIdentity === undefined) ? await this.#hostForProcess(owned).identity(owned.pid) : null;
       const pidStarted = owned.pidStarted ?? proof?.pidStarted ?? null;
       const pidIdentity = owned.pidIdentity !== undefined ? owned.pidIdentity : proof?.pidIdentity ?? null;
-      const p: HarnessProcess = { ...owned, ...selected, accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, pidIdentity, launchBrief: request.brief ?? null, effort };
+      const p: HarnessProcess = { ...owned, ...selected, ...(request.login ? {login:request.login} : {}), accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, pidIdentity, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
         authorize();
@@ -3040,6 +3074,7 @@ export class Sessions {
     this.#closed = true;
     const waitingDrain = this.#waiting.close();
     const poolDrain = this.#poolRuntime?.close();
+    const loginDrain = this.#loginBinder.close();
     this.#core.waitingNames(null);
     this.#forcedQueued.clear();
     for (const held of this.#heldDeliveries.values()) this.#transportClock.clearTimeout(held.timer);
@@ -3062,7 +3097,7 @@ export class Sessions {
     this.#stopRetry = null;
     const failures: unknown[] = [];
     // Preserve synchronous construction rollback when no retry owns asynchronous work.
-    const adapterDrains: Promise<void>[] = [...(waitingDrain ? [waitingDrain] : []), ...(poolDrain ? [poolDrain] : [])];
+    const adapterDrains: Promise<void>[] = [...(loginDrain ? [loginDrain] : []), ...(waitingDrain ? [waitingDrain] : []), ...(poolDrain ? [poolDrain] : [])];
     for (const adapter of this.#adapters.values()) {
       try {
         const drain = adapter.close();

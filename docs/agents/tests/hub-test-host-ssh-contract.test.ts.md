@@ -51,7 +51,10 @@ config-root refusal remains covered. Untyped lookalike errors stay incomplete
 in claude-code-remote-files.test.ts.
 T-1644 adds a production OpenCode adapter launch through the fake SSH Host and
 real agent spawn. A native child checkpoints its environment before readiness;
-the raw monolithic spawn is the planted-secret positive control. OpenCode's
+the raw monolithic spawn retains neutral `EXPLICIT` as its positive control.
+Both raw agent and prepared Host paths assert that all four planted synthetic
+credentials are absent; filtering at the agent is part of the login boundary.
+OpenCode's
 captured environment retains explicit allowed values and excludes hub-only
 credentials. The fixture stops the row, joins agent/carrier, and asserts its
 empty process census before removing storage. The shared contract also exercises

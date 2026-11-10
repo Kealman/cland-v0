@@ -5,7 +5,7 @@ export type LoginState = 'creating' | 'ready' | 'in-use' | 'signed-out';
 type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null };
 export type Login = Base & ({ kind: 'disk'; exclusive: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[]; backup?: LoginBackup } | { kind: 'key' });
 export type LoginInput = Omit<Base, 'state'> & ({ kind: 'disk'; exclusive?: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[] } | { kind: 'key' });
-export type LoginBinding = { login: string; host: string; role: 'writer' | 'reader'; volumeId: string | null };
+export type LoginBinding = { login: string; host: string; role: 'writer' | 'reader'; volumeId: string | null; phase?: 'pending' | 'settled' };
 export type LoginBindingRefusalCode = 'disk-volume-required' | 'writer-volume-mismatch' | 'reader-volume-mismatch' | 'key-volume' | 'exclusive-writer' | 'writer-conflict';
 export class LoginBindingRefused extends Error {
  readonly code: LoginBindingRefusalCode;
@@ -16,6 +16,8 @@ export class LoginBindingRefused extends Error {
 const transitions: Record<LoginState, readonly LoginState[]> = {
  creating: ['ready', 'signed-out'], ready: ['in-use'], 'in-use': ['ready', 'signed-out'], 'signed-out': ['creating'],
 };
+
+const bindingRow = (row:Record<string,unknown>):LoginBinding => ({login:row.login as string,host:row.host as string,role:row.role as LoginBinding['role'],volumeId:row.volumeId as string|null,...(row.phase ? {phase:row.phase as NonNullable<LoginBinding['phase']>} : {})});
 
 /** Project metadata only: harness files and key material never enter this store. */
 export class LoginRecords {
@@ -30,6 +32,16 @@ export class LoginRecords {
   this.db = db;
   db.exec(`create table if not exists logins (name text primary key, record text not null);
    create table if not exists login_bindings (login text not null references logins(name), host text not null, role text not null, volume_id text, primary key(login,host));`);
+  if (!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='phase')) db.exec('alter table login_bindings add column phase text');
+  db.exec('savepoint login_launch_selection_migration');
+  try {
+   if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness')){
+    db.exec("alter table login_bindings add column harness text; update login_bindings set harness=(select json_extract(record,'$.harness') from logins where logins.name=login_bindings.login)");
+   }
+   db.exec("create index if not exists login_bindings_launch on login_bindings(host,harness,login); create index if not exists login_ready_launch on logins(json_extract(record,'$.state'),json_extract(record,'$.kind'),json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)");
+   db.exec('release login_launch_selection_migration');
+  }catch(error){db.exec('rollback to login_launch_selection_migration; release login_launch_selection_migration');throw error;}
+
  }
  get(name: string): Login | null {
   const row = this.db.prepare('select record from logins where name=?').get(name);
@@ -45,7 +57,16 @@ export class LoginRecords {
   this.save({...row,...update});
  }
  bindings(name: string): LoginBinding[] {
-  return this.db.prepare('select login,host,role,volume_id as volumeId from login_bindings where login=? order by host').all(name) as LoginBinding[];
+  return this.db.prepare('select login,host,role,volume_id as volumeId,phase from login_bindings where login=? order by host').all(name).map(bindingRow);
+ }
+ /** Indexed launch reads decode at most two held records or one ready candidate. */
+ selectForLaunch(input:{host:string;harness:string;provider:string;region:string;account:string|null}):{held:Array<{login:Login;binding:LoginBinding}>;ready:Login|null} {
+  const held=this.db.prepare('select l.record,b.login,b.host,b.role,b.volume_id as volumeId,b.phase from login_bindings b indexed by login_bindings_launch join logins l on l.name=b.login where b.host=? and b.harness=? order by b.login limit 2').all(input.host,input.harness).map(row=>({login:JSON.parse(String(row.record)) as Login,binding:bindingRow(row)}));
+  if(held.length)return {held,ready:null};
+  const sql="select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='ready' and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+(input.account===null?'':" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
+  const parameters=[input.harness,input.provider,input.region,...(input.account===null?[]:[input.account])];
+  const row=this.db.prepare(sql).get(...parameters);
+  return {held,ready:row?JSON.parse(String(row.record)) as Login:null};
  }
  insert(input: LoginInput): Login {
   if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(input.name)) throw Error('login name must match [a-z0-9][a-z0-9-]{0,31}');
@@ -75,6 +96,10 @@ export class LoginRecords {
   if (row.state !== 'in-use') throw Error(`login ${name} cannot bind in ${row.state}`);
   this.addBinding(row,binding);
  }
+ settleBinding(name: string, host: string): void {
+  const result=this.db.prepare("update login_bindings set phase='settled' where login=? and host=? and phase='pending'").run(name,host);
+  if(result.changes!==1)throw Error('pending login binding missing');
+ }
  unbind(name: string, host: string): void {
   this.required(name);
   this.atomic(() => {
@@ -94,7 +119,7 @@ export class LoginRecords {
   }
   if (row.kind === 'disk' && row.exclusive && (existing.length || binding.role !== 'writer')) throw new LoginBindingRefused('exclusive-writer','exclusive login requires a single writer');
   if (binding.role === 'writer' && existing.some(b => b.role === 'writer')) throw new LoginBindingRefused('writer-conflict','login already has a writer');
-  this.db.prepare('insert into login_bindings values (?,?,?,?)').run(row.name,binding.host,binding.role,binding.volumeId);
+  this.db.prepare('insert into login_bindings(login,host,role,volume_id,phase,harness) values (?,?,?,?,?,?)').run(row.name,binding.host,binding.role,binding.volumeId,binding.phase ?? null,row.harness);
  }
  private required(name: string): Login { const row = this.get(name); if (!row) throw Error('unknown login: '+name); return row; }
  private save(row: Login): void { this.db.prepare('update logins set record=? where name=?').run(JSON.stringify(row),row.name); for(const listener of this.listeners)listener(); }

@@ -312,3 +312,16 @@ fixtures. `cland login list`, `cland login snapshot` and terminal disk `cland lo
 CLI/Neovim only; sessions, web and remotes are refused. Exercise `login.add` and
 connection-pinned `login.signed-in` only in disposable fake-provider fixtures.
 See [project logins](../../../docs/hub/logins.md).
+
+Pool-host launch binds a project disk login at the shared native spawn boundary,
+after item/role/checkout admission; role accounts select
+login account names rather than hub-machine paths. Missing eligible logins refuse
+with the harness and pool. Keep `LoginBinding.phase: pending` fenced until a
+positive mount/commit or full rollback receipt; shutdown joins binding work to
+native settlement or existing deadlines (abortable
+operations are T-1801). Fresh/cross-host spawns bind at their destination; normal
+native resume keeps its recorded binding.
+Host-stop release leaves pending bindings to startup reconciliation. Use explicit
+settledLogin seeds in placement fixtures and readyLogin directory-backed volumes
+for native host-create fixtures. See [login binding](../../../docs/hub/logins.md#binding-at-launch).
+

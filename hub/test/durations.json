@@ -14667,6 +14667,13 @@
       "added": "2026-11-08",
       "expires": "2026-11-15",
       "reason": "T-1754 maximum-identity narrow panel: macOS Node24.21.0 green samples [0.601381125, 3.689732875]s include isolated Neovim/stub setup, 64-column real panel assertions, previous-day date, max24-character name/role ellipsis and joined cleanup; exclude driver startup. Linux 5.9035726s is an unexecuted 1.6x projection; 9s is about 1.5x projection. Host load observed 9.59 after final sample, no artificial stress. Report-mode duration gate unchanged."
+    },
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch no-login keeps durable native and checkout ownership": {
+      "seconds": 27,
+      "owner": "C-216",
+      "added": "2026-11-10",
+      "expires": "2026-11-15",
+      "reason": "T-1778: provisional report-mode allowance for the new destination-no-login native lifecycle case. Related running-path baseline is 10.83787 seconds in this manifest; Linux cost is projected at 1.6x, then 1.5x headroom (ceil=27s). This is a budget projection, not a receipt or passing measurement of the new case. Prior new-case early refusal at 2.962588s did not reach the intended boundary and is not calibration coverage. Includes setup and joined cleanup; no browser or product latency claim. Final reviewed-head native/Linux receipts remain required."
     }
   }
 }
