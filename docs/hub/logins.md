@@ -85,6 +85,8 @@ existing database. Callers own admission and native resource receipts.
   It uses the store's maintained indexes rather than decoding retained history.
 - `bindings(name)` returns rows sorted by host, each containing login, host,
   `role: 'writer' | 'reader'` and `volumeId: string | null`.
+- `hasPendingBinding(name)` checks existence through `login_bindings_pending(login,
+  phase)` with a one-row limit, without materializing settled reader bindings.
 - `transition(name, state, binding?)` validates the state edge. Entering in-use
   requires a binding without the login field. Leaving in-use clears bindings
   in the same database savepoint. Signing in again moves signed-out → creating.
@@ -215,12 +217,10 @@ savepoint with index creation; public binding shapes are unchanged. Every bindin
 insert supplies its harness. Selection decodes at most two bound rows or one ready
 row, independently of signed-out/ineligible history. The normal SQLite indexes
 maintain this derived selection across writes and connections. The indexed
-selector itself scans no retained history. Binding writes currently notify the
-snapshot listener, whose scheduling calls the full `logins.list()`; the bounded
-selector therefore does not bound the complete launch path. The snapshot owner
-also currently accepts pending bindings. T-1803 tracks bounded snapshot scheduling
-on login changes and refusal of pending bindings. These are accepted integration
-limitations; the launch binder continues to fence pending bindings from reuse.
+selector itself scans no retained history. Row and binding changes notify the
+snapshot listener with the changed login name. After its initial startup scan,
+the scheduler reads and rearms only that login, without decoding retained history.
+Pending bindings defer snapshots until settlement or confirmed rollback.
 
 ## Backup snapshots
 
@@ -252,10 +252,18 @@ change refuses while pending, freeze or receipt ownership remains retained.
 Stop cancels timers and joins admitted work before
 storage closes. Start resumes overdue in-use disks and persisted pending work.
 
+Scheduled and manual backups defer while any binding has `phase: pending`.
+They persist `backup.pending` and the outcome `login snapshot deferred: pending
+binding`, without freezing the disk or calling the provider. Settlement or
+binding removal rearms that login; absent phase retains legacy settled behavior.
+Each login owns its timer, so another login's change cannot move its deadline.
+
 `LoginRecords.updateBackup(name, backup, snapshotIds?)` persists optional disk
-backup metadata; older rows without it remain valid. `onChange(listener)` returns
-an unsubscribe function and lets the scheduler re-arm after row changes. These
-methods do not alter bindings. The new snapshot id is persisted before pruning;
+backup metadata; older rows without it remain valid. `onChange(listener)` passes
+the changed login name and returns an unsubscribe function. Existing listeners
+that ignore arguments remain valid. Row saves and binding-only additions,
+settlement and removals notify the scheduler. These methods do not alter bindings.
+The new snapshot id is persisted before pruning;
 older ids beyond two are removed only after `deleteSnapshot` confirms deletion
 with its provider read. Interrupted pruning resumes before another snapshot.
 

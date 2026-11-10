@@ -4,6 +4,25 @@ T2 filesystem fake-provider tests, FakeClock, no network or native processes.
 Each disposable root is registered with ownDirectory before allocation continues;
 scheduler close joins provider writes before database and root disposal.
 
+T-1803 adds a synthetic 10,000-login corpus built through LoginRecords in a
+scratch SQLite database. `one login save has bounded scheduling work across ten
+thousand retained logins` controls JSON decodes, query count and EXPLAIN plans;
+a full list is the positive control for both decode and scan detection. One save
+permits at most eight decodes and twelve queries, with no scan or temp sort.
+`pending binding defers scheduled and manual backups until settlement` checks
+the persisted deferred reason, no freeze or snapshot effect, and a confirmed
+snapshot after settlement. Existing daily-backup cases keep absent-phase legacy
+bindings as positive controls. No live corpus, harness or native process is used.
+`settling a binding preserves a future daily backup deadline` verifies that a
+pending bind alone does not request an early backup or move the daily deadline.
+`pending detection bounds binding-row work for a login with many readers` builds
+1,000 settled reader bindings through the public API in a scratch database. A
+full binding read is the returned-row positive control. Saves with no pending
+binding, one pending binding, and after its settlement return at most eight rows
+total and require an EXPLAIN search on both login and phase through the pending
+index. This complements query-count controls: one indexed query returning every
+binding would still exceed the row budget.
+
 - `third confirmed backup retains only the newest two snapshots`: C1, confirms
   provider history and persisted ids after the third backup.
 - `in-use backup runs at 24 hours under freeze and thaw, including snapshot failure`:

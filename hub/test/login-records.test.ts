@@ -15,6 +15,20 @@ test('disk and key login rows round-trip every field without key disk properties
 });
 
 const diskInput = {name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v1',snapshotIds:[],lastSignIn:null} as const;
+test('change notifications identify row saves and binding-only mutations for legacy listeners',t=>{
+ const db=new DatabaseSync(':memory:');t.after(()=>db.close());const records=new LoginRecords(db);
+ records.insert({...diskInput,exclusive:false,snapshotIds:[]});
+ const names:string[]=[];let legacyCalls=0;
+ const unsubscribe=records.onChange(name=>names.push(name));
+ const legacy=records.onChange(()=>{legacyCalls++;});
+ records.transition('work','ready');
+ records.bind('work',{host:'writer',role:'writer',volumeId:'v1',phase:'pending'});
+ records.settleBinding('work','writer');
+ records.bind('work',{host:'reader',role:'reader',volumeId:'v2',phase:'pending'});
+ records.unbind('work','reader');
+ assert.deepEqual(names,['work','work','work','work','work']);assert.equal(legacyCalls,5);
+ unsubscribe();legacy();records.unbind('work','writer');assert.equal(names.length,5);assert.equal(legacyCalls,5);
+});
 for (const current of ['creating','ready','in-use','signed-out'] as const) {
  for (const target of ['creating','ready','in-use','signed-out'] as const) {
   const allowed = {creating:['ready','signed-out'],ready:['in-use'],'in-use':['ready','signed-out'],'signed-out':['creating']}[current];

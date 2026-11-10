@@ -67,7 +67,7 @@ test('stage-one login database migrates private binding harness and indexes with
  old.insert({name:'key-old',kind:'key',harness:'opencode',account:'work',lastSignIn:null});
  const rows=old.list(),bindings=old.bindings('old');
  // Schema-only downgrade models stage1; every row was written via public API.
- db.exec('drop index if exists login_bindings_launch; drop index if exists login_ready_launch');
+ db.exec('drop index if exists login_bindings_launch; drop index if exists login_ready_launch; drop index if exists login_bindings_pending');
  if(db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness'))db.exec('alter table login_bindings drop column harness');
  db.exec('alter table login_bindings drop column phase');
  const exec=db.exec.bind(db);

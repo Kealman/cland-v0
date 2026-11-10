@@ -103,13 +103,14 @@ export class LoginSnapshots {
  private readonly options:Options;
  private readonly work=new Map<string,Running>();
  private readonly releases=new Set<Promise<void>>();
- private timer:ClockTimer|undefined;
+ private readonly timers=new Map<string,ClockTimer>();
  private stopped=false;
  private scheduling=false;
  private readonly unsubscribe:()=>void;
  constructor(options:Options) {
   this.options=options;
-  this.unsubscribe=options.logins.onChange(()=>this.schedule());this.schedule();
+  this.unsubscribe=options.logins.onChange(name=>this.schedule(name));
+  for(const row of options.logins.list())this.schedule(row.name);
  }
  snapshot(name:string):Promise<SnapshotVolumeResult> {
   if(this.stopped)return Promise.reject(Error('login snapshots stopped'));
@@ -122,6 +123,7 @@ export class LoginSnapshots {
  private launch(name:string):Promise<SnapshotVolumeResult> {
   const row=disk(this.options.logins,name);
   if(!['ready','in-use'].includes(row.state))return Promise.reject(Error('login must be ready or in-use'));
+  if(this.deferPending(name))return Promise.reject(Error('login snapshot deferred: pending binding'));
   const active=this.work.get(name);if(active)return active.promise;
   const bindings=JSON.stringify(this.options.logins.bindings(name));
   const prepared=Promise.withResolvers<void>();
@@ -144,8 +146,15 @@ export class LoginSnapshots {
    const live=this.options.logins.get(name);
    if(live?.kind==='disk'&&live.volumeId===row.volumeId)checkpoint(this.options.logins,name,{pending:true,retryAt:live.backup?.retryAt&&Date.parse(live.backup.retryAt)>this.options.clock.now().getTime()?live.backup.retryAt:new Date(this.options.clock.now().getTime()+60000).toISOString(),outcome:String(error)});
    this.options.report?.(error);throw error;
-  }).finally(()=>{prepared.resolve();this.work.delete(name);this.schedule();});
+  }).finally(()=>{prepared.resolve();this.work.delete(name);this.schedule(name);});
   this.work.set(name,running);return running.promise;
+ }
+ private deferPending(name:string,requested=true):boolean {
+  if(!this.options.logins.hasPendingBinding(name))return false;
+  const row=disk(this.options.logins,name),outcome='login snapshot deferred: pending binding';
+  const pending=requested||row.backup?.pending===true;
+  if(row.backup?.pending!==pending||row.backup.outcome!==outcome)checkpoint(this.options.logins,name,{pending,outcome});
+  return true;
  }
  /** Fence admission before release; join only freeze/thaw, never provider I/O. */
  beginRelease(name:string):Promise<void> {
@@ -167,26 +176,28 @@ export class LoginSnapshots {
   const row=disk(this.options.logins,name);
   if(row.volumeId!==receipt.volumeId||row.state!=='ready'||this.options.logins.bindings(name).length||row.backup?.freeze)throw Error('snapshot release requires the detached login receipt');
   const due=Date.parse(row.backup?.lastAt??row.lastSignIn??row.backup?.initialAt??this.options.clock.now().toISOString())+DAY;
-  checkpoint(this.options.logins,name,{releasing:false,pending:row.backup?.pending===true||due<=this.options.clock.now().getTime()});this.schedule();
+  checkpoint(this.options.logins,name,{releasing:false,pending:row.backup?.pending===true||due<=this.options.clock.now().getTime()});this.schedule(name);
  }
- private schedule():void {
+ private schedule(name:string):void {
   if(this.scheduling)return;
-  this.options.clock.clearTimeout(this.timer);this.timer=undefined;
+  this.options.clock.clearTimeout(this.timers.get(name));this.timers.delete(name);
   if(this.stopped)return;
   this.scheduling=true;
   const now=this.options.clock.now().getTime();let next=Infinity;
-  for(const row of this.options.logins.list()) {
-   if(row.kind!=='disk'||!['ready','in-use'].includes(row.state)||this.work.has(row.name))continue;
+  const row=this.options.logins.get(name);
+  if(row?.kind==='disk'&&['ready','in-use'].includes(row.state)&&!this.work.has(name)) {
    if(row.state==='in-use'&&!row.backup?.lastAt&&!row.lastSignIn&&!row.backup?.initialAt)checkpoint(this.options.logins,row.name,{pending:row.backup?.pending??false,initialAt:new Date(now).toISOString()});
    next=Math.min(next,dueAt(this.options.logins.get(row.name)!,now));
+   if(this.deferPending(name,next<=now)&&next<=now){this.scheduling=false;return;}
   }
   this.scheduling=false;if(!Number.isFinite(next))return;
-  this.timer=this.options.clock.setTimeout(()=>{
-   this.timer=undefined;
+  const timer=this.options.clock.setTimeout(()=>{
+   this.timers.delete(name);
    const now=this.options.clock.now().getTime();
-   for(const row of this.options.logins.list())if(dueAt(row,now)<=now&&!this.work.has(row.name))void this.launch(row.name).catch(()=>{});
-   this.schedule();
-  },Math.max(1,next-now));this.timer.unref();
+   const row=this.options.logins.get(name);
+   if(row&&dueAt(row,now)<=now&&!this.work.has(name))void this.launch(name).catch(()=>{});
+   this.schedule(name);
+  },Math.max(1,next-now));timer.unref();this.timers.set(name,timer);
  }
- async close():Promise<void>{this.stopped=true;this.unsubscribe();this.options.clock.clearTimeout(this.timer);await Promise.allSettled([...Array.from(this.work.values(),work=>work.promise),...this.releases]);}
+ async close():Promise<void>{this.stopped=true;this.unsubscribe();for(const timer of this.timers.values())this.options.clock.clearTimeout(timer);this.timers.clear();await Promise.allSettled([...Array.from(this.work.values(),work=>work.promise),...this.releases]);}
 }

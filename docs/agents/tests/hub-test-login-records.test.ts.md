@@ -1,5 +1,9 @@
 # hub/test/login-records.test.ts
 
+`change notifications identify row saves and binding-only mutations for legacy
+listeners` covers the additive changed-name argument, zero-argument listener
+compatibility, settlement, reader addition/removal and unsubscribe behavior.
+
 T1, in-memory SQLite. `disk and key login rows round-trip every field without key disk properties` proves C1. The generated `refuses login transition from <current> to <target> naming current state` cases cover every invalid state edge (C2). `creating is neither free nor bound; bindings enforce exclusive writer and non-exclusive readers` covers allocation and binding release. `login syntax, uniqueness, harness and key disk constraints name their rules` proves C4. No provider, native process or real credentials are involved.
 
 Run: `node --test hub/test/login-records.test.ts`. Full task evidence uses mode-free `cland verify` after source review.

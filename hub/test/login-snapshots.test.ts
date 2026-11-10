@@ -12,6 +12,68 @@ import {FakeClock} from './fake-clock.ts';
 import {fixtureEnvironment} from './fixture-environment.ts';
 import {ownDirectory,onCleanup} from './process-cleanup.ts';
 import {until} from './until.ts';
+import {sqliteProbe} from './sqlite-probe.ts';
+import type {SQLInputValue} from 'node:sqlite';
+
+test('one login save has bounded scheduling work across ten thousand retained logins',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'snapshot-budget-'));ownDirectory(t,root);
+ const probe=sqliteProbe(),db=probe.open(join(root,'metadata.db'));
+ let scheduler:LoginSnapshots|undefined;onCleanup(t,async()=>{await scheduler?.close();db.close();});
+ const logins=new LoginRecords(db),clock=new FakeClock();
+ db.exec('begin');
+ for(let i=0;i<10000;i++){
+  const name=`history-${i}`;
+  logins.insert({name,kind:'disk',harness:'codex',account:name,provider:'fake',region:'fake-1',volumeId:name,snapshotIds:[],lastSignIn:clock.now().toISOString()});
+  logins.transition(name,'ready');
+ }
+ db.exec('commit');
+ scheduler=new LoginSnapshots({logins,clock,resolve:async()=>{throw Error('not due');}});
+ let decoded=0;const parse=JSON.parse;
+ t.mock.method(JSON,'parse',((source:string)=>{const value=parse(source);if(value?.name)decoded++;return value;}) as typeof JSON.parse);
+ logins.list();assert.equal(decoded,10000,'decode positive control');decoded=0;
+ let queries=0;const plans:string[]=[];
+ probe.trace(t,function(sql,method,bindings){
+  queries++;
+  if(method==='get'||method==='all')plans.push(...probe.prepare.call(this,'explain query plan '+sql).all(...bindings as SQLInputValue[]).map(row=>String(row.detail)));
+ });
+ logins.list();assert.ok(plans.some(plan=>/^SCAN /.test(plan)),'query guard detects retained-history scan');
+ decoded=0;queries=0;plans.length=0;
+ logins.updateBackup('history-1',{pending:false});
+ assert.ok(decoded<=8,`decoded ${decoded} rows for one save`);
+ assert.ok(queries<=12,`executed ${queries} queries for one save`);
+ assert.ok(plans.length>0);assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
+ t.diagnostic(`one save: ${decoded} decoded rows, ${queries} queries; indexed plans: ${plans.join('; ')}`);
+});
+
+test('pending detection bounds binding-row work for a login with many readers',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'snapshot-binding-budget-'));ownDirectory(t,root);
+ const probe=sqliteProbe(),db=probe.open(join(root,'metadata.db'));
+ let scheduler:LoginSnapshots|undefined;onCleanup(t,async()=>{await scheduler?.close();db.close();});
+ const records=new LoginRecords(db),clock=new FakeClock();
+ records.insert({name:'many',kind:'disk',exclusive:false,harness:'codex',account:'work',provider:'fake',region:'fake-1',volumeId:'original',snapshotIds:[],lastSignIn:clock.now().toISOString()});
+ records.transition('many','ready');
+ db.exec('begin');
+ for(let i=0;i<1000;i++)records.bind('many',{host:`reader-${i}`,role:'reader',volumeId:`clone-${i}`,phase:'settled'});
+ db.exec('commit');
+ scheduler=new LoginSnapshots({logins:records,clock,resolve:async()=>{throw Error('not due');}});
+ let returned=0;const plans:string[]=[];
+ probe.trace(t,function(sql,method,bindings,result){
+  if(method==='run')return;
+  returned+=Array.isArray(result)?result.length:result?1:0;
+  plans.push(...probe.prepare.call(this,'explain query plan '+sql).all(...bindings as SQLInputValue[]).map(row=>String(row.detail)));
+ });
+ records.bindings('many');assert.equal(returned,1000,'returned-row positive control');
+ const check=()=>{
+  returned=0;plans.length=0;records.updateBackup('many',{pending:false});
+  assert.ok(returned<=8,`returned ${returned} rows for one save`);
+  assert.ok(plans.some(plan=>plan.includes('login_bindings_pending')&&plan.includes('login=? AND phase=?')),plans.join('\n'));
+  t.diagnostic(`many-reader save: ${returned} returned rows; pending lookup uses login/phase index`);
+ };
+ check();
+ records.bind('many',{host:'last-pending',role:'reader',volumeId:'last-clone',phase:'pending'});
+ check();
+ records.settleBinding('many','last-pending');check();
+});
 
 async function fixture(t:TestContext,signedIn=true){
  const root=await mkdtemp(join(tmpdir(),'login-snapshots-'));let db:DatabaseSync;
@@ -40,6 +102,37 @@ test('third confirmed backup retains only the newest two snapshots',async t=>{
  await f.clock.advance(1000);await f.snapshots.snapshot('work');
  const row=f.logins.get('work')!;assert.ok(row.kind==='disk');assert.equal(row.snapshotIds.length,2);assert.ok(!row.snapshotIds.includes(first.snapshotIds[0]!));
  const list=await f.provider.listSnapshots(f.volume);assert.equal(list.state,'listed');if(list.state==='listed')assert.deepEqual(list.snapshots.map(s=>s.id),row.snapshotIds);
+});
+
+test('pending binding defers scheduled and manual backups until settlement',async t=>{
+ const f=await fixture(t);await f.snapshots.close();
+ const events:string[]=[];
+ const host={name:'host-a',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as import('../src/host/host.ts').Host;
+ f.logins.bind('work',{host:'host-a',role:'writer',volumeId:f.volume.id,phase:'pending'});
+ f.logins.updateBackup('work',{pending:true});
+ let resolved=0;
+ const scheduler=f.own(new LoginSnapshots({logins:f.logins,clock:f.clock,resolve:async()=>{resolved++;return {provider:f.provider,volume:{...f.volume,attachedTo:'machine-a'},host};}}));
+ await f.clock.advance(24*60*60*1000);
+ let row=f.logins.get('work')!;assert.ok(row.kind==='disk');
+ assert.equal(row.snapshotIds.length,0);assert.deepEqual(events,[]);
+ assert.match(row.backup?.outcome??'',/deferred.*pending binding/);
+ await assert.rejects(scheduler.snapshot('work'),/pending binding/);
+ assert.deepEqual(events,[]);assert.equal(resolved,0,'no provider target resolved while binding is pending');
+ f.logins.settleBinding('work','host-a');await f.clock.advance(1);
+ await until(()=>{const row=f.logins.get('work');return row?.kind==='disk'&&row.snapshotIds.length===1;},{what:'settled binding snapshot persisted'});
+ row=f.logins.get('work')!;assert.ok(row.kind==='disk');assert.equal(row.backup?.pending,false);
+ assert.deepEqual(events,['freeze','thaw']);
+});
+
+test('settling a binding preserves a future daily backup deadline',async t=>{
+ const f=await fixture(t);
+ f.logins.bind('work',{host:'host-a',role:'writer',volumeId:f.volume.id,phase:'pending'});
+ await f.clock.advance(1000);f.logins.settleBinding('work','host-a');
+ await f.clock.advance(24*60*60*1000-1001);
+ let row=f.logins.get('work')!;assert.ok(row.kind==='disk');assert.equal(row.snapshotIds.length,0);
+ await f.clock.advance(1);
+ await until(()=>{const row=f.logins.get('work');return row?.kind==='disk'&&row.snapshotIds.length===1;},{what:'original daily snapshot deadline'});
+ row=f.logins.get('work')!;assert.ok(row.kind==='disk');assert.equal(row.backup?.pending,false);
 });
 
 test('in-use backup runs at 24 hours under freeze and thaw, including snapshot failure',async t=>{

@@ -21,8 +21,9 @@ const bindingRow = (row:Record<string,unknown>):LoginBinding => ({login:row.logi
 
 /** Project metadata only: harness files and key material never enter this store. */
 export class LoginRecords {
- private readonly listeners = new Set<()=>void>();
- onChange(listener:()=>void):()=>void { this.listeners.add(listener); return ()=>this.listeners.delete(listener); }
+ private readonly listeners = new Set<(name:string)=>void>();
+ onChange(listener:(name:string)=>void):()=>void { this.listeners.add(listener); return ()=>this.listeners.delete(listener); }
+ private changed(name:string):void { for(const listener of this.listeners)listener(name); }
  updateBackup(name:string, backup:LoginBackup, snapshotIds?:string[]):void {
   const row=this.required(name); if(row.kind!=='disk')throw Error('key login has no disk');
   this.save({...row,backup,...(snapshotIds ? {snapshotIds} : {})});
@@ -33,6 +34,7 @@ export class LoginRecords {
   db.exec(`create table if not exists logins (name text primary key, record text not null);
    create table if not exists login_bindings (login text not null references logins(name), host text not null, role text not null, volume_id text, primary key(login,host));`);
   if (!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='phase')) db.exec('alter table login_bindings add column phase text');
+  db.exec('create index if not exists login_bindings_pending on login_bindings(login,phase)');
   db.exec('savepoint login_launch_selection_migration');
   try {
    if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness')){
@@ -58,6 +60,10 @@ export class LoginRecords {
  }
  bindings(name: string): LoginBinding[] {
   return this.db.prepare('select login,host,role,volume_id as volumeId,phase from login_bindings where login=? order by host').all(name).map(bindingRow);
+ }
+ /** Existence only: bounded output and indexed work even for many settled readers. */
+ hasPendingBinding(name:string):boolean {
+  return this.db.prepare("select 1 from login_bindings where login=? and phase='pending' limit 1").get(name)!==undefined;
  }
  /** Indexed launch reads decode at most two held records or one ready candidate. */
  selectForLaunch(input:{host:string;harness:string;provider:string;region:string;account:string|null}):{held:Array<{login:Login;binding:LoginBinding}>;ready:Login|null} {
@@ -95,10 +101,12 @@ export class LoginRecords {
   if (row.state === 'ready') { this.transition(name,'in-use',binding); return; }
   if (row.state !== 'in-use') throw Error(`login ${name} cannot bind in ${row.state}`);
   this.addBinding(row,binding);
+  this.changed(name);
  }
  settleBinding(name: string, host: string): void {
   const result=this.db.prepare("update login_bindings set phase='settled' where login=? and host=? and phase='pending'").run(name,host);
   if(result.changes!==1)throw Error('pending login binding missing');
+  this.changed(name);
  }
  unbind(name: string, host: string): void {
   this.required(name);
@@ -106,6 +114,7 @@ export class LoginRecords {
    this.db.prepare('delete from login_bindings where login=? and host=?').run(name,host);
    const row = this.required(name);
    if (row.state === 'in-use' && !this.bindings(name).length) this.save({...row,state:'ready'});
+   else this.changed(name);
   });
  }
  private addBinding(row: Login, binding: Omit<LoginBinding,'login'>): void {
@@ -122,7 +131,7 @@ export class LoginRecords {
   this.db.prepare('insert into login_bindings(login,host,role,volume_id,phase,harness) values (?,?,?,?,?,?)').run(row.name,binding.host,binding.role,binding.volumeId,binding.phase ?? null,row.harness);
  }
  private required(name: string): Login { const row = this.get(name); if (!row) throw Error('unknown login: '+name); return row; }
- private save(row: Login): void { this.db.prepare('update logins set record=? where name=?').run(JSON.stringify(row),row.name); for(const listener of this.listeners)listener(); }
+ private save(row: Login): void { this.db.prepare('update logins set record=? where name=?').run(JSON.stringify(row),row.name); this.changed(row.name); }
  private atomic(work: () => void): void {
   this.db.exec('savepoint login_change');
   try { work(); this.db.exec('release login_change'); }
