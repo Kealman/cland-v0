@@ -16,7 +16,7 @@ follows:
 topic: topic-1451
 branch: null
 created: 2026-10-31T18:22:03.944Z
-updated: 2026-11-10T07:56:13.621Z
+updated: 2026-11-10T10:12:52.708Z
 ---
 
 ## Goal
@@ -115,6 +115,7 @@ stages:
       - - T-1778
         - T-1779
         - T-1780
+        - T-1803
       - - T-1782
       - - T-1783
   - name: capacity, the login wait and its card, exclusive logins and keys at spawn

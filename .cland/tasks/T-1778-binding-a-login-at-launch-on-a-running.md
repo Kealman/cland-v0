@@ -3,7 +3,7 @@ id: T-1778
 kind: task
 title: Binding a login at launch on a running host
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1461
 branch: t/T-1778-binding-a-login-at-launch-on-a-running
 created: 2026-11-09T12:44:09.501Z
-updated: 2026-11-10T09:00:02.254Z
+updated: 2026-11-10T11:02:10.988Z
 ---
 
 ## Summary
@@ -37,17 +37,29 @@ With no ready login, until T-1784 the launch is refused with "no login <harness>
 ## Acceptance criteria
 
 - [x] C1. A launch on a ready fake host with no binding attaches and mounts a ready login of its harness, starts the session with the harness home variable at the mount, and the login reads `in-use <host>` (test).
-  - done: impl-1778 · 2026-11-10T08:58:45.388Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+  - done: impl-1778 · 2026-11-10T10:15:30.483Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
 - [x] C2. A second session of the same harness on that host reuses the binding with no attach (test).
-  - done: impl-1778 · 2026-11-10T08:10:18.079Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+  - done: impl-1778 · 2026-11-10T10:15:30.752Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
 - [x] C3. A role with `account = "work"` binds only a login of account `work`, and the session row records the login name and the account (test).
-  - done: impl-1778 · 2026-11-10T08:33:00.952Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+  - done: impl-1778 · 2026-11-10T10:15:31.132Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
 - [x] C4. The process row's account environment holds the mount path only, and the spawned environment holds none of the five stray auth variables (test).
-  - done: impl-1778 · 2026-11-10T08:10:18.922Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+  - done: impl-1778 · 2026-11-10T10:15:31.388Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
 - [x] C5. A mount failure detaches the volume, leaves the login `ready`, and fails the launch naming the login (test).
-  - done: impl-1778 · 2026-11-10T08:10:19.187Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+  - done: impl-1778 · 2026-11-10T10:15:31.763Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
 - [x] C6. A local launch reads no login and starts as before (test).
-  - done: impl-1778 · 2026-11-10T08:10:19.580Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+  - done: impl-1778 · 2026-11-10T10:15:32.024Z
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.748Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
 
 ## Blocked by
 
@@ -337,3 +349,101 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-18343: complete four-file fixture/docs delta,Standards0/Spec0. Shared settledLogin seeds match provider/region before ready; all assertions/bounds unchanged,no production/wire/native/importer/catalog delta. A-18342 candidate.patch equals committed diff; all98 T2 sweep paths match receipts,1417/1417 positive actual TAP summaries,all producerclose0/null,0fail/cancel/skip/todo. Seven old failures now positive local candidates; lint0/null,zero refusals/122report-only findings. Coordinator79910c8c explicitly authorizes carry native15/A-18332 at66801dbe8 and recording catalog490/A-18328 at2bcda8354; prior limits retained. New configured run/final C1–C6 and actual consumer reconciliation pending; A-18337 failed run remains failed. No reviewer runs. Hold released by verdict.
+
+### impl-1778 · 2026-11-10T09:08:14.054Z
+
+Coordinator f2238043 authorized dev merge after T-1783. Combined/pushed head3875c2ecf071aaebaded6b9b3baec5bd6c0329b3; parents8bf33b2af + currentorigin/dev. Only conflict docs/hub/logins.md adjacent sections; retained both Binding at launch and Key store verbatim. No authored runtime conflict resolution; incoming key-store/secretCLI/dispatch/project/frozenusage merged automatically. Exact merged-head local A-18348: original98T2set plus9 accounts-policy/cli-help/cli-command-help/cli-usage/compatibility/merge/login-keys/secrets-resolution/secrets controls ALL107files green,1468/1468actualTAPcases,allclose0/null,0fail/cancel/skip/todo; full repo typecheck and complete lint close0/null,advisoryreport-only. macOSarm64Node24.21.0,local,sealed,cover-quietchecked,no browser. Original configured30dc1814 was admitted at8bf33b2af before merge decision, so it is prior-head evidence only. Fresh merged source review then native2file rerun (incoming project/dispatch are shared imports) and exact-head mode-free verify; remainingT3/T4/after-stageQAseparate.
+
+### rev-35 · 2026-11-10T09:09:44.628Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-source-8
+commit: 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18349: authorized dev/key-store merge delta Standards0/Spec0. Both parents preserved for one-sided non-tracker changes; shared docs/index/README/tier/frozen usage retain both lanes,Binding at launch and Key store sections unchanged. No authored runtime resolution. A-18348 all107 logs independently match receipts,1468/1468,all close0/null; typecheck/lint0/null,zero lint refusals with advisory notices. Prior98 sweep set fully retained plus9 controls. Incoming dispatch/project/secret imports require planned exact merged-head nativehost-create-ready/host-relaunch before mode-free verify. Prior-head30dc1814 only early signal; prior recording catalog490 remains qualified,actual final consumer reconciliation pending. No runtimeC1–C6 verified by this source verdict. No reviewer tests. Hold released.
+
+### impl-1778 · 2026-11-10T09:51:18.237Z
+
+Final configured proof A-18359: exacthead3875c2ecf/tree9c4284fd,autoexit0,5892/5892base+185separate loadfinishes,0fail/cancel/skip; T0,T1(213files),T2(397),selectedT3(6),mappedT4(1),Web(52) complete. Linuxdroplet c-8lon1/cland-v0-dcc5597c,Node24.21.0,Neovim0.12.5,ChromeHeadlessShell1248/GoogleChromeForTesting156.0.8078.4,workers2,lifetime1186s,$0.0824. No cache. New33binding+2selection+2fixture-store identities each basepass+5/5load; all7former pool/status failures pass. Actual consumer/case/file reconciliation replacement A-18361: earlier749union+7explicit named merged/help/contract controls=756required,none removed;911rows including executed nonconsumer supplements. All669configured files have positive basecase+file finishes; remaining229T3/13T4rows deferred to batch/stage/epic,after-stageQA separate. Localnative15 exactheadA-18350 and107targeted1468+typecheck/lintA-18348; recording-modecatalog490at2bcda8354A-18328qualified byCoordinator carry; no wholeT3/T4 claim.
+Publication-ordering correction: I erroneously called artifact.create after scanexit1, producing A-18360. Archived it immediately; hit report to Coordinator afcb0e2c:26copies/13source-confirmed titles,14query-shaped boolean-presence metadata and12scheme-shaped ordinary title grammar,0actual/unknown credential payloads. New orchestration explicitly checks scan.exit_code===0, parses receipt, requires matches===0 and positiveControl===true, and exits BEFORE artifact.create on any failure/missing receipt. A-18361 was created only after scanexit0, summary files11/matches0/positiveControltrue;13titles redacted with nativecaseIDs+original-nameSHA256 retained. No source/head/test change; no rerun requested. Ready report held for replacement acceptance.
+
+### impl-1778 · 2026-11-10T09:53:47.526Z
+
+Final reconciliation addendum A-18362 answers Reviewerbad752ed without source/test rerun: three catalogPlanned-only T4 consumers were omitted from A-18361 rows: nvim/test/explorer-outline-load.test.ts,nvim/test/launcher-input-load.test.ts,nvim/test/thread-oracle-soak.test.ts. Added exact recording-mode receipts fromA-18328,43retained passes already included in490,producerclose0/null; ordinary replay/fullT4 explicitly stage/epic-deferred. All49actualcatalogpaths now represented. Requiredunion759 (prior749+A-18361's7explicitcontrols+3catalog-only); complete911→914rows,0removed;remainingT3deferred229,T4deferred16. All original configured finish IDs/titlehashes preserved. A-18362 gated on scanexit0/5files/0matches/positiveControltrue before artifact.create. Coordinator acceptedA-18361 and classified originaltitlematches asfalsepositives/noincident;A-18360 remainsarchived. Head3875c2ecf unchanged; finalReviewer settlement pending.
+
+### rev-35 · 2026-11-10T09:54:38.062Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-final-1
+commit: 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18363: final exact merged-head C1–C6 verified,Standards0/Spec0 unresolved. A-18359 run91563f9e exit0,5892basepass/0negative,185separate loadpasses; all669basefiles positive case+file. All662manifestT1/T2/Web paths independently reconciled,zero missing;37binding/selection/store test identities base+5/5load. SixselectedT3/46leafidentities and mappedT4once; fullremainingtiers not claimed. Head/exporttree independently match Git; Linuxx64Node24.21,Nvim0.12.5,HeadlessShell1248/Chrome156.0.8078.4,uncached,c8lon1,1186s/$0.0824. A-18361+scanned additiveA-18362 complete759required/914rows/all49catalogpaths;6926original finish IDs match,zero identity-field mismatch. ArchivedA-18360notused; Coordinatoraccepted scanned replacement/false-positive disposition. Native15A-18350 exact mergedhead/83→83scopedinventory; catalog490A-18328 prior-headrecording-mode authorized/40currentordinary+6T3/3T4deferred. All7priorpool/status failures now exact-headpass. Report-mode timing/lint remain advisory; 27sallowance remains projection.229remainingT3/16T4/fullbatch/affectedafter-stageQA separate. No reviewer tests/edits/native/API runs. Hold released by final verdict.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1778 · 2026-11-10T10:13:47.789Z
+
+Accepted T-1781 integration limitation (Coordinator0f70e49c, non-blocking): new LoginRecords.save→onChange→LoginSnapshots.schedule invokes full logins.list on binding writes, so indexed selectForLaunch bounds the selector only, not whole spawn work. Snapshot owner also accepts pending binding reads. Follow-up T-1803 (E-1535stage2,M,regressionofT-1781,blockedbyT-1778) owns bounded per-login scheduling under rule23 and pending-binding snapshot refusal. Documented explicitly in docs/hub/logins.md; no T-1781 logic edited. Merged snapshot read paths retain optional phase and ignore private binding harness column; selection/migration/login/snapshot local controls pass. No runtime performance measurement claimed.
+
+### impl-1778 · 2026-11-10T10:15:32.404Z
+
+Authorized snapshot merge14a719c18 plus requested accepted-scope docs commit6655548185863bf4b572779d642e7ea2728eecd4 pushed. Only conflict README index combined disk binding+daily/on-demand backup texts; runtime merges preserve both parents. Incoming snapshot binding reads preserve optional phase and ignore private harness column; T2migration/index/select/decode controls remain green. LocalA-18366 records25requested login/snapshot/binding/provider/help/account controls337/337actualTAPcases,allclose0/null,0fail/cancel/skip;full typecheck+lint0/null at14a runtime code;6655diff is docs-only acceptedT-1803limitation,closed wording terminalpass. macOSarm64Node24.21,local,sealed,cover-quiet admission,no browser. Publication scanexit0/files34/matches0/positivecontrol beforecreate. No new code or test beyond upstream merge and docs resolution. Coordinator1aa143e2 says fresh native2+catalog after delta review; exactnewheadmode-freeverify thenready. Prior3875greenA-18359 and native/catalog remain historical,not current proof.
+
+### rev-35 · 2026-11-10T10:17:17.168Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-source-9
+commit: 6655548185863bf4b572779d642e7ea2728eecd4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18367: authorized snapshot merge integration Standards0/Spec0 outside explicit acceptedT-1803scope. Parent changes preserved; publicoptionalphase/privateharness/indexes,protocol processlogin,usage/tier/skill lanes intact; README keeps binding+backup text. Actual full-list listener scheduling and pending snapshot reads explicitly accepted nonblocking by Coordinator0f70e49c,independently filedT-1803checked; finaldocsaccurate,no snapshotruntimeauthored. A-18366 all25TAP summaries match,337/337,allcode0/null,typecheck/lint0/null at runtime14a;final6655docs-onlyqualified. Incoming source/wire invalidate priorreceiptcarry per1aa143e2: freshnative2files+actualcatalogrefresh thenmodefreeverifyat6655. C1–C6runtime/finalconsumerreconciliationpending,newhead; priorA-18363/A-18359historical. No reviewer runs. Hold released.
+
+### impl-1778 · 2026-11-10T10:30:17.077Z
+
+Catalog classification/carry correction: refresh at665554818 passednative15 andall49actualcatalogconsumers+liveattach490(A-18368). Generated8additivefixturelines temporarily committedde202ff6a were classified as unrelated archive-loading canonicalstate and fullyreverted2ed2456875c65af9b7499833d82bd329b1f4d0d9. Finaltree equals665554818 exactly:bb79a647c3ca2f2d4744ab2d552c19e0fa6e2fd8,bothSHA;gitdiffexit0. Fourentries/file=2normalizedinputnodes+2recordpairs for task.plan/result and task.view/result; decoded incomingframes+outputs unchanged vs existing records,only/items21–23 archivedR30/T31/T32 differ. Not an intendedT1778/T1781wirechange. T-1804(Bugs,M,needs-triage) owns this nonblocking variant; no generateddiff retained. Coordinator33fb568f explicitly carriesrecording490/native15 to byte-identicalchild; freshdeltaReviewthenmode-freeverify. A-18368 rawreceipts+classification+rejectedpatch publishedonlyafter scanexit0/files62/matches0/positivecontrol. AcceptedT1803listener/pending-snapshotlimitationremainsdocs. No verify submitted yet.
+
+### rev-35 · 2026-11-10T10:31:31.158Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-source-10
+commit: 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18369: Standards0/Spec0; independently same fulltreebb79a647c3ca2f2d4744ab2d552c19e0fa6e2fd8 as source9-reviewed6655,zero-byte diff. Temporaryfixturecommit fullyreverted,no source/wire/fixturelogic retained. A-18368 independently native15/allcode0/null/scoped83→83;50originalcatalogTAPlogs490pass/0negative,50producerclose0/null,all49plannedincl3T4+liveattach. Recordingmode qualified. Two task.plan/task.view resultframes+outputs equal;3archive-stateinputdifferences assignednonblockingT-1804. Coordinator33fb568fexplicitcarryto identicalchild. T-1803acceptedlimitation unchanged. Freshmodefreeverifyat2edrequired; finalC1–C6/actualconsumerreconciliationpending,newconfigured proofnotcarried. No reviewer runs. Hold released.
+
+### impl-1778 · 2026-11-10T11:01:08.984Z
+
+New final configured proof A-18370/run5bc5eace at source10-reviewed2ed245687: autoexit0,5919/5919base+185separate loadfinishes,0negative/skip; all671positive case+file paths(213T1,399T2,6selectedT3,1mappedT4,52Web),all664lower/Webmanifestpaths,37changedidentitiesbase+5/5load. Linuxx64Node24.21,Nvim0.12.5,HeadlessShell1248/Chrome156.0.8078.4,uncached,c8lon1/cland-v0-7367a481,1294s/$0.0899;exporttree21bf312cbbe4e1c54d5a5867df2a9e77bb693bd8. A-18371 scanned reconciliation:801required/916rows/all49catalogpaths/6955originalfinishIDs preserved,0missingrequiredlower/Web. Deltafromprior759=2new snapshotT2+1explicitproviderT1+39previouslyexecutedcatalogT2nowrequired;0removed. Current40catalogT2 ordinaryreplay passes; native15/recording490A-18368carryfrom665554818perCoordinator33fb568f byte-identicaltree. Remaining229T3/16T4/fullbatch/after-stageQAdeferred. T-1803full-list/pending-snapshot andT-1804canonicalarchive-state variant remain explicitly accepted,notfixed;8generatedlinesfullyreverted,treeunchanged. Timing/lint/skipdiagnosticsreport-only,27sallowanceremainsprojection. A-18371 createdonlyafterpositiveaudit+scanexit0/files10/matches0/positivecontroltrue;26knownfalse-positive titlecopies redacted withIDs/hash13identities retained,allC1-C6controlnamesexact. Source/head/tests unchanged; finalReviewersettlementpending.
+
+### rev-35 · 2026-11-10T11:02:10.748Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-final-2
+commit: 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18372: C1–C6 verified at source10-current2ed245687. A-18370 run5bc5eace exacthead/exporttree21bf312c independentlymatchesGit,uncachedLinuxx64Node24.21/Nvim0.12.5/Headless1248Chrome156.0.8078.4,c8lon1,1294s/$0.0899.5919basepass/0negative+185separateload;671positivecase/filefinishes,all664manifestlower/Webzero missing.37binding/selection/storeidentities5/5load;6selectedT3/46leafidentities,mappedT4once. A-18371 scanned0/positivecontrol,all6955originalfinishIDs preserved/zeroidentityfieldmismatch;monotone801required/916rows,no prior759lost,all49catalogpathsrequired,allrequiredlowerpositive. Freshnative15/recordingcatalog490atbyte-identical6655A-18368carryauthorized33fb568f;40catalogordinarycurrent+6T3/3T4recording/deferred. Explicit acceptedT-1803full-listlistener/pending-snapshot andT-1804revertedarchive-statevariant remain nonblocking/notfixed;selectorboundonly,nofullpathboundclaim.229T3/16T4/fullbatch/after-stageQAseparate;report-onlybudgets/lint retained,27sallowanceprojectionunchanged. No reviewer runs/edits. Hold released.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

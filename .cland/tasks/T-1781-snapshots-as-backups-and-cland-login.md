@@ -2,8 +2,8 @@
 id: T-1781
 kind: task
 title: Snapshots as backups, and `cland login snapshot`
-state: open
-status: ready
+state: closed
+status: done
 size: L
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1464
 branch: t/T-1781-snapshots-as-backups-and-cland-login
 created: 2026-11-09T12:44:10.095Z
-updated: 2026-11-10T08:53:00.501Z
+updated: 2026-11-10T10:09:30.956Z
+closed: 2026-11-10T10:09:30.956Z
 ---
 
 ## Summary
@@ -38,21 +39,27 @@ T-1777's after-sign-in snapshot goes through this module. The `login.snapshot` f
 - [x] C1. A successful sign-in leaves exactly one snapshot, and a third snapshot of a login deletes the oldest, leaving the last two ids on the row (test).
   - done: impl-1781 · 2026-11-10T08:18:17.067Z
   - verified: rev-36 [reviewer] · run rev-36-1781-final-1 · 2026-11-10T08:52:59.971Z · commit c0c3433dfabaa3246ead1c5f19bb5151eb5fb330
+  - verified: rev-36 [reviewer] · run rev-36-1781-final-2 · 2026-11-10T09:30:33.121Z · commit e82955b062a3ad409869889e1dd9c51d7d2d0416
 - [x] C2. On the hub clock, an in-use login is snapshotted once per 24 h under freeze and thaw, and its disk is thawed when the snapshot fails (test).
   - done: impl-1781 · 2026-11-10T08:18:17.345Z
   - verified: rev-36 [reviewer] · run rev-36-1781-final-1 · 2026-11-10T08:52:59.971Z · commit c0c3433dfabaa3246ead1c5f19bb5151eb5fb330
+  - verified: rev-36 [reviewer] · run rev-36-1781-final-2 · 2026-11-10T09:30:33.121Z · commit e82955b062a3ad409869889e1dd9c51d7d2d0416
 - [x] C3. A host stop with a snapshot due completes its deletion first, and the detached volume is snapshotted afterwards (test).
   - done: impl-1781 · 2026-11-10T07:52:30.187Z
   - verified: rev-36 [reviewer] · run rev-36-1781-final-1 · 2026-11-10T08:52:59.971Z · commit c0c3433dfabaa3246ead1c5f19bb5151eb5fb330
+  - verified: rev-36 [reviewer] · run rev-36-1781-final-2 · 2026-11-10T09:30:33.121Z · commit e82955b062a3ad409869889e1dd9c51d7d2d0416
 - [x] C4. A rate-limited snapshot is retried at the provider's retry time and not before, and no host stop waits for it (test).
   - done: impl-1781 · 2026-11-10T07:52:30.525Z
   - verified: rev-36 [reviewer] · run rev-36-1781-final-1 · 2026-11-10T08:52:59.971Z · commit c0c3433dfabaa3246ead1c5f19bb5151eb5fb330
+  - verified: rev-36 [reviewer] · run rev-36-1781-final-2 · 2026-11-10T09:30:33.121Z · commit e82955b062a3ad409869889e1dd9c51d7d2d0416
 - [x] C5. `cland login snapshot <name>` snapshots a ready or in-use disk login, and is refused for a key login naming that it has no disk (test).
   - done: impl-1781 · 2026-11-10T08:29:23.016Z
   - verified: rev-36 [reviewer] · run rev-36-1781-final-1 · 2026-11-10T08:52:59.972Z · commit c0c3433dfabaa3246ead1c5f19bb5151eb5fb330
+  - verified: rev-36 [reviewer] · run rev-36-1781-final-2 · 2026-11-10T09:30:33.121Z · commit e82955b062a3ad409869889e1dd9c51d7d2d0416
 - [x] C6. A snapshot due while the hub is stopped is taken after the next start (test).
   - done: impl-1781 · 2026-11-10T08:07:07.465Z
   - verified: rev-36 [reviewer] · run rev-36-1781-final-1 · 2026-11-10T08:52:59.972Z · commit c0c3433dfabaa3246ead1c5f19bb5151eb5fb330
+  - verified: rev-36 [reviewer] · run rev-36-1781-final-2 · 2026-11-10T09:30:33.121Z · commit e82955b062a3ad409869889e1dd9c51d7d2d0416
 
 ## Blocked by
 
@@ -188,3 +195,43 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear A-18339; C1–C6 verified within approved release-seam scope. Independently parsed all23 snapshot+1CLI+3provider new identities, each base+5pass (162pass finishes), max1.017575182s. Current runed56a54c/A-18333 exit0/5825pass/zero fail-cancel-skip-todo; T0/allT1/fallbackallT2/Web complete, T3/T4 unexecuted. Independently reconciled719 graph paths:81T1+340T2+52Web=473passing base file finishes,246T3/T4 deferred. Sign-in5, add-component5, list2, DO17, fake15, pacing24, corrected usage1 pass. Uncached Linuxx64 kernel147 Node24.21/Nvim0.12.5, tree36aa8301, HeadlessShell1248/CfT156, skips[]/missing0. Source A-18327/A-18322 retained. C3/C4 establish approved release-owner seam, not T-1779 actual callers; authorized T-1778 phase integration, known shared thaw defect, earlier native/catalog capture limits and historical QA disposition retained. Prior297a9599 remains failed; report-only advisories separate. Full T3/batch,T4,after-stage QA pending; no further task run requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1781 · 2026-11-10T09:05:22.638Z
+
+Coordinator-authorized dev integration e82955b06 merges landed T-1783/a6d28fd1e. Resolved only docs appended-section conflict and owning LOGIN_USAGE golden conflict, retaining key and snapshot usage; auto-merged CLI/dispatch have one registration for each behavior. Local merged-tree T1/T2 login/key/snapshot/help batch83/83, native login-add1/1 +login-terminal2/2 in preservation slot, full repo typecheck and tier-map lint pass. A-18346 records exact scope and limits. Old ed56a54c green is prior-head only; fresh delta review then mode-free verify required. All criteria done marks retained; old verified marks correctly stale.
+
+### rev-36 · 2026-11-10T09:06:19.380Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1781-delta-source-1
+commit: e82955b062a3ad409869889e1dd9c51d7d2d0416
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear: parentsc0c3433d+a6d28fd1e verified. Both docs/help lanes and CLI/dispatcher registrations retained once; snapshot scheduler/provider/API/sign-in/rows unchanged from own prior clear, landed key path retained. No new findings or runtime marks. A-18346 local merged-candidate reports qualified; old greened56a54c is prior-head only. Submit fresh mode-free verify unchanged and refresh named/file/consumer/provenance facts. Approved release/T-1779/pending-phase T-1778/shared-thaw and T3/T4/after-stage boundaries retained.
+
+### impl-1781 · 2026-11-10T09:27:41.896Z
+
+Merged-head e82955b06 verification bbb02ecf/A-18352 green5833/5833, T0+Linux T1/T2 fallback-all/Web complete. Refreshed named receipts A-18353, current graph/normalized dispositions A-18354 (705+15unknown,474 completed+246 T3/T4 deferred), final evidence note A-18355. All27 new identities base+5 passing repetitions; key6 and secret-resolution3/secrets7 cases complete. Full T3 batch/T4/after-stage QA remain deferred; actual T-1779 release callers and Coordinator-directed T-1778 phase integration remain outside current scope. Final same-head Reviewer evidence verdict requested.
+
+### rev-36 · 2026-11-10T09:30:33.121Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1781-final-2
+commit: e82955b062a3ad409869889e1dd9c51d7d2d0416
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final evidence clear; C1–C6 verified. A-18356 records the independent review of bbb02ecf/A-18352: 5833/5833 passing, zero failures/cancellations/skips, T0/all T1/fallback all T2/Web complete. All 27 new snapshot/CLI/provider identities have base plus five passing repetitions; all six inherited key-login cases pass. Refreshed graph accounts for 474 passing lower-tier/Web files and 246 explicitly deferred T3/T4 files. Source clearance A-18347 remains applicable at unchanged e82955b0. Report-only advisories retained; full T3/T4, agreed cross-task integrations and affected after-stage QA remain separate. Prior failed 297a9599 remains red. See A-18356 for provenance and qualified local-native evidence limits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-10T10:09:30.956Z
+
+Merged 0e4ab826cb8626cb20ecf46058f4c4b3a2164d9e onto dev.
