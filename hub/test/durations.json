@@ -134,9 +134,18 @@
       "A-18014",
       "A-18167",
       "A-18214",
-      "A-18216"
+      "A-18216",
+      "A-18232",
+      "A-18294",
+      "A-18301",
+      "A-18345",
+      "A-18365",
+      "A-18385",
+      "A-18412",
+      "A-18448",
+      "A-18466"
     ],
-    "commit": "8b6501574f716b11e45ce8dfb7f63ae8feb9af04"
+    "commit": "d19f10b05aa6d1fc4129cf5a460f5602aebe1a2a"
   },
   "budget": {
     "testSeconds": 5,
@@ -3853,6 +3862,26 @@
     "hub/test/login-records.test.ts": {
       "seconds": 0.018826,
       "tests": 19
+    },
+    "hub/test/login-add.test.ts": {
+      "seconds": 14.930584,
+      "tests": 1
+    },
+    "hub/test/login-signin.test.ts": {
+      "seconds": 0.160148,
+      "tests": 5
+    },
+    "hub/test/login-terminal.test.ts": {
+      "seconds": 1.170666,
+      "tests": 2
+    },
+    "hub/test/until.test.ts": {
+      "seconds": 0.001454,
+      "tests": 1
+    },
+    "hub/test/login-write-back.test.ts": {
+      "seconds": 3.077949,
+      "tests": 1
     }
   },
   "tests": {
@@ -11469,7 +11498,29 @@
     "hub/test/login-records.test.ts::refuses login transition from ready to signed-out naming current state": 0.000731,
     "hub/test/login-records.test.ts::refuses login transition from signed-out to in-use naming current state": 0.000834,
     "hub/test/login-records.test.ts::refuses login transition from signed-out to ready naming current state": 0.00094,
-    "hub/test/login-records.test.ts::refuses login transition from signed-out to signed-out naming current state": 0.000688
+    "hub/test/login-records.test.ts::refuses login transition from signed-out to signed-out naming current state": 0.000688,
+    "hub/test/accounts-policy.test.ts::mounted database path permits only one exact pure registry helper": 0.00069,
+    "hub/test/fake-ssh.test.ts::fake SSH refuses unrecognized login disk commands before local execution": 0.292593,
+    "hub/test/fake-ssh.test.ts::fake SSH setup rejection disposes its root before any bin or host setup": 0.009483,
+    "hub/test/fake-ssh.test.ts::fake SSH terminal sign-in cannot execute a harness planted on PATH": 0.696577,
+    "hub/test/fake-ssh.test.ts::terminal claude-code sign-in stays inside the authenticated fake machine": 0.751044,
+    "hub/test/fake-ssh.test.ts::terminal codex sign-in stays inside the authenticated fake machine": 0.692126,
+    "hub/test/fake-ssh.test.ts::terminal opencode sign-in stays inside the authenticated fake machine": 0.690529,
+    "hub/test/host-login-disk.test.ts::all login filesystem operations use the attached fake mount and retain logical paths": 0.081705,
+    "hub/test/host-login-disk.test.ts::login file publication shares the attached fake mount and leaves ordinary paths unchanged": 0.081401,
+    "hub/test/login-add.test.ts::terminal disk logins create a host, reuse it and retain only public metadata": 14.930584,
+    "hub/test/login-signin.test.ts::all harness sign-in plans contain only the documented home and native arguments": 0.001142,
+    "hub/test/login-signin.test.ts::disk sign-in stays creating until unmount, snapshot and detach receipts": 0.002863,
+    "hub/test/login-signin.test.ts::failed terminal sign-in 1 keeps a detached signed-out disk": 0.003264,
+    "hub/test/login-signin.test.ts::failed terminal sign-in null keeps a detached signed-out disk": 0.00098,
+    "hub/test/login-signin.test.ts::production harness command sources contain no logout commands": 0.151899,
+    "hub/test/login-terminal.test.ts::terminal sign-in joins native SSH after CLI cancellation": 0.620601,
+    "hub/test/login-terminal.test.ts::terminal sign-in joins native SSH after hub disconnect": 0.550065,
+    "hub/test/until.test.ts::wait deadline policy preserves local, droplet, explicit and invalid scaling": 0.001454,
+    "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch no-login keeps durable native and checkout ownership": 6.875897,
+    "hub/test/login-records.test.ts::change notifications identify row saves and binding-only mutations for legacy listeners": 0.001875,
+    "hub/test/host-contract-coverage.test.ts::optional login-disk reachability preserves absent Hosts and exact boolean observations": 0.000418,
+    "hub/test/login-write-back.test.ts::rotated disk reaches the next host and release closes only disk writers": 3.077949
   },
   "allow": {
     "hub/test/login-add.test.ts::terminal disk logins create a host, reuse it and retain only public metadata": {
