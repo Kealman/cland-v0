@@ -110,3 +110,11 @@ export async function secretGit(t: TestContext, cwd: string, args: string[]): Pr
 export function launchSecretCommand(t: TestContext, cwd: string, script: string, options: { env?: SyntheticCommandEnvironment; signal?: AbortSignal } = {}): Command {
   return launch(t, cwd, process.execPath, ['-e', script], undefined, options.signal, options.env);
 }
+
+/** Login-key stdin/argv subject shares the redacting native-close owner. */
+export async function loginKeyCli(t: TestContext, cwd: string, args: string[], input = ''): Promise<Result> {
+ const result=await clandCliLaunch(()=>launch(t,cwd,process.execPath,[entry,'login','add',...args],input)).result;
+ if(result.leaked)throw Error('login CLI leaked a registered sentinel before capture redaction');
+ if(result.incomplete)throw Error(`login CLI incomplete: ${result.incomplete}; exit ${result.code}; signal ${result.signal}`);
+ return result;
+}

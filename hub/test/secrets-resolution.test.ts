@@ -18,12 +18,12 @@ test('all four environment overrides win over file values and work without a fil
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, '.cland'));
   const expected = Object.values(overrides);
-  for (const [index, name] of SECRET_NAMES.entries()) {
+  for (const [index, name] of SECRET_NAMES.filter(name => name !== 'auth.key').entries()) {
     assert.ok(resolveSecrets(root, overrides)[name] === expected[index], `environment-only resolution: ${name}`);
   }
-  for (const name of SECRET_NAMES) setSecret(root, name, `123456:${'fake_file_'.repeat(4)}`);
+  for (const name of SECRET_NAMES.filter(name => name !== 'auth.key')) setSecret(root, name, `123456:${'fake_file_'.repeat(4)}`);
   const resolved = resolveSecrets(root, overrides);
-  for (const [index, name] of SECRET_NAMES.entries()) {
+  for (const [index, name] of SECRET_NAMES.filter(name => name !== 'auth.key').entries()) {
     assert.ok(resolved[name] === expected[index], `override wins: ${name}`);
     assert.ok(resolveSecrets(root, {})[name] === `123456:${'fake_file_'.repeat(4)}`, `file fallback: ${name}`);
   }

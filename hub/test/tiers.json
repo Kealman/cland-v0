@@ -423,6 +423,7 @@
     "hub/test/login-add-component.test.ts": "T2",
     "hub/test/login-add.test.ts": "T3",
     "hub/test/login-host-pin.test.ts": "T2",
+    "hub/test/login-keys.test.ts": "T2",
     "hub/test/login-list.test.ts": "T2",
     "hub/test/login-records.test.ts": "T1",
     "hub/test/login-signin.test.ts": "T1",

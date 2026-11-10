@@ -1,3 +1,5 @@
+import { addKeyLogin } from '../host/login-keys.ts';
+import { projectTag } from '../executor/droplet/droplet.ts';
 import { onHostSpendChange } from '../executor/droplet/spend.ts';
 import { DigitalOceanHostProvider } from '../host/provider/digitalocean.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
@@ -2188,7 +2190,11 @@ export class Dispatcher {
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
             }
             if(frame.type==='login.add') {
-              if(frame.kind==='key') throw Error('key login add is not available on this hub');
+              if(frame.kind==='key') {
+                const root=this.#options.control?.status().root, config=this.#options.projectConfig?.();
+                if(!root||!config||!this.#options.registerHostSecrets)throw Error('key login runtime unavailable');
+                return answer(addKeyLogin(root,projectTag(root,config.name),core.store.hosts.logins,this.#options.registerHostSecrets,frame));
+              }
               if(this.#closed||!this.hostOwner||!this.#options.control) throw Error('host runtime unavailable');
               const root=this.#options.control.status().root, env=this.#options.env??process.env;
               const work=(async()=>{

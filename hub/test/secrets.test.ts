@@ -123,3 +123,29 @@ test('secret commands preserve other names through rotation and refuse symlinks 
   }
   assert.ok(await readFile(target, 'utf8') === original, 'symlink target stays unchanged');
 });
+
+
+test('auth store key starts the hub, lists only a fingerprint and rejects unknown auth names', async t => {
+ const {root}=await secretProject(t); await mkdir(join(root,'.cland'));
+ const key=Buffer.alloc(32,7).toString('base64');
+ const set=await cli(t,root,['set','auth.key'],key+'\n'); assert.equal(set.code,0,set.stderr);
+ const hub=await projectHub(t,root); await hub.stop();
+ const list=await cli(t,root,['list']); assert.equal(list.code,0,list.stderr);
+ assert.equal(list.stdout,`auth.key ${createHash('sha256').update(key).digest('hex').slice(0,12)}\n`);
+ assert.ok(!list.stdout.includes(key));
+ await writeFile(join(root,'.cland/secrets.toml'),'[auth]\nunknown = "SENTINEL-unknown"\n');
+ await assert.rejects(projectHub(t,root),/supported dotted names/);
+});
+
+test('secret commands repair a malformed unused auth store key while startup refuses it',async t=>{
+ const {root}=await secretProject(t);await mkdir(join(root,'.cland'));
+ const path=join(root,'.cland/secrets.toml');
+ await writeFile(path,'[auth]\nkey = "SENTINEL-malformed"\n');
+ await assert.rejects(projectHub(t,root),/auth.key: expected 32 bytes/);
+ const key=Buffer.alloc(32,9).toString('base64');
+ const repair=await cli(t,root,['set','auth.key'],key+'\n');assert.equal(repair.code,0,repair.stderr);
+ const hub=await projectHub(t,root);await hub.stop();
+ await writeFile(path,'[auth]\nkey = "SENTINEL-malformed"\n');
+ const remove=await cli(t,root,['unset','auth.key']);assert.equal(remove.code,0,remove.stderr);
+ assert.equal((storedToml(await readFile(path,'utf8')).auth as object|undefined),undefined);
+});

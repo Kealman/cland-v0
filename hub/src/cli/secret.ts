@@ -31,16 +31,20 @@ export async function runSecret(args: string[], cwd = process.cwd()): Promise<nu
 }
 
 /** Both setup and secret set protect the destination before requesting a value. */
-export function prepareSecretWrite(root: string): void {
+export function prepareSecretWrite(root: string, auth = false): void {
   const l = layout(root);
   readSecretsFile(root);
   if (symlinkOnPath(root, l.gitignore) !== null) throw new Error('.cland/.gitignore: symlink refused');
   ensureGitignore(l);
   const ignore = readFileSync(l.gitignore, 'utf8');
-  // A final literal rule cannot be undone by an earlier custom negation.
-  const lastRule = ignore.split(/\r?\n/).map(line => line.trimEnd()).filter(line => line && !line.startsWith('#')).at(-1);
-  if (!ignore.startsWith(MANAGED_MARK) && lastRule !== 'secrets.toml' && lastRule !== '/secrets.toml') {
-    throw new Error('.cland/.gitignore: add /secrets.toml as its final ignore rule before storing secrets');
+  // Only the final private rules may follow either protected destination.
+  const rules = ignore.split(/\r?\n/).map(line => line.trimEnd()).filter(line => line && !line.startsWith('#'));
+  if (!ignore.startsWith(MANAGED_MARK)) {
+    const privateRules = new Set(['secrets.toml','/secrets.toml','auth/','/auth/']);
+    const suffix = rules.slice(rules.findLastIndex(line => !privateRules.has(line)) + 1);
+    if (!suffix.some(line => line === 'secrets.toml' || line === '/secrets.toml') || auth && !suffix.some(line => line === 'auth/' || line === '/auth/')) {
+      throw new Error('.cland/.gitignore: add /secrets.toml' + (auth ? ' and /auth/' : '') + ' as its final ignore rules before storing secrets');
+    }
   }
 }
 

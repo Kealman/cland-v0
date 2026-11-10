@@ -1,6 +1,7 @@
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import type { Login, LoginBinding } from '../host/logins.ts';
+import { runKeyLoginAdd } from './login-key.ts';
 import { terminalLogin } from './login-terminal.ts';
 import type { LoginAddInput } from '../host/login-signin.ts';
 
@@ -18,7 +19,12 @@ const commands = {
    if(key==='kind'){if(value!=='disk'&&value!=='key')throw Error('login kind must be disk or key');input.kind=value;}
    else input[key as 'name'|'pool'|'account']=value;
   }
-  if(input.kind==='key')throw Error(harness==='opencode'?'key login add is not available on this hub':'0.4.x key logins support OpenCode only');
+  if(input.kind==='key') {
+   const discovery=readDiscovery(hubDiscovery(process.cwd()));
+   if(!discovery)throw Error('no hub runs for this project — run cland hub start');
+   const existing=await askHubFrame(discovery,{type:'login.list'},30000,env) as ListedLogin[];
+   return runKeyLoginAdd(input,metadata=>askHubFrame(discovery,{type:'login.add',...metadata},30000,env),env,existing);
+  }
   const discovery=readDiscovery(hubDiscovery(process.cwd()));
   if(!discovery)throw Error('no hub runs for this project — run cland hub start');
   return terminalLogin(discovery,input,env);

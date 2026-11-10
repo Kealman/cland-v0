@@ -2,16 +2,16 @@
 
 `cland secret set <name>` reads one value from stdin or a hidden terminal prompt;
 it accepts no value argument. Supported names are `telegram.token`,
-`discord.token`, `speech.elevenlabs_key` and `speech.xai_key`. Run it in an
+`discord.token`, `speech.elevenlabs_key` `speech.xai_key` and `auth.key`. Run it in an
 initialized project; it works with the hub stopped. Use the hidden prompt or
 pipe from a credential source, keeping the value out of shell history and argv.
 
-Values live in `.cland/secrets.toml`, in `[telegram]`, `[discord]` and `[speech]`
+Values live in `.cland/secrets.toml`, in `[telegram]`, `[discord]`, `[speech]` and `[auth]`
 tables with string values. Writes replace the file atomically at mode 600.
 The resolver checks and tightens an existing file to 600 before hub startup
 opens its logs or listeners; symbolic links, non-regular files and multiple
 hard links are refused. Parse errors report a fixed reason without quoting
-the file. The resolver returns only the four supported dotted keys. Before provider setup,
+the file. The resolver returns only the supported dotted keys. Before provider setup,
 Telegram tokens must match `^[1-9]\d{0,16}:[A-Za-z0-9_-]{24,}$` and have at most
 80 characters; refusals use a fixed reason without echoing the value. Discord
 tokens are opaque. Storage-only reads remain separate from provider resolution,
@@ -29,7 +29,7 @@ file is allowed. File safety and parsing checks still apply when overrides exist
 Set these in the hub's launch environment; changing another shell's environment
 does not change a running hub's environment.
 
-All four names, alongside `DIGITALOCEAN_TOKEN`, are removed by the shared
+All four environment variable names, alongside `DIGITALOCEAN_TOKEN`, are removed by the shared
 `withoutExecutorCredentials` filter after child environment overlays. Harnesses,
 verification workers and fixture children use that filter. The speech command
 provider uses the same final filter; its native launcher is covered by
@@ -71,3 +71,16 @@ pairing uses the local CLI/fake Bot API seam in
 `docs/agents/tests/hub-test-setup-pairing-component.test.ts.md`: inject Start
 during the pause and observe its durable offset before reading the waiting row;
 confirm its identity before approval, keeping no-code waits bounded and declines open.
+
+
+`auth.key` is the key-login store key: exactly 32 bytes encoded as base64, with
+no environment override. The first key login generates it; later logins reuse it.
+List prints only its fingerprint. Set/unset refuse rotation while key files or
+key login rows exist, including rows whose files are missing. Secret edits and
+key-file publication share an exclusive `.cland/auth.lock`; a busy writer refuses
+with a retry diagnostic. A crash leaves the lock for manual reconciliation.
+Unknown keys in `[auth]` are refused. No auth key is transported in a frame.
+
+Storage-only reads/list and edits allow repair of a malformed unused `auth.key`.
+Hub resolution and key encryption validate its 32-byte format before use;
+set validates the replacement, and set/unset still preserve existing key logins.

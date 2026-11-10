@@ -134,3 +134,11 @@ persisted provider identity, and pre-checkpoint watchdog recovery requires the
 exact admitted lease tag and confirmed droplet/key absence reads.
 
 Host login disks: [Logins](../docs/hub/logins.md#host-login-disk-api) records the Host operation and typed refusal contract.
+
+
+Key login storage uses AES-256-GCM envelopes in ignored `.cland/auth/`, under the
+32-byte base64 `[auth] key` in `.cland/secrets.toml`. The local input path supports
+OpenCode in 0.4.x, reads stdin or a hidden prompt and sends metadata only. Store-key
+rotation is refused while key files or rows exist. See
+[logins](../docs/hub/logins.md#key-store) and
+[project secrets](../docs/hub/project-secrets.md).

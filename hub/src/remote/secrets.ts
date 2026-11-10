@@ -1,16 +1,17 @@
 // Project-local credential storage. Values never cross the hub's frame boundary.
-import { constants, closeSync, fchmodSync, fstatSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { constants, readdirSync, existsSync, closeSync, fchmodSync, fstatSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { parse, stringify } from 'smol-toml';
 import { symlinkOnPath } from '../init/files.ts';
 import type { RemoteRedactor } from './redact.ts';
 
-export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenlabs_key', 'speech.xai_key'] as const;
+export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenlabs_key', 'speech.xai_key', 'auth.key'] as const;
 export type SecretName = typeof SECRET_NAMES[number];
 export type Secrets = Partial<Record<SecretName, string>>;
 
-const SECRET_ENV: Record<SecretName, string> = {
+const SECRET_ENV: Partial<Record<SecretName, string>> = {
   'telegram.token': 'CLAND_TELEGRAM_TOKEN',
   'discord.token': 'CLAND_DISCORD_TOKEN',
   'speech.elevenlabs_key': 'ELEVENLABS_API_KEY',
@@ -21,7 +22,7 @@ const SECRET_ENV: Record<SecretName, string> = {
 export function resolveSecrets(root: string, env: NodeJS.ProcessEnv = process.env): Secrets {
   const secrets = readSecretsFile(root);
   for (const name of SECRET_NAMES) {
-    const value = env[SECRET_ENV[name]];
+    const value = SECRET_ENV[name] ? env[SECRET_ENV[name]!] : undefined;
     if (value !== undefined) secrets[name] = value;
   }
   validateSecrets(secrets);
@@ -53,7 +54,7 @@ export function readSecretsFile(root: string): Secrets {
   catch { throw new Error('.cland/secrets.toml: invalid TOML; fix the file without sharing its contents'); }
   const secrets: Secrets = {};
   for (const [section, table] of Object.entries(parsed)) {
-    if (!['telegram', 'discord', 'speech'].includes(section) || !table || typeof table !== 'object' || Array.isArray(table)) {
+    if (!['telegram', 'discord', 'speech', 'auth'].includes(section) || !table || typeof table !== 'object' || Array.isArray(table)) {
       throw new Error('.cland/secrets.toml: unsupported secret section');
     }
     for (const [key, value] of Object.entries(table)) {
@@ -65,8 +66,29 @@ export function readSecretsFile(root: string): Secrets {
   return secrets;
 }
 
+export function validateAuthKey(value: string | undefined): void {
+  if (value !== undefined && (!/^[A-Za-z0-9+/]{43}=$/.test(value) || Buffer.from(value, 'base64').length !== 32)) throw Error('auth.key: expected 32 bytes in base64');
+}
+
+function protectAuthKey(root: string, name: SecretName, next?: string): void {
+ if (name !== 'auth.key' || next === readSecretsFile(root)['auth.key']) return;
+ const dir = join(root,'.cland/auth');
+ if (symlinkOnPath(root,dir) !== null) throw Error('auth.key: symlink refused');
+ if (existsSync(dir) && readdirSync(dir).some(file => file.endsWith('.key'))) throw Error('auth.key: cannot replace or unset while key logins exist');
+ const dbPath=join(root,'.cland/hub.db');
+ if (symlinkOnPath(root,dbPath) !== null) throw Error('auth.key: database symlink refused');
+ if (existsSync(dbPath)) {
+  const db=new DatabaseSync(dbPath,{readOnly:true});
+  try {
+   if (db.prepare("select 1 from sqlite_master where type='table' and name='logins'").get() && db.prepare("select 1 from logins where json_extract(record,'$.kind')='key' limit 1").get()) throw Error('auth.key: cannot replace or unset while key logins exist');
+  } finally {db.close();}
+ }
+
+}
+
 /** Validate before any provider constructs a credential-bearing URL. Discord is opaque. */
 export function validateSecrets(secrets: Secrets): void {
+  validateAuthKey(secrets['auth.key']);
   const token = secrets['telegram.token'];
   if (token !== undefined && (token.length > 80 || !/^[1-9]\d{0,16}:[A-Za-z0-9_-]{24,}$/.test(token) || /[\r\n]/.test(token))) {
     throw new Error('telegram.token: invalid token format (at most 80 characters)');
@@ -96,17 +118,46 @@ export function validateSecretValue(value: string): void {
 }
 
 export function setSecret(root: string, name: SecretName, value: string): void {
-  validateSecretValue(value);
-  const secrets = readSecretsFile(root);
-  secrets[name] = value;
-  saveSecrets(root, secrets);
+  return withSecretsLock(root, () => {
+    validateSecretValue(value);
+    if (name === 'auth.key') validateAuthKey(value);
+    protectAuthKey(root,name,value);
+    const secrets = readSecretsFile(root);
+    secrets[name] = value;
+    saveSecrets(root, secrets);
+  });
 }
 
 export function unsetSecret(root: string, name: SecretName): void {
-  const secrets = readSecretsFile(root);
-  if (!Object.hasOwn(secrets, name)) return;
-  delete secrets[name];
-  saveSecrets(root, secrets);
+  return withSecretsLock(root, () => {
+    protectAuthKey(root,name);
+    const secrets = readSecretsFile(root);
+    if (!Object.hasOwn(secrets, name)) return;
+    delete secrets[name];
+    saveSecrets(root, secrets);
+  });
+}
+
+/** Serialize secret edits with key-file publication across CLI processes. Never steal a lock. */
+function withSecretsLock<T>(root: string, work: () => T): T {
+ const path=join(root,'.cland/auth.lock');
+ if (symlinkOnPath(root,path) !== null) throw Error('key store: symlink refused');
+ let fd: number;
+ try { fd=openSync(path,'wx',0o600); } catch { throw Error('key store busy; retry after the active writer finishes (a stale auth.lock requires manual reconciliation)'); }
+ try { return work(); } finally { closeSync(fd); rmSync(path); }
+}
+
+export function withLoginStoreKey<T>(root: string, write: (key: string)=>T): T {
+ return withSecretsLock(root,()=>{
+  const secrets=readSecretsFile(root);
+  let key=secrets['auth.key'];
+  validateAuthKey(key);
+  if (!key) {
+   protectAuthKey(root,'auth.key','new');
+   key=randomBytes(32).toString('base64'); secrets['auth.key']=key; saveSecrets(root,secrets);
+  }
+  return write(key);
+ });
 }
 
 function saveSecrets(root: string, secrets: Secrets): void {

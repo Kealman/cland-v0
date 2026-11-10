@@ -32,6 +32,8 @@ hub.lock*
 hub.sock
 secret
 secrets.toml
+auth/
+auth.lock
 journal.jsonl
 log/
 run/

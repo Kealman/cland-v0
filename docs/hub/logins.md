@@ -29,7 +29,7 @@ OpenCode database names remain owned by `accounts/registry.ts`; callers use its
 pure `mountedOpenCodeDatabase(mount)` helper for mounted login paths. The source
 policy permits that exact path constructor and rejects database access elsewhere.
 
-`login.add` returns only a public terminal plan. `login.signed-in` reports the
+`login.add` with disk kind returns only a public terminal plan. `login.signed-in` reports the
 native exit code on the same authenticated connection. Exit zero unmounts,
 snapshots once, detaches, records the last sign-in and marks the login ready.
 A nonzero exit or connection close unmounts and detaches the kept disk, then
@@ -143,3 +143,36 @@ for harness home and database paths without persisting fixture paths in metadata
 The agent reserves writer admission before login-disk drainage, joins already admitted operations, and refuses new writer-capable requests from every connection through unlink. Native cancellation and observation remain available. Fake process drainage performs repeated captured censuses, signals only members actually using the disk, and refuses uncertain ownership. The native TERM escalation and final closure bounds use the shared Clock (2 s and 4 s respectively); no successful unlink is reported on exhaustion.
 
 A closed process row alone does not settle drainage. The agent joins any current-lifetime root completion that has observed native exit through its durable checkpoint and exit publication before unlinking. The same drainage deadline bounds that join; failure or missing completion retains the disk. A still-live unrelated root does not enter this completion join.
+
+
+## Key store
+
+Key logins support OpenCode only in 0.4.x. The local key-input module reads one
+line from stdin or a hidden prompt and encrypts it before invoking the metadata
+sender. The CLI first requests `login.list` under the same local-human/users-admin
+authority as add, before requesting key input or writing auth files. Names default
+to the first `opencode-N` absent from both project login rows and local key files;
+account defaults to name. Final add revalidates authority and name uniqueness. An existing name refuses rather than replacing its key. An interrupted
+metadata submission retains the encrypted file for reconciliation.
+
+`.cland/auth/<name>.key` is a create-only mode 0600 JSON envelope with `version: 1`,
+base64 `nonce` (12 bytes), `ciphertext` and `tag` (16 bytes). The cipher is
+AES-256-GCM under `[auth] key` from `.cland/secrets.toml`. Associated data is UTF-8
+`JSON.stringify([projectTag, name])`; the tag is the existing project tag, including
+the canonical root and configured project name. Moving or renaming a project
+therefore requires reconciling key files before they can be used there.
+The auth directory is mode 0700 and the managed ignore file includes `auth/`.
+Custom ignore files must finish with `/secrets.toml` and `/auth/` (either order).
+Symlink paths, linked/nonregular key files and oversized envelopes are refused.
+Decrypt failures identify only the login. The admitted hub path decrypts in memory,
+registers the value with its redactor, then stores a ready metadata row with no
+volume. A missing registration callback must refuse admission.
+
+`cland login add opencode --kind key [--name <name>] [--account <account>]`
+uses this key path. It needs a running local hub, but no host pool, prepared image,
+provider API, terminal SSH or network. The local human CLI/Neovim admission and
+users-mode administrator check match disk add. Claude Code and Codex key requests
+refuse with the 0.4.x limitation. The hub requires its redactor registration hook,
+decrypts before inserting metadata and returns the ready key row. `login.add`
+carries harness, kind, name and account only; no key material or ciphertext. See the
+[key-store cases](../agents/tests/hub-test-login-keys.test.ts.md).
