@@ -1,3 +1,4 @@
+import type { ProvisionLoginDemand } from './login-binding.ts';
 import { HostProviderRetry } from './boot-gate.ts';
 import { hostLeaseRenewable, type ProvisionRecord } from './provision-records.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
@@ -42,7 +43,8 @@ export class PoolRuntime {
     this.onCapacityChanged = onCapacityChanged; this.settings = () => this.#configuredSettings ?? settings(); this.records = records; this.available = available; this.processes = processes;
   }
 
-  #create: ((pool: string, authorize: () => void) => Promise<unknown>) | undefined;
+  #create: ((pool: string, authorize: () => void, demand?:()=>readonly ProvisionLoginDemand[]) => Promise<unknown>) | undefined;
+  #demand:((pool:string)=>readonly ProvisionLoginDemand[])|undefined;
   #flights = new Map<string, Promise<void>>();
   #failed = new Set<string>();
   #retries = new Map<string, { count: number; until: number; timer: ClockTimer }>();
@@ -56,7 +58,7 @@ export class PoolRuntime {
   #declarations = new Map<string, { value?: HostProviderDeclarationState; retry: number }>();
   #declarationReads = new Map<string, Promise<void>>();
   #stopping = new Map<string, Promise<unknown>>();
-  start(create: (pool: string, authorize: () => void) => Promise<unknown>, idle?: PoolIdleLifecycle): void { this.#create = create; this.#idleLifecycle = idle;
+  start(create: (pool: string, authorize: () => void, demand?:()=>readonly ProvisionLoginDemand[]) => Promise<unknown>, idle?: PoolIdleLifecycle, demand?: (pool:string)=>readonly ProvisionLoginDemand[]): void { this.#create = create; this.#demand = demand; this.#idleLifecycle = idle;
     this.#poolSettings = new Map(Object.entries(this.settings().pools).map(([name,pool])=>[name,JSON.stringify(pool)]));
     this.#unsubscribeReady?.();
     this.#unsubscribeReady = this.records.provisions.onChange((id,_previous,state)=>{
@@ -170,7 +172,7 @@ export class PoolRuntime {
       const pool = this.settings().pools[name];
       const capacity = [...this.records.provisions.active()].filter(row => row.pool === name && row.state !== 'destroying').length;
       if (!pool || capacity >= pool.minHosts) throw new Error(`pool ${name} minimum demand ended`);
-    }))).then(async result => {
+    }),()=>this.#demand?.(name)??[])).then(async result => {
       if (this.#closed) return;
       const row = result as ProvisionRecord & { retryAt?: string };
       if (row?.state === 'ready') {

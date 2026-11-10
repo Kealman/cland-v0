@@ -1,4 +1,4 @@
-import { LoginBinder } from '../host/login-binding.ts';
+import { LoginBinder, type ProvisionLoginDemand, type ProvisionLoginWork } from '../host/login-binding.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
 import { HostMemoryFloorRefusal } from '../host/ssh-host.ts';
@@ -124,8 +124,13 @@ export class Sessions {
   readonly #poolRuntime: PoolRuntime | null;
   readonly #loginBinder: LoginBinder;
   readonly #loginProviders: HostProviderRegistry;
+  readonly #waitingLoginAdmissions = new Map<string,()=>void>();
   readonly #waiting = new WaitingLaunches((row, end) => {
-    if (end) this.#table.deleteWaitingLaunch(row.name);
+    if (end) {
+      const current=this.#table.waitingLaunch(row.name);
+      if(current)this.#waitingLoginAdmissions.delete(current.id);
+      this.#table.deleteWaitingLaunch(row.name);
+    }
     else { const record = this.#table.waitingLaunch(row.name); if (record) this.#table.saveWaitingLaunch({ ...record, row }); }
     this.#log({ event: 'session-waiting', session: row.name, role: row.role, pool: row.pool, reason: row.reason, since: row.since, ...(end ? { end } : {}) });
     this.#core.inbox.refresh();
@@ -133,7 +138,19 @@ export class Sessions {
   #waitAdmission: (request: LaunchRequest, authorize: () => void) => Promise<() => void> = async (_request,authorize) => authorize;
   waitingAdmission(admit: (request: LaunchRequest, authorize: () => void) => Promise<() => void>): void { this.#waitAdmission = admit; }
   waitingLaunches(): WaitingLaunch[] { return this.#waiting.list(); }
-  startPoolScaling(create: (pool: string, authorize: () => void) => Promise<unknown>, idle?: Omit<import('../host/pool-runtime.ts').PoolIdleLifecycle, 'clock'>): void { this.#poolRuntime?.start(create, idle ? { ...idle, clock: this.#core.clock } : undefined); }
+  startPoolScaling(create: (pool: string, authorize: () => void, demand?:()=>readonly ProvisionLoginDemand[]) => Promise<unknown>, idle?: Omit<import('../host/pool-runtime.ts').PoolIdleLifecycle, 'clock'>): void {
+    this.#poolRuntime?.start(create, idle ? { ...idle, clock: this.#core.clock } : undefined, pool =>
+      this.#table.waitingLaunches().filter(r=>r.row.pool===pool&&this.#waitingLoginAdmissions.has(r.id)).map(r=>{
+        const selected=this.#diskAccountRequest(r.request,r.row.role);
+        const admitted=this.#waitingLoginAdmissions.get(r.id)!;
+        return {harness:selected.harness!,account:selected.resolvedAccount.account,validate:()=>{
+          admitted();
+          const current=this.#diskAccountRequest(r.request,r.row.role);
+          if(current.harness!==selected.harness||current.resolvedAccount.account!==selected.resolvedAccount.account)
+            throw Error('waiting login selection changed');
+        }};
+      }));
+  }
   hostUsage(id: string): {usedMilli:number;promisedMilli:number} { return this.#poolRuntime?.usage(id)??{usedMilli:0,promisedMilli:0}; }
   #outageHold:(host:string)=>boolean=()=>false;
   hostOutageHold(held:(host:string)=>boolean):void {this.#outageHold=held;}
@@ -141,6 +158,8 @@ export class Sessions {
   configurePools(config?: import('../init/config.ts').ProjectConfig): void { this.#poolRuntime?.configure(config?.hosts); this.capacityChanged(); }
   capacityChanged(): void { this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }
   async cancelWaiting(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<WaitingLaunch | null> {
+    const current=this.#table.waitingLaunch(name);
+    if(current)this.#waitingLoginAdmissions.delete(current.id);
     const row = await this.#waiting.cancel(name);
     if (row && this.#table.get(name)?.status === 'running') await this.stop(name, resumed, authorize);
     return row;
@@ -158,7 +177,7 @@ export class Sessions {
       if (request.host !== undefined || !(error instanceof PoolCapacityUnavailable || error instanceof HostMemoryFloorRefusal)) throw error;
       authorize();
       const admittedRole = request.role ?? this.#core.store.roleOf(request.name);
-      const validate = await this.#waitAdmission({...request,role:admittedRole}, authorize);
+      const validate = await this.#waitAdmission({...request,role:admittedRole}, retainedAuthorize);
       validate(); authorize(); this.#checkRolesLaunch(admittedRole); this.#launchRequestRole({...request,role:admittedRole});
       const reserved = this.#core.nameReservation(request.name);
       if (reserved) throw new Error(reserved);
@@ -170,7 +189,7 @@ export class Sessions {
       const row = { name: request.name, role, item: request.item ?? null, pool, reason: waitingReason(error), since: this.#core.clock.now().toISOString() };
       const record: WaitingLaunchRecord = { id: randomUUID(), row, request: { ...request, role }, actor, ...(inferredRole !== undefined ? { inferredRole } : {}), ...(error instanceof HostMemoryFloorRefusal ? { memory: this.#waitingMemory(error) } : {}) };
       this.#table.saveWaitingLaunch(record);
-      this.#addWaiting(record, operation, retainedAuthorize);
+      this.#addWaiting(record, operation, retainedAuthorize, false, validate);
       return { waiting: row };
     }
   }
@@ -193,19 +212,71 @@ export class Sessions {
       }
     }
   }
+  /** Attach while provisioning; native admission cannot see this host until ready joins finish. */
+  provisionLogins(record:import('../host/provision-records.ts').ProvisionRecord,demand:readonly ProvisionLoginDemand[],signal?:AbortSignal):ProvisionLoginWork {
+    let failed=false;
+    const machine=record.machine!;
+    const validate=()=>{
+      const current=this.#core.store.hosts.provisions.get(record.id);
+      if(failed||signal?.aborted||this.#closed||!current||!['connecting','cloning'].includes(current.state)||JSON.stringify(current.machine)!==JSON.stringify(machine)||current.provider!==record.provider||current.region!==record.region)
+        throw Error('login provisioning changed');
+    };
+    const seen=new Set<string>();
+    const preparations=demand.filter(d=>{
+      if(seen.has(d.harness))return false;
+      seen.add(d.harness);return true;
+    }).map(d=>{
+      const work=this.#loginBinder.prepare({
+        host:{name:record.id,loginDisk:async()=>{throw Error('agent not connected');}},machine,
+        provider:()=>this.#loginProviders.resolve(record),providerName:record.provider,
+        region:record.region,pool:record.pool,project:this.#root,harness:d.harness,account:d.account,
+        validate:()=>{validate();d.validate?.();},
+        checkAccount:account=>this.#core.checkAccountLimit(account),
+      });
+      void work.catch(()=>{});return work;
+    });
+    return {
+      ready:async()=>{
+        const prepared=await Promise.allSettled(preparations);
+        await Promise.allSettled(prepared.map(async result=>{
+          if(result.status==='rejected')throw result.reason;
+          await result.value.finish(this.#hostForLaunch({host:record.id}));
+        }));
+        // Login refusal belongs to the waiting launch. Unknown native outcomes
+        // retain the binder's pending fence; neither invalidates a healthy host.
+      },
+      failed:async()=>{
+        failed=true; // Fence unadmitted work synchronously, before joining any read.
+        const prepared=await Promise.allSettled(preparations);
+        await Promise.allSettled(prepared.map(async result=>{
+          if(result.status==='fulfilled')await result.value.rollback();
+        }));
+      },
+    };
+  }
   #waitingMemory(cause: HostMemoryFloorRefusal): WaitingMemory {
     return { host: cause.host, availableBytes: cause.availableBytes, floorBytes: cause.floorBytes, created: this.#core.store.hosts.provisions.get(cause.host)?.created };
   }
-  #addWaiting(record: WaitingLaunchRecord, operation: (request: LaunchRequest, authorize: () => void) => Promise<unknown>, authorize: () => void, restored = false): void {
+  #addWaiting(record: WaitingLaunchRecord, operation: (request: LaunchRequest, authorize: () => void) => Promise<unknown>, authorize: () => void, restored = false, initialValidation?:()=>void): void {
     const { row, request } = record;
     const { pool, role } = row;
+    let admission=initialValidation??authorize;
+    const admittedDemand=()=>{
+      authorize();admission();
+      if(!this.#waitingLoginAdmissions.has(record.id)||!this.#waiting.has(row.name))throw Error('waiting demand cancelled');
+      if(!this.#poolRuntime||!Object.hasOwn(this.#poolRuntime.settings().pools,pool))throw new WaitingPoolRemoved(`pool ${pool} removed`);
+      this.#checkRolesLaunch(role);this.#launchRequestRole({...request,role});
+      const reserved=this.#core.nameReservation(row.name,undefined,undefined,true);
+      if(reserved)throw new Error(reserved);
+      if(this.#table.waitingLaunch(row.name)?.id!==record.id||this.#table.get(row.name)?.status==='running')throw Error('waiting demand changed');
+    };
     this.#waiting.add(row, async guard => {
       const auth = () => {
         guard(); authorize();
         if (!this.#poolRuntime || !Object.hasOwn(this.#poolRuntime.settings().pools, pool)) throw new WaitingPoolRemoved(`pool ${pool} removed`);
       };
       let validate = auth;
-      try { validate = await this.#waitAdmission(request,auth); validate(); this.#launchRequestRole({...request,role}); await this.#attemptWaiting({ ...request, role, [waitingRetry]: true, [waitingPool]: pool, [waitingPublication]: {name:row.name,id:record.id} }, operation, auth); }
+      try { validate = await this.#waitAdmission(request,auth); admission=validate; validate(); this.#launchRequestRole({...request,role}); await this.#attemptWaiting({ ...request, role, [waitingRetry]: true, [waitingPool]: pool, [waitingPublication]: {name:row.name,id:record.id} }, operation, auth); }
       catch (cause) {
         guard();
         if (cause instanceof WaitingPoolRemoved) { this.#waiting.drop(request.name, cause.message); this.#log({ event: 'waiting-launch-refused', session: request.name, error: cause.message }); }
@@ -214,17 +285,14 @@ export class Sessions {
           const current = this.#table.waitingLaunch(row.name);
           if (current?.id === record.id) this.#table.saveWaitingLaunch({ ...current, row: {...current.row,reason:waitingReason(cause)}, memory: cause instanceof HostMemoryFloorRefusal ? this.#waitingMemory(cause) : undefined });
           this.#waiting.reason(request.name, waitingReason(cause));
-          if (cause instanceof PoolCapacityUnavailable) this.#poolRuntime?.demand(cause, () => {
-            auth(); validate(); this.#checkRolesLaunch(role); this.#launchRequestRole({...request,role});
-            const reserved=this.#core.nameReservation(row.name,undefined,undefined,true);
-            if(reserved)throw new Error(reserved);
-            if (this.#table.waitingLaunch(row.name)?.id !== record.id || this.#table.get(row.name)?.status === 'running') throw new Error('waiting demand changed');
-          });
+          this.#waitingLoginAdmissions.set(record.id,admittedDemand);
+          if (cause instanceof PoolCapacityUnavailable) this.#poolRuntime?.demand(cause,admittedDemand);
         }
         else { this.#waiting.drop(request.name, 'refused'); this.#log({ event: 'waiting-launch-refused', session: request.name, error: String(cause) }); }
         throw cause;
       }
     }, restored);
+    if(initialValidation)this.#waitingLoginAdmissions.set(record.id,admittedDemand);
   }
 
   restoreWaitingLaunches(operation: (request: LaunchRequest, authorize: () => void) => Promise<unknown>, authorize: (record: WaitingLaunchRecord) => void): void {
@@ -1524,14 +1592,17 @@ export class Sessions {
     }
   }
 
+  #diskAccountRequest(request:LaunchRequest,role:string|null):AccountLaunchRequest {
+    const defaults=role?this.#core.roles?.get().get(role)?.launch:null;
+    const harness=request.harness??defaults?.harness??DEFAULT_HARNESS;
+    const account=request.account!==undefined?request.account:defaults?.harness===harness?defaults.account??null:null;
+    return {...request,harness,resolvedAccount:{account:account||null,accountEnv:null}};
+  }
+
   async #accountRequest(request: LaunchRequest, role: string | null, resumed: Resumed, disk = false): Promise<AccountLaunchRequest> {
     const defaults = resumed(() => role ? this.#core.roles?.get().get(role)?.launch : null);
     const roleAccount = request.account === undefined && (!request.harness || request.harness === defaults?.harness) ? defaults?.account : null;
-    if(disk){
-      const harness=request.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
-      const account=request.account !== undefined ? request.account : defaults?.harness===harness ? defaults.account ?? null : null;
-      return {...request,harness,resolvedAccount:{account:account || null,accountEnv:null}};
-    }
+    if(disk)return this.#diskAccountRequest(request,role);
     const registry = request.account || roleAccount ? await readAccounts(this.#env) : { registry: '', accounts: [] };
     const explicit = resumed(() => request.account ? namedAccount(registry, request.account) : null);
     const harness = request.harness ?? explicit?.harness ?? defaults?.harness ?? DEFAULT_HARNESS;
@@ -3075,6 +3146,7 @@ export class Sessions {
     const waitingDrain = this.#waiting.close();
     const poolDrain = this.#poolRuntime?.close();
     const loginDrain = this.#loginBinder.close();
+    this.#waitingLoginAdmissions.clear();
     this.#core.waitingNames(null);
     this.#forcedQueued.clear();
     for (const held of this.#heldDeliveries.values()) this.#transportClock.clearTimeout(held.timer);

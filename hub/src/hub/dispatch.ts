@@ -595,9 +595,9 @@ export class Dispatcher {
     });
   }
 
-  #createPoolHost(pool?: string, authorize: () => void = () => {}): ReturnType<typeof createHost> {
+  #createPoolHost(pool?: string, authorize: () => void = () => {}, demand?:()=>readonly import('../host/login-binding.ts').ProvisionLoginDemand[]): ReturnType<typeof createHost> {
     if (this.#closed || !this.hostOwner || !this.#options.control) return Promise.reject(new Error('host runtime unavailable'));
-    const work = (this.#options.createHost ?? createHost)({onBootFailure:record=>this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'}),inUse:id=>this.#sessions?.hostInUse(id) ?? false,clock:this.core.clock,root:this.#options.control.status().root,pool,env:this.#options.env ?? process.env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets ? {registerSecrets:this.#options.registerHostSecrets} : {}),records:this.core.store.hosts,owner:this.hostOwner,admit:(name,prepared)=>{
+    const work = (this.#options.createHost ?? createHost)({...(demand?{onConnecting:(record,signal)=>this.#sessions!.provisionLogins(record,demand(),signal)}:{}),onBootFailure:record=>this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'}),inUse:id=>this.#sessions?.hostInUse(id) ?? false,clock:this.core.clock,root:this.#options.control.status().root,pool,env:this.#options.env ?? process.env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets ? {registerSecrets:this.#options.registerHostSecrets} : {}),records:this.core.store.hosts,owner:this.hostOwner,admit:(name,prepared)=>{
       try { authorize();
       if(this.#closed)throw new Error('host provisioning stopped');
       const pool=this.#options.projectConfig?.().hosts.pools[name];
@@ -630,7 +630,7 @@ export class Dispatcher {
         const id = this.core.noticeInTopic('general', { id: `hosts-spend-warning:${spend.day}`, kind: 'report', text: `hosts daily spend and reservations reached 80% of $${cap}`, detail: { pools: spend.pools } });
         if (id) this.core.store.setMeta('hosts-spend-warning-day', spend.day);
       });
-      sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize), {
+      sessions.startPoolScaling((pool,authorize,demand) => this.#createPoolHost(pool,authorize,demand), {
         busyHost: id => this.#loginPins.has(id),
         failed: record => {if(!record.bootFailureAt)this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'});},
         declarations: record => {

@@ -170,6 +170,34 @@ that harness; a different requested
 account refuses. With no eligible login, launch refuses with
 `no login <harness> in pool <pool>`.
 
+Demand-created hosts prepare logins at the `createHost.onConnecting` checkpoint.
+`PoolRuntime.start` passes a demand reader through `Sessions.startPoolScaling`
+and the dispatch create composition; the checkpoint captures waiting harnesses
+and their explicit or role account pins. Each capture retains the exact durable
+wait's admission authority, including cancellation, role eligibility and item
+admission. Every asynchronous boundary rechecks that authority and the current
+harness/account selection before effects and settlement. One disk per harness is prepared by the
+Sessions-owned `LoginBinder.prepare`, using the same indexed selector and pending
+fence as launch binding. Provider attachment runs alongside runtime delivery and
+cloning. The hook's `ready()` mounts through the answering Host and joins every
+finish before the provision row becomes ready. Launch then reuses the settled
+binding. With no waiting demand, manual and minimum creation bind no login.
+
+The hook's `failed()` joins preparations and the binder's rollback before the
+existing host-stop release owner runs. Before a mount attempt, positive detach
+alone permits reuse; after an attempted mount, positive unmount and detach are
+required. An unknown outcome retains the pending fence and is never retried by
+the provision owner. Settled bindings follow the normal host-stop release path.
+Tests use an injected create seam, directory provider and hub FakeClock; the
+simulated attachment overlaps cloning without advancing the ready timestamp.
+Real provider and agent latency can still delay ready when binding outlasts boot.
+Ordinary no-login, selected-account-limit and invalid-demand refusals remain
+launch-scoped: the healthy host becomes ready and normal launch admission
+publishes the refusal. An unknown login operation retains its pending fence and
+refuses that harness's launch without turning the machine into a boot retry.
+The creation signal and a synchronous failed-hook fence prevent new attachment
+admission after failure or abort; cleanup joins admitted work before rollback.
+
 `LoginBinder` in `hub/src/host/login-binding.ts` serializes selection. The mount
 is `/cland/auth/<harness>-<login>` using the full harness id. `CODEX_HOME` and
 `CLAUDE_CONFIG_DIR` name that directory; `OPENCODE_DB` names its `opencode.db`.

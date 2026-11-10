@@ -55,7 +55,7 @@ async function command(binary:string,args:string[],env:NodeJS.ProcessEnv,input='
  });
 }
 export type CreateHost = typeof createHost;
-export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>void;admit?:(pool:string,settings:HostPool)=>void;inUse?:(id:string)=>boolean; clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
+export async function createHost(o:{onConnecting?:(record:ProvisionRecord,signal?:AbortSignal)=>import('./login-binding.ts').ProvisionLoginWork;onBootFailure?:(record:ProvisionRecord)=>void;admit?:(pool:string,settings:HostPool)=>void;inUse?:(id:string)=>boolean; clock?:Clock; settings?:HostPool; onCreating?:(id:string)=>void; root:string;pool?:string|undefined; provider?:HostProvider; gateMs?:number;signal?:AbortSignal;registerSecrets?:(values:readonly string[])=>void;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>}) {
  const clock=o.clock??realClock;
  const source=await readFile(join(o.root,'.cland/config.toml'),'utf8').catch(error=>{if(error.code==='ENOENT'&&o.settings)return '';throw error;});
  const projectConfig=parseConfig(source,'host',o.env);
@@ -86,6 +86,7 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
  creations.set(creationKey,{abort,done:completion.promise});
  let registered=false,acquiring=false,admitted=false;
  let bootTimer:ClockTimer|undefined;
+ let loginWork:import('./login-binding.ts').ProvisionLoginWork|undefined;
  const releaseReads:ReleaseRead[]=[];
  try {
   await o.records.leases.create(record.id,leaseOptions);admitted=true;
@@ -136,6 +137,7 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
   },signal);
   clock.clearTimeout(bootTimer);
   record.state='connecting';o.records.provisions.save(record);
+  loginWork=o.onConnecting?.(record,signal);
   const home=record.ssh.home;
   await deliverRuntime({transport,codeRoot:join(home,'.cland-host/code'),node:record.ssh.node,version:VERSION,...(signal?{signal:signal}:{})});
   signal?.throwIfAborted();
@@ -146,9 +148,12 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
   record.state='cloning';o.records.provisions.save(record);
   await o.owner.ready(record.id,signal);
   signal?.throwIfAborted();
+  await loginWork?.ready();
+  signal.throwIfAborted();
   record.state='ready';o.records.provisions.ready(record);
  } catch(error) {
   record.state='failed';record.reason=error instanceof Error?error.message:String(error);
+  await loginWork?.failed().catch(()=>{});
   // A runtime owner must close before its machine can be released.
   try {
    if(record.nonAcquisition){await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,{clock});await o.records.leases.cancel(record.id,leaseOptions);record.release='released';}

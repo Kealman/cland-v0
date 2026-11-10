@@ -333,3 +333,11 @@ An unconfirmed release retains the binding and existing hard spend deadline. Use
 settledLogin seeds in placement fixtures and readyLogin directory-backed volumes
 for native host-create fixtures. See [login binding](../../../docs/hub/logins.md#binding-at-launch).
 
+
+Demand-created pool hosts start disk attachment at createHost.onConnecting through
+the Sessions-owned binder. Join the hook's ready finish before publishing host
+readiness, and its failed rollback before host-stop release. Preserve pending
+bindings on unknown outcomes. Captured waits retain exact admission and current
+account checks after awaits; creation failure/abort fences new attachment work.
+Ordinary login refusal stays launch-scoped and preserves a healthy host; see
+docs/hub/logins.md, Binding at launch.
