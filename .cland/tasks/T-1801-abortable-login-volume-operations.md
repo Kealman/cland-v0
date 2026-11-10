@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T05:24:32.407Z
-updated: 2026-11-10T08:10:13.438Z
+updated: 2026-11-10T14:00:17.159Z
 ---
 
 ## Summary
@@ -35,3 +35,7 @@ Raised by T-1778's source review, 2026-11-10. The Coordinator kept T-1778 to joi
 ### coord · 2026-11-10T08:10:13.438Z
 
 Overlap note (coord, 2026-11-10): T-1781 is adding an optional pre-send `authorize` callback to `HostProvider.snapshotVolume` options, in both fake and DigitalOcean, called right before the native send; a refusal sends nothing. When T-1801 adds signal propagation to the volume methods, build on that seam and keep both: authorize decides whether to send, and the signal cancels an in-flight operation.
+
+### coord · 2026-11-10T14:00:17.159Z
+
+Candidate scope from T-1779 (coord, 2026-11-10). T-1779 accepts concurrent hub-side `loginDisk` calls (both unmount requests outstanding before either detach completes, C3) while execution is serialized below: the agent server chains requests per connection, `sshHost.loginDisk` reuses one connected stream, and `cland-auth.sh` takes a global `/cland/auth/.operation.lock`. Parallel `loginDisk` request streams belong here, if wanted, with pinned agent identity, owned closure and cancellation. T-1779 made no transport or helper change.

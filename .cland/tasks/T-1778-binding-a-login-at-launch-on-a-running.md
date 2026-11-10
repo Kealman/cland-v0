@@ -2,8 +2,8 @@
 id: T-1778
 kind: task
 title: Binding a login at launch on a running host
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1461
 branch: t/T-1778-binding-a-login-at-launch-on-a-running
 created: 2026-11-09T12:44:09.501Z
-updated: 2026-11-10T11:02:10.988Z
+updated: 2026-11-10T13:40:59.377Z
+closed: 2026-11-10T13:40:59.377Z
 ---
 
 ## Summary
@@ -40,26 +41,32 @@ With no ready login, until T-1784 the launch is refused with "no login <harness>
   - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
   - done: impl-1778 · 2026-11-10T10:15:30.483Z
   - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-3 · 2026-11-10T12:59:32.210Z · commit 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
 - [x] C2. A second session of the same harness on that host reuses the binding with no attach (test).
   - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
   - done: impl-1778 · 2026-11-10T10:15:30.752Z
   - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-3 · 2026-11-10T12:59:32.210Z · commit 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
 - [x] C3. A role with `account = "work"` binds only a login of account `work`, and the session row records the login name and the account (test).
   - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
   - done: impl-1778 · 2026-11-10T10:15:31.132Z
   - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-3 · 2026-11-10T12:59:32.211Z · commit 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
 - [x] C4. The process row's account environment holds the mount path only, and the spawned environment holds none of the five stray auth variables (test).
   - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
   - done: impl-1778 · 2026-11-10T10:15:31.388Z
   - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-3 · 2026-11-10T12:59:32.211Z · commit 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
 - [x] C5. A mount failure detaches the volume, leaves the login `ready`, and fails the launch naming the login (test).
   - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
   - done: impl-1778 · 2026-11-10T10:15:31.763Z
   - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.747Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-3 · 2026-11-10T12:59:32.211Z · commit 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
 - [x] C6. A local launch reads no login and starts as before (test).
   - verified: rev-35 [reviewer] · run rev-35-1778-final-1 · 2026-11-10T09:54:38.062Z · commit 3875c2ecf071aaebaded6b9b3baec5bd6c0329b3
   - done: impl-1778 · 2026-11-10T10:15:32.024Z
   - verified: rev-35 [reviewer] · run rev-35-1778-final-2 · 2026-11-10T11:02:10.748Z · commit 2ed2456875c65af9b7499833d82bd329b1f4d0d9
+  - verified: rev-35 [reviewer] · run rev-35-1778-final-3 · 2026-11-10T12:59:32.211Z · commit 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
 
 ## Blocked by
 
@@ -447,3 +454,43 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-18372: C1–C6 verified at source10-current2ed245687. A-18370 run5bc5eace exacthead/exporttree21bf312c independentlymatchesGit,uncachedLinuxx64Node24.21/Nvim0.12.5/Headless1248Chrome156.0.8078.4,c8lon1,1294s/$0.0899.5919basepass/0negative+185separateload;671positivecase/filefinishes,all664manifestlower/Webzero missing.37binding/selection/storeidentities5/5load;6selectedT3/46leafidentities,mappedT4once. A-18371 scanned0/positivecontrol,all6955originalfinishIDs preserved/zeroidentityfieldmismatch;monotone801required/916rows,no prior759lost,all49catalogpathsrequired,allrequiredlowerpositive. Freshnative15/recordingcatalog490atbyte-identical6655A-18368carryauthorized33fb568f;40catalogordinarycurrent+6T3/3T4recording/deferred. Explicit acceptedT-1803full-listlistener/pending-snapshot andT-1804revertedarchive-statevariant remain nonblocking/notfixed;selectorboundonly,nofullpathboundclaim.229T3/16T4/fullbatch/after-stageQAseparate;report-onlybudgets/lint retained,27sallowanceprojectionunchanged. No reviewer runs/edits. Hold released.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1778 · 2026-11-10T12:25:42.151Z
+
+Rule-20 corrected native sweep and fixture correction at1cba8d79c: A-18377 retains shared transitive graph plus explicit projectHub/[hosts]/pool/provided-host/agent-spawn patterns across T3/T4, including unknowns. Coordinator8887cd73 narrowed reruns after full Linux batch741796c4. Required exact-head macOS local files all pass: hub/test/host-destroy-native.test.ts3, host-restart1, host-ssh-contract40, host-create-ready12, host-relaunch3, host-watchdog2, login-add1 =62; all producers close0/null. Other native paths passed in batch741796c4 at merged head and are unaffected by fixture-only delta; remaining T4 deferred per occasions. New shared test-only mountedSettledLogin creates/attaches/mounts real fake-provider volume, seeds matching writer identity, registers setup join and captured fake-unmount/detach/delete after all native joins before directory disposal; failed cleanup retains roots. Consumers: hub/test/{pool-scale,host-create-ready,host-create-fixture,host-restart,waiting-launch,pool-failures,waiting-launch-restart,host-status,host-stop,host-relaunch,session-pool-placement,host-destroy-native}.ts (test files carry .test.ts); full paths in artifact. SSH raw positive control deliberately changes to neutral EXPLICIT; four planted-credential negative assertions remain on both raw and prepared paths. All assertions/bounds otherwise unchanged. Required seven scoped /tmp/hc-/pg- inventories0→0; login-add private TMPDIR retains owner metadata (T-1805), registry and named removed-root/live-worktree paths untouched. Original helper-volume red and extra sealed-runner suite-runner55/57 red retained separately. Coordinator332fb19e standard-context comparison running now; no inferred subcause. Candidate typecheck/lint close0/null qualified by later same-volume fix. Publication scan exit0: matches0,positiveControltrue,files23; one unchanged documented synthetic assignment omitted from exported patch with hash, Git authoritative. Source production/wire/catalog unchanged. T-1803/T-1804 accepted limitations remain.
+
+### rev-35 · 2026-11-10T12:29:39.384Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-source-11
+commit: 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18380: nine test/helper/docs files only,Standards0/Spec0. mountedSettledLogin captures real shared volumeidentity; setup join prearmed beforeallocation,afterNativeJoin capturedlink unlink/absence+detach/delete follows nativeclosure and retains root onunknown. Lifecycleassertions/bounds unchanged; SSH neutralEXPLICITpositive keeps all4plantednegatives onbothpaths. A-18377 required7exactnative62/62,allTAPsummariesmatch/code0/null; TMPscopequalified/T-1805residueuntouched. Helperredretained. A-18378 standardcontextsuite-runner57/57/code0/null; earliersealed55/57 remainsrunner-contextartifact perCoordinator,causaloverlaynotisolated. A-18379exacttypecheck/lint0/null,zero lintrefusals/reportonlynotices. Coordinator8887cd73localcoverage scope retained; priorfailedbatchA-18374 fourfailures/knownskipsnotgreen. Freshmodefreeverifyat1cba andC1–C6actualconsumerreconciliationrequired; priorcatalogrecording/runtimeproofhistorical. T1803/T1804/T1805/fullT3/T4/after-stageQAseparate. No reviewer runs. Holdreleased.
+
+### impl-1778 · 2026-11-10T12:57:19.659Z
+
+Fresh mode-free verify dee75609 at exact1cba8d79c is green (A-18381): T0,allT1/allT2/Web,9selectedT3,1mappedT4;5963basepass plus185separateload. A-18382 scan-gated reconciliation preserves7002originalcase/fileIDs,all664lower/Webmanifest,all49catalogpaths and801required/916dispositionrows;37generatedchangedidentitieseach5/5load. Localrequired7native62pass exacthead A-18377, standardcontext suite-runner57 A-18378, exactstatic A-18379. Priorfailedbatch741796c4 and earliercontext55/57 remain failedoriginalreceipts; earlierbatchunaffectedfilesandrecording490 at665554818 qualifiedhistorical. Remainingfull226T3/16T4/stageQA separate. T-1803/T-1804/T-1805 acceptedlimits unchanged; ownerregistryandbothpaths untouched. Additionalsource-confirmedtest-titlefalsepositive hash-redacted only, no credentialcontent; finalscanexit0,matches0,positiveControltrue,files8 beforepublish. Reviewerfinalsettlement requested; no newheadchange.
+
+### rev-35 · 2026-11-10T12:59:32.211Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1778-final-3
+commit: 1cba8d79c7b4136f4f91b7650a4f0c9fb0efe993
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18383: C1–C6 verified exact source11head1cba8d79c. A-18381 dee75609:5963basepass/0negative+185separateload;674basefile+casepositive,all664manifestlower/Webzero missing,37binding/selection/storeidentities5/5load.9selectedT3/74leaftimingidentities+mappedT4once;all4failedbatchnativecases nowpositiveLinux. ExactGit/export5af53881independentlymatches,uncachedLinuxx64Node24.21/Nvim0.12.5/Headless1248Chrome156,c8lon1,1426s/$0.0990. A-18382all7002originalfinishIDsretained/zeroidentityfieldmismatch;801required/916rows,nonepriorremoved/allcorrectednativeincluded/all49catalogrepresented,requiredlowerpositive. Exactlocal7native62/A-18377,standardrunner57/A-18378,staticA-18379qualified;sealed55/57remainsrunnercontext/causaloverlayunisolated,T-1805residueuntouched. Historicalcatalog490recordingandfailedbatch741796c4notcurrentfullT3. T-1803/4/5acceptednotfixed;226T3/16T4/fullmerge/after-stageQAseparate.Reportonlytiming/lintretained,27sprojectionunchanged.No reviewer runs.Holdreleased.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-10T13:40:59.377Z
+
+Merged 93727d2576e3e8574b3fb65632d5c5c6f49d5afb onto dev.
