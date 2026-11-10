@@ -2,8 +2,8 @@
 id: T-1782
 kind: task
 title: "DigitalOcean login volumes: from a snapshot, snapshot history, no test-only refusal"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1462
 branch: t/T-1782-digitalocean-login-volumes-from-a
 created: 2026-11-09T12:44:10.329Z
-updated: 2026-11-10T05:22:13.267Z
+updated: 2026-11-10T06:48:30.135Z
+closed: 2026-11-10T06:48:30.135Z
 ---
 
 ## Summary
@@ -34,15 +35,20 @@ The snapshot window's 429 keeps mapping to `refused` with `rate limited` and a r
 ## Acceptance criteria
 
 - [x] C1. Against the fake API, a volume created from a snapshot sends that snapshot id, the region, and the cland, project and pool tags (test).
-  - done: impl-1782 · 2026-11-10T05:14:11.298Z
+  - done: impl-1782 · 2026-11-10T05:34:33.939Z
+  - verified: rev-35 [reviewer] · run rev-35-1782-final-1 · 2026-11-10T05:59:32.743Z · commit da45c36b07cc0e905404b6324a321f734efe0c05
 - [x] C2. `listSnapshots` and `deleteSnapshot` go through the fake API, and a delete reports deleted only after a GET reads 404 (test).
   - done: impl-1782 · 2026-11-10T05:14:11.514Z
+  - verified: rev-35 [reviewer] · run rev-35-1782-final-1 · 2026-11-10T05:59:32.743Z · commit da45c36b07cc0e905404b6324a321f734efe0c05
 - [x] C3. A volume create without a login admission is refused before any API call naming the admission, and with one it reaches the fake API outside the fake-host fence (test).
   - done: impl-1782 · 2026-11-10T05:14:11.856Z
-- [ ] C4. The DigitalOcean provider passes the volume contract cases T-1772 added (test).
-  - failed: rev-35 [reviewer] · 2026-11-10T05:18:44.788Z · note Retained T-1772 DigitalOcean snapshot refusal consumer contradicts the new provider and remains unmigrated; identity/project ownership contract negatives are also missing.
+  - verified: rev-35 [reviewer] · run rev-35-1782-final-1 · 2026-11-10T05:59:32.743Z · commit da45c36b07cc0e905404b6324a321f734efe0c05
+- [x] C4. The DigitalOcean provider passes the volume contract cases T-1772 added (test).
+  - done: impl-1782 · 2026-11-10T05:26:32.446Z
+  - verified: rev-35 [reviewer] · run rev-35-1782-final-1 · 2026-11-10T05:59:32.743Z · commit da45c36b07cc0e905404b6324a321f734efe0c05
 - [x] C5. No code, test or doc still names the test-only volume refusal.
   - done: impl-1782 · 2026-11-10T05:14:12.444Z
+  - verified: rev-35 [reviewer] · run rev-35-1782-final-1 · 2026-11-10T05:59:32.743Z · commit da45c36b07cc0e905404b6324a321f734efe0c05
 
 ## Blocked by
 
@@ -82,3 +88,58 @@ Criteria: C4 failed (Retained T-1772 DigitalOcean snapshot refusal consumer cont
 ### impl-1782 · 2026-11-10T05:22:13.267Z
 
 Review-fix timing disposition: removed only the orphan baselines for host-provider-digitalocean-volumes.test.ts::digitalocean volume creation requires a pool, shares pause and resolves acquire pool, and host-provider-volumes.test.ts::digitalocean new snapshot operations refuse without API calls. Both test identities no longer exist at this candidate; their measurements were not transferred. Snapshot ownership now persists by root/project/source receipt for restore and delete. Preservation slot acquired via successful mkdir but no native file launched; Coordinator reassigned slot to T-1778 during a collision, so waiting after T-1778 and T-1777, lock left untouched.
+
+### impl-1782 · 2026-11-10T05:26:33.212Z
+
+Source-1 fixes pushed a163686eb532ae1d9b9c56a3c887953b9317c318; fresh review requested. A-18262 native original output58/58; A-18263 focused81/81; A-18264 T-1676 attribution (5 executor-droplet,1 executor-prepare,10 daemon; dead owner PIDs, scratch roots absent; only checkout references/cache remain); A-18265 flattened680-consumer tier/disposition sweep. Preservation slot completed without overlap. Hub typecheck, duration identity, child environment and closed-wording lints pass. No Linux receipt yet; await clear source before mode-free verify. All exported evidence scanned with0 credential-pattern matches.
+
+### rev-35 · 2026-11-10T05:32:03.189Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1782-source-2
+commit: a163686eb532ae1d9b9c56a3c887953b9317c318
+scope: full
+findings: [{"severity":"medium","text":"Restore validates native regions includes the retained source region, but selects native regions[0] for POST. Reordered/multi-region native metadata can restore in the wrong region. Use retained owner.region after membership validation and regress reordered regions; author confirms no singleton/order guarantee.","file":"hub/src/host/provider/digitalocean.ts","line":420}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-18268: all five source1 corrections inspected, Standards0; Spec1medium retained-region selection gap confirmed. C1failed; runtimeC1–C5unverified. A-18262/63 independently58native/81focused passes, but producer timestamps precede commit and no pre-run tree stamp; source-linkage supplement requested, no reruns. T-1676 residue16records+cache explicitly retained/Coordinator-dispositioned. A-18265 tiers flattened. New committed source review before verify; no reviewer native work.
+
+Criteria: C1 failed (Restored volume region follows native array order rather than the persisted source region; multi-region reorder can violate source-region inheritance.).
+
+### rev-35 · 2026-11-10T05:36:00.712Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1782-source-3
+commit: da45c36b07cc0e905404b6324a321f734efe0c05
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18273: retained sourceRegion now drives restore after native identity/membership validation; reordered multi-region regression keeps lon1 over nativefra1/callerams3. Prior five fixes retained, Standards0/Spec0. A-18271 committed29/29,code0/signalnull,TMPDIR[]→[],head/fulltree/clean status checked; local focused only. A-18269/70 honestly qualify earlier81/58 candidate provenance and T-1676 residue; no native behavior change/repeat requested. RuntimeC1–C5unverified pending exact-head mode-free verify; stage QA/fullT3/T4 separate. No reviewer native work.
+
+### impl-1782 · 2026-11-10T05:57:56.897Z
+
+Reviewed head da45c36b07cc0e905404b6324a321f734efe0c05 verified green in durable run b5c6b498-6005-484d-81e3-67ce7034f379, A-18281. Linux x64 Node24.21.0, droplet c-8/lon1, lifetime1175s, cost$0.0816, workers2. T0/T1/fallback all T2/Web completed; summary5774passed,0failed/cancelled/skipped. Report-only duration/lint findings remain advisory. Full T3 deferred to merge batch, T4 stage/epic; prior local macOS native preservation is separately limited candidate evidence. Reviewer receives same-head result directly for final settlement. No head changes.
+
+### rev-35 · 2026-11-10T05:59:32.743Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1782-final-1
+commit: da45c36b07cc0e905404b6324a321f734efe0c05
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18282: source3 clear retained; same-head uncached b5c6b498/A-18281 independently5774pass/0fail/cancel/skip, T0/T1/allT2/Web. Fulltree1593118569a4ad94f984a406b20ec369eba5d5cc/export17310bcfebb355a951900c3e50b044f504b6933a independently checked. All437inventory lower/Web paths have positive base case+file finishes;29volume cases base pass,7selected new names each5/5load. C1-C5verified,Standards0/Spec0. Linuxx64 Node24.21,Nvim0.12.5,HeadlessShell1248 Chrome156.0.8078.4. Candidate58native/81focused provenance and T-1676 residual16records+cache stay separately qualified;229T3/14T4 deferred,fullLinuxT3 batch/after-stageQA separate. No reviewer runs or live API work.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-10T06:48:30.135Z
+
+Merged d725dd47f6efff6702a9e10f46e0fe20d1778bd3 onto dev.

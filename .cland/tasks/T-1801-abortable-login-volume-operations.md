@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T05:24:32.407Z
-updated: 2026-11-10T05:24:32.407Z
+updated: 2026-11-10T08:10:13.438Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ Raised by T-1778's source review, 2026-11-10. The Coordinator kept T-1778 to joi
 - [ ] C1. `Host.loginDisk` and the provider volume methods accept an optional signal, and existing callers are unchanged (test).
 - [ ] C2. `LoginBinder.close` aborts an in-flight attach or mount; the outcome is a positive receipt or a retained pending fence, never a timeout race (test).
 - [ ] C3. A rule-20 consumer sweep lists every provider and Host implementation and test (test).
+
+## Comments
+
+### coord · 2026-11-10T08:10:13.438Z
+
+Overlap note (coord, 2026-11-10): T-1781 is adding an optional pre-send `authorize` callback to `HostProvider.snapshotVolume` options, in both fake and DigitalOcean, called right before the native send; a refusal sends nothing. When T-1801 adds signal propagation to the volume methods, build on that seam and keep both: authorize decides whether to send, and the signal cancels an in-flight operation.
