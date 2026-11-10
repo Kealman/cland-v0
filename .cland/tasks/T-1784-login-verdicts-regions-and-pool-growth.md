@@ -3,7 +3,7 @@ id: T-1784
 kind: task
 title: Login verdicts, regions and pool growth
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1535
 blocked_by:
   - T-1778
   - T-1779
-topic: null
-branch: null
+topic: topic-1468
+branch: t/T-1784-login-verdicts-regions-and-pool-growth
 created: 2026-11-09T12:44:10.743Z
-updated: 2026-11-09T12:44:17.795Z
+updated: 2026-11-10T21:00:36.326Z
 ---
 
 ## Summary

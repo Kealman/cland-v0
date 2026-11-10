@@ -3,7 +3,7 @@ id: T-1787
 kind: task
 title: Capacity and login storage in `login list` and `host status`
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:11.318Z
-updated: 2026-11-09T12:44:19.036Z
+updated: 2026-11-10T20:59:37.527Z
 ---
 
 ## Summary

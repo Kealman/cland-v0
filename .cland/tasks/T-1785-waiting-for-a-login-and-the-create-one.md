@@ -3,7 +3,7 @@ id: T-1785
 kind: task
 title: Waiting for a login, and the "create one?" card
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:10.911Z
-updated: 2026-11-09T12:44:18.202Z
+updated: 2026-11-10T20:59:37.245Z
 ---
 
 ## Summary

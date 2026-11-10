@@ -3,7 +3,7 @@ id: T-1786
 kind: task
 title: Exclusive and non-exclusive logins
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1535
 blocked_by:
   - T-1779
   - T-1781
-topic: null
-branch: null
+topic: topic-1469
+branch: t/T-1786-exclusive-and-non-exclusive-logins
 created: 2026-11-09T12:44:11.156Z
-updated: 2026-11-09T12:44:18.615Z
+updated: 2026-11-10T21:00:40.519Z
 ---
 
 ## Summary

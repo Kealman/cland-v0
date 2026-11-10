@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-10T18:13:37.516Z
+updated: 2026-11-10T20:55:02.899Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 - [ ] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
 - [ ] C2. A one-off cleanup removes only the historical roots that a census proves dead (no live process, no open file, owner absent), by literal path, and keeps a receipt listing each path (test).
 - [ ] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
+
+## Comments
+
+### coord · 2026-11-10T20:55:02.899Z
+
+More evidence (qa-678, E-1535 stage-2 QA at 121ec8bef, 2026-11-10 20:54Z): 21 new dead `/private/tmp/cland-h-*` directories across native rows 60 and 64–73, each holding agent.sock, ctl.sock and git.sock or empty, with no open PID. The producer is `records.ts` `hostPaths` (lines 66–74), reached through `createHost` from `host-create-fixture.ts` and from `host-provision-gate.test.ts` (`tempProject(t,'pg-','/tmp')`); the fixtures' own roots are removed. C1 should place `hostPaths`' socket directory under the caller's scratch root, or register its disposal at allocation.

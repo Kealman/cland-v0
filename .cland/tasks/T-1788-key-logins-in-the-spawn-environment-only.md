@@ -3,7 +3,7 @@ id: T-1788
 kind: task
 title: Key logins in the spawn environment only
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:11.572Z
-updated: 2026-11-09T12:44:19.443Z
+updated: 2026-11-10T20:59:37.838Z
 ---
 
 ## Summary
