@@ -142,3 +142,10 @@ OpenCode in 0.4.x, reads stdin or a hidden prompt and sends metadata only. Store
 rotation is refused while key files or rows exist. See
 [logins](../docs/hub/logins.md#key-store) and
 [project secrets](../docs/hub/project-secrets.md).
+
+Host stop/destroy and lifecycle teardown release settled disk logins before
+transport removal and provider deletion. Lost hosts wait for provider-confirmed
+detachment before reuse. See [login release](../docs/hub/logins.md#releasing-host-disks).
+
+Deleted-host session settlement runs before login-volume reconciliation; unreachable
+SSH hosts use the lost-host snapshot fence without a new reconnect wait.

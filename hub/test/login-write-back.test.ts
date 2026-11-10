@@ -1,0 +1,76 @@
+// T3: two agent sockets, native fake harness turns and disk-user processes prove write-back and selective drainage.
+import './cover-quiet.ts';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { FakeHostProvider } from '../src/host/provider/fake.ts';
+import { hostDirectory } from '../../shared/fake-host-directory.ts';
+import { serveAgent } from '../src/host/agent/server.ts';
+import { AgentClient } from '../src/host/agent-client.ts';
+import { loginFilePath } from '../src/host/agent/fake-login-mount.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { loginFixtureOwners } from './login-fixture-owners.ts';
+import { Store } from '../src/hub/store.ts';
+import { LoginBinder, loginMount } from '../src/host/login-binding.ts';
+import { installLoginRelease } from '../src/host/login-release.ts';
+import { destroyHost } from '../src/host/provision-host.ts';
+import { sshHost } from '../src/host/ssh-host.ts';
+import { ownProcess } from './process-cleanup.ts';
+import { until, testWaitMs } from './until.ts';
+
+test('rotated disk reaches the next host and release closes only disk writers',async t=>{
+ const gate=Promise.withResolvers<void>(),issued=new Set<string>();
+ const owners=loginFixtureOwners(t),root=await mkdtemp(join(tmpdir(),'lwb-'));owners.directory(root);
+ const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
+ const provider=new FakeHostProvider({env}),store=new Store(join(root,'hub.db'));owners.defer(()=>store.close());
+ const binder=new LoginBinder(store.hosts.logins);owners.defer(()=>binder.close());
+ async function host() {
+  const acquired=await provider.acquire({project:root,pool:'agents',architecture:'x86_64',region:'fake-1'});if(acquired.state!=='created')throw Error('fixture acquire');
+  const machine=acquired.machine,directory=hostDirectory(root,machine.id);
+  const hostEnv=fixtureEnvironment(root,env,{CLAND_FAKE_HOST_ROOT:root,CLAND_FAKE_HOSTS:machine.id,CLAND_HOST_BOOT_ID_FILE:join(directory,'boot-id')});
+  const server=await serveAgent({runDir:join(directory,'home/.cland-host/run'),secret:'sentinel',version:'test',env:hostEnv,processHooks:{beforeSignals:async()=>{await gate.promise;}}});owners.defer(()=>server.close());
+  const client=await AgentClient.connect(server.socket,'sentinel');owners.defer(()=>client.close());
+  const host=sshHost({name:machine.id,transport:{status:()=>({state:'up'} as any),forward:async()=>({socket:join(root,'forward')}),unforward:async()=>{}},connect:()=>AgentClient.connect(server.socket,'sentinel'),layout:{runDirectory:root,logDirectory:root,discoveryFile:join(root,'discovery'),node:process.execPath,cli:'unused',spoke:'unused'}});owners.defer(()=>host.close());
+  const loginDisk=host.loginDisk!.bind(host);host.loginDisk=async input=>{if(input.op==='umount')issued.add(input.volume);await loginDisk(input);};
+  store.hosts.insert({id:machine.id,address:machine.address,user:'agent',clientKeyPath:'unused',knownHosts:'unused'},'sentinel');
+  store.hosts.provisions.ready({id:machine.id,pool:'agents',provider:'fake',size:'fake',region:'fake-1',created:machine.created,state:'ready',machine});
+  const bind=()=>binder.bind({host,machine,provider:()=>provider,providerName:'fake',region:'fake-1',pool:'agents',project:root,harness:'codex',account:null,validate:()=>{},checkAccount:()=>{}});
+  const run=async(args:string[])=>{
+   const result=await client.request('run-host',{command:process.execPath,args:[resolve('hub/test/fakes/codex/fake-codex.ts'),...args],cwd:root,env:fixtureEnvironment(root,hostEnv,{CODEX_HOME:'/cland/auth/codex-work',FAKE_LOGIN_ENABLED:'1',FAKE_LOGIN_HOST:machine.id}),timeoutMs:testWaitMs()}) as {code:number;stderr:string};
+   assert.equal(result.code,0,result.stderr);
+  };
+  return {host,client,machine,hostEnv,bind,run};
+ }
+ const a=await host(),b=await host();owners.defer(async()=>{gate.resolve();});
+ const made=await provider.createVolume({project:root,name:'work',region:'fake-1',sizeGiB:1});if(made.state!=='created')throw Error('fixture volume');
+ store.hosts.logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:made.volume.id,snapshotIds:[],lastSignIn:null});store.hosts.logins.transition('work','ready');
+ installLoginRelease(store.hosts,{host:id=>[a,b].find(h=>h.machine.id===id)?.host,beginRelease:async()=>{},onReleased:()=>{},notice:()=>{}});
+ await a.bind();await a.run(['login','--device-auth']);await a.run(['exec','one','--session','a']);await a.run(['exec','two','--session','a']);
+ const path=await loginFilePath(loginMount({harness:'codex',name:'work'}),a.hostEnv);
+ assert.equal(JSON.parse(await readFile(join(path,'login.json'),'utf8')).generation,2);
+ const ready=join(root,'writer-ready');const script=join(root,'writer.cjs');
+ await writeFile(script,`require('fs').openSync(process.argv[2],'r');require('fs').writeFileSync(process.argv[3],'ready');setInterval(()=>{},1000);`);
+ const writer=await a.client.request('spawn',{command:process.execPath,args:[script,join(path,'login.json'),ready],cwd:root,env:fixtureEnvironment(root,a.hostEnv)}) as {pid:number;identity:string};owners.defer(ownProcess(undefined,writer.pid));
+ const other=await a.client.request('spawn',{command:process.execPath,args:['-e','setInterval(()=>{},1000)'],cwd:root,env:fixtureEnvironment(root,a.hostEnv)}) as {pid:number;identity:string};owners.defer(ownProcess(undefined,other.pid));
+ await until(async()=>await readFile(ready,'utf8')==='ready',{what:'writer open-file receipt'});
+ const extra=await provider.createVolume({project:root,name:'other',region:'fake-1',sizeGiB:1});if(extra.state!=='created')throw Error('fixture extra volume');
+ await provider.attachVolume(extra.volume,a.machine);await a.host.loginDisk!({op:'mount',volume:extra.volume.name,path:'/cland/auth/opencode-other'});
+ store.hosts.logins.insert({name:'other',harness:'opencode',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:extra.volume.id,snapshotIds:[],lastSignIn:null});store.hosts.logins.transition('other','ready');store.hosts.logins.bind('other',{host:a.machine.id,role:'writer',volumeId:extra.volume.id,phase:'settled'});
+ const extraPath=await loginFilePath('/cland/auth/opencode-other',a.hostEnv),extraReady=join(root,'other-ready');await writeFile(join(extraPath,'data'),'sentinel');
+ const extraWriter=await a.client.request('spawn',{command:process.execPath,args:[script,join(extraPath,'data'),extraReady],cwd:root,env:fixtureEnvironment(root,a.hostEnv)}) as {pid:number;identity:string};owners.defer(ownProcess(undefined,extraWriter.pid));
+ await until(async()=>await readFile(extraReady,'utf8')==='ready',{what:'second disk open-file receipt'});
+ let detaches=0;const detach=provider.detachVolume.bind(provider);t.mock.method(provider,'detachVolume',async(...args:Parameters<typeof detach>)=>{detaches++;assert.equal(issued.size,2,'both hub unmount requests issued before detach');return detach(...args);});
+ const destroying=destroyHost({root,id:a.machine.id,env,records:store.hosts,provider,owner:{hosts:[a.host,b.host],remove:async()=>({inventoryComplete:true,timedOut:false,leftovers:[]})} as unknown as Parameters<typeof destroyHost>[0]['owner'],log:()=>{}});
+ owners.defer(async()=>{gate.resolve();await destroying;});
+ await until(()=>issued.size===2,{what:'both hub disk unmount requests outstanding through sshHost'});assert.equal(detaches,0);gate.resolve();
+ const result=await destroying;
+ assert.equal(await a.client.request('alive',extraWriter),false);
+ assert.equal(result.state,'destroyed');assert.equal(await a.client.request('alive',writer),false);assert.equal(await a.client.request('alive',other),true);
+ assert.equal((await a.client.request('native-receipts',{}) as Array<{pid:number}>).some(row=>row.pid===writer.pid),true);
+ await b.bind();await b.run(['exec','three','--session','b']);
+ const next=await loginFilePath('/cland/auth/codex-work',b.hostEnv),login=JSON.parse(await readFile(join(next,'login.json'),'utf8'));
+ assert.equal(login.generation,3);assert.deepEqual(login.turns.map((turn:{host:string;generation:number})=>[turn.host,turn.generation]),[[a.machine.id,1],[a.machine.id,2],[b.machine.id,3]]);
+ const row=store.hosts.logins.get('work');assert.equal(row?.kind==='disk'&&row.volumeId,made.volume.id);
+});

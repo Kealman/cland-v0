@@ -1,3 +1,4 @@
+import { releaseHostLogins, trackLoginRelease } from './login-release.ts';
 import { provisionSsh } from './provision-ssh.ts';
 import { hostCreateAdmission } from './create-admission.ts';
 import { hostLeaseRenewable } from './provision-records.ts';
@@ -153,9 +154,10 @@ export async function createHost(o:{onBootFailure?:(record:ProvisionRecord)=>voi
    if(record.nonAcquisition){await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,{clock});await o.records.leases.cancel(record.id,leaseOptions);record.release='released';}
    else if(error instanceof RuntimeDeliveryIncomplete)record.release='incomplete';
    else {
+    const finishLogins=record.machine?await releaseHostLogins({records:o.records,id:record.id,root:o.root,provider,machine:record.machine,clock}):async()=>{};
     const settled=!registered||hostSettlementComplete(await o.owner.remove(record.id));
     if(!settled)record.release='incomplete';
-    else if(record.machine){const confirmed=new Set<string>();const result=await provider.release(record.machine,r=>{confirmed.add(r.resource);releaseReads.push(r);});record.release=result.state==='released'&&confirmed.has('machine')&&confirmed.has('key')?'released':'incomplete';}
+    else if(record.machine){const confirmed=new Set<string>();const result=await provider.release(record.machine,r=>{confirmed.add(r.resource);releaseReads.push(r);});if(confirmed.has('machine'))await finishLogins();record.release=result.state==='released'&&confirmed.has('machine')&&confirmed.has('key')?'released':'incomplete';}
     else if(acquiring)record.release='incomplete';
    }
   }catch {record.release='incomplete';}
@@ -193,24 +195,37 @@ export async function restoreProvisionedFakeHosts(records:HostRecords,env:NodeJS
  env.CLAND_FAKE_HOSTS=[...membership].join(',');
 }
 
+const destructions=new WeakMap<HostRecords,Map<string,Promise<Awaited<ReturnType<typeof destroyHostOnce>>>>>();
+/** Concurrent stop/expiry callers join the same destructive operation. */
+export function destroyHost(o:Parameters<typeof destroyHostOnce>[0]):ReturnType<typeof destroyHostOnce> {
+ let work=destructions.get(o.records);if(!work){work=new Map();destructions.set(o.records,work);}
+ const current=work.get(o.id);if(current)return current;
+ const result=destroyHostOnce(o).finally(()=>work!.delete(o.id));work.set(o.id,result);return trackLoginRelease(o.records,result);
+}
+
 /** Explicit destruction remains available when the transport cannot answer.
  * remove joins the existing revoke owner before provider deletion. */
-export async function destroyHost(o:{watchdogOptions?:import('../executor/droplet/watchdog.ts').WatchdogOptions;processes?:LockProcessTable;clock?:Clock;root:string;id:string;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>;provider?:HostProvider;settleDeleted?:(id:string,read:string)=>void|Promise<void>;log:(event:{event:string;host:string;resource:string;read:string})=>void}) {
+async function destroyHostOnce(o:{lost?:boolean;watchdogOptions?:import('../executor/droplet/watchdog.ts').WatchdogOptions;processes?:LockProcessTable;clock?:Clock;root:string;id:string;env:NodeJS.ProcessEnv;records:HostRecords;owner:Awaited<ReturnType<typeof projectSshHosts>>;provider?:HostProvider;settleDeleted?:(id:string,read:string)=>void|Promise<void>;log:(event:{event:string;host:string;resource:string;read:string})=>void}) {
  const initial=o.records.provisions.get(o.id);
  if(!initial)throw Error('unknown host');
  let record:ProvisionRecord=initial;
- if(record.state==='destroyed')return publicProvision(record);
+ if(record.state==='destroyed'&&!o.records.logins.forHost(o.id).some(binding=>binding.phase!=='pending'&&o.records.logins.get(binding.login)?.kind==='disk'))return publicProvision(record);
  record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);
  try {
   const creation=creations.get(join(o.root,o.id));
   if(creation){creation.abort.abort();await creation.done;record=o.records.provisions.get(o.id)!;record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);}
-  // A failed provisioning attempt may never have published a registration.
-  if(o.records.get(record.id))await o.owner.remove(record.id);
   const provider=o.provider??new HostProviderRegistry({env:o.env}).resolve(record);
+  const finishLogins=record.machine?await releaseHostLogins({records:o.records,id:record.id,root:o.root,provider,machine:record.machine,lost:o.lost===true,clock:o.clock??realClock}):async()=>{};
+  // A failed provisioning attempt may never have published a registration.
+  const registration=o.records.get(record.id);
+  // A revoked startup row has no current carrier or Sessions cut to remove.
+  // Keep removal for live registrations and any carrier still owned here.
+  if(registration&&(registration.state==='registered'||o.owner?.hosts?.some(host=>host.name===record.id)))await o.owner.remove(record.id);
   const confirmed=new Set<string>();const releaseReads:ReleaseRead[]=[];
   if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,o.processes?{root:o.root,env:o.env,clock:o.clock??realClock,processes:o.processes}:{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return publicProvision(record);}throw Error('acquisition outcome unknown');}
   const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);releaseReads.push(receipt);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
   if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
+  if(confirmed.has('machine'))await finishLogins();
   record.release=result.state;
   if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){const clock=o.clock??realClock;const receipt=await recordHostAbsence({root:o.root,id:record.id,provider:record.provider,machine:record.machine!},clock,releaseReads);await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,o.watchdogOptions?{...o.watchdogOptions,clock}:{clock});await o.records.leases.release(record.id,o.processes?{root:o.root,env:o.env,clock,processes:o.processes}:{root:o.root,env:o.env,clock},receipt.confirmedAt);record.state='destroyed';delete record.reason;}
   else {record.release='incomplete';record.reason='deletion not confirmed'+(result.state==='incomplete'?': '+result.reason:': confirming reads missing');}

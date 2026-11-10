@@ -42,7 +42,13 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
  const liveWatchdog=store.hosts.leases.get(live.id)!.watchdog!;
  await f.hub.stop();
  const provider=new FakeHostProvider({env:f.env});
+ const goneLogin=store.hosts.logins.forHost(gone.id)[0]!;
  assert.equal((await provider.release(gone.machine)).state,'released');
+ let detachedInventory=false,volumeReads=0;const listVolumes=FakeHostProvider.prototype.listVolumes;
+ t.mock.method(FakeHostProvider.prototype,'listVolumes',async function(this:FakeHostProvider,...args:Parameters<typeof listVolumes>){
+  volumeReads++;const result=await listVolumes.apply(this,args);
+  return !detachedInventory&&result.state==='listed'?{...result,volumes:result.volumes.map(volume=>volume.id===goneLogin.volumeId?{...volume,attachedTo:gone.machine.id}:volume)}:result;
+ });
  await writeFile(join(f.root,'.cland/config.toml'),(await readFile(join(f.root,'.cland/config.toml'),'utf8')).replace('min_hosts=0','min_hosts=1'));
  const reopen=async()=>{
   const hub=await projectHub(t,f.root,f.env as Record<string,string>,{adapters:[boundary=>new OpenCodeAdapter(boundary,{bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,env:fixtureEnvironment(f.root,f.env),stopGraceMs:50})]});
@@ -51,6 +57,10 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
  let reopened=await reopen();
  await eventually('deleted host session durably exited',()=>table.get('worker-1')?.status==='exited'?true:undefined,SETUP_MS);
  assert.equal(table.get('worker-0')?.status,'running');
+ assert.equal(store.hosts.logins.get(goneLogin.login)?.state,'in-use','T-1779 gone-host session exited before detached disk receipt');
+ detachedInventory=true;
+ try {await eventually('T-1779 destroyed host disk reconciles after session exit',()=>store.hosts.logins.get(goneLogin.login)?.state==='ready'?true:undefined,SETUP_MS);}
+ catch(error){const row=store.hosts.logins.get(goneLogin.login),provision=store.hosts.provisions.get(gone.id);t.diagnostic(JSON.stringify({boundary:'T-1779 disk retry incomplete',volumeReads,state:provision?.state,release:provision?.release,deletionReceipt:!!provision?.machineDeletionRead,loginState:row?.state,releasing:row?.kind==='disk'?row.backup?.releasing:null,pending:row?.kind==='disk'?row.backup?.pending:null,bindings:store.hosts.logins.bindings(goneLogin.login).length}));throw error;}
  const restartedUi=await connectUi(t,reopened.discovery,'cli');
  const roles=(await restartedUi.request({type:'role.list'})).value as {roles:Array<{role:string;holders:unknown[]}>};
  assert.equal(roles.roles.find(role=>role.role==='implementer')!.holders.length,0);

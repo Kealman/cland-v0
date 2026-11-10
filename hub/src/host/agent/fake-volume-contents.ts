@@ -22,7 +22,7 @@ export async function listFakeVolumes(root:string,project:string):Promise<{state
     try{directory=await opendir(join(root,'volumes'));}catch(e){if(missing(e))return {state:'listed',volumes:[]};throw e;}
     const volumes:Volume[]=[];
     for await(const entry of directory) {
-      if(entry.isDirectory())continue;
+      if(entry.isDirectory()||!entry.name.endsWith('.json')||!isFakeVolumeId(entry.name.slice(0,-5)))continue;
       const record=parseFakeVolumeRecord(await readFile(join(root,'volumes',entry.name),'utf8'),entry.name.replace(/\.json$/,''));
       if(record.volume.project===project)volumes.push(record.volume);
     }

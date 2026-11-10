@@ -486,3 +486,9 @@ export async function optionalCapacityHostContract(host: Pick<Host, 'onCapacityC
     assert.equal(samples.length, before, 'unsubscribed capacity listener received a later report');
   } finally { try { if (active) unsubscribe(); } finally { unsubscribeLater?.(); } }
 }
+
+/** Optional synchronous transport observation, without mutating or waiting. */
+export function optionalLoginDiskReachabilityContract(host:Pick<Host,'loginDiskReachable'>,expected?:boolean):void {
+ if(expected===undefined)assert.equal(host.loginDiskReachable,undefined);
+ else {assert.equal(typeof host.loginDiskReachable,'function');assert.equal(host.loginDiskReachable!(),expected);}
+}

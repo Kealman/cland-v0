@@ -187,8 +187,7 @@ login state is introduced. A pending binding is never reused or offered by
 `free()`. A failed bind unmounts and detaches before removing its binding and
 returning to ready. Missing positive cleanup receipts retain the pending binding
 and fail the launch with the login name and `outcome unknown`. Reconciliation
-at startup (T-1793) owns recovery of pending bindings; ordinary host-stop release
-(T-1779) must leave them alone. Shutdown joins in-flight binding work to native
+at startup (T-1793) owns recovery of pending bindings; ordinary host-stop release must leave them alone. Shutdown joins in-flight binding work to native
 settlement or its existing operation deadline before storage closes. It introduces no raced timeout.
 Abortable volume and login-disk operations are follow-up T-1801.
 
@@ -273,12 +272,11 @@ The release owner first awaits `dispatcher.loginSnapshots?.beginRelease(name)`
 before asynchronous stop work. It persists a release fence and refuses new
 snapshots. It joins any admitted freeze and its thaw independently of the
 provider snapshot promise; a failed thaw leaves the fence up and refuses release.
-After host deletion and confirmed detach, it calls
+After confirmed detach, it calls
 `dispatcher.loginSnapshots?.onReleased(name,
-{volumeId})` **after host deletion and confirmed detach**, once the login is ready
+{volumeId})` once the login is ready
 with no bindings. This synchronous notification validates the volume id, clears the release fence and
-queues a due backup without awaiting provider work. T-1779 owns those release
-calls; this module never stops a host or mutates bindings. A future provider retry
+queues a due backup without awaiting provider work. The host release owner makes those calls; this module never stops a host or mutates bindings. A future provider retry
 remains at its recorded deadline after release.
 
 See [snapshot tests](../agents/tests/hub-test-login-snapshots.test.ts.md) and
@@ -327,3 +325,72 @@ refuse with the 0.4.x limitation. The hub requires its redactor registration hoo
 decrypts before inserting metadata and returns the ready key row. `login.add`
 carries harness, kind, name and account only; no key material or ciphertext. See the
 [key-store cases](../agents/tests/hub-test-login-keys.test.ts.md).
+
+## Releasing host disks
+
+The confirmed host-destroy boundary releases settled disk bindings concurrently,
+including explicit stop/destroy, idle stop, lease expiry and boot-failure cleanup.
+The dispatcher registers the release owner's Host lookup, snapshot fence and
+Coordinator notice once for its `HostRecords`. Hosts with no disk bindings need
+no release owner. Host lookups use the indexed `LoginRecords.forHost(id)` query.
+
+Each disk first enters `beginRelease`, then the agent ends its disk users and
+unmounts it. The provider must confirm detach before the binding is removed and
+the same volume returns to ready. `onReleased` receives that detach receipt.
+All parallel work joins before transport removal or provider deletion. Concurrent
+destroy callers join the same operation. A refused unmount or unconfirmed thaw
+or detach retains the host and binding and emits one Coordinator Agents notice
+per host/login in the hub lifetime. It never authorizes deletion.
+
+For a lost host (15 minutes) or a provider-confirmed gone machine, the release
+owner skips unmount. Machine deletion precedes a fresh volume inventory read;
+only an existing volume reported detached permits unbinding. Missing inventory,
+a missing volume or a still-attached volume keeps the binding fenced and the
+destroy result incomplete. Pending bindings remain untouched for startup
+reconciliation. The provider retains the volume and its rotated harness files;
+the next bind mounts those same bytes on its destination host.
+
+See [release cases](../agents/tests/hub-test-login-release.test.ts.md) and
+[write-back case](../agents/tests/hub-test-login-write-back.test.ts.md).
+
+A refused release preserves the existing hard lease/watchdog spend deadline;
+stop does not renew it. If that deadline later destroys the retained host,
+reconciliation follows the lost/gone path with no unmount and waits for a
+positive detached-volume inventory read. After that read clears the binding, a
+second Agents notice names the host and login and reports deadline destruction.
+Retries do not repeat either notice in the same hub lifetime.
+
+Lost/gone classification precedes the snapshot fence. The additive
+`beginRelease(name, {hostLost: true})` mode persists releasing state and records
+any retained freeze identity in `backup.outcome` as abandoned with the lost host,
+clearing the freeze without resolving or calling that Host. Its kernel freeze
+ends with the dying machine. Normal release still requires a confirmed thaw.
+
+The release owner automatically retries a missing or still-attached post-deletion
+inventory, using the hub Clock at 1 s with exponential backoff capped at 30 s.
+The persisted `machineDeletionRead` and settled disk bindings seed recovery after
+restart. `boundHosts(after, limit)` pages the host index at at most 64 hosts per
+page and decodes no retained login records. Concurrent retries share the destroy
+owner; successful reconciliation stops retrying. Shutdown cancels timers and
+joins release work before the snapshot scheduler or database closes.
+
+Two-disk concurrency is measured at the hub boundary: both unmount requests are
+issued and outstanding before either detach completes. The real SSH Host's
+agent connection processes requests serially; the privileged helper also holds
+one global operation lock. This does not claim parallel helper execution.
+Fake inventory reads inspect only canonical volume record filenames; atomic
+write temporaries are ignored, while malformed canonical records still fail.
+
+An existing tunnel that is down, a closed/quiescing SSH Host, or revoked Host
+admission takes the unreachable-host path without another reconnect wait.
+`Host.loginDiskReachable()` is an optional synchronous observation of those
+existing states; older Hosts without it retain the previous release behavior.
+An answering agent's writer refusal remains the retained-host C6 path.
+
+Machine deletion settles sessions before waiting on post-delete volume inventory.
+During early startup, before a scheduler exists, the snapshot module's shared
+`fenceLostLoginRelease` persists the same lost-host fence and abandoned freeze.
+Gone-host deletion/revocation and spend settlement finish with the login still
+bound. Once installed, the release owner reconciles its retained deletion receipt,
+including a provision already marked destroyed. Volume delay never holds a
+session's deleted-host exit.

@@ -321,7 +321,15 @@ positive mount/commit or full rollback receipt; shutdown joins binding work to
 native settlement or existing deadlines (abortable
 operations are T-1801). Fresh/cross-host spawns bind at their destination; normal
 native resume keeps its recorded binding.
-Host-stop release leaves pending bindings to startup reconciliation. Use explicit
+Host-stop release leaves pending bindings to startup reconciliation. Settled disk
+bindings release in parallel through the shared destroy boundary before transport
+removal. Use the snapshot beginRelease/onReleased hooks and positive detach
+receipts; lost/gone hosts use the snapshot owner's hostLost release mode,
+skip unmount and retry detached volume inventory with the hub Clock. Existing
+SSH reachability is observed synchronously; deleted-host sessions settle before
+volume inventory, and early gone-host startup keeps the disk bound for the
+installed release owner.
+An unconfirmed release retains the binding and existing hard spend deadline. Use explicit
 settledLogin seeds in placement fixtures and readyLogin directory-backed volumes
 for native host-create fixtures. See [login binding](../../../docs/hub/logins.md#binding-at-launch).
 

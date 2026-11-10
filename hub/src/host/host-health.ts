@@ -78,5 +78,5 @@ export async function loseHost(o:Omit<Parameters<typeof destroyHost>[0],'log'> &
   if(!(error instanceof HostLeasePublicationError))throw error;
   o.log({event:'host-lease-publication-failed',host:o.id,code:error.code,error:String(error)});
  }
- return destroyHost(o);
+ return destroyHost({...o,lost:true});
 }

@@ -23,3 +23,13 @@ The companion T2 minimum-host scheduler case supplies the completed scaling-owne
 receipt; this native case retains the final inventory count. Native spend proof
 requires the exact lease ledger entry, the fake provider's expected zero cost and
 a finite released timestamp.
+
+T-1779 preservation: deleted/unreachable sessions must exit while volume inventory
+remains held or reports attached. The original destroy/restart final assertions
+stay; additional disk assertions observe eventual ready only after detached
+inventory. This also exercises the optional synchronous SSH reachability fact
+without adding a reconnect or changing request streams.
+
+A missing detached receipt retains a bounded diagnostic of provider-read count,
+provision state/release, deletion receipt presence and binding/backup facts.
+The fixture never infers signal or completion from that diagnostic.

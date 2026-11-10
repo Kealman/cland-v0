@@ -35,6 +35,8 @@ export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: 
 export interface Host {
   /** Older Hosts may lack the login-disk operation; callers must refuse then. */
   loginDisk?(input: LoginDisk): Promise<void>;
+  /** Synchronous existing transport/admission observation; absent retains legacy behavior. */
+  loginDiskReachable?(): boolean;
   /** A fresh host capacity observation, including agent memory reports. */
   onCapacityChanged?(listener: (availableBytes: number) => void): () => void;
   readonly name: string;

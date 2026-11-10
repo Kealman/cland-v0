@@ -38,3 +38,9 @@ Cleanup reads captured identities, not the closed Store; uncertain ownership or
 cleanup failure retains the root. Destroy and restart cases exercise this
 shared helper without changing their assertions or bounds. The native-slot
 receipt includes before/after TMPDIR fixture inventories.
+
+T-1779 preservation: deleted/unreachable sessions must exit while volume inventory
+remains held or reports attached. The original destroy/restart final assertions
+stay; additional disk assertions observe eventual ready only after detached
+inventory. This also exercises the optional synchronous SSH reachability fact
+without adding a reconnect or changing request streams.

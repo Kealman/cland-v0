@@ -125,3 +125,11 @@ test('optional capacity contract covers absence, report delivery and unsubscribe
   try { await assert.rejects(optionalCapacityHostContract(leaky, { publish, observed }), /unsubscribed capacity listener/); }
   finally { listeners.clear(); }
 });
+
+test('optional login-disk reachability preserves absent Hosts and exact boolean observations',async()=>{
+ const {optionalLoginDiskReachabilityContract}=await import('./host-contract.ts');
+ optionalLoginDiskReachabilityContract({});
+ optionalLoginDiskReachabilityContract({loginDiskReachable:()=>true},true);
+ optionalLoginDiskReachabilityContract({loginDiskReachable:()=>false},false);
+ assert.throws(()=>optionalLoginDiskReachabilityContract({loginDiskReachable:()=>true},false));
+});

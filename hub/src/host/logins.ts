@@ -40,7 +40,7 @@ export class LoginRecords {
    if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness')){
     db.exec("alter table login_bindings add column harness text; update login_bindings set harness=(select json_extract(record,'$.harness') from logins where logins.name=login_bindings.login)");
    }
-   db.exec("create index if not exists login_bindings_launch on login_bindings(host,harness,login); create index if not exists login_ready_launch on logins(json_extract(record,'$.state'),json_extract(record,'$.kind'),json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)");
+   db.exec("create index if not exists login_bindings_host on login_bindings(host,login); create index if not exists login_bindings_launch on login_bindings(host,harness,login); create index if not exists login_ready_launch on logins(json_extract(record,'$.state'),json_extract(record,'$.kind'),json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)");
    db.exec('release login_launch_selection_migration');
   }catch(error){db.exec('rollback to login_launch_selection_migration; release login_launch_selection_migration');throw error;}
 
@@ -60,6 +60,15 @@ export class LoginRecords {
  }
  bindings(name: string): LoginBinding[] {
   return this.db.prepare('select login,host,role,volume_id as volumeId,phase from login_bindings where login=? order by host').all(name).map(bindingRow);
+ }
+ /** Only bound disks participate; indexed cursor pages decode no retained login rows. */
+ boundHosts(after:string,limit:number):string[] {
+  if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw Error('bound host page limit must be 1..64');
+  return this.db.prepare("select distinct b.host from login_bindings b indexed by login_bindings_host join logins l on l.name=b.login where b.host>? and (b.phase is null or b.phase='settled') and json_extract(l.record,'$.kind')='disk' order by b.host limit ?").all(after,limit).map(row=>String(row.host));
+ }
+ /** Indexed host release lookup; does not decode unrelated login history. */
+ forHost(host:string):LoginBinding[] {
+  return this.db.prepare('select login,host,role,volume_id as volumeId,phase from login_bindings where host=? order by login').all(host).map(bindingRow);
  }
  /** Existence only: bounded output and indexed work even for many settled readers. */
  hasPendingBinding(name:string):boolean {

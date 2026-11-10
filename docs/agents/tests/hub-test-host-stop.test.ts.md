@@ -1,7 +1,9 @@
 # hub/test/host-stop.test.ts
 
 T2, in-process projectHub, fake clock, provided Hosts and scripted fake provider
-release receipts. Run `node --test hub/test/host-stop.test.ts` under supported
+release receipts. The settled disk uses an allocated/attached directory-provider
+volume and a recording loginDisk Host, so stop proves unmount and detach before
+its scripted machine/key deletion receipts. Run `node --test hub/test/host-stop.test.ts` under supported
 Node after targeted admission. No native host or provider network.
 
 - `C3 stop joins lease renewal and requires confirmed destroy: true`: live codex

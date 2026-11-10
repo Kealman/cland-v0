@@ -96,6 +96,12 @@ function dueAt(row:Login, now:number):number {
  return row.state==='in-use'?Date.parse(row.backup?.lastAt??row.lastSignIn??row.backup?.initialAt??new Date(now).toISOString())+DAY:Infinity;
 }
 
+/** Early gone-host startup has no scheduler yet; retain the same lost-kernel fence. */
+export function fenceLostLoginRelease(logins:LoginRecords,name:string,now:number):void {
+ const row=disk(logins,name),{freeze,...backup}=row.backup??{pending:false};
+ logins.updateBackup(name,{...backup,releasing:true,pending:backup.pending||dueAt(row,now)<=now,...(freeze?{outcome:'freeze abandoned with lost host: '+JSON.stringify(freeze)}:{})});
+}
+
 /** One owner per login; shutdown joins native/provider work before storage closes. */
 type Options = {logins:LoginRecords;clock:Clock;resolve:(row:Disk)=>Promise<SnapshotTarget>;report?:(error:unknown)=>void};
 type Running = {promise:Promise<SnapshotVolumeResult>; prepared:Promise<void>; thaw?:()=>Promise<void>};
@@ -157,15 +163,17 @@ export class LoginSnapshots {
   return true;
  }
  /** Fence admission before release; join only freeze/thaw, never provider I/O. */
- beginRelease(name:string):Promise<void> {
+ beginRelease(name:string,options?:{hostLost?:boolean}):Promise<void> {
   if(this.stopped)return Promise.reject(Error('login snapshots stopped'));
-  const work=this.release(name);this.releases.add(work);
+  const work=this.release(name,options);this.releases.add(work);
   void work.finally(()=>this.releases.delete(work)).catch(()=>{});return work;
  }
- private async release(name:string):Promise<void> {
+ private async release(name:string,options?:{hostLost?:boolean}):Promise<void> {
+  if(options?.hostLost){fenceLostLoginRelease(this.options.logins,name,this.options.clock.now().getTime());return;}
   const row=disk(this.options.logins,name);
   checkpoint(this.options.logins,name,{releasing:true,pending:row.backup?.pending===true||dueAt(row,this.options.clock.now().getTime())<=this.options.clock.now().getTime()});
-  if(!disk(this.options.logins,name).backup?.freeze)return;
+  const held=disk(this.options.logins,name).backup;
+  if(!held?.freeze)return;
   const running=this.work.get(name);
   if(running){await running.prepared;if(running.thaw)await running.thaw();}
   else {const target=await this.options.resolve(disk(this.options.logins,name));await recoverThaw(this.options.logins,name,target);}

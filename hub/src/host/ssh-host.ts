@@ -177,6 +177,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
+    loginDiskReachable:()=>!closed&&!quiescing&&unknown.size===0&&(!o.available||o.available())&&o.transport.status().state==='up',
     loginDisk: async input => {
       mutation();
       const connection=await connected();

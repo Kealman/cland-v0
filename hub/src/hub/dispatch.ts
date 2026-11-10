@@ -1,3 +1,4 @@
+import { installLoginRelease } from '../host/login-release.ts';
 import { addKeyLogin } from '../host/login-keys.ts';
 import { projectTag } from '../executor/droplet/droplet.ts';
 import { onHostSpendChange } from '../executor/droplet/spend.ts';
@@ -330,6 +331,7 @@ export class Dispatcher {
       const authorize=()=>{authorizeCleanup();if(options.core.store.hosts.provisions.get(binding.host)?.state!=='ready')throw Error('login snapshot host is stopping');};
       return {provider,volume,host,identity,authorize,authorizeCleanup};
     }}) : null;
+    this.#loginRelease=installLoginRelease(options.core.store.hosts,{clock:options.core.clock,retry:id=>destroyHost({clock:options.core.clock,root:root!,id,env:options.env??process.env,records:options.core.store.hosts,owner:this.hostOwner!,settleDeleted:(id,read)=>this.#sessions?.hostDeleted(id,read),log:event=>this.#log(event)}),host:id=>this.hostOwner?.hosts.find(host=>host.name===id),beginRelease:(name,options)=>this.loginSnapshots?this.loginSnapshots.beginRelease(name,options):Promise.reject(Error('login snapshots unavailable')),onReleased:(name,receipt)=>this.loginSnapshots?.onReleased(name,receipt),notice:text=>options.core.noticeTo('agents',{kind:'report',to:['coordinator'],text})});
     this.#models = root ? new HarnessModels(options.core.store, root, options.env) : null;
     this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env, options.projectConfig, { ...options.droplet, clock: options.core.clock }) : null;
     this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env, (lease, text) => {
@@ -515,6 +517,7 @@ export class Dispatcher {
   #hostProvisionAbort = new AbortController();
   #stopHostSpend: (() => void) | undefined;
   #poolPrepares = new Set<Promise<unknown>>();
+  readonly #loginRelease:ReturnType<typeof installLoginRelease>;
   readonly #loginClosers = new Set<() => Promise<unknown>>();
   readonly #loginPins = new Map<string, number>();
   async close(): Promise<void> {
@@ -522,6 +525,7 @@ export class Dispatcher {
     const failures:unknown[]=[];
     const attempt=async(close:()=>unknown|Promise<unknown>)=>{try{await close();}catch(error){failures.push(error);}};
     this.#hostProvisionAbort.abort();
+    await attempt(()=>this.#loginRelease.close());
     await attempt(()=>this.loginSnapshots?.close());
     await attempt(()=>this.#stopHostSpend?.());
     await Promise.allSettled([...this.#poolPrepares]);

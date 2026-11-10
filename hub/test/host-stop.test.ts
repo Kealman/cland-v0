@@ -20,19 +20,27 @@ for(const confirmed of [true,false])test(`C3 stop joins lease renewal and requir
  const root=await tempProject(t),clock=new FakeClock(Date.now());
  await mkdir(join(root,'.cland'),{recursive:true});
  await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=4\nmin_hosts=0\n');
- const id='z-host',created=clock.now().toISOString();
+ const provider=new FakeHostProvider({env:fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root}),now:()=>clock.now().getTime()});
+ const acquired=await provider.acquire({project:root,pool:'agents',architecture:'arm64',region:'fake'});assert.equal(acquired.state,'created');if(acquired.state!=='created')throw Error('fixture machine');
+ const machine=acquired.machine,id='z-host',created=machine.created;
+ const diskOps:string[]=[];
  let records!:HostRecords;
  const local=localHost(fixtureEnvironment(root,process.env));
- const hosts=['z-host','a-host'].map(id=>({...testHost(id,()=>{}),layout:local.layout,listFolder:async()=>[],realpath:local.realpath,statDirectory:async()=>({refusal:null,identity:null})}));
+ const hosts=['z-host','a-host'].map(id=>({...testHost(id,()=>{}),layout:local.layout,listFolder:async()=>[],realpath:local.realpath,statDirectory:async()=>({refusal:null,identity:null}),loginDisk:async(input:import('../src/host/agent/resource-types.ts').LoginDisk)=>{diskOps.push(input.op);}}));
  const hub=await projectHub(t,root,{CLAND_FAKE_HOST_ROOT:root},{clock,hosts,createHost:async o=>{records=o.records;return {id,pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'creating'};}});
+ // Provided Hosts enter Sessions directly; publish the same recording inventory
+ // to the transport owner used by shared destroy/login release.
+ hub.hostOwner!.hosts.push(...hosts);
  const ui=await connectUi(t,hub.discovery,'cli');
  assert.equal((await ui.request({type:'host.create',pool:'agents'})).ok,true);
  const env=hub.hostEnvironment;
  Object.assign(hub.fakes.codex!,{releaseUnreachableGeneration:async(p:HarnessProcess)=>({generation:hostGenerationKey(p),released:true,dropped:[],forwardIds:[]})});
- records.provisions.save({id,pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'booting',machine:{id,address:id,architecture:'arm64',created}});
- new HostSecretStore(root,records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
+ records.provisions.save({id,pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'booting',machine});
+ new HostSecretStore(root,records,()=>{}).register({id,address:machine.address,user:'fixture',clientKeyPath:'',knownHosts:''});
  records.provisions.ready({...records.provisions.get(id)!,state:'ready'});
- settledLogin(records.logins,id,'codex',{provider:'fake',region:'fake'});
+ const createdVolume=await provider.createVolume({project:root,name:'stop-login',region:'fake',sizeGiB:1});assert.equal(createdVolume.state,'created');if(createdVolume.state!=='created')throw Error('fixture disk');
+ assert.equal((await provider.attachVolume(createdVolume.volume,machine)).state,'attached');
+ settledLogin(records.logins,id,'codex',{provider:'fake',region:'fake',volumeId:createdVolume.volume.id});
  const launched=await ui.request({type:'session.launch',name:'stop-worker',harness:'codex',host:id,cwd:root});assert.equal(launched.ok,true,launched.error);
  const lease={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:0};
  await records.leases.create(id,lease);
@@ -48,6 +56,8 @@ for(const confirmed of [true,false])test(`C3 stop joins lease renewal and requir
  });
  const result=await ui.request({type:'host.stop',host:id});assert.equal(result.ok,true,result.error);
  assert.equal((result.value as {state:string}).state,confirmed?'destroyed':'destroying');
+ assert.deepEqual(diskOps,['umount']);
+ const volumes=await provider.listVolumes({project:root});assert.ok(volumes.state==='listed');assert.equal(volumes.volumes[0]?.attachedTo,null);
  await clock.advance(10000);
  assert.equal(records.leases.get(id)?.deadline,confirmed?undefined:deadline);
  assert.equal(records.provisions.get(id)?.release,confirmed?'released':'incomplete');

@@ -71,7 +71,7 @@ test('stage-one login database migrates private binding harness and indexes with
  if(db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness'))db.exec('alter table login_bindings drop column harness');
  db.exec('alter table login_bindings drop column phase');
  const exec=db.exec.bind(db);
- const fault=t.mock.method(db,'exec',((sql:string)=>{if(sql.startsWith('create index if not exists login_bindings_launch'))throw Error('forced migration index failure');return exec(sql);}) as typeof db.exec);
+ const fault=t.mock.method(db,'exec',((sql:string)=>{if(sql.includes('create index if not exists login_bindings_launch'))throw Error('forced migration index failure');return exec(sql);}) as typeof db.exec);
  assert.throws(()=>new LoginRecords(db),/forced migration index failure/);
  assert.equal(db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness'),false,'failed index creation rolls back private column/backfill');
  assert.deepEqual(old.list(),rows);fault.mock.restore();

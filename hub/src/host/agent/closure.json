@@ -42,7 +42,7 @@
     },
     {
       "path": "hub/src/host/agent/fake-volume-contents.ts",
-      "sha256": "4cf245140a9996fee42f87642d8dba33726d6a6a153abb1290605effa7035bd2"
+      "sha256": "504fa543cf64e0395596a5943f07ed6591e83d064bb188540b91a50f7f8e0644"
     },
     {
       "path": "hub/src/host/agent/fake-volume-record.ts",

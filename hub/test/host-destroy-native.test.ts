@@ -35,19 +35,29 @@ for(const down of [false,true])test(`C1/C2/C3 destroy settles native session aft
  await mountedSettledLogin({root:f.root,env:f.env,records:store.hosts.logins,host,machine:record.machine,beforeStop:f.beforeStop,afterNativeJoin:f.afterNativeJoin});
  const launch=await ui.request({type:'session.launch',name:'destroy-worker',harness:'opencode',host:record.id,cwd:home,model:'opencode/fake-paid'},SETUP_MS);assert.equal(launch.ok,true,launch.error);
  await eventually('native worker persisted',()=>{const row=table.get('destroy-worker');return row?.status==='running'&&row.pid&&row.harnessSessionId?true:undefined;},SETUP_MS);
+ assert.equal(host.loginDiskReachable?.(),true,'existing admitted tunnel is reachable');
  if(down) {
   // Keep the machine/native worker live but make all new transport acquisition fail.
   await writeFile(join(fake,'host-key.pub'),'ssh-ed25519 WRONG');
   await (host as typeof host & {close():Promise<void>}).close();
+  assert.equal(host.loginDiskReachable?.(),false,'closed Host is unreachable without a new wait');
  }
  const release=FakeHostProvider.prototype.release;
+ const inventoryGate=Promise.withResolvers<void>();let inventoryHeld=false,deletionObserved=false;
+ let deleting:ReturnType<typeof cland>|undefined;
+ f.beforeStop(async()=>{inventoryGate.resolve();await deleting;});
+ const listVolumes=FakeHostProvider.prototype.listVolumes;
+ t.mock.method(FakeHostProvider.prototype,'listVolumes',async function(this:FakeHostProvider,...args:Parameters<typeof listVolumes>){
+  if(down&&deletionObserved){inventoryHeld=true;await inventoryGate.promise;}
+  return listVolumes.apply(this,args);
+ });
  let held=down;
  t.mock.method(FakeHostProvider.prototype,'release',async function(this:FakeHostProvider,machine:Machine,confirm?:ReleaseObserver){
   if(held) {
    assert.notEqual(table.get('destroy-worker')?.status,'exited','remove without native receipt stays fenced');
    return release.call(new FakeHostProvider({env:f.hub.hostEnvironment,ignoreDelete:true}),machine,confirm);
   }
-  return release.call(this,machine,confirm);
+  return release.call(this,machine,receipt=>{if(receipt.resource==='machine')deletionObserved=true;confirm?.(receipt);});
  });
  if(down) {
   const first=await cland(f.root,'host','destroy',record.id);assert.equal(first.code,1,first.stderr);
@@ -55,7 +65,12 @@ for(const down of [false,true])test(`C1/C2/C3 destroy settles native session aft
   const listed=await cland(f.root,'host','list');assert.match(listed.stdout,/deletion not confirmed/);
   held=false;
  }
- const destroyed=await cland(f.root,'host','destroy',record.id);assert.equal(destroyed.code,0,destroyed.stderr);assert.equal(JSON.parse(destroyed.stdout).state,'destroyed');
+ deleting=cland(f.root,'host','destroy',record.id);
+ if(down){
+  await eventually('T-1779 tunnel-down session exits while volume inventory is held',()=>inventoryHeld&&table.get('destroy-worker')?.status==='exited'?true:undefined,SETUP_MS);
+  assert.equal(store.hosts.logins.forHost(record.id).length,1,'disk remains bound while inventory is held');
+ }
+ inventoryGate.resolve();const destroyed=await deleting;assert.equal(destroyed.code,0,destroyed.stderr);assert.equal(JSON.parse(destroyed.stdout).state,'destroyed');
  assert.equal(table.get('destroy-worker')?.status,'exited');
  assert.equal(await watchdogAlive(leaseFile as DropletLease,f.env),false,'confirmed destroy joins the watchdog');
  assert.equal(readHostLeaseFile(f.root,record.id),null);
