@@ -35,7 +35,7 @@ From the stage-1 brief at `M2`, carried: T-1731 (`hub/test/host-ssh-contract.tes
 - **T-1804** (backlog): explorer protocol recordings key on archive-loading state. This brief runs no recording refresh; if a run of anything here leaves `nvim/test/fixtures/` changed, record it as T-1804 and keep the diff (it also makes `dirty entries` non-zero: report it, do not revert by hand).
 - **T-1805** (backlog): the login-add fixture-owner receipt above.
 - **T-1676** (backlog): dead hub and spoke fallback sockets and fixture-owner receipts from unchanged producers, the carried class.
-- **T-1806** (backlog, needs-triage): native host fixtures leave `cland-h-*` socket directories in `/private/tmp` (impl-1780's run of `hub/test/host-create-ready.test.ts` at `678733ec5` added ten, and its four-file native slot fourteen, A-18459 and A-18460, Coordinator decision 93073308), and `/private/tmp` holds the historical native-fixture roots named above. New `cland-h-*` names after E1535S2-64 to E1535S2-71 are this item: `invd.mjs` marks them `known-class`, the row records them, QA leaves them untouched, and they never fail a row.
+- **T-1806** (backlog, needs-triage): native host fixtures leave `cland-h-*` socket directories in `/private/tmp` (impl-1780's run of `hub/test/host-create-ready.test.ts` at `678733ec5` added ten, and its four-file native slot fourteen, A-18459 and A-18460, Coordinator decision 93073308), and `/private/tmp` holds the historical native-fixture roots named above. New `cland-h-*` names after any native row whose test reaches `createHost` through `records.ts` `hostPaths` (E1535S2-60, E1535S2-64 to E1535S2-71 and E1535S2-73; run-1 correction, A-18475) are this item: `invd.mjs` marks them `known-class`, the row records them, QA leaves them untouched, and they never fail a row.
 
 ### How this brief applies them, and the reconciliation
 
@@ -56,6 +56,12 @@ From the stage-1 brief at `M2`, carried: T-1731 (`hub/test/host-ssh-contract.tes
 - **TAP.** `node --test <file>` reports top-level registrations with `1..N` and `# tests/pass/fail/cancelled/skipped/todo` counters that include nested subtests; names escape `#` and `\`. `tap.mjs` parses exactly that. Nested registrations here: one in `hub/test/login-binding.test.ts` (plan 32, `# tests` 33), one in `hub/test/login-release.test.ts` (plan 24), one in `hub/test/fake-ssh.test.ts` (plan 15), one in `hub/test/host-create-ready.test.ts` (plan 11) (VERIFIED).
 - **Exact strings** are counted by `src.mjs` with `String.split`, never by shell `grep`; tree-wide absence checks use `git grep` at `$S`.
 - **The preservation lock** is the directory `/tmp/cland-preserve.lock`: `mkdir` must exit 0, then an owner file naming this run, row and file; removal only after the owner check, by literal path. Here **one native file per slot**, and a slot is at most 15 minutes: `std.mjs` sends TERM to its own child at 900 s and exits 124, which makes the row INCONCLUSIVE (record it, release the slot, report). A held lock makes the row BLOCKED for now (retry later; never remove another owner's lock).
+
+### Run 1 corrections (qa-678, A-18475, clear at `121ec8bef`)
+
+- **E1535S2-05 self-match.** The tree-wide scan also excludes this brief (`':!qa/briefs/E-1535-stage-2.md'`). Run 1 counted 2, both literals in this file (its `src.mjs` assertion and the scan expression itself), and recorded the corrected count 0 under Coordinator decision 788ff6b1.
+- **T-1806 scope.** Every native row whose test reaches `createHost` through `records.ts` `hostPaths` leaves dead `cland-h-*` socket directories in `/private/tmp`, rows E1535S2-60 and E1535S2-73 included (decisions 6be29ff4 and 846009f2). Run 1 counted 21, all untouched.
+- **Actual fixture prefixes.** The DigitalOcean volume fixtures use `cland-fake-do-`, and `host-unreachable` uses `cland-init-machine-`. These replace the INFERRED families of rows E1535S2-67 and E1535S2-68.
 
 ## Stage
 
@@ -887,7 +893,7 @@ s02() {   # landing diffs (read-only), the stage-wide invariants, the landing ch
   echo "T-1780 landings $(landing T-1780 | wc -l | tr -d ' ')"
 }
 s05() {   # tree-wide absence checks at the build (read-only git)
-  echo "retired DigitalOcean refusal outside the historical stage-1 brief: $(git -C "$W" grep -n -E 'acquisition is test-only|(get|list|delete)Snapshot unsupported|fromSnapshot unsupported' "$S" -- . ':!qa/briefs/E-1535-stage-1.md' | wc -l | tr -d ' ')"
+  echo "retired DigitalOcean refusal outside the historical stage-1 brief: $(git -C "$W" grep -n -E 'acquisition is test-only|(get|list|delete)Snapshot unsupported|fromSnapshot unsupported' "$S" -- . ':!qa/briefs/E-1535-stage-1.md' ':!qa/briefs/E-1535-stage-2.md' | wc -l | tr -d ' ')"
   echo "stage-1 brief historical boundary paragraphs: $(git -C "$W" show "${S}:qa/briefs/E-1535-stage-1.md" | grep -c 'Historical build boundary (T-1782 migration)')"
   echo "logout commands in production source: $(git -C "$W" grep -n -E 'codex[[:space:]]+logout|claude[[:space:]]+auth[[:space:]]+logout|/logout' "$S" -- hub/src shared | wc -l | tr -d ' ')"
   echo "managed ignore names auth: $(git -C "$W" show "${S}:hub/src/project.ts" | grep -c -x -F 'auth/')"
