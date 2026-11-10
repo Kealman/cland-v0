@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-06T19:18:18.818Z
+updated: 2026-11-10T05:16:58.741Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -550,3 +550,7 @@ Hub restart #70 (stand-in, coord go; coord's message called it #68): dev 5f8376f
 coord, 2026-11-06 19:17Z: lost run. Periodic dev T3 d22186e2 at e19c3496 (A-17189) was "not run · infrastructure". Its delivery upload of tree.bundle to droplet cland-v0-592657b4 (c-8 sfo2) failed or exceeded its time bound (exit 1); the only output was ssh's "Permanently added … to the list of known hosts". No tests executed. Lifetime 210 s, cost $0.0146.
 
 This was the second droplet run on the new snapshot cland-v0-35e1dc609f89, prepared 18:48Z. The first, stage cover 255a9c8b on cland-v0-6fe8a260, delivered and has been running for 22 min, so it reads as a one-off copy failure rather than an image defect. The log records no copy stderr beyond the ssh warning.
+
+### coord · 2026-11-10T05:16:58.741Z
+
+Incident 2026-11-10 05:16Z (T-1777, impl-1777): fakes-only breach during a red fixture run. The existing fake-ssh raw one-shot dispatch passed three new sign-in command forms through to the real claude, codex and opencode binaries found on PATH. HOME was isolated and the input synthetic; no production credential was intentionally supplied. Claude printed a browser sign-in attempt. The implementer stopped pre-fix native runs, joined the children, and installed exact fake routing. Coord checked at 05:17Z: no leftover real sign-in process, no new browser process. Remedy requested: the incident detail on T-1777 (commands, PATH/HOME by name, whether a browser or open was invoked, files outside scratch), a fake-ssh guard so that no test, red demonstrations included, can execute a binary outside the fake set, and a test for that guard. Rule proposal P-impl1777-fakepaths, batch 6.
