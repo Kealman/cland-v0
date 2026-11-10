@@ -49,6 +49,9 @@ test('an invite registers a password and issues a user-bound cookie exactly once
   assert.equal(reused.status, 400);
   assert.match(await reused.text(), /used invite/);
   assert.equal(reused.headers.get('set-cookie'), null);
+  const usedDetails = await httpFetch(`${url.origin}/invite/details?token=${token}`, { method: 'POST', headers: { Origin: url.origin } });
+  assert.equal(usedDetails.status, 400);
+  assert.match(await usedDetails.text(), /used invite/);
   assert.equal(JSON.stringify(logs).includes(password), false);
   const events = await askHubFrame(hub.discovery, { type: 'events.list' }, 3000, {});
   assert.equal(JSON.stringify(events).includes(password), false);
@@ -69,7 +72,9 @@ test('invite admission refuses foreign origins, wrong methods, short passwords a
   }
   const register = (password: string) => httpFetch(invite.origin + '/invite/register', { method: 'POST', headers: { Origin: invite.origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password }) });
   const short = await register('short'); assert.equal(short.status, 400); assert.match(await short.text(), /12 characters/);
-  assert.equal((await httpFetch(invite.href)).status, 200, 'short password did not consume the invite');
+  const details = await httpFetch(`${invite.origin}/invite/details?token=${token}`, { method: 'POST', headers: { Origin: invite.origin } });
+  assert.equal(details.status, 200, 'short password did not consume the invite');
+  assert.equal((await details.json()).name, 'jane-doe');
   const unknown = await httpFetch(invite.origin + '/invite?token=unknown');
   assert.equal(unknown.status, 400); assert.match(await unknown.text(), /unknown invite/); assert.equal(unknown.headers.get('set-cookie'), null);
   const missingOrigin = await httpFetch(invite.origin + '/invite/register', { method: 'POST' }); assert.equal(missingOrigin.status, 403);
