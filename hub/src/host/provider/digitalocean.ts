@@ -1,3 +1,4 @@
+import {authorizeSnapshot,SnapshotSendRefused,type SnapshotVolumeOptions} from './provider.ts';
 import { clockDelay } from '../clock-delay.ts';
 import { issuedHostAdmission, hostAdmissionTag, hostAdmissionEffect, HostAdmissionUnavailable } from '../create-admission.ts';
 import { parsePoolName } from '../pool-name.ts';
@@ -462,13 +463,14 @@ export class DigitalOceanHostProvider implements HostProvider {
       return type === 'attach' ? { state: 'attached' } : { state: 'detached' };
     } catch { return { state: 'failed', reason: 'DigitalOcean volume action unconfirmed' }; }
   }
-  snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
+  snapshotVolume(volume: Volume, options?:SnapshotVolumeOptions): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
     const identity = JSON.stringify([volume.id, volume.project, volume.name, volume.region, volume.sizeGiB, volume.created]);
     const known = this.#snapshotRefusals.get(volume.id);
     if (known?.identity === identity && this.#clock.now().getTime() < known.retryAt) return { state: 'refused', reason: 'rate limited', retryAt: new Date(known.retryAt).toISOString() };
     let validated = false;
-    try { await this.#ownedVolume(volume); validated = true; const native = await this.#api.volumeSnapshot(volume.id, `cland-${randomUUID()}`); const snapshot = { id: native.id, volumeId: volume.id, created: native.created_at }; await this.#rememberSnapshot(snapshot, volume); return { state: 'snapshotted', snapshot }; }
+    try { await this.#ownedVolume(volume); validated = true; const native = await this.#api.volumeSnapshot(volume.id, `cland-${randomUUID()}`,undefined,options?.authorize?{authorize:async send=>{authorizeSnapshot(options);return send();}}:undefined); const snapshot = { id: native.id, volumeId: volume.id, created: native.created_at }; await this.#rememberSnapshot(snapshot, volume); return { state: 'snapshotted', snapshot }; }
     catch (e) {
+      if(e instanceof SnapshotSendRefused)return {state:'not-sent',reason:'snapshot authorization refused'};
       if (e instanceof RateLimited && e.retryAt !== undefined) {
         if (validated) this.#snapshotRefusals.set(volume.id, { identity, retryAt: e.retryAt });
         return { state: 'refused', reason: 'rate limited', retryAt: new Date(e.retryAt).toISOString() };

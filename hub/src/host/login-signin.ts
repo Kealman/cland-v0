@@ -1,3 +1,4 @@
+import { snapshotLoginDisk } from './login-snapshots.ts';
 import type { Host } from './host.ts';
 import type { Login, LoginRecords } from './logins.ts';
 import type { HostProvider, Machine, Volume } from './provider/provider.ts';
@@ -69,9 +70,8 @@ export async function prepareLoginSignIn(o: {
    await o.host.loginDisk!({op:'umount',volume:volume!.name,path});
    let failure:Error|undefined;
    if(code===0) {
-    const snapshot=await o.provider.snapshotVolume(volume!);
-    if(snapshot.state==='snapshotted') o.logins.updateCreatingDisk(name!,{snapshotIds:[snapshot.snapshot.id]});
-    else failure=Error(`login snapshot ${snapshot.state}: ${snapshot.reason}`);
+    const snapshot=await snapshotLoginDisk(o.logins,name,{provider:o.provider,volume:volume!,authorize},o.clock);
+    if(snapshot.state!=='snapshotted'&&snapshot.state!=='refused') failure=Error(`login snapshot ${snapshot.state}: ${snapshot.reason}`);
    }
    const detached=await o.provider.detachVolume(volume!,o.machine);
    if(detached.state!=='detached') throw Error(`login detach ${detached.state}`);

@@ -1,8 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite';
 
+export type LoginBackup = { initialAt?: string; lastAt?: string; pending: boolean; retryAt?: string; releasing?: boolean; freeze?: {host:string; identity:string; volumeId:string}; receipt?: import('./provider/provider.ts').VolumeSnapshot; outcome?: string };
 export type LoginState = 'creating' | 'ready' | 'in-use' | 'signed-out';
 type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null };
-export type Login = Base & ({ kind: 'disk'; exclusive: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[] } | { kind: 'key' });
+export type Login = Base & ({ kind: 'disk'; exclusive: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[]; backup?: LoginBackup } | { kind: 'key' });
 export type LoginInput = Omit<Base, 'state'> & ({ kind: 'disk'; exclusive?: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[] } | { kind: 'key' });
 export type LoginBinding = { login: string; host: string; role: 'writer' | 'reader'; volumeId: string | null };
 export type LoginBindingRefusalCode = 'disk-volume-required' | 'writer-volume-mismatch' | 'reader-volume-mismatch' | 'key-volume' | 'exclusive-writer' | 'writer-conflict';
@@ -18,6 +19,12 @@ const transitions: Record<LoginState, readonly LoginState[]> = {
 
 /** Project metadata only: harness files and key material never enter this store. */
 export class LoginRecords {
+ private readonly listeners = new Set<()=>void>();
+ onChange(listener:()=>void):()=>void { this.listeners.add(listener); return ()=>this.listeners.delete(listener); }
+ updateBackup(name:string, backup:LoginBackup, snapshotIds?:string[]):void {
+  const row=this.required(name); if(row.kind!=='disk')throw Error('key login has no disk');
+  this.save({...row,backup,...(snapshotIds ? {snapshotIds} : {})});
+ }
  private readonly db: DatabaseSync;
  constructor(db: DatabaseSync) {
   this.db = db;
@@ -34,6 +41,7 @@ export class LoginRecords {
  updateCreatingDisk(name: string, update: {volumeId?: string; snapshotIds?: string[]; lastSignIn?: string}): void {
   const row = this.required(name);
   if (row.kind !== 'disk' || row.state !== 'creating') throw Error('disk login must be creating');
+  if(update.volumeId!==undefined&&update.volumeId!==row.volumeId&&(row.backup?.pending||row.backup?.freeze||row.backup?.receipt))throw Error('login volume has retained snapshot ownership');
   this.save({...row,...update});
  }
  bindings(name: string): LoginBinding[] {
@@ -89,7 +97,7 @@ export class LoginRecords {
   this.db.prepare('insert into login_bindings values (?,?,?,?)').run(row.name,binding.host,binding.role,binding.volumeId);
  }
  private required(name: string): Login { const row = this.get(name); if (!row) throw Error('unknown login: '+name); return row; }
- private save(row: Login): void { this.db.prepare('update logins set record=? where name=?').run(JSON.stringify(row),row.name); }
+ private save(row: Login): void { this.db.prepare('update logins set record=? where name=?').run(JSON.stringify(row),row.name); for(const listener of this.listeners)listener(); }
  private atomic(work: () => void): void {
   this.db.exec('savepoint login_change');
   try { work(); this.db.exec('release login_change'); }

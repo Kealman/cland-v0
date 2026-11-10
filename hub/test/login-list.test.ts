@@ -37,7 +37,7 @@ test('login list refuses session, web and remote edges like host list',async t=>
   const client=frameClient(line=>conversation.receive(line.trimEnd()),fn=>{receive=fn;},()=>{open=false;conversation.closed();},root);
   t.after(()=>client.close());client.send({type:'hello',protocol:2,client:'cli'});
   await client.waitFor(f=>f.type==='welcome');
-  for(const type of ['host.list','login.list','login.add','login.signed-in']){const r=await client.request({type,harness:'codex',name:'work',code:0});assert.equal(r.ok,false);assert.match(r.error!,edge==='web'?/CLI and Neovim/:/gateway/);}
+  for(const type of ['host.list','login.list','login.snapshot','login.add','login.signed-in']){const r=await client.request({type,harness:'codex',name:'work',code:0});assert.equal(r.ok,false);assert.match(r.error!,edge==='web'?/CLI and Neovim/:/gateway/);}
  }
  const spoke=await inProcessSpoke(t,{cwd:root,discover:true,name:'worker',sessionId:'login-worker',role:'implementer'});
  const result=await spoke.call('session.list',{});assert.ok(result);
@@ -47,7 +47,7 @@ test('login list refuses session, web and remote edges like host list',async t=>
  const granted=await cli.request({type:'role.set',session:'worker',role:'implementer'});assert.equal(granted.ok,true,granted.error);
  const actor={name:'worker',sessionId:'login-worker',shell:true,credential};
  const permitted=await cli.request({type:'session.list',as:actor});assert.equal(permitted.ok,true,permitted.error);
- for(const type of ['host.list','login.list','login.add','login.signed-in']){
+ for(const type of ['host.list','login.list','login.snapshot','login.add','login.signed-in']){
   const r=await cli.request({type,harness:'codex',name:'work',code:0,as:{name:'worker',sessionId:'login-worker',shell:true,credential}});assert.equal(r.ok,false);assert.match(r.error!,/only the human|human CLI/i);
  }
 });

@@ -709,6 +709,7 @@ export type ClientRequest =
   | { type: 'remote.status'; id: string }
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
   | { type: 'host.create'; id: string; pool?: string }
+  | { type: 'login.snapshot'; id: string; name: string }
   | { type: 'login.list'; id: string }
   | ({ type: 'login.add'; id: string } & import('./host/login-signin.ts').LoginAddInput)
   | { type: 'login.signed-in'; id: string; name: string; code: number | null }
@@ -1137,6 +1138,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
     case 'login.add':
       return typeof f.harness === 'string' && ['claude-code','codex','opencode'].includes(f.harness) && (f.kind === undefined || f.kind === 'disk' || f.kind === 'key') && ['name','account','pool'].every(key => f[key] === undefined || typeof f[key] === 'string');
+    case 'login.snapshot':
+      return typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name);
     case 'login.signed-in':
       return typeof f.name === 'string' && (f.code === null || Number.isSafeInteger(f.code) && Number(f.code) >= 0 && Number(f.code) <= 255);
     case 'login.list':

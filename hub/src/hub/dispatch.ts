@@ -7,6 +7,7 @@ import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
 import { type LoginSignIn } from '../host/login-signin.ts';
+import { LoginSnapshots } from '../host/login-snapshots.ts';
 import { preparePoolLogin } from '../host/login-add.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
@@ -276,6 +277,8 @@ export class Dispatcher {
   readonly #dropletTimer: ClockTimer | null;
   #dropletWork: Promise<void> | null = null;
 
+  readonly loginSnapshots: LoginSnapshots | null;
+
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
@@ -306,6 +309,27 @@ export class Dispatcher {
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles, options.core.clock);
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
+    const snapshotProviders = root ? new HostProviderRegistry({env:options.env??process.env,now:()=>options.core.clock.now().getTime(),digitalocean:{root,clock:options.core.clock}}) : null;
+    this.loginSnapshots = snapshotProviders ? new LoginSnapshots({logins:options.core.store.hosts.logins,clock:options.core.clock,report:error=>this.#log({event:'login-snapshot-failed',error:String(error)}),resolve:async row=>{
+      const provider=snapshotProviders.resolve(row);
+      const volumes=await provider.listVolumes({project:root!});
+      if(volumes.state!=='listed')throw Error('login volume inventory unavailable');
+      const volume=volumes.volumes.find(volume=>volume.id===row.volumeId);
+      if(!volume)throw Error('login volume unavailable');
+      if(volume.attachedTo===null)return {provider,volume};
+      const binding=options.core.store.hosts.logins.bindings(row.name).find(binding=>binding.role==='writer'&&binding.volumeId===volume.id);
+      if(!binding)throw Error('attached login has no writer binding');
+      const provision=options.core.store.hosts.provisions.get(binding.host);
+      const host=this.hostOwner?.hosts.find(host=>host.name===binding.host);
+      if(provision?.machine?.id!==volume.attachedTo||!host)throw Error('login writer host unavailable');
+      const identity=JSON.stringify({machine:provision.machine,created:provision.created,registration:options.core.store.hosts.get(binding.host)});
+      const authorizeCleanup=()=>{
+        const live=options.core.store.hosts.provisions.get(binding.host);
+        if(JSON.stringify({machine:live?.machine,created:live?.created,registration:options.core.store.hosts.get(binding.host)})!==identity||!this.hostOwner?.hosts.includes(host))throw Error('login snapshot host generation changed');
+      };
+      const authorize=()=>{authorizeCleanup();if(options.core.store.hosts.provisions.get(binding.host)?.state!=='ready')throw Error('login snapshot host is stopping');};
+      return {provider,volume,host,identity,authorize,authorizeCleanup};
+    }}) : null;
     this.#models = root ? new HarnessModels(options.core.store, root, options.env) : null;
     this.#droplets = root ? new DropletExecutor(root, options.core.store, this.#log, options.env, options.projectConfig, { ...options.droplet, clock: options.core.clock }) : null;
     this.#demos = root && options.tracker && this.#droplets ? new Demos(root, options.tracker, this.#droplets, options.env, (lease, text) => {
@@ -498,6 +522,7 @@ export class Dispatcher {
     const failures:unknown[]=[];
     const attempt=async(close:()=>unknown|Promise<unknown>)=>{try{await close();}catch(error){failures.push(error);}};
     this.#hostProvisionAbort.abort();
+    await attempt(()=>this.loginSnapshots?.close());
     await attempt(()=>this.#stopHostSpend?.());
     await Promise.allSettled([...this.#poolPrepares]);
     const logins=await Promise.allSettled([...this.#loginClosers].map(close=>Promise.resolve().then(close)));
@@ -2168,6 +2193,7 @@ export class Dispatcher {
           }
           case 'login.add':
           case 'login.signed-in':
+          case 'login.snapshot':
           case 'login.list':
           case 'host.status':
           case 'host.stop':
@@ -2181,6 +2207,11 @@ export class Dispatcher {
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
+            if(frame.type==='login.snapshot') {
+              if(!this.loginSnapshots)throw Error('login snapshots unavailable');
+              const work=this.loginSnapshots.snapshot(frame.name);
+              return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),error=>Dispatcher.#failure(frame.id,error)));
+            }
             if(frame.type==='login.signed-in') {
               const pending=loginSignIns.get(frame.name);
               if(!pending) throw Error('sign-in belongs to another connection or is already complete');

@@ -67,3 +67,11 @@ checks attempt-all cleanup, explicit storage retention and both diagnostic error
 returns native regions `[fra1, lon1]` for a snapshot retained from lon1, then
 asserts both the clone and restore POST keep lon1 rather than the API's first
 region or caller's requested ams3 (C1).
+
+`digitalocean: refused snapshot authorization sends no native effect` runs the
+same contract as the fake: no POST/history on refusal, with a successful positive
+control. `digitalocean snapshot authorization rechecks after the actual POST
+pacing wait` leaves one API budget slot for the owned-volume GET, observes the
+POST's onWait receipt, revokes admission, advances FakeClock, and proves zero
+snapshot POSTs. An unguarded successful POST is the positive control. The API
+fixture joins that outstanding request before disposal.

@@ -1,3 +1,4 @@
+import {authorizeSnapshot,SnapshotSendRefused,type SnapshotVolumeOptions} from './provider.ts';
 import { fakeVolumePath, fakeVolumeContentsDirectory, fakeVolumeContents, readFakeMachine, fakeMachineStatus, listFakeVolumes, readFakeVolume, type FakeMachineRecord } from '../agent/fake-volume-contents.ts';
 import { parsePoolName } from '../pool-name.ts';
 import { keyHash } from '../../executor/droplet/prepare.ts';
@@ -139,15 +140,17 @@ export class FakeHostProvider implements HostProvider {
     } catch { return { state: 'failed', reason: 'fake volume create failed' }; }
   }); }
   listVolumes(options:{project:string}):Promise<ListVolumesResult> {return this.#serial(()=>listFakeVolumes(this.#root,options.project));}
-  snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
+  snapshotVolume(volume: Volume, options?:SnapshotVolumeOptions): Promise<SnapshotVolumeResult> { return this.#serial(async () => {
     try {
       const record = await this.#volume(volume), now = this.#now();
       const retry = record.lastSnapshotAt === undefined ? undefined : record.lastSnapshotAt + (this.#options.snapshotWindowMs ?? 60_000);
       if (retry !== undefined && now < retry) return { state: 'refused', reason: 'rate limited', retryAt: new Date(retry).toISOString() };
+      authorizeSnapshot(options);
       const snapshot = { id: 'snapshot-' + randomUUID(), volumeId: record.volume.id, created: new Date(now).toISOString() };
       // Copy before publishing the receipt; retained legacy volumes start empty.
       await mkdir(this.#contents(volume.id), { recursive: true, mode: 0o700 });
       await mkdir(join(this.#root, 'snapshots', snapshot.id), { recursive: true, mode: 0o700 });
+      try{authorizeSnapshot(options);}catch(error){await rm(join(this.#root,'snapshots',snapshot.id),{recursive:true,force:true});throw error;}
       await cp(this.#contents(volume.id), this.#snapshotContents(snapshot.id), { recursive: true });
       await durableJson(join(this.#root, 'snapshots', snapshot.id, 'record.json'), { volume: record.volume, lastSnapshotAt: now, snapshot });
       record.snapshots = [...(record.snapshots ?? (record.snapshot ? [record.snapshot] : [])), snapshot];
@@ -155,7 +158,7 @@ export class FakeHostProvider implements HostProvider {
       record.snapshot = snapshot;
       await this.#writeVolume(record);
       return { state: 'snapshotted', snapshot };
-    } catch { return { state: 'failed', reason: 'fake volume snapshot failed' }; }
+    } catch(error) { if(error instanceof SnapshotSendRefused)return {state:'not-sent',reason:'snapshot authorization refused'};return { state: 'failed', reason: 'fake volume snapshot failed' }; }
   }); }
   attachVolume(volume: Volume, machine: Machine): Promise<AttachVolumeResult> { return this.#serial(async () => {
     try {

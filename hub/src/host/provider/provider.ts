@@ -36,7 +36,7 @@ export interface HostProvider {
   getSnapshot(id: string): Promise<GetSnapshotResult>;
   listSnapshots(volume: Volume): Promise<ListSnapshotsResult>;
   deleteSnapshot(snapshot: VolumeSnapshot | string): Promise<DeleteSnapshotResult>;
-  snapshotVolume(volume: Volume): Promise<SnapshotVolumeResult>;
+  snapshotVolume(volume: Volume, options?: SnapshotVolumeOptions): Promise<SnapshotVolumeResult>;
   attachVolume(volume: Volume, machine: Machine): Promise<AttachVolumeResult>;
   detachVolume(volume: Volume, machine: Machine): Promise<DetachVolumeResult>;
   createVolume(options: CreateVolumeOptions): Promise<CreateVolumeResult>;
@@ -56,7 +56,13 @@ export type VolumeRefusal = { state: 'refused'; reason: 'attached elsewhere' | '
 export type AttachVolumeResult = { state: 'attached' } | VolumeRefusal | Failed;
 export type DetachVolumeResult = { state: 'detached' } | VolumeRefusal | Failed;
 
-export type SnapshotVolumeResult = { state: 'snapshotted'; snapshot: VolumeSnapshot } | { state: 'refused'; reason: 'rate limited'; retryAt: string } | Failed;
+export type SnapshotVolumeOptions = {authorize?:()=>void};
+export class SnapshotSendRefused extends Error {}
+/** Synchronous at the send boundary: no await may separate this check and send. */
+export function authorizeSnapshot(options?:SnapshotVolumeOptions):void {
+ try{options?.authorize?.();}catch{throw new SnapshotSendRefused('snapshot authorization refused');}
+}
+export type SnapshotVolumeResult = {state:'not-sent';reason:'snapshot authorization refused'} | { state: 'snapshotted'; snapshot: VolumeSnapshot } | { state: 'refused'; reason: 'rate limited'; retryAt: string } | Failed;
 
 export type ListSnapshotsResult = { state: 'listed'; snapshots: VolumeSnapshot[] } | { state: 'volume-gone' } | Failed;
 export type GetSnapshotResult = { state: 'found'; snapshot: VolumeSnapshot } | Failed;

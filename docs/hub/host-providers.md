@@ -519,3 +519,15 @@ cannot supply a clone.
 
 DigitalOcean implements snapshot history, lookup, restoration and confirmed
 deletion through its API; see [DigitalOcean volumes](#digitalocean-volumes).
+
+
+### Snapshot send authorization
+
+`HostProvider.snapshotVolume(volume, options?)` accepts optional synchronous
+`options.authorize()`. It runs immediately before the snapshot native effect.
+DigitalOcean uses the API mutation scope after its owned-volume GET and every
+pacing wait; the fake checks before copying volume contents. A throwing check
+returns `{state: 'not-sent', reason: 'snapshot authorization refused'}` without
+sending the snapshot. Omitting the options preserves the prior behavior.
+The hub snapshot scheduler uses this boundary to fence a queued send when release
+has begun; see [login backups](logins.md#backup-snapshots).

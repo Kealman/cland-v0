@@ -79,3 +79,8 @@ DigitalOcean replacement lives in `host-provider-digitalocean-volumes.test.ts`:
 `digitalocean: snapshot history, cloning and confirmed deletion` plus
 `digitalocean snapshot receipts and source project fence destructive use across restart`.
 The original control is historical stage-1 evidence, not a current expectation.
+
+`fake: refused snapshot authorization sends no native effect` is the shared
+provider-contract guard. A rejecting synchronous authorize callback leaves no
+snapshot history or native snapshot directory; an unguarded snapshot is its
+positive control. The optional callback is checked at the contents-copy edge.

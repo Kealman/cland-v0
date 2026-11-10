@@ -427,6 +427,8 @@
     "hub/test/login-list.test.ts": "T2",
     "hub/test/login-records.test.ts": "T1",
     "hub/test/login-signin.test.ts": "T1",
+    "hub/test/login-snapshot-cli.test.ts": "T2",
+    "hub/test/login-snapshots.test.ts": "T2",
     "hub/test/login-terminal.test.ts": "T3",
     "hub/test/measure-memory.test.ts": "T3",
     "hub/test/merge-batches.test.ts": "T1",

@@ -1,21 +1,21 @@
 // T2: filesystem provider fake; no processes, sockets or real-time waits.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
-import { removeFixtureSockets } from '../../shared/fixture-sockets.ts';
+import { ownDirectory } from './process-cleanup.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { hostProviderVolumeContract } from './host-provider-contract.ts';
 
 async function factory(t: TestContext, scenario: 'normal' | 'ignored-volume-delete') {
   const root = await mkdtemp(join(tmpdir(), 'hp-vol-'));
-  t.after(async () => { await removeFixtureSockets(root); await rm(root, { recursive: true, force: true }); });
+  ownDirectory(t,root);
   let time = Date.parse('2026-11-06T00:00:00Z');
   const env = fixtureEnvironment(root, {}, { CLAND_FAKE_HOST_ROOT: root });
   const provider = new FakeHostProvider({ env, now: () => time, snapshotWindowMs: 1000, ignoreVolumeDelete: scenario === 'ignored-volume-delete' });
-  return { provider, env, region: 'region-a', otherRegion: 'region-b', snapshotRetryAt: '2026-11-06T00:00:01.000Z',
+  return { provider, env, snapshotEffects:async()=>{try{return (await readdir(join(root,'snapshots'))).length;}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return 0;throw error;}}, region: 'region-a', otherRegion: 'region-b', snapshotRetryAt: '2026-11-06T00:00:01.000Z',
     ready: async () => {}, advanceSnapshotWindow: async () => { time += 1000; } };
 }
 hostProviderVolumeContract('fake', factory, (name, run) => test(name, run), true);

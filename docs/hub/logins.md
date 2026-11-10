@@ -31,7 +31,9 @@ policy permits that exact path constructor and rejects database access elsewhere
 
 `login.add` with disk kind returns only a public terminal plan. `login.signed-in` reports the
 native exit code on the same authenticated connection. Exit zero unmounts,
-snapshots once, detaches, records the last sign-in and marks the login ready.
+requests a backup, detaches, records the last sign-in and marks the login ready.
+A provider rate refusal retains the pending backup and retry time while sign-in
+finishes ready; other snapshot failures keep the disk signed out.
 A nonzero exit or connection close unmounts and detaches the kept disk, then
 marks it signed out. A missing native cleanup receipt retains creating state
 and its resource fence. While creating, the login has no bindings or free
@@ -143,6 +145,72 @@ for harness home and database paths without persisting fixture paths in metadata
 The agent reserves writer admission before login-disk drainage, joins already admitted operations, and refuses new writer-capable requests from every connection through unlink. Native cancellation and observation remain available. Fake process drainage performs repeated captured censuses, signals only members actually using the disk, and refuses uncertain ownership. The native TERM escalation and final closure bounds use the shared Clock (2 s and 4 s respectively); no successful unlink is reported on exhaustion.
 
 A closed process row alone does not settle drainage. The agent joins any current-lifetime root completion that has observed native exit through its durable checkpoint and exit publication before unlinking. The same drainage deadline bounds that join; failure or missing completion retains the disk. A still-live unrelated root does not enter this completion join.
+
+
+## Backup snapshots
+
+`cland login snapshot <name>` requests a backup of a ready or in-use disk login.
+Like list and add, it requires a local human CLI or Neovim connection and local
+administrative authority in users mode. A key login refuses with `key login has
+no disk`. The command reports a confirmed snapshot, a provider retry time, or a
+failure; a queued retry is not a completed backup. Real providers require API
+access and mounted snapshots require the authenticated writer Host.
+
+`LoginSnapshots` in `host/login-snapshots.ts` owns scheduled and on-demand work.
+The hub clock schedules an in-use disk 24 hours after the last confirmed backup
+(or last sign-in for legacy rows). A legacy row with neither timestamp gets
+a persisted initial deadline; it does not move on reevaluation. It freezes the mounted writer disk, snapshots,
+and thaws in a finally block, including on provider failure. Detached disks need
+no Host operation. Concurrent requests for one login join one operation.
+Provider rate refusals persist `backup.pending` and `backup.retryAt`; the timer
+runs at that time. Other scheduled failures retain a pending retry after one
+minute and report the failure. Freeze intent (captured host, target identity and volume id) is persisted before
+freeze admission. A snapshot receipt is retained before thaw and publication.
+Start first attempts thaw of its own retained intents on that exact target; it
+never transfers an old intent to a replacement host. Unconfirmed thaw keeps its
+intent and fence and is reported. T-1793 owns binding/volume reconciliation.
+Target authorization rechecks row state, writer bindings, provision and host
+registration around awaits. A changed owner receives no new snapshot effect or
+publication; an admitted provider receipt stays retained for reconciliation.
+Retained and new receipts must match the current volume id. A creating-row volume
+change refuses while pending, freeze or receipt ownership remains retained.
+Stop cancels timers and joins admitted work before
+storage closes. Start resumes overdue in-use disks and persisted pending work.
+
+`LoginRecords.updateBackup(name, backup, snapshotIds?)` persists optional disk
+backup metadata; older rows without it remain valid. `onChange(listener)` returns
+an unsubscribe function and lets the scheduler re-arm after row changes. These
+methods do not alter bindings. The new snapshot id is persisted before pruning;
+older ids beyond two are removed only after `deleteSnapshot` confirms deletion
+with its provider read. Interrupted pruning resumes before another snapshot.
+
+The sign-in owner calls the shared `snapshotLoginDisk(logins, name, target,
+clock)` after confirmed unmount. Its creating state excludes scheduler admission.
+The release owner first awaits `dispatcher.loginSnapshots?.beginRelease(name)`
+before asynchronous stop work. It persists a release fence and refuses new
+snapshots. It joins any admitted freeze and its thaw independently of the
+provider snapshot promise; a failed thaw leaves the fence up and refuses release.
+After host deletion and confirmed detach, it calls
+`dispatcher.loginSnapshots?.onReleased(name,
+{volumeId})` **after host deletion and confirmed detach**, once the login is ready
+with no bindings. This synchronous notification validates the volume id, clears the release fence and
+queues a due backup without awaiting provider work. T-1779 owns those release
+calls; this module never stops a host or mutates bindings. A future provider retry
+remains at its recorded deadline after release.
+
+See [snapshot tests](../agents/tests/hub-test-login-snapshots.test.ts.md) and
+[command tests](../agents/tests/hub-test-login-snapshot-cli.test.ts.md).
+
+
+`HostProvider.snapshotVolume(volume, {authorize?})` accepts a synchronous send
+check. Both providers invoke it at their native snapshot boundary; DigitalOcean
+passes it through `DigitalOceanApi.volumeSnapshot`'s optional mutation scope so
+it runs after owned-volume reads and every API pacing wait, immediately before
+POST. Throwing returns `{state: 'not-sent', reason: 'snapshot authorization refused'}`
+and sends no mutation. With no callback, prior provider behavior is unchanged.
+The scheduler supplies its captured ownership/release check: a snapshot queued
+before release cannot start after thaw. Already-admitted effects keep their
+provider receipt until reconciled. `not-sent` is not a completed backup.
 
 
 ## Key store

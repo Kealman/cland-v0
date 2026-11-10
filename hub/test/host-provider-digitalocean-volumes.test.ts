@@ -18,9 +18,9 @@ async function closeFixture(api: { close(options?: { retainRoot?: boolean }): Pr
   if (failures.length) throw new AggregateError(failures, 'volume fixture cleanup incomplete');
 }
 
-async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => Promise<void>) {
+async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => Promise<void>, requestsPerMinute?:number) {
   const clock = new FakeClock();
-  const api = await fakeDigitalOcean('volume-sentinel', { machine: 'scripted', clock, testContext: t });
+  const api = await fakeDigitalOcean('volume-sentinel', { machine: 'scripted', clock, testContext: t,...(requestsPerMinute?{requestsPerMinute}:{}) });
   beforeDirectories(t, () => closeFixture(api, beforeClose));
   await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
@@ -39,7 +39,7 @@ async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => 
 }
 hostProviderVolumeContract('digitalocean', async (t, scenario) => {
   const f = await fixture(t, scenario);
-  return { provider: f.provider, region: 'lon1', otherRegion: 'fra1',
+  return { provider: f.provider, snapshotEffects:()=>f.api.requests.filter(r=>r.method==='POST'&&r.path.endsWith('/snapshots')).length, region: 'lon1', otherRegion: 'fra1',
     snapshotRetryAt: new Date(f.clock.now().getTime() + 600000).toISOString(),
     advanceSnapshotWindow: () => f.clock.advance(600000), ready: async () => {} };
 }, (name, run) => test(name, run), true);
@@ -253,4 +253,25 @@ test('digitalocean snapshot restore keeps retained region when API region order 
   assert.equal(clone.state, 'created'); if (clone.state !== 'created') return;
   assert.equal(clone.volume.region, 'lon1');
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/volumes').at(-1)!.body!.region, 'lon1');
+});
+
+
+test('digitalocean snapshot authorization rechecks after the actual POST pacing wait',async t=>{
+ const {until}=await import('./until.ts');
+ let drain=async()=>{};
+ const {provider,api,clock}=await fixture(t,'normal',()=>drain(),100);
+ const created=await provider.createVolume({project:'contract',region:'lon1',name:'paced-login',sizeGiB:1});assert.ok(created.state==='created');
+ // Leave one slot for the owned-volume GET, so the snapshot POST itself waits.
+ while(api.requests.length<99)await api.provider.sizes();
+ let queued=false,allowed=true;
+ const original=api.provider.volumeSnapshot.bind(api.provider);
+ t.mock.method(api.provider,'volumeSnapshot',(...[id,name,deadline,scope]:Parameters<typeof original>)=>original(id,name,deadline,{...scope,onWait:()=>{queued=true;}}));
+ const work=provider.snapshotVolume(created.volume,{authorize:()=>{if(!allowed)throw Error('released while POST paced');}});
+ drain=async()=>{await work;};
+ try{await until(()=>queued,{what:'snapshot POST pacing admission'});allowed=false;await clock.advance(60000);}
+ finally{allowed=false;await clock.advance(60000);}
+ assert.deepEqual(await work,{state:'not-sent',reason:'snapshot authorization refused'});
+ assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path.endsWith('/snapshots')).length,0);
+ assert.equal((await provider.snapshotVolume(created.volume)).state,'snapshotted');
+ assert.equal(api.requests.filter(r=>r.method==='POST'&&r.path.endsWith('/snapshots')).length,1);
 });

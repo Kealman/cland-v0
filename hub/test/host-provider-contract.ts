@@ -100,9 +100,19 @@ function declaredArchitecture(provider: HostProvider): HostArchitecture {
 /** Mandatory volume cases. Provider-specific factory owns fault injection,
  * region names and advancing the snapshot window without wall-clock waits. */
 export function hostProviderVolumeContract(name: string, factory: (t: TestContext, scenario: 'normal' | 'ignored-volume-delete') => Promise<{
-  provider: HostProvider; region: string; otherRegion: string; snapshotRetryAt: string;
+  provider: HostProvider; region: string; otherRegion: string; snapshotRetryAt: string; snapshotEffects?:()=>unknown|Promise<unknown>;
   advanceSnapshotWindow: () => Promise<void>; ready: () => Promise<void>;
 }>, register: (name: string, run: (t: TestContext) => Promise<void>) => unknown, snapshotOperations = false) {
+  if(snapshotOperations)register(`${name}: refused snapshot authorization sends no native effect`,async t=>{
+    const f=await factory(t,'normal');assert.ok(f.snapshotEffects);
+    const v=await f.provider.createVolume({project:'contract',region:f.region,name:'login',sizeGiB:1});assert.ok(v.state==='created');
+    const before=await f.snapshotEffects();let checked=0;
+    assert.deepEqual(await f.provider.snapshotVolume(v.volume,{authorize:()=>{checked++;throw Error('snapshot no longer admitted');}}),{state:'not-sent',reason:'snapshot authorization refused'});
+    assert.ok(checked>0);assert.deepEqual(await f.snapshotEffects(),before);
+    assert.deepEqual(await f.provider.listSnapshots(v.volume),{state:'listed',snapshots:[]});
+    assert.equal((await f.provider.snapshotVolume(v.volume)).state,'snapshotted');
+    assert.notDeepEqual(await f.snapshotEffects(),before,'positive control observes a real fake-provider snapshot effect');
+  });
   if (snapshotOperations) register(`${name}: snapshot history, cloning and confirmed deletion`, async t => {
     const { provider, region, otherRegion, advanceSnapshotWindow } = await factory(t, 'normal');
     const v = await provider.createVolume({ project: 'contract', region, name: 'login', sizeGiB: 1 });

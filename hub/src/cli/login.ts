@@ -7,6 +7,14 @@ import type { LoginAddInput } from '../host/login-signin.ts';
 
 export type ListedLogin = Login & { bindings: LoginBinding[] };
 const commands = {
+ snapshot: async(args:string[],env:NodeJS.ProcessEnv):Promise<number>=>{
+  if(args.length!==1||!/^[a-z0-9][a-z0-9-]{0,31}$/.test(args[0]!))throw Error('usage: cland login snapshot <name>');
+  const discovery=readDiscovery(hubDiscovery(process.cwd()));
+  if(!discovery)throw Error('no hub runs for this project — run cland hub start');
+  const result=await askHubFrame(discovery,{type:'login.snapshot',name:args[0]!},30000,env) as {state:string;retryAt?:string;reason?:string};
+  process.stdout.write(result.state==='snapshotted'?'snapshot confirmed\n':`snapshot ${result.state}: ${result.reason??'unknown'}${result.retryAt?' — retry at '+result.retryAt:''}\n`);
+  return result.state==='failed'||result.state==='not-sent'?1:0;
+ },
  add: async (args:string[],env:NodeJS.ProcessEnv):Promise<number> => {
   const harness=args[0];
   if(harness!=='claude-code'&&harness!=='codex'&&harness!=='opencode')throw Error('usage: cland login add <claude-code|codex|opencode> [--name <name>] [--pool <pool>] [--account <account>] [--kind disk|key]');
@@ -49,6 +57,6 @@ const commands = {
 };
 export async function runLogin(args: string[], env: NodeJS.ProcessEnv = process.env): Promise<number> {
  const command = args[0];
- if (!command || !Object.hasOwn(commands,command)) throw Error('usage: cland login <list|add>');
+ if (!command || !Object.hasOwn(commands,command)) throw Error('usage: cland login <list|add|snapshot>');
  return commands[command as keyof typeof commands](args.slice(1),env);
 }
