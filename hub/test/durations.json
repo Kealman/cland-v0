@@ -132,9 +132,11 @@
       "A-17830",
       "A-17839",
       "A-18014",
-      "A-18167"
+      "A-18167",
+      "A-18214",
+      "A-18216"
     ],
-    "commit": "caf30df4fc87ab3317eb1c660e5286d07361c53b"
+    "commit": "8b6501574f716b11e45ce8dfb7f63ae8feb9af04"
   },
   "budget": {
     "testSeconds": 5,
@@ -3839,6 +3841,18 @@
     "hub/test/pool-spend-cap.test.ts": {
       "seconds": 0.728575,
       "tests": 5
+    },
+    "hub/test/host-login-disk.test.ts": {
+      "seconds": 3.017692,
+      "tests": 12
+    },
+    "hub/test/hub-cards-authority.test.ts": {
+      "seconds": 0.001643,
+      "tests": 1
+    },
+    "hub/test/login-records.test.ts": {
+      "seconds": 0.018826,
+      "tests": 19
     }
   },
   "tests": {
@@ -11416,7 +11430,48 @@
     "hub/test/pool-spend-cap.test.ts::admitted host renews beyond hosts sub-cap while shared cap still applies": 0.026194,
     "hub/test/pool-spend-cap.test.ts::cap-refused scheduler launch remains in the durable waiting list through retry": 0.293885,
     "hub/test/pool-spend-cap.test.ts::full hosts cap keeps demand waiting without provider acquisition or ledger entry and retains busy host": 0.094001,
-    "hub/test/pool-spend-cap.test.ts::mutation notices reuse loaded ledger with no observer reads and unsubscribe retires owner": 0.012857
+    "hub/test/pool-spend-cap.test.ts::mutation notices reuse loaded ledger with no observer reads and unsubscribe retires owner": 0.012857,
+    "hub/test/cland-auth.test.ts::mount drains and unmounts the device automount before mounting the login path": 0.043169,
+    "hub/test/host-agent-boundary.test.ts::agent imports only Node built-ins, agent modules and exact owner-bound shared leaves": 0.194329,
+    "hub/test/host-agent-boundary.test.ts::neutral Clock and fake-layout leaves have exact agent owners and no relative dependencies": 0.003533,
+    "hub/test/host-agent-closure.test.ts::closure admits exactly the two owner-bound neutral leaves and refuses their extra imports": 0.050961,
+    "hub/test/host-contract-coverage.test.ts::optional login-disk contract covers absence, refusal and exact input with planted failures": 0.00259,
+    "hub/test/host-local-contract.test.ts::Host login disks preserve optional absence and refuse invalid paths": 0.011735,
+    "hub/test/host-login-disk.test.ts::login-disk closes only disk users in live parent trees": 0.707384,
+    "hub/test/host-login-disk.test.ts::login-disk closes only disk users in retained orphan trees": 0.362221,
+    "hub/test/host-login-disk.test.ts::login-disk fixture closes its server after rejected connect and attempts every cleanup join": 0.013689,
+    "hub/test/host-login-disk.test.ts::login-disk held-spawn setup rejection joins native admission before client close": 0.120268,
+    "hub/test/host-login-disk.test.ts::login-disk holds writer admission through the final unlink boundary": 0.226806,
+    "hub/test/host-login-disk.test.ts::login-disk incomplete helper retains durable mutation ownership across agent restart": 0.01311,
+    "hub/test/host-login-disk.test.ts::login-disk joins a previously admitted writer before its disk census": 0.210677,
+    "hub/test/host-login-disk.test.ts::login-disk joins completion persistence and exit publication before replying": 0.191618,
+    "hub/test/host-login-disk.test.ts::login-disk joins its owned close callback when kernel exit precedes native publication": 0.239317,
+    "hub/test/host-login-disk.test.ts::login-disk mounts only this fake machine attachment through the SSH Host": 0.885618,
+    "hub/test/host-login-disk.test.ts::login-disk rejects malformed paths and volume names before invoking a helper": 0.008007,
+    "hub/test/host-login-disk.test.ts::login-disk uses exactly sudo -n helper op volume path and preserves typed helper failures": 0.038977,
+    "hub/test/host-provision-records.test.ts::current inventory matches occupied including acquired failures and excluding positive non-acquisition": 0.003741,
+    "hub/test/host-provision-records.test.ts::usage and reserve share retained-generation and placement-promise capacity": 0.003575,
+    "hub/test/host-spend.test.ts::host status snapshot pins billing by exact project and lease without changing totals shape": 0.015343,
+    "hub/test/hub-cards-authority.test.ts::hub cards keep every remote authority entry at its previous classification": 0.001643,
+    "hub/test/login-records.test.ts::binding invariant: disk volume missing is a typed refusal with no partial write": 0.000778,
+    "hub/test/login-records.test.ts::binding invariant: exclusive second binding is a typed refusal with no partial write": 0.000887,
+    "hub/test/login-records.test.ts::binding invariant: key has volume is a typed refusal with no partial write": 0.000647,
+    "hub/test/login-records.test.ts::binding invariant: reader uses original volume is a typed refusal with no partial write": 0.000568,
+    "hub/test/login-records.test.ts::binding invariant: second writer is a typed refusal with no partial write": 0.000749,
+    "hub/test/login-records.test.ts::binding invariant: writer volume differs is a typed refusal with no partial write": 0.000587,
+    "hub/test/login-records.test.ts::creating is neither free nor bound; bindings enforce exclusive writer and non-exclusive readers": 0.001778,
+    "hub/test/login-records.test.ts::disk and key login rows round-trip every field without key disk properties": 0.003698,
+    "hub/test/login-records.test.ts::login syntax, uniqueness, harness and key disk constraints name their rules": 0.000989,
+    "hub/test/login-records.test.ts::refuses login transition from creating to creating naming current state": 0.001131,
+    "hub/test/login-records.test.ts::refuses login transition from creating to in-use naming current state": 0.000626,
+    "hub/test/login-records.test.ts::refuses login transition from in-use to creating naming current state": 0.000846,
+    "hub/test/login-records.test.ts::refuses login transition from in-use to in-use naming current state": 0.000688,
+    "hub/test/login-records.test.ts::refuses login transition from ready to creating naming current state": 0.000798,
+    "hub/test/login-records.test.ts::refuses login transition from ready to ready naming current state": 0.000863,
+    "hub/test/login-records.test.ts::refuses login transition from ready to signed-out naming current state": 0.000731,
+    "hub/test/login-records.test.ts::refuses login transition from signed-out to in-use naming current state": 0.000834,
+    "hub/test/login-records.test.ts::refuses login transition from signed-out to ready naming current state": 0.00094,
+    "hub/test/login-records.test.ts::refuses login transition from signed-out to signed-out naming current state": 0.000688
   },
   "allow": {
     "hub/test/pool-idle-stop.test.ts::C1 idle host is destroyed at one minute while min_hosts stays": {
