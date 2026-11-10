@@ -70,6 +70,65 @@ persist across hub restarts. This store contains metadata only.
 
 ## Store API
 
+`cland login set <name> --exclusive true|false` changes an idle disk login.
+It requires the same local human CLI/Neovim administrative authority as list.
+In-use logins refuse changes; key logins have no exclusive flag.
+Disk logins default to exclusive. An exclusive login already bound elsewhere
+is unavailable; an attached-elsewhere provider refusal rolls back the attempted
+binding without changing the login.
+
+For a non-exclusive disk the first host receives its original writer volume.
+Later hosts receive separate volumes cloned from the latest recorded snapshot;
+without a snapshot the reader launch refuses naming the login. Readers can
+rotate their clone's login files, but those changes never write back to the
+original. Release unmounts and detaches a reader, then confirms clone deletion
+before removing its binding. Lost-host release uses detached provider inventory
+before deletion. Missing receipts retain the binding. Listing includes every
+writer and reader host. Real providers require API and host connectivity;
+fake-provider tests use directory volumes and fake harnesses without network.
+
+Selection first reuses the host's settled binding, then prefers a ready disk;
+only when none is ready does it offer an in-use non-exclusive disk as a reader.
+Harness, provider, region and optional account must match. A pending binding or
+unresolved reader-create or deleted-but-unacknowledged intent fences selection
+and exclusive-flag changes. A reader requires
+a recorded snapshot. Exclusive in-use disks are never offered to another host.
+`hasPendingBinding` includes reader phases `creating` and `deleted` so capacity verdicts and
+snapshot deferral use the same fence. T-1784's availability query builds on this
+rule; `free()` remains the legacy ready-state listing and is not launch admission.
+
+`LoginRecords` retains a private reader operation before sending create: login,
+host, captured machine generation, provider/project/region, snapshot and a unique
+volume name. A returned volume id is checkpointed before binding publication.
+Unknown creation retains that intent; launch retry or the existing host-release
+owner reconciles its exact admitted name from provider inventory, deletes the
+unattached clone and requires a fresh launch retry. Absence alone never clears an
+unknown create. Indexed host pages include unbound intents for restart recovery.
+A confirmed provider create refusal clears its exact untouched intent and permits
+retry; an unconfirmed failure keeps it fenced.
+
+Reader release and binder rollback share `host/login-reader.ts`. Confirmed detach
+(or a create that never attached) precedes a durable deletion intent for the
+captured volume id. Even when inventory omits that id, recovery calls the
+provider's exact-id deletion boundary and requires its confirmed `deleted`
+receipt. An intent or list omission never substitutes for that receipt.
+Confirmed deletion is persisted before binding removal. Final-reader completion
+joins the existing snapshot owner's synchronous `onReleased` acknowledgment with
+binding and marker removal in one transaction. A missing or refused acknowledgment
+retains the operation and admission fence; its removal rearms pending snapshots.
+Deletion or publication failure retains the operation for retry, including lost
+hosts. Legacy reader bindings acquire this private record after confirmed detach;
+public login and binding reply shapes remain unchanged.
+
+The installed release owner discovers unbound intents on hosts whose destruction
+was interrupted, whose creation failed, or whose destruction already completed,
+including records without a machine-deletion read. `destroyHost` and the retry
+owner share the same release-obligation predicate, so a destroyed row is terminal
+only after its actionable reader obligations settle. Unknown creation on a healthy
+ready host remains fenced for launch retry or explicit host release rather than
+causing automatic destruction of that healthy host. Pending native bindings stay
+with startup reconciliation.
+
 Import `LoginRecords`, `Login`, `LoginInput`, `LoginState` and `LoginBinding`
 from `hub/src/host/logins.ts`. The hub constructs `store.hosts.logins` on its
 existing database. Callers own admission and native resource receipts.
@@ -78,6 +137,7 @@ existing database. Callers own admission and native resource receipts.
   kind and `lastSignIn: string | null`. Disk input adds provider, region,
   `volumeId: string | null`, `snapshotIds: string[]` and optional exclusive.
 - `get(name)` returns a row or null; `list()` returns rows sorted by name.
+  `setExclusive(name, boolean)` changes disks while they are not in use.
   `free()` returns ready rows only.
 - `selectForLaunch({host, harness, provider, region, account})` returns at most
   two held host/harness bindings (to detect conflicts), or one ready disk login.

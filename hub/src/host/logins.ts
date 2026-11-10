@@ -1,4 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { Machine, Volume } from './provider/provider.ts';
+
+export type ReaderOperation = {login:string;host:string;harness:string;provider:string;project:string;pool:string;region:string;machine:Machine;name:string;snapshot:string;phase:'creating'|'bound'|'deleting'|'deleted';volume?:Volume};
 
 export type LoginBackup = { initialAt?: string; lastAt?: string; pending: boolean; retryAt?: string; releasing?: boolean; freeze?: {host:string; identity:string; volumeId:string}; receipt?: import('./provider/provider.ts').VolumeSnapshot; outcome?: string };
 export type LoginState = 'creating' | 'ready' | 'in-use' | 'signed-out';
@@ -21,6 +24,10 @@ const bindingRow = (row:Record<string,unknown>):LoginBinding => ({login:row.logi
 
 /** Project metadata only: harness files and key material never enter this store. */
 export class LoginRecords {
+ private readerRelease:((name:string,receipt:{volumeId:string})=>void)|undefined;
+ onReaderRelease(listener:(name:string,receipt:{volumeId:string})=>void):()=>void {
+  this.readerRelease=listener;return ()=>{if(this.readerRelease===listener)this.readerRelease=undefined;};
+ }
  private readonly listeners = new Set<(name:string)=>void>();
  onChange(listener:(name:string)=>void):()=>void { this.listeners.add(listener); return ()=>this.listeners.delete(listener); }
  private changed(name:string):void { for(const listener of this.listeners)listener(name); }
@@ -35,6 +42,8 @@ export class LoginRecords {
    create table if not exists login_bindings (login text not null references logins(name), host text not null, role text not null, volume_id text, primary key(login,host));`);
   if (!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='phase')) db.exec('alter table login_bindings add column phase text');
   db.exec('create index if not exists login_bindings_pending on login_bindings(login,phase)');
+  db.exec('create table if not exists login_readers(login text not null,host text not null,harness text not null,phase text not null,record text not null,primary key(login,host)); create unique index if not exists login_readers_host on login_readers(host,harness); create index if not exists login_readers_pending on login_readers(login,phase)');
+  db.exec("create index if not exists login_reader_launch on logins(json_extract(record,'$.state'),json_extract(record,'$.kind'),json_extract(record,'$.exclusive'),json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)");
   db.exec('savepoint login_launch_selection_migration');
   try {
    if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness')){
@@ -64,7 +73,9 @@ export class LoginRecords {
  /** Only bound disks participate; indexed cursor pages decode no retained login rows. */
  boundHosts(after:string,limit:number):string[] {
   if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw Error('bound host page limit must be 1..64');
-  return this.db.prepare("select distinct b.host from login_bindings b indexed by login_bindings_host join logins l on l.name=b.login where b.host>? and (b.phase is null or b.phase='settled') and json_extract(l.record,'$.kind')='disk' order by b.host limit ?").all(after,limit).map(row=>String(row.host));
+  const bound=this.db.prepare("select distinct b.host from login_bindings b indexed by login_bindings_host join logins l on l.name=b.login where b.host>? and (b.phase is null or b.phase='settled') and json_extract(l.record,'$.kind')='disk' order by b.host limit ?").all(after,limit).map(row=>String(row.host));
+  const readers=this.db.prepare("select distinct host from login_readers where host>? and phase<>'bound' order by host limit ?").all(after,limit).map(row=>String(row.host));
+  return [...new Set([...bound,...readers])].sort().slice(0,limit);
  }
  /** Indexed host release lookup; does not decode unrelated login history. */
  forHost(host:string):LoginBinding[] {
@@ -72,15 +83,57 @@ export class LoginRecords {
  }
  /** Existence only: bounded output and indexed work even for many settled readers. */
  hasPendingBinding(name:string):boolean {
-  return this.db.prepare("select 1 from login_bindings where login=? and phase='pending' limit 1").get(name)!==undefined;
+  return this.db.prepare("select 1 from login_bindings where login=? and phase='pending' limit 1").get(name)!==undefined || this.db.prepare("select 1 from login_readers where login=? and phase in ('creating','deleted') limit 1").get(name)!==undefined;
+ }
+ readerOperation(login:string,host:string):ReaderOperation|null {
+  const row=this.db.prepare('select record from login_readers where login=? and host=?').get(login,host);return row?JSON.parse(String(row.record)):null;
+ }
+ readerForHost(host:string,harness:string):ReaderOperation|null {
+  const row=this.db.prepare('select record from login_readers where host=? and harness=?').get(host,harness);return row?JSON.parse(String(row.record)):null;
+ }
+ readersForHost(host:string):ReaderOperation[] {
+  return this.db.prepare('select record from login_readers where host=? order by harness').all(host).map(row=>JSON.parse(String(row.record)) as ReaderOperation);
+ }
+ beginReader(operation:ReaderOperation):void {
+  const login=this.required(operation.login);
+  if(login.kind!=='disk'||login.exclusive||operation.phase!=='creating'||operation.volume||operation.harness!==login.harness||operation.provider!==login.provider||operation.region!==login.region)throw Error('invalid reader admission');
+  this.db.prepare('insert into login_readers values(?,?,?,?,?)').run(operation.login,operation.host,operation.harness,operation.phase,JSON.stringify(operation));this.changed(operation.login);
+ }
+ saveReader(operation:ReaderOperation):void {
+  const old=this.readerOperation(operation.login,operation.host);
+  if(!old||old.name!==operation.name||old.provider!==operation.provider||old.project!==operation.project||old.machine.id!==operation.machine.id||old.machine.created!==operation.machine.created)throw Error('reader ownership changed');
+  if(operation.volume&&(operation.volume.name!==old.name||operation.volume.project!==old.project||operation.volume.region!==old.region||old.volume&&old.volume.id!==operation.volume.id))throw Error('reader volume identity changed');
+  this.db.prepare('update login_readers set phase=?,record=? where login=? and host=?').run(operation.phase,JSON.stringify(operation),operation.login,operation.host);this.changed(operation.login);
+ }
+ refuseReader(operation:ReaderOperation):void {
+  const current=this.readerOperation(operation.login,operation.host);
+  if(current?.phase!=='creating'||current.volume||JSON.stringify(current)!==JSON.stringify(operation))throw Error('reader refusal ownership changed');
+  this.db.prepare('delete from login_readers where login=? and host=?').run(operation.login,operation.host);this.changed(operation.login);
+ }
+ bindReader(operation:ReaderOperation):void {
+  if(!operation.volume)throw Error('reader volume missing');
+  this.atomic(()=>{this.bind(operation.login,{host:operation.host,role:'reader',volumeId:operation.volume!.id,phase:'pending'});this.saveReader({...operation,phase:'bound'});});
+ }
+ completeReader(operation:ReaderOperation):void {
+  const current=this.readerOperation(operation.login,operation.host);
+  if(current?.name!==operation.name||current.phase!=='deleted')throw Error('reader deletion receipt missing');
+  this.atomic(()=>{
+   this.unbind(operation.login,operation.host);
+   const row=this.required(operation.login);
+   if(row.kind==='disk'&&row.state==='ready'){
+    if(this.readerRelease)this.readerRelease(row.name,{volumeId:row.volumeId!});
+    else if(row.backup?.releasing)throw Error('reader snapshot release owner unavailable');
+   }
+   this.db.prepare('delete from login_readers where login=? and host=?').run(operation.login,operation.host);this.changed(operation.login);
+  });
  }
  /** Indexed launch reads decode at most two held records or one ready candidate. */
  selectForLaunch(input:{host:string;harness:string;provider:string;region:string;account:string|null}):{held:Array<{login:Login;binding:LoginBinding}>;ready:Login|null} {
   const held=this.db.prepare('select l.record,b.login,b.host,b.role,b.volume_id as volumeId,b.phase from login_bindings b indexed by login_bindings_launch join logins l on l.name=b.login where b.host=? and b.harness=? order by b.login limit 2').all(input.host,input.harness).map(row=>({login:JSON.parse(String(row.record)) as Login,binding:bindingRow(row)}));
   if(held.length)return {held,ready:null};
-  const sql="select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='ready' and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+(input.account===null?'':" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
+  const sql="select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='ready' and not exists (select 1 from login_readers where login=logins.name and phase in ('creating','deleted')) and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+(input.account===null?'':" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
   const parameters=[input.harness,input.provider,input.region,...(input.account===null?[]:[input.account])];
-  const row=this.db.prepare(sql).get(...parameters);
+  const row=this.db.prepare(sql).get(...parameters) ?? this.db.prepare(sql.replace('indexed by login_ready_launch','indexed by login_reader_launch').replace("json_extract(record,'$.state')='ready'","json_extract(record,'$.state')='in-use' and json_extract(record,'$.exclusive')=0 and not exists (select 1 from login_bindings where login=logins.name and phase='pending')")).get(...parameters);
   return {held,ready:row?JSON.parse(String(row.record)) as Login:null};
  }
  insert(input: LoginInput): Login {
@@ -93,6 +146,14 @@ export class LoginRecords {
   const row: Login = input.kind === 'key' ? {...base,kind:'key'} : {...base,kind:'disk',exclusive:input.exclusive ?? true,provider:input.provider,region:input.region,volumeId:input.volumeId,snapshotIds:[...input.snapshotIds]};
   this.db.prepare('insert into logins values (?,?)').run(row.name,JSON.stringify(row));
   return row;
+ }
+ setExclusive(name:string,exclusive:boolean):Login {
+  if(typeof exclusive!=='boolean')throw Error('exclusive must be true or false');
+  const row=this.required(name);
+  if(row.kind!=='disk')throw Error('key login has no exclusive flag');
+  if(this.hasPendingBinding(name))throw Error(`login ${name}: outcome unknown`);
+  if(row.state==='in-use')throw Error(`login ${name} is ${row.state}`);
+  this.save({...row,exclusive});return this.required(name);
  }
  transition(name: string, state: LoginState, binding?: Omit<LoginBinding,'login'>): Login {
   const row = this.required(name);

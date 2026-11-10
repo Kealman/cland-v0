@@ -1,4 +1,5 @@
 import { releaseHostLogins, trackLoginRelease } from './login-release.ts';
+import { hasLoginReleaseObligation } from './login-release-policy.ts';
 import { provisionSsh } from './provision-ssh.ts';
 import { hostCreateAdmission } from './create-admission.ts';
 import { hostLeaseRenewable } from './provision-records.ts';
@@ -214,7 +215,7 @@ async function destroyHostOnce(o:{lost?:boolean;watchdogOptions?:import('../exec
  const initial=o.records.provisions.get(o.id);
  if(!initial)throw Error('unknown host');
  let record:ProvisionRecord=initial;
- if(record.state==='destroyed'&&!o.records.logins.forHost(o.id).some(binding=>binding.phase!=='pending'&&o.records.logins.get(binding.login)?.kind==='disk'))return publicProvision(record);
+ if(record.state==='destroyed'&&!hasLoginReleaseObligation(o.records,o.id))return publicProvision(record);
  record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);
  try {
   const creation=creations.get(join(o.root,o.id));

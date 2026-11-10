@@ -7,6 +7,13 @@ import type { LoginAddInput } from '../host/login-signin.ts';
 
 export type ListedLogin = Login & { bindings: LoginBinding[] };
 const commands = {
+ set: async(args:string[],env:NodeJS.ProcessEnv):Promise<number>=>{
+  if(args.length!==3||!/^[a-z0-9][a-z0-9-]{0,31}$/.test(args[0]!)||args[1]!=='--exclusive'||!['true','false'].includes(args[2]!))throw Error('usage: cland login set <name> --exclusive true|false');
+  const discovery=readDiscovery(hubDiscovery(process.cwd()));
+  if(!discovery)throw Error('no hub runs for this project — run cland hub start');
+  await askHubFrame(discovery,{type:'login.set',name:args[0]!,exclusive:args[2]==='true'},30000,env);
+  process.stdout.write(`login ${args[0]} exclusive ${args[2]}\n`);return 0;
+ },
  snapshot: async(args:string[],env:NodeJS.ProcessEnv):Promise<number>=>{
   if(args.length!==1||!/^[a-z0-9][a-z0-9-]{0,31}$/.test(args[0]!))throw Error('usage: cland login snapshot <name>');
   const discovery=readDiscovery(hubDiscovery(process.cwd()));
@@ -57,6 +64,6 @@ const commands = {
 };
 export async function runLogin(args: string[], env: NodeJS.ProcessEnv = process.env): Promise<number> {
  const command = args[0];
- if (!command || !Object.hasOwn(commands,command)) throw Error('usage: cland login <list|add|snapshot>');
+ if (!command || !Object.hasOwn(commands,command)) throw Error('usage: cland login <list|add|snapshot|set>');
  return commands[command as keyof typeof commands](args.slice(1),env);
 }

@@ -308,7 +308,7 @@ Role host pool settings use `[<role>.launch] pool` (default `local`) or
 [role pool defaults](../../../docs/hub/roles.md#role-host-pool-defaults).
 
 For project login work, use `HostRecords.logins` and isolated SQLite or projectHub
-fixtures. `cland login list`, `cland login snapshot` and terminal disk `cland login add` are local human
+fixtures. `cland login list`, `cland login set`, `cland login snapshot` and terminal disk `cland login add` are local human
 CLI/Neovim only; sessions, web and remotes are refused. Exercise `login.add` and
 connection-pinned `login.signed-in` only in disposable fake-provider fixtures.
 See [project logins](../../../docs/hub/logins.md).

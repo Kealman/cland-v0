@@ -1,7 +1,9 @@
-import type { LoginRecords, Login } from './logins.ts';
+import type { LoginRecords, Login, ReaderOperation } from './logins.ts';
 import type { Host } from './host.ts';
 import type { HostProvider, Machine } from './provider/provider.ts';
 import { mountedOpenCodeDatabase, type AccountSelection } from '../accounts/registry.ts';
+import { randomUUID } from 'node:crypto';
+import { deleteReaderVolume, recoverReaderCreation } from './login-reader.ts';
 
 export const loginMount = (login: Pick<Login,'harness'|'name'>): string => `/cland/auth/${login.harness}-${login.name}`;
 export function loginEnvironment(login: Pick<Login,'harness'|'name'>): Record<string,string> {
@@ -36,6 +38,13 @@ export class LoginBinder {
  #validate(input:Parameters<LoginBinder['bind']>[0], login?:Login):void {if(this.#closed)throw Error('login binding owner is closed');input.validate();if(login)input.checkAccount(login.account);}
  async #prepare(input:BindingInput):Promise<PreparedLogin> {
   this.#validate(input);
+  const retained=this.records.readerForHost(input.host.name,input.harness);
+  if(retained&&retained.phase!=='bound'){
+   if(retained.provider!==input.providerName||retained.project!==input.project||retained.machine.id!==input.machine.id||retained.machine.created!==input.machine.created)throw Error(`login ${retained.login}: outcome unknown`);
+   if(retained.phase==='creating')await recoverReaderCreation(this.records,retained,input.provider());
+   else await deleteReaderVolume(this.records,retained,input.provider());
+   throw Error(`login ${retained.login}: previous reader allocation recovered; retry launch`);
+  }
   const selection=this.records.selectForLaunch({host:input.host.name,harness:input.harness,provider:input.providerName,region:input.region,account:input.account});
   const held=selection.held;
   if(held.some(({binding})=>binding.phase==='pending'))throw Error(`login ${held.find(({binding})=>binding.phase==='pending')!.login.name}: outcome unknown`);
@@ -53,16 +62,34 @@ export class LoginBinder {
   const provider=input.provider();
   const inventory=await provider.listVolumes({project:input.project});
   this.#validate(input,login);
-  const volume=inventory.state==='listed'?inventory.volumes.find(v=>v.id===login.volumeId):undefined;
+  let volume=inventory.state==='listed'?inventory.volumes.find(v=>v.id===login.volumeId):undefined;
   if(!volume)throw Error(`login ${login.name}: volume unavailable`);
-  this.records.bind(login.name,{host:input.host.name,role:'writer',volumeId:volume.id,phase:'pending'});
-  let attached=false,mountAttempted=false,mountHost=input.host,settled=false,fenced=false;
+  const reader=login.state==='in-use';
+  let operation:ReaderOperation|undefined;
+  if(reader){
+   const snapshot=login.snapshotIds.at(-1);
+   if(!snapshot)throw Error(`login ${login.name}: missing snapshot for reader`);
+   operation={login:login.name,host:input.host.name,harness:input.harness,provider:input.providerName,project:input.project,pool:input.pool,region:input.region,machine:input.machine,name:`cland-reader-${randomUUID()}`,snapshot,phase:'creating'};
+   this.records.beginReader(operation);
+   const clone=await provider.createVolume({project:input.project,name:operation.name,region:input.region,sizeGiB:1,fromSnapshot:snapshot,admission:{login:login.name,project:input.project,pool:input.pool}});
+   if(clone.state==='refused')this.records.refuseReader(operation);
+   if(clone.state!=='created')throw Error(`login ${login.name}: reader volume unavailable`);
+   volume=clone.volume;
+   operation={...operation,volume};this.records.saveReader(operation);
+   try {this.#validate(input,login);this.records.bindReader(operation);}
+   catch(error){await recoverReaderCreation(this.records,operation,provider);throw error;}
+  }else{
+   this.records.bind(login.name,{host:input.host.name,role:'writer',volumeId:volume.id,phase:'pending'});
+  }
+  let attached=false,attachAttempted=false,mountAttempted=false,mountHost=input.host,settled=false,fenced=false;
   const rollback=async()=>{
-   if(!attached||settled||fenced)return;
+   if(settled||fenced||(!attached&&(!reader||attachAttempted)))return;
    fenced=true;
    if(mountAttempted)await mountHost.loginDisk!({op:'umount',volume:volume.name,path:loginMount(login)});
-   if((await provider.detachVolume(volume,input.machine)).state!=='detached')throw Error(`login ${login.name}: outcome unknown`);
-   this.records.unbind(login.name,input.host.name);attached=false;
+   if(attached&&(await provider.detachVolume(volume,input.machine)).state!=='detached')throw Error(`login ${login.name}: outcome unknown`);
+   if(operation){operation={...operation,phase:'deleting'};this.records.saveReader(operation);await deleteReaderVolume(this.records,operation,provider);}
+   else this.records.unbind(login.name,input.host.name);
+   attached=false;
   };
   const fail=async(error:unknown):Promise<never>=>{
    if(['CLAND_HOST_OUTCOME_UNKNOWN','CLAND_NATIVE_INCOMPLETE'].includes(String((error as NodeJS.ErrnoException).code))){fenced=true;throw Error(`login ${login.name}: outcome unknown`);}
@@ -72,9 +99,15 @@ export class LoginBinder {
    throw error;
   };
   try {
+   this.#validate(input,login);
+   attachAttempted=true;
    const result=await provider.attachVolume(volume,input.machine);
    if(result.state!=='attached') {
-    if(result.state==='refused'){this.records.unbind(login.name,input.host.name);throw Error(`login ${login.name}: attachment refused`);}
+    if(result.state==='refused'){
+     if(operation){operation={...operation,phase:'deleting'};this.records.saveReader(operation);await deleteReaderVolume(this.records,operation,provider);}
+     else this.records.unbind(login.name,input.host.name);
+     throw Error(`login ${login.name}: attachment refused: ${result.reason}`);
+    }
     throw Error(`login ${login.name}: outcome unknown`);
    }
    attached=true;this.#validate(input,login);

@@ -2199,6 +2199,7 @@ export class Dispatcher {
           case 'login.signed-in':
           case 'login.snapshot':
           case 'login.list':
+          case 'login.set':
           case 'host.status':
           case 'host.stop':
           case 'host.create':
@@ -2211,6 +2212,7 @@ export class Dispatcher {
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
+            if(frame.type==='login.set')return answer(core.store.hosts.logins.setExclusive(frame.name,frame.exclusive));
             if(frame.type==='login.snapshot') {
               if(!this.loginSnapshots)throw Error('login snapshots unavailable');
               const work=this.loginSnapshots.snapshot(frame.name);

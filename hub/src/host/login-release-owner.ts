@@ -1,6 +1,7 @@
 import type {HostRecords} from './records.ts';
 import type {Clock,ClockTimer} from '../hub/clock.ts';
 import type {LoginReleaseHooks} from './login-release.ts';
+import {hasLoginReleaseObligation,hasReaderReleaseObligation} from './login-release-policy.ts';
 export const LOGIN_RELEASE_RETRY_MS=1000;
 export const LOGIN_RELEASE_RETRY_MAX_MS=30000;
 /** One in-flight retry per host. Persisted deletion receipts seed bounded recovery. */
@@ -11,16 +12,17 @@ export class LoginReleaseOwner {
  readonly #attempts=new Map<string,number>();
  readonly #work=new Set<Promise<unknown>>();
  readonly #recovery:Promise<void>;
+ readonly #removeReaderRelease:()=>void;
  #closed=false;
  constructor(records:HostRecords,hooks:LoginReleaseHooks){
-  this.#records=records;this.hooks=hooks;this.#recovery=this.#recover();
+  this.#records=records;this.hooks=hooks;this.#removeReaderRelease=records.logins.onReaderRelease(hooks.onReleased);this.#recovery=this.#recover();
  }
  async #recover():Promise<void>{
   if(!this.hooks.retry||!this.hooks.clock)return;
   let after='';
   while(!this.#closed){
    const hosts=this.#records.logins.boundHosts(after,64);
-   for(const id of hosts)if(this.#records.provisions.get(id)?.machineDeletionRead)this.schedule(id);
+   for(const id of hosts){const provision=this.#records.provisions.get(id);if(provision?.machineDeletionRead||provision&&['destroying','destroyed','failed'].includes(provision.state)&&hasReaderReleaseObligation(this.#records,id))this.schedule(id);}
    if(hosts.length<64)return;
    after=hosts.at(-1)!;await Promise.resolve();
   }
@@ -36,7 +38,7 @@ export class LoginReleaseOwner {
   const timer=clock.setTimeout(()=>{
    this.#timers.delete(id);
    const work=Promise.resolve().then(()=>retry(id)).catch(()=>{}).finally(()=>{
-    if(this.#records.provisions.get(id)?.state==='destroyed')this.#attempts.delete(id);
+    if(this.#records.provisions.get(id)?.state==='destroyed'&&!hasLoginReleaseObligation(this.#records,id))this.#attempts.delete(id);
     else this.schedule(id);
    });
    this.track(work);
@@ -45,5 +47,6 @@ export class LoginReleaseOwner {
  async close():Promise<void>{
   this.#closed=true;for(const timer of this.#timers.values())this.hooks.clock!.clearTimeout(timer);this.#timers.clear();
   await this.#recovery;await Promise.allSettled([...this.#work]);
+  this.#removeReaderRelease();
  }
 }
