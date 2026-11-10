@@ -2,7 +2,7 @@
 // No real provider, sudo, mounts, credentials or network.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, symlink, unlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, symlink, unlink, stat, readlink, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serveAgent } from '../src/host/agent/server.ts';
@@ -13,17 +13,20 @@ import { hostDirectory } from '../../shared/fake-host-directory.ts';
 import { sshHost } from '../src/host/ssh-host.ts';
 import { localHost } from '../src/host/local.ts';
 import { until } from './until.ts';
+import { loginFixtureOwners as fixtureOwners } from './login-fixture-owners.ts';
 import { ownProcess } from './process-cleanup.ts';
 
-function fixtureOwners(t: TestContext) {
-  const owners=new AsyncDisposableStack();
-  t.after(()=>owners.disposeAsync());
-  return owners;
+async function fixtureRoot(owners: ReturnType<typeof fixtureOwners>, prefix: string) {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  // Registered first, disposed last: all writer joins run before root removal.
+  // AsyncDisposableStack still attempts this disposal when another join rejects.
+  owners.directory(root);
+  return root;
 }
 
 async function volumeFixture(t: TestContext, processHooks?: import('../src/host/agent/processes.ts').ProcessHooks) {
   const owners=fixtureOwners(t);
-  const root=await mkdtemp(join(tmpdir(),'ldt-'));
+  const root=await fixtureRoot(owners, 'ldt-');
   const providerEnv=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
   const provider=new FakeHostProvider({env:providerEnv});
   const acquired=await provider.acquire({project:'p',pool:'agents',architecture:'x86_64'});
@@ -79,7 +82,7 @@ test('login-disk holds writer admission through the final unlink boundary',async
 });
 
 async function heldWriterFixture(t:TestContext) {
-  let spawned=false, disposing=false, observedPid:number|undefined;
+  let spawned=false, disposing=false, observedPid:number|undefined, nativeExitObserved=false;
   let stopObserved=async()=>{};
   const release=Promise.withResolvers<void>();
   const joined:string[]=[];
@@ -95,15 +98,23 @@ async function heldWriterFixture(t:TestContext) {
   const second=await AgentClient.connect(f.server.socket,'sentinel');
   f.owners.defer(async()=>{await second.close();joined.push('client closed');});
   let spawn:Promise<unknown>|undefined;
+  let spawnFailure: unknown;
+  f.owners.diagnostic(() => { if (spawnFailure) throw spawnFailure; });
   f.owners.defer(async()=>{
     disposing=true;release.resolve();
     // Keep the client until its admitted request settles; public rejection does
     // not discard the independently captured native cleanup.
-    try {await spawn;} finally {await stopObserved();joined.push('native joined');}
+    try {await spawn;} catch (error) {spawnFailure=error;}
+    await stopObserved();await stat(f.root);
+    if (observedPid !== undefined) {
+      const {observeProcesses}=await import('../src/host/agent/native.ts');
+      nativeExitObserved=(await observeProcesses([observedPid],f.env)).get(observedPid)?.ended === true;
+    }
+    joined.push('native joined');
   });
   spawn=second.request('spawn',{command:process.execPath,args:['-e','setInterval(()=>{},1000)'],cwd:f.mapped,env:fixtureEnvironment(f.root,f.env)});
   void spawn.catch(()=>{});
-  return {...f,second,release,spawn,joined,spawned:()=>spawned,observedPid:()=>observedPid};
+  return {...f,second,release,spawn,joined,spawned:()=>spawned,observedPid:()=>observedPid,nativeExitObserved:()=>nativeExitObserved};
 }
 
 test('login-disk joins a previously admitted writer before its disk census',async t=>{
@@ -131,10 +142,13 @@ test('login-disk held-spawn setup rejection joins native admission before client
     throw new Error('planted setup rejection');
   },/planted setup rejection/);
   const pid=f.observedPid();assert.equal(typeof pid,'number');
+  const alias = await readlink(join(f.root,'.fixture-sockets/alias'));
+  await lstat(alias);
   await assert.rejects(f.owners.disposeAsync(),/agent closed/);
   assert.deepEqual(f.joined,['native joined','client closed']);
-  const {observeProcesses}=await import('../src/host/agent/native.ts');
-  assert.equal((await observeProcesses([pid!],f.env)).get(pid!)?.ended,true,'captured child has a positive native exit observation');
+  await assert.rejects(stat(f.root),{code:'ENOENT'});
+  await assert.rejects(lstat(alias),{code:'ENOENT'},'owned external socket alias removed before reciprocal record');
+  assert.equal(f.nativeExitObserved(),true,'captured child has a positive native exit observation before its boot-id root is removed');
 });
 
 test('login-disk joins completion persistence and exit publication before replying',async t=>{
@@ -187,7 +201,7 @@ test('login-disk joins its owned close callback when kernel exit precedes native
 
 test('login-disk mounts only this fake machine attachment through the SSH Host', async t => {
   const owners=fixtureOwners(t);
-  const root = await mkdtemp(join(tmpdir(),'ldv-'));
+  const root = await fixtureRoot(owners, 'ldv-');
   const base = fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
   const provider = new FakeHostProvider({env:base});
   const a = await provider.acquire({project:'p',pool:'agents',architecture:'x86_64'});
@@ -241,7 +255,7 @@ test('login-disk mounts only this fake machine attachment through the SSH Host',
 
 test('login-disk uses exactly sudo -n helper op volume path and preserves typed helper failures', async t => {
   const owners=fixtureOwners(t);
-  const root=await mkdtemp(join(tmpdir(),'lds-')); const bin=join(root,'bin');await mkdir(bin);
+  const root=await fixtureRoot(owners, 'lds-'); const bin=join(root,'bin');await mkdir(bin);
   await writeFile(join(root,'boot'),'11111111-1111-1111-1111-111111111111');
   const receipt=join(root,'arguments');const status=join(root,'status');await writeFile(status,'0');
   await writeFile(join(bin,'sudo'),`#!/bin/sh\nprintf '%s\\n' "$@" > '${receipt}'\nread -r status < '${status}'\nexit "$status"\n`,{mode:0o755});
@@ -261,7 +275,7 @@ test('login-disk uses exactly sudo -n helper op volume path and preserves typed 
 
 test('login-disk rejects malformed paths and volume names before invoking a helper', async t => {
   const owners=fixtureOwners(t);
-  const root = await mkdtemp(join(tmpdir(), 'ld-'));
+  const root = await fixtureRoot(owners, 'ld-');
   await writeFile(join(root, 'boot'), '11111111-1111-1111-1111-111111111111');
   const bin = join(root, 'bin'); await mkdir(bin);
   const receipt = join(root, 'sudo-called');
@@ -280,7 +294,7 @@ test('login-disk rejects malformed paths and volume names before invoking a help
 
 test('login-disk incomplete helper retains durable mutation ownership across agent restart',async t=>{
   const owners=fixtureOwners(t);
-  const root=await mkdtemp(join(tmpdir(),'ldi-'));
+  const root=await fixtureRoot(owners, 'ldi-');
   await writeFile(join(root,'boot'),'11111111-1111-1111-1111-111111111111');
   const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOSTS:'1',CLAND_HOST_BOOT_ID_FILE:join(root,'boot')});
   let invocations=0;
@@ -303,16 +317,17 @@ test('login-disk incomplete helper retains durable mutation ownership across age
 
 test('login-disk fixture closes its server after rejected connect and attempts every cleanup join',async t=>{
   const owners=fixtureOwners(t);
-  const root=await mkdtemp(join(tmpdir(),'ldc-'));
+  const root=await fixtureRoot(owners, 'ldc-');
   await writeFile(join(root,'boot'),'11111111-1111-1111-1111-111111111111');
   const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOSTS:'1',CLAND_HOST_BOOT_ID_FILE:join(root,'boot')});
   const server=await serveAgent({runDir:join(root,'run'),secret:'sentinel',version:'test',env});
   const joined:string[]=[];
-  owners.defer(async()=>{await server.close();joined.push('server closed');});
+  owners.defer(async()=>{await server.close();await stat(root);joined.push('server closed');});
   owners.defer(async()=>{joined.push('other child joined');});
-  owners.defer(async()=>{joined.push('failed child joined');throw new Error('planted cleanup failure');});
+  owners.diagnostic(async()=>{joined.push('failed child joined');throw new Error('planted cleanup failure');});
   await assert.rejects(AgentClient.connect(server.socket,'wrong-secret'),/secret/);
   await assert.rejects(owners.disposeAsync(),/planted cleanup failure/);
+  await assert.rejects(stat(root),{code:'ENOENT'},'root removed despite rejected cleanup join');
   assert.deepEqual(joined,['failed child joined','other child joined','server closed']);
   await assert.rejects(AgentClient.connect(server.socket,'sentinel'),/ENOENT|ECONNREFUSED|agent closed/);
 });

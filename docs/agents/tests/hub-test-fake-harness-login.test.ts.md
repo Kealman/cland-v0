@@ -32,3 +32,10 @@ and disabled-mode CLI refusal parity. Holder cleanup is registered before launch
 and uses the private live control socket, never a PID signal from a disk receipt.
 The planted failure setting `FAKE_LOGIN_HOLDER_FAIL_AFTER_READY=1` aborts before
 the ownership commit and waits for the uncommitted child native exit.
+
+Every fixture requires its TestContext and immediately registers its owned root.
+Each command and the app-server register native ownership and a close observer
+before returning to the caller. Teardown joins those children, stops the detached
+holder, then removes the root through `ownDirectory`. Unknown or incomplete joins
+retain the root; diagnostic failures after closure remain reported. Targeted
+before/after TMPDIR inventories separately prove root removal.

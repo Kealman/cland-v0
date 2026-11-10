@@ -3,7 +3,11 @@
 T3 exercises the authenticated agent socket and SSH Host with a directory-backed
 fake provider. Run `node --test hub/test/host-login-disk.test.ts` on supported
 Node 24 with inherited `CLAND_*` removed, under the assigned native preservation
-slot. Children use `fixtureEnvironment`; disposable roots are retained.
+slot. Children use `fixtureEnvironment`. Roots register `ownDirectory` immediately
+in a LIFO owner stack, after which clients, servers and native writers register
+their joins. Root removal follows positive completion of those joins and releases
+owned reciprocal socket aliases. An incomplete join retains the root and reports
+the failure; a diagnostic rejection after confirmed closure still permits removal.
 No browser, network, real volume, provider key or harness login is used.
 
 `login-disk mounts only this fake machine attachment through the SSH Host`

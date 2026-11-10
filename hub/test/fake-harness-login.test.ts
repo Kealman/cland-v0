@@ -8,44 +8,49 @@ import { mkdtemp, readFile, realpath, stat, mkdir, writeFile } from 'node:fs/pro
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fixtureEnvironment, scratchAccountEnvironment } from './fixture-environment.ts';
+import { loginFixtureOwners, loginChild } from './login-fixture-owners.ts';
 import { testWaitMs, until } from './until.ts';
 
 const binaries = { 'claude-code': 'claude-code/fake-claude.ts', codex: 'codex/fake-codex.ts', opencode: 'opencode/fake-opencode.ts' };
 
 type Harness = keyof typeof binaries;
-async function fixture(harness: Harness, extra: NodeJS.ProcessEnv = {}, t?: TestContext) {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'fake-login-')));
+async function fixture(t: TestContext, harness: Harness, extra: NodeJS.ProcessEnv = {}) {
+  const owners = loginFixtureOwners(t);
+  const allocatedRoot = await mkdtemp(join(tmpdir(), 'fake-login-'));
+  // LIFO: root removal follows every holder and native child join, even if a join rejects.
+  owners.directory(allocatedRoot);
+  const root = await realpath(allocatedRoot);
   const home = join(root, 'profile');
   const env = scratchAccountEnvironment(root, fixtureEnvironment(root, {}, { PATH: process.env.PATH,
     FAKE_LOGIN_ENABLED: '1', CLAUDE_CONFIG_DIR: home, CODEX_HOME: home,
     FAKE_CLAUDE_HOME: join(root, 'claude'), FAKE_CODEX_HOME: join(root, 'codex'), FAKE_OPENCODE_HOME: join(root, 'opencode'),
     FAKE_HARNESS_CALL_LOG: join(root, 'calls.jsonl'), FAKE_LOGIN_HOST: 'host-a', ...extra }), { openCodeDatabase: join(home, 'opencode.db') });
-  if (t) t.after(() => stopLoginHolder(env.FAKE_LOGIN_HOME || home));
+  owners.defer(() => stopLoginHolder(env.FAKE_LOGIN_HOME || home));
   const run = async (args: string[], input = 'fake-pasted-code\n') => {
     // cland-allow-child-env: scratchAccountEnvironment validates the explicit scratch database after fixtureEnvironment seals credentials and Git
     const child = spawn(process.execPath, [resolve('hub/test/fakes', binaries[harness]), ...args], { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const closed = loginChild(owners, child);
     let output = '';
     child.stdout.on('data', chunk => { output += chunk; });
     child.stderr.on('data', chunk => { output += chunk; });
-    const closed = new Promise<number | null>((done, reject) => { child.on('error', reject); child.on('close', done); });
     const timer = setTimeout(() => child.kill('SIGKILL'), testWaitMs());
     child.stdin.end(input);
-    try { return { code: await closed, output }; } finally { clearTimeout(timer); }
+    try { return { code: await closed(), output }; } finally { clearTimeout(timer); }
   };
-  return { root, home, env, run, read: async () => JSON.parse(await readFile(join(env.FAKE_LOGIN_HOME || home, 'login.json'), 'utf8')),
+  return { owners, root, home, env, run, read: async () => JSON.parse(await readFile(join(env.FAKE_LOGIN_HOME || home, 'login.json'), 'utf8')),
     signIn: () => run(harness === 'codex' ? ['login', '--device-auth'] : ['auth', 'login']),
     turn: (text: string) => run(harness === 'claude-code' ? ['-p', text, '--session-id', 'session-a'] : [harness === 'codex' ? 'exec' : 'run', text, '--session', 'session-a']) };
 }
 for (const harness of ['claude-code', 'codex', 'opencode'] as const) {
-  test(`${harness} sign-in writes generation zero in its harness home`, async () => {
-    const f = await fixture(harness);
+  test(`${harness} sign-in writes generation zero in its harness home`, async t => {
+    const f = await fixture(t, harness);
     assert.equal((await f.signIn()).code, 0);
     const login = await f.read();
     assert.equal(login.generation, 0); assert.equal(login.dead, false);
     assert.ok(login.token); assert.deepEqual(login.turns, []);
   });
-  test(`${harness} turns rotate and dead logins recover only after sign-in`, async () => {
-    const f = await fixture(harness);
+  test(`${harness} turns rotate and dead logins recover only after sign-in`, async t => {
+    const f = await fixture(t, harness);
     const signal = harness === 'claude-code' ? /authentication_failed.*OAuth token revoked/ : harness === 'codex' ? /refresh_token_reused.*unauthorized/ : /provider.auth/;
     assert.match((await f.turn('missing')).output, signal);
     await f.signIn();
@@ -64,8 +69,8 @@ for (const harness of ['claude-code', 'codex', 'opencode'] as const) {
   });
 }
 
-test('Codex refuses a live login without changing bytes and replaces a dead login', async () => {
-  const f = await fixture('codex');
+test('Codex refuses a live login without changing bytes and replaces a dead login', async t => {
+  const f = await fixture(t, 'codex');
   await f.signIn();
   const before = await readFile(join(f.home, 'login.json'), 'utf8');
   assert.equal((await f.signIn()).code, 1);
@@ -76,8 +81,8 @@ test('Codex refuses a live login without changing bytes and replaces a dead logi
   assert.notEqual((await f.read()).token, JSON.parse(before).token);
 });
 for (const harness of ['claude-code', 'codex', 'opencode'] as const) {
-  test(`${harness} records CLI logout and slash logout`, async () => {
-    const f = await fixture(harness);
+  test(`${harness} records CLI logout and slash logout`, async t => {
+    const f = await fixture(t, harness);
     await f.signIn();
     assert.equal((await f.run(harness === 'codex' ? ['logout'] : ['auth', 'logout'])).code, 0);
     await f.signIn();
@@ -88,7 +93,7 @@ for (const harness of ['claude-code', 'codex', 'opencode'] as const) {
     assert.equal((await f.read()).dead, true);
   });
   test(`${harness} sign-in leaves one observed detached holder with an open home file`, async t => {
-    const f = await fixture(harness, { FAKE_LOGIN_HOLDER: '1' }, t);
+    const f = await fixture(t, harness, { FAKE_LOGIN_HOLDER: '1' });
     assert.equal((await f.signIn()).code, 0);
     const receipt = JSON.parse(await readFile(join(f.home, 'login-holder.json'), 'utf8'));
     assert.equal(receipt.cwd, f.home); assert.equal(receipt.file, join(f.home, 'login-holder.open'));
@@ -101,12 +106,11 @@ for (const harness of ['claude-code', 'codex', 'opencode'] as const) {
 }
 
 test('Codex native app-server turns retain the last twenty rotations and report revocation', async t => {
-  const f = await fixture('codex', { FAKE_CODEX_TURN_MS: '1' });
+  const f = await fixture(t, 'codex', { FAKE_CODEX_TURN_MS: '1' });
   await f.signIn();
   // cland-allow-child-env: fixture returns a sealed environment with validated scratch account paths
   const child = spawn(process.execPath, [resolve('hub/test/fakes/codex/fake-codex.ts'), 'app-server'], { cwd: f.root, env: f.env, stdio: ['pipe', 'pipe', 'pipe'] });
-  const closed = new Promise<void>((done, reject) => { child.on('error', reject); child.on('close', () => done()); });
-  t.after(async () => { child.stdin.end(); const timer = setTimeout(() => child.kill('SIGKILL'), testWaitMs()); try { await closed; } finally { clearTimeout(timer); } });
+  loginChild(f.owners, child);
   let buffer = '', diagnostics = '';
   const frames: Array<any> = [];
   child.stderr.on('data', data => { diagnostics = (diagnostics + data).slice(-2000); });
@@ -145,13 +149,13 @@ test('Codex native app-server turns retain the last twenty rotations and report 
   assert.deepEqual(frames.slice(before).find(frame => frame.method === 'turn/completed').params.turn.error, { message: 'refresh_token_reused', codexErrorInfo: 'unauthorized' });
 });
 
-test('Claude refuses empty pasted input without creating a login', async () => {
-  const f = await fixture('claude-code');
+test('Claude refuses empty pasted input without creating a login', async t => {
+  const f = await fixture(t, 'claude-code');
   assert.equal((await f.run(['auth', 'login'], '\n')).code, 1);
   await assert.rejects(f.read(), { code: 'ENOENT' });
 });
 test('holder stale receipt cannot suppress a fresh launch or authorize a signal', async t => {
-  const f = await fixture('opencode', { FAKE_LOGIN_HOLDER: '1' }, t);
+  const f = await fixture(t, 'opencode', { FAKE_LOGIN_HOLDER: '1' });
   await mkdir(f.home, { recursive: true });
   await writeFile(join(f.home, 'login-holder.json'), JSON.stringify({ pid: process.pid, cwd: f.home }));
   assert.equal((await f.signIn()).code, 0);
@@ -160,7 +164,7 @@ test('holder stale receipt cannot suppress a fresh launch or authorize a signal'
 });
 
 test('holder cleanup works after receipt corruption and a crashed holder is replaced', async t => {
-  const f = await fixture('opencode', { FAKE_LOGIN_HOLDER: '1' }, t);
+  const f = await fixture(t, 'opencode', { FAKE_LOGIN_HOLDER: '1' });
   assert.equal((await f.signIn()).code, 0);
   const live = await holderRequest(f.home, 'status');
   assert.ok(live);
@@ -176,15 +180,15 @@ test('holder cleanup works after receipt corruption and a crashed holder is repl
   assert.equal(await holderRequest(f.home, 'status'), null);
 });
 test('uncommitted holder exits when sign-in fails after readiness', async t => {
-  const f = await fixture('opencode', { FAKE_LOGIN_HOLDER: '1', FAKE_LOGIN_HOLDER_FAIL_AFTER_READY: '1' }, t);
+  const f = await fixture(t, 'opencode', { FAKE_LOGIN_HOLDER: '1', FAKE_LOGIN_HOLDER_FAIL_AFTER_READY: '1' });
   const result = await f.signIn();
   assert.equal(result.code, 1, result.output);
   assert.match(result.output, /planted holder admission failure/);
   assert.equal(await holderRequest(f.home, 'status'), null);
 });
 for (const harness of ['claude-code', 'codex', 'opencode'] as const) {
-  test(`${harness} preserves disabled-mode refusal parity`, async () => {
-    const f = await fixture(harness, { FAKE_LOGIN_ENABLED: '0' });
+  test(`${harness} preserves disabled-mode refusal parity`, async t => {
+    const f = await fixture(t, harness, { FAKE_LOGIN_ENABLED: '0' });
     assert.equal((await f.run(harness === 'codex' ? ['logout'] : ['auth', 'logout'])).code, 1);
     if (harness === 'opencode') assert.equal((await f.run(['auth', 'login'])).code, 1);
   });
