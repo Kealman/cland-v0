@@ -3,7 +3,7 @@ id: T-1783
 kind: task
 title: The key store and `cland login add --kind key`
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:10.500Z
-updated: 2026-11-09T12:44:17.378Z
+updated: 2026-11-10T05:08:03.603Z
 ---
 
 ## Summary

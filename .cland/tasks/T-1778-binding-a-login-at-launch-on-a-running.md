@@ -3,7 +3,7 @@ id: T-1778
 kind: task
 title: Binding a login at launch on a running host
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:09.501Z
-updated: 2026-11-09T12:44:15.179Z
+updated: 2026-11-10T05:08:02.855Z
 ---
 
 ## Summary

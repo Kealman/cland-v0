@@ -3,7 +3,7 @@ id: T-1777
 kind: task
 title: "`cland login add` for disk logins, signed in from the terminal"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:09.265Z
-updated: 2026-11-09T12:44:14.768Z
+updated: 2026-11-10T05:08:02.421Z
 ---
 
 ## Summary

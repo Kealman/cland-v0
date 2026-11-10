@@ -3,7 +3,7 @@ id: T-1782
 kind: task
 title: "DigitalOcean login volumes: from a snapshot, snapshot history, no test-only refusal"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:10.329Z
-updated: 2026-11-09T12:44:16.966Z
+updated: 2026-11-10T05:08:03.442Z
 ---
 
 ## Summary

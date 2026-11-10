@@ -3,7 +3,7 @@ id: T-1779
 kind: task
 title: Release at host stop, and the kept volume re-attached on the next host
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:09.676Z
-updated: 2026-11-09T12:44:15.599Z
+updated: 2026-11-10T05:08:03.011Z
 ---
 
 ## Summary

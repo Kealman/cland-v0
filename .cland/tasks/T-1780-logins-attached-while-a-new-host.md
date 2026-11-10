@@ -3,7 +3,7 @@ id: T-1780
 kind: task
 title: Logins attached while a new host provisions
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:09.916Z
-updated: 2026-11-09T12:44:16.009Z
+updated: 2026-11-10T05:08:03.165Z
 ---
 
 ## Summary

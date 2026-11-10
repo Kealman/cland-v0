@@ -3,7 +3,7 @@ id: T-1781
 kind: task
 title: Snapshots as backups, and `cland login snapshot`
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:10.095Z
-updated: 2026-11-09T12:44:16.475Z
+updated: 2026-11-10T05:08:02.582Z
 ---
 
 ## Summary
