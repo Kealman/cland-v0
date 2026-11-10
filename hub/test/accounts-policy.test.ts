@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { mountedOpenCodeDatabase } from '../src/accounts/registry.ts';
 // T1 unit: source-text policy assertions, with no harness processes or provider requests.
 const forbidden = ['api.anthropic.com', 'oauth/usage', 'chatgpt.com', 'wham/usage', 'opencode.ai', 'auth.json', '.credentials.json', 'opencode.db', 'security find-generic-password'];
 // Exact authorized literals only: a provider target elsewhere (including any new call site) fails.
@@ -13,6 +14,7 @@ const allowedTargets = [
   { name: 'OpenCode unsupported-major remedy', file: '/doctor/toolchain.ts', literal: '`install OpenCode ${formatVersion(range.min)} (https://opencode.ai/v2/install)`', reason: 'human-facing doctor text; no request is made' },
   { name: 'OpenCode selected database path', file: '/accounts/registry.ts', literal: "export const openCodeDatabase = (env: NodeJS.ProcessEnv) => env.OPENCODE_DB || join(dataHome(env), 'opencode', 'opencode.db');", reason: 'pure saved/default database path selection for launch and doctor; no database contents are read' },
   { name: 'cland OpenCode database path', file: '/accounts/registry.ts', literal: "export const clandOpenCodeDatabase = (env: NodeJS.ProcessEnv) => join(dataHome(env), 'cland', 'opencode', 'opencode.db');", reason: 'pure isolated database path construction; no database contents are read' },
+  { name: 'Mounted OpenCode login database path', file: '/accounts/registry.ts', literal: "export const mountedOpenCodeDatabase = (mount: string) => join(mount, 'opencode.db');", reason: 'pure mounted login database path; no read' },
   { name: 'E-271 DigitalOcean client', file: '/executor/droplet/api.ts', literal: 'https://api.digitalocean.com/v2', reason: 'authorized executor lifecycle calls, not harness-account limits' },
   // T-1714 C3: render-only builder text; the hub process never fetches this URL.
   { name: 'OpenCode image installer', file: '/image/recipe.ts', literal: 'https://opencode.ai/v2/install', reason: 'pinned installer script rendered for the image builder; no hub provider or credential-store access' },
@@ -42,6 +44,15 @@ test('image installer exception permits only the exact v2 literal in its recipe 
   assert.throws(() => assertSourceAllowed('/hub/src/image/recipe.ts', `${literal} ${literal}`), /contains opencode.ai/);
   assert.throws(() => assertSourceAllowed('/hub/src/image/recipe.ts', 'https://opencode.ai/usage'), /contains opencode.ai/);
   assertSourceAllowed('/hub/src/image/recipe.ts', literal);
+});
+
+test('mounted database path permits only one exact pure registry helper',()=>{
+  const literal="export const mountedOpenCodeDatabase = (mount: string) => join(mount, 'opencode.db');";
+  assertSourceAllowed('/accounts/registry.ts',literal);
+  assert.throws(()=>assertSourceAllowed('/host/unrelated.ts',literal),/contains opencode.db/);
+  assert.throws(()=>assertSourceAllowed('/accounts/registry.ts',literal+'\n'+literal),/contains opencode.db/);
+  assert.throws(()=>assertSourceAllowed('/accounts/registry.ts',"export const mountedOpenCodeDatabase = (mount: string) => readFile(join(mount, 'opencode.db'));"),/contains opencode.db/);
+  assert.equal(mountedOpenCodeDatabase('/cland/auth/opencode-work'),'/cland/auth/opencode-work/opencode.db');
 });
 
 

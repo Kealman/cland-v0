@@ -1,5 +1,12 @@
 # hub/test/fake-ssh.test.ts
 
+Terminal sign-in cases cover all three exact native forms, map homes beneath
+the authenticated fake machine, and select absolute committed fake binaries.
+Unknown commands mentioning `/cland/auth/` refuse before execution. The PATH
+trap case proves an installed or planted harness cannot receive sign-in. Every
+fixture PATH contains only its scratch fake wrappers, Node and system tools;
+never demonstrate a red sign-in by allowing fallback to an installed harness.
+
 `hub/test/fake-ssh.test.ts` is T3. Run it alone with Node 24 after checking disk
 and load, under the standing cover-quiet rules. It creates disposable roots and
 sealed environments, joins native children, closes sockets, then removes roots.

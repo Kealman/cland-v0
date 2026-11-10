@@ -6,6 +6,50 @@ clients and remotes cannot list logins. In users mode the local user must also
 have administrative authority. The command never reads the user-level accounts
 registry, harness files or key material, and creates no logins.
 
+`cland login add <claude-code|codex|opencode> [--name <name>] [--pool <pool>]
+[--account <account>] [--kind disk]` creates a disk login through a local human
+terminal. The default pool is `agents`, otherwise the only configured pool;
+the default name is the lowest free `<harness>-N`, and account defaults to name.
+It reuses any ready host in the pool, including full hosts, joins a boot already
+in progress, or creates a host through the normal host-create admission path.
+Creation requires a current prepared pool image and obeys `max_hosts`.
+Login name validation and the creating-row reservation precede asynchronous host
+work. A duplicate request owns neither that row nor a host pin. The operation
+revalidates the captured ready host, machine birth and registration before each
+native effect and terminal-plan publication; changed authority triggers cleanup
+using the originally admitted resources.
+
+The provider creates a 1 GiB volume in the pool region. The host mounts it at
+`/cland/auth/<harness>-<name>`. The CLI runs the harness's own sign-in through
+pinned `ssh -t`: Claude uses `CLAUDE_CONFIG_DIR` and `claude auth login`, Codex
+uses `CODEX_HOME` and `codex login --device-auth`, and OpenCode uses `OPENCODE_DB`
+and `opencode auth login`. Codex receives a new `config.toml` selecting the file
+credential store before the terminal starts. cland never reads the disk contents.
+OpenCode database names remain owned by `accounts/registry.ts`; callers use its
+pure `mountedOpenCodeDatabase(mount)` helper for mounted login paths. The source
+policy permits that exact path constructor and rejects database access elsewhere.
+
+`login.add` returns only a public terminal plan. `login.signed-in` reports the
+native exit code on the same authenticated connection. Exit zero unmounts,
+snapshots once, detaches, records the last sign-in and marks the login ready.
+A nonzero exit or connection close unmounts and detaches the kept disk, then
+marks it signed out. A missing native cleanup receipt retains creating state
+and its resource fence. While creating, the login has no bindings or free
+capacity. No step logs out a harness. Provider API access and terminal SSH
+connectivity are required on real hosts; fake-provider tests use no network.
+
+The CLI owns the spawned SSH process through native close. Socket loss or CLI
+cancellation requests termination and joins it; cancellation keeps the hub
+connection until that receipt, then reports a null exit. TERM escalates after
+two seconds, with a five-second native-close bound. Incomplete native cleanup
+reports exit/signal facts and retains the open connection until late closure.
+
+The sign-in owner pins the selected host before preparing the disk and releases
+the pin after confirmed cleanup. `PoolIdleLifecycle.busyHost(id)`, supplied
+through `Sessions.startPoolScaling`, counts these owners alongside sessions
+for idle-stop and lease renewal. Incomplete cleanup retains the pin and reports
+the failure. Consumers creating login operations reuse this seam.
+
 Rows show name, harness, account, kind, state and last sign-in. Disk rows also
 show exclusive (default true), provider, region, volume id and snapshot ids.
 Key rows have none of those disk properties and support OpenCode only. Text
@@ -44,8 +88,8 @@ existing database. Callers own admission and native resource receipts.
 - `unbind(name, host)` removes that binding; removing the last binding from
   in-use changes the row to ready atomically.
 
-Each method returns detached values. Metadata updates beyond transitions are
-not exposed by this initial store API.
+Each method returns detached values. `updateCreatingDisk(name, update)` publishes
+volume, snapshot and last-sign-in receipts only while a disk row is creating.
 
 Binding metadata violations throw `LoginBindingRefused` with a stable `code`
 (`disk-volume-required`, `writer-volume-mismatch`, `reader-volume-mismatch`,
@@ -86,6 +130,14 @@ did not launch cause `writers-remain`. Fake freeze/thaw validate attachment and
 the link but do not emulate filesystem write blocking. These fixtures require
 no sudo, mounted device, provider API or real harness login. See
 [login-disk tests](../agents/tests/hub-test-host-login-disk.test.ts.md).
+
+Agent filesystem operations use exported `loginFilePath(path, env)` from
+`agent/fake-login-mount.ts` for validated logical login paths, including the
+mount root. Directory setup, stat/type/list/read and removal share the same
+provider attachment and exact-link validation as publication and other writes.
+Real hosts and ordinary paths retain their existing behavior; fake `realpath`
+replies keep logical disk paths. Host-execution consumers may use this export
+for harness home and database paths without persisting fixture paths in metadata.
 
 
 The agent reserves writer admission before login-disk drainage, joins already admitted operations, and refuses new writer-capable requests from every connection through unlink. Native cancellation and observation remain available. Fake process drainage performs repeated captured censuses, signals only members actually using the disk, and refuses uncertain ownership. The native TERM escalation and final closure bounds use the shared Clock (2 s and 4 s respectively); no successful unlink is reported on exhaustion.

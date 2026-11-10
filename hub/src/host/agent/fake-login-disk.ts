@@ -1,10 +1,8 @@
-import { readFile, mkdir, symlink, readlink, unlink, realpath, readdir } from 'node:fs/promises';
-import { dirname, join, basename } from 'node:path';
-import { fakeVolumeContents, listFakeVolumes } from './fake-volume-contents.ts';
-import { fakeMachineStorageDirectory } from './fake-layout.ts';
-import { realClock } from './clock.ts';
-import { loginDiskError, rejectLoginSymlinks } from './login-disk.ts';
-import type { LoginDisk, Machine } from './resource-types.ts';
+import { mkdir, symlink, readlink, unlink, realpath, readdir } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fakeLoginMount } from './fake-login-mount.ts';
+import { loginDiskError } from './login-disk.ts';
+import type { LoginDisk } from './resource-types.ts';
 
 import type { AgentProcesses } from './processes.ts';
 import { run } from './command.ts';
@@ -32,27 +30,7 @@ async function drain(processes: AgentProcesses, disk: string, env: NodeJS.Proces
 
 /** Only a configured fake host can map a login path onto directory-backed volumes. */
 export async function fakeLoginDisk(input: LoginDisk, env: NodeJS.ProcessEnv, processes: AgentProcesses) {
-  const root = env.CLAND_FAKE_HOST_ROOT;
-  const directory = dirname(env.CLAND_HOST_BOOT_ID_FILE ?? '');
-  const name = basename(directory);
-  if(!root||!env.CLAND_FAKE_HOSTS?.split(',').includes(name))throw loginDiskError('wrong-volume');
-  try {if(await realpath(directory)!==await realpath(fakeMachineStorageDirectory(root,name)))throw new Error('machine directory mismatch');}
-  catch {throw loginDiskError('wrong-volume');}
-  let machine:Machine,project:string;
-  try {const record=JSON.parse(await readFile(join(directory,'provider.json'),'utf8'));machine=record.machine;project=record.project;if(machine.id!==name)throw new Error('machine mismatch');}
-  catch {throw loginDiskError('wrong-volume');}
-  const volumes=await listFakeVolumes(root,project);
-  if(volumes.state!=='listed')throw loginDiskError('wrong-volume');
-  const matches=volumes.volumes.filter(volume=>volume.name===input.volume);
-  if(matches.length!==1)throw loginDiskError('wrong-volume');
-  const contents=await fakeVolumeContents(root,directory,matches[0]!,machine,()=>realClock.now().getTime());
-  if(contents.state!=='ready')throw loginDiskError('wrong-volume');
-  const path = join(await realpath(directory),input.path);
-  await rejectLoginSymlinks(path,true);
-  let target: string | undefined;
-  try { target=await readlink(path); }
-  catch(e) { if((e as NodeJS.ErrnoException).code!=='ENOENT') throw loginDiskError('bad-argument'); }
-  if (target !== undefined && target !== contents.directory) throw loginDiskError('bad-argument');
+  const {path,contents,target}=await fakeLoginMount(input,env);
   if (input.op === 'mount') {
     await mkdir(dirname(path),{recursive:true,mode:0o700});
     for (const entry of await readdir(dirname(path),{withFileTypes:true})) {

@@ -1,15 +1,37 @@
 // T3: fake SSH subprocesses only; disposable homes and Unix sockets, no real SSH/network.
 // Lifecycle: join every child and close every server before removing the fixture.
-import { removeFixtureSockets } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, symlink, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { fixtureEnvironment } from './fixture-environment.ts';
 const ssh = fileURLToPath(new URL('./fakes/fake-ssh.ts', import.meta.url));
+for(const [harness,command] of [
+ ['claude-code',"CLAUDE_CONFIG_DIR='/cland/auth/claude-code-work' claude auth login"],
+ ['codex',"CODEX_HOME='/cland/auth/codex-work' codex login --device-auth"],
+ ['opencode',"OPENCODE_DB='/cland/auth/opencode-work/opencode.db' opencode auth login"],
+] as const) test(`terminal ${harness} sign-in stays inside the authenticated fake machine`,async t=>{
+ const f=await forwardingFixture(t);
+ const child=f.launch([...f.base,'-t','one',command],ssh,'synthetic-code\n');
+ const result=await child.join();assert.equal(result.code,0,child.output());
+ const login=JSON.parse(await readFile(join(f.host.directory,'cland/auth',`${harness}-work`,'login.json'),'utf8'));
+ assert.equal(login.generation,0);assert.equal(typeof login.token,'string');
+ assert.ok(!child.output().includes(login.token));
+});
+test('fake SSH refuses unrecognized login disk commands before local execution',async t=>{
+ const f=await forwardingFixture(t);
+ const child=f.launch([...f.base,'-t','one','cat /cland/auth/codex-work/login.json']);
+ assert.equal((await child.join()).code,255);assert.match(child.output(),/unsupported login disk command/);
+});
+test('fake SSH terminal sign-in cannot execute a harness planted on PATH',async t=>{
+ const f=await forwardingFixture(t);
+ await writeFile(join(f.root,'bin/claude'),'#!/bin/sh\necho REAL-HARNESS-TRAP\nexit 91\n',{mode:0o700});
+ const child=f.launch([...f.base,'-t','one',"CLAUDE_CONFIG_DIR='/cland/auth/claude-code-work' claude auth login"],ssh,'synthetic-code\n');
+ assert.equal((await child.join()).code,0,child.output());assert.ok(!child.output().includes('REAL-HARNESS-TRAP'));
+});
 test('one-shot command uses fake host HOME and stdin', { timeout: 15000 }, async t => {
   const f = await forwardingFixture(t);
   const p = f.launch([...f.base, '-t', 'one', 'printf "%s:" "$HOME"; cat'], ssh, 'payload');
@@ -43,7 +65,7 @@ import net from 'node:net';
 import { writeFile, readFile, unlink, lstat } from 'node:fs/promises';
 import { eventually } from './harness.ts';
 import { createFakeHost } from './fakes/fake-host.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { ownProcess, ownDirectory, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { realClock, type Clock, type ClockTimer } from '../src/hub/clock.ts';
 import { FakeClock } from './fake-clock.ts';
 type DeadlineClock = Pick<Clock, 'setTimeout' | 'clearTimeout'>;
@@ -54,24 +76,34 @@ async function bounded<T>(promise: Promise<T>, label: string, diagnostic: () => 
   finally { clock.clearTimeout(timer); }
 }
 
-async function forwardingFixture(t: import('node:test').TestContext) {
+async function forwardingFixture(t: import('node:test').TestContext, setup?: (root:string)=>Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), 'fs-'));
-  const host = await createFakeHost(root, 'one');
-  const env = fixtureEnvironment(root, process.env, { CLAND_FAKE_HOSTS: 'one,two', CLAND_FAKE_HOST_ROOT: root });
-  const base = ['-a', '-x', '-F', '/dev/null', '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes', '-o', 'ExitOnForwardFailure=yes', '-o', 'StrictHostKeyChecking=yes', '-o', `UserKnownHostsFile=${host.knownHosts}`, '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4'];
+  ownDirectory(t,root);
   const children: Array<{ stop: () => Promise<void> }> = [];
+  const servers: net.Server[] = [];
+  const sockets = new Set<net.Socket>();
+  let drained=false;
+  guardDirectoryRemoval(root,()=>{if(!drained)throw Error('fake SSH owners not drained; root retained');});
+  beforeDirectories(t,async()=>{
+    const errors:unknown[]=[];
+    for(const child of children)try{await child.stop();}catch(error){errors.push(error);}
+    const closes=[...sockets].map(socket=>new Promise<void>(resolve=>{socket.once('close',()=>resolve());socket.destroy();}));
+    await Promise.all(closes);
+    for(const server of servers)try{await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}catch(error){errors.push(error);}
+    drained=errors.length===0;
+    if(errors.length)throw new AggregateError(errors,'fake SSH fixture cleanup incomplete');
+  });
+  await setup?.(root);
+  const host = await createFakeHost(root, 'one');
+  const bin=join(root,'bin');await mkdir(bin);
+  await symlink(process.execPath,join(bin,'node'));
+  for(const [name,path] of [['claude','claude-code/claude'],['codex','codex/codex'],['opencode','opencode/opencode']]) await writeFile(join(bin,name!),`#!/bin/sh\nexec '${fileURLToPath(new URL('./fakes/'+path,import.meta.url))}' "$@"\n`,{mode:0o700});
+  const env = fixtureEnvironment(root, process.env, { PATH:bin+':/usr/bin:/bin', CLAND_FAKE_HOSTS: 'one,two', CLAND_FAKE_HOST_ROOT: root });
+  const base = ['-a', '-x', '-F', '/dev/null', '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes', '-o', 'ExitOnForwardFailure=yes', '-o', 'StrictHostKeyChecking=yes', '-o', `UserKnownHostsFile=${host.knownHosts}`, '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4'];
   const guard = join(root, 'unix-only.mjs');
   await writeFile(guard, `import net from 'node:net'; import {syncBuiltinESMExports} from 'node:module';
 const connect = net.createConnection; net.createConnection = (...args) => { if (!args[0]?.path) throw new Error('TCP connect forbidden'); return connect(...args); };
 const listen = net.Server.prototype.listen; net.Server.prototype.listen = function(...args) { if (typeof args[0] !== 'string') throw new Error('TCP listen forbidden'); return listen.apply(this,args); }; syncBuiltinESMExports();`);
-  const servers: net.Server[] = [];
-  const sockets = new Set<net.Socket>();
-  t.after(async () => {
-    for (const child of children) await child.stop();
-    for (const socket of sockets) socket.destroy();
-    for (const server of servers) await new Promise<void>(resolve => server.close(() => resolve()));
-    await removeFixtureSockets(root); await rm(root, { recursive: true, force: true });
-  });
   function launch(args: string[], binary = ssh, input = '', signal = t.signal, closeClock: DeadlineClock = realClock) {
     const child = spawn(process.execPath, ['--import', guard, binary, ...args], { env, cwd: root, detached: true });
     let output = '';
@@ -122,6 +154,14 @@ const listen = net.Server.prototype.listen; net.Server.prototype.listen = functi
   });
   return { root, host, base, control, launch, command, echo, exchange, ready, openStream };
 }
+
+test('fake SSH setup rejection disposes its root before any bin or host setup',async t=>{
+ let root='';
+ await t.test('planted setup rejection',async child=>{
+  await assert.rejects(forwardingFixture(child,async path=>{root=path;throw Error('planted setup rejection');}),/planted setup rejection/);
+ });
+ assert.ok(root);await assert.rejects(stat(root),{code:'ENOENT'});
+});
 
 test('master relays both Unix directions, dynamic forward/cancel, exit leaves stale control', { timeout: 15000 }, async t => {
   const f = await forwardingFixture(t);

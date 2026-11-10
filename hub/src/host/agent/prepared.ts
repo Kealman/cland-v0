@@ -1,5 +1,6 @@
 import { MemoryFloorRefusal, memoryFloorDetails, type MemoryFloorDetails } from './memory.ts';
 import { parseAgentFile } from './operations.ts';
+import { loginFilePath } from './fake-login-mount.ts';
 import { fileOperations } from './files.ts';
 import { randomUUID } from 'node:crypto';
 import { open, lstat, opendir, mkdir, unlink, readFile, access } from 'node:fs/promises';
@@ -168,7 +169,8 @@ export class PreparedOperations {
     try {
       let result:unknown;
       if(plan.kind==='publishFile'||plan.kind==='appendFile') {
-        const {path,bytes,options}=parseAgentFile(plan.args,plan.kind);
+        const parsed=parseAgentFile(plan.args,plan.kind);
+        const {bytes,options}=parsed, path=await loginFilePath(parsed.path,this.#env);
         if(plan.kind==='publishFile') result=await fileOperations.publishFile(path,bytes,options);
         else {await fileOperations.appendFile(path,bytes);result=null;}
         fileCompleted = true;

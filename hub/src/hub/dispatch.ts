@@ -4,6 +4,8 @@ import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
+import { type LoginSignIn } from '../host/login-signin.ts';
+import { preparePoolLogin } from '../host/login-add.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
 import { flushHostBranch } from '../host/flush.ts';
@@ -164,6 +166,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  prepareLogin?: typeof preparePoolLogin;
   createHost?: typeof createHost;
   registerHostSecrets?: (values:readonly string[])=>void;
   uploadOpen?: typeof import('node:fs/promises').open;
@@ -486,28 +489,38 @@ export class Dispatcher {
   #hostProvisionAbort = new AbortController();
   #stopHostSpend: (() => void) | undefined;
   #poolPrepares = new Set<Promise<unknown>>();
+  readonly #loginClosers = new Set<() => Promise<unknown>>();
+  readonly #loginPins = new Map<string, number>();
   async close(): Promise<void> {
     this.#closed = true;
-    this.#stopHostSpend?.();
+    const failures:unknown[]=[];
+    const attempt=async(close:()=>unknown|Promise<unknown>)=>{try{await close();}catch(error){failures.push(error);}};
     this.#hostProvisionAbort.abort();
+    await attempt(()=>this.#stopHostSpend?.());
     await Promise.allSettled([...this.#poolPrepares]);
+    const logins=await Promise.allSettled([...this.#loginClosers].map(close=>Promise.resolve().then(close)));
+    for(const result of logins)if(result.status==='rejected'){
+      failures.push(result.reason);
+      await attempt(()=>this.#log({event:'login-cleanup-failed',error:String(result.reason)}));
+    }
     // A startup failure can close the dispatcher before serving admits recovery.
     this.#admitExecutorRecovery();
     if (this.#dropletTimer) this.#options.core.clock.clearInterval(this.#dropletTimer);
-    const closingDroplets = this.#droplets?.close();
-    await this.#dropletReady;
-    await this.#dropletWork;
-    await this.#demos?.close();
+    const closingDroplets = attempt(()=>this.#droplets?.close());
+    await attempt(()=>this.#dropletReady);
+    await attempt(()=>this.#dropletWork);
+    await attempt(()=>this.#demos?.close());
     await closingDroplets;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
-    await this.#devT3Search?.close(this.#options.core.clock);
-    await this.#batches?.close();
-    this.#merges?.stop();
-    this.#mergeQueue?.stop();
-    await this.#mergeQueueReady;
-    await this.#models?.close();
-    await this.#suites?.close();
+    await attempt(()=>this.#devT3Search?.close(this.#options.core.clock));
+    await attempt(()=>this.#batches?.close());
+    await attempt(()=>this.#merges?.stop());
+    await attempt(()=>this.#mergeQueue?.stop());
+    await attempt(()=>this.#mergeQueueReady);
+    await attempt(()=>this.#models?.close());
+    await attempt(()=>this.#suites?.close());
+    if(failures.length)throw new AggregateError(failures,'dispatcher cleanup failed');
   }
 
   /** Idempotent startup admission; ordinary frames never await provider recovery. */
@@ -587,6 +600,7 @@ export class Dispatcher {
         if (id) this.core.store.setMeta('hosts-spend-warning-day', spend.day);
       });
       sessions.startPoolScaling((pool,authorize) => this.#createPoolHost(pool,authorize), {
+        busyHost: id => this.#loginPins.has(id),
         failed: record => {if(!record.bootFailureAt)this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'});},
         declarations: record => {
           const provider = providers.resolve(record);
@@ -1415,6 +1429,15 @@ export class Dispatcher {
     };
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
+    const loginSignIns = new Map<string, LoginSignIn>();
+    const loginClosing = () => {
+      for(const pending of loginSignIns.values()) {
+        const work=pending.complete(null);
+        this.#poolPrepares.add(work);
+        void work.finally(()=>this.#poolPrepares.delete(work)).catch(error=>this.#log({event:'login-cleanup-incomplete',name:pending.name,error:String(error)}));
+      }
+    };
+    onClose.push(loginClosing);
     /** A result that comes later (Git work): its answer going out is timed against the budget as `answer`. */
     const later = (tool: string, result: Promise<HubFrame>): void =>
       void result.then((frame) =>
@@ -2141,6 +2164,8 @@ export class Dispatcher {
             if (!this.#options.control?.remoteStatus) throw new Error('remote status is unavailable');
             return answer(this.#options.control.remoteStatus());
           }
+          case 'login.add':
+          case 'login.signed-in':
           case 'login.list':
           case 'host.status':
           case 'host.stop':
@@ -2154,6 +2179,36 @@ export class Dispatcher {
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
+            if(frame.type==='login.signed-in') {
+              const pending=loginSignIns.get(frame.name);
+              if(!pending) throw Error('sign-in belongs to another connection or is already complete');
+              const work=pending.complete(frame.code);
+              this.#poolPrepares.add(work);
+              void work.finally(()=>{loginSignIns.delete(frame.name);this.#poolPrepares.delete(work);}).catch(()=>{});
+              return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
+            }
+            if(frame.type==='login.add') {
+              if(frame.kind==='key') throw Error('key login add is not available on this hub');
+              if(this.#closed||!this.hostOwner||!this.#options.control) throw Error('host runtime unavailable');
+              const root=this.#options.control.status().root, env=this.#options.env??process.env;
+              const work=(async()=>{
+                const {pending,plan}=await (this.#options.prepareLogin??preparePoolLogin)({root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),pinHost:id=>{
+                  this.#loginPins.set(id,(this.#loginPins.get(id)??0)+1);
+                  let released=false;
+                  return ()=>{if(released)return;released=true;const n=this.#loginPins.get(id)!-1;if(n)this.#loginPins.set(id,n);else this.#loginPins.delete(id);};
+                }},frame);
+                const close=()=>pending.complete(null);
+                this.#loginClosers.add(close);
+                const complete=pending.complete.bind(pending);
+                pending.complete=code=>complete(code).finally(()=>{this.#loginClosers.delete(close);});
+                loginSignIns.set(pending.name,pending);
+                if(!peer.isOpen()||this.#closed) {await pending.complete(null);loginSignIns.delete(pending.name);throw Error('terminal disconnected before sign-in');}
+                return plan;
+              })();
+              this.#poolPrepares.add(work);
+              void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
+              return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
+            }
             if (frame.type === 'login.list') return answer(core.store.hosts.logins.list().map(row => ({...row,bindings:core.store.hosts.logins.bindings(row.name)})));
             if (frame.type === 'host.status') {
               if(this.#closed)throw Error('host status stopped');

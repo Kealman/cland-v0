@@ -710,6 +710,8 @@ export type ClientRequest =
   | { type: 'remote.unpair' | 'remote.test'; id: string; messenger: RemoteVia; user?: string }
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'login.list'; id: string }
+  | ({ type: 'login.add'; id: string } & import('./host/login-signin.ts').LoginAddInput)
+  | { type: 'login.signed-in'; id: string; name: string; code: number | null }
   | { type: 'host.list'; id: string }
   | { type: 'host.status'; id: string }
   | { type: 'host.stop'; id: string; host: string }
@@ -1133,6 +1135,10 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'remote.test':
     case 'remote.unpair':
       return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
+    case 'login.add':
+      return typeof f.harness === 'string' && ['claude-code','codex','opencode'].includes(f.harness) && (f.kind === undefined || f.kind === 'disk' || f.kind === 'key') && ['name','account','pool'].every(key => f[key] === undefined || typeof f[key] === 'string');
+    case 'login.signed-in':
+      return typeof f.name === 'string' && (f.code === null || Number.isSafeInteger(f.code) && Number(f.code) >= 0 && Number(f.code) <= 255);
     case 'login.list':
     case 'host.status':
     case 'host.list': return true;

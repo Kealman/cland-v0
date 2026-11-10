@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { writeFile, readFile, unlink, chmod, rename } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fixtureEnvironment } from '../fixture-environment.ts';
+import { fixtureEnvironment, scratchAccountEnvironment } from '../fixture-environment.ts';
 import { hostPath } from './fake-host.ts';
 import { parseSsh, authenticate, controlRequest, hostOwner, sameOwner } from './fake-ssh-common.ts';
 import type { Forward, Control } from './fake-ssh-common.ts';
@@ -17,8 +17,19 @@ try {
     await controlRequest(parsed.options.controlpath, { operation: parsed.operation, forwards: parsed.forwards, owner });
   } else if (!parsed.master) {
     if (!parsed.command.length) throw new Error('missing command');
-    const env = fixtureEnvironment(host.directory, process.env, { CLAND_FAKE_HOSTS: process.env.CLAND_FAKE_HOSTS, CLAND_FAKE_HOST_ROOT: process.env.CLAND_FAKE_HOST_ROOT, CLAND_HOST_BOOT_ID_FILE: join(host.directory, 'boot-id') });
-    const child = spawn('/bin/sh', ['-c', parsed.command.join(' ')], { cwd: host.home, env, stdio: 'inherit' });
+    let command=parsed.command.join(' ');
+    const login=command.match(/^(CLAUDE_CONFIG_DIR|CODEX_HOME|OPENCODE_DB)='(\/cland\/auth\/[a-z][a-z0-9-]*(?:\/opencode\.db)?)' (claude auth login|codex login --device-auth|opencode auth login)$/);
+    let additions:NodeJS.ProcessEnv={};
+    if(command.includes('/cland/auth/')) {
+      if(!login||!({CLAUDE_CONFIG_DIR:'claude auth login',CODEX_HOME:'codex login --device-auth',OPENCODE_DB:'opencode auth login'}[login[1]!]===login[3]))throw Error('unsupported login disk command');
+      const binary=login[1]==='CLAUDE_CONFIG_DIR'?new URL('./claude-code/claude',import.meta.url).pathname:login[1]==='CODEX_HOME'?new URL('./codex/codex',import.meta.url).pathname:new URL('./opencode/opencode',import.meta.url).pathname;
+      command=[binary,...login[3]!.split(' ').slice(1)].map(value=>"'"+value.replaceAll("'","'\\''")+"'").join(' ');
+      additions={[login[1]!]:join(host.directory,login[2]!),FAKE_LOGIN_ENABLED:'1',FAKE_HARNESS_CALL_LOG:join(host.directory,'login-calls.jsonl')};
+    }
+    const sealed=fixtureEnvironment(host.directory,process.env,{CLAND_FAKE_HOSTS:process.env.CLAND_FAKE_HOSTS,CLAND_FAKE_HOST_ROOT:process.env.CLAND_FAKE_HOST_ROOT,CLAND_HOST_BOOT_ID_FILE:join(host.directory,'boot-id'),...additions});
+    const env=additions.OPENCODE_DB?scratchAccountEnvironment(host.directory,sealed,{openCodeDatabase:additions.OPENCODE_DB}):sealed;
+    // cland-allow-child-env: sealed fixture environment plus validated scratchAccountEnvironment for the explicit OpenCode disk path; credentials remain filtered.
+    const child = spawn('/bin/sh', ['-c', command], { cwd: host.home, env, stdio: 'inherit' });
     for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => child.kill(signal));
     await new Promise<void>((resolve, reject) => { child.on('error', reject); child.on('close', (code, signal) => { process.exitCode = code ?? (signal ? 255 : 0); resolve(); }); });
   } else {

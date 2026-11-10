@@ -30,6 +30,12 @@ export class LoginRecords {
  }
  list(): Login[] { return this.db.prepare('select record from logins order by name').all().map(row => JSON.parse(String(row.record)) as Login); }
  free(): Login[] { return this.list().filter(row => row.state === 'ready'); }
+ /** Sign-in owners publish native receipts while the login remains unavailable. */
+ updateCreatingDisk(name: string, update: {volumeId?: string; snapshotIds?: string[]; lastSignIn?: string}): void {
+  const row = this.required(name);
+  if (row.kind !== 'disk' || row.state !== 'creating') throw Error('disk login must be creating');
+  this.save({...row,...update});
+ }
  bindings(name: string): LoginBinding[] {
   return this.db.prepare('select login,host,role,volume_id as volumeId from login_bindings where login=? order by host').all(name) as LoginBinding[];
  }

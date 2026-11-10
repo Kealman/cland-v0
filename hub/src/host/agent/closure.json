@@ -34,7 +34,11 @@
     },
     {
       "path": "hub/src/host/agent/fake-login-disk.ts",
-      "sha256": "45ce53f7b29cf3211bba5bf925acee3cfa78f805059b78d2493355581a8ad889"
+      "sha256": "1d3639bc90b9b904430e0a3da747af02c8f9a5005b3fa7962a5eb35322fb5b24"
+    },
+    {
+      "path": "hub/src/host/agent/fake-login-mount.ts",
+      "sha256": "d250581f13dc166ef47a059af46b858abca0ee35f406c659dc4319f765793748"
     },
     {
       "path": "hub/src/host/agent/fake-volume-contents.ts",
@@ -78,7 +82,7 @@
     },
     {
       "path": "hub/src/host/agent/operations.ts",
-      "sha256": "c743d58fd898707f31f8f241aa4eb9331cfcb2a822233e27c78b223335b5cc41"
+      "sha256": "75b9698a44a64e733a89c13f84c4c503eedb18ba3cbc21b30b0274d6dc2152e0"
     },
     {
       "path": "hub/src/host/agent/package.ts",
@@ -90,7 +94,7 @@
     },
     {
       "path": "hub/src/host/agent/prepared.ts",
-      "sha256": "83f76bae4a571ed56bb52a39c0eecbcc7e3ff9e71a6f2563fc3dac99f302c489"
+      "sha256": "3fcea232603b7d81a2a5af1151dac6bf1006fa7eb56000042a3cd4090515eec3"
     },
     {
       "path": "hub/src/host/agent/process-usage.ts",
@@ -166,7 +170,7 @@
     },
     {
       "path": "shared/fake-layout.ts",
-      "sha256": "0301aeb3cd9e8bce61f5b72d3c3e2d05f91eb8acf47c65a25cfd3e70e92e258c"
+      "sha256": "e548769f72e24860ad61534715bdd60f5d85499fb0363eb8d4f42168c0e3c70e"
     }
   ]
 }

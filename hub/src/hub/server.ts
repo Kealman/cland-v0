@@ -20,6 +20,7 @@ import { KEEPALIVE_MS, MAX_FRAME_BYTES } from '../protocol.ts';
 export type HubBaseOptions = CoreOptions & {
   uploadOpen?: DispatcherOptions['uploadOpen'];
   uploadRedactor?: DispatcherOptions['uploadRedactor'];
+  prepareLogin?: DispatcherOptions['prepareLogin'];
   createHost?: DispatcherOptions['createHost'];
   registerHostSecrets?: DispatcherOptions['registerHostSecrets'];
   secret: string;
@@ -135,6 +136,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
     ...(options.uploadOpen ? { uploadOpen: options.uploadOpen } : {}),
+    ...(options.prepareLogin ? {prepareLogin:options.prepareLogin} : {}),
     ...(options.createHost ? {createHost:options.createHost} : {}),
     ...(options.registerHostSecrets ? {registerHostSecrets:options.registerHostSecrets} : {}),
     ...(options.uploadRedactor ? { uploadRedactor: options.uploadRedactor } : {}),

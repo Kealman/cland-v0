@@ -150,7 +150,11 @@ Remote sessions use `CLAND_HUB_FILE` to find the host-local forwarded sockets. T
 
 ## Login metadata
 
-`login.list` / `cland login list [--json]` requires a local human CLI or Neovim
+`login.list`, `login.add` and `login.signed-in` require a local human CLI or Neovim
 connection, like `host.list`. Sessions, web clients and remotes are refused.
 Users mode also checks the local user's administrative authority. Implementers
 exercise this boundary only in isolated fixtures. See [project logins](../hub/logins.md).
+
+`cland login add` keeps its authenticated connection through terminal sign-in.
+Only that connection can report completion; disconnect drains the login disk
+and retains it as signed out. Agent sessions cannot create project logins.

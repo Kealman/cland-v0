@@ -8,6 +8,15 @@ export function testWaitMs(fallbackMs = 15_000): number {
   return Number.isFinite(configured) && configured > 0 ? configured : fallbackMs;
 }
 
+/** Shared deadline arithmetic for condition waits and their outer phase envelopes. */
+export function waitTimeoutMs(ms:number,loadFactor?:number):number {
+  const configured=loadFactor??Number(process.env.CLAND_TEST_LOAD_FACTOR??(process.env.CLAND_SUITE_EXECUTOR==='droplet'?2:1));
+  const factor=Number.isFinite(configured)&&configured>=1?configured:1;
+  const timeoutMs=ms*factor;
+  if(!Number.isFinite(timeoutMs)||timeoutMs<=0)throw new Error('until needs a positive finite deadline');
+  return timeoutMs;
+}
+
 /**
  * Wait for an observable condition with one load-scaled deadline. Yield to I/O
  * between observations rather than sleeping a guessed amount of wall time.
@@ -16,10 +25,7 @@ export async function until(predicate: () => boolean | Promise<boolean>, options
   what: string; timeoutMs?: number; loadFactor?: number; clock?: Clock;
 }): Promise<void> {
   const clock = options.clock ?? realClock;
-  const configured = options.loadFactor ?? Number(process.env.CLAND_TEST_LOAD_FACTOR ?? (process.env.CLAND_SUITE_EXECUTOR === 'droplet' ? 2 : 1));
-  const factor = Number.isFinite(configured) && configured >= 1 ? configured : 1;
-  const timeoutMs = (options.timeoutMs ?? testWaitMs()) * factor;
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('until needs a positive finite deadline');
+  const timeoutMs = waitTimeoutMs(options.timeoutMs ?? testWaitMs(),options.loadFactor);
   let stopped = false;
   let last: unknown;
   const expired = Promise.withResolvers<void>();

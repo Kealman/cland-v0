@@ -11472,6 +11472,13 @@
     "hub/test/login-records.test.ts::refuses login transition from signed-out to signed-out naming current state": 0.000688
   },
   "allow": {
+    "hub/test/login-add.test.ts::terminal disk logins create a host, reuse it and retain only public metadata": {
+      "seconds": 16,
+      "owner": "C-216",
+      "added": "2026-11-10",
+      "expires": "2026-11-15",
+      "reason": "T-1777 CLI-started hub, fake host creation and reuse, two terminal sign-ins and observed disconnect cleanup. macOS arm64 Node24.21.0 local samples 6.007600292s, 6.072765959s and 6.4850965s including setup and joined cleanup; Linux 10.3761544s is an unexecuted 1.6x projection. Ceil(1.5x projection)=16s. No real provider/harness/browser/network; report mode."
+    },
     "hub/test/pool-idle-stop.test.ts::C1 idle host is destroyed at one minute while min_hosts stays": {
       "seconds": 8,
       "owner": "C-216",

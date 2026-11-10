@@ -7,3 +7,6 @@ export function validateFakeHost(root:string,name:string):void {
 export function fakeMachineStorageDirectory(root:string,name:string):string {
   validateFakeHost(root,name);return join(fakeStorageDirectory(root),name);
 }
+
+/** Lexical login mount mapping; callers validate attachment and ancestors. */
+export const fakeLoginMountPath = (directory:string, path:string):string => join(directory,path);

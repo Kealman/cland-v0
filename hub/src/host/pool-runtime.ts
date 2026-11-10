@@ -11,6 +11,7 @@ const provisionOwnership = (row:ProvisionRecord):string => JSON.stringify([row.i
 
 export type PoolIdleLifecycle = {
   clock: Clock;
+  busyHost?(id: string): boolean;
   failed?(record: ProvisionRecord): void;
   declarations(record: ProvisionRecord): HostProviderDeclarationState | Promise<HostProviderDeclarationState>;
   destroy(id: string): Promise<unknown>;
@@ -208,6 +209,7 @@ export class PoolRuntime {
 
   /** One lease policy for manual, minimum and demand-created hosts. */
   inUse(host: string): boolean {
+    if(this.#idleLifecycle?.busyHost?.(host))return true;
     if(this.outageHold(host))return true;
     const busy = new Set(this.processes().map(p => p.host ?? 'local'));
     for (const [id, weight] of this.#promised) if (weight > 0) busy.add(id);

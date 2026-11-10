@@ -1,5 +1,17 @@
 # hub/test/host-login-disk.test.ts
 
+`login file publication shares the attached fake mount and leaves ordinary paths unchanged`
+publishes Codex config through the prepared file boundary, observes the bytes
+under the mounted fake disk, and checks ordinary file writes remain unchanged.
+Traversal and symlink writes refuse. File mutations and login-disk operations
+share the same attachment and exact-link validator; no disk bytes cross to the
+hub for this mapping.
+
+`all login filesystem operations use the attached fake mount and retain logical paths`
+creates a directory beneath the mount, observes its native filesystem identity,
+then exercises write/read/stat/type/list/removal at logical paths. It checks the
+mount root is a directory and `realpath` replies keep the logical disk path.
+
 T3 exercises the authenticated agent socket and SSH Host with a directory-backed
 fake provider. Run `node --test hub/test/host-login-disk.test.ts` on supported
 Node 24 with inherited `CLAND_*` removed, under the assigned native preservation

@@ -45,6 +45,40 @@ async function volumeFixture(t: TestContext, processHooks?: import('../src/host/
   return {owners,root,env,server,client,disk,mapped};
 }
 
+test('login file publication shares the attached fake mount and leaves ordinary paths unchanged',async t=>{
+ const f=await volumeFixture(t);
+ const bytes=Buffer.from('cli_auth_credentials_store = "file"\n').toString('base64');
+ const path=f.disk.path+'/config.toml';
+ const plan=await f.client.request('prepare-publishFile',{path,bytes,options:{mode:0o600}}) as {token:string};
+ await f.client.request('commit-prepared',{token:plan.token});
+ assert.equal(await readFile(join(f.mapped,'config.toml'),'utf8'),'cli_auth_credentials_store = "file"\n');
+ const ordinary=join(f.root,'ordinary');
+ await f.client.request('writeFile',{path:ordinary,bytes});
+ assert.equal(await readFile(ordinary,'utf8'),'cli_auth_credentials_store = "file"\n');
+ await assert.rejects(f.client.request('writeFile',{path:f.disk.path+'/../escape',bytes}),/bad-argument/);
+ await symlink(ordinary,join(f.mapped,'link'));
+ await assert.rejects(f.client.request('writeFile',{path:f.disk.path+'/link',bytes}),/bad-argument/);
+ assert.equal(await readFile(ordinary,'utf8'),'cli_auth_credentials_store = "file"\n');
+});
+
+test('all login filesystem operations use the attached fake mount and retain logical paths',async t=>{
+ const f=await volumeFixture(t),nested=f.disk.path+'/nested';
+ await f.client.request('makeDirectory',{path:nested,mode:0o700});
+ assert.equal((await stat(join(f.mapped,'nested'))).isDirectory(),true);
+ assert.equal(await f.client.request('fileType',{path:nested}),'directory');
+ assert.deepEqual(await f.client.request('statDirectory',{path:nested}),{refusal:null,identity:{dev:(await stat(join(f.mapped,'nested'))).dev,ino:(await stat(join(f.mapped,'nested'))).ino}});
+ const bytes=Buffer.from('synthetic-data').toString('base64');
+ await f.client.request('writeFile',{path:nested+'/data',bytes});
+ assert.equal(await f.client.request('readFile',{path:nested+'/data'}),bytes);
+ assert.deepEqual(await f.client.request('listFolder',{path:nested}),['data']);
+ assert.equal((await f.client.request('stat',{path:nested+'/data'}) as {size:number}).size,14);
+ assert.equal(await f.client.request('realpath',{path:nested}),nested);
+ assert.equal(await f.client.request('fileType',{path:f.disk.path}),'directory');
+ await f.client.request('removePath',{path:nested+'/data'});
+ await f.client.request('removePath',{path:nested,options:{directory:true}});
+ assert.equal(await f.client.request('fileType',{path:nested}),'missing');
+});
+
 for(const orphan of [false,true])test(`login-disk closes only disk users in ${orphan?'retained orphan':'live parent'} trees`,async t=>{
   const f=await volumeFixture(t);
   const script=join(f.root,'tree.cjs'),ready=join(f.root,'tree-ready'),exit=join(f.root,'exit-parent');

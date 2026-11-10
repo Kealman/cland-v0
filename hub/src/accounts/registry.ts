@@ -22,6 +22,8 @@ const dataHome = (env: NodeJS.ProcessEnv) => env.XDG_DATA_HOME && isAbsolute(env
 export const openCodeDatabase = (env: NodeJS.ProcessEnv) => env.OPENCODE_DB || join(dataHome(env), 'opencode', 'opencode.db');
 /** Shared by this user's cland projects, separate from OpenCode's managed service. */
 export const clandOpenCodeDatabase = (env: NodeJS.ProcessEnv) => join(dataHome(env), 'cland', 'opencode', 'opencode.db');
+/** Mounted login path only; never reads database contents. */
+export const mountedOpenCodeDatabase = (mount: string) => join(mount, 'opencode.db');
 export const openCodeLogin = (database: string) => `OPENCODE_DB=${shellQuote(database)} opencode auth login --standalone`;
 
 export async function readAccounts(env: NodeJS.ProcessEnv = process.env): Promise<Accounts> {

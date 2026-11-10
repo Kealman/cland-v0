@@ -1,4 +1,5 @@
 import { parseCheckoutOwnership } from './prepared-checkout.ts';
+import { loginFilePath } from './fake-login-mount.ts';
 import { open } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { fileOperations } from './files.ts';
@@ -72,23 +73,27 @@ export function parseAgentRun(a: Record<string, unknown>) {
 export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
   const trees = worktreeOperations(env);
   const path = (a: Record<string, unknown>) => text(a.path, 'path');
+  const filePath = (a: Record<string, unknown>) => loginFilePath(path(a),env);
   return {
-    stat: a => fileOperations.stat(path(a)),
-    publishFile: a => { const {path, bytes, options} = parseAgentFile(a, 'publishFile'); return fileOperations.publishFile(path, bytes, options); },
-    appendFile: async a => { const {path, bytes} = parseAgentFile(a, 'appendFile'); await fileOperations.appendFile(path, bytes); return null; },
-    statDirectory: a => fileOperations.statDirectory(path(a)),
-    realpath: a => fileOperations.realpath(path(a)),
-    fileType: a => fileOperations.fileType(path(a)),
-    readFile: a => boundedRead(path(a)),
-    listFolder: a => fileOperations.listFolder(path(a)),
+    stat: async a => fileOperations.stat(await filePath(a)),
+    publishFile: async a => { const {path, bytes, options} = parseAgentFile(a, 'publishFile'); return fileOperations.publishFile(await loginFilePath(path,env), bytes, options); },
+    appendFile: async a => { const {path, bytes} = parseAgentFile(a, 'appendFile'); await fileOperations.appendFile(await loginFilePath(path,env), bytes); return null; },
+    statDirectory: async a => {
+      const logical=path(a),mapped=await filePath(a),result=await fileOperations.statDirectory(mapped);
+      return result.refusal?{...result,refusal:result.refusal.replaceAll(mapped,logical)}:result;
+    },
+    realpath: async a => {const logical=path(a),mapped=await filePath(a);return mapped===logical?fileOperations.realpath(mapped):logical;},
+    fileType: async a => fileOperations.fileType(await filePath(a)),
+    readFile: async a => boundedRead(await filePath(a)),
+    listFolder: async a => fileOperations.listFolder(await filePath(a)),
     writeFile: async a => {
       const options = a.options === undefined ? {} : object(a.options);
       const bytes = fileBytes(a.bytes);
-      await fileOperations.writeFile(path(a), bytes, { ...(options.mode === undefined ? {} : {mode: integer(options.mode, 'mode', 0o7777)!}), ...(options.truncate === undefined ? {} : {truncate: integer(options.truncate, 'truncate')!}) });
+      await fileOperations.writeFile(await loginFilePath(path(a),env), bytes, { ...(options.mode === undefined ? {} : {mode: integer(options.mode, 'mode', 0o7777)!}), ...(options.truncate === undefined ? {} : {truncate: integer(options.truncate, 'truncate')!}) });
       return null;
     },
-    makeDirectory: async a => { await fileOperations.makeDirectory(path(a), integer(a.mode, 'mode', 0o7777)); return null; },
-    removePath: async a => { const options = a.options === undefined ? {} : object(a.options); await fileOperations.removePath(path(a), options.directory === undefined ? {} : {directory: flag(options.directory)!}); return null; },
+    makeDirectory: async a => { await fileOperations.makeDirectory(await filePath(a), integer(a.mode, 'mode', 0o7777)); return null; },
+    removePath: async a => { const options = a.options === undefined ? {} : object(a.options); await fileOperations.removePath(await filePath(a), options.directory === undefined ? {} : {directory: flag(options.directory)!}); return null; },
     freePort: () => fileOperations.freePort(),
     occupants: a => {
       if (!Array.isArray(a.sessions)) throw new Error('sessions must be an array');
