@@ -4,6 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import { FakeClock } from './fake-clock.ts';
 import { projectHub, cland, connectUi, eventually, testWaitMs } from './harness.ts';
 import { cleanupOwnedProcesses, fixtureProcessCensus, onCleanup, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
 import { hostCloneRoot } from '../src/host/clone.ts';
@@ -71,14 +74,38 @@ test('C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list s
 });
 test('C3 mismatched prelude key never registers or starts a supervisor and releases machine after gate', {timeout:SETUP_MS},async t=>{
  const f=await fixture(t),store=fixtureStore(t,f);
- const provider=new FakeHostProvider({env:f.hub.hostEnvironment});
- const acquire=provider.acquire.bind(provider);
- t.mock.method(provider,'acquire',async (options:Parameters<typeof provider.acquire>[0])=>{const result=await acquire(options);if(result.state==='created')await writeFile(join(hostDirectory(f.root,result.machine.id),'host-key.pub'),'ssh-ed25519 WRONG');return result;});
- const record=await createHost({root:f.root,pool:'agents',env:f.hub.hostEnvironment,records:store.hosts,owner:f.hub.hostOwner!,provider,gateMs:300});
+ const clock=new FakeClock(new Date());
+ const controller=new AbortController();
+ const signal=AbortSignal.any([t.signal,controller.signal]);
+ let creating:Promise<Awaited<ReturnType<typeof createHost>>>|undefined;
+ const spawn=childProcess.spawn;
+ let probeExit:{code:number|null;signal:NodeJS.Signals|null}|undefined;
+ // Observe native close before command() consumes it. Keep the gate frozen during
+ // acquisition/SSH startup, then cross its exact 300 ms bound with that receipt.
+ const spawnMock=t.mock.method(childProcess,'spawn',((...args:Parameters<typeof spawn>)=>{
+  // cland-allow-child-env: transparent close observer forwards the production caller's sealed fixture environment unchanged.
+  const child=spawn(...args);
+  if(args[0]===f.env.CLAND_SSH_BIN)child.once('close',(code,signal)=>{
+   probeExit={code,signal};clock.block(300);
+  });
+  return child;
+ }) as typeof spawn);
+ const restore=()=>{spawnMock.mock.restore();syncBuiltinESMExports();};
+ f.beforeStop(async()=>{controller.abort();try{await creating;}finally{restore();}});
+ let record:Awaited<ReturnType<typeof createHost>>;
+ try {
+  syncBuiltinESMExports();
+  const provider=new FakeHostProvider({env:f.hub.hostEnvironment});
+  const acquire=provider.acquire.bind(provider);
+  t.mock.method(provider,'acquire',async (options:Parameters<typeof provider.acquire>[0])=>{const result=await acquire(options);if(result.state==='created')await writeFile(join(hostDirectory(f.root,result.machine.id),'host-key.pub'),'ssh-ed25519 WRONG');return result;});
+  creating=createHost({root:f.root,pool:'agents',env:f.hub.hostEnvironment,records:store.hosts,owner:f.hub.hostOwner!,provider,clock,signal,gateMs:300});
+  record=await creating;
+ } finally {restore();}
+ assert.deepEqual(probeExit,{code:255,signal:null},'mismatched pinned key closes the native probe');
  assert.equal(record.state,'failed');assert.match(record.reason!,/pinned-key.*timed out/);assert.match(record.reason!,/provision command exit=.* signal=/);assert.equal(record.release,'released');
  assert.equal(store.hosts.get(record.id),null);
  assert.ok(!f.hub.hostEnvironment.CLAND_FAKE_HOSTS?.split(',').includes(record.machine!.address),'failed gate never publishes shared membership');
- assert.equal((await provider.status(record.machine!)).state,'gone');
+ assert.equal((await new FakeHostProvider({env:f.hub.hostEnvironment}).status(record.machine!)).state,'gone');
  await assert.rejects(access(join(hostDirectory(f.root,record.machine!.id),'home/.cland-host/run/supervisor.lock/pid')),{code:'ENOENT'});
  assert.equal((await listHosts(store.hosts,f.hub.hostEnvironment))[0]?.state,'failed');
 });

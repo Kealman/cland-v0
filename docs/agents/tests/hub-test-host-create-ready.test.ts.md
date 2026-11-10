@@ -17,10 +17,20 @@ fixture native census finish before roots are removed.
   its exact persisted native process row and positive Host liveness, checks inventory facts and explicitly stops it. A fresh hub environment then restores the same host,
   confirms one registration and reconnects through an authenticated Host operation.
 - `C3 mismatched prelude key never registers or starts a supervisor and releases machine after gate`
-  replaces the fake public key after provider acquisition. Its injected 300 ms
-  gate retains real native timers; the production bound is five minutes. It
-  asserts failed create, positive provider absence, no registration and no
-  supervisor. This does not prove a real provider's boot or network timings.
+  replaces the fake public key after provider acquisition. The create owner's
+  FakeClock starts at the current date and stays frozen through acquisition and
+  native SSH startup. A scoped spawn observer records the exact SSH close
+  (exit 255, no signal), then blocks that clock by exactly 300 ms before the
+  command owner consumes close. The gate therefore reports the failed probe
+  independently of native startup wall time. Native transport timers remain real;
+  the production gate is five minutes. The observer restores the builtin export
+  in a finally block after create joins, including early setup errors. A prearmed
+  fixture owner aborts and joins creation before handles close; the test's abort
+  signal also cancels the native probe if the test times out while time is frozen.
+  The case retains the provision-exit
+  reason, failed create, released receipt, positive provider absence, absent
+  registration/shared membership and absent supervisor assertions. This does not
+  prove a real provider's boot or network timings.
 
 T2 admission/help coverage is in host-create-admission; session/host-secret
 refusals in host-secret-admission and web refusals in web-authority.
