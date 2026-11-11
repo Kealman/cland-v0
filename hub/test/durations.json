@@ -11526,523 +11526,523 @@
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
       "seconds": 10,
       "owner": "C-216",
-      "added": "2026-11-10",
-      "expires": "2026-11-15",
-      "reason": "T-1784: retained A-18510 Linux x64 Node24.21.0 droplet c-8, workers 2, reviewed head 474e602cd. Base sample 5.154832269s; five load samples 4.888106105s, 5.099579867s, 5.150572858s, 6.010405357s and 5.007150272s, all assertion passes. Worst 6.010405357s x 1.5 = 9.0156080355s, rounded up to 10s. Includes 10000-row same-region corpus setup, candidate-visit positive control, every-row pending-fence agreement and joined cleanup. No native process, provider network or browser. Budget mode unchanged; single bounded allowance authorized in Coordinator bd8c4fb1."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1784: retained A-18510 Linux x64 Node24.21.0 droplet c-8, workers 2, reviewed head 474e602cd. Base sample 5.154832269s; five load samples 4.888106105s, 5.099579867s, 5.150572858s, 6.010405357s and 5.007150272s, all assertion passes. Worst 6.010405357s x 1.5 = 9.0156080355s, rounded up to 10s. Includes 10000-row same-region corpus setup, candidate-visit positive control, every-row pending-fence agreement and joined cleanup. No native process, provider network or browser. Budget mode unchanged; single bounded allowance authorized in Coordinator bd8c4fb1. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/login-add.test.ts::terminal disk logins create a host, reuse it and retain only public metadata": {
       "seconds": 16,
       "owner": "C-216",
-      "added": "2026-11-10",
-      "expires": "2026-11-15",
-      "reason": "T-1777 CLI-started hub, fake host creation and reuse, two terminal sign-ins and observed disconnect cleanup. macOS arm64 Node24.21.0 local samples 6.007600292s, 6.072765959s and 6.4850965s including setup and joined cleanup; Linux 10.3761544s is an unexecuted 1.6x projection. Ceil(1.5x projection)=16s. No real provider/harness/browser/network; report mode."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1777 CLI-started hub, fake host creation and reuse, two terminal sign-ins and observed disconnect cleanup. macOS arm64 Node24.21.0 local samples 6.007600292s, 6.072765959s and 6.4850965s including setup and joined cleanup; Linux 10.3761544s is an unexecuted 1.6x projection. Ceil(1.5x projection)=16s. No real provider/harness/browser/network; report mode. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/pool-idle-stop.test.ts::C1 idle host is destroyed at one minute while min_hosts stays": {
       "seconds": 8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1749 fake-clock T2 with directory fake provider and confirmed destroy. macOS arm64 Node v24.21.0 samples 0.097s, 0.171s, 4.950s (last sample concurrent with T0 source lints; host load below 20). Ceil(1.5 x worst measured sample)=8s. Includes fixture setup and joined cleanup, no real clock idle wait, browser or provider network. Linux unexecuted; report mode."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1749 fake-clock T2 with directory fake provider and confirmed destroy. macOS arm64 Node v24.21.0 samples 0.097s, 0.171s, 4.950s (last sample concurrent with T0 source lints; host load below 20). Ceil(1.5 x worst measured sample)=8s. Includes fixture setup and joined cleanup, no real clock idle wait, browser or provider network. Linux unexecuted; report mode. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-restart.test.ts::restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership": {
       "seconds": 31,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1752 two native fake SSH hosts, OpenCode sessions, provider deletion during hub downtime and two joined restarts. macOS arm64 Node24.21.0 local samples 7.354509917s at 731bced40 and 12.637017334s at 168179565, including fixture setup and cleanup. Linux 20.2192277344s is an unexecuted 1.6x projection of the worst macOS sample. Allowance ceil(1.5 x projection)=31s. No live provider or browser; report mode."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1752 two native fake SSH hosts, OpenCode sessions, provider deletion during hub downtime and two joined restarts. macOS arm64 Node24.21.0 local samples 7.354509917s at 731bced40 and 12.637017334s at 168179565, including fixture setup and cleanup. Linux 20.2192277344s is an unexecuted 1.6x projection of the worst macOS sample. Allowance ceil(1.5 x projection)=31s. No live provider or browser; report mode. Renewed 2026-11-11 by the Coordinator (was due 2026-11-13); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-watchdog.test.ts": {
       "file": true,
       "seconds": 92,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-13",
-      "reason": "T-1748 requires two sequential real 30s detached-worker lifecycle cases. File budget sums top-level test seconds: Linux droplet run 2da31d7d at 88db047a (A-17708) measured 61.276673082s (30.075034811 + 31.201638271); same-head local macOS arm64 (A-17706) measured 60.937449125s (30.102411542 + 30.835037583). Allowance ceil(1.5 x worst measured aggregate) = 92s. Includes fixture setup, assertions and joined native cleanup; fake provider/transports, no browser or live-provider latency claim. Individual test allowances remain separate."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1748 requires two sequential real 30s detached-worker lifecycle cases. File budget sums top-level test seconds: Linux droplet run 2da31d7d at 88db047a (A-17708) measured 61.276673082s (30.075034811 + 31.201638271); same-head local macOS arm64 (A-17706) measured 60.937449125s (30.102411542 + 30.835037583). Allowance ceil(1.5 x worst measured aggregate) = 92s. Includes fixture setup, assertions and joined native cleanup; fake provider/transports, no browser or live-provider latency claim. Individual test allowances remain separate. Renewed 2026-11-11 by the Coordinator (was due 2026-11-13); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": {
       "seconds": 73,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-13",
-      "reason": "T-1748 requires the real 30s minimum lease with a detached native worker. macOS arm64 Node24.21.0 samples 30.052s, 30.124s, 30.130s; Linux 48.208s is an unexecuted 1.6x projection; 1.5x projection rounded up. Includes setup and joined native cleanup; fake provider, no browser or network. Report mode."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1748 requires the real 30s minimum lease with a detached native worker. macOS arm64 Node24.21.0 samples 30.052s, 30.124s, 30.130s; Linux 48.208s is an unexecuted 1.6x projection; 1.5x projection rounded up. Includes setup and joined native cleanup; fake provider, no browser or network. Report mode. Renewed 2026-11-11 by the Coordinator (was due 2026-11-13); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-watchdog.test.ts::host create arms a watchdog which deletes its machine after the hub stops": {
       "seconds": 75,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-13",
-      "reason": "T-1748 real 30s lease with full fake-host provisioning and hub shutdown. macOS arm64 Node24.21.0 sample 31.007s, including fixture setup and teardown. Linux 49.611s is an unexecuted 1.6x projection; allowance ceil(1.5 x projection). No live provider or browser; report mode."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1748 real 30s lease with full fake-host provisioning and hub shutdown. macOS arm64 Node24.21.0 sample 31.007s, including fixture setup and teardown. Linux 49.611s is an unexecuted 1.6x projection; allowance ceil(1.5 x projection). No live provider or browser; report mode. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::forced fixture body failure joins held creation before storage and root disposal": {
       "seconds": 7.8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 forced-failure fixture drain control, passing macOS arm64 local Node24.21.0 sample 2.565670125s. Includes sealed native setup, guarded cleanup and joined producer/native closure. Linux 4.1050722s is an unexecuted1.6x projection; allowance ceil(1.5 x projection). Scripted provider/installer, no browser or real-provider latency claim; report mode. Parent and nested raw TAP timings are inclusive; suite duration reporter owns only top-level identity.; renewed 2026-11-08 from samples linux max 5.176 s (n=14), macOS max 4.993 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 forced-failure fixture drain control, passing macOS arm64 local Node24.21.0 sample 2.565670125s. Includes sealed native setup, guarded cleanup and joined producer/native closure. Linux 4.1050722s is an unexecuted1.6x projection; allowance ceil(1.5 x projection). Scripted provider/installer, no browser or real-provider latency claim; report mode. Parent and nested raw TAP timings are inclusive; suite duration reporter owns only top-level identity.; renewed 2026-11-08 from samples linux max 5.176 s (n=14), macOS max 4.993 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: unknown": {
       "seconds": 7.8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.796785166s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.4748562656s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded.; renewed 2026-11-08 from samples linux max 4.842 s (n=14), macOS max 5.134 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.796785166s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.4748562656s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded.; renewed 2026-11-08 from samples linux max 4.842 s (n=14), macOS max 5.134 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: inventory unknown": {
       "seconds": 8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.692131708s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.3074107328s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Pre-registration correction smoke at staged8433d536: passing macOS arm64 local Node24.21.0 sample 3.027497917s includes fixture/assertions/joined cleanup. Linux 4.8439966672s is an unexecuted1.6x projection; allowance ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 5.113 s (n=14), macOS max 5.234 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.692131708s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.3074107328s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Pre-registration correction smoke at staged8433d536: passing macOS arm64 local Node24.21.0 sample 3.027497917s includes fixture/assertions/joined cleanup. Linux 4.8439966672s is an unexecuted1.6x projection; allowance ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 5.113 s (n=14), macOS max 5.234 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: timed out": {
       "seconds": 9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.430446625s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 3.8887146s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Authorized dev integration smoke: passing macOS arm64 local Node24.21.0 sample 2.716408s at captured tree6ef247a6, inclusive setup/assertion/cleanup. Linux 4.3462528s remains unexecuted1.6x projection; allowance updated ceil(1.5 x projection). Pre-registration correction smoke at staged8433d536: passing macOS arm64 local Node24.21.0 sample 3.62207475s includes fixture/assertions/joined cleanup. Linux 5.7953196s is an unexecuted1.6x projection; allowance ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 4.525 s (n=14), macOS max 4.884 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.430446625s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 3.8887146s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Authorized dev integration smoke: passing macOS arm64 local Node24.21.0 sample 2.716408s at captured tree6ef247a6, inclusive setup/assertion/cleanup. Linux 4.3462528s remains unexecuted1.6x projection; allowance updated ceil(1.5 x projection). Pre-registration correction smoke at staged8433d536: passing macOS arm64 local Node24.21.0 sample 3.62207475s includes fixture/assertions/joined cleanup. Linux 5.7953196s is an unexecuted1.6x projection; allowance ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 4.525 s (n=14), macOS max 4.884 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: leftovers": {
       "seconds": 7.7,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.560202083s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.0963233328s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded.; renewed 2026-11-08 from samples linux max 5.121 s (n=14), macOS max 4.752 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.560202083s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 4.0963233328s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded.; renewed 2026-11-08 from samples linux max 5.121 s (n=14), macOS max 4.752 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::failed readiness releases only after positive settlement: complete": {
       "seconds": 7.6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.313132042s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 3.7010112672s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Source-2 correction passing sample macOS arm64 local Node24.21.0 2.578109542s, inclusive fixture/assertions/joined teardown; Linux 4.1249752672s remains unexecuted1.6x projection, updated ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 4.871 s (n=14), macOS max 5.062 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 native correction, macOS arm64 local Node24.21.0 worst valid passing-case sample 2.313132042s, inclusive of sealed fixture, scripted installer/OpenCode transport setup, assertions and joined cleanup. Linux estimate 3.7010112672s is an unexecuted 1.6x projection. Allowance ceil(1.5 x projection); no real-provider/browser latency claim; report mode. Native red setup-directory failures/timeouts excluded. Source-2 correction passing sample macOS arm64 local Node24.21.0 2.578109542s, inclusive fixture/assertions/joined teardown; Linux 4.1249752672s remains unexecuted1.6x projection, updated ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 4.871 s (n=14), macOS max 5.062 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::held final readiness cannot publish ready after revoke": {
       "seconds": 8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 held-boundary correction; macOS arm64 local Node24.21.0 worst passing-case sample 2.588854292s, inclusive of setup/assertions/joined cleanup. Linux 4.1421668672s is an unexecuted 1.6x projection, allowance ceil(1.5 x projection). Scripted native provider/installer only, no browser. Report mode; invalid setup timeout excluded. Source-2 correction passing sample macOS arm64 local Node24.21.0 2.9845625s, inclusive fixture/assertions/joined teardown; Linux 4.7753000000000005s remains unexecuted1.6x projection, updated ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 5.14 s (n=14), macOS max 4.854 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 held-boundary correction; macOS arm64 local Node24.21.0 worst passing-case sample 2.588854292s, inclusive of setup/assertions/joined cleanup. Linux 4.1421668672s is an unexecuted 1.6x projection, allowance ceil(1.5 x projection). Scripted native provider/installer only, no browser. Report mode; invalid setup timeout excluded. Source-2 correction passing sample macOS arm64 local Node24.21.0 2.9845625s, inclusive fixture/assertions/joined teardown; Linux 4.7753000000000005s remains unexecuted1.6x projection, updated ceil(1.5 x projection).; renewed 2026-11-08 from samples linux max 5.14 s (n=14), macOS max 4.854 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::held final readiness cannot publish ready after shutdown": {
       "seconds": 7.7,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 held-boundary correction; macOS arm64 local Node24.21.0 worst passing-case sample 2.579070958s, inclusive of setup/assertions/joined cleanup. Linux 4.1265135328s is an unexecuted 1.6x projection, allowance ceil(1.5 x projection). Scripted native provider/installer only, no browser. Report mode; invalid setup timeout excluded.; renewed 2026-11-08 from samples linux max 4.868 s (n=14), macOS max 5.09 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 held-boundary correction; macOS arm64 local Node24.21.0 worst passing-case sample 2.579070958s, inclusive of setup/assertions/joined cleanup. Linux 4.1265135328s is an unexecuted 1.6x projection, allowance ceil(1.5 x projection). Scripted native provider/installer only, no browser. Report mode; invalid setup timeout excluded.; renewed 2026-11-08 from samples linux max 4.868 s (n=14), macOS max 5.09 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::C1/C2 create reaches ready with clone and tunnel and runs OpenCode; list shows declared facts": {
       "seconds": 13.6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1718 macOS arm64 local Node24.21.0 passing sample 4.448543084s including sealed fixture, scripted npm/setsid/OpenCode, native SSH, clone, assertions and joined cleanup. Linux 7.1176689344s is an unexecuted 1.6x projection; allowance ceil(1.5 x projection)=11s. Earlier invalid-fixture/key-format red runs are excluded, not passing timings. No browser or real-provider latency claim; duration gate report mode.; renewed 2026-11-08 from samples linux max 9.011 s (n=14), macOS max 7.499 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1718 macOS arm64 local Node24.21.0 passing sample 4.448543084s including sealed fixture, scripted npm/setsid/OpenCode, native SSH, clone, assertions and joined cleanup. Linux 7.1176689344s is an unexecuted 1.6x projection; allowance ceil(1.5 x projection)=11s. Earlier invalid-fixture/key-format red runs are excluded, not passing timings. No browser or real-provider latency claim; duration gate report mode.; renewed 2026-11-08 from samples linux max 9.011 s (n=14), macOS max 7.499 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire same-name retry": {
       "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 2.1635514170000003s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.461682s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.763805458s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.245 s (n=28), macOS max 4.425 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 2.1635514170000003s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.461682s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.763805458s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.245 s (n=28), macOS max 4.425 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native pre-wire different-name retry": {
       "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 2.436897542s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.899036s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.816024209s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 4.829 s (n=28), macOS max 4.754 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 2.436897542s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.899036s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.816024209s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 4.829 s (n=28), macOS max 4.754 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native sent-abort same-name retry": {
       "seconds": 9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 1.75642075s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 2.810273s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 3.6467785829999997s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 3.952 s (n=28), macOS max 3.38 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 1.75642075s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 2.810273s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 3.6467785829999997s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 3.952 s (n=28), macOS max 3.38 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native sent-abort different-name retry": {
       "seconds": 10,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 1.72437075s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 2.758993s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 3.9025880419999996s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 3.711 s (n=28), macOS max 4.906 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 pre-wire correction: macOS arm64 local Node24.21.0 passing sample 1.72437075s, including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 2.758993s is a projection using Coordinator 1.6x guidance, no executed Linux sample. ceil(1.5 x projected sample). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 3.9025880419999996s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 3.711 s (n=28), macOS max 4.906 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native aborted same-name retry": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.466971333, 2.6032440419999996], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.165190s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 6.097948166999999s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.54 s (n=28), macOS max 4.867 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.466971333, 2.6032440419999996], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.165190s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 6.097948166999999s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.54 s (n=28), macOS max 4.867 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native aborted different-name retry": {
       "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.460038334, 2.493245125], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.989192s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.81493775s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.682 s (n=28), macOS max 5.196 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.460038334, 2.493245125], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 3.989192s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.81493775s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.682 s (n=28), macOS max 5.196 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native spawn-error same-name retry": {
       "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.452172459, 2.520544458], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.032871s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.132396167s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.273 s (n=28), macOS max 5.851 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.452172459, 2.520544458], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.032871s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 5.132396167s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.273 s (n=28), macOS max 5.851 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native spawn-error different-name retry": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.68075225, 3.3237282919999998], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 5.317965s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 6.002207958s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.478 s (n=28), macOS max 4.968 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.68075225, 3.3237282919999998], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 5.317965s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 6.002207958s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.478 s (n=28), macOS max 4.968 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native lost-reply same-name retry": {
       "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.59112725, 2.339951416], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.145804s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 4.418358916s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 4.068 s (n=28), macOS max 3.468 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.59112725, 2.339951416], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.145804s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 4.418358916s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 4.068 s (n=28), macOS max 3.468 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude native lost-reply different-name retry": {
       "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.633539083, 2.5041479169999996], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.213663s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 4.184137959s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 3.531 s (n=28), macOS max 3.078 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727 native correction: macOS arm64 local Node24.21.0 passing seconds [2.633539083, 2.5041479169999996], including disposable fake SSH/native setup, assertions and joined cleanup. Linux estimate 4.213663s is a projection using Coordinator 1.6x guidance, not an executed Linux sample. ceil(1.5 x projected worst). No browser or product-latency claim; targeted duration gate unexecuted, manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 4.184137959s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 3.531 s (n=28), macOS max 3.078 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude pre-spawn root refusal permits immediate same-name launch": {
       "seconds": 25,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [5.186233125, 5.554243167]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 8.886789s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 10.078065208s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 6.022 s (n=28), macOS max 5.345 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [5.186233125, 5.554243167]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 8.886789s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 10.078065208s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 6.022 s (n=28), macOS max 5.345 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude pre-spawn root refusal permits immediate different-name launch": {
       "seconds": 19,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [4.535327, 5.671381792]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 9.074211s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 7.733943333s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.265 s (n=28), macOS max 5.612 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1727: macOS arm64 local Node24.21.0 targeted passing samples seconds [4.535327, 5.671381792]; includes disposable fake SSH/native Claude setup, assertions and joined cleanup, not product latency. Linux native estimate 9.074211s uses Coordinator 1.6x allowance guidance (projection, no Linux execution). ceil(1.5 x projected worst). No browser; duration gate not executed by targeted runs; manifest report mode. A-17239 correction sample macOS arm64 local Node24.21.0 7.733943333s, full fixture/assertion/joined cleanup at sampled one-minute host load7.86–12.56 with final source checks also running. Updated allowance max(existing, ceil(1.5 x1.6 x sample)); Linux1.6x remains a projection, no Linux run or duration-enforcement pass. C-216 owns setup reduction.; renewed 2026-11-08 from samples linux max 5.265 s (n=28), macOS max 5.612 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-agent-restart.test.ts::T-1730 supervisor launches verified generation after version pointer changes": {
       "seconds": 14.4,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1730: macOS arm64 local Node24.21.0 green sample4.518385208s for current-source V1 ready, V2 install and verified-generation selection under controlled pointer swap at native signal boundary. Includes fixture/assertions/joined cleanup; excludes driver startup. ceil(1.5 x1.6 x4.518385208)=11s projects Linux, no Linux sample claimed. No browser/provider/network; scripted offline npm. Report-mode policy unchanged.; renewed 2026-11-08 from samples linux max 9.534 s (n=18), macOS max 6.914 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1730: macOS arm64 local Node24.21.0 green sample4.518385208s for current-source V1 ready, V2 install and verified-generation selection under controlled pointer swap at native signal boundary. Includes fixture/assertions/joined cleanup; excludes driver startup. ceil(1.5 x1.6 x4.518385208)=11s projects Linux, no Linux sample claimed. No browser/provider/network; scripted offline npm. Report-mode policy unchanged.; renewed 2026-11-08 from samples linux max 9.534 s (n=18), macOS max 6.914 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::T-1730 C2 upgraded runtime launches Claude with connected mod bridge": {
       "seconds": 19.2,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1730: macOS arm64 local Node24.21.0 passing sample 5.292036375s, includes fake SSH ready V1/handoff V2, supervised agent restart, Claude frame launch and connected mod bridge answer, joined fixture cleanup. ceil(1.5 x1.6 x5.292036375)=13s uses Linux projection, no Linux execution claimed. No browser/provider/network; npm seam scripted offline. Duration policy report mode.; renewed 2026-11-08 from samples linux max 12.741 s (n=18), macOS max 11.066 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1730: macOS arm64 local Node24.21.0 passing sample 5.292036375s, includes fake SSH ready V1/handoff V2, supervised agent restart, Claude frame launch and connected mod bridge answer, joined fixture cleanup. ceil(1.5 x1.6 x5.292036375)=13s uses Linux projection, no Linux execution claimed. No browser/provider/network; npm seam scripted offline. Duration policy report mode.; renewed 2026-11-08 from samples linux max 12.741 s (n=18), macOS max 11.066 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-runtime-delivery.test.ts::C1-C3 whole runtime delivery verifies files, reuses digest and atomically replaces CLI and spoke": {
       "seconds": 11.9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1723: macOS arm64 local Node24.21.0 sample 4.100104375 s, including scratch setup, scripted offline npm, CLI/spoke exits, reuse/failure/replacement assertions and joined cleanup; driver startup excluded. ceil(1.5 x 1.6 x 4.100104375)=10 s uses stage brief Linux projection, no Linux sample claimed. No artificial stress or browser/provider/network. Report-mode duration policy unchanged.; renewed 2026-11-08 from samples linux max 7.894 s (n=29), macOS max 4.716 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1723: macOS arm64 local Node24.21.0 sample 4.100104375 s, including scratch setup, scripted offline npm, CLI/spoke exits, reuse/failure/replacement assertions and joined cleanup; driver startup excluded. ceil(1.5 x 1.6 x 4.100104375)=10 s uses stage brief Linux projection, no Linux sample claimed. No artificial stress or browser/provider/network. Report-mode duration policy unchanged.; renewed 2026-11-08 from samples linux max 7.894 s (n=29), macOS max 4.716 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/transport-forwards.test.ts::C1 Unix and host-loopback forwards answer with no hub TCP listener; C2 cancellation removes both": {
       "seconds": 12.9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1670 corrected stable-birth diagnostic: Linux arm64 Node24.21.0 docker run --init --cpus=4 --network=none,8 measured CPU burners after2 warmup burners joined.20/20 C1 next to actual tracker-ready-native neighbour, each overlap checked; complete measured container observations8.12..11.25,5-second meter8.51..11.25, independent Mac host including warmup2.30810546875..9.1142578125. Source SHA25600c0c339a46e293105e9ef9e7af8d9b4aa865740e161ea6cee6fddb79a3a4199,helper SHA25682d5b4de1197c75e50e779d8a68bb387f56d4a7da5ba64893426574c46e428e5; seconds [4.55479221, 4.523806876, 4.20269021, 4.338345294, 5.523821461000001, 4.399984711, 4.571159085000001, 4.700361377, 4.756582835000001, 5.2964615020000005, 5.119389626, 6.418997461, 5.700198919, 4.946353460999999, 5.0318968349999995, 5.294082294, 4.95243071, 5.526614294, 5.763013336, 5.120126626999999]. Current Mac arm64 Node24.21.0 C1 planted control/full file6/6, C1 1.301230333s. ceil(1.5 x worst6.418997461)=10s. Prior-head20 evidence A-17285/A-17287 complete container observations9.39..11.26 (meter-only9.84..11.26), host5.48..6.49, is prior coverage only. Whole-test setup/assertions/joined teardown; excludes warmup/scheduling; no browser/product latency claim; targeted duration gates unexecuted, manifest report mode.; renewed 2026-11-08 from samples linux max 8.573 s (n=57), macOS max 2.874 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1670 corrected stable-birth diagnostic: Linux arm64 Node24.21.0 docker run --init --cpus=4 --network=none,8 measured CPU burners after2 warmup burners joined.20/20 C1 next to actual tracker-ready-native neighbour, each overlap checked; complete measured container observations8.12..11.25,5-second meter8.51..11.25, independent Mac host including warmup2.30810546875..9.1142578125. Source SHA25600c0c339a46e293105e9ef9e7af8d9b4aa865740e161ea6cee6fddb79a3a4199,helper SHA25682d5b4de1197c75e50e779d8a68bb387f56d4a7da5ba64893426574c46e428e5; seconds [4.55479221, 4.523806876, 4.20269021, 4.338345294, 5.523821461000001, 4.399984711, 4.571159085000001, 4.700361377, 4.756582835000001, 5.2964615020000005, 5.119389626, 6.418997461, 5.700198919, 4.946353460999999, 5.0318968349999995, 5.294082294, 4.95243071, 5.526614294, 5.763013336, 5.120126626999999]. Current Mac arm64 Node24.21.0 C1 planted control/full file6/6, C1 1.301230333s. ceil(1.5 x worst6.418997461)=10s. Prior-head20 evidence A-17285/A-17287 complete container observations9.39..11.26 (meter-only9.84..11.26), host5.48..6.49, is prior coverage only. Whole-test setup/assertions/joined teardown; excludes warmup/scheduling; no browser/product latency claim; targeted duration gates unexecuted, manifest report mode.; renewed 2026-11-08 from samples linux max 8.573 s (n=57), macOS max 2.874 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
       "seconds": 48,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1721: macOS arm64 local Node24.21.0 disposable archive based on 0eb62a96d; ten qualifying full-file native children, each all10 generated cases passed with unchanged assertions. Version-case seconds [18.155473459, 15.750507917, 19.842925292, 18.628617833, 19.199364208, 17.337632499999998, 19.761022375, 19.424526874999998, 17.378785125, 18.179632458]. Sampled one-minute load across qualifying children 12.15380859375\u201317.396484375, every250ms, feedback-controlled yes burners (4\u201312). Extra assertion-green but load-ineligible case samples [18.360265208, 21.153307041] are excluded from C1. Historical reported samples: Linux15.4s A-17045; macOS17.1s A-17051,14.71s at load3.9,19.18s at load5.9;21.19s A-17072 at loadabout10 was cancelled by the old20s timeout and is incomplete, not a passing duration. Profiles: current12.0559345s, original T-1605 production11.160840666s; one sample each does not establish a regression. Coordinator sizing instruction: Linux native cost is approximately1.6x macOS; projected loaded Linux31.7486804672s = worst qualifying macOS19.842925292 x1.6 (projection, not an executed Linux sample). ceil(1.5 x31.7486804672)=48s. The historical cancelled21.19s is incomplete and not used as a passing sample. Mac-only ceil(1.5 x19.842925292)=30s. Includes fixture/setup, all assertions and joined cleanup; no browser or product-latency claim. Whole-case90s default envelope also leaves room for the Coordinator-reported approximately1.6x Linux native cost; no new Linux execution is claimed here. Setup receipt waits alone use testWaitMs; the exact5000ms kill-to-reconciled-table bound remains. Targeted runs do not execute a duration gate; manifest remains report mode. C-216 owns setup cost reduction.; renewed 2026-11-08 from samples linux max 20.057 s (n=55), macOS max 17.304 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1721: macOS arm64 local Node24.21.0 disposable archive based on 0eb62a96d; ten qualifying full-file native children, each all10 generated cases passed with unchanged assertions. Version-case seconds [18.155473459, 15.750507917, 19.842925292, 18.628617833, 19.199364208, 17.337632499999998, 19.761022375, 19.424526874999998, 17.378785125, 18.179632458]. Sampled one-minute load across qualifying children 12.15380859375\u201317.396484375, every250ms, feedback-controlled yes burners (4\u201312). Extra assertion-green but load-ineligible case samples [18.360265208, 21.153307041] are excluded from C1. Historical reported samples: Linux15.4s A-17045; macOS17.1s A-17051,14.71s at load3.9,19.18s at load5.9;21.19s A-17072 at loadabout10 was cancelled by the old20s timeout and is incomplete, not a passing duration. Profiles: current12.0559345s, original T-1605 production11.160840666s; one sample each does not establish a regression. Coordinator sizing instruction: Linux native cost is approximately1.6x macOS; projected loaded Linux31.7486804672s = worst qualifying macOS19.842925292 x1.6 (projection, not an executed Linux sample). ceil(1.5 x31.7486804672)=48s. The historical cancelled21.19s is incomplete and not used as a passing sample. Mac-only ceil(1.5 x19.842925292)=30s. Includes fixture/setup, all assertions and joined cleanup; no browser or product-latency claim. Whole-case90s default envelope also leaves room for the Coordinator-reported approximately1.6x Linux native cost; no new Linux execution is claimed here. Setup receipt waits alone use testWaitMs; the exact5000ms kill-to-reconciled-table bound remains. Targeted runs do not execute a duration gate; manifest remains report mode. C-216 owns setup cost reduction.; renewed 2026-11-08 from samples linux max 20.057 s (n=55), macOS max 17.304 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": {
       "seconds": 6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.3770886669999998], \"linux arm64\": [0.23530783400000002]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"review3-preservation\": [0.765439208], \"review3-final-cases\": [1.916116375]}. ceil(1.5 x worst 3.3770886669999998) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847.; renewed 2026-11-08 from samples linux max 0.919 s (n=48), macOS max 1.642 s (n=7)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.3770886669999998], \"linux arm64\": [0.23530783400000002]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"review3-preservation\": [0.765439208], \"review3-final-cases\": [1.916116375]}. ceil(1.5 x worst 3.3770886669999998) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847.; renewed 2026-11-08 from samples linux max 0.919 s (n=48), macOS max 1.642 s (n=7) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/worktree-host.test.ts::host prune retains its branch and row when the item reopens during final occupants observation": {
       "seconds": 6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.612388041], \"linux arm64\": [0.283308042]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"final-observation-green\": [1.9243115], \"review3-preservation\": [0.921608083], \"review3-final-cases\": [0.9586959580000001]}. ceil(1.5 x worst 3.612388041) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847.; renewed 2026-11-08 from samples linux max 1.093 s (n=48), macOS max 1.677 s (n=7)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.612388041], \"linux arm64\": [0.283308042]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"final-observation-green\": [1.9243115], \"review3-preservation\": [0.921608083], \"review3-final-cases\": [0.9586959580000001]}. ceil(1.5 x worst 3.612388041) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847.; renewed 2026-11-08 from samples linux max 1.093 s (n=48), macOS max 1.677 s (n=7) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/worktree-host.test.ts::host prune retains replacement ownership arriving during final validation": {
       "seconds": 6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.443848625], \"linux arm64\": [0.230583834]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"final-observation-green\": [0.667674875], \"review3-preservation\": [0.741627166], \"review3-final-cases\": [0.7798031670000001]}. ceil(1.5 x worst 3.443848625) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847.; renewed 2026-11-08 from samples linux max 0.905 s (n=48), macOS max 1.564 s (n=7)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1702: native Git/Host checkpoint and joined lifecycle fixture. Final runtime head 5dcd649e3a1c26ac88b2be3a6732fab42d3d2d7e, A-17036: macOS arm64 local and Linux arm64 docker --init, Node24.21.0; passing samples seconds {\"darwin arm64\": [3.443848625], \"linux arm64\": [0.230583834]}. Additional correction samples macOS arm64 in A-17035 (before commit, unchanged assertions; setup-owner correction followed): {\"final-observation-green\": [0.667674875], \"review3-preservation\": [0.741627166], \"review3-final-cases\": [0.7798031670000001]}. ceil(1.5 x worst 3.443848625) = 6s. Samples include fixture/assertion work and joined cleanup, not product latency. Targeted runs did not execute a duration gate; manifest remains report mode. Production checker replay and fresh T0/parser receipts accompany the allowance-only carry head under Coordinator decision103d2847.; renewed 2026-11-08 from samples linux max 0.905 s (n=48), macOS max 1.564 s (n=7) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
       "seconds": 47,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [19.064036625, 17.953778958, 19.349470625, 16.844249, 17.270695083], \"linux\": [13.018840797, 13.064731297, 13.177109172, 12.808953548, 13.999319798]}. ceil(1.5 x worst 19.349470625000002) = 30s; selected cap 47s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 47s allowance rather than discarding earlier loaded evidence: T-1685 corrected-source 3134bbdbb loaded assertion receipts: macOS arm64 Node24.21.0 20/20, worst 30.808951083 s, five continuous Math.sqrt(Math.random()) CPU burners on ten available CPUs; Linux arm64 Node24.21.0 container cland-t1613-diagnostic:local 20/20, worst 11.992901798 s, two identical burners on four CPUs. 47 s is ceil(1.5 times the worst sample across both sets), authorized by Coordinator. Includes setup, all native/resource/receipt assertions and joined teardown; excludes no test phase and is not revoke-only latency. Settlement cap now derives as 2*LAUNCH_SETTLEMENT_MS+2000=12 s; UI/CLI frame cap+3000=15 s. Whole-test timeout is named45 s setup/teardown budget plus frame=60 s, above this sampled allowance. Targeted repetitions assert behavior but do not execute the duration gate; integrated duration enforcement remains separate. Owner C-216 and expiry2026-11-11 retained.; renewed 2026-11-08 from samples linux max 21.621 s (n=55), macOS max 17.688 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [19.064036625, 17.953778958, 19.349470625, 16.844249, 17.270695083], \"linux\": [13.018840797, 13.064731297, 13.177109172, 12.808953548, 13.999319798]}. ceil(1.5 x worst 19.349470625000002) = 30s; selected cap 47s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 47s allowance rather than discarding earlier loaded evidence: T-1685 corrected-source 3134bbdbb loaded assertion receipts: macOS arm64 Node24.21.0 20/20, worst 30.808951083 s, five continuous Math.sqrt(Math.random()) CPU burners on ten available CPUs; Linux arm64 Node24.21.0 container cland-t1613-diagnostic:local 20/20, worst 11.992901798 s, two identical burners on four CPUs. 47 s is ceil(1.5 times the worst sample across both sets), authorized by Coordinator. Includes setup, all native/resource/receipt assertions and joined teardown; excludes no test phase and is not revoke-only latency. Settlement cap now derives as 2*LAUNCH_SETTLEMENT_MS+2000=12 s; UI/CLI frame cap+3000=15 s. Whole-test timeout is named45 s setup/teardown budget plus frame=60 s, above this sampled allowance. Targeted repetitions assert behavior but do not execute the duration gate; integrated duration enforcement remains separate. Owner C-216 and expiry2026-11-11 retained.; renewed 2026-11-08 from samples linux max 21.621 s (n=55), macOS max 17.688 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-flush-native.test.ts::interrupted ready publication is abandoned under its Git lock and fresh admission runs at a new path": {
       "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.982150708, 8.379906, 6.611360292, 7.465395583, 8.182207708], \"linux\": [3.251880751, 3.200014293, 3.226858585, 3.228047502, 3.226652959]}. ceil(1.5 x worst 8.379906) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 4.25 s (n=55), macOS max 4.707 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.982150708, 8.379906, 6.611360292, 7.465395583, 8.182207708], \"linux\": [3.251880751, 3.200014293, 3.226858585, 3.228047502, 3.226652959]}. ceil(1.5 x worst 8.379906) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 4.25 s (n=55), macOS max 4.707 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-flush-native.test.ts::queued host verification retains pinned territory snapshot through restart and removes it after completion": {
       "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.480811708, 8.470758541, 8.637405708, 9.101698708, 7.732453166], \"linux\": [3.898638793, 2.910935502, 2.922990834, 2.806489084, 2.896250793]}. ceil(1.5 x worst 9.101698708) = 14s; selected cap 14s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 3.925 s (n=55), macOS max 4.961 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.480811708, 8.470758541, 8.637405708, 9.101698708, 7.732453166], \"linux\": [3.898638793, 2.910935502, 2.922990834, 2.806489084, 2.896250793]}. ceil(1.5 x worst 9.101698708) = 14s; selected cap 14s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 3.925 s (n=55), macOS max 4.961 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-push-on-ref-move.test.ts::killed producer without result stays named and fenced until a later successful leased head": {
       "seconds": 15.7,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1609 native producer-only fault, retained captured Git cleanup, named missing-result fence and next-head leased publication. Local macOS Node24.21.0 one-case targeted sample 7.552855750 s passed; 11.33 s rounds 1.5x upward. Other file cases were unexecuted in that targeted occasion; this is not a whole-file pass. The stable native fixture gate avoids child-set churn; production capture/stop semantics are unchanged.; renewed 2026-11-08 from samples linux max 8.254 s (n=54), macOS max 10.411 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1609 native producer-only fault, retained captured Git cleanup, named missing-result fence and next-head leased publication. Local macOS Node24.21.0 one-case targeted sample 7.552855750 s passed; 11.33 s rounds 1.5x upward. Other file cases were unexecuted in that targeted occasion; this is not a whole-file pass. The stable native fixture gate avoids child-set churn; production capture/stop semantics are unchanged.; renewed 2026-11-08 from samples linux max 8.254 s (n=54), macOS max 10.411 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-push-on-ref-move.test.ts::interrupted admitted native push survives agent SIGKILL and recovery publishes only the current head": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1609 supervised native agent SIGKILL while an admitted Git child is held, then current-head leased recovery and durable pending clearance. Local macOS Node 24.21.0 passing native samples 5.214 s and 9.838 s; 15 s rounds 1.5x the worst upward. The latter sample includes the bounded producer receipt and current-head recovery. Sibling controls in those files were still red, so these samples are not whole-file passes.; renewed 2026-11-08 from samples linux max 6.963 s (n=54), macOS max 9.107 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1609 supervised native agent SIGKILL while an admitted Git child is held, then current-head leased recovery and durable pending clearance. Local macOS Node 24.21.0 passing native samples 5.214 s and 9.838 s; 15 s rounds 1.5x the worst upward. The latter sample includes the bounded producer receipt and current-head recovery. Sibling controls in those files were still red, so these samples are not whole-file passes.; renewed 2026-11-08 from samples linux max 6.963 s (n=54), macOS max 9.107 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-push-on-ref-move.test.ts::C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and downtime without hooks": {
       "seconds": 32.5,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1609 real Git/socket push and restart lifecycle. Local macOS Node 24.21.0 passing samples 6.418 s, 8.147 s and 20.502 s and 21.609 s (last two samples during shared-machine contention), allowance 32.5 s rounds 1.5x the worst upward. Preserves exact territory-head, refused-event, private-checkpoint and restart assertions.; renewed 2026-11-08 from samples linux max 14.154 s (n=54), macOS max 16.442 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1609 real Git/socket push and restart lifecycle. Local macOS Node 24.21.0 passing samples 6.418 s, 8.147 s and 20.502 s and 21.609 s (last two samples during shared-machine contention), allowance 32.5 s rounds 1.5x the worst upward. Preserves exact territory-head, refused-event, private-checkpoint and restart assertions.; renewed 2026-11-08 from samples linux max 14.154 s (n=54), macOS max 16.442 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-attach-routing.test.ts::host session.attach and list return pinned separate SSH command; prior local frame stays compatible": {
       "seconds": 5.3,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1611 macOS arm64 Node24.21 local working-tree sample 3.511349 s including scratch projectHub setup and joined cleanup. Same-head Linux x64 6.8.0-142-generic c-8 sfo2 Node24.21.0 verify 866a0390 at 8d70abb9 (A-16633) passed the base case in 0.347619138 s and five load repetitions in 0.401073988, 0.334588448, 0.394836114, 0.390142669 and 0.403917764 s. Linux worst 0.403917764 s is below the macOS sample, so 5.3 s stays about 1.5 times the worst observed sample. Samples include fixture setup and joined cleanup; none is full-suite wall time. C-216 owns fixture overhead reduction.; renewed 2026-11-08 from samples linux max 0.394 s (n=28), macOS max 0.289 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1611 macOS arm64 Node24.21 local working-tree sample 3.511349 s including scratch projectHub setup and joined cleanup. Same-head Linux x64 6.8.0-142-generic c-8 sfo2 Node24.21.0 verify 866a0390 at 8d70abb9 (A-16633) passed the base case in 0.347619138 s and five load repetitions in 0.401073988, 0.334588448, 0.394836114, 0.390142669 and 0.403917764 s. Linux worst 0.403917764 s is below the macOS sample, so 5.3 s stays about 1.5 times the worst observed sample. Samples include fixture setup and joined cleanup; none is full-suite wall time. C-216 owns fixture overhead reduction.; renewed 2026-11-08 from samples linux max 0.394 s (n=28), macOS max 0.289 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-survival-native.test.ts": {
       "seconds": 78,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [51.867472958, 51.791722375, 48.866847708, 48.752573208, 48.374715291, 47.873994875, 44.623440584, 45.207911292, 45.245202958, 43.468649209]; linux [39.040447935, 38.947349394, 38.644646976, 38.999016017, 38.783737434, 38.965044143, 38.903448476, 38.883410517, 39.159296351, 38.926501810]. ceil(1.5 x worst 51.867472958) = 78s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.; renewed 2026-11-08 from samples linux max 44.689 s (n=54), macOS max 43.428 s (n=8)",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [51.867472958, 51.791722375, 48.866847708, 48.752573208, 48.374715291, 47.873994875, 44.623440584, 45.207911292, 45.245202958, 43.468649209]; linux [39.040447935, 38.947349394, 38.644646976, 38.999016017, 38.783737434, 38.965044143, 38.903448476, 38.883410517, 39.159296351, 38.926501810]. ceil(1.5 x worst 51.867472958) = 78s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.; renewed 2026-11-08 from samples linux max 44.689 s (n=54), macOS max 43.428 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close.",
       "file": true
     },
     "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": {
       "seconds": 78,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [51.867472958, 51.791722375, 48.866847708, 48.752573208, 48.374715291, 47.873994875, 44.623440584, 45.207911292, 45.245202958, 43.468649209]; linux [39.040447935, 38.947349394, 38.644646976, 38.999016017, 38.783737434, 38.965044143, 38.903448476, 38.883410517, 39.159296351, 38.926501810]. ceil(1.5 x worst 51.867472958) = 78s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.; renewed 2026-11-08 from samples linux max 44.689 s (n=54), macOS max 43.428 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [51.867472958, 51.791722375, 48.866847708, 48.752573208, 48.374715291, 47.873994875, 44.623440584, 45.207911292, 45.245202958, 43.468649209]; linux [39.040447935, 38.947349394, 38.644646976, 38.999016017, 38.783737434, 38.965044143, 38.903448476, 38.883410517, 39.159296351, 38.926501810]. ceil(1.5 x worst 51.867472958) = 78s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.; renewed 2026-11-08 from samples linux max 44.689 s (n=54), macOS max 43.428 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps closed generation isolated from healthy recovery": {
       "seconds": 8.2,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.181457698 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 5.412 s (n=55), macOS max 4.48 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.181457698 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 5.412 s (n=55), macOS max 4.48 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-agent-restart.test.ts::Claude exit during agent downtime keeps unresolved generation isolated from healthy recovery": {
       "seconds": 9.7,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.164787825 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 6.401 s (n=55), macOS max 4.795 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.164787825 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 6.401 s (n=55), macOS max 4.795 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-agent-restart.test.ts::C1-C3 kill-agent reconnect reads retained table without signalling harness": {
       "seconds": 7.6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.130290939 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Existing allowance retains at least 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 4.741 s (n=55), macOS max 5.006 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 4.130290939 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Existing allowance retains at least 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 4.741 s (n=55), macOS max 5.006 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-agent-restart.test.ts::C3 adopted Claude worker survives version replacement with receipt authority and no signal": {
       "seconds": 14.9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 7.878188536 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 9.922 s (n=55), macOS max 8.853 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1605 Coordinator decision 506d8348: reconciled Linux x64 6.8.0-142-generic Node24.21.0 two-worker assertion-passing case sample 7.878188536 s from A-16552, run fd79de61-a440-4a86-829c-56b3362548c6 at bdabe9bb47cdd698450fbf8f758c49ac6afd71ab. Allowance rounds 1.5 times the Linux sample up to whole seconds because the provisional budget lacked 20 percent headroom. Case timing includes native fixture setup, supervised replacement or downtime recovery, durable boundary assertions and joined cleanup; it is not the reconnect-only latency. C-216 owns native fixture cost reduction. No test title, assertion, wait bound, ordering, authority or cleanup changed.; renewed 2026-11-08 from samples linux max 9.922 s (n=55), macOS max 8.853 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude frame launch adopts its worker and delivers through host hooks and bridge": {
       "seconds": 17,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.917467292, 11.126614209, 8.91643525, 9.568531833, 9.458043416], \"linux\": [5.469918002, 5.708368253, 6.07546117, 6.949763545, 6.096059337]}. ceil(1.5 x worst 11.126614209) = 17s; selected cap 17s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 8.771 s (n=54), macOS max 7.076 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.917467292, 11.126614209, 8.91643525, 9.568531833, 9.458043416], \"linux\": [5.469918002, 5.708368253, 6.07546117, 6.949763545, 6.096059337]}. ceil(1.5 x worst 11.126614209) = 17s; selected cap 17s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 8.771 s (n=54), macOS max 7.076 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::Claude TERM-resistant SessionEnd hook is captured and killed by native birth": {
       "seconds": 21,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [12.761301917, 13.632230292, 12.515552875, 13.924341167, 12.585003709], \"linux\": [9.484794546, 9.570613213, 10.018983129, 9.815631963, 10.049960421]}. ceil(1.5 x worst 13.924341167) = 21s; selected cap 21s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 12.193 s (n=54), macOS max 11.284 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [12.761301917, 13.632230292, 12.515552875, 13.924341167, 12.585003709], \"linux\": [9.484794546, 9.570613213, 10.018983129, 9.815631963, 10.049960421]}. ceil(1.5 x worst 13.924341167) = 21s; selected cap 21s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 12.193 s (n=54), macOS max 11.284 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::Claude hook born across root exit remains unacquired": {
       "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.948872792, 7.244491542, 6.081420292, 5.460603458, 5.38398125], \"linux\": [2.775733751, 3.078145377, 3.26990721, 3.18469971, 3.271262501]}. ceil(1.5 x worst 7.244491542) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.136 s (n=54), macOS max 5.002 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.948872792, 7.244491542, 6.081420292, 5.460603458, 5.38398125], \"linux\": [2.775733751, 3.078145377, 3.26990721, 3.18469971, 3.271262501]}. ceil(1.5 x worst 7.244491542) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.136 s (n=54), macOS max 5.002 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude failed adoption handshake joins rollback and removes its credential copies only": {
       "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.75258375, 6.4789595, 5.938754166, 5.82327775, 6.047901292], \"linux\": [3.491313085, 3.383969502, 3.373546085, 4.01651546, 3.629318627]}. ceil(1.5 x worst 6.752583749999999) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.338 s (n=54), macOS max 4.601 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.75258375, 6.4789595, 5.938754166, 5.82327775, 6.047901292], \"linux\": [3.491313085, 3.383969502, 3.373546085, 4.01651546, 3.629318627]}. ceil(1.5 x worst 6.752583749999999) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.338 s (n=54), macOS max 4.601 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::agent restart does not inherit Claude dynamic child acquisition from its serialized marker": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.061266792, 7.967315958, 7.096876875, 5.947450958, 6.749742333], \"linux\": [3.806959085, 3.507194293, 4.197969586, 4.018037544, 4.029436502]}. ceil(1.5 x worst 7.967315958) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.295 s (n=54), macOS max 5.533 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.061266792, 7.967315958, 7.096876875, 5.947450958, 6.749742333], \"linux\": [3.806959085, 3.507194293, 4.197969586, 4.018037544, 4.029436502]}. ceil(1.5 x worst 7.967315958) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.295 s (n=54), macOS max 5.533 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::hub restart after tree closure re-adopts its durable generation and releases the job": {
       "seconds": 14,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.821984833, 8.699921041, 6.914870208, 7.572587042, 7.876128417], \"linux\": [4.344591752, 4.270892668, 4.846898085, 4.846271211, 5.016274794]}. ceil(1.5 x worst 8.699921041) = 14s; selected cap 14s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.089 s (n=54), macOS max 5.909 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.821984833, 8.699921041, 6.914870208, 7.572587042, 7.876128417], \"linux\": [4.344591752, 4.270892668, 4.846898085, 4.846271211, 5.016274794]}. ceil(1.5 x worst 8.699921041) = 14s; selected cap 14s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.089 s (n=54), macOS max 5.909 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::lost native release reply settles without replaying native stop": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.388094 s; A-16521 3.667987 s; A-16524 5.479246 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes.; renewed 2026-11-08 from samples linux max 7.981 s (n=54), macOS max 6.348 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1607 Coordinator decisions 5d9f55ec/fbc7a350 approve a seven-day per-test allowance for every new Claude identity with a Linux sample at or above 4 s. Assertion-passing Linux x64 c-8 lon1 Node24.21.0, two-worker samples: A-16517 3.388094 s; A-16521 3.667987 s; A-16524 5.479246 s. A-16524 is the integrated batch at peak 1m load 10.09, with assertions passing but overall exit 1 on new-identity duration gates. The 9 s budget rounds 1.5 times the worst sample up to whole seconds. C-216 owns native fixture cost reduction. No test title, assertion, individual wait bound, ordering, ownership gate or cleanup changes.; renewed 2026-11-08 from samples linux max 7.981 s (n=54), macOS max 6.348 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::lost native release-restart reply settles without replaying native stop": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.410529458, 7.9061295, 7.205081042, 7.518683541, 7.78432425], \"linux\": [4.242456377, 4.255605877, 4.926285127, 4.828977919, 5.605873627]}. ceil(1.5 x worst 8.410529458000001) = 13s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 15s allowance rather than discarding earlier loaded evidence: T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [9.845850667, 8.567148708, 8.564230833, 9.227979125, 7.607671167, 7.441424792, 6.896027541, 5.685377875, 7.052913875, 6.557208542]; linux [2.355151043, 2.691851085, 2.501584084, 2.499911793, 2.432526418, 2.578907835, 2.508198460, 2.559167626, 2.769961668, 2.607719127]. ceil(1.5 x worst 9.845850667) = 15s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.; renewed 2026-11-08 from samples linux max 6.526 s (n=54), macOS max 6.891 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.410529458, 7.9061295, 7.205081042, 7.518683541, 7.78432425], \"linux\": [4.242456377, 4.255605877, 4.926285127, 4.828977919, 5.605873627]}. ceil(1.5 x worst 8.410529458000001) = 13s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 15s allowance rather than discarding earlier loaded evidence: T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [9.845850667, 8.567148708, 8.564230833, 9.227979125, 7.607671167, 7.441424792, 6.896027541, 5.685377875, 7.052913875, 6.557208542]; linux [2.355151043, 2.691851085, 2.501584084, 2.499911793, 2.432526418, 2.578907835, 2.508198460, 2.559167626, 2.769961668, 2.607719127]. ceil(1.5 x worst 9.845850667) = 15s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged.; renewed 2026-11-08 from samples linux max 6.526 s (n=54), macOS max 6.891 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::lost native forget-restart reply settles without replaying native stop": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.650266375, 7.874511834, 6.748655, 7.352733958, 6.550829167], \"linux\": [4.048120002, 4.45622571, 4.683487502, 4.840654711, 5.004616461]}. ceil(1.5 x worst 7.874511834) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.327 s (n=54), macOS max 6.067 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.650266375, 7.874511834, 6.748655, 7.352733958, 6.550829167], \"linux\": [4.048120002, 4.45622571, 4.683487502, 4.840654711, 5.004616461]}. ceil(1.5 x worst 7.874511834) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.327 s (n=54), macOS max 6.067 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::terminal remote PID settlement cleans before publishing exit without recurring CLI": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.727888042, 7.960520417, 6.358788583, 6.973522083, 7.23786325], \"linux\": [4.084361793, 4.420079085, 4.782088544, 4.868789127, 5.572783753]}. ceil(1.5 x worst 7.960520417) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.323 s (n=54), macOS max 6.292 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.727888042, 7.960520417, 6.358788583, 6.973522083, 7.23786325], \"linux\": [4.084361793, 4.420079085, 4.782088544, 4.868789127, 5.572783753]}. ceil(1.5 x worst 7.960520417) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.323 s (n=54), macOS max 6.292 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::terminal remote PID settlement holds the row on native failure without recurring CLI": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.497881875, 7.830872209, 7.373562542, 7.393678584, 7.139353], \"linux\": [4.651745252, 5.007628877, 5.08629621, 5.682348752, 6.41427342]}. ceil(1.5 x worst 9.497881875) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 7.032 s (n=54), macOS max 6.59 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.497881875, 7.830872209, 7.373562542, 7.393678584, 7.139353], \"linux\": [4.651745252, 5.007628877, 5.08629621, 5.682348752, 6.41427342]}. ceil(1.5 x worst 9.497881875) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 7.032 s (n=54), macOS max 6.59 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::adopted Claude settles one descendant born between stop capture and commit before any signal": {
       "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.519831458, 8.067768167, 7.673063708, 7.636337375, 7.849895583], \"linux\": [3.989249043, 3.92430146, 4.485262877, 4.629050211, 4.850867003]}. ceil(1.5 x worst 8.519831458) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.24 s (n=54), macOS max 6.265 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.519831458, 8.067768167, 7.673063708, 7.636337375, 7.849895583], \"linux\": [3.989249043, 3.92430146, 4.485262877, 4.629050211, 4.850867003]}. ceil(1.5 x worst 8.519831458) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.24 s (n=54), macOS max 6.265 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::an unowned reparented child stays unacquired across explicit stops": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.927927208, 7.442974291, 6.7749075, 7.134949417, 7.458402], \"linux\": [3.150387001, 3.923989544, 4.548833252, 3.748081918, 4.055662293]}. ceil(1.5 x worst 7.927927208) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.619 s (n=54), macOS max 5.784 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.927927208, 7.442974291, 6.7749075, 7.134949417, 7.458402], \"linux\": [3.150387001, 3.923989544, 4.548833252, 3.748081918, 4.055662293]}. ceil(1.5 x worst 7.927927208) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.619 s (n=54), macOS max 5.784 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::pinned native hook exit between prepare and commit settles without a manual re-stop": {
       "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.549927834, 7.473182875, 7.252156083, 6.940430125, 7.386054334], \"linux\": [3.725189627, 3.940614043, 4.405132877, 4.317219919, 4.572205211]}. ceil(1.5 x worst 8.549927834) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.382 s (n=54), macOS max 6.124 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.549927834, 7.473182875, 7.252156083, 6.940430125, 7.386054334], \"linux\": [3.725189627, 3.940614043, 4.405132877, 4.317219919, 4.572205211]}. ceil(1.5 x worst 8.549927834) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.382 s (n=54), macOS max 6.124 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart adoption": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.517638833, 6.44946175, 5.972616083, 6.572052667, 5.840865292], \"linux\": [3.148745585, 3.378509002, 3.482993835, 3.691875793, 3.673636627]}. ceil(1.5 x worst 7.517638833) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.181 s (n=54), macOS max 4.642 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.517638833, 6.44946175, 5.972616083, 6.572052667, 5.840865292], \"linux\": [3.148745585, 3.378509002, 3.482993835, 3.691875793, 3.673636627]}. ceil(1.5 x worst 7.517638833) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.181 s (n=54), macOS max 4.642 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart result": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.571520834, 6.114683167, 5.931793958, 5.895702291, 5.943416666], \"linux\": [3.142522044, 3.458747919, 3.490043418, 3.486639792, 3.646446627]}. ceil(1.5 x worst 7.571520834) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.421 s (n=54), macOS max 4.778 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.571520834, 6.114683167, 5.931793958, 5.895702291, 5.943416666], \"linux\": [3.142522044, 3.458747919, 3.490043418, 3.486639792, 3.646446627]}. ceil(1.5 x worst 7.571520834) = 12s; selected cap 12s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.421 s (n=54), macOS max 4.778 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart prune-failure": {
       "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.118234, 5.926307792, 5.230174625, 6.069230541, 6.532115333], \"linux\": [3.055250501, 3.246269627, 3.557142959, 3.535766293, 3.620285669]}. ceil(1.5 x worst 7.118234) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.278 s (n=54), macOS max 4.856 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.118234, 5.926307792, 5.230174625, 6.069230541, 6.532115333], \"linux\": [3.055250501, 3.246269627, 3.557142959, 3.535766293, 3.620285669]}. ceil(1.5 x worst 7.118234) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.278 s (n=54), macOS max 4.856 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts": {
       "file": true,
       "seconds": 338,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: aggregate durations of the passing full-file runs on macOS arm64 local and Linux arm64 docker run --init (five samples per platform except remote Claude: five macOS/four Linux; fifth Linux file25/26 exit1 excluded from aggregate cost, T-1697) (Node24.21.0), aggregate top-level test seconds (excludes module/runner startup and machine wait). Samples [116.22580951100001, 198.318047836, 210.187162044, 185.80482820699999, 183.469833166, 118.016034636, 103.677846549, 182.957468122, 108.820578258]; ceil(1.5 x worst)=316s; selected cap 316s. Complete per-case/platform samples and load/burner receipts in item evidence. Assertion and behaviour deadlines unchanged; global report mode.; renewed 2026-11-08 from samples linux max 225.329 s (n=54), macOS max 213.955 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: aggregate durations of the passing full-file runs on macOS arm64 local and Linux arm64 docker run --init (five samples per platform except remote Claude: five macOS/four Linux; fifth Linux file25/26 exit1 excluded from aggregate cost, T-1697) (Node24.21.0), aggregate top-level test seconds (excludes module/runner startup and machine wait). Samples [116.22580951100001, 198.318047836, 210.187162044, 185.80482820699999, 183.469833166, 118.016034636, 103.677846549, 182.957468122, 108.820578258]; ceil(1.5 x worst)=316s; selected cap 316s. Complete per-case/platform samples and load/burner receipts in item evidence. Assertion and behaviour deadlines unchanged; global report mode.; renewed 2026-11-08 from samples linux max 225.329 s (n=54), macOS max 213.955 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/spoke-footprint.test.ts::spoke RSS after welcome and ten idle seconds (measurement only)": {
       "seconds": 30,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1608 C2 requires ten real idle seconds after consumed welcome plus native spoke startup and joined cleanup; T4 measurement only, never an RSS threshold. Local Darwin arm64 Node24.21 measured 11.039 s including setup and teardown; 30 s accommodates droplet startup. Two native passing samples10.513454209s and11.039158541s; replay retained in item artifact. Coordinator a326ffb5 explicitly keeps30s and corrects nonlegacy expiry to7days.; renewed 2026-11-08 from samples linux max 10.969 s (n=11), macOS max 10.945 s (n=7)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1608 C2 requires ten real idle seconds after consumed welcome plus native spoke startup and joined cleanup; T4 measurement only, never an RSS threshold. Local Darwin arm64 Node24.21 measured 11.039 s including setup and teardown; 30 s accommodates droplet startup. Two native passing samples10.513454209s and11.039158541s; replay retained in item artifact. Coordinator a326ffb5 explicitly keeps30s and corrects nonlegacy expiry to7days.; renewed 2026-11-08 from samples linux max 10.969 s (n=11), macOS max 10.945 s (n=7) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-ssh-contract.test.ts::ssh Host runs every shared Host behavioral contract through fake ssh": {
       "seconds": 18.3,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1599 aggregates all 14 unchanged Host behavioral rows through one real fake-SSH carrier and authenticated agent, including native PID/exit, retained descendants, output, worktrees and joined teardown. Passing wrapper samples: local macOS Node24.21.0 A-16263 7.099404042 s, source-equivalent precommit bytes of 83428a67a; Linux x64 c-8 nyc1 run 4fd7d495 at 0b693d330 (A-16269) 7.33375717 s, with all 14 nested rows passing although the overall receipt failed Git wording and this enforcing legacy 5 s aggregate cap. 11.001 s rounds 1.5x the worst passing sample upward to milliseconds. Both samples replay through the production checker with before-fail/after-pass controls. This seven-day allowance changes only the aggregate identity budget; all row assertions, native receipts and timeouts remain unchanged.; renewed 2026-11-08 from samples linux max 8.061 s (n=54), macOS max 12.164 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1599 aggregates all 14 unchanged Host behavioral rows through one real fake-SSH carrier and authenticated agent, including native PID/exit, retained descendants, output, worktrees and joined teardown. Passing wrapper samples: local macOS Node24.21.0 A-16263 7.099404042 s, source-equivalent precommit bytes of 83428a67a; Linux x64 c-8 nyc1 run 4fd7d495 at 0b693d330 (A-16269) 7.33375717 s, with all 14 nested rows passing although the overall receipt failed Git wording and this enforcing legacy 5 s aggregate cap. 11.001 s rounds 1.5x the worst passing sample upward to milliseconds. Both samples replay through the production checker with before-fail/after-pass controls. This seven-day allowance changes only the aggregate identity budget; all row assertions, native receipts and timeouts remain unchanged.; renewed 2026-11-08 from samples linux max 8.061 s (n=54), macOS max 12.164 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
       "seconds": 14.774,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1636 C3: full hub source AST inventory is disk-sensitive. Linux stage cover cd742656 shard 2 (A-15910) observed 8.459 s against 5 s; other same-day samples were 1.1–2.2 s (Coordinator report). 13 s rounds up 1.5x the worst observed sample; seven-day allowance pending scan optimization in T-1638. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under C-216 seven-day policy; removed by T-1638 (bounded scan). Passing cover/batch samples: A-15905 2.243445542 s; A-15909 1.9237545 s; A-15961 1.954675417 s; A-15982 1.746804542 s; A-15983 9.849199971 s; A-15991 2.459104833 s; A-15995 1.806067583 s. Cap 14.774 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged.; renewed 2026-11-08 from samples linux max 8.412 s (n=37), macOS max 3.347 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1636 C3: full hub source AST inventory is disk-sensitive. Linux stage cover cd742656 shard 2 (A-15910) observed 8.459 s against 5 s; other same-day samples were 1.1–2.2 s (Coordinator report). 13 s rounds up 1.5x the worst observed sample; seven-day allowance pending scan optimization in T-1638. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under C-216 seven-day policy; removed by T-1638 (bounded scan). Passing cover/batch samples: A-15905 2.243445542 s; A-15909 1.9237545 s; A-15961 1.954675417 s; A-15982 1.746804542 s; A-15983 9.849199971 s; A-15991 2.459104833 s; A-15995 1.806067583 s. Cap 14.774 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged.; renewed 2026-11-08 from samples linux max 8.412 s (n=37), macOS max 3.347 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-16); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/inbox-query.test.ts": {
       "seconds": 61.355,
       "file": true,
       "owner": "E-880",
-      "added": "2026-11-02",
-      "expires": "2026-11-16",
-      "reason": "Aggregates required synthetic history and 1,000 real send/mirror receipts. A-15693 Linux c-8 workers 2 at d9f445e30 measured 40.903 s; cap is 1.5x rounded up. The failed C1 assertion does not count as passing coverage."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "Aggregates required synthetic history and 1,000 real send/mirror receipts. A-15693 Linux c-8 workers 2 at d9f445e30 measured 40.903 s; cap is 1.5x rounded up. The failed C1 assertion does not count as passing coverage. Renewed 2026-11-11 by the Coordinator (was due 2026-11-16); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/inbox-query.test.ts::1,000 real sends and their mirror notices across windows do not rebuild or emit": {
       "seconds": 54.525,
       "owner": "E-880",
-      "added": "2026-11-02",
-      "expires": "2026-11-16",
-      "reason": "C2 requires 1,000 real spoke sends, durable messages and companion notices with policies enabled. A-15693 Linux c-8 workers 2 at d9f445e30 passed this case in 36.35 s; cap is 1.5x."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "C2 requires 1,000 real spoke sends, durable messages and companion notices with policies enabled. A-15693 Linux c-8 workers 2 at d9f445e30 passed this case in 36.35 s; cap is 1.5x. Renewed 2026-11-11 by the Coordinator (was due 2026-11-16); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/inbox-query.test.ts::synthetic inbox candidates stay equivalent and indexed as retained history doubles": {
       "seconds": 5,
       "owner": "E-880",
-      "added": "2026-11-02",
-      "expires": "2026-11-16",
-      "reason": "C1 constructs 50,000 synthetic messages, compares an independent oracle, then doubles unrelated retained history while checking the same candidate count and bounded query plan. Initial local setup+assertions observed 2.63 s."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "C1 constructs 50,000 synthetic messages, compares an independent oracle, then doubles unrelated retained history while checking the same candidate count and bounded query plan. Initial local setup+assertions observed 2.63 s. Renewed 2026-11-11 by the Coordinator (was due 2026-11-16); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/inbox-query.test.ts::existing large synthetic database migrates and serves hub.status within 15 seconds": {
       "seconds": 10,
       "owner": "E-880",
-      "added": "2026-11-02",
-      "expires": "2026-11-16",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
       "reason": "C4 constructs and copies a 50,000-message legacy fixture, then proves native index/backfill and frame readiness; local observed 5.30s."
     },
     "hub/test/claude-code-sessions-lifecycle.test.ts::Claude relaunch stops the previous native job after its PID has exited": {
@@ -14535,202 +14535,202 @@
       "owner": "E-880",
       "added": "2026-11-03",
       "expires": "2026-12-03",
-      "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 7.378123208 s; A-15983 5.407016151 s; A-15991 3.775349667 s; A-15995 3.572024167 s. Cap 11.068 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
+      "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 7.378123208 s; A-15983 5.407016151 s; A-15991 3.775349667 s; A-15995 3.572024167 s. Cap 11.068 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude root-first stop mid-turn": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.494941417, 8.502555042, 8.570381625, 8.530657916, 7.385317833], \"linux\": [4.604342086, 5.134040211, 5.178761211, 5.323797627, 4.945413585]}. ceil(1.5 x worst 9.494941417) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 7.404 s (n=54), macOS max 7.53 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.494941417, 8.502555042, 8.570381625, 8.530657916, 7.385317833], \"linux\": [4.604342086, 5.134040211, 5.178761211, 5.323797627, 4.945413585]}. ceil(1.5 x worst 9.494941417) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 7.404 s (n=54), macOS max 7.53 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude root-first stop completed turn": {
       "seconds": 16,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [10.42245325, 8.1618625, 8.4859785, 8.060956959, 8.908220542], \"linux\": [5.093761378, 6.042812794, 5.731640795, 6.533095295, 6.742110128]}. ceil(1.5 x worst 10.42245325) = 16s; selected cap 16s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 8.182 s (n=54), macOS max 7.722 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [10.42245325, 8.1618625, 8.4859785, 8.060956959, 8.908220542], \"linux\": [5.093761378, 6.042812794, 5.731640795, 6.533095295, 6.742110128]}. ceil(1.5 x worst 10.42245325) = 16s; selected cap 16s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 8.182 s (n=54), macOS max 7.722 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude exit-time orphan stays held after independent cleanup": {
       "seconds": 13,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.3443505, 7.383477042, 6.864043333, 7.039653583, 6.737579666], \"linux\": [3.448170168, 3.666084376, 4.473520335, 3.75935746, 4.412839544]}. ceil(1.5 x worst 8.344350500000001) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.756 s (n=54), macOS max 5.411 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [8.3443505, 7.383477042, 6.864043333, 7.039653583, 6.737579666], \"linux\": [3.448170168, 3.666084376, 4.473520335, 3.75935746, 4.412839544]}. ceil(1.5 x worst 8.344350500000001) = 13s; selected cap 13s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.756 s (n=54), macOS max 5.411 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude retained hook retries after the pinned root exited": {
       "seconds": 21,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [13.796403625, 10.763476291, 11.086557834, 10.8217535, 10.807522292], \"linux\": [7.008749879, 7.455149711, 7.43615367, 7.206763794, 7.56113042]}. ceil(1.5 x worst 13.796403625) = 21s; selected cap 21s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 9.431 s (n=54), macOS max 8.24 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [13.796403625, 10.763476291, 11.086557834, 10.8217535, 10.807522292], \"linux\": [7.008749879, 7.455149711, 7.43615367, 7.206763794, 7.56113042]}. ceil(1.5 x worst 13.796403625) = 21s; selected cap 21s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 9.431 s (n=54), macOS max 8.24 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::remote Claude orphan detached-child escape retains unknown authority": {
       "seconds": 15,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.796764417, 7.235946125, 7.3459505, 7.530521666, 7.4565215], \"linux\": [3.452832252, 3.656089044, 3.797521169, 3.764538002, 4.027328627]}. ceil(1.5 x worst 9.796764417) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.037 s (n=54), macOS max 6.05 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [9.796764417, 7.235946125, 7.3459505, 7.530521666, 7.4565215], \"linux\": [3.452832252, 3.656089044, 3.797521169, 3.764538002, 4.027328627]}. ceil(1.5 x worst 9.796764417) = 15s; selected cap 15s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 6.037 s (n=54), macOS max 6.05 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-reboot-native.test.ts::reboot retires one host without stop or signals and bootstraps a fresh supervisor and agent": {
       "seconds": 28,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.970669458, 8.836857, 8.654842167, 9.229461, 9.828129333], \"linux\": [6.023346294, 6.024789211, 6.409343586, 5.993048002, 6.573092669]}. ceil(1.5 x worst 9.828129333000001) = 15s; selected cap 28s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 28s allowance rather than discarding earlier loaded evidence: T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [15.472687375, 13.014935459, 12.311403125, 12.017495042, 13.095473875, 10.466531750, 10.227864250, 11.118518584, 10.307232209, 10.632389167]; linux [4.241958877, 3.781416001, 3.719014793, 4.248407418, 3.744861377, 3.730874252, 4.231971085, 4.253560085, 4.272213126, 3.738657710]. ceil(1.5 x worst 15.472687375) = 24s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged. T-1691 macOS arm64 Node24.21.0 loaded native source28e56df4b:14 yes burners/10 CPUs, per-sample1m load13.109–23.25,10/10. Samples seconds:[18.307176458, 16.866371041999997, 14.202471292, 14.188273583, 12.8084635, 12.92182075, 12.163144417, 12.193577958, 11.509867166, 11.808925665999999]. ceil(1.5 x18.307176458)=28s; timeout60s. Includes setup/assertions/joined cleanup, no browser/duration gate. Diagnostic-only redaction/isolation review fixes follow this measurement; no native assertions changed.; renewed 2026-11-08 from samples linux max 8.357 s (n=55), macOS max 8.676 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [7.970669458, 8.836857, 8.654842167, 9.229461, 9.828129333], \"linux\": [6.023346294, 6.024789211, 6.409343586, 5.993048002, 6.573092669]}. ceil(1.5 x worst 9.828129333000001) = 15s; selected cap 28s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved. Retained higher existing 28s allowance rather than discarding earlier loaded evidence: T-1686 brief authorizes C-216 allowance from 10/10 passing loaded samples on each platform. macOS27.0.1 arm64 local Node24.21.0, 5 yes burners/10 CPUs; Linux7.0.12-linuxkit arm64 container cland-t1613-diagnostic:local Node24.21.0, 2 yes burners/4 CPUs. Samples in seconds: macos [15.472687375, 13.014935459, 12.311403125, 12.017495042, 13.095473875, 10.466531750, 10.227864250, 11.118518584, 10.307232209, 10.632389167]; linux [4.241958877, 3.781416001, 3.719014793, 4.248407418, 3.744861377, 3.730874252, 4.231971085, 4.253560085, 4.272213126, 3.738657710]. ceil(1.5 x worst 15.472687375) = 24s. Samples include fixture setup, native boundary assertions and joined cleanup; no browser, no duration gate in targeted Node runs. All writers joined. Runtime source digests and complete receipts retained in T-1686 evidence; only allowance/envelope/docs edits follow measurement. C-216 owns fixture cost reduction; assertions unchanged. T-1691 macOS arm64 Node24.21.0 loaded native source28e56df4b:14 yes burners/10 CPUs, per-sample1m load13.109–23.25,10/10. Samples seconds:[18.307176458, 16.866371041999997, 14.202471292, 14.188273583, 12.8084635, 12.92182075, 12.163144417, 12.193577958, 11.509867166, 11.808925665999999]. ceil(1.5 x18.307176458)=28s; timeout60s. Includes setup/assertions/joined cleanup, no browser/duration gate. Diagnostic-only redaction/isolation review fixes follow this measurement; no native assertions changed.; renewed 2026-11-08 from samples linux max 8.357 s (n=55), macOS max 8.676 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::late SessionEnd after the recovery snapshot never grants an adopted closed receipt": {
       "seconds": 11,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.972716875, 6.681786667, 6.986759458, 6.347233584, 6.381543042], \"linux\": [3.250228544, 3.070365876, 3.537701377, 3.329732959, 3.832918877]}. ceil(1.5 x worst 6.986759458000001) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.293 s (n=54), macOS max 4.959 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.972716875, 6.681786667, 6.986759458, 6.347233584, 6.381543042], \"linux\": [3.250228544, 3.070365876, 3.537701377, 3.329732959, 3.832918877]}. ceil(1.5 x worst 6.986759458000001) = 11s; selected cap 11s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 5.293 s (n=54), macOS max 4.959 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart missing-receipt": {
       "seconds": 8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.29060175, 4.895654375, 4.6929945, 4.763615792, 4.583779875], \"linux\": [2.556222959, 2.615066918, 2.602715835, 2.898807835, 2.681976043]}. ceil(1.5 x worst 5.2906017499999995) = 8s; selected cap 8s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 4.386 s (n=54), macOS max 3.922 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [5.29060175, 4.895654375, 4.6929945, 4.763615792, 4.583779875], \"linux\": [2.556222959, 2.615066918, 2.602715835, 2.898807835, 2.681976043]}. ceil(1.5 x worst 5.2906017499999995) = 8s; selected cap 8s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 4.386 s (n=54), macOS max 3.922 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::failed Claude launch restart missing-state": {
       "seconds": 10,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.120986625, 4.89748225, 4.702249416, 5.134325792, 4.467344666], \"linux\": [2.553771668, 2.461230043, 2.624514001, 2.855262377, 2.857924835]}. ceil(1.5 x worst 6.120986625) = 10s; selected cap 10s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 3.503 s (n=54), macOS max 4.282 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [6.120986625, 4.89748225, 4.702249416, 5.134325792, 4.467344666], \"linux\": [2.553771668, 2.461230043, 2.624514001, 2.855262377, 2.857924835]}. ceil(1.5 x worst 6.120986625) = 10s; selected cap 10s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 3.503 s (n=54), macOS max 4.282 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-flush-native.test.ts::host session verify flushes its owner before admission and never opens the host cwd locally": {
       "seconds": 6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [3.097643125, 3.844505, 3.298704791, 3.085290542, 2.8661705], \"linux\": [0.514593709, 0.507910375, 0.545639, 0.533545125, 0.529485959]}. ceil(1.5 x worst 3.8445050000000003) = 6s; selected cap 6s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 1.156 s (n=55), macOS max 1.614 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1692: five passing eligible case samples on each platform; macOS arm64 local Node24.21.0 and Linux arm64 container cland-t1613-diagnostic:local via docker run --init, Node24.21.0. Test sources pinned by source-digests.json in the item evidence. Samples seconds {\"darwin\": [3.097643125, 3.844505, 3.298704791, 3.085290542, 2.8661705], \"linux\": [0.514593709, 0.507910375, 0.545639, 0.533545125, 0.529485959]}. ceil(1.5 x worst 3.8445050000000003) = 6s; selected cap 6s. Includes setup/assertions/joined cleanup; no browser, no product latency claim, no duration gate in targeted Node runs. Duration manifest remains report mode. Setup budgets only; assertions and behaviour deadlines preserved.; renewed 2026-11-08 from samples linux max 1.156 s (n=55), macOS max 1.614 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/adapter-generation-forward.test.ts::legacy session forward remains removable beside a generation-scoped forward": {
       "seconds": 12,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[2.198672625,2.046081084,2.406128875,2.3725449579999998,2.51678625],\"linux\":[1.7439216670000002,2.040074209,2.15821121,2.098695292,2.239477835]}. Current worst 2.51678625s. Conservatively retain earlier observed macOS calibration cost 7.369023833s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 7.369023833)=12s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes.; renewed 2026-11-08 from samples linux max 2.93 s (n=55), macOS max 2.59 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[2.198672625,2.046081084,2.406128875,2.3725449579999998,2.51678625],\"linux\":[1.7439216670000002,2.040074209,2.15821121,2.098695292,2.239477835]}. Current worst 2.51678625s. Conservatively retain earlier observed macOS calibration cost 7.369023833s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 7.369023833)=12s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes.; renewed 2026-11-08 from samples linux max 2.93 s (n=55), macOS max 2.59 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/adapter-generation-forward.test.ts::Sessions drops unreachable forward inventory locally and reconnect restores only the replacement": {
       "seconds": 17,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[4.145153541,3.910825167,3.555070583,4.039409375,3.817201209],\"linux\":[3.930941544,3.674814001,4.019917502,4.168172168,4.018577585]}. Current worst 4.168172168s. Conservatively retain earlier observed macOS calibration cost 11.204366625s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 11.204366625)=17s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes.; renewed 2026-11-08 from samples linux max 4.853 s (n=55), macOS max 4.085 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[4.145153541,3.910825167,3.555070583,4.039409375,3.817201209],\"linux\":[3.930941544,3.674814001,4.019917502,4.168172168,4.018577585]}. Current worst 4.168172168s. Conservatively retain earlier observed macOS calibration cost 11.204366625s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 11.204366625)=17s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes.; renewed 2026-11-08 from samples linux max 4.853 s (n=55), macOS max 4.085 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/adapter-generation.test.ts::opencode isolates the same id and endpoint while unreachable old cleanup drains": {
       "seconds": 23,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[0.036887333,0.030912208,0.02624425,0.041558541,1.6360876249999998],\"linux\":[0.037984958,0.054179000000000005,0.045645958,0.034500125,0.036164417]}. Current worst 1.6360876249999998s. Conservatively retain earlier observed macOS calibration cost 15.135638709s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 15.135638709)=23s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes.; renewed 2026-11-08 from samples linux max 0.04 s (n=27), macOS max 0.03 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1696: A-16942 independently validates exact generated names and five passing loaded samples on each platform at reviewed combined head 16b1b08ef12acc7b4a5564f51a172ef9ee383449. macOS27.0.1 arm64 local Node24.21.0,13 fixed CPU burners/10 CPUs, measured per-repetition load floor>=12 (13.37353515625..16.77880859375); Linux arm64 Node24.21.0 cland-t1613-diagnostic:local docker run --init --cpus=4,4 burners/4 CPUs per Coordinator068c079e, actual load0..2.34. Samples seconds {\"darwin\":[0.036887333,0.030912208,0.02624425,0.041558541,1.6360876249999998],\"linux\":[0.037984958,0.054179000000000005,0.045645958,0.034500125,0.036164417]}. Current worst 1.6360876249999998s. Conservatively retain earlier observed macOS calibration cost 15.135638709s; that capture has incomplete head provenance and supplies only an upper cost bound, not current-head coverage or5/5 proof. ceil(1.5 x worst 15.135638709)=23s. Includes setup, assertions and joined teardown; excludes load warmup and scheduling. No browser or product latency claim; targeted Node runs do not execute duration gates. Duration policy remains report mode; no behavior deadline changes.; renewed 2026-11-08 from samples linux max 0.04 s (n=27), macOS max 0.03 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch-native.test.ts::C2 production Codex relaunch crosses owned carriers and consumes a fresh native first input": {
       "seconds": 29,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[14.803628417,15.290325667,17.345012292,17.222493708000002,19.03315725],\"linux\":[9.450011046,9.053419754,9.124294128999999,9.599498003999999,9.092458378]}. ceil(1.5 x worst 19.03315725)=29s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode. T-1735 staging regression preservation on base d875019127a99729ef1ead76f4bdebc602b36dc4 plus shared factory/test patch, macOS 27.0.1 arm64 local Node24.21.0, serial under preservation lock, no burners/browser: 10/10 samples seconds [6.562959833, 8.602994541, 8.897908792, 8.189475541, 8.798293916, 11.055540292, 10.444995, 9.944546125, 8.171951416, 8.787220583]. Retain 29s for the prior loaded worst; these targeted samples include setup and joined cleanup, exclude runner startup, and do not run duration gates. Linux not rerun for this fixture-only change; 1.6x macOS worst projects 17.689s, a projection only.; renewed 2026-11-08 from samples linux max 14.431 s (n=55), macOS max 13.424 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[14.803628417,15.290325667,17.345012292,17.222493708000002,19.03315725],\"linux\":[9.450011046,9.053419754,9.124294128999999,9.599498003999999,9.092458378]}. ceil(1.5 x worst 19.03315725)=29s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode. T-1735 staging regression preservation on base d875019127a99729ef1ead76f4bdebc602b36dc4 plus shared factory/test patch, macOS 27.0.1 arm64 local Node24.21.0, serial under preservation lock, no burners/browser: 10/10 samples seconds [6.562959833, 8.602994541, 8.897908792, 8.189475541, 8.798293916, 11.055540292, 10.444995, 9.944546125, 8.171951416, 8.787220583]. Retain 29s for the prior loaded worst; these targeted samples include setup and joined cleanup, exclude runner startup, and do not run duration gates. Linux not rerun for this fixture-only change; 1.6x macOS worst projects 17.689s, a projection only.; renewed 2026-11-08 from samples linux max 14.431 s (n=55), macOS max 13.424 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": {
       "seconds": 29,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[14.113220208000001,15.857640375,16.835979082999998,16.723385334,19.015927041999998],\"linux\":[7.497519046000001,7.1412837950000005,7.4182300869999995,7.394175586999999,7.27330192]}. ceil(1.5 x worst 19.015927041999998)=29s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode.; renewed 2026-11-08 from samples linux max 12.765 s (n=54), macOS max 14.833 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[14.113220208000001,15.857640375,16.835979082999998,16.723385334,19.015927041999998],\"linux\":[7.497519046000001,7.1412837950000005,7.4182300869999995,7.394175586999999,7.27330192]}. ceil(1.5 x worst 19.015927041999998)=29s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode.; renewed 2026-11-08 from samples linux max 12.765 s (n=54), macOS max 14.833 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch refused keeps durable native and checkout ownership": {
       "seconds": 24,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[11.865064917,12.858119166,13.981045917,13.960658334,15.721050332999999],\"linux\":[6.414405503,6.436156003,6.104146545,6.899941628,5.948339378]}. ceil(1.5 x worst 15.721050332999999)=24s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode.; renewed 2026-11-08 from samples linux max 10.69 s (n=54), macOS max 13.39 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1614: exact reviewed source3f978a1dbaca17f3e59f8ca5819d75af94d4cac3, A-16955 macOS arm64 Node24.21.0 local13 fixed yes burners, measured os.loadavg()[0] floor>=12 (14.076171875..33.662109375), no upper rejection per Coordinator b0913ba6; A-16956 Linux arm64 Node24.21.0 docker run --init --cpus=4 (PID1 docker-init), fixed4 yes burners/4 CPUs saturation, actual lagged load0..5.37 with no macOS floor. Independent TAP exact-name/count and native close0/null audits prove5/5 on both platforms; zero skip/fail/cancel. Samples seconds {\"darwin\":[11.865064917,12.858119166,13.981045917,13.960658334,15.721050332999999],\"linux\":[6.414405503,6.436156003,6.104146545,6.899941628,5.948339378]}. ceil(1.5 x worst 15.721050332999999)=24s. Includes native setup, assertions and joined cleanup; excludes load warmup and runner startup. Test timeout180s exceeds allowance; no setup or behavior bound changed. No browser/provider auth or product-latency claim. Targeted runs do not execute duration gates; duration policy remains report mode.; renewed 2026-11-08 from samples linux max 10.69 s (n=54), macOS max 13.39 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f2 preserves prepared ownership": {
       "seconds": 27.5,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 22 s; worst 14.15 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 12.21-13.98 s; earlier ee8a207e/A-17004 11.36 s. Was 18 s from task samples. Test timeout 180 s unchanged.; renewed 2026-11-08 from samples linux max 15.217 s (n=50), macOS max 18.303 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 22 s; worst 14.15 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 12.21-13.98 s; earlier ee8a207e/A-17004 11.36 s. Was 18 s from task samples. Test timeout 180 s unchanged.; renewed 2026-11-08 from samples linux max 15.217 s (n=50), macOS max 18.303 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f3 preserves prepared ownership": {
       "seconds": 28,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 21 s; worst 13.38 s (A-17008 load-gate repetition, Linux x64 c-8); batch base 12.59 s; earlier A-17004 9.50 s. Was 16 s from task samples. Test timeout 180 s unchanged.; renewed 2026-11-08 from samples linux max 15.704 s (n=50), macOS max 18.612 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 21 s; worst 13.38 s (A-17008 load-gate repetition, Linux x64 c-8); batch base 12.59 s; earlier A-17004 9.50 s. Was 16 s from task samples. Test timeout 180 s unchanged.; renewed 2026-11-08 from samples linux max 15.704 s (n=50), macOS max 18.612 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f4 preserves prepared ownership": {
       "seconds": 35.4,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 30 s; worst 19.74 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 11.88-14.22 s; earlier A-17004 10.79 s. Was 17 s from task samples. Test timeout 180 s unchanged.; renewed 2026-11-08 from samples linux max 19.737 s (n=50), macOS max 23.562 s (n=8)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1698 (coord refresh 2026-11-06 after landing batch A-17008): ceil(1.5 x worst Linux sample) = 30 s; worst 19.74 s (A-17008 batch base, Linux x64 c-8 under T3 load); load-gate repetitions 11.88-14.22 s; earlier A-17004 10.79 s. Was 17 s from task samples. Test timeout 180 s unchanged.; renewed 2026-11-08 from samples linux max 19.737 s (n=50), macOS max 23.562 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/claude-code-remote.test.ts::CLI-started hub launches a Claude item on a fake host with its mod bridge connected": {
       "seconds": 10.7,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1722: ceil(1.5 x 1.6 x macOS arm64 passing sample 3.266 s) = 8 s. Linux projected, no sample (Coordinator decision 3488d592). CLI-started hub, fake SSH registry, item launch, exact native mod bridge acknowledgment and joined cleanup.; renewed 2026-11-08 from samples linux max 7.094 s (n=38), macOS max 5.578 s (n=6)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1722: ceil(1.5 x 1.6 x macOS arm64 passing sample 3.266 s) = 8 s. Linux projected, no sample (Coordinator decision 3488d592). CLI-started hub, fake SSH registry, item launch, exact native mod bridge acknowledgment and joined cleanup.; renewed 2026-11-08 from samples linux max 7.094 s (n=38), macOS max 5.578 s (n=6) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/cland-auth.test.ts::unmount observes writers gone and refuses a disk with persistent writers": {
       "seconds": 6,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1710 source-review rework: fully stubbed helper with 40 bounded writer polls, fresh mount ID/source checks and positive census controls. macOS arm64 local Node24.21.0 uncommitted rework samples seconds [2.058893542, 1.456145084, 2.878092375, 2.991916167, 3.610551167, 3.644519]; latest observed host one-minute load 10.50, no artificial stress. ceil(1.5 x worst 3.644519)=6s. Includes scratch setup, script execution, assertions and synchronous child exit/cleanup; excludes test-driver startup. No Linux or repetition proof claimed; no browser/provider/mount used. Targeted runs do not execute duration gates; report mode unchanged.; renewed 2026-11-08 from samples linux max 0.934 s (n=43), macOS max 1.974 s (n=6)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1710 source-review rework: fully stubbed helper with 40 bounded writer polls, fresh mount ID/source checks and positive census controls. macOS arm64 local Node24.21.0 uncommitted rework samples seconds [2.058893542, 1.456145084, 2.878092375, 2.991916167, 3.610551167, 3.644519]; latest observed host one-minute load 10.50, no artificial stress. ceil(1.5 x worst 3.644519)=6s. Includes scratch setup, script execution, assertions and synchronous child exit/cleanup; excludes test-driver startup. No Linux or repetition proof claimed; no browser/provider/mount used. Targeted runs do not execute duration gates; report mode unchanged.; renewed 2026-11-08 from samples linux max 0.934 s (n=43), macOS max 1.974 s (n=6) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-prepared.test.ts::prepared restart observation waits through identity publication before agent admission": {
       "seconds": 9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1704 A-17247: loaded macOS27.0.1 arm64 local Node24.21.0 samples seconds [5.415768083, 2.647145875, 4.144065875, 3.737814625, 3.6271258750000004, 1.941559709, 5.6239518749999995, 4.551781459, 2.4908771670000003, 2.4914932910000003]; Linux x64 droplet Node24.21.0 A-17242 sample 0.949490745s. ceil(1.5 x worst 5.6239518749999995s) = 9s. Includes fixture setup, real admission handshake, assertions and joined cleanup; excludes test-driver startup. Runtime at136a954a6; sources unchanged by this duration-only allowance. Owner C-216, expiry per brief; report-mode policy unchanged.; renewed 2026-11-08 from samples linux max 1.894 s (n=31), macOS max 1.599 s (n=4)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1704 A-17247: loaded macOS27.0.1 arm64 local Node24.21.0 samples seconds [5.415768083, 2.647145875, 4.144065875, 3.737814625, 3.6271258750000004, 1.941559709, 5.6239518749999995, 4.551781459, 2.4908771670000003, 2.4914932910000003]; Linux x64 droplet Node24.21.0 A-17242 sample 0.949490745s. ceil(1.5 x worst 5.6239518749999995s) = 9s. Includes fixture setup, real admission handshake, assertions and joined cleanup; excludes test-driver startup. Runtime at136a954a6; sources unchanged by this duration-only allowance. Owner C-216, expiry per brief; report-mode policy unchanged.; renewed 2026-11-08 from samples linux max 1.894 s (n=31), macOS max 1.599 s (n=4) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=false": {
       "seconds": 14.1,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy.; renewed 2026-11-08 from samples linux max 9.372 s (n=12), macOS max 7.006 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy.; renewed 2026-11-08 from samples linux max 9.372 s (n=12), macOS max 7.006 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=true": {
       "seconds": 13.1,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy.; renewed 2026-11-08 from samples linux max 8.674 s (n=12), macOS max 7.218 s (n=2)"
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1720 local macOS arm64 Node 24.21.0 samples: reachable 4.804 red, 3.858 and 3.305 green; disconnected 3.019 red, 3.357 green. 8s exceeds 1.5x worst 4.804s. Includes setup and joined cleanup; excludes runner startup. Linux 1.6x projection, not measured. Report-mode duration policy.; renewed 2026-11-08 from samples linux max 8.674 s (n=12), macOS max 7.218 s (n=2) Renewed 2026-11-11 by the Coordinator (was due 2026-11-13); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-create-ready.test.ts::T-1746 waiting pool launch creates a leased watchdog host and is placed": {
       "seconds": 8,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-13",
-      "reason": "T-1746 macOS arm64 local Node24.21.0 green samples [2.960478458, 2.349970333, 3.092895792]s, includes scratch setup, native fake SSH/provider creation, clone, watchdog, fake Codex placement and joined cleanup; excludes driver startup. Linux 4.9486332672s is an unexecuted 1.6x projection; 8s exceeds 1.5x projection. No browser or real provider. Report-mode duration gate. Invalid sandbox fixture runs excluded."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1746 macOS arm64 local Node24.21.0 green samples [2.960478458, 2.349970333, 3.092895792]s, includes scratch setup, native fake SSH/provider creation, clone, watchdog, fake Codex placement and joined cleanup; excludes driver startup. Linux 4.9486332672s is an unexecuted 1.6x projection; 8s exceeds 1.5x projection. No browser or real provider. Report-mode duration gate. Invalid sandbox fixture runs excluded. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "web/test/inbox.test.ts::waiting launches update status facts in place without needs-you and disappear on placement or cancel": {
       "seconds": 24,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1754 narrow-panel rework: macOS Node24.21.0 isolated pinned Headless Shell green samples [3.120013833, 1.929955083, 9.907257709]s (last with max-length identity bounds), including fixture setup, desktop/narrow/desktop resize receipts, row/date assertions and joined browser/hub cleanup; excludes test-driver startup. Linux 15.8516123344s is an unexecuted 1.6x projection of worst macOS sample; 24s is about 1.5x that projection. No real provider or stress. Report-mode duration gate unchanged."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1754 narrow-panel rework: macOS Node24.21.0 isolated pinned Headless Shell green samples [3.120013833, 1.929955083, 9.907257709]s (last with max-length identity bounds), including fixture setup, desktop/narrow/desktop resize receipts, row/date assertions and joined browser/hub cleanup; excludes test-driver startup. Linux 15.8516123344s is an unexecuted 1.6x projection of worst macOS sample; 24s is about 1.5x that projection. No real provider or stress. Report-mode duration gate unchanged. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "nvim/test/inbox-sections.test.ts::waiting launches render facts and replace reasons without needs-you or departure rows": {
       "seconds": 9,
       "owner": "C-216",
-      "added": "2026-11-08",
-      "expires": "2026-11-15",
-      "reason": "T-1754 maximum-identity narrow panel: macOS Node24.21.0 green samples [0.601381125, 3.689732875]s include isolated Neovim/stub setup, 64-column real panel assertions, previous-day date, max24-character name/role ellipsis and joined cleanup; exclude driver startup. Linux 5.9035726s is an unexecuted 1.6x projection; 9s is about 1.5x projection. Host load observed 9.59 after final sample, no artificial stress. Report-mode duration gate unchanged."
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1754 maximum-identity narrow panel: macOS Node24.21.0 green samples [0.601381125, 3.689732875]s include isolated Neovim/stub setup, 64-column real panel assertions, previous-day date, max24-character name/role ellipsis and joined cleanup; exclude driver startup. Linux 5.9035726s is an unexecuted 1.6x projection; 9s is about 1.5x projection. Host load observed 9.59 after final sample, no artificial stress. Report-mode duration gate unchanged. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch no-login keeps durable native and checkout ownership": {
       "seconds": 27,
       "owner": "C-216",
-      "added": "2026-11-10",
-      "expires": "2026-11-15",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
       "reason": "T-1778: provisional report-mode allowance for the new destination-no-login native lifecycle case. Related running-path baseline is 10.83787 seconds in this manifest; Linux cost is projected at 1.6x, then 1.5x headroom (ceil=27s). This is a budget projection, not a receipt or passing measurement of the new case. Prior new-case early refusal at 2.962588s did not reach the intended boundary and is not calibration coverage. Includes setup and joined cleanup; no browser or product latency claim. Final reviewed-head native/Linux receipts remain required."
     }
   }
