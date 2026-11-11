@@ -5,6 +5,7 @@ title: "`cland login remove`"
 state: open
 status: backlog
 size: S
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -16,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:12.424Z
-updated: 2026-11-09T12:44:21.087Z
+updated: 2026-11-11T04:40:29.111Z
 ---
 
 ## Summary
@@ -35,6 +36,7 @@ The `login.remove` frame and `cland login remove`. A deletion the provider does 
 - [ ] C4. Removing a key login deletes its key file and its row, and leaves the `[auth]` key (test).
 - [ ] C5. Removing a `creating` login is refused naming the running sign-in (test).
 
+- [ ] C6. When a deletion is not confirmed and the row stays, the confirmed deletions are recorded through LoginRecords.deleteStorage and only the unconfirmed items keep accruing in host status; a fully removed login's storage leaves host status with its row, as docs/hub/logins.md then states (test).
 ## Blocked by
 
 - T-1779

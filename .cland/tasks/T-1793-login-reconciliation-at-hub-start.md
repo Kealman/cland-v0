@@ -5,6 +5,7 @@ title: Login reconciliation at hub start
 state: open
 status: backlog
 size: S
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -15,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:12.593Z
-updated: 2026-11-09T12:44:21.511Z
+updated: 2026-11-11T04:40:10.232Z
 ---
 
 ## Summary
@@ -39,6 +40,7 @@ A reconciliation pass after the host-lease reconciliation and before the pool ru
 - [ ] C4. A login whose volume the provider no longer lists reads `signed-out` with the reason "volume missing" (test).
 - [ ] C5. A failed volume inventory changes no login, is retried, and sends one Agents line (test).
 
+- [ ] C6. The pass leaves pending bindings and reader intents in creating/deleted phases (the T-1778 fence) to their owners' receipts, never clearing them by row edits, and records each confirmed volume deletion through LoginRecords.deleteStorage (test).
 ## Blocked by
 
 - T-1779
