@@ -41,7 +41,7 @@ async function fixture(t: test.TestContext, growth = false) {
   const hub = await projectHub(t, root, growth ? {CLAND_FAKE_HOST_ROOT:root} : {}, {...options, ...(growth ? {hosts:[host],
     prepareLogin:async o => {
       o.records.logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'lon1',volumeId:'volume-work',snapshotIds:[],lastSignIn:null});
-      return {plan:{name:'work',host:'sign-in',command:'ssh',args:[]},pending:{name:'work',path:'/cland/auth/codex-work',complete:async code=>o.records.logins.transition('work',code===0?'ready':'signed-out')}};
+      return {plan:{name:'work',host:'sign-in',command:'ssh',args:[]},pending:{name:'work',path:'/cland/auth/codex-work',complete:async code=>{if(code===0)return o.records.logins.transition('work','ready');o.records.logins.markSignedOut('work',{reason:'sign-in failed',host:null});return o.records.logins.get('work')!;}}};
     },
     createHost:async o => {
       o.admit?.('agents', readHostPools({agents:{provider:'fake',slots:1,min_hosts:0}}).pools.agents!);
@@ -116,7 +116,8 @@ test('login add ready receipt wakes host growth, changes the reason and places t
     return inbox.waitingLaunches?.[0]?.reason === 'waiting for host a to boot' ? inbox : undefined;
   });
   void booting.catch(()=>{});
-  assert.equal((await f.ui.request({type:'login.signed-in',name:'work',code:0})).ok, true);
+  const signedIn=await f.ui.request({type:'login.signed-in',name:'work',code:0});
+  assert.equal(signedIn.ok,true,JSON.stringify(signedIn));
   assert.equal((await booting).asks.length, 0);
   assert.deepEqual(f.creates, ['a'], 'ready login admits exactly one persisted boot row');
   const listedHosts = await f.ui.request({type:'host.list'});

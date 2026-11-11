@@ -447,3 +447,15 @@ test('Codex restored subscription retries refused input only after its held rece
   assert.equal(native.count('turn/start'),1);
   assert.match(JSON.stringify(native.calls.find(call=>call.method==='turn/start')!.params),/after tunnel loss/);
 });
+
+for (const [error,reason] of [[{message:'refresh_token_reused'},'refresh_token_reused'],[{codexErrorInfo:'unauthorized'},'unauthorized'],[{message:'HTTP 401'},'401']] as const) test(`Codex remote native error reports dead login ${reason} without stopping`,async t=>{
+ const root=await tempProject(t,'cx-','/tmp'),env=fixtureEnvironment(root,process.env),native=new ScriptedCodex(),hits:unknown[]=[];
+ const host:Host={...localHost(env),name:'pool-host',statDirectory:async()=>({refusal:null,identity:null}),run:async()=>({code:0,stdout:'codex 0.160.0',stderr:''}),spawn:async()=>({pid:987654,exited:new Promise(()=>{})}),identity:async pid=>({pid,pidStarted:'start',pidIdentity:'birth'}),alive:async()=>true,stop:async()=>{throw Error('sign-out must not stop');}};
+ native.handlers.set('thread/start',()=>({thread:{id:native.thread,status:{type:'idle'}}}));
+ const boundary=adapterHost(root,host);boundary.loginDead=(...args)=>hits.push(args);
+ const adapter=new CodexAdapter(boundary,{env,clock:new FakeClock(),connect:async()=>native});
+ t.after(()=>adapter.close());
+ const row=await adapter.spawn({name:'worker',role:null,model:null,cwd:root});adapter.watch(row);
+ native.notify('error',{error});
+ assert.deepEqual(hits,[[row.sessionId,{reason}]]);
+});

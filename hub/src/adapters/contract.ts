@@ -197,6 +197,7 @@ export type AdapterHost = {
   /** A completed native subscription/snapshot lists every pending native id, including child permissions. */
   approvalsReconciled?: (sessionId: string, requestIds: string[]) => void;
   /** A hard limit classified from the harness's machine-readable error field. */
+  loginDead?: (sessionId: string, hit: { reason: string }) => void;
   limitHit?: (sessionId: string, hit: { reason: string; resetsAt?: string }) => void;
   /** Adapter-owned usage changed; the hub coalesces snapshots per session. */
   usageChanged?: (sessionId: string) => void;
@@ -221,7 +222,7 @@ export type AdapterHost = {
 export type TurnReplay = { attempt: number; run: (authorize: () => void) => Promise<boolean> };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { limitHit?: { reason: string; resetsAt?: string }; state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
+export type Interpretation = { loginDead?: { reason: string }; limitHit?: { reason: string; resetsAt?: string }; state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };

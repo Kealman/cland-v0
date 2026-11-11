@@ -591,6 +591,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #apply(w: Watch, change: Change, at: number): void {
+    if (change.loginDead && (w.process.host ?? 'local') !== 'local') this.#host.loginDead?.(w.process.sessionId, change.loginDead);
     if (change.limitHit) this.#host.limitHit?.(w.process.sessionId, change.limitHit);
     if (change.model) this.#host.signal(w.process.sessionId, { model: change.model, source: 'sse', at });
     if (change.ended) {

@@ -43,7 +43,7 @@ for(const code of [0,1,null])test(`terminal outcome ${code} holds its host throu
   assert.equal(input.logins.get(input.name!)?.state,'creating');
   return {name:input.name!,path:'/cland/auth/codex-work',complete:async exit=>{
    assert.equal(pins.has('host-a'),true);
-   return input.logins.transition(input.name!,exit===0?'ready':'signed-out');
+   if(exit===0)return input.logins.transition(input.name!,'ready');input.logins.markSignedOut(input.name!,{reason:'sign-in failed',host:null});return input.logins.get(input.name!)!;
   }};
  }},{harness:'codex'});
  assert.equal(pins.has('host-a'),true);await prepared.pending.complete(code);assert.equal(pins.has('host-a'),false);

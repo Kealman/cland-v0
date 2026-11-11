@@ -1,3 +1,4 @@
+import { deadLoginReason } from '../host/login-signals.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement } from './launch-settlement.ts';
@@ -846,6 +847,8 @@ export class CodexAdapter implements HarnessAdapter {
   }
 
   #limitError(live: Live, error: unknown): boolean {
+    const reason = deadLoginReason(this.harness, error);
+    if (reason && (live.p.host ?? 'local') !== 'local') this.#host.loginDead?.(live.p.sessionId, {reason});
     if (!error || typeof error !== 'object' || (error as Record<string, unknown>).codexErrorInfo !== 'usageLimitExceeded') return false;
     const reset = fullWindowReset(codexWindows(live.rateLimits, live.rateLimitsByLimitId));
     this.#host.limitHit?.(live.p.sessionId, { reason: 'usageLimitExceeded', ...(reset ? { resetsAt: reset } : {}) });

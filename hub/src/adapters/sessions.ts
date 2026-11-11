@@ -1,3 +1,5 @@
+import { lifecycleNotice } from '../hub/agents-topic.ts';
+import { LoginSignals } from '../host/login-signals.ts';
 import { LoginBinder, type ProvisionLoginDemand, type ProvisionLoginWork } from '../host/login-binding.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
@@ -129,6 +131,9 @@ export class Sessions {
   readonly #loginProviders: HostProviderRegistry;
   readonly #waitingLoginAdmissions = new Map<string,()=>void>();
   readonly #loginCards: LoginCards;
+  readonly #loginSignals: LoginSignals;
+  readonly #unloginSignals: () => void;
+  readonly #earlyLoginDead = new Map<string,{reason:string}>();
   readonly #waiting = new WaitingLaunches((row, end) => {
     if (end) {
       const current=this.#table.waitingLaunch(row.name);
@@ -814,7 +819,18 @@ export class Sessions {
     this.#hosts = new Map([['local', localHost(this.#env, this.#log)]]);
     for (const host of options.hosts ?? []) this.addHost(host);
     this.#core = options.core;
-    this.#loginCards = new LoginCards(this.#core.store, this.#core.cards);
+    this.#loginCards = new LoginCards(this.#core.store, this.#core.cards, {notice:(name,episode)=>{
+      const id=`login-signed-out:${episode.id}`;
+      if(this.#core.store.message(id))return;
+      const notice=lifecycleNotice({event:'login-signed-out',login:name,host:episode.host,reason:episode.reason},name=>name)!;
+      this.#core.noticeTo('agents',{...notice,id});
+    }});
+    const records=this.#core.store.hosts.logins;
+    this.#loginSignals=new LoginSignals({records,markSignedOut:(name,receipt)=>{
+      records.markSignedOut(name,receipt);
+    },signedOut:name=>this.#loginCards.signedOut(name)});
+    this.#loginCards.recoverSignedOut(records.signedOutRows());
+    this.#unloginSignals=records.onChange(name=>queueMicrotask(()=>{if(!this.#closed)this.#loginCards.loginChanged(name);}));
     this.#loginKeyEnvironment = options.loginKeyEnvironment;
     this.#loginBinder = new LoginBinder(this.#core.store.hosts.logins);
     this.#loginProviders = new HostProviderRegistry({env:this.#env,now:()=>this.#core.clock.now().getTime(),digitalocean:{root:options.root,clock:this.#core.clock}});
@@ -1034,6 +1050,7 @@ export class Sessions {
         this.#adapters.get('claude-code')?.unwatch?.(id);
       },
       adapterState: { read: key => this.#core.store.meta(key), write: (key, value) => this.#core.store.setMeta(key, value) },
+      loginDead: (sessionId, hit) => this.#loginDead(sessionId, hit),
       limitHit: (sessionId, hit) => this.#limitHit(sessionId, hit),
       approvalRequested: (sessionId, request) => this.#core.inbox.requestApproval(sessionId, request),
       approvalClosed: (sessionId, requestId, outcome) => this.#core.inbox.closeApproval(sessionId, requestId, outcome),
@@ -1168,6 +1185,13 @@ export class Sessions {
       attach,
       ...(usage ? { usage } : {}),
     };
+  }
+
+  #loginDead(sessionId:string,hit:{reason:string}):void {
+    if(this.#closed)return;
+    const row=this.#table.bySessionId(sessionId);
+    if(!row){if(this.#launching.size)this.#earlyLoginDead.set(sessionId,hit);return;}
+    if(row.status==='running')this.#loginSignals.report(row,hit);
   }
 
   #limitHit(sessionId: string, hit: { reason: string; resetsAt?: string }): void {
@@ -1908,6 +1932,8 @@ export class Sessions {
         this.#lastPush.delete(p.sessionId);
         this.#log({ event: 'session-launched', ...(p.launchPolicy ? { policy: p.launchPolicy } : {}), account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
+        const dead=this.#earlyLoginDead.get(p.sessionId);this.#earlyLoginDead.delete(p.sessionId);
+        if(dead)this.#loginDead(p.sessionId,dead);
         const hit = this.#earlyLimitHits.get(p.sessionId);
         this.#earlyLimitHits.delete(p.sessionId);
         if (hit) this.#limitHit(p.sessionId, hit);
@@ -1977,8 +2003,8 @@ export class Sessions {
         this.#earlyBridges.delete(request.name);
         if (!accepted) this.#firstHello.delete(launchToken);
         this.#launching.delete(request.name);
-        for (const id of identity.sessionIds) this.#earlyLimitHits.delete(id);
-        if (!this.#launching.size) this.#earlyLimitHits.clear();
+        for (const id of identity.sessionIds) {this.#earlyLimitHits.delete(id);this.#earlyLoginDead.delete(id);}
+        if (!this.#launching.size) {this.#earlyLimitHits.clear();this.#earlyLoginDead.clear();}
         this.#launchIdentities.delete(launchToken);
         releaseAdmission();
       });
@@ -2612,6 +2638,7 @@ export class Sessions {
       this.#queueLimits(p, meaning.rateLimits.windows, meaning.rateLimits.at ?? new Date(frame.at ?? this.#transportClock.now().getTime()).toISOString());
       this.#usageChanged(p.sessionId);
     }
+    if (meaning.loginDead) this.#loginDead(p.sessionId, meaning.loginDead);
     if (meaning.limitHit) this.#limitHit(p.sessionId, meaning.limitHit);
     if (meaning.turnError) {
       const error = meaning.turnError;
@@ -3172,6 +3199,8 @@ export class Sessions {
     this.#core.onInjected(null);
     for (const sessionId of this.#capacityRetries.keys()) this.#clearCapacityRetry(sessionId);
     this.#earlyLimitHits.clear();
+    this.#earlyLoginDead.clear();
+    this.#unloginSignals();
     for (const pending of this.#deafTimers.values()) this.#core.clock.clearTimeout(pending.timer);
     this.#deafTimers.clear();
     for (const sessionId of this.#unconfirmed.keys()) this.#clearUnconfirmed(sessionId);

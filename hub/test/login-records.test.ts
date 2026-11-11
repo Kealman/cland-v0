@@ -4,6 +4,30 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { LoginRecords, LoginBindingRefused } from '../src/host/logins.ts';
 
+test('every sign-out requires its durable episode owner, including failed sign-in',t=>{
+ const db=new DatabaseSync(':memory:');t.after(()=>db.close());const records=new LoginRecords(db);
+ records.insert({name:'failed',harness:'opencode',account:'failed',kind:'key',lastSignIn:null});
+ assert.throws(()=>records.transition('failed','signed-out'),/markSignedOut/);
+ records.markSignedOut('failed',{reason:'sign-in failed',host:null});
+ const row=records.get('failed')!;assert.equal(row.state,'signed-out');assert.ok(row.signedOut?.id);assert.equal(row.signedOut.reason,'sign-in failed');
+});
+
+test('signed-out recovery streams only indexed active rows across retained login history',t=>{
+ const db=new DatabaseSync(':memory:');t.after(()=>db.close());const records=new LoginRecords(db);
+ for(let i=0;i<12;i++){
+  const name=`history-${i}`;records.insert({name,harness:'opencode',account:name,kind:'key',lastSignIn:null});records.transition(name,'ready');
+  if(i===3||i===9)records.markSignedOut(name,{reason:'provider.auth',host:'a'});
+ }
+ let decoded=0;const parse=JSON.parse;
+ t.mock.method(JSON,'parse',((source:string)=>{const row=parse(source);if(row?.name)decoded++;return row;}) as typeof JSON.parse);
+ records.list();assert.equal(decoded,12);decoded=0;
+ const prepare=db.prepare.bind(db),plans:string[]=[];
+ t.mock.method(db,'prepare',(sql:string)=>{if(sql.startsWith('select record from logins'))plans.push(...prepare('EXPLAIN QUERY PLAN '+sql).all().map(row=>String(row.detail)));return prepare(sql);});
+ assert.deepEqual([...records.signedOutRows()].map(row=>row.name).sort(),['history-3','history-9']);
+ assert.equal(decoded,2);assert.equal(plans.length,1);assert.match(plans[0]!,/SEARCH logins USING INDEX login_ready_launch/);
+ assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
+});
+
 test('disk and key login rows round-trip every field without key disk properties', t => {
  const db = new DatabaseSync(':memory:'); t.after(() => db.close());
  const records = new LoginRecords(db);
@@ -38,7 +62,7 @@ for (const current of ['creating','ready','in-use','signed-out'] as const) {
    r.insert({...diskInput,snapshotIds:[]});
    if(current!=='creating')r.transition('work','ready');
    if(current==='in-use'||current==='signed-out')r.bind('work',{host:'h1',role:'writer',volumeId:'v1'});
-   if(current==='signed-out')r.transition('work','signed-out');
+   if(current==='signed-out')r.markSignedOut('work',{reason:'fixture signed out',host:null});
    assert.throws(()=>r.transition('work',target),new RegExp('from '+current));
    assert.equal(r.get('work')!.state,current);
   });
@@ -52,8 +76,8 @@ test('creating is neither free nor bound; bindings enforce exclusive writer and 
  r.bind('work',{host:'h1',role:'writer',volumeId:'v1'});assert.deepEqual(r.free(),[]);
  assert.throws(()=>r.bind('work',{host:'h2',role:'reader',volumeId:'v2'}),/exclusive/);
  r.unbind('work','h1');assert.equal(r.get('work')!.state,'ready');
- r.bind('work',{host:'h1',role:'writer',volumeId:'v1'});r.transition('work','signed-out');
- assert.deepEqual(r.bindings('work'),[]);r.transition('work','creating');r.transition('work','ready');
+ r.bind('work',{host:'h1',role:'writer',volumeId:'v1'});r.markSignedOut('work',{reason:'fixture signed out',host:null});
+ assert.deepEqual(r.bindings('work'),[{login:'work',host:'h1',role:'writer',volumeId:'v1'}]);r.transition('work','creating');r.transition('work','ready');
  r.insert({...diskInput,name:'shared',exclusive:false,snapshotIds:[]});r.transition('shared','ready');
  r.bind('shared',{host:'h1',role:'reader',volumeId:'copy1'});r.bind('shared',{host:'h2',role:'reader',volumeId:'copy2'});
  assert.equal(r.bindings('shared').length,2);r.unbind('shared','h1');assert.equal(r.get('shared')!.state,'in-use');

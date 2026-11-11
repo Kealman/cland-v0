@@ -353,7 +353,7 @@ test('changing volume cannot transplant an in-flight snapshot outcome onto a new
  const work=scheduler.snapshot('work');void work.catch(()=>{});
  try{
   await until(()=>accepted,{what:'old volume snapshot accepted before reply'});
-  f.logins.bind('work',{host:'host-a',role:'writer',volumeId:f.volume.id});f.logins.transition('work','signed-out');f.logins.transition('work','creating');
+  f.logins.bind('work',{host:'host-a',role:'writer',volumeId:f.volume.id});f.logins.markSignedOut('work',{reason:'fixture signed out',host:null});f.logins.transition('work','creating');
   assert.throws(()=>f.logins.updateCreatingDisk('work',{volumeId:'replacement-volume'}),/snapshot ownership/);
  }finally{gate.resolve();await work.catch(()=>{});}
  const row=f.logins.get('work');assert.ok(row?.kind==='disk');assert.equal(row.volumeId,f.volume.id);assert.deepEqual(row.snapshotIds,[]);

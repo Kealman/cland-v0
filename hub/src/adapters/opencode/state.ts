@@ -1,3 +1,4 @@
+import { deadLoginReason } from '../../host/login-signals.ts';
 // One OpenCode session's state, derived from the server's event stream (research `harness-surfaces` §3.1;
 // observed with opencode v2.0.24). The server reports only whether a session's agent loop runs:
 //
@@ -17,7 +18,7 @@ import { turnError } from '../turn-error.ts';
 
 export type Usage = { model?: string; inputTokens: number; outputTokens: number; reasoningTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cost: number };
 
-export type Change = { limitHit?: { reason: string }; state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string; rejection?: PendingPermission; serverShutdown?: true };
+export type Change = { loginDead?: {reason:string}; limitHit?: { reason: string }; state?: SessionState; approvalCommand?: string; usage?: Usage; model?: string; ended?: true; turnError?: string; rejection?: PendingPermission; serverShutdown?: true };
 
 type PendingPermission = { request: PermissionRequest; id: string; approvalCommand: string | undefined };
 
@@ -96,6 +97,7 @@ export class SessionTracker {
         return {
           ...this.#emit(), ended: true,
           ...(shutdown ? rejection ? { rejection } : { serverShutdown: true as const } : {}),
+          ...(e.type === 'session.execution.failed' && deadLoginReason('opencode',d.error) ? {loginDead:{reason:'provider.auth'}} : {}),
           ...(e.type === 'session.execution.failed' ? { turnError: turnError(d.error), ...(typeof d.error === 'object' && d.error !== null && (d.error as Record<string, unknown>).type === 'provider.quota' ? { limitHit: { reason: 'provider.quota' } } : {}) } : {}),
         };
       }

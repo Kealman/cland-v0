@@ -181,13 +181,17 @@ existing database. Callers own admission and native resource receipts.
 Each method returns detached values. `updateCreatingDisk(name, update)` publishes
 volume, snapshot and last-sign-in receipts only while a disk row is creating.
 
-`markSignedOut(name, {reason, host})` changes a ready or in-use login to signed-out
-and atomically records optional public `signedOut: {id, reason, host, at}` metadata.
+`markSignedOut(name, {reason, host})` changes a creating, ready or in-use login to
+signed-out and atomically records public `signedOut: {id, reason, host, at}` metadata.
+Every sign-out uses this method; a bare `transition(name, 'signed-out')` refuses.
+Failed or abandoned sign-in records reason `sign-in failed` and a null host.
 The UUID id is generated inside the transaction and distinguishes episodes even
 when the store clock has not advanced.
 The time comes from the store clock. This method retains bindings and reader
 operations exactly; their release owners still own cleanup. Starting sign-in
-(`signed-out` → `creating`) clears the receipt. Older rows omit it.
+(`signed-out` → `creating`) clears the receipt. A signed-out row without its episode
+id is a defect and refuses card recovery. `signedOutRows()` streams signed-out
+records through the existing state-leading index without decoding other states.
 
 Binding metadata violations throw `LoginBindingRefused` with a stable `code`
 (`disk-volume-required`, `writer-volume-mismatch`, `reader-volume-mismatch`,
@@ -607,3 +611,28 @@ remains, including cancellation or a change to a host-boot wait. A later
 independent wait can raise a new card. Login metadata changes wake placement
 through PoolRuntime; the existing binder and provisioning owners perform effects.
 See [login wait tests](../agents/tests/hub-test-login-wait.test.ts.md).
+
+## Dead-login signals
+
+On pool hosts the adapters report Claude Code `authentication_failed`,
+`Login expired`, `OAuth token revoked` or 401; Codex `refresh_token_reused`,
+`codexErrorInfo: "unauthorized"` or 401; OpenCode `provider.auth`. A report from
+an admitted session marks its selected login signed-out, including a reader's
+report. The binding and every running session remain owned by their existing
+owners. Subsequent pool placement skips the signed-out login/host for that
+harness. Local sessions change no project login; local Claude signed-out
+latching remains unchanged.
+
+Each durable episode raises one `login-signin` card in General with Sign in again
+and Not now. Card metadata carries its episode id; answered or declined cards
+stay folded across restarts for that episode. A ready login withdraws its open
+card; a new episode withdraws any previous open card and raises another even at
+the same clock timestamp. Startup recovers missing publications from signed-out
+rows. The Coordinator receives one `login-signed-out` Agents notice naming the
+login, host and bounded signal. Its deterministic episode identity and positive
+`noticed` receipt commit together through the existing notice store and active
+card metadata, preserving deduplication after message retention. Neither the
+card nor the notice contains native diagnostic bodies or login contents.
+
+See [component cases](../agents/tests/hub-test-login-signed-out.test.ts.md) and
+[native fake-harness cases](../agents/tests/hub-test-login-signed-out-native.test.ts.md).

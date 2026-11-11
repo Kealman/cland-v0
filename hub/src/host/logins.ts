@@ -151,6 +151,9 @@ export class LoginRecords {
   const row = this.db.prepare('select record from logins where name=?').get(name);
   return row ? JSON.parse(String(row.record)) as Login : null;
  }
+ *signedOutRows():Generator<Login> {
+  for(const row of this.db.prepare("select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='signed-out'").iterate())yield JSON.parse(String(row.record)) as Login;
+ }
  list(): Login[] { return this.db.prepare('select record from logins order by name').all().map(row => JSON.parse(String(row.record)) as Login); }
  free(): Login[] { return this.list().filter(row => row.state === 'ready'); }
  /** Sign-in owners publish native receipts while the login remains unavailable. */
@@ -270,11 +273,12 @@ export class LoginRecords {
  }
  markSignedOut(name:string,receipt:{reason:string;host:string|null}):void {
   const row=this.required(name);
-  if(row.state!=='ready'&&row.state!=='in-use')throw Error(`login ${name} cannot mark signed out from ${row.state}`);
+  if(row.state!=='creating'&&row.state!=='ready'&&row.state!=='in-use')throw Error(`login ${name} cannot mark signed out from ${row.state}`);
   this.atomic(()=>this.save({...row,state:'signed-out',signedOut:{id:randomUUID(),reason:receipt.reason,host:receipt.host,at:this.clock.now().toISOString()}}));
  }
  transition(name: string, state: LoginState, binding?: Omit<LoginBinding,'login'>): Login {
   const row = this.required(name);
+  if(state==='signed-out')throw Error(`login ${name} from ${row.state}: use markSignedOut for signed-out`);
   if (!transitions[row.state].includes(state)) throw Error(`login ${name} cannot transition from ${row.state} to ${state}`);
   if (state === 'in-use' && !binding) throw Error(`login ${name} in ${row.state} requires a binding for in-use`);
   this.atomic(() => {

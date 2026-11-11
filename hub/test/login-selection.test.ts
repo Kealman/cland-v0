@@ -46,7 +46,7 @@ test('launch selection has fixed indexed query and decode work across ten thousa
   for(let i=0;i<10000;i++){
    const name=`history-${String(i).padStart(5,'0')}`,harness=(['codex','opencode','claude-code'] as const)[i%3]!;
    records.insert(disk(name,harness,`other-${i%4}`,`account-${i%7}`));
-   if(i%4<2)records.transition(name,'signed-out');else if(i%4===2)records.transition(name,'ready');
+   if(i%4<2)records.markSignedOut(name,{reason:'fixture signed out',host:null});else if(i%4===2)records.transition(name,'ready');
   }
   records.insert(disk('wanted'));records.transition('wanted','ready');
   records.insert(disk('other-account','codex','wanted','z-personal'));records.transition('other-account','ready');
@@ -79,7 +79,7 @@ test('launch selection has fixed indexed query and decode work across ten thousa
   assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
  }
  records.insert({name:'creating-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});
- records.insert({name:'signedout-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});records.transition('signedout-key','signed-out');
+ records.insert({name:'signedout-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});records.markSignedOut('signedout-key',{reason:'fixture signed out',host:null});
  records.insert({name:'wanted-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});records.transition('wanted-key','ready');
  assert.deepEqual([...records.keyNames()],['wanted-key']);
  for(const account of [null,'work']){

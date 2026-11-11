@@ -21,7 +21,7 @@ import type { LogEntry, LogFn } from '../log.ts';
 import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, type HubCore, type TopicNotice } from './core.ts';
 
 /** The kinds of the lifecycle notices this module records (the handover, mute, unmute and refusal kinds are posted directly). */
-export const LIFECYCLE_KINDS = ['host-boot-failed', 'session-waiting', 'session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
+export const LIFECYCLE_KINDS = ['login-signed-out', 'host-boot-failed', 'session-waiting', 'session-start', 'session-stop', 'session-death', 'spoke-joined', 'turn-failed', 'claude-signed-out', 'account-limited', 'redelivered', 'role-assign', 'role-revoke', 'claim', 'release', 'merge', 'worktree', 'handover', 'mute', 'unmute', 'refusal', 'ready-paused', 'plan'] as const;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? role) : 'no role');
@@ -52,6 +52,8 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return {kind:'host-boot-failed',to:['coordinator'],text:`host ${String(entry.host)} in pool ${String(entry.pool)} failed to boot: ${String(entry.reason)}`,detail:{host:entry.host,pool:entry.pool}};
     case 'account-limited':
       return { kind: 'account-limited', to: ['coordinator'], text: `account ${String(entry.account)} hit its limit (${String(entry.reason)}); launches on it are refused until ${limitUntil(str(entry.resetsAt))}`, detail: { account: entry.account, reason: entry.reason, resetsAt: entry.resetsAt ?? null, session: entry.session } };
+    case 'login-signed-out':
+      return {kind:'login-signed-out',to:['coordinator'],text:`Login ${String(entry.login)} on host ${String(entry.host)} is signed out (${String(entry.reason)}). Sign in again from its card.`,detail:{login:entry.login,host:entry.host,reason:entry.reason}};
     case 'claude-signed-out':
       return { kind: 'claude-signed-out', text: `Claude${entry.account ? ` account ${String(entry.account)}` : ''} config directory ${String(entry.configDir)} is signed out. Sign in with ${String(entry.login)}. Polling is paused until a pushed success or a successful explicit launch.`, detail: { configDir: entry.configDir, account: entry.account ?? null } };
     case 'turn-failed':
@@ -159,7 +161,7 @@ export function agentsRecord(): { tap: (log: LogFn) => LogFn; attach: (core: Hub
       // this notice's id, so a cancelled projection is replayed on restart.
       if (core !== target) return;
       if (target.store.message(notice.id as string) !== null) return;
-      try { if ((notice.kind === 'account-limited' || notice.kind === 'host-boot-failed')) target.noticeTo(AGENTS.id, notice); else target.noticeInTopic(AGENTS.id, notice); }
+      try { if ((notice.kind === 'login-signed-out' || notice.kind === 'account-limited' || notice.kind === 'host-boot-failed')) target.noticeTo(AGENTS.id, notice); else target.noticeInTopic(AGENTS.id, notice); }
       catch (err) { log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) }); }
     });
   };
@@ -217,7 +219,7 @@ export function replayAgentsRecord(core: HubCore, records: ReadonlyArray<Record<
     if (!notice) continue;
     try {
       const replay = { ...notice, id: r.agentsNotice as string };
-      if ((notice.kind === 'account-limited' || notice.kind === 'host-boot-failed')) core.noticeTo(AGENTS.id, replay); else core.noticeInTopic(AGENTS.id, replay);
+      if ((notice.kind === 'login-signed-out' || notice.kind === 'account-limited' || notice.kind === 'host-boot-failed')) core.noticeTo(AGENTS.id, replay); else core.noticeInTopic(AGENTS.id, replay);
       replayed++;
     } catch (err) {
       log({ event: 'agents-record-failed', kind: notice.kind, error: err instanceof Error ? err.message : String(err) });

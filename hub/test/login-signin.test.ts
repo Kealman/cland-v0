@@ -32,7 +32,7 @@ for(const code of [1,null]) test(`failed terminal sign-in ${code} keeps a detach
  const pending=await prepareLoginSignIn({logins,provider,host,machine:{id:'machine-a',address:'fake',architecture:'arm64',created:volume.created},project:'/project',tag:'cland-test',region:'lon1',providerName:'fake',harness:'claude-code',clock:new FakeClock(Date.parse(volume.created))});
  assert.equal(mounted,true);assert.equal(attached,true);
  const row=await pending.complete(code);
- assert.equal(row.state,'signed-out');assert.equal(row.lastSignIn,null);assert.equal(row.kind==='disk'&&row.volumeId,'volume-1');
+ assert.equal(row.state,'signed-out');assert.ok(row.signedOut?.id);assert.equal(row.signedOut.reason,'sign-in failed');assert.equal(row.signedOut.host,null);assert.equal(row.lastSignIn,null);assert.equal(row.kind==='disk'&&row.volumeId,'volume-1');
  assert.equal(mounted,false);assert.equal(attached,false);assert.equal(snapshots,0);
 });
 

@@ -1,3 +1,4 @@
+import { deadLoginReason } from '../host/login-signals.ts';
 import { memoryFloorDetails } from '../host/agent/memory.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
@@ -823,7 +824,9 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     if (watched && typeof payload.session_id === 'string' && payload.session_id) watched.harnessSessionId = payload.session_id;
     const meaning = interpret(event, payload);
     if (watched && meaning.state) this.#noteActivity(watched.sessionId);
-    if (p && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
+    const dead = p && (p.host ?? 'local') !== 'local' && event === 'turn-end' && payload.hook_event_name === 'StopFailure' ? deadLoginReason(this.harness, payload) : undefined;
+    if (p && dead) this.#host.loginDead?.(p.sessionId, {reason:dead});
+    if (p && (p.host ?? 'local') === 'local' && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
       this.#markSignedOut(p, at);
       meaning.state = 'unknown';
       const d = this.#directory(p);

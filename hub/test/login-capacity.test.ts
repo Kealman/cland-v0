@@ -103,7 +103,7 @@ test('capacity selection bounds decoded rows and indexed query work over retaine
  db.exec('begin');
  for(let i=0;i<10000;i++){
   const name='history-'+i;records.logins.insert({name,harness:'codex',account:'work',kind:'disk',provider:'fake',region:'other',volumeId:'v-'+i,snapshotIds:[],lastSignIn:null});
-  records.logins.transition(name,i%2===0?'signed-out':'ready');
+  if(i%2===0)records.logins.markSignedOut(name,{reason:'retained',host:null});else records.logins.transition(name,'ready');
  }
  records.logins.insert({name:'wanted',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'wanted-volume',snapshotIds:[],lastSignIn:null});records.logins.transition('wanted','ready');db.exec('commit');
  let decoded=0;const parse=JSON.parse;

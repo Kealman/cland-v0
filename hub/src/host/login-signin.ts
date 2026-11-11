@@ -62,7 +62,7 @@ export async function prepareLoginSignIn(o: {
   if(o.harness==='codex'&&!await o.host.publishFile(path+'/config.toml',Buffer.from('cli_auth_credentials_store = "file"\n'),{mode:0o600})) throw Error('Codex sign-in requires a new file-store config');
   authorize();
  } catch(error) {
-  if(!uncertain){await cleanup();o.logins.transition(name,'signed-out');}
+  if(!uncertain){await cleanup();o.logins.markSignedOut(name,{reason:'sign-in failed',host:null});}
   throw error;
  }
  let completion:Promise<Login>|undefined;
@@ -77,7 +77,8 @@ export async function prepareLoginSignIn(o: {
    const detached=await o.provider.detachVolume(volume!,o.machine);
    if(detached.state!=='detached') throw Error(`login detach ${detached.state}`);
    if(code===0&&!failure) o.logins.updateCreatingDisk(name!,{lastSignIn:o.clock.now().toISOString()});
-   const row=o.logins.transition(name!,code===0&&!failure?'ready':'signed-out');
+   if(code===0&&!failure)o.logins.transition(name!,'ready');else o.logins.markSignedOut(name!,{reason:'sign-in failed',host:null});
+   const row=o.logins.get(name!)!;
    if(failure) throw failure;
    return row;
   })();

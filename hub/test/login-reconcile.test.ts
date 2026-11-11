@@ -129,7 +129,7 @@ test('startup cursor decodes only active disks across retained signed-out histor
  const root=await tempProject(t),store=new Store(join(root,'hub.db'));beforeDirectories(t,()=>store.close());
  const r=store.hosts.logins;
  for(let i=0;i<200;i++){
-  r.insert({name:'old-'+i,kind:'disk',harness:'codex',account:'old',provider:'fake',region:'fake-1',volumeId:'old',snapshotIds:[],lastSignIn:null});r.transition('old-'+i,'signed-out');
+  r.insert({name:'old-'+i,kind:'disk',harness:'codex',account:'old',provider:'fake',region:'fake-1',volumeId:'old',snapshotIds:[],lastSignIn:null});r.markSignedOut('old-'+i,{reason:'fixture signed out',host:null});
  }
  r.insert({name:'active',kind:'disk',harness:'codex',account:'work',provider:'fake',region:'fake-1',volumeId:'live',snapshotIds:[],lastSignIn:null});r.transition('active','ready');
  const parse=JSON.parse;let decoded=0;t.mock.method(JSON,'parse',(...args:Parameters<typeof JSON.parse>)=>{decoded++;return parse(...args);});

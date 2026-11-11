@@ -55,7 +55,7 @@ export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pool
  try{authorize();}catch(error){await pending.complete(null);throw error;}
  return {pending,plan:{name:pending.name,host:record.id,command:'ssh',args:[...args,loginSignInCommand(input.harness,pending.path)]}};
  } catch(error) {
-  if(!nativeStarted&&o.records.logins.get(admitted.name)?.state==='creating')o.records.logins.transition(admitted.name,'signed-out');
+  if(!nativeStarted&&o.records.logins.get(admitted.name)?.state==='creating')o.records.logins.markSignedOut(admitted.name,{reason:'sign-in failed',host:null});
   if(o.records.logins.get(admitted.name)?.state!=='creating')unpin();
   throw error;
  }

@@ -387,6 +387,7 @@ async function serve(args: string[]): Promise<number> {
         res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
         res.write(`data: ${JSON.stringify({ id: rid('evt'), type: 'server.connected', data: {} })}\n\n`);
         streams.add(res);
+        log('event stream subscribed');
         const beat = setInterval(() => res.write(': heartbeat\n\n'), 15_000);
         req.on('close', () => {
           clearInterval(beat);

@@ -177,7 +177,11 @@
       "wallSeconds": 900
     },
     "T4": null,
-    "Web": { "testSeconds": 4, "fileSeconds": 40, "wallSeconds": 40 },
+    "Web": {
+      "testSeconds": 4,
+      "fileSeconds": 40,
+      "wallSeconds": 40
+    },
     "mode": "report",
     "legacyOwner": "E-880"
   },
@@ -12050,7 +12054,7 @@
       "owner": "C-216",
       "added": "2026-11-11",
       "expires": "2026-11-18",
-      "reason": "T-1721: macOS arm64 local Node24.21.0 disposable archive based on 0eb62a96d; ten qualifying full-file native children, each all10 generated cases passed with unchanged assertions. Version-case seconds [18.155473459, 15.750507917, 19.842925292, 18.628617833, 19.199364208, 17.337632499999998, 19.761022375, 19.424526874999998, 17.378785125, 18.179632458]. Sampled one-minute load across qualifying children 12.15380859375\u201317.396484375, every250ms, feedback-controlled yes burners (4\u201312). Extra assertion-green but load-ineligible case samples [18.360265208, 21.153307041] are excluded from C1. Historical reported samples: Linux15.4s A-17045; macOS17.1s A-17051,14.71s at load3.9,19.18s at load5.9;21.19s A-17072 at loadabout10 was cancelled by the old20s timeout and is incomplete, not a passing duration. Profiles: current12.0559345s, original T-1605 production11.160840666s; one sample each does not establish a regression. Coordinator sizing instruction: Linux native cost is approximately1.6x macOS; projected loaded Linux31.7486804672s = worst qualifying macOS19.842925292 x1.6 (projection, not an executed Linux sample). ceil(1.5 x31.7486804672)=48s. The historical cancelled21.19s is incomplete and not used as a passing sample. Mac-only ceil(1.5 x19.842925292)=30s. Includes fixture/setup, all assertions and joined cleanup; no browser or product-latency claim. Whole-case90s default envelope also leaves room for the Coordinator-reported approximately1.6x Linux native cost; no new Linux execution is claimed here. Setup receipt waits alone use testWaitMs; the exact5000ms kill-to-reconciled-table bound remains. Targeted runs do not execute a duration gate; manifest remains report mode. C-216 owns setup cost reduction.; renewed 2026-11-08 from samples linux max 20.057 s (n=55), macOS max 17.304 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
+      "reason": "T-1721: macOS arm64 local Node24.21.0 disposable archive based on 0eb62a96d; ten qualifying full-file native children, each all10 generated cases passed with unchanged assertions. Version-case seconds [18.155473459, 15.750507917, 19.842925292, 18.628617833, 19.199364208, 17.337632499999998, 19.761022375, 19.424526874999998, 17.378785125, 18.179632458]. Sampled one-minute load across qualifying children 12.15380859375–17.396484375, every250ms, feedback-controlled yes burners (4–12). Extra assertion-green but load-ineligible case samples [18.360265208, 21.153307041] are excluded from C1. Historical reported samples: Linux15.4s A-17045; macOS17.1s A-17051,14.71s at load3.9,19.18s at load5.9;21.19s A-17072 at loadabout10 was cancelled by the old20s timeout and is incomplete, not a passing duration. Profiles: current12.0559345s, original T-1605 production11.160840666s; one sample each does not establish a regression. Coordinator sizing instruction: Linux native cost is approximately1.6x macOS; projected loaded Linux31.7486804672s = worst qualifying macOS19.842925292 x1.6 (projection, not an executed Linux sample). ceil(1.5 x31.7486804672)=48s. The historical cancelled21.19s is incomplete and not used as a passing sample. Mac-only ceil(1.5 x19.842925292)=30s. Includes fixture/setup, all assertions and joined cleanup; no browser or product-latency claim. Whole-case90s default envelope also leaves room for the Coordinator-reported approximately1.6x Linux native cost; no new Linux execution is claimed here. Setup receipt waits alone use testWaitMs; the exact5000ms kill-to-reconciled-table bound remains. Targeted runs do not execute a duration gate; manifest remains report mode. C-216 owns setup cost reduction.; renewed 2026-11-08 from samples linux max 20.057 s (n=55), macOS max 17.304 s (n=8) Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
     "hub/test/worktree-host.test.ts::host prune preflight waits for an admitted receive to release its territory lock": {
       "seconds": 6,
@@ -15043,6 +15047,13 @@
       "added": "2026-11-11",
       "expires": "2026-11-18",
       "reason": "T-1793 new native shared-provider cleanup control. macOS arm64 Node24.21.0 serial preservation samples3.210413292s and3.114150458s include two fake SSH/agent fixtures, exact worker readiness, planted owner-close rejection, retained metadata, captured-machine native completion and no-sibling assertion plus joined cleanup; exclude runner startup. Linux1.6x worst projects5.1366612672s (unexecuted); ceil(1.5x projection)=8s. No burner/browser/real provider or product-latency claim; duration gates report mode."
+    },
+    "hub/test/login-signed-out-native.test.ts::native opencode provider.auth signs out without stopping existing sessions": {
+      "seconds": 17,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1789 OpenCode native end-to-end on two fake hosts: local macOS arm64 Node24.21.0 reviewed ad6bfa87b baseline plus five lone fresh-process green samples [6.628299041, 6.58708925, 6.291409458, 6.829408333, 6.29887525, 6.518053125000001] seconds (A-18721/A-18722). Includes setup, two native fake servers, durable sign-out/host, retained binding, alternative placement/native PID, no-stop/alive assertions and joined cleanup; excludes producer startup and slot wait. Linux 10.9270533328s is an unexecuted 1.6x projection; allowance ceil(1.5x projection). No browser, real provider or stress. Known external socket remnants T-1806 recorded A-18723; no zero-leak claim. Duration policy report mode."
     }
   }
 }

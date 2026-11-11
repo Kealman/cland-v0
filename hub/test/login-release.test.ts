@@ -157,7 +157,7 @@ test('automatic detached retry stops after positive inventory',async t=>{
 });
 test('restart recovers detached retry without decoding retained login history',async t=>{
  const f=await delayedDetach(t),owner=retryOwner(f);
- for(let i=0;i<500;i++){f.store.hosts.logins.insert({name:'old-'+i,harness:'codex',account:'old',kind:'disk',provider:'fake',region:'fake-1',volumeId:'retained',snapshotIds:[],lastSignIn:null});f.store.hosts.logins.transition('old-'+i,'signed-out');}
+ for(let i=0;i<500;i++){f.store.hosts.logins.insert({name:'old-'+i,harness:'codex',account:'old',kind:'disk',provider:'fake',region:'fake-1',volumeId:'retained',snapshotIds:[],lastSignIn:null});f.store.hosts.logins.markSignedOut('old-'+i,{reason:'fixture signed out',host:null});}
  await destroyHost({...f.input,lost:true});await owner.close();f.detached();
  const reopened=new Store(join(f.input.root,'hub.db'));f.own(()=>reopened.close());
  t.mock.method(reopened.hosts.logins,'list',()=>{throw Error('full list forbidden');});let decodes=0;const get=reopened.hosts.logins.get.bind(reopened.hosts.logins);t.mock.method(reopened.hosts.logins,'get',(name:string)=>{decodes++;return get(name);});

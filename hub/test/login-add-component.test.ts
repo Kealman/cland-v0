@@ -18,7 +18,7 @@ for(const outcome of ['disconnect','failure','success'] as const) test(`login ad
  const hub=await projectHub(t,root,{}, {clock:new FakeClock(Date.now()),processes:fakeLockProcesses().processes,droplet:{processes:fakeLockProcesses().processes},prepareLogin:async o=>{
   o.records.logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'volume-sentinel',snapshotIds:[],lastSignIn:null});
   let complete:Promise<import('../src/host/logins.ts').Login>|undefined;
-  return {plan:{name:'work',host:'host-a',command:'ssh',args:['-t','host-a','codex login --device-auth']},pending:{name:'work',path:'/cland/auth/codex-work',complete:code=>complete??=Promise.resolve().then(()=>{closed++;return o.records.logins.transition('work',code===0?'ready':'signed-out');})}};
+  return {plan:{name:'work',host:'host-a',command:'ssh',args:['-t','host-a','codex login --device-auth']},pending:{name:'work',path:'/cland/auth/codex-work',complete:code=>complete??=Promise.resolve().then(()=>{closed++;if(code===0)return o.records.logins.transition('work','ready');o.records.logins.markSignedOut('work',{reason:'sign-in failed',host:null});return o.records.logins.get('work')!;})}};
  }});
  const terminal=await connectUi(t,hub.discovery,'cli'),observer=await connectUi(t,hub.discovery,'cli');
  const add=await terminal.request({type:'login.add',harness:'codex'});assert.equal(add.ok,true,add.error);
