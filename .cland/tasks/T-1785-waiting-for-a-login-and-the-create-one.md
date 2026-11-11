@@ -2,8 +2,8 @@
 id: T-1785
 kind: task
 title: Waiting for a login, and the "create one?" card
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1471
 branch: t/T-1785-waiting-for-a-login-and-the-create-one
 created: 2026-11-09T12:44:10.911Z
-updated: 2026-11-11T01:10:26.430Z
+updated: 2026-11-11T02:56:51.252Z
+closed: 2026-11-11T02:56:51.252Z
 ---
 
 ## Summary
@@ -36,18 +37,23 @@ The Agents notices reuse `session-waiting`. Waits are already durable across a r
 - [x] C1. A launch blocked on logins reads "waiting for a login <harness>" in `cland session list` and the inbox frame, and Agents gets one notice for it (test).
   - done: impl-1785 · 2026-11-11T00:36:10.721Z
   - verified: rev-35 [reviewer] · run rev-35-1785-final-1 · 2026-11-11T01:10:26.218Z · commit 2db79e543c43bb695022f1e988e6fb5b35cf39e3
+  - verified: rev-35 [reviewer] · run rev-35-1785-final-2 · 2026-11-11T02:09:07.956Z · commit 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
 - [x] C2. A `cland login add` of that harness releases the wait: a host starts, the reason reads "waiting for host <id> to boot", and the launch is placed when the host is ready (test).
   - done: impl-1785 · 2026-11-11T00:45:05.822Z
   - verified: rev-35 [reviewer] · run rev-35-1785-final-1 · 2026-11-11T01:10:26.218Z · commit 2db79e543c43bb695022f1e988e6fb5b35cf39e3
+  - verified: rev-35 [reviewer] · run rev-35-1785-final-2 · 2026-11-11T02:09:07.956Z · commit 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
 - [x] C3. Exactly one "Not enough <harness> logins. Create one?" card is raised per pool and harness, whatever the number of scheduler passes or waiting launches (test).
   - done: impl-1785 · 2026-11-11T00:36:11.313Z
   - verified: rev-35 [reviewer] · run rev-35-1785-final-1 · 2026-11-11T01:10:26.219Z · commit 2db79e543c43bb695022f1e988e6fb5b35cf39e3
+  - verified: rev-35 [reviewer] · run rev-35-1785-final-2 · 2026-11-11T02:09:07.957Z · commit 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
 - [x] C4. The card folds when the last launch waiting for that login is placed or cancelled (test).
   - done: impl-1785 · 2026-11-11T00:36:11.543Z
   - verified: rev-35 [reviewer] · run rev-35-1785-final-1 · 2026-11-11T01:10:26.219Z · commit 2db79e543c43bb695022f1e988e6fb5b35cf39e3
+  - verified: rev-35 [reviewer] · run rev-35-1785-final-2 · 2026-11-11T02:09:07.957Z · commit 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
 - [x] C5. Answering "Not now" folds the card and leaves the launch waiting (test).
   - done: impl-1785 · 2026-11-11T00:36:11.899Z
   - verified: rev-35 [reviewer] · run rev-35-1785-final-1 · 2026-11-11T01:10:26.219Z · commit 2db79e543c43bb695022f1e988e6fb5b35cf39e3
+  - verified: rev-35 [reviewer] · run rev-35-1785-final-2 · 2026-11-11T02:09:07.957Z · commit 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
 
 ## Blocked by
 
@@ -120,3 +126,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-18549 final same-head evidence review; A-18547 run36d2d6c9 finished passed, independent progress audit5979base case passes/670file passes,40separate load case+40load file passes,zero negative. All7login-wait identities pass base+5/5load each, including corrected demand-only C2; migrated waiting-inbox compatibility case also base+5. All669manifest lower/Web files and all466required lower/Web consumer paths have positive case+file finishes,zero missing. A-18548 reconciles714union:467configured+4explicitly accepted A-18538 source-equivalent native carries=471qualified;230T3+13T4deferred. FullGit treeac350ba8/exportb16a4622 independently matched. Actual uncached Linuxx64 Node24.21/Nvim0.12.5,HeadlessShell1248 Chrome156.0.8078.4;1075s/$0.0747. T0/T1/allT2/Web and mappedT4base once complete; no configuredT3/T4repetition claim. Native17/17 keeps193b source/platform/inventory limits underA-18543. Non-test recording-only labels mean static inspection, not runtime proof. C1–C5 verified; prior withdrawnC2 candidate interpretation/source1not-clear retained as history. Report-only notices remain advisory; fullT3merge batch/broaderT4/affected after-stageQA separate. No Reviewer experiments.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-35 · 2026-11-11T01:44:38.715Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1785-delta-source-1
+commit: 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18553 authorized merge delta source review: Standards0/Spec0. Parents2db79e543+6252673e8; treefe0de48c. Sole combined conflict keeps both LoginCards(core.store,core.cards) and loginKeyEnvironment option initialization; both waiting reconciliation and incoming key-spawn forwarding retained. Task card/test/QA-guide source byte-identical to prior review. Incoming T-1788 reviewed/landed; reviewed-to-landed difference is shared durations renewal metadata only. Coordinator1ff926bf confirms sequence. Hold released for exact-head serial five-file directed native collection including inherited login-key-spawn (lead7babd540), then mode-free verify. Old receipts remain prior-head support only; final C1–C5 merge-head settlement awaits actual new case/file and conservative union receipts. Retain available original candidate producer output/provenance without reruns. RemainingT3batch/T4/after-stageQA separate; no Reviewer experiments.
+
+### impl-1785 · 2026-11-11T02:08:11.504Z
+
+Replacement merged-head evidence: A-18555 raw configured run 174c67c2 and A-18556 complete case/file/consumer reconciliation at reviewed 35aeccff3/tree 02c51d2b77b8cf09df3826902ddd2941d8d705ef. 6013 tests pass, zero skips; 672 positive file completions. Seven new cases and renamed compatibility each base + five load repetitions pass. T0/T1/all-T2 fallback/Web/mapped T4 completed on Linux; selected inherited T3 host-agent + login-key-spawn also completed (2 files,25 tests). Complete715-path union:469 configured,4 extra exact-head local-native,242 deferred. A-18554 supplies five directed Darwin native files,21 tests at exact merged head; no prior-head carry substituted. Remaining full T3 merge batch, broader T4 and after-stage QA separate. Duration/test lint report-only. Reviewer settling replacement final verdict.
+
+### rev-35 · 2026-11-11T02:09:07.957Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1785-final-2
+commit: 35aeccff372f7d29c31957c88a4f56da1dcb1d4d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18557 final merged-head evidence review. A-18555 run174c67c2 passed exact35aeccff3; independent progress audit6013base test finishes/672file passes plus40separate load tests+40load files,zero negative. All7login-wait identities and renamed compatibility each base+5/5load, worst new-case0.400598328s. All669manifest lower/Web and466required lower/Web consumer paths have positive case+file finishes,zero missing. Selected LinuxT3 host-agent/key-spawn and mappedT4 each pass base once; no repetition claim. A-18556 agrees715conservative union:469configured+4additional exact-head native=473qualified;229T3+13T4deferred. A-18554 exact-head five local Darwin files21/21 replaces old carry, preserving raw output/command/exit/inventory limits. Fulltreefe0de48c/export02c51d2b independently match; uncached Linuxx64 Node24.21/Nvim0.12.5 HeadlessShell1248 Chrome156.0.8078.4,1112s/$0.0772. C1–C5 verified. Candidate/support/static-only distinctions retained; report-only notices not enforce proof. FullremainingT3batch/broaderT4/affectedafter-stageQA separate. Prior history retained; no Reviewer experiments.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-11T02:56:51.252Z
+
+Merged bd8550b4db0abcd5a102538d44a762bc0b4866d9 onto dev.
