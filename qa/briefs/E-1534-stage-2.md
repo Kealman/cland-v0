@@ -115,7 +115,7 @@ The stage verdict carries no item or epic marks; this tells the run which check 
 | T-1743 C5 (a role's `pool` changed in `roles.toml` moves the next launch without restart) | E1534S2-10 (test `C5 changing role pool moves the next launch without restart`) |
 | T-1743 C6 (an explicit `host` pins the launch and is refused when full) | E1534S2-10 (test `C6 explicit host bypasses missing role pool but refuses a full pinned host`); E1534S2-03 |
 | T-1744 C1 (full pool at `max_hosts`: waiting reply at once, `cland session list` shows the reason and no process) | E1534S2-20 (test `full pool returns a waiting reply without a process and lists the reserved name`; test `CLI prints waiting, lists its status and cancels with stop`); E1534S2-10 (test `pool with no ready member waits without spawning`); E1534S2-53 |
-| T-1744 C2 (inbox status line outside needs-you, no ask) | E1534S2-20 (test `waiting inbox status is outside needs-you and cancellation frees the reserved name`); E1534S2-22 (`connection-snapshot`); E1534S2-26 (the regenerated recorded frames carry `waitingLaunches`) |
+| T-1744 C2 (waiting status stays outside needs-you; a login shortage separately adds one shared login-create ask and increments needsYou) | E1534S2-20 (historical receipt test `waiting inbox status is outside needs-you and cancellation frees the reserved name`; current replay `login wait card adds one ask and cancellation frees the reserved name`); E1534S2-22 (`connection-snapshot`); E1534S2-26 (the regenerated recorded frames carry `waitingLaunches`) |
 | T-1744 C3 (one Agents notice per start and reason change, none per repeated pass) | E1534S2-20 (test `memory-floor waits change reason once and recover on the next memory report`; test `a ready host leaving capacity changes a memory wait without polling`); E1534S2-03 (`session-waiting`) |
 | T-1744 C4 (a session exiting on the full host places the waiting launch once) | E1534S2-20 (test `a positive exit places a waiting launch once and clears its status`; test `final ready commit wakes waits without polling`; test `positive failed-launch cleanup frees capacity without another process status`); E1534S2-21 (test `an add in the completed-pass finalizer window receives its own placement pass`) |
 | T-1744 C5 (`cland session stop` cancels; a second launch of a waiting name refused naming the wait) | E1534S2-20 (test `CLI prints waiting, lists its status and cancels with stop`; test `Coordinator tools return waiting and cancel it through session.stop`; test `stop joins a waiting retry held before native admission`); E1534S2-54 |
@@ -284,7 +284,7 @@ cat > "$Q/expect.json" <<'JSON'
  "hub/test/executor-watchdog.test.ts": {"exact": false, "names": []},
  "hub/test/waiting-launch.test.ts": {"exact": true, "names": [
   "full pool returns a waiting reply without a process and lists the reserved name",
-  "waiting inbox status is outside needs-you and cancellation frees the reserved name",
+  "login wait card adds one ask and cancellation frees the reserved name",
   "a positive exit places a waiting launch once and clears its status",
   "final ready commit wakes waits without polling",
   "memory-floor waits change reason once and recover on the next memory report",

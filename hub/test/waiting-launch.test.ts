@@ -84,14 +84,15 @@ test('full pool returns a waiting reply without a process and lists the reserved
   assert.deepEqual(archive.waiting,[]);
 });
 
-test('waiting inbox status is outside needs-you and cancellation frees the reserved name', async t => {
+test('login wait card adds one ask and cancellation frees the reserved name', async t => {
   const f = await fixture(t);
   for (const name of ['one','two','three','four']) await f.launch(name);
   const before = (await f.ui.request({ type: 'inbox.list' })).value as import('../src/protocol.ts').Inbox;
   await f.launch('queued');
   const inbox = (await f.ui.request({ type: 'inbox.list' })).value as import('../src/protocol.ts').Inbox;
-  assert.equal(inbox.needsYou, before.needsYou);
-  assert.deepEqual(inbox.asks, before.asks);
+  assert.equal(inbox.needsYou, before.needsYou + 1);
+  assert.equal(inbox.asks.length, before.asks.length + 1);
+  assert.equal(inbox.asks.at(-1)!.question, "Not enough codex logins. Create one?");
   assert.deepEqual(inbox.waitingLaunches?.map(w => [w.name, w.role, w.pool, w.reason]), [['queued','implementer','agents','waiting for a login codex']]);
   const duplicate = await f.launch('queued');
   assert.equal(duplicate.ok, false);

@@ -11274,7 +11274,6 @@
     "hub/test/waiting-launch.test.ts::retained-generation positive closure wakes a launch after the earlier exit": 0.216654,
     "hub/test/waiting-launch.test.ts::shutdown closes the registered adapter before joining its held waiting retry": 0.194352,
     "hub/test/waiting-launch.test.ts::stop joins a waiting retry held before native admission": 0.197277,
-    "hub/test/waiting-launch.test.ts::waiting inbox status is outside needs-you and cancellation frees the reserved name": 0.144835,
     "hub/test/cli-help.test.ts::cland host status --help exits without a hub": 0.125629,
     "hub/test/cli-help.test.ts::cland host stop --help exits without a hub": 0.175211,
     "hub/test/digitalocean-pacing.test.ts::aborted scoped droplet GET joins the fake request before returning": 0.003939,

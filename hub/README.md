@@ -16,7 +16,7 @@ Add subsystem text to its file; keep this index as pointers.
 - [Identity and delivery](../docs/hub/identity-and-delivery.md)
 - [Topics](../docs/hub/topics.md)
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)
-- [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers
+- [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers; [login wait cards](../docs/hub/logins.md#login-wait-cards) share one prompt per pool/harness shortage
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
 - [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, local human metadata listing, SQLite records, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.

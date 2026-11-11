@@ -7,7 +7,9 @@ behavior. An unknown pool refuses. Explicit host pins refuse when full.
 
 `cland session launch` prints `waiting: <reason>`. `session.list` keeps its
 processes and rows arrays and adds `waiting` for the active view; the archive view returns no active waits. Inbox frames add optional
-`waitingLaunches` status records outside `needsYou`, asks and approvals.
+`waitingLaunches` status records outside `needsYou`, asks and approvals. A login
+shortage also raises one shared hub card per pool and harness in General; that
+card counts as an ask in `needsYou`. See [login wait cards](logins.md#login-wait-cards).
 Clients meeting an older hub treat absent waiting arrays as empty.
 `session.stop` cancels a wait and returns `{cancelled: <waiting record>}`;
 the CLI prints the cancellation. A waiting name remains reserved. Status records may carry the pinned item; Lead stop admission checks that item against the claimed subtree.

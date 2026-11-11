@@ -1,6 +1,7 @@
 import { LoginBinder, type ProvisionLoginDemand, type ProvisionLoginWork } from '../host/login-binding.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
+import { LoginCards } from '../host/login-cards.ts';
 import { HostMemoryFloorRefusal } from '../host/ssh-host.ts';
 import type { WaitingLaunch } from '../protocol.ts';
 import { PoolCapacityUnavailable, PoolCreationNotAdmitted, PoolRuntime } from '../host/pool-runtime.ts';
@@ -127,6 +128,7 @@ export class Sessions {
   readonly #loginBinder: LoginBinder;
   readonly #loginProviders: HostProviderRegistry;
   readonly #waitingLoginAdmissions = new Map<string,()=>void>();
+  readonly #loginCards: LoginCards;
   readonly #waiting = new WaitingLaunches((row, end) => {
     if (end) {
       const current=this.#table.waitingLaunch(row.name);
@@ -134,6 +136,7 @@ export class Sessions {
       this.#table.deleteWaitingLaunch(row.name);
     }
     else { const record = this.#table.waitingLaunch(row.name); if (record) this.#table.saveWaitingLaunch({ ...record, row }); }
+    this.#loginCards.reconcile(this.#table.waitingLaunches().map(record => record.row));
     this.#log({ event: 'session-waiting', session: row.name, role: row.role, pool: row.pool, reason: row.reason, since: row.since, ...(end ? { end } : {}) });
     this.#core.inbox.refresh();
   });
@@ -321,6 +324,7 @@ export class Sessions {
       }
       this.#addWaiting(record, operation, () => authorize(record), true);
     }
+    this.#loginCards.reconcile(this.#table.waitingLaunches().map(record => record.row));
     this.#core.inbox.refresh();
   }
   readonly #placementAdmissions = new Set<string>();
@@ -810,6 +814,7 @@ export class Sessions {
     this.#hosts = new Map([['local', localHost(this.#env, this.#log)]]);
     for (const host of options.hosts ?? []) this.addHost(host);
     this.#core = options.core;
+    this.#loginCards = new LoginCards(this.#core.store, this.#core.cards);
     this.#loginKeyEnvironment = options.loginKeyEnvironment;
     this.#loginBinder = new LoginBinder(this.#core.store.hosts.logins);
     this.#loginProviders = new HostProviderRegistry({env:this.#env,now:()=>this.#core.clock.now().getTime(),digitalocean:{root:options.root,clock:this.#core.clock}});

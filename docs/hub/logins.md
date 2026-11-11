@@ -538,3 +538,17 @@ admission. Shared/key capacity does not claim native spawn coverage from these
 metadata tests; the binding and spawn owners supply those operations.
 
 See [capacity cases](../agents/tests/hub-test-login-capacity.test.ts.md).
+
+## Login wait cards
+
+A launch with the placement verdict `waiting for a login <harness>` raises one
+hub-owned `login-create` card in General per pool and harness, shared by every
+matching launch. The options are Create one and Not now. Create one returns
+`cland login add <harness> --pool <pool>`; Not now or decline folds the card
+and keeps launches waiting. Answers and open cards survive hub restart.
+The active-only `login-wait-cards` metadata preserves deduplication without
+scanning retained ask history. A card withdraws when no matching login wait
+remains, including cancellation or a change to a host-boot wait. A later
+independent wait can raise a new card. Login metadata changes wake placement
+through PoolRuntime; the existing binder and provisioning owners perform effects.
+See [login wait tests](../agents/tests/hub-test-login-wait.test.ts.md).
