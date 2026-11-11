@@ -11558,6 +11558,13 @@
       "expires": "2026-11-18",
       "reason": "T-1748 requires two sequential real 30s detached-worker lifecycle cases. File budget sums top-level test seconds: Linux droplet run 2da31d7d at 88db047a (A-17708) measured 61.276673082s (30.075034811 + 31.201638271); same-head local macOS arm64 (A-17706) measured 60.937449125s (30.102411542 + 30.835037583). Allowance ceil(1.5 x worst measured aggregate) = 92s. Includes fixture setup, assertions and joined native cleanup; fake provider/transports, no browser or live-provider latency claim. Individual test allowances remain separate. Renewed 2026-11-11 by the Coordinator (was due 2026-11-13); re-measure at the E-1535 stage-3 close."
     },
+    "hub/test/login-snapshots.test.ts::one login save has bounded scheduling work across ten thousand retained logins": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "Temporary, until T-1809. T-1784 (e14c3bf6d) slowed the 10,000-login fixture seeding through the capacity index and pending_bindings triggers: macOS arm64 Node 24.21.0 0.74 s at aca1a4ffb, 1.21 s at e14c3bf6d (three samples each); Linux droplet 2.141 s at aca1a4ffb (A-18540) and 5.425 s at 9ae466067 (A-18558, slow disk fsync 18 ms). Allowance ceil(1.5 x worst 5.425 s) = 9 s. One save's bounded-work assertions are unchanged."
+    },
     "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": {
       "seconds": 73,
       "owner": "C-216",
