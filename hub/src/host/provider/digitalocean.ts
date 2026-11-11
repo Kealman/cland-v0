@@ -1,3 +1,5 @@
+/** Declared USD/GiB-month storage rates, checked 2026-11-11. */
+export const DIGITALOCEAN_STORAGE_PRICES=Object.freeze({volumePerGiBMonth:0.10,snapshotPerGiBMonth:0.06});
 import {authorizeSnapshot,SnapshotSendRefused,type SnapshotVolumeOptions} from './provider.ts';
 import { clockDelay } from '../clock-delay.ts';
 import { issuedHostAdmission, hostAdmissionTag, hostAdmissionEffect, HostAdmissionUnavailable } from '../create-admission.ts';
@@ -52,7 +54,7 @@ export class DigitalOceanHostProvider implements HostProvider {
           prices: Object.fromEntries(sizes.map(size => [size.slug, { livePerHour: size.price_hourly, idleComputePerHour: 0 }])),
           stoppedBills: true, billingGranularityMs: 1000, billingMinimumMs: 60_000,
           tokenConfinement: 'account', apiRequestsPerMinute: digitalOceanRequestsPerMinute,
-          machineLimit: account.droplet_limit as number, architectures: ['x86_64'], extraAddressPerHour: 0,
+          machineLimit: account.droplet_limit as number, architectures: ['x86_64'], extraAddressPerHour: 0, ...DIGITALOCEAN_STORAGE_PRICES,
         });
         this.#declarations = candidate;
       } catch (e) {

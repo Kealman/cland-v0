@@ -16,7 +16,7 @@ import { destroyHost } from '../src/host/provision-host.ts';
 async function fixture(t:test.TestContext,minimum=1,billing=60000,declarationsMode:'sync'|'async'|'throw-once'='sync',ids=['z','a']) {
  const root=await tempProject(t),store=new Store(join(root,'hub.db')),clock=new FakeClock();
  const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
- const provider=new FakeHostProvider({env,now:()=>clock.now().getTime(),declarations:{prices:{fake:{livePerHour:0,idleComputePerHour:0}},stoppedBills:true,billingGranularityMs:1000,billingMinimumMs:billing,tokenConfinement:'resource',apiRequestsPerMinute:60,machineLimit:10,architectures:['arm64'],extraAddressPerHour:0}});
+ const provider=new FakeHostProvider({env,now:()=>clock.now().getTime(),declarations:{prices:{fake:{livePerHour:0,idleComputePerHour:0}},stoppedBills:true,billingGranularityMs:1000,billingMinimumMs:billing,tokenConfinement:'resource',apiRequestsPerMinute:60,machineLimit:10,architectures:['arm64'],extraAddressPerHour:0,volumePerGiBMonth:0,snapshotPerGiBMonth:0}});
  const settings=readHostPools({agents:{provider:'fake',slots:1,min_hosts:minimum,max_hosts:3,idle_stop:'1m'}});
  const processes:Array<{key:string;host:string;harness:string}>=[];
  for(const id of ids) {

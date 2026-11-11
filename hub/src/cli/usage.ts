@@ -46,7 +46,7 @@ export { AUTH_USAGE, USER_USAGE } from './usage/auth.ts';
 export const HOST_USAGE = `  host create [pool] human-only local CLI: create a pool host from a current pool image to ready
                   five-minute boot gate; automatic retries back off 1–30 minutes; provider retry times pause the pool
                   unknown acquisition retains its slot; failures notify Coordinator in Agents
-  host status [--json] human-only local CLI: pool slots and settled plus accrued UTC spend; host details
+  host status [--json] human-only local CLI: pool slots, UTC spend including monthly login storage; bound logins
   host stop <id> human-only local CLI: stop renewal and destroy host with confirming reads
   host list [--json] human-only local CLI: id, pool, provider, size, region, state, uptime, USD/hour
   host prepare [pool] human-only local CLI: prepare one or all configured pool images

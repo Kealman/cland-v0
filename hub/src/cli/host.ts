@@ -24,7 +24,7 @@ export async function runHost(args: string[], env: NodeJS.ProcessEnv = process.e
     if (args.includes('--json')) process.stdout.write(JSON.stringify(value, null, 2) + '\n');
     else for (const pool of value.pools) {
       process.stdout.write(`${pool.name}: ${pool.hostCount} hosts · slots ${pool.slotsUsed}/${pool.slotsTotal}${pool.slotsPromised?' · promised '+pool.slotsPromised:''} · today ${pool.spend.today===null?'unknown':'$'+pool.spend.today.toFixed(4)} · month ${pool.spend.month===null?'unknown':'$'+pool.spend.month.toFixed(4)}\n`);
-      for (const host of pool.hosts) process.stdout.write(`  ${host.id} ${host.size} ${host.region} ${host.state} · uptime ${host.uptime ?? 'unknown'}s · sessions ${host.sessions.join(', ') || 'none'} · $${host.priceHourly ?? 'unknown'}/hour\n`);
+      for (const host of pool.hosts) process.stdout.write(`  ${host.id} ${host.size} ${host.region} ${host.state} · uptime ${host.uptime ?? 'unknown'}s · sessions ${host.sessions.join(', ') || 'none'} · logins ${host.logins?.map(login=>login.harness+'/'+login.name).join(', ')||'none'} · $${host.priceHourly ?? 'unknown'}/hour\n`);
     }
     return 0;
   }

@@ -8,9 +8,12 @@ clipped at each period boundary; outstanding reservations do not count as spend.
 Prices use the admitted ledger rate, including the provider's extra-address rate,
 matched by exact project and host lease id. Status makes no provider API request.
 Unknown legacy prices make the affected pool spend unknown. A nonzero placement
-promise appears as `promised n` and counts in slots used. Storage is outside this view.
+promise appears as `promised n` and counts in slots used. Each pool adds `capacity` by harness and `storage` (USD accrued this UTC month).
+Storage uses recorded login volume and snapshot lifetimes at provider-declared
+rates and adds only to month spend; it creates no reservation. Missing legacy
+storage metadata contributes zero. Status performs no provider calls.
 Each host shows id, size, region, state (including `unreachable`), uptime seconds,
-running session names and hourly price. Missing machine uptime or price is unknown.
+running session names, bound logins by harness/name and hourly price. Missing machine uptime or price is unknown.
 Removed pools with current inventory or settled spend remain visible.
 
 `cland host stop <id>` is an explicit human stop. It joins the lease renewal

@@ -144,7 +144,7 @@ test('fake declarations include paid address in idle price and destroy billed st
     prices: { small: { livePerHour: 0.1, idleComputePerHour: 0.02 } },
     stoppedBills: true, billingGranularityMs: 1000, billingMinimumMs: 60_000,
     tokenConfinement: 'project' as const, apiRequestsPerMinute: 17, machineLimit: 5,
-    architectures: ['arm64' as const], extraAddressPerHour: 0.01,
+    architectures: ['arm64' as const], extraAddressPerHour: 0.01, volumePerGiBMonth: 0, snapshotPerGiBMonth: 0,
   };
   const p = new FakeHostProvider({ env: f.env, declarations });
   assert.ok(p.declarations.prices.small);

@@ -9,7 +9,7 @@ const input = (): HostProviderDeclarationInput => ({
   prices: { small: { livePerHour: 0.1, idleComputePerHour: 0.02 } },
   stoppedBills: false, billingGranularityMs: 1000, billingMinimumMs: 60_000,
   tokenConfinement: 'account', apiRequestsPerMinute: 17, machineLimit: 5,
-  architectures: ['x86_64', 'arm64'], extraAddressPerHour: 0.01,
+  architectures: ['x86_64', 'arm64'], extraAddressPerHour: 0.01, volumePerGiBMonth: 0, snapshotPerGiBMonth: 0,
 });
 test('declarations reject missing fields, negative prices and misaligned minimums', () => {
   const good = declareHostProvider(input());
@@ -58,4 +58,16 @@ test('reusable contract rejects providers missing each declaration and invalid b
   }
   await check(good);
   for (const bad of candidates) await assert.rejects(check(bad), /invalid host provider declaration/);
+});
+
+ test("storage prices are required and identify their missing keys",()=>{
+ for(const key of ["volumePerGiBMonth","snapshotPerGiBMonth"]){
+ const value={...input()} as Record<string,unknown>;delete value[key];
+ assert.throws(()=>declareHostProvider(value as HostProviderDeclarationInput),new RegExp(key));
+ }
+ });
+
+test('fake storage declarations are zero',async()=>{
+ const {FAKE_STORAGE_PRICES}=await import('../src/host/provider/fake.ts');
+ assert.deepEqual(FAKE_STORAGE_PRICES,{volumePerGiBMonth:0,snapshotPerGiBMonth:0});
 });

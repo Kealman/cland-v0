@@ -21,3 +21,5 @@ under supported Node after targeted admission. No provider network or browser.
 read, closes an in-process base hub and asserts the positive completion order:
 inventory read before the close receipt. It also keeps the closed admission fence. The injected setup-failure case proves
 the prearmed release/join/close owner completes before root disposal.
+
+`login storage accrues in its recorded pool month only without reserving spend` uses a FakeClock at the midpoint of November: one 1 GiB volume at $0.10 plus one snapshot at $0.06 produce $0.08, with today unchanged. It seeds receipts under the recorded pool; no provider API is called. Existing status cases also assert bound harness/name pairs. Sign-in receipt creation, deletion pruning and clock ownership are covered by `sign-in records volume and snapshot lifetime receipts in the admitted pool` in login-signin.test.ts (T1).

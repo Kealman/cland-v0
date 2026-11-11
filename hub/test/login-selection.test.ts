@@ -6,10 +6,35 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { LoginRecords } from '../src/host/logins.ts';
+import { FakeClock } from './fake-clock.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { ownDirectory, onCleanup } from './process-cleanup.ts';
 
 const disk=(name:string,harness:'codex'|'opencode'|'claude-code'='codex',region='wanted',account='work')=>({name,harness,account,kind:'disk' as const,provider:'fake',region,volumeId:`volume-${name}`,snapshotIds:[`snapshot-${name}-old`,`snapshot-${name}-new`],lastSignIn:null});
+
+test('status reads decode current storage only and bound harness work across retained history',t=>{
+ const probe=sqliteProbe(),db=probe.open(':memory:');t.after(()=>db.close());
+ const records=new LoginRecords(db),clock=new FakeClock(Date.parse('2026-10-15T00:00:00Z'));records.useClock(clock);
+ db.exec('begin');
+ for(let i=0;i<300;i++){
+  const name='history-'+i;records.insert(disk(name));
+  records.recordStorage(name,'retired',{kind:'volume',id:name,sizeGiB:1,created:'2026-10-01T00:00:00Z',deleted:null});
+  records.deleteStorage(name,'volume',name);
+ }
+ records.insert(disk('current'));
+ records.recordStorage('current','agents',{kind:'volume',id:'live',sizeGiB:1,created:'2026-10-01T00:00:00Z',deleted:null});db.exec('commit');
+ records.insert(disk('removed-pool-live'));records.recordStorage('removed-pool-live','removed-pool',{kind:'volume',id:'removed-live',sizeGiB:1,created:'2026-10-01T00:00:00Z',deleted:null});
+ let decoded=0;const parse=JSON.parse;
+ t.mock.method(JSON,'parse',((source:string)=>{const value=parse(source);if(value?.name)decoded++;return value;}) as typeof JSON.parse);
+ records.list();assert.equal(decoded,302,'positive control observes history');decoded=0;
+ const plans:string[]=[];let queries=0;
+ probe.mock(t,function(this:DatabaseSync,sql){queries++;plans.push(...probe.prepare.call(this,'explain query plan '+sql).all(...Array.from({length:sql.split('?').length-1},()=>'')).map(row=>String(row.detail)));return probe.prepare.call(this,sql);});
+ assert.deepEqual(records.harnesses(),['codex']);
+ const rows=[...records.storageRows('2026-11-01T00:00:00.000Z')];
+ assert.deepEqual(rows.map(row=>row.name),['current','removed-pool-live']);assert.equal(decoded,2);
+ assert.equal(queries,4);assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
+ assert.ok(plans.some(plan=>plan.includes('login_harnesses')));assert.ok(plans.some(plan=>plan.includes('login_storage_current')));
+});
 
 test('launch selection has fixed indexed query and decode work across ten thousand retained logins',async t=>{
  // Coordinator6ee8b256: new domain has no live corpus; fake-only data is required.
@@ -76,7 +101,7 @@ test('stage-one login database migrates private binding harness and indexes with
  old.insert({name:'key-old',kind:'key',harness:'opencode',account:'work',lastSignIn:null});
  const rows=old.list(),bindings=old.bindings('old');
  // Schema-only downgrade models stage1; every row was written via public API.
- db.exec('drop trigger if exists login_bindings_capacity_insert; drop trigger if exists login_bindings_capacity_delete; drop trigger if exists login_bindings_capacity_update; drop trigger if exists login_readers_capacity_insert; drop trigger if exists login_readers_capacity_delete; drop trigger if exists login_readers_capacity_update; drop index if exists login_capacity_launch; alter table logins drop column pending_bindings');
+ db.exec('drop trigger if exists login_bindings_capacity_insert; drop trigger if exists login_bindings_capacity_delete; drop trigger if exists login_bindings_capacity_update; drop trigger if exists login_readers_capacity_insert; drop trigger if exists login_readers_capacity_delete; drop trigger if exists login_readers_capacity_update; drop index if exists login_capacity_launch; drop index if exists login_capacity_shared; alter table logins drop column pending_bindings');
  db.exec('drop index if exists login_bindings_launch; drop index if exists login_ready_launch; drop index if exists login_bindings_pending');
  if(db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness'))db.exec('alter table login_bindings drop column harness');
  db.exec('alter table login_bindings drop column phase');

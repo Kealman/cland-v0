@@ -59,6 +59,10 @@ const commands = {
     row.lastSignIn ?? '-',
    ].join('\t')+'\n');
   }
+  if(args[0]!=='--json'){
+   const status=await askHubFrame(discovery,{type:'host.status'},30000,env) as {pools:{name:string;capacity?:Record<string,number>}[]};
+   for(const pool of status.pools)for(const [harness,n] of Object.entries(pool.capacity??{}))process.stdout.write(`capacity ${pool.name}/${harness}: ${n}\n`);
+  }
   return 0;
  },
 };

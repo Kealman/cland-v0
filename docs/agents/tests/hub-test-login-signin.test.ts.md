@@ -9,3 +9,5 @@ socket, real clock wait or external login runs.
 Run `node --test hub/test/login-signin.test.ts` with supported Node 24. CLI and
 native fake SSH evidence live in login-add.test.ts; hub connection authority
 is covered by login-add-component.test.ts.
+
+`sign-in records volume and snapshot lifetime receipts in the admitted pool` asserts exact receipts using useClock(FakeClock), confirmed snapshot deletion time, next-month pruning and refusal of a changed clock.

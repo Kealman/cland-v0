@@ -153,3 +153,5 @@ SSH hosts use the lost-host snapshot fence without a new reconnect wait.
 Pool demand placement uses regional login verdicts and waits for a login when
 exclusive capacity is exhausted; minimum and login-add creation remain exempt.
 See [login placement capacity](../docs/hub/logins.md#placement-capacity).
+
+Login capacity and monthly storage reporting use indexed login metadata and provider-declared storage rates. `login list` text reads additive `host.status` pool capacity; `login list --json` retains its array. Host rows include bound harness/name pairs. Storage is accrued in month spend only and never reserved; see [logins](../docs/hub/logins.md) and [host status](../docs/hub/host-status-stop.md).

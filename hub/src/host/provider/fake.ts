@@ -1,3 +1,4 @@
+export const FAKE_STORAGE_PRICES=Object.freeze({volumePerGiBMonth:0,snapshotPerGiBMonth:0});
 import {authorizeSnapshot,SnapshotSendRefused,type SnapshotVolumeOptions} from './provider.ts';
 import { fakeVolumePath, fakeVolumeContentsDirectory, fakeVolumeContents, readFakeMachine, fakeMachineStatus, listFakeVolumes, readFakeVolume, type FakeMachineRecord } from '../agent/fake-volume-contents.ts';
 import { parsePoolName } from '../pool-name.ts';
@@ -48,7 +49,7 @@ export class FakeHostProvider implements HostProvider {
       prices: { fake: { livePerHour: 0, idleComputePerHour: 0 } },
       stoppedBills: false, billingGranularityMs: 1000, billingMinimumMs: 60_000,
       tokenConfinement: 'resource', apiRequestsPerMinute: 60, machineLimit: 100,
-      architectures: ['x86_64', 'arm64'], extraAddressPerHour: 0,
+      architectures: ['x86_64', 'arm64'], extraAddressPerHour: 0, ...FAKE_STORAGE_PRICES,
     });
     this.#root = root; this.#options = { ...options }; this.#now = options.now ?? Date.now;
   }

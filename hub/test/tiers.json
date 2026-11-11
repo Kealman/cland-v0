@@ -424,6 +424,7 @@
     "hub/test/login-add-component.test.ts": "T2",
     "hub/test/login-add.test.ts": "T3",
     "hub/test/login-binding.test.ts": "T2",
+    "hub/test/login-capacity-list.test.ts": "T2",
     "hub/test/login-capacity.test.ts": "T2",
     "hub/test/login-exclusive-native.test.ts": "T3",
     "hub/test/login-exclusive.test.ts": "T2",

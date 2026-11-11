@@ -199,7 +199,7 @@ test('capacity migration backfills both fences and preserves counts across reope
  logins.bind('settled',{host:'s',role:'writer',volumeId:'volume-settled'});
  const publicRows=logins.list(),publicBindings=publicRows.map(row=>logins.bindings(row.name));
  // Model the landed pre-counter schema, retaining both types of unresolved work.
- db.exec('drop trigger login_bindings_capacity_insert; drop trigger login_bindings_capacity_delete; drop trigger login_bindings_capacity_update; drop trigger login_readers_capacity_insert; drop trigger login_readers_capacity_delete; drop trigger login_readers_capacity_update; drop index login_capacity_launch; alter table logins drop column pending_bindings');
+ db.exec('drop trigger login_bindings_capacity_insert; drop trigger login_bindings_capacity_delete; drop trigger login_bindings_capacity_update; drop trigger login_readers_capacity_insert; drop trigger login_readers_capacity_delete; drop trigger login_readers_capacity_update; drop index login_capacity_launch; drop index if exists login_capacity_shared; alter table logins drop column pending_bindings');
  db.close();db=new DatabaseSync(path);logins=new LoginRecords(db);
  for(let reopen=0;reopen<2;reopen++){
   assert.deepEqual(logins.list(),publicRows);assert.deepEqual(publicRows.map(row=>logins.bindings(row.name)),publicBindings);

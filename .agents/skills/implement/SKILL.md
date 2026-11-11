@@ -346,3 +346,5 @@ bindings on unknown outcomes. Captured waits retain exact admission and current
 account checks after awaits; creation failure/abort fences new attachment work.
 Ordinary login refusal stays launch-scoped and preserves a healthy host; see
 docs/hub/logins.md, Binding at launch.
+
+Login storage reporting retains provider lifetime receipts on the disk row. Use the existing create/delete owners and LoginRecords storage methods, with the hub Clock; never infer dates from sign-in or reserve storage as host spend. See docs/hub/logins.md.

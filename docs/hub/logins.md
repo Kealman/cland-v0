@@ -6,6 +6,26 @@ clients and remotes cannot list logins. In users mode the local user must also
 have administrative authority. The command never reads the user-level accounts
 registry, harness files or key material, and creates no logins.
 
+Text output ends with `capacity <pool>/<harness>: <n>` from `host.status`.
+It lists login harnesses and the harnesses of roles bound to each pool. Capacity
+is the smaller of max_hosts and eligible exclusive disks in the pool provider
+and region; an eligible non-exclusive disk or key supplies max_hosts. Pending,
+creating, signed-out and exclusively bound disks supply no new-host capacity.
+JSON retains the login array; an older hub without capacity omits the text lines.
+
+Disk rows may include additive `storage: {pool, items}` metadata. Items retain
+kind, id, sizeGiB, provider-created time and confirmed deletion time (or null).
+The pool is captured at disk creation; reader clones belong to that login pool.
+Storage writes prune deletions before the current UTC month. Private indexed
+storage_pool/storage_through columns filter out earlier deleted-only logins
+before JSON decoding; neither private field appears in public output. Harness
+enumeration uses three indexed existence reads. Legacy rows without
+storage contribute zero; there is no inferred backfill. Keys have no storage.
+`host status` adds accrued storage to month spend only, using overlap with the
+current UTC month divided by that month’s length. Fake rates are zero; declared
+DigitalOcean rates are $0.10/GiB-month for volumes and $0.06 for snapshots,
+checked 2026-11-11. Storage never enters hosts reservations or today spend.
+
 `cland login add <claude-code|codex|opencode> [--name <name>] [--pool <pool>]
 [--account <account>] [--kind disk]` creates a disk login through a local human
 terminal. The default pool is `agents`, otherwise the only configured pool;

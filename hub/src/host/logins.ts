@@ -1,11 +1,15 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Machine, Volume } from './provider/provider.ts';
+import {realClock, type Clock} from '../hub/clock.ts';
+
+export type LoginStorageItem = {kind:'volume'|'snapshot';id:string;sizeGiB:number;created:string;deleted:string|null};
+export type LoginStorage = {pool:string;items:LoginStorageItem[]};
 
 export type ReaderOperation = {login:string;host:string;harness:string;provider:string;project:string;pool:string;region:string;machine:Machine;name:string;snapshot:string;phase:'creating'|'bound'|'deleting'|'deleted';volume?:Volume};
 
 export type LoginBackup = { initialAt?: string; lastAt?: string; pending: boolean; retryAt?: string; releasing?: boolean; freeze?: {host:string; identity:string; volumeId:string}; receipt?: import('./provider/provider.ts').VolumeSnapshot; outcome?: string };
 export type LoginState = 'creating' | 'ready' | 'in-use' | 'signed-out';
-type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null };
+type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null; storage?:LoginStorage };
 export type Login = Base & ({ kind: 'disk'; exclusive: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[]; backup?: LoginBackup } | { kind: 'key' });
 export type LoginInput = Omit<Base, 'state'> & ({ kind: 'disk'; exclusive?: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[] } | { kind: 'key' });
 export type LoginBinding = { login: string; host: string; role: 'writer' | 'reader'; volumeId: string | null; phase?: 'pending' | 'settled' };
@@ -29,6 +33,45 @@ const bindingRow = (row:Record<string,unknown>):LoginBinding => ({login:row.logi
 
 /** Project metadata only: harness files and key material never enter this store. */
 export class LoginRecords {
+ private clock:Clock=realClock;
+ private clockSet=false;
+ useClock(clock:Clock):void {if(this.clockSet&&this.clock!==clock)throw Error('login clock already set');this.clock=clock;this.clockSet=true;}
+ recordStorage(name:string,pool:string,item:LoginStorageItem):void {
+  const row=this.required(name);if(row.kind!=='disk')throw Error('key login has no storage');
+  if(!pool||!item.id||!['volume','snapshot'].includes(item.kind)||!Number.isFinite(item.sizeGiB)||item.sizeGiB<=0||!Number.isFinite(Date.parse(item.created))||item.deleted!==null&&!Number.isFinite(Date.parse(item.deleted)))throw Error('invalid login storage receipt');
+  if(row.storage&&row.storage.pool!==pool)throw Error('login storage pool changed');
+  const items=[...(row.storage?.items??[])];
+  if(!items.some(old=>old.kind===item.kind&&old.id===item.id))items.push(item);
+  this.saveStorage({...row,storage:{pool,items:this.pruneStorage(items)}});
+ }
+ deleteStorage(name:string,kind:LoginStorageItem['kind'],id:string):void {
+  const row=this.required(name);if(!row.storage)return;
+  this.saveStorage({...row,storage:{...row.storage,items:this.pruneStorage(row.storage.items.map(item=>item.kind===kind&&item.id===id?{...item,deleted:item.deleted??this.clock.now().toISOString()}:item))}});
+ }
+ private saveStorage(row:Login):void {
+  const items=row.storage!.items;
+  const through=items.some(item=>item.deleted===null)?'9999-12-31T23:59:59.999Z':items.length?new Date(Math.max(...items.map(item=>Date.parse(item.deleted!)))).toISOString():null;
+  this.atomic(()=>{
+   this.db.prepare('update logins set record=?,storage_pool=?,storage_through=? where name=?').run(JSON.stringify(row),row.storage!.pool,through,row.name);
+   this.changed(row.name);
+  });
+ }
+ private pruneStorage(items:LoginStorageItem[]):LoginStorageItem[] {
+  const month=this.clock.now().toISOString().slice(0,7)+'-01T00:00:00.000Z';
+  return items.filter(item=>item.deleted===null||Date.parse(item.deleted)>=Date.parse(month));
+ }
+ /** Capacity work is capped at the pool limit and uses the launch eligibility index. */
+ capacity(input:{harness:string;provider:string;region:string},max:number):number {
+  if(max===0||!this.selectCapacityLogin(input))return 0;
+  const sql=`select record from logins indexed by login_capacity_launch where ${capacityEligibleSql} and json_extract(record,'$.harness')=? and json_extract(record,'$.kind')=?`;
+  const key=this.db.prepare(sql+" and json_extract(record,'$.provider') is null and json_extract(record,'$.region') is null limit 1").get(input.harness,'key');
+  if(key)return max;
+  const shared=this.db.prepare(sql.replace('indexed by login_capacity_launch','indexed by login_capacity_shared')+" and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=? and json_extract(record,'$.exclusive')=0 limit 1").get(input.harness,'disk',input.provider,input.region);
+  if(shared)return max;
+  return this.db.prepare(sql+" and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=? limit ?").all(input.harness,'disk',input.provider,input.region,max).length;
+ }
+ harnesses():string[] {return ['claude-code','codex','opencode'].filter(harness=>this.db.prepare("select 1 from logins indexed by login_harnesses where json_extract(record,'$.harness')=? limit 1").get(harness)!==undefined);}
+ *storageRows(monthStart:string):Generator<Login> {for(const row of this.db.prepare('select record from logins indexed by login_storage_current where storage_through>=?').iterate(monthStart))yield JSON.parse(String(row.record)) as Login;}
  private readerRelease:((name:string,receipt:{volumeId:string})=>void)|undefined;
  onReaderRelease(listener:(name:string,receipt:{volumeId:string})=>void):()=>void {
   this.readerRelease=listener;return ()=>{if(this.readerRelease===listener)this.readerRelease=undefined;};
@@ -66,7 +109,13 @@ export class LoginRecords {
       update logins set pending_bindings=pending_bindings-1 where name=old.login and ${predicate('old.')};
       update logins set pending_bindings=pending_bindings+1 where name=new.login and ${predicate('new.')}; end;`);
    }
-   db.exec('drop index if exists login_capacity_shared');
+   db.exec(`create index if not exists login_capacity_shared on logins(json_extract(record,'$.harness'),json_extract(record,'$.kind'),json_extract(record,'$.provider'),json_extract(record,'$.region')) where ${capacityEligibleSql} and json_extract(record,'$.exclusive')=0`);
+   if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='storage_through')){
+    db.exec('alter table logins add column storage_pool text; alter table logins add column storage_through text');
+    db.exec("update logins set storage_pool=json_extract(record,'$.storage.pool'),storage_through=case when exists(select 1 from json_each(record,'$.storage.items') where json_extract(value,'$.deleted') is null) then '9999-12-31T23:59:59.999Z' else (select max(strftime('%Y-%m-%dT%H:%M:%fZ',json_extract(value,'$.deleted'))) from json_each(record,'$.storage.items')) end where json_type(record,'$.storage')='object'");
+   }
+   db.exec('drop index if exists login_storage');
+   db.exec("create index if not exists login_storage_current on logins(storage_through,storage_pool) where storage_through is not null; create index if not exists login_harnesses on logins(json_extract(record,'$.harness'))");
    db.exec(`create index if not exists login_capacity_launch on logins(json_extract(record,'$.harness'),json_extract(record,'$.kind'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name) where ${capacityEligibleSql}`);
    db.exec('release login_launch_selection_migration');
   }catch(error){db.exec('rollback to login_launch_selection_migration; release login_launch_selection_migration');throw error;}
@@ -121,6 +170,8 @@ export class LoginRecords {
   const old=this.readerOperation(operation.login,operation.host);
   if(!old||old.name!==operation.name||old.provider!==operation.provider||old.project!==operation.project||old.machine.id!==operation.machine.id||old.machine.created!==operation.machine.created)throw Error('reader ownership changed');
   if(operation.volume&&(operation.volume.name!==old.name||operation.volume.project!==old.project||operation.volume.region!==old.region||old.volume&&old.volume.id!==operation.volume.id))throw Error('reader volume identity changed');
+  if(operation.volume&&operation.phase!=='deleted')this.recordStorage(operation.login,this.required(operation.login).storage?.pool??operation.pool,{kind:'volume',id:operation.volume.id,sizeGiB:operation.volume.sizeGiB,created:operation.volume.created,deleted:null});
+  if(operation.volume&&operation.phase==='deleted')this.deleteStorage(operation.login,'volume',operation.volume.id);
   this.db.prepare('update login_readers set phase=?,record=? where login=? and host=?').run(operation.phase,JSON.stringify(operation),operation.login,operation.host);this.changed(operation.login);
  }
  refuseReader(operation:ReaderOperation):void {

@@ -48,6 +48,7 @@ export async function prepareLoginSignIn(o: {
   uncertain=created.state==='failed';
   if(created.state!=='created') throw Error(`login volume ${created.state}: ${created.reason}`);
   volume=created.volume; o.logins.updateCreatingDisk(name,{volumeId:volume.id});
+  if(o.pool)o.logins.recordStorage(name,o.pool,{kind:'volume',id:volume.id,sizeGiB:volume.sizeGiB,created:volume.created,deleted:null});
   authorize();
   uncertain=true;
   const attachment=await o.provider.attachVolume(volume,o.machine);

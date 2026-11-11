@@ -11,6 +11,8 @@ export type HostProviderDeclarationInput = {
   machineLimit: number;
   architectures: readonly HostArchitecture[];
   extraAddressPerHour: number;
+  volumePerGiBMonth: number;
+  snapshotPerGiBMonth: number;
 };
 export type HostProviderDeclarations = Readonly<Omit<HostProviderDeclarationInput, 'prices'> & {
   prices: Readonly<Record<string, Readonly<{ livePerHour: number; idleComputePerHour: number; idlePerHour: number }>>>;
@@ -34,6 +36,9 @@ function validateInput(value: unknown): asserts value is HostProviderDeclaration
   requireValue(positiveInteger(d.apiRequestsPerMinute) && positiveInteger(d.machineLimit));
   requireValue(Array.isArray(d.architectures) && d.architectures.length > 0 && d.architectures.every(a => a === 'x86_64' || a === 'arm64'));
   requireValue(price(d.extraAddressPerHour));
+  for (const key of ["volumePerGiBMonth", "snapshotPerGiBMonth"]) {
+    if (!price(d[key])) throw new Error(`invalid host provider declaration: ${key}`);
+  }
   const prices = Object.entries(object(d.prices));
   requireValue(prices.length > 0);
   for (const [size, value] of prices) {

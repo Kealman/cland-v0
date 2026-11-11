@@ -44,6 +44,7 @@ test('disk sign-in stays creating until unmount, snapshot and detach receipts', 
  const host = {name:'host-a',loginDisk:async ({op}: {op:string})=>{events.push(op);},publishFile:async (_path:string,bytes:Uint8Array)=>{config=Buffer.from(bytes).toString();return true;}} as unknown as Host;
  const provider = {createVolume:async (input:unknown)=>{assert.deepEqual(input,{project:'/project',name:'cland-test-codex-1',region:'lon1',sizeGiB:1});return {state:'created',volume};},attachVolume:async()=>({state:'attached'}),snapshotVolume:async()=>{events.push('snapshot');return {state:'snapshotted',snapshot:{id:'snapshot-1',volumeId:volume.id,created:volume.created}};},detachVolume:async()=>{events.push('detach');return {state:'detached'};}} as unknown as HostProvider;
  const clock=new FakeClock(Date.parse(volume.created));
+ logins.useClock(clock);
  const pending=await prepareLoginSignIn({logins,provider,host,machine:{id:'machine-a',address:'fake',architecture:'arm64',created:volume.created},project:'/project',tag:'cland-test',region:'lon1',providerName:'fake',harness:'codex',clock});
  assert.equal(pending.name,'codex-1'); assert.equal(pending.path,'/cland/auth/codex-codex-1');
  assert.equal(logins.get(pending.name)?.state,'creating'); assert.deepEqual(logins.free(),[]); assert.deepEqual(logins.bindings(pending.name),[]);
@@ -53,4 +54,21 @@ test('disk sign-in stays creating until unmount, snapshot and detach receipts', 
  assert.equal(row.state,'ready'); assert.equal(row.lastSignIn,'2026-11-10T00:00:00.000Z');
  assert.deepEqual(row.kind==='disk'&&row.snapshotIds,['snapshot-1']);
  assert.deepEqual(events,['mount','umount','snapshot','detach']);
+});
+
+test('sign-in records volume and snapshot lifetime receipts in the admitted pool',async t=>{
+ const db=new DatabaseSync(':memory:');t.after(()=>db.close());const logins=new LoginRecords(db);
+ const created='2026-11-10T00:00:00Z',clock=new FakeClock(Date.parse(created));logins.useClock(clock);
+ const volume={id:'v',project:'/project',name:'disk',region:'lon1',sizeGiB:1,created,attachedTo:null};
+ const host={name:'h',loginDisk:async()=>{},publishFile:async()=>true} as unknown as Host;
+ const provider={createVolume:async()=>({state:'created',volume}),attachVolume:async()=>({state:'attached'}),snapshotVolume:async()=>({state:'snapshotted',snapshot:{id:'s',volumeId:'v',created}}),detachVolume:async()=>({state:'detached'})} as unknown as HostProvider;
+ const pending=await prepareLoginSignIn({logins,provider,host,machine:{id:'m',address:'fake',architecture:'arm64',created},project:'/project',tag:'fixture',region:'lon1',providerName:'fake',harness:'codex',pool:'agents',clock});
+ const row=await pending.complete(0);
+ assert.deepEqual(row.storage,{pool:'agents',items:[{kind:'volume',id:'v',sizeGiB:1,created,deleted:null},{kind:'snapshot',id:'s',sizeGiB:1,created,deleted:null}]});
+ logins.deleteStorage(row.name,'snapshot','s');
+ assert.equal(logins.get(row.name)!.storage!.items[1]!.deleted,'2026-11-10T00:00:00.000Z');
+ await clock.advance(22*86400000);
+ logins.recordStorage(row.name,'agents',{kind:'snapshot',id:'next',sizeGiB:1,created:clock.now().toISOString(),deleted:null});
+ assert.deepEqual(logins.get(row.name)!.storage!.items.map(item=>item.id),['v','next']);
+ assert.throws(()=>logins.useClock(new FakeClock(Date.parse(created))),/clock already set/);
 });

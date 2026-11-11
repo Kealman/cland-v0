@@ -63,6 +63,7 @@ export async function snapshotLoginDisk(logins:LoginRecords,name:string,target:S
    // A rejected authority check still records the admitted effect's outcome;
    // publication and pruning remain fenced until a current owner reconciles it.
    if(result.state==='snapshotted'&&result.snapshot.volumeId!==target.volume.id)throw Error('snapshot receipt volume mismatch');
+   if(result.state==='snapshotted'){const storage=disk(logins,name).storage;if(storage)logins.recordStorage(name,storage.pool,{kind:'snapshot',id:result.snapshot.id,sizeGiB:target.volume.sizeGiB,created:result.snapshot.created,deleted:null});}
    try {authorize();}
    catch(error) {
     if(disk(logins,name).volumeId===target.volume.id)checkpoint(logins,name,{...(result.state==='snapshotted'?{receipt:result.snapshot}:result.state==='refused'?{retryAt:result.retryAt}:{}),pending:true,outcome:String(error)});throw error;
@@ -85,6 +86,7 @@ async function pruneSnapshots(logins:LoginRecords,row:Disk,provider:HostProvider
  while(ids.length>2) {
   authorize();const deleted=await provider.deleteSnapshot(ids[0]!);authorize();
   if(deleted.state!=='deleted')throw Error('snapshot deletion unconfirmed');
+  logins.deleteStorage(row.name,'snapshot',ids[0]!);
   ids.shift();logins.updateBackup(row.name,{...row.backup,pending:ids.length>2},ids);
  }
 }

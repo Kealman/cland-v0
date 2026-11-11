@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, tempProject, connectUi, cland } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import {fakeLockProcesses} from './fakes/lock-processes.ts';
 import { settledLogin } from './settled-login-fixture.ts';
 
 test('C1 status includes configured empty pools and zero settled spend',async t=>{
@@ -17,7 +18,7 @@ test('C1 status includes configured empty pools and zero settled spend',async t=
  assert.equal(reply.ok,true,reply.error);
  const cli=await cland(root,'host','status','--json');assert.equal(cli.code,0,cli.stderr);assert.deepEqual(JSON.parse(cli.stdout),reply.value);
  const text=await cland(root,'host','status');assert.match(text.stdout,/agents: 0 hosts.*slots 0\/0/);
- assert.deepEqual(reply.value,{pools:[{name:'agents',hosts:[],hostCount:0,slotsUsed:0,slotsTotal:0,spend:{today:0,month:0}}]});
+ assert.deepEqual(reply.value,{pools:[{name:'agents',capacity:{},storage:0,hosts:[],hostCount:0,slotsUsed:0,slotsTotal:0,spend:{today:0,month:0}}]});
 });
 
 test('C1/C2 status weights sessions and clips live accrual to UTC day/month, excluding reservations',async t=>{
@@ -64,7 +65,8 @@ test('C1/C2 status weights sessions and clips live accrual to UTC day/month, exc
  records.provisions.save({id:'legacy-unknown',pool:'agents',provider:'digitalocean',size:'fake',region:'fake',created,state:'failed',machine:{id:'legacy-unknown',address:'legacy-unknown',architecture:'arm64',created}});
  const unknown=await ui.request({type:'host.status'});
  assert.deepEqual((unknown.value as {pools:Array<{spend:unknown}>}).pools[0]!.spend,{today:null,month:null});
- assert.deepEqual(pool.hosts[1],{id:'z-host',size:'fake',region:'fake-1',state:'ready',uptime:93600,sessions:['worker'],priceHourly:2,slotsUsed:0.5,slotsTotal:4});
+ const boundText=await cland(root,'host','status');assert.equal(boundText.code,0,boundText.stderr);assert.match(boundText.stdout,/logins codex\/codex-z-host/);
+ assert.deepEqual(pool.hosts[1],{logins:[{harness:'codex',name:'codex-z-host'}],id:'z-host',size:'fake',region:'fake-1',state:'ready',uptime:93600,sessions:['worker'],priceHourly:2,slotsUsed:0.5,slotsTotal:4});
 });
 
 for(const failSetup of [false,true])test(`status ledger read drains before storage closes; setup failure=${failSetup}`,async t=>{
@@ -108,3 +110,25 @@ for(const failSetup of [false,true])test(`status ledger read drains before stora
  if(failSetup)await assert.rejects(body(),/forced setup boundary failure/);else await body();
  assert.deepEqual(events,['inventory','closed']);
 });
+
+ test('login storage accrues in its recorded pool month only without reserving spend',async t=>{
+ const {Store}=await import('../src/hub/store.ts');const {layout}=await import('../src/project.ts');
+ const root=await tempProject(t),clock=new FakeClock(Date.parse('2026-11-16T00:00:00Z'));
+ await mkdir(join(root,'.cland'),{recursive:true});
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=4\nmin_hosts=0\n');
+ const hub=await projectHub(t,root,{}, {clock,processes:fakeLockProcesses().processes,droplet:{processes:fakeLockProcesses().processes}});
+ const store=new Store(layout(root).db);store.hosts.logins.useClock(clock);
+ try{
+ store.hosts.logins.insert({name:'cost',harness:'codex',account:'cost',kind:'disk',provider:'digitalocean',region:'lon1',volumeId:'v',snapshotIds:[],lastSignIn:null});
+ store.hosts.logins.recordStorage('cost','agents',{kind:'volume',id:'v',sizeGiB:1,created:'2026-10-01T00:00:00Z',deleted:null});
+ store.hosts.logins.recordStorage('cost','agents',{kind:'snapshot',id:'s',sizeGiB:1,created:'2026-11-01T00:00:00Z',deleted:null});
+ store.hosts.logins.deleteStorage('cost','snapshot','s');
+ store.hosts.logins.insert({name:'retired-live',harness:'codex',account:'retired',kind:'disk',provider:'fake',region:'fake-1',volumeId:'r',snapshotIds:[],lastSignIn:null});
+ store.hosts.logins.recordStorage('retired-live','removed-pool',{kind:'volume',id:'r',sizeGiB:1,created:clock.now().toISOString(),deleted:null});
+ }finally{store.close();}
+ const ui=await connectUi(t,hub.discovery,'cli');const result=await ui.request({type:'host.status'});assert.equal(result.ok,true,result.error);
+ const pool=(result.value as {pools:{storage:number;spend:{today:number;month:number}}[]}).pools[0]!;
+ assert.equal(pool.storage,0.08);assert.deepEqual(pool.spend,{today:0,month:0.08});
+ assert.deepEqual((result.value as {pools:{name:string}[]}).pools.map(pool=>pool.name),['agents','removed-pool']);
+ assert.doesNotMatch(JSON.stringify(result.value),/storage_through|storage_pool|9999-12-31/);
+ });

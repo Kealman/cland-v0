@@ -496,6 +496,7 @@ export class HubCore {
     this.#now = () => this.clock.now();
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
+    this.#store.hosts.logins.useClock(this.clock);
     this.accountLimits = new AccountLimits({ read: key => this.#store.meta(key), write: (key, value) => this.#store.setMeta(key, value) });
     this.#eventWindowMs = options.eventWindowMs ?? 60_000;
     this.#roles = options.roles ?? null;
