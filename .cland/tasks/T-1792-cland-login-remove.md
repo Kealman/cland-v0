@@ -2,8 +2,8 @@
 id: T-1792
 kind: task
 title: "`cland login remove`"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1475
 branch: t/T-1792-cland-login-remove
 created: 2026-11-09T12:44:12.424Z
-updated: 2026-11-11T14:42:07.713Z
+updated: 2026-11-11T16:17:16.948Z
+closed: 2026-11-11T16:17:16.948Z
 ---
 
 ## Summary
@@ -31,24 +32,29 @@ The `login.remove` frame and `cland login remove`. A deletion the provider does 
 ## Acceptance criteria
 
 - [x] C1. `cland login remove` of an in-use login is refused naming its host and changes nothing (test).
-  - done: impl-1792 · 2026-11-11T12:27:41.401Z
   - verified: rev-37 [reviewer] · run rev-37-1792-evidence-1 · 2026-11-11T14:42:07.457Z · commit ac2ffe26627319218dbc1b11faa8e33a3289b639
+  - done: impl-1792 · 2026-11-11T15:37:55.262Z
+  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-2 · 2026-11-11T15:38:32.865Z · commit efaba34f89faa875019921b2a203e1fd8e9a74a4
 - [x] C2. After that host stops, the same command deletes the volume and both snapshots with confirming reads, and the login leaves `cland login list` (test).
-  - done: impl-1792 · 2026-11-11T12:27:42.856Z
   - verified: rev-37 [reviewer] · run rev-37-1792-evidence-1 · 2026-11-11T14:42:07.457Z · commit ac2ffe26627319218dbc1b11faa8e33a3289b639
+  - done: impl-1792 · 2026-11-11T15:37:55.463Z
+  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-2 · 2026-11-11T15:38:32.865Z · commit efaba34f89faa875019921b2a203e1fd8e9a74a4
 - [x] C3. A deletion the provider does not confirm keeps the row with the remaining ids, and the command exits nonzero naming them (test).
-  - done: impl-1792 · 2026-11-11T12:32:35.042Z
-  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-1 · 2026-11-11T14:42:07.457Z · commit ac2ffe26627319218dbc1b11faa8e33a3289b639
+  - done: impl-1792 · 2026-11-11T15:37:55.797Z
+  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-2 · 2026-11-11T15:38:32.865Z · commit efaba34f89faa875019921b2a203e1fd8e9a74a4
 - [x] C4. Removing a key login deletes its key file and its row, and leaves the `[auth]` key (test).
-  - done: impl-1792 · 2026-11-11T12:27:43.420Z
   - verified: rev-37 [reviewer] · run rev-37-1792-evidence-1 · 2026-11-11T14:42:07.457Z · commit ac2ffe26627319218dbc1b11faa8e33a3289b639
+  - done: impl-1792 · 2026-11-11T15:37:56.005Z
+  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-2 · 2026-11-11T15:38:32.865Z · commit efaba34f89faa875019921b2a203e1fd8e9a74a4
 - [x] C5. Removing a `creating` login is refused naming the running sign-in (test).
-  - done: impl-1792 · 2026-11-11T12:27:43.625Z
   - verified: rev-37 [reviewer] · run rev-37-1792-evidence-1 · 2026-11-11T14:42:07.458Z · commit ac2ffe26627319218dbc1b11faa8e33a3289b639
+  - done: impl-1792 · 2026-11-11T15:37:56.341Z
+  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-2 · 2026-11-11T15:38:32.865Z · commit efaba34f89faa875019921b2a203e1fd8e9a74a4
 
 - [x] C6. When a deletion is not confirmed and the row stays, the confirmed deletions are recorded through LoginRecords.deleteStorage and only the unconfirmed items keep accruing in host status; a fully removed login's storage leaves host status with its row, as docs/hub/logins.md then states (test).
-  - done: impl-1792 · 2026-11-11T12:32:36.543Z
   - verified: rev-37 [reviewer] · run rev-37-1792-evidence-1 · 2026-11-11T14:42:07.458Z · commit ac2ffe26627319218dbc1b11faa8e33a3289b639
+  - done: impl-1792 · 2026-11-11T15:37:56.547Z
+  - verified: rev-37 [reviewer] · run rev-37-1792-evidence-2 · 2026-11-11T15:38:32.866Z · commit efaba34f89faa875019921b2a203e1fd8e9a74a4
 ## Blocked by
 
 - T-1779
@@ -187,3 +193,62 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; no findings on Standards or Spec. C1–C6 verified against reviewed assertions and executed run 8a65dcbb/A-18755 (6040 passed, zero fail/cancel/skip/todo), including all 21 generated login-remove identities with one base plus five repeated passes each. Independently recomputed canonical tree b000e0ad0e82ed1207d5b245a45d2db1e68289df matches provenance and branch head. T0/all T1/fallback all T2/Web and two selected T3 files (five identities) completed on Linux x64 droplet c-8 lon1, Node24.21.0/Neovim0.12.5, isolated Headless Shell1248 Chrome for Testing156.0.8078.4; uncached. Native eight-file 25/25 macOS receipts A-18745–18753 are explicitly carried from d93b33fd4 under Coordinator cd633ecf across manifest-order-only delta, not claimed as exact-head native execution. Conservative 717-path inventory reconciled: all75 T1/343 T2/52 Web files have passing named records; 2/233 T3 configured, 0/14 T4. Remaining full T3, T4 occasions and affected after-stage QA remain separate; budgets/lint/ratchet/skip-reason notices report-only. Criterion mapping, named facts, original red history and limits: A-18757, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18757-t-1792-final-same-head-review-and-criterion-evidence.md.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1792 · 2026-11-11T14:58:32.520Z
+
+Authorized T-1789 integration at pushed119c33a26bdc1c3572f47a559b0f3b26c365fadd: one origin/dev merge under Coordinator94999381, docs-only conflict retains both Removing a login and Dead-login signals sections. Production beginRemove still directly uses markSignedOut(name,{reason:'removing',host:null}); incoming markSignedOut permits creating and bare transition(signed-out) now refuses. One task fixture migrated from bare creating→signed-out after observed red `use markSignedOut for signed-out`; no task production change. Incoming source consumers swept across adapter contract/Claude/Codex/OpenCode/state/Sessions, login-add/cards/signals/signin/store and agents-topic; fixture and QA users included. Graph710 reached+15 unknown, conservative union with original is728, explicit lists retained (artifact published). Incoming production/fixture signal/card callers already migrated by T-1789; only new task fixture needed migration.98 local macOSNode24.21 T1/T2 cases passed (remove,signed-out,records,signin,snapshots), typecheck/tier lint/closed-item lint green. Native plan after delta clearance: original8 files plus login-signed-out-native (new incoming native auth signal path), one sequential preservation slot; component signed-out tests cover every native harness signal variant, full remainingT3 stays merge batch, T4/affectedQA occasions. Prior native/Linux receipts are historical supporting evidence, not new merged-head passes.
+
+### rev-37 · 2026-11-11T15:02:43.231Z
+
+verdict: review
+result: not clear
+by: rev-37 [reviewer]
+run: rev-37-1792-delta-3
+commit: 119c33a26bdc1c3572f47a559b0f3b26c365fadd
+scope: delta
+findings: [{"severity":"medium","text":"Sign-in publication/recovery ignores durable removing claim: ready removal creates false card/Coordinator notice, partial removal retains unusable Sign in again through restart, and an existing genuine card is not withdrawn because signed-out beginRemove emits no change. A-18767 reproduces all three. Gate shared eligibility/withdrawal on claim, notify claim changes and cover live/startup; preserve genuine notice and receipt/admission fences.","file":"hub/src/host/login-cards.ts","line":38}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Complete authorized T-1789 merge-delta source pass not clear: one medium Spec/integration finding, no additional Standards findings. Actual A-18767 failures: 'removal must not create a sign-in notice' (actual login-signed-out) and 'removal claim withdraws active sign-in card' (existing metadata remains). Actual CLI/projectHub fake-provider controls at this pinned head fail all three scenarios: ready/full, ready/partial, genuine-signed-out/partial, inspecting settled and restarted inbox/card/notice state. A-18768 retains source. A-18769 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18769-t-1792-t-1789-merge-delta-removal-card-eligibility-not-clear.md) records complete review, resolution boundaries and evidence limits. Merge authorization94999381 confirmed; both docs sections and shared removal/transition fences retained; only task fixture migration uses markSignedOut. Independent A-18763 union check exactly728 conservative paths, including15 unknowns, plus explicit consumers. A-18764's98 local lower-tier passes do not cover this red interaction. Reviewer ran no tests/typecheck/native/browser and made no edits. No current-head criteria verified; fresh corrected-head source review before directed native set/configured verify. Prior ac2ffe266 receipts historical only; fullT3/T4/after-stage QA separate.
+
+Criteria: C3 failed (Retained partial-removal row incorrectly exposes an active Sign in again card across settlement/restart although its durable removal claim forbids sign-in; reproduced A-18767.).
+
+### impl-1792 · 2026-11-11T15:06:10.956Z
+
+Delta-3 correction at pushed efaba34f89faa875019921b2a203e1fd8e9a74a4 approved by Coordinatore6f61fe6. LoginRecords.isRemoving is the sole SELECT of the private claim (assertNotRemoving and final remove guard reuse it). beginRemove publishes claim before markSignedOut notification and emits changed for already-signed-out claims. Single contiguous helper addition LoginCards.withdrawRemoving suppresses notice/card publication and withdraws existing active cards/metadata in live+startup signedOut paths; genuine delivered notice and signedOut receipt stay. This is claim eligibility, never reason-text filtering. Shared-file consumers include Sessions constructor/onChange/recoverSignedOut, LoginSignals, existing LoginCards publication/recovery tests, T-1790 one-sign-in hint and T-1791 card-sign-in lane (both notified/approved scope); A-18772 explicit sweep extends A-18763 union728. Three actualCLI/restart scenarios failed red before fix (A-18767/68), then passed permanently; positive control uses reason removing without a claim and remains eligible until live claim notification withdraws. A-18770 has136 local macOSNode24.21 T1/T2 passes; typecheck/closed-item lint green. A-18771 full TMPDIR9878→9878 no differences. C3 re-marked done; all6 done. New native9 and configured Linux receipt still unrun pending fresh review; all old receipts historical only.
+
+### rev-37 · 2026-11-11T15:07:49.099Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1792-delta-4
+commit: efaba34f89faa875019921b2a203e1fd8e9a74a4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrective source delta clear; no Standards/Spec findings. A-18769's sole integration issue is resolved: shared isRemoving reads the durable private claim; beginRemove writes it before ready sign-out notification and notifies already-signed-out claims. Reusable withdrawRemoving suppresses new cards/notices and withdraws existing open card/active metadata through the same live/startup signedOut path, while retaining prior genuine notice and episode. No reason-text policy; final removal guard reuses the same reader. Snapshot/freeze/admission/accounting/provider ownership remains unchanged. Coordinator e6f61fe6 approval confirmed; no new dev merge. Four permanent regressions retain actual CLI post-settlement/restart card/inbox/notice checks and positive reason-text eligibility followed by durable withdrawal receipt. A-18770 contains136 supplemental local macOS Node24.21 lower-tier passes; A-18771 has9878→9878 TMPDIR names unchanged. A-18772 direct files plus item comment identify shared T-1790/T-1791 lanes; static call-site search confirms live/recovery/constructor consumers through shared helper, supplementing conservative728 graph. Full assessment A-18773 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18773-t-1792-claim-based-card-correction-source-clear-at-efaba34f8.md). No C1–C6 newly verified: await directed native9 in authorized serial slot and configured mode-free verification at this exact source-clear head. Prior ac2ffe266 receipts historical only; fullremainingT3/T4/affectedafter-stageQA separate. Reviewer performed read-only source/Git/evidence inspection only.
+
+### impl-1792 · 2026-11-11T15:37:36.772Z
+
+Fresh final evidence at unchanged efaba34f89faa875019921b2a203e1fd8e9a74a4 / treec9e6bc46cbc32e223efb10d5cd83cffed36bb5df: configured mode-free run95ecfec4-2695-4a64-977e-347f8c9e3146 passed6074/6074, no fail/cancel/skip (A-18792). Streaming exact-case extraction A-18793 verifies25 generated removal identities, each1 base+5 explicit repeat passes (150 named pass events,25 load5/5 proofs), max named2.083s including all4 claim/card controls. T0,T1/fullT2 fallback,Web and changedT3 host-restart/host-relaunch/login-signed-out-native six-case slice passed. Fresh/no cache Linuxx64 6.8.0-147-generic droplet,Node24.21,Neovim0.12.5,Chrome Headless Shell1248 / Google Chrome for Testing156.0.8078.4. Executor lifetime/cost are absent from this supplied result/log and not inferred. Lint/duration/Web repetition advisories remain report-only. Native9 exact SAME head A-18774/A-18776–84 passed26/26 macOSNode24.21 fakes-only, no skips/browser, fullTMPDIR9878→9878 no name changes; Reviewer independently inspected all nine original output artifacts. No prior-head carry. A-18775 static728+explicit dispositions is not coverage: remaining fullT3 merge batch, T4/affectedQA stage/epic remain separate. Prior red controls and historical receipts retained. AllC1–C6 done; Reviewer received same-head result/receipt reconciliation for final settlement; no further branch changes.
+
+### rev-37 · 2026-11-11T15:38:32.866Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1792-evidence-2
+commit: efaba34f89faa875019921b2a203e1fd8e9a74a4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final fresh-head evidence clear; no Standards/Spec findings; C1–C6 verified. Run95ecfec4/A-18792 executed6074/6074, zero fail/cancel/skip/todo. Independently matched reviewed branch head and recomputed canonical tree c9e6bc46cbc32e223efb10d5cd83cffed36bb5df. All25 generated login-remove identities have one base+five repeated passes (150 completion records,25 explicit5/5 receipts), including all4 claim/card controls; original accounting/admission/refusal/cleanup assertions retained. Fresh native9 A-18774/A-18776–18784 at exact samehead passes26/26, all producers code0/signalnull; macOS Node24.21, no browser, TMPDIR9878→9878 no changes. No prior-head carry. Configured Linux x64 6.8.0-147-generic droplet Node24.21/Neovim0.12.5, isolated Headless Shell1248 Google Chrome for Testing156.0.8078.4; cached:null. T0/allT1/fallback allT2/Web and selected changedT3 3files/6baseidentities complete; noT4 here. Reconciled conservative728 consumer inventory:83/83T1,345/345T2,52/52Web files have actual passing named records;3/234T3 configured,0/14T4. Remaining fullT3 merge batch,T4 occasions/affectedafter-stageQA separate. Duration/lint/ratchet/Web-repetition/skip-reason advisories report-only; prior reds remain historical. Detailed criterion map/named preservation/limits in A-18794, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18794-t-1792-final-fresh-head-evidence-and-c1-c6-verification.md. Reviewer ran no tests/typecheck/native/browser and made no edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-11T16:17:16.948Z
+
+Merged ee483c2a0210d2e0f333f51cfcdc768093ecdb30 onto dev.

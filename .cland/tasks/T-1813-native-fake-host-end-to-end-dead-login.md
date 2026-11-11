@@ -5,6 +5,7 @@ title: Native fake-host end-to-end dead-login cases for Codex and Claude Code
 state: open
 status: backlog
 size: S
+criterion_seq: 5
 labels:
   - needs-triage
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T13:10:03.001Z
-updated: 2026-11-11T13:10:03.001Z
+updated: 2026-11-11T15:22:39.787Z
 ---
 
 ## Summary
@@ -29,3 +30,5 @@ Make the fake Codex and fake Claude native launches on a fake host complete the 
 - [ ] C1. A native Codex session on a fake host that emits a dead-login signal marks its login signed-out with that host, the next Codex launch in the pool skips the host, and the first session keeps running (test).
 - [ ] C2. The same holds for a native Claude Code session on a fake host (test).
 - [ ] C3. Both cases pass five lone repetitions on macOS, and their duration allowances come from green samples (test).
+- [ ] C4. The shared login-signed-out-native fixture passes CLAND_FAKE_HOST_ROOT through fixtureEnvironment's overlays, so loginFilePath resolves the mounted volume path, and a case reads the renewed login file through it (test).
+- [ ] C5. A native Codex and a native Claude Code session on a fake host keep running through an in-place sign-in of their login, and their next turn uses the renewed login (test).
