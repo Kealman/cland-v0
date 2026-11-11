@@ -467,14 +467,20 @@ weights that exceed safe milli-slot capacity are errors.
 
 Ready hosts with room come first, ordered by greatest used plus promised
 milli-slots for dense placement or least for spread;
-equal weights preserve snapshot order. Only a per-host/per-harness verdict of
-`serves` is eligible. The default hook serves every harness; `can-bind`,
-`signed-out` and `no-login` skip the host and never produce a login wait.
+equal weights preserve snapshot order. Healthy `serves` bindings precede
+`can-bind` hosts within each readiness class; `signed-out` and `no-login` hosts
+are skipped. PoolRuntime supplies login metadata verdicts. Callers without
+metadata retain the default hook, which serves every harness.
 
 With no ready host, eligible booting room yields `waiting for host <id> to boot`
 before another create. Ready plus booting hosts count toward `max_hosts`, even
-when full or ineligible. Below that maximum the result is `create`; otherwise it
-is `waiting for a host`. Unavailable hosts offer no room and do not count in
+when full or ineligible. Demand creation also requires a free login for the
+launch harness in the pool's provider and region. Without one the result is
+`waiting for a login <harness>`. Ready exclusive disks supply one free binding;
+creating, pending and signed-out disks supply none. Ready or in-use non-exclusive
+disks and OpenCode keys do not exhaust capacity. Keys have no region restriction.
+Below the maximum with login capacity the result is `create`; otherwise it is
+`waiting for a host`. Creation revalidates login capacity at admission. Unavailable hosts offer no room and do not count in
 that snapshot. `min_hosts` is carried in the pool policy for callers; maintaining
 the floor is a separate lifecycle operation, not an extra creation decision for
 one launch. This core alone does not enable automatic or production host creation.

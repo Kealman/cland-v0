@@ -131,6 +131,8 @@ test('usage and reserve share retained-generation and placement-promise capacity
  const {readHostPools}=await import('../src/host/pools.ts');
  const f=fixture(t);f.provisions.ready({...record,state:'ready'});
  const runtime=new PoolRuntime(()=>readHostPools({agents:{provider:'fake',slots:1,min_hosts:0,max_hosts:1}}),f.hosts,()=>true,()=>[{key:'retained',host:record.id,harness:'codex'}]);
+ f.hosts.logins.insert({name:'capacity',harness:'codex',account:'work',kind:'disk',provider:record.provider,region:record.region,volumeId:'volume-capacity',snapshotIds:[],lastSignIn:null});
+ f.hosts.logins.transition('capacity','ready');
  const promise=runtime.reserve('agents','codex');
  try {
   assert.deepEqual(runtime.usage(record.id),{usedMilli:500,promisedMilli:500});

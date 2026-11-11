@@ -11523,6 +11523,13 @@
     "hub/test/login-write-back.test.ts::rotated disk reaches the next host and release closes only disk writers": 3.077949
   },
   "allow": {
+    "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-10",
+      "expires": "2026-11-15",
+      "reason": "T-1784: retained A-18510 Linux x64 Node24.21.0 droplet c-8, workers 2, reviewed head 474e602cd. Base sample 5.154832269s; five load samples 4.888106105s, 5.099579867s, 5.150572858s, 6.010405357s and 5.007150272s, all assertion passes. Worst 6.010405357s x 1.5 = 9.0156080355s, rounded up to 10s. Includes 10000-row same-region corpus setup, candidate-visit positive control, every-row pending-fence agreement and joined cleanup. No native process, provider network or browser. Budget mode unchanged; single bounded allowance authorized in Coordinator bd8c4fb1."
+    },
     "hub/test/login-add.test.ts::terminal disk logins create a host, reuse it and retain only public metadata": {
       "seconds": 16,
       "owner": "C-216",

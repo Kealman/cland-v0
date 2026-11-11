@@ -1,3 +1,4 @@
+import { capacityLogin } from './settled-login-fixture.ts';
 // T2: scheduler spend admission, sealed ledger and hub notices; fake provider/clock only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -64,6 +65,7 @@ test('full hosts cap keeps demand waiting without provider acquisition or ledger
  store.hosts.insert({id:'live',address:'fake',user:'agent',clientKeyPath:'',knownHosts:''},'fixture');
  store.hosts.provisions.ready({id:'live',pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'ready',machine:{id:'live',address:'fake',architecture:'arm64',created}});
  const processes=[{key:'session',host:'live',harness:'codex'}];
+ store.hosts.logins.insert({name:'capacity',harness:'codex',account:'work',kind:'disk',provider:'fake',region:settings.pools.agents!.region,volumeId:'volume-capacity',snapshotIds:[],lastSignIn:null});store.hosts.logins.transition('capacity','ready');
  runtime=new PoolRuntime(()=>settings,store.hosts,()=>true,()=>processes);
  let providerCalls=0,refused=false;
  runtime.start(async()=>{
@@ -101,6 +103,7 @@ test('cap-refused scheduler launch remains in the durable waiting list through r
  // Startup recovery can hold the spend lock; its backoff uses this same fake clock.
  await eventually('startup executor sweep completed',()=>startupSweepCompleted?true:undefined);
  await assert.rejects(readFile(spendPath(env)+'.lock','utf8'),{code:'ENOENT'});
+ const metadata=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>metadata.close());capacityLogin(metadata.hosts.logins);
  const ui=await sessionUi(t,hub.discovery,'cli');
  const reply=await ui.request({type:'session.launch',name:'waiting',role:'implementer',harness:'codex'});
  assert.equal(reply.ok,true);

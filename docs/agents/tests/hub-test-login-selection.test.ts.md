@@ -29,3 +29,8 @@ inherited CLAND variables removed. Store handles close before root disposal.
 
 The shared process-cleanup directory/resource owner makes T2 the lowest admitted
 tier; the test itself launches no native process or socket.
+
+
+The schema-only stage-one downgrade drops the six binding/reader capacity
+triggers and `login_capacity_launch` before removing private pending_bindings
+and binding.phase. Public records and the selection assertions remain unchanged.

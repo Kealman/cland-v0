@@ -3,7 +3,7 @@ import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
 import { HostMemoryFloorRefusal } from '../host/ssh-host.ts';
 import type { WaitingLaunch } from '../protocol.ts';
-import { PoolCapacityUnavailable, PoolRuntime } from '../host/pool-runtime.ts';
+import { PoolCapacityUnavailable, PoolCreationNotAdmitted, PoolRuntime } from '../host/pool-runtime.ts';
 import type { HostPools } from '../host/pools.ts';
 import { hostRelaunchIntentKey, hostRelaunchWarningKey, type HostRelaunchIntent, type HostRelaunchCompletion } from '../host/relaunch-state.ts';
 import { tunnelStatuses, dropHostForwardsLocal, localForwardOwner } from '../transport/transport.ts';
@@ -286,7 +286,12 @@ export class Sessions {
           if (current?.id === record.id) this.#table.saveWaitingLaunch({ ...current, row: {...current.row,reason:waitingReason(cause)}, memory: cause instanceof HostMemoryFloorRefusal ? this.#waitingMemory(cause) : undefined });
           this.#waiting.reason(request.name, waitingReason(cause));
           this.#waitingLoginAdmissions.set(record.id,admittedDemand);
-          if (cause instanceof PoolCapacityUnavailable) this.#poolRuntime?.demand(cause,admittedDemand);
+          if (cause instanceof PoolCapacityUnavailable) this.#poolRuntime?.demand(cause,()=>{
+            admittedDemand();
+            const current=this.#diskAccountRequest(request,role);
+            if(current.harness!==cause.harness||current.resolvedAccount.account!==cause.account)
+              throw new PoolCreationNotAdmitted('waiting login selection changed');
+          });
         }
         else { this.#waiting.drop(request.name, 'refused'); this.#log({ event: 'waiting-launch-refused', session: request.name, error: String(cause) }); }
         throw cause;
@@ -1654,7 +1659,7 @@ export class Sessions {
         if (request.host === 'local' || (request.host === undefined && pool === 'local')) return { host: 'local', validate() {}, release() {} };
         const candidate = this.#reuseCandidate(effective, role, host => request.host !== undefined
           ? host === request.host : this.#poolRuntime!.member(host, pool));
-        const held = this.#poolRuntime!.reserve(pool, effective.harness!, candidate?.host ?? request.host, candidate ? hostGenerationKey(candidate) : undefined);
+        const held = this.#poolRuntime!.reserve(pool, effective.harness!, candidate?.host ?? request.host, candidate ? hostGenerationKey(candidate) : undefined, effective.resolvedAccount.account);
         if (candidate) { marker.reuse = candidate.sessionId; this.#reusing.add(candidate.sessionId); }
         return held;
       });

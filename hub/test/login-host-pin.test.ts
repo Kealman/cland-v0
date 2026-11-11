@@ -90,3 +90,11 @@ for(const boundary of ['create','attach','mount','publish','replacement'] as con
   create:['create'],replacement:['create'],attach:['create','attach','detach'],mount:['create','attach','mount','umount','detach'],publish:['create','attach','mount','publish','umount','detach'],
  }[boundary]);
 });
+
+
+test('login add creates a host while its only login is still creating',async t=>{
+ const f=await fixture(t);const original=f.records.provisions.get('host-a')!;
+ f.records.provisions.save({...original,state:'destroyed'});let creates=0;
+ const prepared=await preparePoolLogin({...f,pools:f.settings.pools,hosts:[{name:'host-a'} as Host],signal:new AbortController().signal,createHost:async()=>{creates++;assert.equal(f.records.logins.get('work')?.state,'creating');f.records.provisions.ready(original);},runner:async input=>({name:input.name!,path:'/cland/auth/codex-work',complete:async()=>input.logins.transition(input.name!,'ready')})},{harness:'codex',name:'work'});
+ assert.equal(creates,1);await prepared.pending.complete(0);assert.equal(f.records.logins.get('work')?.state,'ready');
+});

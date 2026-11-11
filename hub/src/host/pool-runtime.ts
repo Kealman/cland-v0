@@ -1,3 +1,4 @@
+import { loginVerdict } from './login-verdicts.ts';
 import type { ProvisionLoginDemand } from './login-binding.ts';
 import { HostProviderRetry } from './boot-gate.ts';
 import { hostLeaseRenewable, type ProvisionRecord } from './provision-records.ts';
@@ -24,7 +25,9 @@ export class PoolCapacityUnavailable extends Error {
   readonly pool: string;
   readonly reason: string;
   readonly create: boolean;
-  constructor(pool: string, reason = 'waiting for a host', create = false) { super(`no host in pool ${pool}`); this.pool = pool; this.reason = reason; this.create = create; }
+  readonly harness: string | undefined;
+  readonly account: string | null;
+  constructor(pool: string, reason = 'waiting for a host', create = false, harness?: string, account: string|null=null) { super(`no host in pool ${pool}`); this.pool = pool; this.reason = reason; this.create = create; this.harness = harness; this.account = account; }
 }
 
 /** Launch promises bridge selection to process publication. Lifecycle owners supply live inventory. */
@@ -51,6 +54,7 @@ export class PoolRuntime {
   #providerRetries = new Map<string, {until:number;timer:ClockTimer}>();
   #closed = false;
   #poolSettings = new Map<string,string>();
+  #unsubscribeLogins: (() => void) | undefined;
   #unsubscribeReady: (() => void) | undefined;
   #idleLifecycle: PoolIdleLifecycle | undefined;
   #idle = new Map<string, { since: number; created: string }>();
@@ -66,6 +70,8 @@ export class PoolRuntime {
       const pool=this.records.provisions.get(id)?.pool;
       if(pool){this.#idleLifecycle?.clock.clearTimeout(this.#retries.get(pool)?.timer);this.#retries.delete(pool);this.#failed.delete(pool);}
     });
+    this.#unsubscribeLogins?.();
+    this.#unsubscribeLogins=this.records.logins.onChange(()=>{if(!this.#closed)this.onCapacityChanged();});
     this.reconcile(); }
 
   #reconcileIdle(): void {
@@ -160,7 +166,11 @@ export class PoolRuntime {
     }
   }
   demand(cause: PoolCapacityUnavailable, authorize: () => void): void {
-    if (cause.create) this.#scale(cause.pool, authorize);
+    if (cause.create) this.#scale(cause.pool, () => {
+      authorize();
+      const pool=this.settings().pools[cause.pool];
+      if(cause.harness && (!pool || !this.records.logins.selectCapacityLogin({harness:cause.harness,provider:pool.provider,region:pool.region,account:cause.account})))throw new PoolCreationNotAdmitted('login capacity changed');
+    });
   }
   #scale(name: string, authorize?: () => void): void {
     if (this.#closed || !this.#create || this.#flights.has(name) || this.#failed.has(name)) return;
@@ -207,7 +217,7 @@ export class PoolRuntime {
     });
     this.#flights.set(name, work);
   }
-  close(): void | Promise<void> { this.#closed = true; this.#unsubscribeReady?.(); for(const retry of this.#providerRetries.values()) this.#idleLifecycle?.clock.clearTimeout(retry.timer); for (const retry of this.#retries.values()) this.#idleLifecycle?.clock.clearTimeout(retry.timer); this.#idleLifecycle?.clock.clearTimeout(this.#idleTimer); if (this.#flights.size || this.#stopping.size || this.#declarationReads.size) return Promise.all([...this.#flights.values(), ...this.#stopping.values(), ...this.#declarationReads.values()]).then(() => {}); }
+  close(): void | Promise<void> { this.#closed = true; this.#unsubscribeReady?.(); this.#unsubscribeLogins?.(); for(const retry of this.#providerRetries.values()) this.#idleLifecycle?.clock.clearTimeout(retry.timer); for (const retry of this.#retries.values()) this.#idleLifecycle?.clock.clearTimeout(retry.timer); this.#idleLifecycle?.clock.clearTimeout(this.#idleTimer); if (this.#flights.size || this.#stopping.size || this.#declarationReads.size) return Promise.all([...this.#flights.values(), ...this.#stopping.values(), ...this.#declarationReads.values()]).then(() => {}); }
 
   /** One lease policy for manual, minimum and demand-created hosts. */
   inUse(host: string): boolean {
@@ -242,7 +252,7 @@ export class PoolRuntime {
     return {usedMilli:this.#used(this.settings().weights).get(host)??0,promisedMilli:this.#promised.get(host)??0};
   }
 
-  reserve(poolName: string, harness: string, pinned?: string, credit?: string): { host: string; validate(): void; release(): void } {
+  reserve(poolName: string, harness: string, pinned?: string, credit?: string, account: string|null=null): { host: string; validate(): void; release(): void } {
     const settings = this.settings();
     const record = pinned ? this.records.provisions.get(pinned) : null;
     const name = record?.pool ?? poolName;
@@ -257,9 +267,9 @@ export class PoolRuntime {
       if (this.#stopping.has(row.id) || row.pool !== name || (pinned && row.id !== pinned)) continue;
       hosts.push({ id: row.id, slots: pool.slots, state: row.state === 'ready' ? (this.records.get(row.id)?.state === 'registered' && this.available(row.id) ? 'ready' : 'unavailable') : (['creating','booting','connecting','cloning'].includes(row.state) ? 'booting' : 'unavailable'), usedMilli: used.get(row.id) ?? 0, promisedMilli: this.#promised.get(row.id) ?? 0 });
     }
-    const decision = decidePlacement({ hosts, harness, ...(settings.weights ? { weights: settings.weights } : {}), pool: { min_hosts: pool.minHosts, max_hosts: pool.maxHosts, spread: pool.spread } });
+    const decision = decidePlacement({ hosts, harness, verdict: host => {const row=this.records.provisions.get(host.id)!;return loginVerdict(this.records.logins, {host:host.id,harness,provider:row.provider,region:row.region,account});}, canCreate: () => this.records.logins.selectCapacityLogin({harness,provider:pool.provider,region:pool.region,account}) !== null, ...(settings.weights ? { weights: settings.weights } : {}), pool: { min_hosts: pool.minHosts, max_hosts: pool.maxHosts, spread: pool.spread } });
     if (decision.kind !== 'place') {
-      throw pinned ? new Error(`host ${pinned} has no room`) : new PoolCapacityUnavailable(name, decision.kind === 'wait' ? decision.reason : 'waiting for a host', decision.kind === 'create');
+      throw pinned ? new Error(`host ${pinned} has no room`) : new PoolCapacityUnavailable(name, decision.kind === 'wait' ? decision.reason : 'waiting for a host', decision.kind === 'create', harness, account);
     }
     const host = decision.host;
     const identity = () => {

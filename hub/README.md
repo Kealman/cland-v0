@@ -149,3 +149,7 @@ detachment before reuse. See [login release](../docs/hub/logins.md#releasing-hos
 
 Deleted-host session settlement runs before login-volume reconciliation; unreachable
 SSH hosts use the lost-host snapshot fence without a new reconnect wait.
+
+Pool demand placement uses regional login verdicts and waits for a login when
+exclusive capacity is exhausted; minimum and login-add creation remain exempt.
+See [login placement capacity](../docs/hub/logins.md#placement-capacity).

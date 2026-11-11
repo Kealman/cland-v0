@@ -11,7 +11,7 @@ filesystem fixture or time. Run `node --test hub/test/host-scheduler.test.ts`.
 - `weight overrides change placement and leave unspecified defaults intact`:
   C3, partial overrides, custom harness and invalid/missing weights.
 - `non-serving hosts are skipped for each verdict and default serves every harness`:
-  C4, each of can-bind/signed-out/no-login, per-host/per-harness calls and defaults.
+  C4, signed-out/no-login, per-host/per-harness calls and defaults.
 - `no room creates below the limit but promises booting room before another create`:
   C5, creation below maximum, boot wait before creation and full booting hosts.
 - `reservations, unavailable hosts and verdicts preserve the boot and maximum fences`:
@@ -33,3 +33,6 @@ updates and lifecycle-state mapping; this file does not prove runtime placement,
 provisioning or login availability. After-stage QA can find each assertion by its
 exact generated test name above. No duration allowance is required for these
 synchronous cases.
+
+`healthy binding precedes can-bind and bindable room precedes creation` proves
+T-1784 C1 at the pure scheduler seam, including bindable booting room.

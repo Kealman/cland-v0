@@ -32,8 +32,9 @@ mount boundaries. Generated cancellation cases hold inventory, an attached disk
 or an in-flight mount; role removal holds inventory and a changed role account
 holds the old mount. All require the old disk free/detached or zero attachment,
 and the account-change case observes a native spawn with the current account.
-Missing-login, selected-account-limit and unknown-attachment cases preserve a
-healthy ready host, clear the refused wait, and retain an unknown pending fence.
+Missing login now holds demand before host creation. Selected-account-limit
+preserves the healthy ready host and clears its refused wait. Unknown attachment
+preserves the healthy ready host, pending fence and durable login wait.
 Failure and abort cases hold inventory and require zero post-failure attaches,
 then wait for the durable destroyed checkpoint after the injected failure.
 

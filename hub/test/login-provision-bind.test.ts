@@ -176,16 +176,13 @@ test('host ready and native admission wait for the mount receipt',async t=>{
 });
 
 
-test('missing login refuses the waiting launch while the healthy host stays ready',async t=>{
+test('missing login holds demand without creating a host',async t=>{
  const f=await fixture(t);
  f.store.hosts.logins.bind('work-codex',{host:'another-host',role:'writer',volumeId:f.volume.id});
  const launch=await f.ui.request({type:'session.launch',name:'no-login',harness:'codex',role:'implementer'});assert.equal(launch.ok,true,launch.error);
- f.boot.resolve();f.gate.resolve();
- await eventually('creation completion persisted',()=>f.completed()?true:undefined,testWaitMs());
- assert.equal(f.store.hosts.provisions.get(f.machine.id)?.state,'ready');
- await eventually('ordinary launch refusal clears wait',async()=>{const r=await f.ui.request({type:'session.list'});return (r.value as {waiting:unknown[]}).waiting.length===0?true:undefined;},testWaitMs());
- assert.equal(f.hub.fakes.codex!.spawns.length,0);
- assert.equal((await f.provider.status(f.machine)).state,'ready');
+ assert.equal((launch.value as {waiting:{reason:string}}).waiting.reason,'waiting for a login codex');
+ assert.equal(f.completed(),false);assert.equal(f.store.hosts.provisions.get(f.machine.id),null);
+ assert.equal(f.hub.fakes.codex!.spawns.length,0);assert.deepEqual(f.mounts,[]);
 });
 
 
@@ -312,7 +309,7 @@ test('unknown attachment keeps the pending fence and healthy host without spawni
  assert.equal((await f.ui.request({type:'session.launch',name:'unknown-cold',harness:'codex',role:'implementer'})).ok,true);
  f.boot.resolve();f.gate.resolve();await eventually('host creation completed',()=>f.completed()?true:undefined,testWaitMs());
  assert.equal(f.store.hosts.provisions.get(f.machine.id)?.state,'ready');assert.equal(f.store.hosts.logins.bindings('work-codex')[0]?.phase,'pending');assert.deepEqual(f.mounts,[]);
- await eventually('pending login refuses wait',async()=>{const r=await f.ui.request({type:'session.list'});return (r.value as {waiting:unknown[]}).waiting.length===0?true:undefined;},testWaitMs());
+ await eventually('pending login wait persisted',async()=>{const r=await f.ui.request({type:'session.list'});return (r.value as {waiting:Array<{reason:string}>}).waiting.some(row=>row.reason==='waiting for a login codex')?true:undefined;},testWaitMs());
  assert.equal(attaches,1);assert.equal(f.hub.fakes.codex!.spawns.length,0);
 });
 

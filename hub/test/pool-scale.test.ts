@@ -13,6 +13,7 @@ import { readHostPools } from '../src/host/pools.ts';
 import { FakeClock } from './fake-clock.ts';
 import { readHostLeaseFile } from '../src/host/host-leases.ts';
 import { HostSecretStore } from '../src/host/records.ts';
+import { Store } from '../src/hub/store.ts';
 import { settledLogin } from './settled-login-fixture.ts';
 
 async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof Promise.withResolvers<void>>, lease=false) {
@@ -22,7 +23,7 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
  const expired:string[]=[];
  await mkdir(join(root,'.cland'),{recursive:true});
  await writeFile(join(root,'.cland/config.toml'),`# managed by cland
-[hosts]\nweights={codex=${lease?1:0.5}}\n[hosts.agents]\nprovider="fake"\nslots=1\nmin_hosts=${min}\nmax_hosts=${max}\n`);
+[hosts]\nweights={codex=${lease?1:0.5}}\n[hosts.agents]\nprovider="fake"\nregion="fake"\nslots=1\nmin_hosts=${min}\nmax_hosts=${max}\n`);
  await writeFile(join(root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\n');
  const local=localHost(fixtureEnvironment(root,process.env));
  const hosts=['a','b'].map(name=>({...testHost(name,()=>{}),realpath:local.realpath,statDirectory:async()=>({refusal:null,identity:null})}));
@@ -35,7 +36,7 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
   const id=(lease?['b','a']:['a','b'])[creates.length]!;creates.push(id);
   const row={id,pool:'agents',provider:'fake',size:'fake',region:'fake',created:options.clock!.now().toISOString(),state:'booting' as const,machine:{id,address:id,architecture:'x86_64' as const,created:options.clock!.now().toISOString()}};
   await prepare?.promise;
-  options.admit?.('agents',readHostPools({agents:{provider:'fake',slots:1,min_hosts:min,max_hosts:max}}).pools.agents!);
+  options.admit?.('agents',readHostPools({agents:{provider:'fake',region:'fake',slots:1,min_hosts:min,max_hosts:max}}).pools.agents!);
   options.records.provisions.save(row);
   if(lease){
    const o={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:60000};
@@ -49,6 +50,8 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
   const ready={...row,state:'ready' as const};options.records.provisions.ready(ready);return ready;
  })().finally(()=>{completed++;})});
  await writeFile(join(root,'.cland/config.toml'),'# managed by cland\n'+await readFile(join(root,'.cland/config.toml'),'utf8'));
+ const metadata=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>metadata.close());
+ for(const name of ['capacity-a','capacity-b']){if(metadata.hosts.logins.get(name))continue;metadata.hosts.logins.insert({name,harness:'codex',account:name,kind:'disk',provider:'fake',region:'fake',volumeId:'volume-'+name,snapshotIds:[],lastSignIn:null});metadata.hosts.logins.transition(name,'ready');}
  const ui=await sessionUi(t,hub.discovery,'cli');
  const launch=(name:string,host?:string)=>ui.request({type:'session.launch',name,role:'implementer',harness:'codex',...(host?{host}:{})});
  const waiting=async()=>((await ui.request({type:'session.list'})).value as {waiting:Array<{reason:string}>}).waiting;
@@ -128,7 +131,7 @@ test('invalid item demand cannot start a billable create',async t=>{
 for(const pending of [true,false])test(`failed ${pending?'pending acquisition':'incomplete release'} holds max across config and restart`,async t=>{
  const {Store}=await import('../src/hub/store.ts');
  const root=await tempProject(t);await mkdir(join(root,'.cland'),{recursive:true});
- await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=1\nmin_hosts=0\nmax_hosts=1\n');
+ await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nregion="fake"\nslots=1\nmin_hosts=0\nmax_hosts=1\n');
  await writeFile(join(root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\n');
  const store=new Store(join(root,'.cland/hub.db'));
  store.hosts.provisions.save({id:'unresolved',pool:'agents',provider:'fake',size:'fake',region:'fake',created:new Date().toISOString(),state:'failed',...(pending?{acquisition:'pending' as const}:{machine:{id:'unresolved',address:'unresolved',architecture:'arm64' as const,created:new Date().toISOString()},release:'incomplete' as const})});
@@ -136,7 +139,9 @@ for(const pending of [true,false])test(`failed ${pending?'pending acquisition':'
  for(let cycle=0;cycle<2;cycle++){
   const hub=await projectHub(t,root,{}, {createHost:async()=>{creates++;throw new Error('unexpected provider acquisition');}});
   await writeFile(join(root,'.cland/config.toml'),'# managed by cland\n'+await readFile(join(root,'.cland/config.toml'),'utf8'));
-  const ui=await sessionUi(t,hub.discovery,'cli');
+  const metadata=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>metadata.close());
+ for(const name of ['capacity-a','capacity-b']){if(metadata.hosts.logins.get(name))continue;metadata.hosts.logins.insert({name,harness:'codex',account:name,kind:'disk',provider:'fake',region:'fake',volumeId:'volume-'+name,snapshotIds:[],lastSignIn:null});metadata.hosts.logins.transition(name,'ready');}
+ const ui=await sessionUi(t,hub.discovery,'cli');
   if(cycle===0)assert.equal((await ui.request({type:'session.launch',name:'retained-wait',role:'implementer',harness:'codex'})).ok,true);
   const changed=await ui.request({type:'config.set',key:'hosts.agents.max_hosts',value:1});assert.equal(changed.ok,true,changed.error);
   const list=(await ui.request({type:'session.list'})).value as {waiting:unknown[]};
@@ -287,4 +292,22 @@ test('T-1763 minimum keeps older idle startup host when manual host appears',asy
  }
  assert.ok(f.deadline('b')>before);assert.equal(f.deadline('a'),idle);
  assert.deepEqual(f.expired,['a']);
+});
+
+for(const change of ['account','harness'] as const)test(`current role ${change} change prevents obsolete create admission after held preparation`,async t=>{
+ const prepare=Promise.withResolvers<void>();const f=await fixture(t,0,2,prepare);
+ await writeFile(join(f.root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\nharness="codex"\naccount="capacity-a"\n');
+ assert.equal((await f.ui.request({type:'hub.reload'})).ok,true);
+ assert.equal((await f.ui.request({type:'session.launch',name:'current-selection',role:'implementer'})).ok,true);
+ await eventually('creator holds preparation for admitted selection',()=>f.creates.length===1?true:undefined);
+ const harness=change==='harness'?'opencode':'codex';
+ await writeFile(join(f.root,'.cland/roles.toml'),`[implementer.launch]\npool="agents"\nharness="${harness}"\naccount="unavailable"\n`);
+ assert.equal((await f.ui.request({type:'hub.reload'})).ok,true);
+ await eventually('current selection login wait durably updated',async()=>(await f.waiting()).some(row=>row.reason===`waiting for a login ${harness}`)?true:undefined);
+ prepare.resolve();
+ await eventually('held creator refused or incorrectly published',()=>f.completed()===1||f.gates.length>0?true:undefined);
+ for(const release of f.gates)release();
+ await eventually('held creator joined',()=>f.completed()===1?true:undefined);
+ assert.deepEqual(f.inventory(),[]);assert.equal(f.gates.length,0);
+ assert.equal(f.hub.fakes.codex!.spawns.length,0);assert.equal(f.hub.fakes.opencode!.spawns.length,0);
 });

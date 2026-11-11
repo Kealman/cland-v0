@@ -20,6 +20,11 @@ const transitions: Record<LoginState, readonly LoginState[]> = {
  creating: ['ready', 'signed-out'], ready: ['in-use'], 'in-use': ['ready', 'signed-out'], 'signed-out': ['creating'],
 };
 
+// Shared SQL predicates keep native triggers and admission fences identical.
+const pendingBindingSql=(prefix='')=>`${prefix}phase='pending'`;
+const pendingReaderSql=(prefix='')=>`${prefix}phase in ('creating','deleted')`;
+const capacityEligibleSql="pending_bindings=0 and (json_extract(record,'$.state')='ready' or (json_extract(record,'$.state')='in-use' and (json_extract(record,'$.kind')='key' or json_extract(record,'$.exclusive')=0))) and (json_extract(record,'$.kind')='key' or json_extract(record,'$.volumeId') is not null)";
+
 const bindingRow = (row:Record<string,unknown>):LoginBinding => ({login:row.login as string,host:row.host as string,role:row.role as LoginBinding['role'],volumeId:row.volumeId as string|null,...(row.phase ? {phase:row.phase as NonNullable<LoginBinding['phase']>} : {})});
 
 /** Project metadata only: harness files and key material never enter this store. */
@@ -50,6 +55,19 @@ export class LoginRecords {
     db.exec("alter table login_bindings add column harness text; update login_bindings set harness=(select json_extract(record,'$.harness') from logins where logins.name=login_bindings.login)");
    }
    db.exec("create index if not exists login_bindings_host on login_bindings(host,login); create index if not exists login_bindings_launch on login_bindings(host,harness,login); create index if not exists login_ready_launch on logins(json_extract(record,'$.state'),json_extract(record,'$.kind'),json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)");
+   if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='pending_bindings')){
+    db.exec('alter table logins add column pending_bindings integer not null default 0 check(pending_bindings>=0)');
+    db.exec(`update logins set pending_bindings=(select count(*) from login_bindings b where b.login=logins.name and ${pendingBindingSql('b.')})+(select count(*) from login_readers r where r.login=logins.name and ${pendingReaderSql('r.')})`);
+   }
+   for(const [table,predicate] of [['login_bindings',pendingBindingSql],['login_readers',pendingReaderSql]] as const){
+    db.exec(`create trigger if not exists ${table}_capacity_insert after insert on ${table} when ${predicate('new.')} begin update logins set pending_bindings=pending_bindings+1 where name=new.login; end;
+     create trigger if not exists ${table}_capacity_delete after delete on ${table} when ${predicate('old.')} begin update logins set pending_bindings=pending_bindings-1 where name=old.login; end;
+     create trigger if not exists ${table}_capacity_update after update of phase,login on ${table} begin
+      update logins set pending_bindings=pending_bindings-1 where name=old.login and ${predicate('old.')};
+      update logins set pending_bindings=pending_bindings+1 where name=new.login and ${predicate('new.')}; end;`);
+   }
+   db.exec('drop index if exists login_capacity_shared');
+   db.exec(`create index if not exists login_capacity_launch on logins(json_extract(record,'$.harness'),json_extract(record,'$.kind'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name) where ${capacityEligibleSql}`);
    db.exec('release login_launch_selection_migration');
   }catch(error){db.exec('rollback to login_launch_selection_migration; release login_launch_selection_migration');throw error;}
 
@@ -83,7 +101,7 @@ export class LoginRecords {
  }
  /** Existence only: bounded output and indexed work even for many settled readers. */
  hasPendingBinding(name:string):boolean {
-  return this.db.prepare("select 1 from login_bindings where login=? and phase='pending' limit 1").get(name)!==undefined || this.db.prepare("select 1 from login_readers where login=? and phase in ('creating','deleted') limit 1").get(name)!==undefined;
+  return this.db.prepare(`select 1 from login_bindings where login=? and ${pendingBindingSql()} limit 1`).get(name)!==undefined || this.db.prepare(`select 1 from login_readers where login=? and ${pendingReaderSql()} limit 1`).get(name)!==undefined;
  }
  readerOperation(login:string,host:string):ReaderOperation|null {
   const row=this.db.prepare('select record from login_readers where login=? and host=?').get(login,host);return row?JSON.parse(String(row.record)):null;
@@ -127,14 +145,27 @@ export class LoginRecords {
    this.db.prepare('delete from login_readers where login=? and host=?').run(operation.login,operation.host);this.changed(operation.login);
   });
  }
+ /** Bounded host/harness ownership read shared by binding and placement. */
+ heldForLaunch(input:{host:string;harness:string}):Array<{login:Login;binding:LoginBinding}> {
+  return this.db.prepare('select l.record,b.login,b.host,b.role,b.volume_id as volumeId,b.phase from login_bindings b indexed by login_bindings_launch join logins l on l.name=b.login where b.host=? and b.harness=? order by b.login limit 2').all(input.host,input.harness).map(row=>({login:JSON.parse(String(row.record)) as Login,binding:bindingRow(row)}));
+ }
  /** Indexed launch reads decode at most two held records or one ready candidate. */
  selectForLaunch(input:{host:string;harness:string;provider:string;region:string;account:string|null}):{held:Array<{login:Login;binding:LoginBinding}>;ready:Login|null} {
-  const held=this.db.prepare('select l.record,b.login,b.host,b.role,b.volume_id as volumeId,b.phase from login_bindings b indexed by login_bindings_launch join logins l on l.name=b.login where b.host=? and b.harness=? order by b.login limit 2').all(input.host,input.harness).map(row=>({login:JSON.parse(String(row.record)) as Login,binding:bindingRow(row)}));
+  const held=this.heldForLaunch(input);
   if(held.length)return {held,ready:null};
   const sql="select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='ready' and not exists (select 1 from login_readers where login=logins.name and phase in ('creating','deleted')) and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+(input.account===null?'':" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
   const parameters=[input.harness,input.provider,input.region,...(input.account===null?[]:[input.account])];
   const row=this.db.prepare(sql).get(...parameters) ?? this.db.prepare(sql.replace('indexed by login_ready_launch','indexed by login_reader_launch').replace("json_extract(record,'$.state')='ready'","json_extract(record,'$.state')='in-use' and json_extract(record,'$.exclusive')=0 and not exists (select 1 from login_bindings where login=logins.name and phase='pending')")).get(...parameters);
   return {held,ready:row?JSON.parse(String(row.record)) as Login:null};
+ }
+ /** Bounded capacity lookup: one ready regional disk or an unlimited shared login. */
+ selectCapacityLogin(input:{harness:string;provider:string;region:string;account?:string|null}):Login|null {
+  const accountClause=input.account?" and json_extract(record,'$.account')=?":"";
+  const accountParameters=input.account?[input.account]:[];
+  const sql=`select record from logins indexed by login_capacity_launch where ${capacityEligibleSql} and json_extract(record,'$.harness')=? and json_extract(record,'$.kind')=?`;
+  const key=this.db.prepare(sql+" and json_extract(record,'$.provider') is null and json_extract(record,'$.region') is null"+accountClause+" limit 1").get(input.harness,'key',...accountParameters);
+  const row=key??this.db.prepare(sql+" and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+accountClause+" limit 1").get(input.harness,'disk',input.provider,input.region,...accountParameters);
+  return row?JSON.parse(String(row.record)) as Login:null;
  }
  insert(input: LoginInput): Login {
   if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(input.name)) throw Error('login name must match [a-z0-9][a-z0-9-]{0,31}');
@@ -144,7 +175,7 @@ export class LoginRecords {
   if (input.kind === 'key' && (input.harness !== 'opencode' || ['volumeId','snapshotIds','exclusive','provider','region'].some(key => Object.hasOwn(input,key)))) throw Error('key logins require opencode and have no disk properties');
   const base: Base = {name:input.name,harness:input.harness,account:input.account,lastSignIn:input.lastSignIn,state:'creating'};
   const row: Login = input.kind === 'key' ? {...base,kind:'key'} : {...base,kind:'disk',exclusive:input.exclusive ?? true,provider:input.provider,region:input.region,volumeId:input.volumeId,snapshotIds:[...input.snapshotIds]};
-  this.db.prepare('insert into logins values (?,?)').run(row.name,JSON.stringify(row));
+  this.db.prepare('insert into logins(name,record) values (?,?)').run(row.name,JSON.stringify(row));
   return row;
  }
  setExclusive(name:string,exclusive:boolean):Login {

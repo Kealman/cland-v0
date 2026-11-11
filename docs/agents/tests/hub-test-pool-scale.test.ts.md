@@ -58,3 +58,12 @@ Expiry callbacks in these component cases record the renewal owner's terminal
 boundary; provider deletion itself remains covered by `host-lease.test.ts` and
 native `host-watchdog.test.ts`. Run the latter under the stage preservation lock.
 All new successful cases are below 3s on macOS; no duration allowance is needed.
+
+T-1784 current-selection controls:
+`current role account change prevents obsolete create admission after held preparation`
+and `current role harness change prevents obsolete create admission after held preparation`
+hold image/config work before row admission, reload the role to an unavailable
+selection and observe the durable updated login wait. Joining the creator must
+leave no provision row, readiness gate or native spawn. The red controls admitted
+a ready row for the obsolete selection. Existing identity/cancellation validation
+remains active; the new check uses the canonical disk account resolver.

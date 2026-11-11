@@ -43,7 +43,7 @@ test('weight overrides change placement and leave unspecified defaults intact', 
 });
 
 test('non-serving hosts are skipped for each verdict and default serves every harness', () => {
-  for (const blocked of ['can-bind', 'signed-out', 'no-login'] as const) {
+  for (const blocked of ['signed-out', 'no-login'] as const) {
     const seen: string[] = [];
     assert.deepEqual(decide([host('blocked', 7000), host('eligible')], 'codex', {
       verdict: (h, harness) => { seen.push(harness); return h.id === 'blocked' ? blocked : 'serves'; },
@@ -124,4 +124,12 @@ test('used and promised milli-slots share capacity and affect dense packing', ()
     assert.throws(() => decide([{ ...boot, usedMilli: invalid }]), /safe integer milli-slots/);
     assert.throws(() => decide([{ ...boot, promisedMilli: invalid }]), /safe integer milli-slots/);
   }
+});
+
+
+test('healthy binding precedes can-bind and bindable room precedes creation', () => {
+ const verdict: NonNullable<PlacementInput['verdict']> = h => h.id === 'bound' ? 'serves' : 'can-bind';
+ assert.deepEqual(decide([host('free',7000),host('bound')], 'codex', {verdict}), {kind:'place',host:'bound'});
+ assert.deepEqual(decide([host('free')], 'codex', {verdict}), {kind:'place',host:'free'});
+ assert.deepEqual(decide([host('free',0,'booting')], 'codex', {verdict}), {kind:'wait',host:'free',reason:'waiting for host free to boot'});
 });

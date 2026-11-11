@@ -1,4 +1,4 @@
-import {settledLogin} from './settled-login-fixture.ts';
+import {settledLogin,capacityLogin} from './settled-login-fixture.ts';
 // T2: pool retry lifecycle with real inventory, fake provider and hub clock; no children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -101,6 +101,7 @@ for(const mode of ['neverBoot','pinned-key','refuseUntil'] as const)test(`waitin
   try{await hostBootGate(clock,clock.now().getTime()+300000,async()=>{probes++;if((await provider.status(acquired.machine)).state!=='ready')throw Error('booting');throw Error('pinned key never answers');},AbortSignal.any([aborted.signal,options.signal!]));}catch{}
   const failed={...row,state:'failed' as const,reason:'fixture boot failure'};options.records.provisions.save(failed);return failed;
  }});
+ const metadata=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>metadata.close());capacityLogin(metadata.hosts.logins);
  const ui=await sessionUi(t,hub.discovery,'cli');
  const launched=await ui.request({type:'session.launch',name:'waiting',role:'implementer',harness:'codex'});assert.equal(launched.ok,true);
  await eventually('provider admission',()=>calls===1&&(mode==='refuseUntil'||probes>0)?true:undefined);
@@ -176,6 +177,7 @@ test('cleanup refusal retains its record while a ready sibling places waiting la
   records=options.records;calls++;const row={id:'retained-'+calls,pool:'agents',provider:'unavailable-provider',size:'fake',region:'fake',created:clock.now().toISOString(),state:'failed' as const,acquisition:'acquired' as const,machine:{id:'captured-'+calls,address:'captured-'+calls,architecture:'x86_64' as const,created:clock.now().toISOString()}};
   records.provisions.save(row);return row;
  }});
+ const metadata=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>metadata.close());capacityLogin(metadata.hosts.logins);
  const ui=await sessionUi(t,hub.discovery,'cli');
  assert.equal((await ui.request({type:'session.launch',name:'sibling-launch',role:'implementer',harness:'codex'})).ok,true);
  await eventually('typed cleanup refusal persisted',()=>records?.provisions.get('retained-1')?.failure?.code==='cleanup-unavailable'?true:undefined);

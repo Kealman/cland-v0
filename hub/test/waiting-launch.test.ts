@@ -72,7 +72,7 @@ test('full pool returns a waiting reply without a process and lists the reserved
   const result = await f.launch('waiting-worker');
   assert.equal(result.ok, true, result.error);
   const value = result.value as { waiting: { reason: string; pool: string; since: string }; process?: unknown };
-  assert.equal(value.waiting.reason, 'waiting for a host');
+  assert.equal(value.waiting.reason, 'waiting for a login codex');
   assert.equal(value.waiting.pool, 'agents');
   assert.ok(Number.isFinite(Date.parse(value.waiting.since)));
   assert.equal(value.process, undefined);
@@ -92,7 +92,7 @@ test('waiting inbox status is outside needs-you and cancellation frees the reser
   const inbox = (await f.ui.request({ type: 'inbox.list' })).value as import('../src/protocol.ts').Inbox;
   assert.equal(inbox.needsYou, before.needsYou);
   assert.deepEqual(inbox.asks, before.asks);
-  assert.deepEqual(inbox.waitingLaunches?.map(w => [w.name, w.role, w.pool, w.reason]), [['queued','implementer','agents','waiting for a host']]);
+  assert.deepEqual(inbox.waitingLaunches?.map(w => [w.name, w.role, w.pool, w.reason]), [['queued','implementer','agents','waiting for a login codex']]);
   const duplicate = await f.launch('queued');
   assert.equal(duplicate.ok, false);
   assert.match(String(duplicate.error), /queued.*waiting/);
@@ -118,7 +118,7 @@ test('a positive exit places a waiting launch once and clears its status', async
   assert.equal(list.processes.find(p => p.name === 'queued')?.host, 'a');
   assert.deepEqual(list.waiting, []);
   assert.equal(f.hub.fakes.codex!.spawns.filter(p => p.name === 'queued').length, 1);
-  assert.deepEqual(events.filter(e => e.event === 'session-waiting').map(e => e.end ?? e.reason), ['waiting for a host','placed']);
+  assert.deepEqual(events.filter(e => e.event === 'session-waiting').map(e => e.end ?? e.reason), ['waiting for a login codex','placed']);
 });
 
 test('final ready commit wakes waits without polling', async t => {
@@ -196,10 +196,10 @@ test('CLI prints waiting, lists its status and cancels with stop', async t => {
   for (const name of ['one','two','three','four']) await f.launch(name);
   const result = await cland(f.root, 'session', 'launch', 'queued-cli', '--role', 'implementer', '--harness', 'codex');
   assert.equal(result.code, 0, result.stderr);
-  assert.match(result.stdout, /waiting: waiting for a host/);
+  assert.match(result.stdout, /waiting: waiting for a login codex/);
   const list = await cland(f.root, 'session', 'list');
   assert.equal(list.code, 0, list.stderr);
-  assert.match(list.stdout, /queued-cli.*pool agents: waiting for a host/);
+  assert.match(list.stdout, /queued-cli.*pool agents: waiting for a login codex/);
   const stop = await cland(f.root, 'session', 'stop', 'queued-cli');
   assert.equal(stop.code, 0, stop.stderr);
   assert.match(stop.stdout, /cancelled queued-cli/);

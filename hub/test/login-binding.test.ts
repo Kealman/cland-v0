@@ -94,7 +94,8 @@ test('mount failure unmounts and detaches before returning login to ready',async
 test('incomplete rollback retains durable pending fence and refuses later reuse',async t=>{
  const f=await fixture(t);
  f.host.loginDisk=async()=>{throw Error('fixture outcome uncertain');};
- for(const name of ['first','second']){const result=await f.launch(name);assert.equal(result.ok,false);assert.match(String(result.error),/login work-codex: outcome unknown/);}
+ const first=await f.launch('first');assert.equal(first.ok,false);assert.match(String(first.error),/login work-codex: outcome unknown/);
+ const second=await f.launch('second');assert.equal(second.ok,true);assert.equal((second.value as {waiting:{reason:string}}).waiting.reason,'waiting for a login codex');
  assert.equal(f.store.hosts.logins.get('work-codex')!.state,'in-use');
  assert.equal(f.store.hosts.logins.bindings('work-codex')[0]!.phase,'pending');
  assert.equal(f.hub.fakes.codex!.spawns.length,0);
@@ -113,10 +114,10 @@ test('remote command overlay removes stray harness authentication variables',asy
  assert.deepEqual(remoteCommandEnvironment(planted),{CODEX_HOME:'/cland/auth/codex-work-codex'});
 });
 
-test('no eligible login refuses with harness and pool before spawning',async t=>{
+test('no eligible login waits with harness before spawning',async t=>{
  const f=await fixture(t);
  f.store.hosts.logins.bind('work-codex',{host:'elsewhere',role:'writer',volumeId:f.volume.id});
- const result=await f.launch('empty');assert.equal(result.ok,false);assert.match(String(result.error),/no login codex in pool agents/);
+ const result=await f.launch('empty');assert.equal(result.ok,true);assert.equal((result.value as {waiting:{reason:string}}).waiting.reason,'waiting for a login codex');
  assert.equal(f.calls.length,0);assert.equal(f.hub.fakes.codex!.spawns.length,0);
 });
 
@@ -302,4 +303,13 @@ test('explicit empty account overrides role pin and selects and reuses an unpinn
  }
  assert.equal(f.calls.length,1);assert.equal(f.hub.fakes.codex!.spawns.length,2);
  for(const spawn of f.hub.fakes.codex!.spawns)assert.deepEqual(spawn.accountEnv,{CODEX_HOME:'/cland/auth/codex-work-codex'});
+});
+
+
+for(const pin of ['explicit','role'] as const)test(pin+' account without a matching login waits before growth',async t=>{
+ const f=await fixture(t);
+ if(pin==='role')await writeFile(join(f.root,'.cland/roles.toml'),'[implementer.launch]\npool="agents"\nharness="codex"\naccount="missing"\n');
+ const result=await f.ui.request({type:'session.launch',name:'pinned-wait',harness:'codex',role:'implementer',...(pin==='explicit'?{account:'missing'}:{})});
+ assert.equal(result.ok,true,result.error);assert.equal((result.value as {waiting:{reason:string}}).waiting.reason,'waiting for a login codex');
+ assert.equal(f.store.hosts.provisions.occupied('agents'),1);assert.equal(f.hub.fakes.codex!.spawns.length,0);assert.deepEqual(f.calls,[]);
 });

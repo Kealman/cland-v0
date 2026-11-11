@@ -18,6 +18,7 @@ export type PlacementInput = Readonly<{
   harness: string;
   pool: Readonly<{ min_hosts: number; max_hosts: number; spread: boolean }>;
   weights?: HostWeights;
+  canCreate?: (harness: string) => boolean;
   verdict?: (host: PlacementHost, harness: string) => HarnessVerdict;
 }>;
 export type PlacementDecision =
@@ -25,7 +26,7 @@ export type PlacementDecision =
   | { kind: 'create' }
   | { kind: 'wait'; reason: string; host?: string };
 
-/** E-1535 supplies login eligibility; until then every harness is served. */
+/** Compatibility for callers without project login metadata. */
 export function defaultHarnessVerdict(_host: PlacementHost, _harness: string): HarnessVerdict {
   return 'serves';
 }
@@ -52,14 +53,15 @@ export function decidePlacement(input: PlacementInput): PlacementDecision {
   const eligible = (state: PlacementHost['state']) => input.hosts
     .filter(host => host.state === state
       && host.usedMilli + host.promisedMilli + weightMilli <= host.slots * 1000
-      && verdict(host, input.harness) === 'serves')
-    .sort((a, b) => input.pool.spread ? (a.usedMilli + a.promisedMilli) - (b.usedMilli + b.promisedMilli)
-      : (b.usedMilli + b.promisedMilli) - (a.usedMilli + a.promisedMilli));
+      && ['serves', 'can-bind'].includes(verdict(host, input.harness)))
+    .sort((a, b) => Number(verdict(a, input.harness) !== 'serves') - Number(verdict(b, input.harness) !== 'serves') || (input.pool.spread ? (a.usedMilli + a.promisedMilli) - (b.usedMilli + b.promisedMilli)
+      : (b.usedMilli + b.promisedMilli) - (a.usedMilli + a.promisedMilli)));
   const ready = eligible('ready')[0];
   if (ready) return { kind: 'place', host: ready.id };
   const booting = eligible('booting')[0];
   if (booting) return { kind: 'wait', host: booting.id, reason: `waiting for host ${booting.id} to boot` };
   const count = input.hosts.filter(host => host.state === 'ready' || host.state === 'booting').length;
+  if (input.canCreate && !input.canCreate(input.harness)) return { kind: 'wait', reason: `waiting for a login ${input.harness}` };
   if (count < input.pool.max_hosts) return { kind: 'create' };
   return { kind: 'wait', reason: 'waiting for a host' };
 }

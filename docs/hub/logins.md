@@ -227,8 +227,10 @@ refuses without consuming a ready login. A host's settled
 disk binding must match its provider and region and remain in-use; key bindings
 cannot supply a disk mount. A settled binding is reused by later launches of
 that harness; a different requested
-account refuses. With no eligible login, launch refuses with
-`no login <harness> in pool <pool>`.
+account refuses. Pool placement holds an accepted durable `waiting for a login <harness>` wait
+when no eligible login exists. The binder independently refuses
+`no login <harness> in pool <pool>` if eligibility disappears after placement
+or a direct binding caller has no eligible login.
 
 Demand-created hosts prepare logins at the `createHost.onConnecting` checkpoint.
 `PoolRuntime.start` passes a demand reader through `Sessions.startPoolScaling`
@@ -251,10 +253,12 @@ the provision owner. Settled bindings follow the normal host-stop release path.
 Tests use an injected create seam, directory provider and hub FakeClock; the
 simulated attachment overlaps cloning without advancing the ready timestamp.
 Real provider and agent latency can still delay ready when binding outlasts boot.
-Ordinary no-login, selected-account-limit and invalid-demand refusals remain
-launch-scoped: the healthy host becomes ready and normal launch admission
-publishes the refusal. An unknown login operation retains its pending fence and
-refuses that harness's launch without turning the machine into a boot retry.
+Selected-account-limit and invalid-demand binder refusals remain launch-scoped:
+the healthy host becomes ready and normal launch admission publishes the refusal.
+No-login capacity holds demand before creation. If login preparation produces an
+unknown outcome, its pending fence remains; later pool placement holds that
+harness's durable login wait without turning the machine into a boot retry.
+The first uncertain binder operation still reports its own failure.
 The creation signal and a synchronous failed-hook fence prevent new attachment
 admission after failure or abort; cleanup joins admitted work before rollback.
 
@@ -482,3 +486,47 @@ Gone-host deletion/revocation and spend settlement finish with the login still
 bound. Once installed, the release owner reconciles its retained deletion receipt,
 including a provision already marked destroyed. Volume delay never holds a
 session's deleted-host exit.
+
+
+## Placement capacity
+
+`host/login-verdicts.ts` supplies `loginVerdict` from indexed metadata reads.
+A settled in-use binding in the host's provider and region serves its harness;
+a retained signed-out binding reports signed-out, while pending or incompatible
+bindings offer no capacity. An eligible free login reports can-bind. Placement
+prefers serving ready hosts, then bindable ready hosts, before eligible booting
+hosts. The existing LoginBinder owns every native bind.
+
+`LoginRecords.selectCapacityLogin({harness, provider, region, account?})` reads at most one
+eligible row: a ready exclusive disk in that provider and region, a ready or
+in-use non-exclusive disk there, or a ready or in-use OpenCode key. Creating and
+signed-out rows never qualify. Disks with pending bindings or reader intents in creating/deleted phases remain
+fenced. The private integer `logins.pending_bindings` equals the count of
+`login_bindings.phase = pending` plus `login_readers.phase` in creating/deleted.
+The store migration backfills it once and installs INSERT, DELETE and phase/login
+UPDATE triggers on both tables. The triggers update the count in each writer's
+native SQLite transaction, including rollback, final-reader acknowledgment and
+release. JSON row state, volume and exclusive edits update index eligibility
+through SQLite itself; no caller maintains a parallel counter. Public Login and
+LoginBinding records omit this private column.
+
+One partial `login_capacity_launch` index contains only eligible states with zero
+pending count and a key or a volume-bearing disk. Its harness, kind, provider,
+region and account prefix bounds capacity reads even across matching pending or
+null-volume history. `heldForLaunch({host,harness})` shares the unchanged indexed
+two-binding lookup with selectForLaunch. Verdicts call that bounded read directly,
+so they never walk the binder's candidate history before checking capacity. The effective explicit or role account pin narrows placement, held bindings,
+capacity selection and demand creation; an explicit empty account remains unpinned.
+The binder repeats its account check at native admission.
+
+Demand growth waits with `waiting for a login <harness>` when no login is free,
+and rechecks at creation admission. A waiting launch follows the current role
+harness/account: a creator held in preparation refuses its obsolete selection
+before row or machine admission. Explicit pins still override role defaults.
+Login changes wake waiting placement.
+Minimum hosts still boot without logins. Manual creation and login-add creation
+remain exempt from demand capacity checks and still obey max_hosts and provider
+admission. Shared/key capacity does not claim native spawn coverage from these
+metadata tests; the binding and spawn owners supply those operations.
+
+See [capacity cases](../agents/tests/hub-test-login-capacity.test.ts.md).

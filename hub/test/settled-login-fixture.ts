@@ -65,3 +65,11 @@ export async function readyLogin(root:string,env:NodeJS.ProcessEnv,records:Login
  records.insert({name,harness,account:`default:${harness}`,kind:'disk',provider:'fake',region:'fake-1',volumeId:result.volume.id,snapshotIds:[],lastSignIn:null});
  records.transition(name,'ready');
 }
+
+/** Metadata-only growth eligibility for injected creators that never mount disks. */
+export function capacityLogin(records:LoginRecords,region='lon1',provider='fake'):void {
+ const name='fixture-growth';
+ if(records.get(name))return;
+ records.insert({name,harness:'codex',account:'work',kind:'disk',provider,region,volumeId:'volume-growth',snapshotIds:[],lastSignIn:null});
+ records.transition(name,'ready');
+}

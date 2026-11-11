@@ -13,3 +13,6 @@ Fault controls change readiness after allocation, attachment, mount and config
 publication, and replace the captured machine birth while keeping it ready;
 none may publish a terminal plan or continue with new effects. Confirmed cleanup
 releases only the admitted attempt's pin.
+
+`login add creates a host while its only login is still creating` proves the
+T-1784 C5 exemption through preparePoolLogin with injected creation and sign-in.

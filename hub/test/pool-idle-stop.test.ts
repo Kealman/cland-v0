@@ -66,6 +66,7 @@ test('C4 session gained during idle wait restarts the full wait after exit',asyn
 test('placement promise resets idle wait even if released before the old timer',async t=>{
  const f=await fixture(t,0);
  await f.clock.advance(30000);
+ f.store.hosts.logins.insert({name:'promise',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake',volumeId:'promise-volume',snapshotIds:[],lastSignIn:null});f.store.hosts.logins.transition('promise','ready');
  const held=f.runtime.reserve('agents','codex','z');
  await f.clock.advance(10000);held.release();f.runtime.reconcile();
  await f.clock.advance(20000);assert.equal(f.store.hosts.provisions.get('z')!.state,'ready');

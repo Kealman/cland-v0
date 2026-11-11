@@ -477,7 +477,7 @@ cat > "$Q/expect.json" <<'JSON'
   "incomplete rollback retains durable pending fence and refuses later reuse",
   "local launch uses no login even when project disk is ready",
   "remote command overlay removes stray harness authentication variables",
-  "no eligible login refuses with harness and pool before spawning",
+  "no eligible login waits with harness before spawning",
   "concurrent launches of one harness share one mounted writer",
   "process login and mount overlay survive reopening the process table",
   "unknown mount outcome fences binding without another native mutation",
@@ -501,7 +501,9 @@ cat > "$Q/expect.json" <<'JSON'
   "an unpinned already-limited login account refuses before native binding effects",
   "host execution maps mounted login environment while retaining logical input",
   "held binding body failure drains before borrowed storage closes",
-  "explicit empty account overrides role pin and selects and reuses an unpinned login"]},
+  "explicit empty account overrides role pin and selects and reuses an unpinned login",
+  "explicit account without a matching login waits before growth",
+  "role account without a matching login waits before growth"]},
  "hub/test/login-selection.test.ts": {"exact": true, "names": [
   "launch selection has fixed indexed query and decode work across ten thousand retained logins",
   "stage-one login database migrates private binding harness and indexes without changing public rows"]},
@@ -688,7 +690,7 @@ cat > "$Q/expect.json" <<'JSON'
   "boot failure after attachment preserves the ready disk",
   "unknown rollback retains pending binding without retrying detach",
   "host ready and native admission wait for the mount receipt",
-  "missing login refuses the waiting launch while the healthy host stays ready",
+  "missing login holds demand without creating a host",
   "cancelled captured wait cannot attach after held inventory completes",
   "failure fences attach while provisioning inventory is held",
   "abort fences attach while provisioning inventory is held",
@@ -1147,3 +1149,16 @@ Filled by the Coordinator at T-1780's landing `ee21cb146` (2026-11-10); E1535S2-
 1. "Build", the landing receipt sentence: the landing SHA with its one `Item: T-1780` trailer, and the plan read `merged 8`, `total 8`, `statuses {"done":8}`.
 2. E1535S2-00: the T-1780 receipt line and the same plan read.
 3. E1535S2-02: T-1780's landing check against `T1780_TIP` (`678733ec5`), any byte difference named with its cause, and the landing SHA in each touched member's later-commit list. If the landing is not byte-identical to `678733ec5`, also re-read the T-1780 and reshaped T-1778 lines of `src.mjs` and the `login-provision-bind` list at the landing.
+
+
+T-1784 current replay migration: the exact-name selectors above use
+`no eligible login waits with harness before spawning` and
+`missing login holds demand without creating a host`. Their stage-2 historical
+identities were `no eligible login refuses with harness and pool before spawning`
+and `missing login refuses the waiting launch while the healthy host stays ready`.
+Published stage-2 receipts retain those historical source identities; they are
+not evidence that the renamed capacity cases ran on a later head. Current pool
+admission accepts durable login waits and prevents demand creation without the
+matching login. The direct binder's independent refusal guard remains covered.
+The two explicit/role account capacity cases are current replay additions and
+were not part of the historical stage-2 receipt.

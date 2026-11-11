@@ -56,3 +56,12 @@ retain the earlier claim refusal; unchanged Lead launch controls remain in place
 The explicit-empty-account control overrides an unavailable role account, then
 selects and reuses the ready login without a pin; both process account/login and
 the logical overlay are checked. Empty input is normalized before indexed selection.
+
+Capacity admission now returns a durable login wait for an exhausted login or
+a retained pending binding. The first uncertain native attempt still refuses
+and retains its pending fence; later attempts perform no native effect.
+
+`explicit account without a matching login waits before growth` and
+`role account without a matching login waits before growth` prove the Sessions
+reserve call carries either pin before effects. Existing host count stays one,
+there is no mount or native spawn, and the returned wait names the harness.

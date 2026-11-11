@@ -106,7 +106,7 @@ test('pool with no ready member waits without spawning', async t => {
   for (const id of ['a', 'b']) f.store.hosts.revoke(id);
   const result = await f.launch('worker');
   assert.equal(result.ok, true, result.error);
-  assert.equal((result.value as { waiting: { reason: string } }).waiting.reason, 'waiting for a host');
+  assert.equal((result.value as { waiting: { reason: string } }).waiting.reason, 'waiting for a login codex');
   assert.equal(f.hub.fakes.codex!.spawns.length, 0);
 });
 
